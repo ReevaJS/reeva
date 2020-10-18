@@ -1,13 +1,16 @@
 package me.mattco.jsthing.runtime.environment
 
+import me.mattco.jsthing.runtime.annotations.ECMAImpl
 import me.mattco.jsthing.runtime.values.JSValue
 import me.mattco.jsthing.runtime.values.primitives.JSUndefined
 
-class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
+open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
     protected val bindings = mutableMapOf<String, Binding>()
 
+    @ECMAImpl("HasBinding", "8.1.1.1.1")
     override fun hasBinding(name: String) = name in bindings
 
+    @ECMAImpl("CreateMutableBinding", "8.1.1.1.2")
     override fun createMutableBinding(name: String, canBeDeleted: Boolean) {
         if (hasBinding(name))
             throw IllegalStateException("Binding already exists for name $name")
@@ -19,6 +22,7 @@ class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
         )
     }
 
+    @ECMAImpl("CreateImmutableBinding", "8.1.1.1.3")
     override fun createImmutableBinding(name: String, strict: Boolean) {
         if (hasBinding(name))
             throw IllegalStateException("Binding already exists for name $name")
@@ -31,6 +35,7 @@ class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
         )
     }
 
+    @ECMAImpl("InitializeBinding", "8.1.1.1.4")
     override fun initializeBinding(name: String, value: JSValue) {
         if (!hasBinding(name))
             throw IllegalStateException("Binding does not exist for name $name")
@@ -43,6 +48,7 @@ class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
         binding.initialized = true
     }
 
+    @ECMAImpl("SetMutableBinding", "8.1.1.1.5")
     override fun setMutableBinding(name: String, value: JSValue, throwOnFailure: Boolean) {
         if (!hasBinding(name)) {
             if (throwOnFailure)
@@ -68,6 +74,7 @@ class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
         }
     }
 
+    @ECMAImpl("GetBindingValue", "8.1.1.1.6")
     override fun getBindingValue(name: String, throwOnNotFound: Boolean): JSValue {
         if (!hasBinding(name))
             throw IllegalStateException("No binding for $name found")
@@ -78,6 +85,7 @@ class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
         return binding.value
     }
 
+    @ECMAImpl("DeleteBinding", "8.1.1.1.7")
     override fun deleteBinding(name: String): Boolean {
         if (!hasBinding(name))
             throw IllegalStateException("No binding for $name found")
@@ -89,9 +97,12 @@ class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
         return true
     }
 
+    @ECMAImpl("HasThisBinding", "8.1.1.1.8")
     override fun hasThisBinding() = false
 
+    @ECMAImpl("HasSuperBinding", "8.1.1.1.9")
     override fun hasSuperBinding() = false
 
+    @ECMAImpl("WithBaseObject", "8.1.1.1.10")
     override fun withBaseObject() = JSUndefined
 }

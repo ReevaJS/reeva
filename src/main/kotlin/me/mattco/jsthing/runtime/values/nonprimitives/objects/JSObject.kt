@@ -1,6 +1,7 @@
 package me.mattco.jsthing.runtime.values.nonprimitives.objects
 
 import me.mattco.jsthing.runtime.Realm
+import me.mattco.jsthing.runtime.annotations.ECMAImpl
 import me.mattco.jsthing.runtime.annotations.JSMethod
 import me.mattco.jsthing.runtime.annotations.JSNativePropertyGetter
 import me.mattco.jsthing.runtime.annotations.JSNativePropertySetter
@@ -86,8 +87,10 @@ open class JSObject protected constructor(
         }
     }
 
+    @ECMAImpl("[[GetPrototypeOf]]", "9.1.1")
     open fun getPrototype() = prototype
 
+    @ECMAImpl("[[SetPrototypeOf]]", "9.1.2")
     open fun setPrototype(newPrototype: JSValue): Boolean {
         ecmaAssert(newPrototype.isObject || newPrototype.isNull)
         if (newPrototype.sameValue(prototype))
@@ -111,12 +114,16 @@ open class JSObject protected constructor(
     }
 
     fun hasOwnProperty(property: String): Boolean = hasOwnProperty(PropertyKey(property))
+
+    @ECMAImpl("[[HasProperty]]", "9.1.7")
     fun hasOwnProperty(property: PropertyKey): Boolean {
         TODO()
     }
 
+    @ECMAImpl("[[IsExtensible]]", "9.1.3")
     open fun isExtensible() = extensible
 
+    @ECMAImpl("[[PreventExtensions]]", "9.1.4")
     open fun preventExtensions(): Boolean {
         extensible = false
         return true
@@ -133,6 +140,8 @@ open class JSObject protected constructor(
     }
 
     fun getOwnProperty(property: String) = getOwnProperty(PropertyKey(property))
+
+    @ECMAImpl("[[GetOwnProperty]]", "9.1.5")
     open fun getOwnProperty(property: PropertyKey): JSValue {
         if (property !in properties)
             return JSUndefined
@@ -141,6 +150,8 @@ open class JSObject protected constructor(
     }
 
     fun defineOwnProperty(property: String, descriptor: Descriptor) = defineOwnProperty(PropertyKey(property), descriptor)
+
+    @ECMAImpl("[[DefineOwnProperty]]", "9.1.6")
     open fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
         TODO()
     }
@@ -151,20 +162,27 @@ open class JSObject protected constructor(
     }
 
     fun get(property: String, receiver: JSValue = this) = get(PropertyKey(property), receiver)
+
+    @ECMAImpl("[[Get]]", "9.1.8")
     open fun get(property: PropertyKey, receiver: JSValue = this): JSValue {
         TODO()
     }
 
     fun set(property: String, value: JSValue, receiver: JSValue = this) = set(PropertyKey(property), value, receiver)
+
+    @ECMAImpl("[[Set]]", "9.1.9")
     open fun set(property: PropertyKey, value: JSValue, receiver: JSValue = this): Boolean {
         TODO()
     }
 
     fun delete(property: String) = delete(PropertyKey(property))
+
+    @ECMAImpl("[[Delete]]", "9.1.10")
     open fun delete(property: PropertyKey): Boolean {
         TODO()
     }
 
+    @ECMAImpl("[[OwnPropertyKeys]]", "9.1.11")
     open fun ownPropertyKeys(): List<JSValue> {
         TODO()
     }

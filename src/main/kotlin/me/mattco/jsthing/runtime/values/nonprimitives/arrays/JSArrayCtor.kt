@@ -13,7 +13,6 @@ class JSArrayCtor(realm: Realm) : JSNativeFunction(realm, "ArrayConstructor") {
     }
 
     override fun call(context: ExecutionContext, arguments: List<JSValue>): JSValue {
-
         TODO("Not yet implemented")
     }
 

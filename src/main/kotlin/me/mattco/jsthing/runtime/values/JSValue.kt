@@ -1,5 +1,6 @@
 package me.mattco.jsthing.runtime.values
 
+import me.mattco.jsthing.runtime.annotations.ECMAImpl
 import me.mattco.jsthing.runtime.values.primitives.JSNull
 import me.mattco.jsthing.runtime.values.nonprimitives.objects.JSObject
 import me.mattco.jsthing.runtime.values.primitives.*
@@ -61,6 +62,7 @@ abstract class JSValue {
     val isPositiveZero by lazy { isNumber && 1.0 / asDouble == Double.POSITIVE_INFINITY }
     val isNegativeZero by lazy { isNumber && 1.0 / asDouble == Double.NEGATIVE_INFINITY }
 
+    @ECMAImpl("SameValue", "7.2.10")
     fun sameValue(other: JSValue): Boolean {
         if (type != other.type)
             return false
@@ -68,6 +70,7 @@ abstract class JSValue {
         return sameValueNonNumeric(other)
     }
 
+    @ECMAImpl("SameValueZero", "7.2.11")
     fun sameValueZero(other: JSValue): Boolean {
         if (type != other.type)
             return false
@@ -75,6 +78,7 @@ abstract class JSValue {
         return sameValueNonNumeric(other)
     }
 
+    @ECMAImpl("SameValueNonNumeric", "7.2.12")
     fun sameValueNonNumeric(other: JSValue): Boolean {
         ecmaAssert(type != Type.Number /* && type != Type.BigInt */)
         ecmaAssert(type == other.type)
@@ -90,6 +94,7 @@ abstract class JSValue {
         }
     }
 
+    @ECMAImpl("ToBoolean", "7.1.2")
     fun toBoolean() = when (type) {
         Type.Empty -> unreachable()
         Type.Undefined, Type.Null -> false
@@ -99,6 +104,7 @@ abstract class JSValue {
         Type.Object -> true
     }
 
+    @ECMAImpl("ToNumber", "7.1.14")
     fun toNumber() = when (type) {
         Type.Empty -> unreachable()
         Type.Undefined -> Double.NaN
@@ -109,6 +115,7 @@ abstract class JSValue {
         Type.Object -> TODO()
     }
 
+    @ECMAImpl("ToObject", "7.1.18")
     fun toObject(): JSObject {
         TODO()
     }

@@ -5,7 +5,7 @@ import me.mattco.jsthing.lexer.SourceLocation
 import me.mattco.jsthing.lexer.Token
 import me.mattco.jsthing.lexer.TokenType
 import me.mattco.jsthing.parser.ast.ASTNode
-import me.mattco.jsthing.parser.ast.Program
+import me.mattco.jsthing.parser.ast.Script
 import me.mattco.jsthing.parser.ast.expressions.*
 import me.mattco.jsthing.parser.ast.literals.*
 import me.mattco.jsthing.parser.ast.statements.*
@@ -36,8 +36,8 @@ class Parser(private val source: String) {
     private val isDone: Boolean
         get() = tokenType == TokenType.Eof
 
-    fun parse(): Program {
-        val program = Program()
+    fun parse(): Script {
+        val script = Script()
 
         withScope(ScopeType.Var, ScopeType.Let, ScopeType.Function) {
             var first = true
@@ -45,10 +45,10 @@ class Parser(private val source: String) {
 
             while (!isDone) {
                 if (matchStatement()) {
-                    program.addStatement(parseStatement())
+                    script.addStatement(parseStatement())
                     if (first) {
                         if (state.useStrictState == ParserState.UseStrictState.Found) {
-                            program.isStrict = true
+                            script.isStrict = true
                             state.strictMode = true
                         }
                         first = false
@@ -60,15 +60,15 @@ class Parser(private val source: String) {
             }
 
             if (state.varScopes.size == 1) {
-                program.addVariables(state.varScopes.last())
-                program.addVariables(state.letScopes.last())
-                program.addFunctions(state.functionScopes.last())
+                script.addVariables(state.varScopes.last())
+                script.addVariables(state.letScopes.last())
+                script.addFunctions(state.functionScopes.last())
             } else {
                 TODO("Error")
             }
         }
 
-        return program
+        return script
     }
 
     private fun parseStatement(): Statement {

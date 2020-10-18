@@ -22,6 +22,7 @@ class FunctionEnvRecord(
             throw IllegalArgumentException()
     }
 
+    @ECMAImpl("BindThisValue", "8.1.1.3.1")
     fun bindThisValue(value: JSValue): JSValue {
         if (thisBindingStatus == ThisBindingStatus.Lexical)
             throw IllegalStateException("Attempt to bind a lexical 'this' value")
@@ -34,10 +35,13 @@ class FunctionEnvRecord(
         return value
     }
 
+    @ECMAImpl("HasThisBinding", "8.1.1.3.2")
     override fun hasThisBinding() = thisBindingStatus != ThisBindingStatus.Lexical
 
+    @ECMAImpl("HasSuperBinding", "8.1.1.3.3")
     override fun hasSuperBinding() = hasThisBinding() && homeObject.isObject
 
+    @ECMAImpl("GetThisBinding", "8.1.1.3.4")
     fun getThisBinding(): JSValue {
         if (!hasThisBinding())
             throw IllegalStateException("Attempt to get non-bound 'this' value")
@@ -48,6 +52,7 @@ class FunctionEnvRecord(
         return thisValue
     }
 
+    @ECMAImpl("GetSuperBase", "8.1.1.3.5")
     fun getSuperBase(): JSValue {
         if (homeObject == JSNull)
             return JSUndefined
@@ -62,6 +67,7 @@ class FunctionEnvRecord(
     }
 
     companion object {
+        @ECMAImpl("NewFunctionEnvironment", "8.1.2.4")
         internal fun create(function: JSFunction, newTarget: JSValue): FunctionEnvRecord {
             val thisBindingStatus = if (function.thisMode == JSFunction.ThisMode.Lexical) {
                 FunctionEnvRecord.ThisBindingStatus.Lexical
