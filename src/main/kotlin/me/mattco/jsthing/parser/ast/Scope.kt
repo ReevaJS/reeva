@@ -3,6 +3,7 @@ package me.mattco.jsthing.parser.ast
 import me.mattco.jsthing.parser.ast.statements.FunctionDeclaration
 import me.mattco.jsthing.parser.ast.statements.Statement
 import me.mattco.jsthing.parser.ast.statements.VariableDeclaration
+import me.mattco.jsthing.utils.stringBuilder
 
 abstract class Scope : Statement() {
     val children = mutableListOf<Statement>()

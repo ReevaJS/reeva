@@ -1,5 +1,7 @@
 package me.mattco.jsthing.parser.ast.statements
 
+import me.mattco.jsthing.utils.stringBuilder
+
 class VariableDeclaration(
     val type: Type,
     val declarations: List<VariableDeclarator>

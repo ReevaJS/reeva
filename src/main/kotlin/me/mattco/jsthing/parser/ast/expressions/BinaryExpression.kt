@@ -1,6 +1,7 @@
 package me.mattco.jsthing.parser.ast.expressions
 
 import me.mattco.jsthing.lexer.TokenType
+import me.mattco.jsthing.utils.stringBuilder
 
 class BinaryExpression(val lhs: Expression, val rhs: Expression, val op: Operation) : Expression() {
     override fun dump(indent: Int) = stringBuilder {

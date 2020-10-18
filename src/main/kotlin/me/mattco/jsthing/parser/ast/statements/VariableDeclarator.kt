@@ -3,6 +3,7 @@ package me.mattco.jsthing.parser.ast.statements
 import me.mattco.jsthing.parser.ast.ASTNode
 import me.mattco.jsthing.parser.ast.expressions.Expression
 import me.mattco.jsthing.parser.ast.expressions.Identifier
+import me.mattco.jsthing.utils.stringBuilder
 
 class VariableDeclarator(val identifier: Identifier, val initializer: Expression? = null) : ASTNode() {
     override fun dump(indent: Int) = stringBuilder {

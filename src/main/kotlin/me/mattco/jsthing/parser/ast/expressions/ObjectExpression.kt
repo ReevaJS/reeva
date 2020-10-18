@@ -1,5 +1,7 @@
 package me.mattco.jsthing.parser.ast.expressions
 
+import me.mattco.jsthing.utils.stringBuilder
+
 class ObjectExpression(val properties: List<ObjectProperty>) : Expression() {
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)

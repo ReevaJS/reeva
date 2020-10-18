@@ -3,6 +3,7 @@ package me.mattco.jsthing.parser.ast.statements.flow
 import me.mattco.jsthing.parser.ast.ASTNode
 import me.mattco.jsthing.parser.ast.expressions.Expression
 import me.mattco.jsthing.parser.ast.statements.Statement
+import me.mattco.jsthing.utils.stringBuilder
 
 class ForInStatement(val lhs: ASTNode, val rhs: Expression, val body: Statement) : Statement() {
     override fun dump(indent: Int) = stringBuilder {

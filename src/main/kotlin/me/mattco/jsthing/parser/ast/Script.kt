@@ -1,6 +1,8 @@
 package me.mattco.jsthing.parser.ast
 
-class Program : Scope(), Strictable {
+import me.mattco.jsthing.utils.stringBuilder
+
+class Script : Scope(), Strictable {
     override var isStrict: Boolean = false
 
     override fun dump(indent: Int) = stringBuilder {

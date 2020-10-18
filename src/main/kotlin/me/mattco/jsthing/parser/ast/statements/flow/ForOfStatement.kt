@@ -4,6 +4,7 @@ import me.mattco.jsthing.parser.ast.ASTNode
 import me.mattco.jsthing.parser.ast.ASTNode.Companion.appendIndent
 import me.mattco.jsthing.parser.ast.expressions.Expression
 import me.mattco.jsthing.parser.ast.statements.Statement
+import me.mattco.jsthing.utils.stringBuilder
 
 class ForOfStatement(val lhs: ASTNode, val rhs: Expression, val body: Statement) : Statement() {
     override fun dump(indent: Int) = stringBuilder {

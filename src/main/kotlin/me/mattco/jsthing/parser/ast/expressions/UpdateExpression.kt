@@ -1,5 +1,7 @@
 package me.mattco.jsthing.parser.ast.expressions
 
+import me.mattco.jsthing.utils.stringBuilder
+
 class UpdateExpression(val expression: Expression, val increment: Boolean, val prefixed: Boolean) : Expression() {
     override fun dump(indent: Int) = stringBuilder {
         val op = if (increment) "++" else "--"

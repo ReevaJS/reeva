@@ -1,5 +1,7 @@
 package me.mattco.jsthing.parser.ast.expressions
 
+import me.mattco.jsthing.utils.stringBuilder
+
 class MemberExpression(val target: Expression, val property: Expression, val computed: Boolean = false) : Expression() {
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)

@@ -1,6 +1,7 @@
 package me.mattco.jsthing.parser.ast.expressions
 
 import me.mattco.jsthing.parser.ast.ASTNode
+import me.mattco.jsthing.utils.stringBuilder
 
 class ObjectProperty(val type: Type, val key: Expression, val value: Expression?, val isMethod: Boolean) : ASTNode() {
     override fun dump(indent: Int) = stringBuilder {

@@ -1,6 +1,7 @@
 package me.mattco.jsthing.parser.ast.statements
 
 import me.mattco.jsthing.parser.ast.Strictable
+import me.mattco.jsthing.utils.stringBuilder
 
 class FunctionExpression private constructor(
     private val data: FunctionData<String?>,

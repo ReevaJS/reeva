@@ -1,6 +1,7 @@
 package me.mattco.jsthing.parser.ast.statements
 
 import me.mattco.jsthing.parser.ast.Strictable
+import me.mattco.jsthing.utils.stringBuilder
 
 class FunctionDeclaration private constructor(private val data: FunctionData<String>) : Declaration(), Strictable by data {
     constructor(
