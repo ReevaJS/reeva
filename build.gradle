@@ -1,0 +1,39 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.4.10'
+    id 'antlr'
+}
+
+group = 'me.mattco'
+archivesBaseName = 'jsthing'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    jcenter()
+    maven { url "https://jitpack.io" }
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation ("org.jetbrains.kotlin:kotlin-reflect") {
+        exclude module: "kotlin-stdlib"
+    }
+    implementation 'org.ow2.asm:asm-debug-all:5.0.2'
+    implementation "com.github.half-cambodian-hacker-man:Koffee:d8cee73"
+    antlr "org.antlr:antlr4:4.7.1"
+    testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = '1.8'
+}
+
+tasks.generateGrammarSource {
+    maxHeapSize = "64m"
+    outputDirectory = file("${project.buildDir}/generated-src/antlr/main/me/mattco/jsthing/generated")
+    arguments = arguments + ["-visitor", "-long-messages", "-package", "me.mattco.jsthing.generated"]
+}
+
+tasks.build {
+    dependsOn "generateGrammarSource"
+}
