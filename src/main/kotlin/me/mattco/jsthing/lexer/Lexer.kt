@@ -24,7 +24,7 @@ class Lexer(private val source: String) : Iterable<Token> {
         }
     }
 
-    val isDone: Boolean
+    private val isDone: Boolean
         get() = cursor >= source.length
 
     private val char: Char

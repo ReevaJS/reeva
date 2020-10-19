@@ -9,3 +9,5 @@ fun CharArray.allIndexed(predicate: (index: Int, Char) -> Boolean) = this.mapInd
 fun Char.isHexDigit() = isDigit() || (this >= 'A' || this <= 'F') || (this >= 'a' || this <= 'f')
 
 fun stringBuilder(builder: StringBuilder.() -> Unit) = StringBuilder().apply(builder).toString()
+
+fun StringBuilder.newline() = append("\n")

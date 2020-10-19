@@ -1,25 +1,27 @@
 package me.mattco.jsthing.parser
 
+import me.mattco.jsthing.ast.*
+import me.mattco.jsthing.ast.expressions.*
+import me.mattco.jsthing.ast.literals.NullNode
+import me.mattco.jsthing.ast.literals.NumericLiteralNode
+import me.mattco.jsthing.ast.literals.StringLiteralNode
+import me.mattco.jsthing.ast.literals.ThisNode
+import me.mattco.jsthing.ast.statements.*
 import me.mattco.jsthing.lexer.Lexer
 import me.mattco.jsthing.lexer.SourceLocation
 import me.mattco.jsthing.lexer.Token
 import me.mattco.jsthing.lexer.TokenType
-import me.mattco.jsthing.parser.ast.ASTNode
-import me.mattco.jsthing.parser.ast.Script
-import me.mattco.jsthing.parser.ast.expressions.*
-import me.mattco.jsthing.parser.ast.literals.*
-import me.mattco.jsthing.parser.ast.statements.*
-import me.mattco.jsthing.parser.ast.statements.flow.*
+import me.mattco.jsthing.utils.all
+import me.mattco.jsthing.utils.unreachable
 
-class Parser(private val source: String) {
-    private val lexer = Lexer(source)
+class Parser(text: String) {
+    private val tokens = Lexer(text).toList() + Token(TokenType.Eof, "", "", SourceLocation(-1, -1), SourceLocation(-1, -1))
 
-    private val tokens = lexer.toMutableList().also {
-        it.add(Token(TokenType.Eof, "", "", SourceLocation(-1, -1), SourceLocation(-1, -1)))
-    }
+    private val syntaxErrors = mutableListOf<SyntaxError>()
+    private lateinit var goalSymbol: GoalSymbol
 
-    private var state = ParserState()
-    private val states = mutableListOf<ParserState>()
+    private var state = State(0)
+    private val stateStack = mutableListOf(state)
 
     private var cursor: Int
         get() = state.cursor
@@ -36,678 +38,1373 @@ class Parser(private val source: String) {
     private val isDone: Boolean
         get() = tokenType == TokenType.Eof
 
-    fun parse(): Script {
-        val script = Script()
-
-        withScope(ScopeType.Var, ScopeType.Let, ScopeType.Function) {
-            var first = true
-            state.useStrictState = ParserState.UseStrictState.Looking
-
-            while (!isDone) {
-                if (matchStatement()) {
-                    script.addStatement(parseStatement())
-                    if (first) {
-                        if (state.useStrictState == ParserState.UseStrictState.Found) {
-                            script.isStrict = true
-                            state.strictMode = true
-                        }
-                        first = false
-                        state.useStrictState = ParserState.UseStrictState.None
-                    }
-                } else {
-                    TODO("Error")
-                }
-            }
-
-            if (state.varScopes.size == 1) {
-                script.addVariables(state.varScopes.last())
-                script.addVariables(state.letScopes.last())
-                script.addFunctions(state.functionScopes.last())
-            } else {
-                TODO("Error")
-            }
-        }
-
-        return script
+    fun parseScript(): ScriptNode {
+        goalSymbol = GoalSymbol.Script
+        val statementList = parseStatementList(emptySet())
+        if (!isDone)
+            unexpected("token ${token.value}")
+        return ScriptNode(statementList?.statements ?: emptyList())
     }
 
-    private fun parseStatement(): Statement {
-        return when (tokenType) {
-            TokenType.Class -> TODO()
-            TokenType.Function -> parseFunctionNode<FunctionDeclaration>().also {
-                state.functionScopes.last().add(it)
-            }
-            TokenType.OpenCurly -> parseBlockStatement().block
-            TokenType.Return -> TODO()
-            TokenType.Var, TokenType.Let, TokenType.Const -> parseVariableDeclaration()
-            TokenType.For -> parseForStatement()
-            TokenType.If -> parseIfStatement()
-            TokenType.Throw -> TODO()
-            TokenType.Try -> TODO()
-            TokenType.Break -> TODO()
-            TokenType.Continue -> TODO()
-            TokenType.Switch -> TODO()
-            TokenType.Do -> parseDoWhileStatement()
-            TokenType.While -> parseWhileStatement()
-            TokenType.Debugger -> TODO()
-            TokenType.Semicolon -> {
-                consume()
-                EmptyStatement()
-            }
-            else -> {
-                if (tokenType == TokenType.Identifier) {
-                    // TODO: Labelled Statements
-                }
-
-                if (matchExpression()) {
-                    ExpressionStatement(parseExpression(0)).also {
-                        consumeOrInsertSemicolon()
-                    }
-                } else TODO("Error")
-            }
-        }
-    }
-
-    private fun parseWhileStatement(): Statement {
-        consume(TokenType.While)
-        consume(TokenType.OpenParen)
-        val test = parseExpression(0)
-        consume(TokenType.CloseParen)
-
-        val prevBreak = state.inBreakContext
-        val prevContinue = state.inContinueContext
-        state.inBreakContext = true
-        state.inContinueContext = true
-
-        val body = parseStatement()
-
-        state.inBreakContext = prevBreak
-        state.inContinueContext = prevContinue
-
-        return WhileStatement(test, body)
-    }
-
-    private fun parseDoWhileStatement(): Statement {
-        consume(TokenType.Do)
-
-        val prevBreak = state.inBreakContext
-        val prevContinue = state.inContinueContext
-        state.inBreakContext = true
-        state.inContinueContext = true
-
-        val body = parseStatement()
-
-        state.inBreakContext = prevBreak
-        state.inContinueContext = prevContinue
-
-        consume(TokenType.While)
-        consume(TokenType.OpenParen)
-
-        val test = parseExpression(0)
-        consume(TokenType.CloseParen)
-        consumeOrInsertSemicolon()
-
-        return DoWhileStatement(test, body)
-    }
-
-    private fun parseIfStatement(): Statement {
-        consume(TokenType.If)
-        consume(TokenType.OpenParen)
-        val predicate = parseExpression(0)
-        consume(TokenType.CloseParen)
-        val consequent = parseStatement()
-        val alternate = if (tokenType == TokenType.Else) {
-            consume()
-            parseStatement()
-        } else null
-        return IfStatement(predicate, consequent, alternate)
-    }
-
-    private fun parseForStatement(): Statement {
-        fun matchForInOf() = tokenType == TokenType.In || (tokenType == TokenType.Identifier && token.value == "of")
-
-        consume(TokenType.For)
-        consume(TokenType.OpenParen)
-
-        var inScope = false
-        var initializer: ASTNode? = null
-        while (tokenType != TokenType.Semicolon) {
-            if (matchExpression()) {
-                initializer = parseExpression(0, Associativity.Right, listOf(TokenType.In))
-                if (matchForInOf())
-                    return parseForInOfStatement(initializer)
-            } else if (matchVariableDeclaration()) {
-                if (tokenType != TokenType.Var) {
-                    state.letScopes.add(mutableListOf())
-                    inScope = true
-                }
-                initializer = parseVariableDeclaration(withSemicolon = false)
-                if (matchForInOf())
-                    return parseForInOfStatement(initializer)
-            } else {
-                TODO("Error")
-            }
-        }
-        consume(TokenType.Semicolon)
-
-        val test = if (tokenType != TokenType.Semicolon) parseExpression(0) else null
-        consume(TokenType.Semicolon)
-
-        val update = if (tokenType != TokenType.CloseParen) parseExpression(0) else null
-        consume(TokenType.CloseParen)
-
-        val prevBreak = state.inBreakContext
-        val prevContinue = state.inContinueContext
-        state.inBreakContext = true
-        state.inContinueContext = true
-
-        val body = parseStatement()
-
-        state.inBreakContext = prevBreak
-        state.inContinueContext = prevContinue
-
-        if (inScope)
-            state.letScopes.removeLast()
-
-        return ForStatement(initializer, test, update, body)
-    }
-
-    private fun parseForInOfStatement(lhs: ASTNode): Statement {
-        if (lhs is VariableDeclaration) {
-            val declarations = lhs.declarations
-            if (declarations.size > 1)
-                TODO("Error")
-            if (declarations.first().initializer != null)
-                TODO("Error")
-        }
-
-        val type = tokenType
-        consume()
-        val rhs = parseExpression(0)
-        consume(TokenType.CloseParen)
-
-        val prevBreak = state.inBreakContext
-        val prevContinue = state.inContinueContext
-        state.inBreakContext = true
-        state.inContinueContext = true
-
-        val body = parseStatement()
-
-        state.inBreakContext = prevBreak
-        state.inContinueContext = prevContinue
-
-        if (type == TokenType.In)
-            return ForInStatement(lhs, rhs, body)
-        return ForOfStatement(lhs, rhs, body)
-    }
-
-    private fun parseVariableDeclaration(withSemicolon: Boolean = true): VariableDeclaration {
-        val type = when (tokenType) {
-            TokenType.Var -> Declaration.Type.Var
-            TokenType.Let -> Declaration.Type.Let
-            TokenType.Const -> Declaration.Type.Const
-            else -> TODO("Error")
-        }
-
-        consume()
-
-        val declarations = mutableListOf<VariableDeclarator>()
-        while (true) {
-            val id = consume(TokenType.Identifier).value
-            val initializer = if (tokenType == TokenType.Equals) {
-                consume()
-                parseExpression(2)
-            } else null
-
-            declarations.add(VariableDeclarator(Identifier(id), initializer))
-            if (tokenType == TokenType.Comma) {
-                consume()
-                continue
-            }
-            break
-        }
-        if (withSemicolon)
-            consumeOrInsertSemicolon()
-
-        val declaration = VariableDeclaration(type, declarations)
-        if (type == Declaration.Type.Var) {
-            state.varScopes.last().add(declaration)
-        } else {
-            state.letScopes.last().add(declaration)
-        }
-        return declaration
-    }
-
-    private fun consumeOrInsertSemicolon() {
-        if (tokenType == TokenType.Semicolon) {
-            consume()
-            return
-        }
-
-        if ('\n' in token.trivia)
-            return
-
-        if (tokenType == TokenType.CloseCurly)
-            return
-
-        if (tokenType == TokenType.Eof)
-            return
-
-        TODO("Error")
-    }
-
-    private fun parseExpression(minPrecedence: Int, associativity: Associativity = Associativity.Right, forbidden: List<TokenType> = emptyList()): Expression {
-        var expression = parsePrimaryExpression()
-
-        while (tokenType == TokenType.TemplateLiteralStart) {
-            TODO()
-        }
-
-        while (matchSecondaryExpression(forbidden)) {
-            val newPrecedence = tokenType.precedence()
-            if (newPrecedence < minPrecedence)
-                break
-            if (newPrecedence == minPrecedence && associativity == Associativity.Left)
-                break
-
-            val newAssociativity = tokenType.associativity()
-            expression = parseSecondaryExpression(expression, newPrecedence, newAssociativity)
-            while (tokenType == TokenType.TemplateLiteralStart) {
-                TODO()
-            }
-        }
-
-        if (tokenType == TokenType.Comma && minPrecedence <= 1) {
-            val expressions = mutableListOf(expression)
-            while (tokenType == TokenType.Comma) {
-                consume()
-                expressions.add(parseExpression(2))
-            }
-            expression = CommaExpression(expressions)
-        }
-
-        return expression
-    }
-
-    private fun parsePrimaryExpression(): Expression {
-        if (matchUnaryPrefixedExpression())
-            return parseUnaryPrefixedExpression()
-
-        return when (tokenType) {
-            TokenType.OpenParen -> {
-                consume()
-                if (matchAny(TokenType.CloseParen, TokenType.Identifier, TokenType.TripleDot)) {
-                    TODO()
-                }
-                parseExpression(0).also {
-                    consume(TokenType.CloseParen)
-                }
-            }
-            TokenType.This -> {
-                consume()
-                ThisExpression
-            }
-            TokenType.Class -> TODO()
-            TokenType.Super -> TODO()
-            TokenType.Identifier -> {
-                // TODO: arrow function
-                Identifier(token.value).also {
-                    consume()
-                }
-            }
-            TokenType.NumericLiteral -> NumericLiteral(consume().asDouble())
-            TokenType.BigIntLiteral -> TODO()
-            TokenType.BooleanLiteral -> BooleanLiteral(consume().asBoolean())
-            TokenType.StringLiteral -> StringLiteral(consume().asString())
-            TokenType.NullLiteral -> {
-                consume()
-                NullLiteral
-            }
-            TokenType.OpenCurly -> TODO()
-            TokenType.Function -> TODO()
-            TokenType.OpenBracket -> TODO()
-            TokenType.RegexLiteral -> TODO()
-            TokenType.TemplateLiteralStart -> TODO()
-            TokenType.New -> TODO()
-            else -> TODO()
-        }
-    }
-
-    private fun parseSecondaryExpression(lhs: Expression, minPrecedence: Int, associativity: Associativity): Expression {
-        BinaryExpression.Operation.fromTokenType(tokenType)?.let {
-            consume()
-            return BinaryExpression(lhs, parseExpression(minPrecedence, associativity), it)
-        }
-
-        AssignmentExpression.Operation.fromTokenType(tokenType)?.let {
-            consume()
-
-            when {
-                lhs !is Identifier && lhs !is MemberExpression && lhs !is CallExpression -> TODO("Error")
-                state.strictMode && lhs is Identifier -> {
-                    val name = lhs.string
-                    if (name == "eval" || name == "arguments")
-                        TODO("Error")
-                }
-                state.strictMode && lhs is CallExpression -> TODO("error")
-            }
-
-            return AssignmentExpression(lhs, parseExpression(minPrecedence, associativity), it)
-        }
-
-        if (tokenType == TokenType.Period) {
-            consume()
-            if (!token.isIdentifierName)
-                TODO("Error")
-            return MemberExpression(lhs, Identifier(consume().value))
-        }
-
-        if (tokenType == TokenType.OpenParen)
-            return parseCallExpression(lhs)
-
-        if (tokenType == TokenType.OpenBracket) {
-            consume()
-            val expression = MemberExpression(lhs, parseExpression(0), computed = true)
-            consume(TokenType.CloseBracket)
-            return expression
-        }
-
-        LogicalExpression.Operation.fromTokenType(tokenType)?.let {
-            consume()
-            return LogicalExpression(lhs, parseExpression(minPrecedence, associativity), it)
-        }
-
-        if (matchAny(TokenType.PlusPlus, TokenType.MinusMinus)) {
-            val increment = tokenType == TokenType.PlusPlus
-            if (lhs !is Identifier && lhs !is MemberExpression)
-                TODO("Error")
-            consume()
-            return UpdateExpression(lhs, increment, prefixed = false)
-        }
-
-        TODO("Error")
-    }
-
-    private fun parseCallExpression(lhs: Expression): CallExpression {
-        consume(TokenType.OpenParen)
-        val arguments = mutableListOf<CallExpression.Argument>()
-
-        while (matchExpression() || tokenType == TokenType.TripleDot) {
-            if (tokenType == TokenType.TripleDot) {
-                consume()
-                arguments.add(CallExpression.Argument(parseExpression(2), isSpread = true))
-            } else {
-                arguments.add(CallExpression.Argument(parseExpression(2), isSpread = false))
-            }
-            if (tokenType != TokenType.Comma)
-                break
-            consume()
-        }
-
-        consume(TokenType.CloseParen)
-        return CallExpression(lhs, arguments)
-    }
-
-    private fun parseUnaryPrefixedExpression(): Expression {
-        val precedence = tokenType.precedence()
-        val associativity = tokenType.associativity()
-        return when (tokenType) {
-            TokenType.PlusPlus, TokenType.MinusMinus -> {
-                val increment = tokenType == TokenType.PlusPlus
-                consume()
-                val rhs = parseExpression(precedence, associativity)
-                if (rhs !is Identifier && rhs !is MemberExpression)
-                    TODO("Error")
-                UpdateExpression(rhs, increment = increment, prefixed = true)
-            }
-            TokenType.Exclamation -> {
-                consume()
-                UnaryExpression(parseExpression(precedence, associativity), UnaryExpression.Operation.Not)
-            }
-            TokenType.Tilde -> {
-                consume()
-                UnaryExpression(parseExpression(precedence, associativity), UnaryExpression.Operation.BitwiseNot)
-            }
-            TokenType.Plus -> {
-                consume()
-                UnaryExpression(parseExpression(precedence, associativity), UnaryExpression.Operation.Plus)
-            }
-            TokenType.Minus -> {
-                consume()
-                UnaryExpression(parseExpression(precedence, associativity), UnaryExpression.Operation.Minus)
-            }
-            TokenType.Typeof -> {
-                consume()
-                UnaryExpression(parseExpression(precedence, associativity), UnaryExpression.Operation.Typeof)
-            }
-            TokenType.Void -> {
-                consume()
-                UnaryExpression(parseExpression(precedence, associativity), UnaryExpression.Operation.Void)
-            }
-            TokenType.Delete -> {
-                consume()
-                UnaryExpression(parseExpression(precedence, associativity), UnaryExpression.Operation.Delete)
-            }
-            else -> {
-                TODO("Error")
-            }
-        }
-    }
-
-    data class BlockStatementResult(val block: BlockStatement, val isStrict: Boolean)
-
-    private fun parseBlockStatement(): BlockStatementResult {
-        val block = BlockStatement()
-        var isStrict = false
-
-        withScope(ScopeType.Let) {
-            consume(TokenType.OpenCurly)
-
-            var first = true
-            val initialStrictModeState = state.strictMode
-            state.useStrictState = if (initialStrictModeState) {
-                ParserState.UseStrictState.None
-            } else ParserState.UseStrictState.Looking
-
-            while (!isDone && tokenType != TokenType.CloseCurly) {
-                if (tokenType == TokenType.Semicolon) {
-                    consume()
-                } else if (matchStatement()) {
-                    block.addStatement(parseStatement())
-
-                    if (first && !initialStrictModeState) {
-                        if (state.useStrictState == ParserState.UseStrictState.Found) {
-                            isStrict = true
-                            state.strictMode = true
-                        }
-                        state.useStrictState = ParserState.UseStrictState.None
-                    }
-                } else {
-                    TODO("Error")
-                }
-
-                first = false
-            }
-
-            consume(TokenType.CloseCurly)
-            state.strictMode = initialStrictModeState
-            block.addVariables(state.letScopes.last())
-            block.addFunctions(state.functionScopes.last())
-        }
-
-        return BlockStatementResult(block, isStrict)
-    }
-
-    private fun matchStatement() = matchExpression() || matchAny(
-        TokenType.Function,
-        TokenType.Return,
-        TokenType.Let,
-        TokenType.Class,
-        TokenType.Do,
-        TokenType.If,
-        TokenType.Throw,
-        TokenType.Try,
-        TokenType.While,
-        TokenType.For,
-        TokenType.Const,
-        TokenType.OpenCurly,
-        TokenType.Switch,
-        TokenType.Break,
-        TokenType.Continue,
-        TokenType.Var,
-        TokenType.Debugger,
-        TokenType.Semicolon,
-    )
-
-    private fun matchExpression() = matchUnaryPrefixedExpression() || matchAny(
-        TokenType.BooleanLiteral,
-        TokenType.NumericLiteral,
-        TokenType.BigIntLiteral,
-        TokenType.StringLiteral,
-        TokenType.TemplateLiteralStart,
-        TokenType.NullLiteral,
-        TokenType.Identifier,
-        TokenType.New,
-        TokenType.OpenCurly,
-        TokenType.OpenBracket,
-        TokenType.OpenParen,
-        TokenType.Function,
-        TokenType.This,
-        TokenType.Super,
-        TokenType.RegexLiteral,
-    )
-
-    private fun matchUnaryPrefixedExpression() = matchAny(
-        TokenType.PlusPlus,
-        TokenType.MinusMinus,
-        TokenType.Exclamation,
-        TokenType.Tilde,
-        TokenType.Plus,
-        TokenType.Minus,
-        TokenType.Typeof,
-        TokenType.Void,
-        TokenType.Delete,
-    )
-
-    private fun matchVariableDeclaration() = matchAny(TokenType.Var, TokenType.Let, TokenType.Const)
-
-    private fun matchSecondaryExpression(forbidden: List<TokenType>) = tokenType !in forbidden && matchAny(
-        TokenType.Plus,
-        TokenType.PlusEquals,
-        TokenType.Minus,
-        TokenType.MinusEquals,
-        TokenType.Asterisk,
-        TokenType.AsteriskEquals,
-        TokenType.Slash,
-        TokenType.SlashEquals,
-        TokenType.Percent,
-        TokenType.PercentEquals,
-        TokenType.DoubleAsterisk,
-        TokenType.DoubleAsteriskEquals,
-        TokenType.Equals,
-        TokenType.TripleEquals,
-        TokenType.ExclamationDoubleEquals,
-        TokenType.DoubleEquals,
-        TokenType.ExclamationEquals,
-        TokenType.GreaterThan,
-        TokenType.GreaterThanEquals,
-        TokenType.LessThan,
-        TokenType.LessThanEquals,
-        TokenType.OpenParen,
-        TokenType.Period,
-        TokenType.OpenBracket,
-        TokenType.PlusPlus,
-        TokenType.MinusMinus,
-        TokenType.In,
-        TokenType.Instanceof,
-        TokenType.Question,
-        TokenType.Ampersand,
-        TokenType.AmpersandEquals,
-        TokenType.Pipe,
-        TokenType.PipeEquals,
-        TokenType.Caret,
-        TokenType.CaretEquals,
-        TokenType.ShiftLeft,
-        TokenType.ShiftLeftEquals,
-        TokenType.ShiftRight,
-        TokenType.ShiftRightEquals,
-        TokenType.UnsignedShiftRight,
-        TokenType.UnsignedShiftRightEquals,
-        TokenType.DoubleAmpersand,
-        TokenType.DoubleAmpersandEquals,
-        TokenType.DoublePipe,
-        TokenType.DoublePipeEquals,
-        TokenType.DoubleQuestion,
-        TokenType.DoubleQuestionEquals,
-    )
-
-    private inline fun <reified T> parseFunctionNode(): T {
+    fun parseModule() {
+        goalSymbol = GoalSymbol.Module
         TODO()
     }
 
-    private fun consume(): Token {
-        return token.also {
-            cursor++
+    private fun parseScriptBody(suffixes: Set<Suffix>): StatementListNode? {
+        return parseStatementList(suffixes - Suffix.Yield - Suffix.Await - Suffix.Return)
+    }
+
+    private fun parseStatementList(suffixes: Set<Suffix>): StatementListNode? {
+        val statements = mutableListOf<StatementNode>()
+
+        var statement = parseStatementListItem(suffixes) ?: return null
+        statements.add(statement)
+
+        while (true) {
+            statement = parseStatementListItem(suffixes) ?: break
+            statements.add(statement)
         }
+
+        return StatementListNode(statements)
+    }
+
+    private fun parseStatementListItem(suffixes: Set<Suffix>): StatementNode? {
+        return parseStatement(suffixes) ?: parseDeclaration(suffixes - Suffix.Return)
+    }
+
+    private fun parseStatement(suffixes: Set<Suffix>): StatementNode? {
+        return parseBlockStatement(suffixes) ?:
+                parseVariableStatement(suffixes - Suffix.Return) ?:
+                parseEmptyStatement() ?:
+                parseExpressionStatement(suffixes - Suffix.Return) ?:
+                parseIfStatement(suffixes) ?:
+                parseBreakableStatement(suffixes) ?:
+                parseContinueStatement(suffixes - Suffix.Return) ?:
+                parseBreakStatement(suffixes - Suffix.Return) ?:
+                parseReturnStatement(suffixes + Suffix.Return) ?:
+                parseWithStatement(suffixes) ?:
+                parseLabelledStatement(suffixes) ?:
+                parseThrowStatement(suffixes - Suffix.Return) ?:
+                parseTryStatement(suffixes) ?:
+                parseDebuggerStatement()
+    }
+
+    private fun parseBlockStatement(suffixes: Set<Suffix>): StatementNode? {
+        return parseBlock(suffixes)
+    }
+
+    private fun parseBlock(suffixes: Set<Suffix>): StatementNode? {
+        if (tokenType != TokenType.OpenCurly)
+            return null
+
+        consume()
+        val statements = parseStatementList(suffixes)
+        consume(TokenType.CloseCurly)
+
+        return BlockNode(statements?.statements ?: emptyList())
+    }
+
+    private fun parseVariableStatement(suffixes: Set<Suffix>): VariableStatementNode? {
+        if (tokenType != TokenType.Var)
+            return null
+        consume()
+
+        val list = parseVariableDeclarationList(suffixes + Suffix.In) ?: run {
+            expected("identifier")
+            consume()
+            return null
+        }
+
+        automaticSemicolonInsertion()
+
+        return VariableStatementNode(list, VariableStatementNode.Type.Var)
+    }
+
+    private fun parseVariableDeclarationList(suffixes: Set<Suffix>): List<VariableDeclarationNode>? {
+        val declarations = mutableListOf<VariableDeclarationNode>()
+
+        val declaration = parseVariableDeclaration(suffixes) ?: return null
+        declarations.add(declaration)
+
+        while (tokenType == TokenType.Comma) {
+            saveState()
+            consume()
+            val declaration2 = parseVariableDeclaration(suffixes)
+            if (declaration2 == null) {
+                loadState()
+                break
+            }
+            discardState()
+            declarations.add(declaration)
+        }
+
+        return declarations
+    }
+
+    private fun parseVariableDeclaration(suffixes: Set<Suffix>): VariableDeclarationNode? {
+        // TODO: Attempt the BindingPattern branch
+        val identifier = parseBindingIdentifier(suffixes - Suffix.In) ?: return null
+        val initializer = parseInitializer(suffixes)
+        return VariableDeclarationNode(identifier, initializer)
+    }
+
+    private fun parseInitializer(suffixes: Set<Suffix>): InitializerNode? {
+        if (tokenType != TokenType.Equals)
+            return null
+
+        saveState()
+        consume()
+        val expr = parseAssignmentExpression(suffixes) ?: run {
+            loadState()
+            return null
+        }
+        return InitializerNode(expr)
+    }
+
+    private fun parseEmptyStatement(): StatementNode? {
+        return if (tokenType == TokenType.Semicolon) {
+            consume()
+            EmptyStatementNode
+        } else null
+    }
+
+    private fun parseExpressionStatement(suffixes: Set<Suffix>): StatementNode? {
+        when (tokenType) {
+            TokenType.OpenCurly,
+            TokenType.Function,
+            TokenType.Class -> return null
+            TokenType.Async -> {
+                if (peek(1).type == TokenType.Function && '\n' !in peek(1).trivia)
+                    return null
+            }
+            TokenType.Let -> {
+                if (peek(1).type == TokenType.OpenBracket)
+                    return null
+            }
+            else -> {}
+        }
+
+        return parseExpression(suffixes + Suffix.In)?.let(::ExpressionStatementNode).also {
+            automaticSemicolonInsertion()
+        }
+    }
+
+    private fun parseExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val expressions = mutableListOf<ExpressionNode>()
+
+        val expr1 = parseAssignmentExpression(suffixes) ?: return null
+        expressions.add(expr1)
+
+        fun returnVal() = if (expressions.size == 1) expressions[0] else CommaExpressionNode(expressions)
+
+        while (tokenType == TokenType.Comma) {
+            saveState()
+            consume()
+            val expr2 = parseAssignmentExpression(suffixes) ?: run {
+                loadState()
+                return returnVal()
+            }
+            expressions.add(expr2)
+        }
+
+        return returnVal()
+    }
+
+    private fun parseIfStatement(suffixes: Set<Suffix>): StatementNode? {
+        if (tokenType != TokenType.If)
+            return null
+
+        consume()
+        consume(TokenType.OpenParen)
+
+        val condition = parseExpression(suffixes + Suffix.In) ?: run {
+            expected("expression")
+            consume()
+            return null
+        }
+
+        consume(TokenType.CloseParen)
+        val trueBlock = parseStatement(suffixes) ?: run {
+            expected("statement")
+            consume()
+            return null
+        }
+
+        if (tokenType != TokenType.Else)
+            return IfStatementNode(condition, trueBlock, null)
+
+        consume()
+        val falseBlock = parseStatement(suffixes) ?: run {
+            expected("statement")
+            consume()
+            return null
+        }
+
+        return IfStatementNode(condition, trueBlock, falseBlock)
+    }
+
+    private fun parseBreakableStatement(suffixes: Set<Suffix>): StatementNode? {
+        return parseIterationStatement(suffixes) ?: parseSwitchStatement(suffixes)
+    }
+
+    // @ECMA why is this nonterminal so big :(
+    private fun parseIterationStatement(suffixes: Set<Suffix>): StatementNode? {
+        when (tokenType) {
+            TokenType.Do -> {
+                consume()
+
+                val statement = parseStatement(suffixes) ?: run {
+                    expected("statement")
+                    consume()
+                    return null
+                }
+
+                consume(TokenType.While)
+                consume(TokenType.OpenParen)
+                val condition = parseExpression(suffixes + Suffix.In) ?: run {
+                    expected("expression")
+                    consume()
+                    return null
+                }
+
+                consume(TokenType.CloseParen)
+                automaticSemicolonInsertion()
+
+                return DoWhileNode(condition, statement)
+            }
+            TokenType.While -> {
+                consume()
+                consume(TokenType.OpenParen)
+
+                val expression = parseExpression(suffixes + Suffix.In) ?: run {
+                    expected("expression")
+                    consume()
+                    return null
+                }
+
+                consume(TokenType.CloseParen)
+                val statement = parseStatement(suffixes) ?: run {
+                    expected("statement")
+                    consume()
+                    return null
+                }
+
+                return WhileNode(expression, statement)
+            }
+            TokenType.For -> {
+                consume()
+
+                if (tokenType == TokenType.Await) {
+                    consume()
+                    consume(TokenType.OpenParen)
+
+                    return parseForStatementType10(suffixes) ?:
+                        parseForStatementType11(suffixes) ?:
+                        parseForStatementType12(suffixes) ?: run {
+                            expected("initializer statement")
+                            consume()
+                            null
+                        }
+                }
+
+                consume(TokenType.OpenParen)
+
+                return parseForStatementType1(suffixes) ?:
+                    parseForStatementType2(suffixes) ?:
+                    parseForStatementType3(suffixes) ?:
+                    parseForStatementType4(suffixes) ?:
+                    parseForStatementType5(suffixes) ?:
+                    parseForStatementType6(suffixes) ?:
+                    parseForStatementType7(suffixes) ?:
+                    parseForStatementType8(suffixes) ?:
+                    parseForStatementType9(suffixes) ?: run {
+                        expected("initializer statement")
+                        consume()
+                        null
+                    }
+            }
+            else -> return null
+        }
+    }
+
+    private fun parseForStatementType1(suffixes: Set<Suffix>): StatementNode? {
+        saveState()
+        if (tokenType == TokenType.Let && peek(1).type == TokenType.OpenBracket)
+            return null
+        val initializer = parseExpression(suffixes - Suffix.In)
+        if (tokenType != TokenType.Semicolon) {
+            loadState()
+            return null
+        }
+        discardState()
+        consume()
+        val condition = parseExpression(suffixes + Suffix.In)
+        consume(TokenType.Semicolon)
+        consume()
+        val incrementer = parseExpression(suffixes + Suffix.In)
+        consume(TokenType.CloseParen)
+        val body = parseStatement(suffixes) ?: run {
+            expected("statement")
+            consume()
+            return null
+        }
+
+        return ForNode(initializer?.let(::ExpressionStatementNode), condition, incrementer, body)
+    }
+
+    private fun parseForStatementType2(suffixes: Set<Suffix>): StatementNode? {
+        if (tokenType != TokenType.Var)
+            return null
+        saveState()
+        consume()
+        val declarations = parseVariableDeclarationList(suffixes - Suffix.In) ?: run {
+            loadState()
+            return null
+        }
+        if (tokenType != TokenType.Semicolon) {
+            loadState()
+            return null
+        }
+        consume()
+        val condition = parseExpression(suffixes + Suffix.In)
+        consume(TokenType.Semicolon)
+        val incrementer = parseExpression(suffixes + Suffix.In)
+        consume(TokenType.CloseParen)
+        val body = parseStatement(suffixes) ?: run {
+            expected("statement")
+            consume()
+            return null
+        }
+
+        return ForNode(VariableStatementNode(declarations, VariableStatementNode.Type.Var), condition, incrementer, body)
+    }
+
+    private fun parseForStatementType3(suffixes: Set<Suffix>): StatementNode? {
+        val declaration = parseLexicalDeclaration(suffixes - Suffix.In) ?: return null
+        val condition = parseExpression(suffixes + Suffix.In)
+        consume(TokenType.Semicolon)
+        val incrementer = parseExpression(suffixes + Suffix.In)
+        consume(TokenType.CloseParen)
+        val body = parseStatement(suffixes) ?: run {
+            expected("statement")
+            consume()
+            return null
+        }
+
+        return ForNode(declaration, condition, incrementer, body)
+    }
+
+    private fun parseForStatementType4(suffixes: Set<Suffix>): StatementNode? {
+        if (tokenType == TokenType.Let && peek(1).type == TokenType.OpenBracket)
+            return null
+        saveState()
+        val initializer = parseLeftHandSideExpression(suffixes - Suffix.In) ?: return null
+        if (tokenType != TokenType.In) {
+            loadState()
+            return null
+        }
+        discardState()
+        consume()
+        val expression = parseExpression(suffixes + Suffix.In) ?: run {
+            expected("expression")
+            consume()
+            return null
+        }
+        consume(TokenType.CloseParen)
+        val body = parseStatement(suffixes) ?: run {
+            expected("statement")
+            consume()
+            return null
+        }
+        return ForInNode(ExpressionStatementNode(initializer), expression)
+    }
+
+    private fun parseForStatementType5(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseForStatementType6(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseForStatementType7(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseForStatementType8(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseForStatementType9(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseForStatementType10(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseForStatementType11(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseForStatementType12(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseLexicalDeclaration(suffixes: Set<Suffix>): VariableStatementNode? {
+        if (!matchAny(TokenType.Let, TokenType.Const))
+            return null
+
+        saveState()
+
+        val type = when (consume().type) {
+            TokenType.Let -> VariableStatementNode.Type.Let
+            TokenType.Const -> VariableStatementNode.Type.Const
+            else -> unreachable()
+        }
+
+        val list = parseBindingList(suffixes + Suffix.In) ?: run {
+            expected("identifier")
+            consume()
+            return null
+        }
+
+        automaticSemicolonInsertion()
+        discardState()
+
+        return VariableStatementNode(list, type)
+    }
+
+    private fun parseBindingList(suffixes: Set<Suffix>): List<VariableDeclarationNode>? {
+        val declarations = mutableListOf<VariableDeclarationNode>()
+
+        val declaration = parseLexicalBinding(suffixes) ?: return null
+        declarations.add(declaration)
+
+        while (tokenType == TokenType.Comma) {
+            saveState()
+            consume()
+            val declaration2 = parseLexicalBinding(suffixes)
+            if (declaration2 == null) {
+                loadState()
+                break
+            }
+            discardState()
+            declarations.add(declaration)
+        }
+
+        return declarations
+    }
+
+    private fun parseLexicalBinding(suffixes: Set<Suffix>): VariableDeclarationNode? {
+        // TODO: Attempt the BindingPattern branch
+        val identifier = parseBindingIdentifier(suffixes - Suffix.In) ?: return null
+        val initializer = parseInitializer(suffixes)
+        return VariableDeclarationNode(identifier, initializer)
+    }
+
+    private fun parseSwitchStatement(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseContinueStatement(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseBreakStatement(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseReturnStatement(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseWithStatement(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseLabelledStatement(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseThrowStatement(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseTryStatement(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseDebuggerStatement(): StatementNode? {
+        if (tokenType != TokenType.Debugger)
+            return null
+        consume()
+        automaticSemicolonInsertion()
+        return DebuggerNode
+    }
+
+    private fun parseDeclaration(suffixes: Set<Suffix>): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseIdentifierReference(suffixes: Set<Suffix>): IdentifierReferenceNode? {
+        parseIdentifier()?.let {
+            return IdentifierReferenceNode(it.identifierName)
+        }
+
+        return when (tokenType) {
+            TokenType.Await -> if (Suffix.Await in suffixes) {
+                null
+            } else {
+                consume()
+                IdentifierReferenceNode("yield")
+            }
+            TokenType.Yield -> if (Suffix.Yield in suffixes) {
+                null
+            } else {
+                consume()
+                IdentifierReferenceNode("await")
+            }
+            else -> null
+        }
+    }
+
+    private fun parseBindingIdentifier(suffixes: Set<Suffix>): BindingIdentifierNode? {
+        parseIdentifier()?.let {
+            return BindingIdentifierNode(it.identifierName)
+        }
+
+        return when (tokenType) {
+            TokenType.Await -> {
+                consume()
+                BindingIdentifierNode("await")
+            }
+            TokenType.Yield -> {
+                consume()
+                BindingIdentifierNode("yield")
+            }
+            else -> null
+        }
+    }
+
+    private fun parseLabelIdentifier(suffixes: Set<Suffix>): LabelIdentifierNode? {
+        return parseIdentifierReference(suffixes)?.let { LabelIdentifierNode(it.identifierName) }
+    }
+
+    private fun parseIdentifier(): IdentifierNode? {
+        return when {
+            tokenType != TokenType.Identifier -> null
+            isReserved(token.value) -> null
+            else -> IdentifierNode(consume().value)
+        }
+    }
+
+    private fun parseIdentifierName(): IdentifierNode? {
+        return if (tokenType != TokenType.Identifier) {
+            null
+        } else IdentifierNode(consume().value)
+    }
+
+    private fun parseYieldExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseArrowFunction(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseAsyncArrowFunction(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseLeftHandSideExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        return parseCallExpression(suffixes) ?:
+            parseNewExpression(suffixes) ?:
+            parseOptionalExpression(suffixes)
+    }
+
+    private fun parseNewExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        if (tokenType != TokenType.New)
+            return parseMemberExpression(suffixes)
+
+        consume()
+        val expr = parseNewExpression(suffixes) ?: run {
+            expected("expression")
+            consume()
+            return null
+        }
+        return NewExpressionNode(expr)
+    }
+
+    private fun parseCallExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val initial = parseMemberExpression(suffixes) ?:
+            parseSuperCall(suffixes) ?:
+            parseImportCall(suffixes) ?:
+            return null
+
+        var callExpression: ExpressionNode? = null
+
+        while (true) {
+            val args = parseArguments(suffixes) ?: break
+            callExpression = if (callExpression == null) {
+                CallExpressionNode(initial, args)
+            } else {
+                CallExpressionNode(callExpression, args)
+            }
+        }
+
+        return callExpression ?: initial
+    }
+
+    private fun parseSuperCall(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseImportCall(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseOptionalExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseMemberExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val primaryExpression = parsePrimaryExpression(suffixes) ?: run {
+            parseSuperProperty(suffixes)?.also { return it }
+            parseMetaProperty()?.also { return it }
+            if (tokenType == TokenType.New) {
+                consume()
+                val expr = parseMemberExpression(suffixes) ?: run {
+                    discardState()
+                    expected("expression")
+                    return null
+                }
+                val args = parseArguments(suffixes) ?: run {
+                    discardState()
+                    expected("parenthesized arguments")
+                    return null
+                }
+                return MemberExpressionNode(expr, ArgumentsNodeWrapper(args), MemberExpressionNode.Type.New)
+            }
+            return null
+        }
+        var memberExpression: MemberExpressionNode? = null
+
+        while (true) {
+            if (tokenType == TokenType.OpenBracket) {
+                consume()
+                val expression = parseExpression(suffixes + Suffix.In) ?: run {
+                    expected("expression")
+                    consume()
+                    return null
+                }
+                consume(TokenType.CloseBracket)
+                memberExpression = if (memberExpression == null) {
+                    MemberExpressionNode(primaryExpression, expression, MemberExpressionNode.Type.Computed)
+                } else {
+                    MemberExpressionNode(memberExpression, expression, MemberExpressionNode.Type.Computed)
+                }
+            } else if (tokenType == TokenType.Period) {
+                consume()
+                val identifier = parseIdentifierName() ?: run {
+                    expected("identifier")
+                    consume()
+                    return null
+                }
+                memberExpression = if (memberExpression == null) {
+                    MemberExpressionNode(primaryExpression, identifier, MemberExpressionNode.Type.NonComputed)
+                } else {
+                    MemberExpressionNode(memberExpression, identifier, MemberExpressionNode.Type.NonComputed)
+                }
+            } else if (tokenType == TokenType.TemplateLiteralStart) {
+                TODO()
+            } else break
+        }
+
+        return memberExpression ?: primaryExpression
+    }
+
+    private fun parseMetaProperty(): ExpressionNode? {
+        return when (tokenType) {
+            TokenType.New -> {
+                // TODO: Should we save? Or should we error if we don't find a period
+                saveState()
+                consume()
+                if (tokenType != TokenType.Period) {
+                    loadState()
+                    return null
+                }
+                discardState()
+                consume()
+                if (tokenType != TokenType.Identifier && token.value != "target") {
+                    expected("new.target property reference")
+                    return null
+                }
+                consume()
+                NewTargetNode
+            }
+            TokenType.Import -> {
+                // TODO: Should we save? Or should we error if we don't find a period
+                saveState()
+                if (tokenType != TokenType.Period) {
+                    loadState()
+                    return null
+                }
+                discardState()
+                consume()
+                if (tokenType != TokenType.Identifier && token.value != "meta") {
+                    expected("import.meta property reference")
+                    return null
+                }
+                consume()
+                ImportMetaNode
+            }
+            else -> null
+        }
+    }
+
+    private fun parseSuperProperty(suffixes: Set<Suffix>): ExpressionNode? {
+        if (tokenType != TokenType.Super)
+            return null
+        consume()
+        return when (tokenType) {
+            TokenType.OpenBracket -> {
+                consume()
+                val expression = parseExpression(suffixes + Suffix.In) ?: run {
+                    expected("expression")
+                    consume()
+                    return null
+                }
+                consume(TokenType.CloseBracket)
+                return SuperPropertyNode(expression, true)
+            }
+            TokenType.Period -> {
+                consume()
+                val identifier = parseIdentifierName() ?: run {
+                    expected("identifier")
+                    consume()
+                    return null
+                }
+                return SuperPropertyNode(identifier, false)
+            }
+            else -> {
+                expected("super property access")
+                null
+            }
+        }
+    }
+
+    enum class CCEAARHContext {
+        CallExpression,
+    }
+
+    private fun parseCoverCallExpressionAndAsyncArrowHead(suffixes: Set<Suffix>, context: CCEAARHContext): ExpressionNode? {
+        return when (context) {
+            CCEAARHContext.CallExpression -> {
+                val memberExpr = parseMemberExpression(suffixes) ?: return null
+                saveState()
+                val args = parseArguments(suffixes) ?: run {
+                    loadState()
+                    return null
+                }
+                return CallExpressionNode(memberExpr, args)
+            }
+        }
+    }
+
+    private fun parseArguments(suffixes: Set<Suffix>): List<ArgumentsNode>? {
+        if (tokenType != TokenType.OpenParen)
+            return null
+        consume()
+
+        val argumentsList = parseArgumentsList(suffixes)
+        if (argumentsList != null && tokenType == TokenType.Comma) {
+            consume()
+        }
+        consume(TokenType.CloseParen)
+        return argumentsList ?: emptyList()
+    }
+
+    private fun parseArgumentsList(suffixes: Set<Suffix>): List<ArgumentsNode>? {
+        val arguments = mutableListOf<ArgumentsNode>()
+        var first = true
+
+        do {
+            saveState()
+
+            if (!first) {
+                if (tokenType != TokenType.Comma)
+                    break
+                consume()
+            }
+
+            if (tokenType == TokenType.TripleDot) {
+                consume()
+                val expr = parseAssignmentExpression(suffixes + Suffix.In) ?: run {
+                    expected("expression")
+                    consume()
+                    return null
+                }
+                arguments.add(ArgumentsNode(expr, true))
+            } else {
+                val expr = parseAssignmentExpression(suffixes + Suffix.In) ?: run {
+                    loadState()
+                    return null
+                }
+                arguments.add(ArgumentsNode(expr, false))
+            }
+
+            first = false
+        } while (true)
+
+        return arguments
+    }
+
+    private fun parsePrimaryExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        if (tokenType == TokenType.This) {
+            consume()
+            return ThisNode
+        }
+
+        return parseIdentifierReference(suffixes) ?:
+            parseLiteral() ?:
+            parseArrayLiteral(suffixes) ?:
+            parseObjectLiteral(suffixes) ?:
+            parseFunctionExpression(suffixes) ?:
+            parseClassExpression(suffixes) ?:
+            parseGeneratorExpression(suffixes) ?:
+            parseAsyncFunctionExpression(suffixes) ?:
+            parseAsyncGeneratorExpression(suffixes) ?:
+            parseRegularExpressionLiteral(suffixes) ?:
+            parseTemplateLiteral(suffixes) ?:
+            parseCoverParenthesizedExpressionAndArrowParameterList(suffixes, CPEAAPLContext.PrimaryExpression)
+    }
+
+    private fun parseLiteral(): ExpressionNode? {
+        return parseNullLiteral() ?:
+            parseBooleanLiteral() ?:
+            parseNumericLiteral() ?:
+            parseStringLiteral()
+    }
+
+    private fun parseNullLiteral(): ExpressionNode? {
+        return if (tokenType == TokenType.NullLiteral) NullNode else null
+    }
+
+    private fun parseBooleanLiteral(): ExpressionNode? {
+        return when (tokenType) {
+            TokenType.True -> TrueNode
+            TokenType.False -> FalseNode
+            else -> null
+        }?.also {
+            consume()
+        }
+    }
+
+    private fun parseNumericLiteral(): ExpressionNode? {
+        return if (tokenType == TokenType.NumericLiteral) {
+            NumericLiteralNode(consume().asDouble())
+        } else null
+    }
+
+    private fun parseStringLiteral(): ExpressionNode? {
+        return if (tokenType == TokenType.StringLiteral) {
+            StringLiteralNode(consume().asString())
+        } else null
+    }
+
+    private fun parseArrayLiteral(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseObjectLiteral(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseFunctionExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseClassExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseGeneratorExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseAsyncFunctionExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseAsyncGeneratorExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseRegularExpressionLiteral(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseTemplateLiteral(suffixes: Set<Suffix>): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    enum class CPEAAPLContext {
+        PrimaryExpression,
+    }
+
+    private fun parseCoverParenthesizedExpressionAndArrowParameterList(suffixes: Set<Suffix>, context: CPEAAPLContext): ExpressionNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseAssignmentExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val expr: ExpressionNode? = parseConditionalExpression(suffixes) ?:
+            if (Suffix.Yield in suffixes) {
+                parseYieldExpression(suffixes + Suffix.Yield)
+            } else null ?:
+            parseArrowFunction(suffixes) ?:
+            parseAsyncArrowFunction(suffixes)
+
+        if (expr != null)
+            return expr
+
+        saveState()
+        val lhs = parseLeftHandSideExpression(suffixes - Suffix.In)
+        if (lhs == null) {
+            discardState()
+            return null
+        }
+
+        val op = when (tokenType) {
+            TokenType.Equals -> AssignmentExpressionNode.Operator.Equals
+            TokenType.PlusEquals -> AssignmentExpressionNode.Operator.Plus
+            TokenType.MinusEquals -> AssignmentExpressionNode.Operator.Minus
+            TokenType.AsteriskEquals -> AssignmentExpressionNode.Operator.Multiply
+            TokenType.SlashEquals -> AssignmentExpressionNode.Operator.Divide
+            TokenType.PercentEquals -> AssignmentExpressionNode.Operator.Mod
+            TokenType.DoubleAsteriskEquals -> AssignmentExpressionNode.Operator.Power
+            TokenType.ShiftLeftEquals -> AssignmentExpressionNode.Operator.ShiftLeft
+            TokenType.ShiftRightEquals -> AssignmentExpressionNode.Operator.ShiftRight
+            TokenType.UnsignedShiftRightEquals -> AssignmentExpressionNode.Operator.UnsignedShiftRight
+            TokenType.AmpersandEquals -> AssignmentExpressionNode.Operator.BitwiseAnd
+            TokenType.PipeEquals -> AssignmentExpressionNode.Operator.BitwiseOr
+            TokenType.CaretEquals -> AssignmentExpressionNode.Operator.BitwiseXor
+            TokenType.DoubleAmpersandEquals -> AssignmentExpressionNode.Operator.And
+            TokenType.DoublePipeEquals -> AssignmentExpressionNode.Operator.Or
+            TokenType.DoubleQuestionEquals -> AssignmentExpressionNode.Operator.Nullish
+            else -> {
+                loadState()
+                return null
+            }
+        }
+
+        val rhs = parseAssignmentExpression(suffixes)
+        return if (rhs == null) {
+            expected("expression")
+            consume()
+            discardState()
+            null
+        } else AssignmentExpressionNode(lhs, rhs, op)
+    }
+
+    private fun parseConditionalExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val lhs = parseShortCircuitExpression(suffixes) ?: return null
+        if (tokenType != TokenType.Question)
+            return lhs
+
+        consume()
+        val middle = parseAssignmentExpression(suffixes + Suffix.In)
+        if (middle == null) {
+            consume()
+            expected("expression")
+            return null
+        }
+
+        consume(TokenType.Colon)
+        val rhs = parseAssignmentExpression(suffixes + Suffix.In)
+        return if (rhs == null) {
+            consume()
+            expected("expression")
+            null
+        } else ConditionalExpressionNode(lhs, middle, rhs)
+    }
+
+    private fun parseShortCircuitExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        return parseLogicalORExpression(suffixes) ?: parseCoalesceExpresion(suffixes)
+    }
+
+    private fun parseCoalesceExpresion(suffixes: Set<Suffix>): ExpressionNode? {
+        saveState()
+        val head = parseBitwiseORExpression(suffixes) ?: return null
+        if (tokenType != TokenType.DoubleQuestion) {
+            loadState()
+            return null
+        }
+        consume()
+
+        val expr = parseCoalesceExpresion(suffixes)
+        return if (expr == null) {
+            expected("expression")
+            consume()
+            null
+        } else CoalesceExpressionNode(head, expr)
+    }
+
+    private fun parseLogicalORExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val lhs = parseLogicalANDExpression(suffixes) ?: return null
+        if (tokenType != TokenType.DoublePipe)
+            return lhs
+        consume()
+
+        val rhs = parseLogicalORExpression(suffixes)
+        return if (rhs == null) {
+            expected("expression")
+            consume()
+            null
+        } else LogicalORExpressionNode(lhs, rhs)
+    }
+
+    private fun parseLogicalANDExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val lhs = parseBitwiseORExpression(suffixes) ?: return null
+        if (tokenType != TokenType.DoubleAmpersand)
+            return lhs
+        consume()
+
+        val rhs = parseLogicalANDExpression(suffixes)
+        return if (rhs == null) {
+            expected("expression")
+            consume()
+            null
+        } else LogicalORExpressionNode(lhs, rhs)
+    }
+
+    private fun parseBitwiseORExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val lhs = parseBitwiseXORExpression(suffixes) ?: return null
+        if (tokenType != TokenType.Pipe)
+            return lhs
+        consume()
+
+        val rhs = parseBitwiseORExpression(suffixes)
+        return if (rhs == null) {
+            expected("expression")
+            consume()
+            null
+        } else LogicalORExpressionNode(lhs, rhs)
+    }
+
+    private fun parseBitwiseXORExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val lhs = parseBitwiseANDExpression(suffixes) ?: return null
+        if (tokenType != TokenType.Caret)
+            return lhs
+        consume()
+
+        val rhs = parseBitwiseXORExpression(suffixes)
+        return if (rhs == null) {
+            expected("expression")
+            consume()
+            null
+        } else LogicalORExpressionNode(lhs, rhs)
+    }
+
+    private fun parseBitwiseANDExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val lhs = parseEqualityExpression(suffixes) ?: return null
+        if (tokenType != TokenType.Ampersand)
+            return lhs
+        consume()
+
+        val rhs = parseBitwiseANDExpression(suffixes)
+        return if (rhs == null) {
+            expected("expression")
+            consume()
+            null
+        } else LogicalORExpressionNode(lhs, rhs)
+    }
+
+    private fun parseEqualityExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val lhs = parseRelationalExpression(suffixes) ?: return null
+        val op = when (tokenType) {
+            TokenType.DoubleEquals -> EqualityExpressionNode.Operator.NonstrictEquality
+            TokenType.ExclamationEquals -> EqualityExpressionNode.Operator.NonstrictInequality
+            TokenType.TripleEquals -> EqualityExpressionNode.Operator.StrictEquality
+            TokenType.ExclamationDoubleEquals -> EqualityExpressionNode.Operator.StrictInequality
+            else -> return lhs
+        }
+        consume()
+
+
+        val rhs = parseEqualityExpression(suffixes)
+        return if (rhs == null) {
+            expected("expression")
+            consume()
+            null
+        } else EqualityExpressionNode(lhs, rhs, op)
+    }
+
+    private fun parseRelationalExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val lhs = parseShiftExpression(suffixes - Suffix.In) ?: return null
+        val op = when (tokenType) {
+            TokenType.LessThan -> RelationalExpressionNode.Operator.LessThan
+            TokenType.GreaterThan -> RelationalExpressionNode.Operator.GreaterThan
+            TokenType.LessThanEquals -> RelationalExpressionNode.Operator.LessThanEquals
+            TokenType.GreaterThanEquals -> RelationalExpressionNode.Operator.GreaterThanEquals
+            TokenType.Instanceof -> RelationalExpressionNode.Operator.Instanceof
+            TokenType.In -> if (Suffix.In in suffixes) RelationalExpressionNode.Operator.In else return lhs
+            else -> return lhs
+        }
+        consume()
+
+
+        val nextSuffixes = if (op == RelationalExpressionNode.Operator.In) suffixes + Suffix.In else suffixes
+        val rhs = parseRelationalExpression(nextSuffixes)
+        return if (rhs == null) {
+            expected("expression")
+            consume()
+            null
+        } else RelationalExpressionNode(lhs, rhs, op)
+    }
+
+    private fun parseShiftExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val lhs = parseAdditiveExpression(suffixes) ?: return null
+        val op = when (tokenType) {
+            TokenType.ShiftLeft -> ShiftExpressionNode.Operator.ShiftLeft
+            TokenType.ShiftRight -> ShiftExpressionNode.Operator.ShiftRight
+            TokenType.UnsignedShiftRight -> ShiftExpressionNode.Operator.UnsignedShiftRight
+            else -> return lhs
+        }
+        consume()
+
+        val rhs = parseShiftExpression(suffixes)
+        return if (rhs == null) {
+            expected("expression")
+            consume()
+            null
+        } else ShiftExpressionNode(lhs, rhs, op)
+    }
+
+    private fun parseAdditiveExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val lhs = parseMultiplicativeExpression(suffixes) ?: return null
+        val isSubtraction = when (tokenType) {
+            TokenType.Plus -> false
+            TokenType.Minus -> true
+            else -> return lhs
+        }
+        consume()
+
+        val rhs = parseAdditiveExpression(suffixes)
+        return if (rhs == null) {
+            expected("expression")
+            consume()
+            null
+        } else AdditiveExpressionNode(lhs, rhs, isSubtraction)
+    }
+
+    private fun parseMultiplicativeExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val lhs = parseExponentiationExpression(suffixes) ?: return null
+        val op = when (tokenType) {
+            TokenType.Asterisk -> MultiplicativeExpressionNode.Operator.Multiply
+            TokenType.Slash -> MultiplicativeExpressionNode.Operator.Divide
+            TokenType.Percent -> MultiplicativeExpressionNode.Operator.Modulo
+            else -> return lhs
+        }
+        consume()
+
+        val rhs = parseMultiplicativeExpression(suffixes)
+        return if (rhs == null) {
+            expected("expression")
+            consume()
+            null
+        } else MultiplicativeExpressionNode(lhs, rhs, op)
+    }
+
+    private fun parseExponentiationExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val lhs = parseUnaryExpression(suffixes) ?: return null
+        if (tokenType != TokenType.DoubleAsterisk)
+            return lhs
+        consume()
+
+        val rhs = parseExponentiationExpression(suffixes)
+        return if (rhs == null) {
+            expected("expression")
+            consume()
+            null
+        } else ExponentiationExpressionNode(lhs, rhs)
+    }
+
+    private fun parseUnaryExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val op = when (tokenType) {
+            TokenType.Delete -> UnaryExpressionNode.Operator.Delete
+            TokenType.Void -> UnaryExpressionNode.Operator.Void
+            TokenType.Typeof -> UnaryExpressionNode.Operator.Typeof
+            TokenType.Plus -> UnaryExpressionNode.Operator.Plus
+            TokenType.Minus -> UnaryExpressionNode.Operator.Minus
+            TokenType.Tilde -> UnaryExpressionNode.Operator.BitwiseNot
+            TokenType.Exclamation -> UnaryExpressionNode.Operator.Not
+            else -> return parseUpdateExpression(suffixes) ?: run {
+                if (Suffix.Await in suffixes) {
+                    parseAwaitExpression(suffixes + Suffix.Await)
+                } else null
+            }
+        }
+        consume()
+
+        val expr = parseUnaryExpression(suffixes)
+        return if (expr == null) {
+            expected("expression")
+            consume()
+            null
+        } else UnaryExpressionNode(expr, op)
+    }
+
+    private fun parseUpdateExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        val expr: ExpressionNode
+        val isIncrement: Boolean
+        val isPostfix: Boolean
+
+        if (matchAny(TokenType.PlusPlus, TokenType.MinusMinus)) {
+            isIncrement = consume().type == TokenType.PlusPlus
+            isPostfix = false
+            expr = parseUnaryExpression(suffixes).let {
+                if (it == null) {
+                    expected("expression")
+                    consume()
+                    return null
+                } else it
+            }
+        } else {
+            expr = parseLeftHandSideExpression(suffixes) ?: return null
+            if (!matchAny(TokenType.PlusPlus, TokenType.MinusMinus))
+                return expr
+            if ('\n' in token.trivia)
+                return expr
+            isPostfix = true
+            isIncrement = consume().type == TokenType.PlusPlus
+        }
+
+        return UpdateExpressionNode(expr, isIncrement, isPostfix)
+    }
+
+    private fun parseAwaitExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        if (tokenType != TokenType.Await)
+            return null
+        consume()
+
+        val expr = parseUnaryExpression(suffixes + Suffix.Await)
+        return if (expr == null) {
+            expected("expression")
+            consume()
+            return null
+        } else AwaitExpressionNode(expr)
+    }
+
+    private fun saveState() {
+        stateStack.add(state.copy())
+    }
+
+    private fun loadState() {
+        state = stateStack.removeLast()
+    }
+
+    private fun discardState() {
+        stateStack.removeLast()
+    }
+
+    private fun consume() = token.also { cursor++ }
+
+    private fun automaticSemicolonInsertion(): Token {
+        if (tokenType == TokenType.Semicolon)
+            return consume()
+        if ('\n' in token.trivia)
+            return token
+        if (matchAny(TokenType.CloseCurly, TokenType.Eof))
+            return token
+
+        expected("semicolon");
+        return token
     }
 
     private fun consume(type: TokenType): Token {
         if (type != tokenType)
-            TODO()
+            expected(type.meta ?: type.name)
         return consume()
+    }
+
+    private fun syntaxError(message: String = "TODO") {
+        syntaxErrors.add(SyntaxError(
+            token.valueStart.lineNumber + 1,
+            token.valueStart.columnNumber + 1,
+            message
+        ))
     }
 
     private fun has(n: Int) = cursor + n < tokens.size
 
     private fun peek(n: Int) = tokens[cursor + n]
 
-    private fun withScope(vararg types: ScopeType, block: Parser.() -> Unit) {
-        if (ScopeType.Var in types)
-            state.varScopes.add(mutableListOf())
-        if (ScopeType.Let in types)
-            state.letScopes.add(mutableListOf())
-        if (ScopeType.Function in types)
-            state.functionScopes.add(mutableListOf())
+    private fun matchSequence(vararg types: TokenType) = has(types.size) && types.mapIndexed { i, t -> peek(i).type == t }.all()
 
-        apply(block)
+    private fun matchAny(vararg types: TokenType) = !isDone && tokenType in types
 
-        if (ScopeType.Var in types)
-            state.varScopes.removeLast()
-        if (ScopeType.Let in types)
-            state.letScopes.removeLast()
-        if (ScopeType.Function in types)
-            state.functionScopes.removeLast()
+    private fun expected(expected: String, found: String = token.value) {
+        syntaxError("Expected: $expected, found: $found")
     }
 
-    private fun saveState() {
-        states.add(state.copy())
+    private fun unexpected(unexpected: String) {
+        syntaxError("Unexpected $unexpected")
     }
 
-    private fun loadState() {
-        state = states.removeLast()
+    private data class State(var cursor: Int)
+
+    private data class SyntaxError(
+        val lineNumber: Int,
+        val columnNumber: Int,
+        val message: String
+    )
+
+    enum class GoalSymbol {
+        Module,
+        Script,
     }
 
-    private fun match(type: TokenType) = tokenType == type
-
-    private fun matchAny(vararg types: TokenType) = tokenType in types
-
-    private fun <T> guard(final: () -> Unit, block: (disable: () -> Unit) -> T): T {
-        var disabled = false
-        val result = block { disabled = true }
-        if (!disabled)
-            final()
-        return result
-    }
-
-    enum class ScopeType {
-        Var,
-        Let,
-        Function
-    }
-
-    enum class Associativity {
-        Left,
-        Right
+    enum class Suffix {
+        Yield,
+        Await,
+        In,
+        Return,
+        Tagged,
     }
 
     companion object {
@@ -752,103 +1449,6 @@ class Parser(private val source: String) {
             "yield",
         )
 
-        private fun isReserved(identifier: String) = identifier in reservedWords
-
-        fun TokenType.precedence() = when (this) {
-            TokenType.Period -> 20
-            TokenType.OpenBracket -> 20
-            TokenType.OpenParen -> 20
-            TokenType.QuestionPeriod -> 20
-            TokenType.New -> 19
-            TokenType.PlusPlus -> 18
-            TokenType.MinusMinus -> 18
-            TokenType.Exclamation -> 17
-            TokenType.Tilde -> 17
-            TokenType.Typeof -> 17
-            TokenType.Void -> 17
-            TokenType.Delete -> 17
-            TokenType.Await -> 17
-            TokenType.DoubleAsterisk -> 16
-            TokenType.Asterisk -> 15
-            TokenType.Slash -> 15
-            TokenType.Percent -> 15
-            TokenType.Plus -> 14
-            TokenType.Minus -> 14
-            TokenType.ShiftLeft -> 13
-            TokenType.ShiftRight -> 13
-            TokenType.UnsignedShiftRight -> 13
-            TokenType.LessThan -> 12
-            TokenType.LessThanEquals -> 12
-            TokenType.GreaterThan -> 12
-            TokenType.GreaterThanEquals -> 12
-            TokenType.In -> 12
-            TokenType.Instanceof -> 12
-            TokenType.DoubleEquals -> 11
-            TokenType.ExclamationEquals -> 11
-            TokenType.TripleEquals -> 11
-            TokenType.ExclamationDoubleEquals -> 11
-            TokenType.Ampersand -> 10
-            TokenType.Caret -> 9
-            TokenType.Pipe -> 8
-            TokenType.DoubleQuestion -> 7
-            TokenType.DoubleAmpersand -> 6
-            TokenType.DoublePipe -> 5
-            TokenType.Question -> 4
-            TokenType.Equals -> 3
-            TokenType.PlusEquals -> 3
-            TokenType.MinusEquals -> 3
-            TokenType.DoubleAsteriskEquals -> 3
-            TokenType.AsteriskEquals -> 3
-            TokenType.SlashEquals -> 3
-            TokenType.PercentEquals -> 3
-            TokenType.ShiftLeftEquals -> 3
-            TokenType.ShiftRightEquals -> 3
-            TokenType.UnsignedShiftRightEquals -> 3
-            TokenType.AmpersandEquals -> 3
-            TokenType.CaretEquals -> 3
-            TokenType.PipeEquals -> 3
-            TokenType.DoubleAmpersandEquals -> 3
-            TokenType.DoublePipeEquals -> 3
-            TokenType.DoubleQuestionEquals -> 3
-            TokenType.Yield -> 2
-            TokenType.Comma -> 1
-            else -> TODO("Error")
-        }
-
-        fun TokenType.associativity() = when (this) {
-            TokenType.Period,
-            TokenType.OpenBracket,
-            TokenType.OpenParen,
-            TokenType.QuestionPeriod,
-            TokenType.Asterisk,
-            TokenType.Slash,
-            TokenType.Percent,
-            TokenType.Plus,
-            TokenType.Minus,
-            TokenType.ShiftLeft,
-            TokenType.ShiftRight,
-            TokenType.UnsignedShiftRight,
-            TokenType.LessThan,
-            TokenType.LessThanEquals,
-            TokenType.GreaterThan,
-            TokenType.GreaterThanEquals,
-            TokenType.In,
-            TokenType.Instanceof,
-            TokenType.DoubleEquals,
-            TokenType.ExclamationEquals,
-            TokenType.TripleEquals,
-            TokenType.ExclamationDoubleEquals,
-            TokenType.Typeof,
-            TokenType.Void,
-            TokenType.Delete,
-            TokenType.Ampersand,
-            TokenType.Caret,
-            TokenType.Pipe,
-            TokenType.DoubleQuestion,
-            TokenType.DoubleAmpersand,
-            TokenType.DoublePipe,
-            TokenType.Comma -> Associativity.Left
-            else -> Associativity.Right
-        }
+        fun isReserved(identifier: String) = identifier in reservedWords
     }
 }
