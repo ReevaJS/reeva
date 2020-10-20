@@ -102,7 +102,7 @@ class Parser(text: String) {
         val statements = parseStatementList(suffixes)
         consume(TokenType.CloseCurly)
 
-        return statements?.let(::BlockNode)
+        return BlockNode(statements)
     }
 
     private fun parseVariableStatement(suffixes: Set<Suffix>): VariableStatementNode? {

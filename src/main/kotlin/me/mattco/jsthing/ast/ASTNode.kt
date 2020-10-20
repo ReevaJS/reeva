@@ -83,11 +83,11 @@ abstract class ASTNode(private val children: List<ASTNode> = emptyList()) {
         return false
     }
 
-    open fun containsDuplicateLabels(): Boolean {
+    open fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "containsDuplicateLabels, and cannot be delegated")
-        return children[0].containsDuplicateLabels()
+        return children[0].containsDuplicateLabels(labelSet)
     }
 
     open fun containsExpression(): Boolean {
@@ -97,18 +97,18 @@ abstract class ASTNode(private val children: List<ASTNode> = emptyList()) {
         return children[0].containsExpression()
     }
 
-    open fun containsUndefinedBreakTarget(): Boolean {
+    open fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "containsUndefinedBreakTarget, and cannot be delegated")
-        return children[0].containsUndefinedBreakTarget()
+        return children[0].containsUndefinedBreakTarget(labelSet)
     }
 
-    open fun containsUndefinedContinueTarget(): Boolean {
+    open fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "containsUndefinedContinueTarget, and cannot be delegated")
-        return children[0].containsUndefinedContinueTarget()
+        return children[0].containsUndefinedContinueTarget(iterationSet, labelSet)
     }
 
     open fun coveredCallExpression(): ASTNode {

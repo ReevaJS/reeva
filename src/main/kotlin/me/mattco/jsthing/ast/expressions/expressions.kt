@@ -95,6 +95,10 @@ class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ASTNode, val type: 
         }
     }
 
+    override fun contains(nodeName: String): Boolean {
+        return lhs.contains(nodeName)
+    }
+
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
         appendName()
@@ -125,6 +129,10 @@ class OptionalExpressionNode : ExpressionNode()
 class SuperPropertyNode(val target: ASTNode, val computed: Boolean) : ExpressionNode(listOf(target)) {
     override fun assignmentTargetType(): AssignmentTargetType {
         return AssignmentTargetType.Simple
+    }
+
+    override fun contains(nodeName: String): Boolean {
+        return nodeName == "super"
     }
 
     override fun dump(indent: Int) = stringBuilder {
