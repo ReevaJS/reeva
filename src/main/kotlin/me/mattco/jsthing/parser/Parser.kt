@@ -118,10 +118,10 @@ class Parser(text: String) {
 
         automaticSemicolonInsertion()
 
-        return VariableStatementNode(list, VariableStatementNode.Type.Var)
+        return VariableStatementNode(list)
     }
 
-    private fun parseVariableDeclarationList(suffixes: Set<Suffix>): List<VariableDeclarationNode>? {
+    private fun parseVariableDeclarationList(suffixes: Set<Suffix>): VariableDeclarationList? {
         val declarations = mutableListOf<VariableDeclarationNode>()
 
         val declaration = parseVariableDeclaration(suffixes) ?: return null
@@ -139,7 +139,7 @@ class Parser(text: String) {
             declarations.add(declaration)
         }
 
-        return declarations
+        return VariableDeclarationList(declarations)
     }
 
     private fun parseVariableDeclaration(suffixes: Set<Suffix>): VariableDeclarationNode? {
@@ -377,7 +377,7 @@ class Parser(text: String) {
             return null
         }
 
-        return ForNode(VariableStatementNode(declarations, VariableStatementNode.Type.Var), condition, incrementer, body)
+        return ForNode(VariableStatementNode(declarations), condition, incrementer, body)
     }
 
     private fun parseForStatementType3(suffixes: Set<Suffix>): StatementNode? {
@@ -460,15 +460,15 @@ class Parser(text: String) {
         return null
     }
 
-    private fun parseLexicalDeclaration(suffixes: Set<Suffix>): VariableStatementNode? {
+    private fun parseLexicalDeclaration(suffixes: Set<Suffix>): LexicalDeclarationNode? {
         if (!matchAny(TokenType.Let, TokenType.Const))
             return null
 
         saveState()
 
-        val type = when (consume().type) {
-            TokenType.Let -> VariableStatementNode.Type.Let
-            TokenType.Const -> VariableStatementNode.Type.Const
+        val isConst = when (consume().type) {
+            TokenType.Let -> false
+            TokenType.Const -> true
             else -> unreachable()
         }
 
@@ -481,11 +481,11 @@ class Parser(text: String) {
         automaticSemicolonInsertion()
         discardState()
 
-        return VariableStatementNode(list, type)
+        return LexicalDeclarationNode(isConst, list)
     }
 
-    private fun parseBindingList(suffixes: Set<Suffix>): List<VariableDeclarationNode>? {
-        val declarations = mutableListOf<VariableDeclarationNode>()
+    private fun parseBindingList(suffixes: Set<Suffix>): BindingListNode? {
+        val declarations = mutableListOf<LexicalBindingNode>()
 
         val declaration = parseLexicalBinding(suffixes) ?: return null
         declarations.add(declaration)
@@ -502,14 +502,14 @@ class Parser(text: String) {
             declarations.add(declaration)
         }
 
-        return declarations
+        return BindingListNode(declarations)
     }
 
-    private fun parseLexicalBinding(suffixes: Set<Suffix>): VariableDeclarationNode? {
+    private fun parseLexicalBinding(suffixes: Set<Suffix>): LexicalBindingNode? {
         // TODO: Attempt the BindingPattern branch
         val identifier = parseBindingIdentifier(suffixes - Suffix.In) ?: return null
         val initializer = parseInitializer(suffixes)
-        return VariableDeclarationNode(identifier, initializer)
+        return LexicalBindingNode(identifier, initializer)
     }
 
     private fun parseSwitchStatement(suffixes: Set<Suffix>): StatementNode? {
@@ -708,7 +708,7 @@ class Parser(text: String) {
                     expected("parenthesized arguments")
                     return null
                 }
-                return MemberExpressionNode(expr, ArgumentsNodeWrapper(args), MemberExpressionNode.Type.New)
+                return MemberExpressionNode(expr, args, MemberExpressionNode.Type.New)
             }
             return null
         }
@@ -748,7 +748,7 @@ class Parser(text: String) {
         return memberExpression ?: primaryExpression
     }
 
-    private fun parseMetaProperty(): ExpressionNode? {
+    private fun parseMetaProperty(): MetaPropertyNode? {
         return when (tokenType) {
             TokenType.New -> {
                 // TODO: Should we save? Or should we error if we don't find a period
@@ -765,7 +765,7 @@ class Parser(text: String) {
                     return null
                 }
                 consume()
-                NewTargetNode
+                MetaPropertyNode(NewTargetNode)
             }
             TokenType.Import -> {
                 // TODO: Should we save? Or should we error if we don't find a period
@@ -781,7 +781,7 @@ class Parser(text: String) {
                     return null
                 }
                 consume()
-                ImportMetaNode
+                MetaPropertyNode(ImportMetaNode)
             }
             else -> null
         }
@@ -836,7 +836,7 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseArguments(suffixes: Set<Suffix>): List<ArgumentsNode>? {
+    private fun parseArguments(suffixes: Set<Suffix>): ArgumentsNode? {
         if (tokenType != TokenType.OpenParen)
             return null
         consume()
@@ -846,11 +846,11 @@ class Parser(text: String) {
             consume()
         }
         consume(TokenType.CloseParen)
-        return argumentsList ?: emptyList()
+        return argumentsList?.let(::ArgumentsNode)
     }
 
-    private fun parseArgumentsList(suffixes: Set<Suffix>): List<ArgumentsNode>? {
-        val arguments = mutableListOf<ArgumentsNode>()
+    private fun parseArgumentsList(suffixes: Set<Suffix>): ArgumentsListNode? {
+        val arguments = mutableListOf<ArgumentListEntry>()
         var first = true
 
         do {
@@ -869,28 +869,28 @@ class Parser(text: String) {
                     consume()
                     return null
                 }
-                arguments.add(ArgumentsNode(expr, true))
+                arguments.add(ArgumentListEntry(expr, true))
             } else {
                 val expr = parseAssignmentExpression(suffixes + Suffix.In) ?: run {
                     loadState()
                     return null
                 }
-                arguments.add(ArgumentsNode(expr, false))
+                arguments.add(ArgumentListEntry(expr, false))
             }
 
             first = false
         } while (true)
 
-        return arguments
+        return ArgumentsListNode(arguments)
     }
 
-    private fun parsePrimaryExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parsePrimaryExpression(suffixes: Set<Suffix>): PrimaryExpressionNode? {
         if (tokenType == TokenType.This) {
             consume()
-            return ThisNode
+            return PrimaryExpressionNode(ThisNode)
         }
 
-        return parseIdentifierReference(suffixes) ?:
+        val expression = parseIdentifierReference(suffixes) ?:
             parseLiteral() ?:
             parseArrayLiteral(suffixes) ?:
             parseObjectLiteral(suffixes) ?:
@@ -901,7 +901,10 @@ class Parser(text: String) {
             parseAsyncGeneratorExpression(suffixes) ?:
             parseRegularExpressionLiteral(suffixes) ?:
             parseTemplateLiteral(suffixes) ?:
-            parseCoverParenthesizedExpressionAndArrowParameterList(suffixes, CPEAAPLContext.PrimaryExpression)
+            parseCoverParenthesizedExpressionAndArrowParameterList(suffixes, CPEAAPLContext.PrimaryExpression) ?:
+            return null
+
+        return PrimaryExpressionNode(expression)
     }
 
     private fun parseLiteral(): ExpressionNode? {
@@ -986,7 +989,10 @@ class Parser(text: String) {
         PrimaryExpression,
     }
 
-    private fun parseCoverParenthesizedExpressionAndArrowParameterList(suffixes: Set<Suffix>, context: CPEAAPLContext): ExpressionNode? {
+    private fun parseCoverParenthesizedExpressionAndArrowParameterList(
+        suffixes: Set<Suffix>,
+        context: CPEAAPLContext
+    ): CPEAAPL? {
         // TODO
         return null
     }

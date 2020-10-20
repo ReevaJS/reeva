@@ -16,3 +16,6 @@ class SpreadElementNode(val expression: ExpressionNode) : ASTNode() {
         append(expression.dump(indent + 1))
     }
 }
+
+// CoverParenthesizedExpressionAndArrowParameterList
+class CPEAAPL(val node: ExpressionNode) : ExpressionNode()

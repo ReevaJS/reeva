@@ -2,12 +2,16 @@ package me.mattco.jsthing.ast
 
 import me.mattco.jsthing.utils.newline
 import me.mattco.jsthing.utils.stringBuilder
-import kotlin.reflect.KClass
 
 abstract class ASTNode(private vararg val children: ASTNode) {
     val name: String by lazy { this::class.java.simpleName }
 
-    abstract fun dump(indent: Int = 0): String
+    open fun dump(indent: Int = 0): String = stringBuilder {
+        dumpSelf(indent)
+        children.forEach {
+            append(it.dump(indent + 1))
+        }
+    }
 
     fun StringBuilder.dumpSelf(indent: Int) {
         appendIndent(indent)

@@ -21,11 +21,7 @@ class StatementListNode(val statements: List<StatementNode>) : StatementNode() {
     }
 }
 
-object EmptyStatementNode : StatementNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-    }
-}
+object EmptyStatementNode : StatementNode()
 
 class ExpressionStatementNode(val node: ExpressionNode): StatementNode() {
     override fun dump(indent: Int) = stringBuilder {

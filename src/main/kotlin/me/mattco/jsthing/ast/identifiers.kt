@@ -1,12 +1,9 @@
 package me.mattco.jsthing.ast
 
 import me.mattco.jsthing.ast.expressions.ExpressionNode
-import me.mattco.jsthing.ast.semantics.SSAssignmentTargetType
-import me.mattco.jsthing.ast.semantics.SSBoundNames
-import me.mattco.jsthing.ast.semantics.SSStringValue
 import me.mattco.jsthing.utils.stringBuilder
 
-class BindingIdentifierNode(val identifierName: String) : ASTNode(), SSStringValue, SSBoundNames {
+class BindingIdentifierNode(val identifierName: String) : ASTNode() {
     override fun stringValue() = identifierName
 
     override fun boundNames() = listOf(identifierName)
@@ -20,7 +17,7 @@ class BindingIdentifierNode(val identifierName: String) : ASTNode(), SSStringVal
     }
 }
 
-class IdentifierNode(val identifierName: String) : ASTNode(), SSStringValue {
+class IdentifierNode(val identifierName: String) : ASTNode() {
     override fun stringValue() = identifierName
 
     override fun dump(indent: Int) = stringBuilder {
@@ -32,12 +29,12 @@ class IdentifierNode(val identifierName: String) : ASTNode(), SSStringValue {
     }
 }
 
-class IdentifierReferenceNode(val identifierName: String) : ExpressionNode(), SSStringValue, SSAssignmentTargetType {
+class IdentifierReferenceNode(val identifierName: String) : ExpressionNode() {
     override fun stringValue() = identifierName
 
-    override fun assignmentTargetType(): SSAssignmentTargetType.AssignmentTargetType {
+    override fun assignmentTargetType(): AssignmentTargetType {
         // TODO: Strict mode check
-        return SSAssignmentTargetType.AssignmentTargetType.Simple
+        return AssignmentTargetType.Simple
     }
 
     override fun dump(indent: Int) = stringBuilder {
@@ -49,7 +46,7 @@ class IdentifierReferenceNode(val identifierName: String) : ExpressionNode(), SS
     }
 }
 
-class LabelIdentifierNode(val identifierName: String) : ASTNode(), SSStringValue {
+class LabelIdentifierNode(val identifierName: String) : ASTNode() {
     override fun stringValue() = identifierName
 
     override fun dump(indent: Int) = stringBuilder {

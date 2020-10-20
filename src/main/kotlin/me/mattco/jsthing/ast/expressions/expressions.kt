@@ -4,6 +4,8 @@ import me.mattco.jsthing.ast.ASTNode
 import me.mattco.jsthing.ast.ArgumentsNode
 import me.mattco.jsthing.utils.stringBuilder
 
+class PrimaryExpressionNode(val expression: ExpressionNode) : ExpressionNode()
+
 class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val op: Operator) : ExpressionNode() {
     enum class Operator(val string: String) {
         Equals("="),
@@ -42,13 +44,11 @@ class AwaitExpressionNode(val expression: ExpressionNode) : ExpressionNode() {
     }
 }
 
-class CallExpressionNode(val target: ExpressionNode, val arguments: List<ArgumentsNode>) : ExpressionNode() {
+class CallExpressionNode(val target: ExpressionNode, val arguments: ArgumentsNode) : ExpressionNode() {
     override fun dump(indent: Int) = stringBuilder {
         dumpSelf(indent)
         append(target.dump(indent + 1))
-        arguments.forEach {
-            append(it.dump(indent + 1))
-        }
+        append(arguments.dump(indent + 1))
     }
 }
 

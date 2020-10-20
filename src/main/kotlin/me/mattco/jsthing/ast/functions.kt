@@ -3,22 +3,27 @@ package me.mattco.jsthing.ast
 import me.mattco.jsthing.ast.expressions.ExpressionNode
 import me.mattco.jsthing.utils.stringBuilder
 
-class ArgumentsNodeWrapper(val arguments: List<ArgumentsNode>) : ExpressionNode() {
+class ArgumentsNode(private val _argumentsList: ArgumentsListNode) : ASTNode() {
+    val arguments: List<ArgumentListEntry>
+        get() = _argumentsList.argumentsList
+
     override fun dump(indent: Int) = stringBuilder {
         dumpSelf(indent)
-        arguments.forEach {
-            append(it.dump(indent + 1))
+        _argumentsList.dump(indent + 1)
+    }
+}
+
+class ArgumentsListNode(val argumentsList: List<ArgumentListEntry>) : ASTNode() {
+    override fun dump(indent: Int) = stringBuilder {
+        dumpSelf(indent)
+        argumentsList.forEach {
+            appendIndent(indent + 1)
+            append("ArgumentListEntry (isSpread=")
+            append(it.isSpread)
+            append(")\n")
+            append(it.argument.dump(indent + 2))
         }
     }
 }
 
-class ArgumentsNode(val expression: ExpressionNode, val isSpread: Boolean) : ASTNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        appendIndent(indent)
-        appendName()
-        append(" (isSpread=")
-        append(isSpread)
-        append(")\n")
-        append(expression.dump(indent + 1))
-    }
-}
+data class ArgumentListEntry(val argument: ExpressionNode, val isSpread: Boolean)

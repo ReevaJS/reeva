@@ -1,11 +1,9 @@
 package me.mattco.jsthing.ast.literals
 
-import me.mattco.jsthing.ast.ASTNode
 import me.mattco.jsthing.ast.expressions.ExpressionNode
-import me.mattco.jsthing.ast.literals.NullNode.dumpSelf
 import me.mattco.jsthing.utils.stringBuilder
 
-abstract class LiteralNode : ASTNode()
+abstract class LiteralNode : ExpressionNode()
 
 class BooleanNode(val value: Boolean) : LiteralNode() {
     override fun dump(indent: Int) = stringBuilder {
@@ -36,14 +34,6 @@ class NumericLiteralNode(val value: Double) : LiteralNode() {
     }
 }
 
-object NullNode : LiteralNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-    }
-}
+object NullNode : LiteralNode()
 
-object ThisNode : LiteralNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-    }
-}
+object ThisNode : LiteralNode()

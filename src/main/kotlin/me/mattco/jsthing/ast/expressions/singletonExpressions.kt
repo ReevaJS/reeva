@@ -4,26 +4,12 @@ import me.mattco.jsthing.ast.ASTNode
 import me.mattco.jsthing.ast.expressions.ImportMetaNode.dumpSelf
 import me.mattco.jsthing.utils.stringBuilder
 
-object ImportMetaNode : ExpressionNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-    }
-}
+class MetaPropertyNode(val metaProperty: ExpressionNode) : ExpressionNode()
 
-object NewTargetNode : ExpressionNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-    }
-}
+object ImportMetaNode : ExpressionNode()
 
-object TrueNode : ExpressionNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-    }
-}
+object NewTargetNode : ExpressionNode()
 
-object FalseNode : ExpressionNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-    }
-}
+object TrueNode : ExpressionNode()
+
+object FalseNode : ExpressionNode()
