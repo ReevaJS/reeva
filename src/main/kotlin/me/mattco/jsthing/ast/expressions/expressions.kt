@@ -3,6 +3,11 @@ package me.mattco.jsthing.ast.expressions
 import me.mattco.jsthing.ast.ASTNode
 import me.mattco.jsthing.ast.ArgumentsNode
 import me.mattco.jsthing.ast.CPEAAPLNode
+import me.mattco.jsthing.ast.IdentifierReferenceNode
+import me.mattco.jsthing.ast.literals.ArrayLiteralNode
+import me.mattco.jsthing.ast.literals.LiteralNode
+import me.mattco.jsthing.ast.literals.ObjectLiteralNode
+import me.mattco.jsthing.ast.literals.ThisNode
 import me.mattco.jsthing.utils.expect
 import me.mattco.jsthing.utils.stringBuilder
 
@@ -12,6 +17,39 @@ class PrimaryExpressionNode(val expression: ExpressionNode) : ExpressionNode(lis
             return AssignmentTargetType.Invalid
         expect(expression.node is ParenthesizedExpression)
         return expression.node.target.assignmentTargetType()
+    }
+
+    override fun hasName(): Boolean {
+        if (expression !is CPEAAPLNode)
+            return super.hasName()
+        if (!expression.isFunctionDefinition())
+            return false
+        return expression.hasName()
+    }
+
+    override fun isDestructuring(): Boolean {
+        if (expression is ArrayLiteralNode || expression is ObjectLiteralNode)
+            return false
+        return super.isDestructuring()
+    }
+
+    override fun isFunctionDefinition(): Boolean {
+        return when (expression) {
+            is ThisNode,
+            is IdentifierReferenceNode,
+            is LiteralNode,
+            is ArrayLiteralNode,
+            is ObjectLiteralNode,
+            // is RegularExpressionLiteral,
+            is TemplateLiteralNode -> false
+            else -> if (expression is CPEAAPLNode) {
+                expression.node.isFunctionDefinition()
+            } else super.isFunctionDefinition()
+        }
+    }
+
+    override fun isIdentifierRef(): Boolean {
+        return expression is IdentifierReferenceNode
     }
 }
 
@@ -85,6 +123,24 @@ class LeftHandSideExpressionNode(val expression: ExpressionNode) : ExpressionNod
             return AssignmentTargetType.Invalid
         TODO()
     }
+
+    override fun isDestructuring(): Boolean {
+        if (expression is CallExpressionNode || expression is OptionalExpressionNode)
+            return false
+        return super.isDestructuring()
+    }
+
+    override fun isFunctionDefinition(): Boolean {
+        if (expression is CallExpressionNode || expression is OptionalExpressionNode)
+            return false
+        return super.isDestructuring()
+    }
+
+    override fun isIdentifierRef(): Boolean {
+        if (expression is CallExpressionNode || expression is OptionalExpressionNode)
+            return false
+        return super.isDestructuring()
+    }
 }
 
 class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ASTNode, val type: Type) : ExpressionNode(listOf(lhs, rhs)) {
@@ -98,6 +154,12 @@ class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ASTNode, val type: 
     override fun contains(nodeName: String): Boolean {
         return lhs.contains(nodeName)
     }
+
+    override fun isDestructuring() = false
+
+    override fun isFunctionDefinition() = false
+
+    override fun isIdentifierRef() = false
 
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
@@ -122,6 +184,12 @@ class NewExpressionNode(val target: ExpressionNode) : ExpressionNode(listOf(targ
     override fun assignmentTargetType(): AssignmentTargetType {
         return AssignmentTargetType.Invalid
     }
+
+    override fun isDestructuring() = false
+
+    override fun isFunctionDefinition() = false
+
+    override fun isIdentifierRef() = false
 }
 
 class OptionalExpressionNode : ExpressionNode()
@@ -134,6 +202,8 @@ class SuperPropertyNode(val target: ASTNode, val computed: Boolean) : Expression
     override fun contains(nodeName: String): Boolean {
         return nodeName == "super"
     }
+
+    override fun isIdentifierRef() = false
 
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)

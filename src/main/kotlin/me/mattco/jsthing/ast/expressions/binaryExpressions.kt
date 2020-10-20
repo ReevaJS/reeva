@@ -6,6 +6,8 @@ open class BinaryExpression(val lhs: ExpressionNode, val rhs: ExpressionNode) : 
     override fun assignmentTargetType(): AssignmentTargetType {
         return AssignmentTargetType.Invalid
     }
+
+    override fun isFunctionDefinition() = false
 }
 
 class AdditiveExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode, val isSubtraction: Boolean) : BinaryExpression(lhs, rhs)

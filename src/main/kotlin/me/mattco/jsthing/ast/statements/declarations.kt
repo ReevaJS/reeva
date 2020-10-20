@@ -1,3 +1,5 @@
 package me.mattco.jsthing.ast.statements
 
-class DeclarationNode : StatementNode()
+open class DeclarationNode : StatementNode()
+
+class HoistableDeclarationNode : DeclarationNode()

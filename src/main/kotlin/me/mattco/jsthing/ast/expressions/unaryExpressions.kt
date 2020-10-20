@@ -7,6 +7,8 @@ class UnaryExpressionNode(val node: ExpressionNode, val op: Operator) : Expressi
         return AssignmentTargetType.Invalid
     }
 
+    override fun isFunctionDefinition() = false
+
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
         appendName()
@@ -31,6 +33,8 @@ class UpdateExpressionNode(val target: ExpressionNode, val isIncrement: Boolean,
     override fun assignmentTargetType(): AssignmentTargetType {
         return AssignmentTargetType.Invalid
     }
+
+    override fun isFunctionDefinition() = false
 
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)

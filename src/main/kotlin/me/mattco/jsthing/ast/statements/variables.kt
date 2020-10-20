@@ -7,6 +7,10 @@ import me.mattco.jsthing.utils.stringBuilder
 
 class LexicalDeclarationNode(val isConst: Boolean, val bindingList: BindingListNode) : StatementNode(listOf(bindingList)) {
     override fun boundNames() = bindingList.boundNames()
+
+    override fun isConstantDeclaration(): Boolean {
+        return isConst
+    }
 }
 
 class BindingListNode(val lexicalBindings: List<LexicalBindingNode>) : StatementNode(lexicalBindings) {
@@ -30,11 +34,19 @@ class VariableStatementNode(val declarations: VariableDeclarationList) : Stateme
     override fun containsUndefinedBreakTarget(labelSet: Set<String>) = false
 
     override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>) = false
+
+    override fun varDeclaredNames(): List<String> {
+        return declarations.boundNames()
+    }
 }
 
 class VariableDeclarationList(val declarations: List<VariableDeclarationNode>) : StatementNode(declarations) {
     override fun boundNames(): List<String> {
         return declarations.flatMap(ASTNode::boundNames)
+    }
+
+    override fun varScopedDeclarations(): List<ASTNode> {
+        return declarations
     }
 }
 
