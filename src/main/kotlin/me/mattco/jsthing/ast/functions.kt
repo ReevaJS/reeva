@@ -3,7 +3,7 @@ package me.mattco.jsthing.ast
 import me.mattco.jsthing.ast.expressions.ExpressionNode
 import me.mattco.jsthing.utils.stringBuilder
 
-class ArgumentsNode(private val _argumentsList: ArgumentsListNode) : ASTNode() {
+class ArgumentsNode(private val _argumentsList: ArgumentsListNode) : ASTNode(listOf(_argumentsList)) {
     val arguments: List<ArgumentListEntry>
         get() = _argumentsList.argumentsList
 
@@ -13,7 +13,7 @@ class ArgumentsNode(private val _argumentsList: ArgumentsListNode) : ASTNode() {
     }
 }
 
-class ArgumentsListNode(val argumentsList: List<ArgumentListEntry>) : ASTNode() {
+class ArgumentsListNode(val argumentsList: List<ArgumentListEntry>) : ASTNode(argumentsList) {
     override fun dump(indent: Int) = stringBuilder {
         dumpSelf(indent)
         argumentsList.forEach {
@@ -26,4 +26,13 @@ class ArgumentsListNode(val argumentsList: List<ArgumentListEntry>) : ASTNode() 
     }
 }
 
-data class ArgumentListEntry(val argument: ExpressionNode, val isSpread: Boolean)
+data class ArgumentListEntry(val argument: ExpressionNode, val isSpread: Boolean) : ASTNode(listOf(argument)) {
+    override fun dump(indent: Int) = stringBuilder {
+        appendIndent(indent)
+        appendName()
+        append(" (isSpread=")
+        append(isSpread)
+        append(")\n")
+        append(argument.dump(indent + 1))
+    }
+}

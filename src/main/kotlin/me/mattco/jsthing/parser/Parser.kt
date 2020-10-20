@@ -56,7 +56,7 @@ class Parser(text: String) {
     }
 
     private fun parseStatementList(suffixes: Set<Suffix>): StatementListNode? {
-        val statements = mutableListOf<StatementNode>()
+        val statements = mutableListOf<StatementListItem>()
 
         var statement = parseStatementListItem(suffixes) ?: return null
         statements.add(statement)
@@ -69,8 +69,8 @@ class Parser(text: String) {
         return StatementListNode(statements)
     }
 
-    private fun parseStatementListItem(suffixes: Set<Suffix>): StatementNode? {
-        return parseStatement(suffixes) ?: parseDeclaration(suffixes - Suffix.Return)
+    private fun parseStatementListItem(suffixes: Set<Suffix>): StatementListItem? {
+        return (parseStatement(suffixes) ?: parseDeclaration(suffixes - Suffix.Return))?.let(::StatementListItem)
     }
 
     private fun parseStatement(suffixes: Set<Suffix>): StatementNode? {
@@ -90,11 +90,11 @@ class Parser(text: String) {
                 parseDebuggerStatement()
     }
 
-    private fun parseBlockStatement(suffixes: Set<Suffix>): StatementNode? {
-        return parseBlock(suffixes)
+    private fun parseBlockStatement(suffixes: Set<Suffix>): BlockStatementNode? {
+        return parseBlock(suffixes)?.let(::BlockStatementNode)
     }
 
-    private fun parseBlock(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseBlock(suffixes: Set<Suffix>): BlockNode? {
         if (tokenType != TokenType.OpenCurly)
             return null
 
@@ -102,7 +102,7 @@ class Parser(text: String) {
         val statements = parseStatementList(suffixes)
         consume(TokenType.CloseCurly)
 
-        return BlockNode(statements?.statements ?: emptyList())
+        return statements?.let(::BlockNode)
     }
 
     private fun parseVariableStatement(suffixes: Set<Suffix>): VariableStatementNode? {

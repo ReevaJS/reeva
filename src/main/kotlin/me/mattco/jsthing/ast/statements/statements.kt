@@ -3,27 +3,17 @@ package me.mattco.jsthing.ast.statements
 import me.mattco.jsthing.ast.expressions.ExpressionNode
 import me.mattco.jsthing.utils.stringBuilder
 
-class BlockNode(val statements: List<StatementNode>) : StatementNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        statements.forEach {
-            append(it.dump(indent + 1))
-        }
-    }
-}
+class BlockStatementNode(val block: BlockNode) : StatementNode(listOf(block))
 
-class StatementListNode(val statements: List<StatementNode>) : StatementNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        statements.forEach {
-            append(it.dump(indent + 1))
-        }
-    }
-}
+class BlockNode(val statements: StatementListNode) : StatementNode(listOf(statements))
+
+class StatementListNode(val statements: List<StatementListItem>) : StatementNode(statements)
+
+class StatementListItem(val item: StatementNode) : StatementNode(listOf(item))
 
 object EmptyStatementNode : StatementNode()
 
-class ExpressionStatementNode(val node: ExpressionNode): StatementNode() {
+class ExpressionStatementNode(val node: ExpressionNode): StatementNode(listOf(node)) {
     override fun dump(indent: Int) = stringBuilder {
         dumpSelf(indent)
         append(node.dump(indent + 1))
@@ -34,38 +24,19 @@ class IfStatementNode(
     val condition: ExpressionNode,
     val trueBlock: StatementNode,
     val falseBlock: StatementNode?
-) : StatementNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        append(condition.dump(indent + 1))
-        append(trueBlock.dump(indent + 1))
-        falseBlock?.dump(indent + 1)?.also(::append)
-    }
-}
+) : StatementNode(listOfNotNull(condition, trueBlock, falseBlock))
 
-class DoWhileNode(val condition: ExpressionNode, val body: StatementNode) : StatementNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        append(condition.dump(indent + 1))
-        append(body.dump(indent + 1))
-    }
-}
+class DoWhileNode(val condition: ExpressionNode, val body: StatementNode) : StatementNode(listOf(condition, body))
 
 
-class WhileNode(val condition: ExpressionNode, val body: StatementNode) : StatementNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        append(condition.dump(indent + 1))
-        append(body.dump(indent + 1))
-    }
-}
+class WhileNode(val condition: ExpressionNode, val body: StatementNode) : StatementNode(listOf(condition, body))
 
 class ForNode(
     val initializer: StatementNode?,
     val condition: ExpressionNode?,
     val incrementer: ExpressionNode?,
     val body: StatementNode,
-) : StatementNode() {
+) : StatementNode(listOfNotNull(initializer, condition, incrementer, body)) {
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
         appendName()
@@ -86,26 +57,8 @@ class ForNode(
     }
 }
 
-class ForInNode(val decl: StatementNode, val expression: ExpressionNode) : StatementNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        append(decl.dump(indent + 1))
-        append(expression.dump(indent + 1))
-    }
-}
+class ForInNode(val decl: StatementNode, val expression: ExpressionNode) : StatementNode(listOf(decl, expression))
 
-class ForOfNode(val decl: StatementNode, val expression: ExpressionNode) : StatementNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        append(decl.dump(indent + 1))
-        append(expression.dump(indent + 1))
-    }
-}
+class ForOfNode(val decl: StatementNode, val expression: ExpressionNode) : StatementNode(listOf(decl, expression))
 
-class ForAwaitOfNode(val decl: StatementNode, val expression: ExpressionNode) : StatementNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        append(decl.dump(indent + 1))
-        append(expression.dump(indent + 1))
-    }
-}
+class ForAwaitOfNode(val decl: StatementNode, val expression: ExpressionNode) : StatementNode(listOf(decl, expression))

@@ -4,9 +4,9 @@ import me.mattco.jsthing.ast.ASTNode
 import me.mattco.jsthing.ast.ArgumentsNode
 import me.mattco.jsthing.utils.stringBuilder
 
-class PrimaryExpressionNode(val expression: ExpressionNode) : ExpressionNode()
+class PrimaryExpressionNode(val expression: ExpressionNode) : ExpressionNode(listOf(expression))
 
-class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val op: Operator) : ExpressionNode() {
+class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val op: Operator) : ExpressionNode(listOf(lhs, rhs)) {
     enum class Operator(val string: String) {
         Equals("="),
         Multiply("*="),
@@ -37,44 +37,23 @@ class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode,
     }
 }
 
-class AwaitExpressionNode(val expression: ExpressionNode) : ExpressionNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        append(expression.dump(indent + 1))
-    }
-}
+class AwaitExpressionNode(val expression: ExpressionNode) : ExpressionNode(listOf(expression))
 
-class CallExpressionNode(val target: ExpressionNode, val arguments: ArgumentsNode) : ExpressionNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        append(target.dump(indent + 1))
-        append(arguments.dump(indent + 1))
-    }
-}
+class CallExpressionNode(val target: ExpressionNode, val arguments: ArgumentsNode) : ExpressionNode(listOf(target, arguments))
 
 // Note that this name deviates from the spec because I think this is
 // a much better name. It is not clear from the name "ExpressionNode"
 // that the inner expression are separated by comma operators, and only
 // the last one should be returned.
-class CommaExpressionNode(val expressions: List<ExpressionNode>) : ExpressionNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        expressions.forEach {
-            append(it.dump(indent + 1))
-        }
-    }
-}
+class CommaExpressionNode(val expressions: List<ExpressionNode>) : ExpressionNode(expressions)
 
-class ConditionalExpressionNode(val predicate: ExpressionNode, val ifTrue: ExpressionNode, val ifFalse: ExpressionNode) : ExpressionNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        append(predicate.dump(indent + 1))
-        append(ifTrue.dump(indent + 1))
-        append(ifFalse.dump(indent + 1))
-    }
-}
+class ConditionalExpressionNode(
+    val predicate: ExpressionNode,
+    val ifTrue: ExpressionNode,
+    val ifFalse: ExpressionNode
+) : ExpressionNode(listOf(predicate, ifTrue, ifFalse))
 
-class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ASTNode, val type: Type) : ExpressionNode() {
+class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ASTNode, val type: Type) : ExpressionNode(listOf(lhs, rhs)) {
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
         appendName()
@@ -94,20 +73,11 @@ class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ASTNode, val type: 
     }
 }
 
-class NewExpressionNode(val target: ExpressionNode) : ExpressionNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        append(target.dump(indent + 1))
-    }
-}
+class NewExpressionNode(val target: ExpressionNode) : ExpressionNode(listOf(target))
 
-class OptionalExpressionNode : ExpressionNode() {
-    override fun dump(indent: Int): String {
-        TODO()
-    }
-}
+class OptionalExpressionNode : ExpressionNode()
 
-class SuperPropertyNode(val target: ASTNode, val computed: Boolean) : ExpressionNode() {
+class SuperPropertyNode(val target: ASTNode, val computed: Boolean) : ExpressionNode(listOf(target)) {
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
         appendName()
@@ -118,7 +88,10 @@ class SuperPropertyNode(val target: ASTNode, val computed: Boolean) : Expression
     }
 }
 
-class YieldExpressionNode(val target: ExpressionNode?, val generatorYield: Boolean) : ExpressionNode() {
+class YieldExpressionNode(
+    val target: ExpressionNode?,
+    val generatorYield: Boolean
+) : ExpressionNode(listOfNotNull(target)) {
     init {
         if (target == null && generatorYield)
             throw IllegalArgumentException("Cannot have a generatorYield expression without a target expression")
@@ -134,9 +107,4 @@ class YieldExpressionNode(val target: ExpressionNode?, val generatorYield: Boole
     }
 }
 
-class ParenthesizedExpression(val target: ExpressionNode) : ExpressionNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        append(target.dump(indent + 1))
-    }
-}
+class ParenthesizedExpression(val target: ExpressionNode) : ExpressionNode(listOf(target))

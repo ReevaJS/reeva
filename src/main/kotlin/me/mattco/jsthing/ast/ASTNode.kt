@@ -3,7 +3,7 @@ package me.mattco.jsthing.ast
 import me.mattco.jsthing.utils.newline
 import me.mattco.jsthing.utils.stringBuilder
 
-abstract class ASTNode(private vararg val children: ASTNode) {
+abstract class ASTNode(private val children: List<ASTNode> = emptyList()) {
     val name: String by lazy { this::class.java.simpleName }
 
     open fun dump(indent: Int = 0): String = stringBuilder {
