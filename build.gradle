@@ -19,7 +19,7 @@ dependencies {
         exclude module: "kotlin-stdlib"
     }
     implementation 'org.ow2.asm:asm-debug-all:5.0.2'
-    implementation "com.github.half-cambodian-hacker-man:Koffee:d8cee73"
+    implementation 'com.github.mattco98:Koffee:b089cb21c7'
     antlr "org.antlr:antlr4:4.7.1"
     testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
 }
