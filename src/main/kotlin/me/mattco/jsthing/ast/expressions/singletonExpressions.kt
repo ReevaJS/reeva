@@ -6,9 +6,17 @@ import me.mattco.jsthing.utils.stringBuilder
 
 class MetaPropertyNode(val metaProperty: ExpressionNode) : ExpressionNode(listOf(metaProperty))
 
-object ImportMetaNode : ExpressionNode()
+object ImportMetaNode : ExpressionNode() {
+    override fun assignmentTargetType(): AssignmentTargetType {
+        return AssignmentTargetType.Invalid
+    }
+}
 
-object NewTargetNode : ExpressionNode()
+object NewTargetNode : ExpressionNode() {
+    override fun assignmentTargetType(): AssignmentTargetType {
+        return AssignmentTargetType.Invalid
+    }
+}
 
 object TrueNode : ExpressionNode()
 

@@ -638,10 +638,13 @@ class Parser(text: String) {
         return null
     }
 
-    private fun parseLeftHandSideExpression(suffixes: Set<Suffix>): ExpressionNode? {
-        return parseCallExpression(suffixes) ?:
+    private fun parseLeftHandSideExpression(suffixes: Set<Suffix>): LeftHandSideExpressionNode? {
+        val expression = parseCallExpression(suffixes) ?:
             parseNewExpression(suffixes) ?:
-            parseOptionalExpression(suffixes)
+            parseOptionalExpression(suffixes) ?:
+            return null
+
+        return LeftHandSideExpressionNode(expression)
     }
 
     private fun parseNewExpression(suffixes: Set<Suffix>): ExpressionNode? {
@@ -822,7 +825,7 @@ class Parser(text: String) {
         CallExpression,
     }
 
-    private fun parseCoverCallExpressionAndAsyncArrowHead(suffixes: Set<Suffix>, context: CCEAARHContext): ExpressionNode? {
+    private fun parseCoverCallExpressionAndAsyncArrowHead(suffixes: Set<Suffix>, context: CCEAARHContext): CCEAAAHNode? {
         return when (context) {
             CCEAARHContext.CallExpression -> {
                 val memberExpr = parseMemberExpression(suffixes) ?: return null
@@ -831,7 +834,7 @@ class Parser(text: String) {
                     loadState()
                     return null
                 }
-                return CallExpressionNode(memberExpr, args)
+                return CCEAAAHNode(CallExpressionNode(memberExpr, args))
             }
         }
     }
@@ -992,7 +995,7 @@ class Parser(text: String) {
     private fun parseCoverParenthesizedExpressionAndArrowParameterList(
         suffixes: Set<Suffix>,
         context: CPEAAPLContext
-    ): CPEAAPL? {
+    ): CPEAAPLNode? {
         // TODO
         return null
     }

@@ -2,7 +2,11 @@ package me.mattco.jsthing.ast.expressions
 
 import me.mattco.jsthing.utils.stringBuilder
 
-open class BinaryExpression(val lhs: ExpressionNode, val rhs: ExpressionNode) : ExpressionNode(listOf(lhs, rhs))
+open class BinaryExpression(val lhs: ExpressionNode, val rhs: ExpressionNode) : ExpressionNode(listOf(lhs, rhs)) {
+    override fun assignmentTargetType(): AssignmentTargetType {
+        return AssignmentTargetType.Invalid
+    }
+}
 
 class AdditiveExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode, val isSubtraction: Boolean) : BinaryExpression(lhs, rhs)
 

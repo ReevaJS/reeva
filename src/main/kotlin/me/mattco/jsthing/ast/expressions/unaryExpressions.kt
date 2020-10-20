@@ -3,6 +3,10 @@ package me.mattco.jsthing.ast.expressions
 import me.mattco.jsthing.utils.stringBuilder
 
 class UnaryExpressionNode(val node: ExpressionNode, val op: Operator) : ExpressionNode(listOf(node)) {
+    override fun assignmentTargetType(): AssignmentTargetType {
+        return AssignmentTargetType.Invalid
+    }
+
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
         appendName()
@@ -24,6 +28,10 @@ class UnaryExpressionNode(val node: ExpressionNode, val op: Operator) : Expressi
 }
 
 class UpdateExpressionNode(val target: ExpressionNode, val isIncrement: Boolean, val isPostfix: Boolean) : ExpressionNode(listOf(target)) {
+    override fun assignmentTargetType(): AssignmentTargetType {
+        return AssignmentTargetType.Invalid
+    }
+
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
         appendName()
