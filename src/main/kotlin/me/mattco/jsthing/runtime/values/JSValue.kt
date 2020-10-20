@@ -8,7 +8,7 @@ import me.mattco.jsthing.utils.ecmaAssert
 import me.mattco.jsthing.utils.expect
 import me.mattco.jsthing.utils.unreachable
 
-abstract class JSValue {
+abstract class JSValue : Ref {
     val type by lazy {
         when (this) {
             is JSEmpty -> Type.Empty
