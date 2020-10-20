@@ -1,16 +1,9 @@
 package me.mattco.jsthing.ast.expressions
 
-import me.mattco.jsthing.ast.ASTNode
 import me.mattco.jsthing.ast.ExpressionNode
 import me.mattco.jsthing.ast.NodeBase
 
-open class BinaryExpression(val lhs: ExpressionNode, val rhs: ExpressionNode) : NodeBase(listOf(lhs, rhs)), ExpressionNode {
-    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
-        return ASTNode.AssignmentTargetType.Invalid
-    }
-
-    override fun isFunctionDefinition() = false
-}
+open class BinaryExpression(val lhs: ExpressionNode, val rhs: ExpressionNode) : NodeBase(listOf(lhs, rhs)), ExpressionNode
 
 class AdditiveExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode, val isSubtraction: Boolean) : BinaryExpression(lhs, rhs)
 

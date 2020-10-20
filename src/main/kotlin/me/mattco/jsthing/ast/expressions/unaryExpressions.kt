@@ -7,12 +7,6 @@ import me.mattco.jsthing.ast.NodeBase
 import me.mattco.jsthing.utils.stringBuilder
 
 class UnaryExpressionNode(val node: ExpressionNode, val op: Operator) : NodeBase(listOf(node)), ExpressionNode {
-    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
-        return ASTNode.AssignmentTargetType.Invalid
-    }
-
-    override fun isFunctionDefinition() = false
-
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
         appendName()
@@ -34,12 +28,6 @@ class UnaryExpressionNode(val node: ExpressionNode, val op: Operator) : NodeBase
 }
 
 class UpdateExpressionNode(val target: ExpressionNode, val isIncrement: Boolean, val isPostfix: Boolean) : NodeBase(listOf(target)), ExpressionNode {
-    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
-        return ASTNode.AssignmentTargetType.Invalid
-    }
-
-    override fun isFunctionDefinition() = false
-
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
         appendName()

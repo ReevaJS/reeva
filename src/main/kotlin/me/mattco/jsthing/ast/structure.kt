@@ -274,8 +274,8 @@ interface ASTNode {
 interface LabelledItemNode : ASTNode
 interface StatementListItemNode : ASTNode
 interface StatementNode : ASTNode, LabelledItemNode, StatementListItemNode // TODO: This might cause problems
-interface DeclarationNode : StatementNode
 interface HoistableDeclarationNode : DeclarationNode
+interface DeclarationNode : StatementNode
 interface BreakableStatement : StatementNode
 
 interface ExpressionNode : ASTNode

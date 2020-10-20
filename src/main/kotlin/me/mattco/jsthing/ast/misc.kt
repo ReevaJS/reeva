@@ -40,13 +40,9 @@ class CPEAAPLNode(
         }
     }
 
-    override fun isDestructuring() = false
-
     override fun isFunctionDefinition(): Boolean {
         return when (context) {
             Parser.CPEAAPLContext.PrimaryExpression -> node.isFunctionDefinition()
         }
     }
-
-    override fun isIdentifierRef() = false
 }

@@ -6,10 +6,6 @@ import me.mattco.jsthing.ast.ASTNode.Companion.makeIndent
 import me.mattco.jsthing.utils.stringBuilder
 
 class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val op: Operator) : NodeBase(listOf(lhs, rhs)), ExpressionNode {
-    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
-        return ASTNode.AssignmentTargetType.Invalid
-    }
-
     enum class Operator(val symbol: String) {
         Equals("="),
         Multiply("*="),
@@ -53,11 +49,7 @@ class CallExpressionNode(val target: ExpressionNode, val arguments: ArgumentsNod
 // a much better name. It is not clear from the name "ExpressionNode"
 // that the inner expression are separated by comma operators, and only
 // the last one should be returned.
-class CommaExpressionNode(val expressions: List<ExpressionNode>) : NodeBase(expressions), ExpressionNode {
-    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
-        return ASTNode.AssignmentTargetType.Invalid
-    }
-}
+class CommaExpressionNode(val expressions: List<ExpressionNode>) : NodeBase(expressions), ExpressionNode
 
 class ConditionalExpressionNode(
     val predicate: ExpressionNode,
@@ -69,49 +61,15 @@ class ConditionalExpressionNode(
     }
 }
 
-//class LeftHandSideExpressionNode(val expression: ExpressionNode) : ExpressionNode(listOf(expression)) {
-//    override fun assignmentTargetType(): AssignmentTargetType {
-//        if (expression is OptionalExpressionNode)
-//            return AssignmentTargetType.Invalid
-//        TODO()
-//    }
-//
-//    override fun isDestructuring(): Boolean {
-//        if (expression is CallExpressionNode || expression is OptionalExpressionNode)
-//            return false
-//        return super.isDestructuring()
-//    }
-//
-//    override fun isFunctionDefinition(): Boolean {
-//        if (expression is CallExpressionNode || expression is OptionalExpressionNode)
-//            return false
-//        return super.isDestructuring()
-//    }
-//
-//    override fun isIdentifierRef(): Boolean {
-//        if (expression is CallExpressionNode || expression is OptionalExpressionNode)
-//            return false
-//        return super.isIdentifierRef()
-//    }
-//}
-
 class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val type: Type) : NodeBase(listOf(lhs, rhs)), LeftHandSideExpressionNode {
-    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
-        return when (type) {
-            Type.Computed, Type.NonComputed -> ASTNode.AssignmentTargetType.Simple
-            else -> ASTNode.AssignmentTargetType.Invalid
-        }
+    override fun assignmentTargetType() = when (type) {
+        Type.Computed, Type.NonComputed -> ASTNode.AssignmentTargetType.Simple
+        else -> ASTNode.AssignmentTargetType.Invalid
     }
 
-    override fun contains(nodeName: String): Boolean {
-        return lhs.contains(nodeName)
-    }
-
-    override fun isDestructuring() = false
-
-    override fun isFunctionDefinition() = false
-
-    override fun isIdentifierRef() = false
+    override fun contains(nodeName: String) = if (type == Type.NonComputed) {
+        lhs.contains(nodeName)
+    } else super<NodeBase>.contains(nodeName)
 
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
@@ -132,30 +90,14 @@ class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val
     }
 }
 
-class NewExpressionNode(val target: ExpressionNode) : NodeBase(listOf(target)), LeftHandSideExpressionNode {
-    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
-        return ASTNode.AssignmentTargetType.Invalid
-    }
-
-    override fun isDestructuring() = false
-
-    override fun isFunctionDefinition() = false
-
-    override fun isIdentifierRef() = false
-}
+class NewExpressionNode(val target: ExpressionNode) : NodeBase(listOf(target)), LeftHandSideExpressionNode
 
 class OptionalExpressionNode : NodeBase(), LeftHandSideExpressionNode
 
 class SuperPropertyNode(val target: ExpressionNode, val computed: Boolean) : NodeBase(listOf(target)), LeftHandSideExpressionNode {
-    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
-        return ASTNode.AssignmentTargetType.Simple
-    }
+    override fun assignmentTargetType() = ASTNode.AssignmentTargetType.Simple
 
-    override fun contains(nodeName: String): Boolean {
-        return nodeName == "super"
-    }
-
-    override fun isIdentifierRef() = false
+    override fun contains(nodeName: String) = nodeName == "super"
 
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
@@ -167,17 +109,9 @@ class SuperPropertyNode(val target: ExpressionNode, val computed: Boolean) : Nod
     }
 }
 
-class SuperCallNode(val arguments: ArgumentsNode) : NodeBase(listOf(arguments)), ExpressionNode {
-    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
-        return ASTNode.AssignmentTargetType.Invalid
-    }
-}
+class SuperCallNode(val arguments: ArgumentsNode) : NodeBase(listOf(arguments)), ExpressionNode
 
-class ImportCallNode(val expression: ExpressionNode) : NodeBase(listOf(expression)), ExpressionNode {
-    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
-        return ASTNode.AssignmentTargetType.Invalid
-    }
-}
+class ImportCallNode(val expression: ExpressionNode) : NodeBase(listOf(expression)), ExpressionNode
 
 class YieldExpressionNode(
     val target: ExpressionNode?,

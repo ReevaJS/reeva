@@ -7,11 +7,6 @@ import me.mattco.jsthing.utils.stringBuilder
 class ArgumentsNode(private val _argumentsList: ArgumentsListNode) : NodeBase(listOf(_argumentsList)), ExpressionNode {
     val arguments: List<ArgumentListEntry>
         get() = _argumentsList.argumentsList
-
-    override fun dump(indent: Int) = stringBuilder {
-        dumpSelf(indent)
-        _argumentsList.dump(indent + 1)
-    }
 }
 
 class ArgumentsListNode(val argumentsList: List<ArgumentListEntry>) : NodeBase(argumentsList) {
