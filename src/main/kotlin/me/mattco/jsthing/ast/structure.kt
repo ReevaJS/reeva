@@ -3,10 +3,15 @@ package me.mattco.jsthing.ast
 import me.mattco.jsthing.utils.newline
 import me.mattco.jsthing.utils.stringBuilder
 
-abstract class ASTNode(private val children: List<ASTNode> = emptyList()) {
-    val name: String by lazy { this::class.java.simpleName }
+open class NodeBase(override val children: List<ASTNode> = emptyList()) : ASTNode {
+    override val name: String by lazy { this::class.java.simpleName }
+}
 
-    open fun dump(indent: Int = 0): String = stringBuilder {
+interface ASTNode {
+    val name: String
+    val children: List<ASTNode>
+
+    fun dump(indent: Int = 0): String = stringBuilder {
         dumpSelf(indent)
         children.forEach {
             append(it.dump(indent + 1))
@@ -50,26 +55,26 @@ abstract class ASTNode(private val children: List<ASTNode> = emptyList()) {
         Invalid
     }
 
-    open fun assignmentTargetType(): AssignmentTargetType {
+    fun assignmentTargetType(): AssignmentTargetType {
         if (children.size != 1)
             return AssignmentTargetType.Invalid
         return children[0].assignmentTargetType()
     }
 
-    open fun boundNames(): List<String> {
+    fun boundNames(): List<String> {
         if (children.size != 1)
             return emptyList()
         return children[0].boundNames()
     }
 
-    open fun computedPropertyContains(symbol: ASTNode): Boolean {
+    fun computedPropertyContains(symbol: NodeBase): Boolean {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "computedPropertyContains, and cannot be delegated")
         return children[0].computedPropertyContains(symbol)
     }
 
-    open fun contains(nodeName: String): Boolean {
+    fun contains(nodeName: String): Boolean {
         // This is the only SS that has a default implementation for every Nonterminal
         for (child in children) {
             if (child.name == nodeName)
@@ -81,188 +86,208 @@ abstract class ASTNode(private val children: List<ASTNode> = emptyList()) {
         return false
     }
 
-    open fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
+    fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         if (children.size != 1)
             return false
         return children[0].containsDuplicateLabels(labelSet)
     }
 
-    open fun containsExpression(): Boolean {
+    fun containsExpression(): Boolean {
         if (children.size != 1)
             return false
         return children[0].containsExpression()
     }
 
-    open fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
+    fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
         if (children.size != 1)
             return false
         return children[0].containsUndefinedBreakTarget(labelSet)
     }
 
-    open fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
+    fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
         if (children.size != 1)
             return false
         return children[0].containsUndefinedContinueTarget(iterationSet, labelSet)
     }
 
-    open fun coveredCallExpression(): ASTNode {
+    fun coveredCallExpression(): NodeBase {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "coveredCallExpression, and cannot be delegated")
         return children[0].coveredCallExpression()
     }
 
-    open fun coveredParenthesizedExpression(): ASTNode {
+    fun coveredParenthesizedExpression(): NodeBase {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "coveredParenthesizedExpression, and cannot be delegated")
         return children[0].coveredParenthesizedExpression()
     }
 
-    open fun declarationPart(): ASTNode {
+    fun declarationPart(): NodeBase {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "declarationPart, and cannot be delegated")
         return children[0].declarationPart()
     }
 
-    open fun hasInitializer(): Boolean {
+    fun hasInitializer(): Boolean {
         if (children.size != 1)
             return false
         return children[0].hasInitializer()
     }
 
-    open fun hasName(): Boolean {
+    fun hasName(): Boolean {
         if (children.size != 1)
             return false
         return children[0].hasName()
     }
 
-    open fun isComputedPropertyKey(): Boolean {
+    fun isComputedPropertyKey(): Boolean {
         if (children.size != 1)
             return false
         return children[0].isComputedPropertyKey()
     }
 
-    open fun isConstantDeclaration(): Boolean {
+    fun isConstantDeclaration(): Boolean {
         if (children.size != 1)
             return false
         return children[0].isConstantDeclaration()
     }
 
-    open fun isDestructuring(): Boolean {
+    fun isDestructuring(): Boolean {
         if (children.size != 1)
             return false
         return children[0].isDestructuring()
     }
 
-    open fun isFunctionDefinition(): Boolean {
+    fun isFunctionDefinition(): Boolean {
         if (children.size != 1)
             return false
         return children[0].isFunctionDefinition()
     }
 
-    open fun isIdentifierRef(): Boolean {
+    fun isIdentifierRef(): Boolean {
         if (children.size != 1)
             return false
         return children[0].isIdentifierRef()
     }
 
-    open fun isLabelledFunction(): Boolean {
+    fun isLabelledFunction(): Boolean {
         if (children.size != 1)
             return false
         return children[0].isLabelledFunction()
     }
 
-    open fun isSimpleParameterList(): Boolean {
+    fun isSimpleParameterList(): Boolean {
         if (children.size != 1)
             return false
         return children[0].isSimpleParameterList()
     }
 
-    open fun isStrict(): Boolean {
+    fun isStrict(): Boolean {
         if (children.size != 1)
             return false
         return children[0].isStrict()
     }
 
-    open fun isValidRegularExpressionLiteral(): Boolean {
+    fun isValidRegularExpressionLiteral(): Boolean {
         if (children.size != 1)
             return false
         return children[0].isValidRegularExpressionLiteral()
     }
 
-    open fun lexicallyDeclaredNames(): List<String> {
+    fun lexicallyDeclaredNames(): List<String> {
         if (children.size != 1)
             return emptyList()
         return children[0].lexicallyDeclaredNames()
     }
 
-    open fun lexicallyScopedDeclarations(): List<ASTNode> {
+    fun lexicallyScopedDeclarations(): List<NodeBase> {
         if (children.size != 1)
             return emptyList()
         return children[0].lexicallyScopedDeclarations()
     }
 
-    open fun propertyNameList(): List<String> {
+    fun propertyNameList(): List<String> {
         if (children.size != 1)
             return emptyList()
         return children[0].propertyNameList()
     }
 
-    open fun propName(): String? {
+    fun propName(): String? {
         if (children.size != 1)
             return null
         return children[0].propName()
     }
 
-    open fun stringValue(): String {
+    fun stringValue(): String {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "String, and cannot be delegated")
         return children[0].stringValue()
     }
 
-    open fun templateStrings(): List<String> {
+    fun templateStrings(): List<String> {
         if (children.size != 1)
             return emptyList()
         return children[0].templateStrings()
     }
 
-    open fun topLevelLexicallyDeclaredNames(): List<String> {
+    fun topLevelLexicallyDeclaredNames(): List<String> {
         if (children.size != 1)
             return emptyList()
         return children[0].topLevelLexicallyDeclaredNames()
     }
 
-    open fun topLevelLexicallyScopedDeclarations(): List<ASTNode> {
+    fun topLevelLexicallyScopedDeclarations(): List<NodeBase> {
         if (children.size != 1)
             return emptyList()
         return children[0].topLevelLexicallyScopedDeclarations()
     }
 
-    open fun topLevelVarDeclaredNames(): List<String> {
+    fun topLevelVarDeclaredNames(): List<String> {
         if (children.size != 1)
             return emptyList()
         return children[0].topLevelVarDeclaredNames()
     }
 
-    open fun topLevelVarScopedDeclarations(): List<ASTNode> {
+    fun topLevelVarScopedDeclarations(): List<NodeBase> {
         if (children.size != 1)
             return emptyList()
         return children[0].topLevelVarScopedDeclarations()
     }
 
-    open fun varDeclaredNames(): List<String> {
+    fun varDeclaredNames(): List<String> {
         if (children.size != 1)
             return emptyList()
         return children[0].varDeclaredNames()
     }
 
-    open fun varScopedDeclarations(): List<ASTNode> {
+    fun varScopedDeclarations(): List<NodeBase> {
         if (children.size != 1)
             return emptyList()
         return children[0].varScopedDeclarations()
     }
 }
 
+interface LabelledItemNode : ASTNode
+interface StatementListItemNode : ASTNode
+interface StatementNode : ASTNode, LabelledItemNode, StatementListItemNode // TODO: This might cause problems
+interface DeclarationNode : StatementNode
+interface HoistableDeclarationNode : DeclarationNode
+interface BreakableStatement : StatementNode
+
+interface ExpressionNode : ASTNode
+interface LeftHandSideExpressionNode : ExpressionNode
+interface ShortCircuitExpressionNode : ExpressionNode
+interface MetaPropertyNode : LeftHandSideExpressionNode
+interface PrimaryExpressionNode : ExpressionNode
+interface LiteralNode : PrimaryExpressionNode
+
+interface AssignmentPatternNode : ASTNode
+interface ForBindingNode : ASTNode
+interface PropertyNameNode : ASTNode
+interface LiteralPropertyNameNode : ASTNode
+interface TemplateLiteralNode : ASTNode
+interface CatchParameterNode : ASTNode

@@ -1,11 +1,12 @@
 package me.mattco.jsthing.ast.statements
 
-import me.mattco.jsthing.ast.ASTNode
+import me.mattco.jsthing.ast.NodeBase
 import me.mattco.jsthing.ast.BindingIdentifierNode
 import me.mattco.jsthing.ast.InitializerNode
+import me.mattco.jsthing.ast.StatementNode
 import me.mattco.jsthing.utils.stringBuilder
 
-class LexicalDeclarationNode(val isConst: Boolean, val bindingList: BindingListNode) : StatementNode(listOf(bindingList)) {
+class LexicalDeclarationNode(val isConst: Boolean, val bindingList: BindingListNode) : NodeBase(listOf(bindingList)), StatementNode {
     override fun boundNames() = bindingList.boundNames()
 
     override fun isConstantDeclaration(): Boolean {
@@ -13,22 +14,22 @@ class LexicalDeclarationNode(val isConst: Boolean, val bindingList: BindingListN
     }
 }
 
-class BindingListNode(val lexicalBindings: List<LexicalBindingNode>) : StatementNode(lexicalBindings) {
+class BindingListNode(val lexicalBindings: List<LexicalBindingNode>) : NodeBase(lexicalBindings), StatementNode {
     override fun boundNames(): List<String> {
-        return lexicalBindings.flatMap(ASTNode::boundNames)
+        return lexicalBindings.flatMap(NodeBase::boundNames)
     }
 }
 
 class LexicalBindingNode(
     val identifier: BindingIdentifierNode,
     val initializer: InitializerNode?
-) : StatementNode(listOfNotNull(identifier, initializer)) {
+) : NodeBase(listOfNotNull(identifier, initializer)), StatementNode {
     override fun boundNames(): List<String> {
         return identifier.boundNames()
     }
 }
 
-class VariableStatementNode(val declarations: VariableDeclarationList) : StatementNode(listOf(declarations)) {
+class VariableStatementNode(val declarations: VariableDeclarationList) : NodeBase(listOf(declarations)), StatementNode {
     override fun containsDuplicateLabels(labelSet: Set<String>) = false
 
     override fun containsUndefinedBreakTarget(labelSet: Set<String>) = false
@@ -40,12 +41,12 @@ class VariableStatementNode(val declarations: VariableDeclarationList) : Stateme
     }
 }
 
-class VariableDeclarationList(val declarations: List<VariableDeclarationNode>) : StatementNode(declarations) {
+class VariableDeclarationList(val declarations: List<VariableDeclarationNode>) : NodeBase(declarations), StatementNode {
     override fun boundNames(): List<String> {
-        return declarations.flatMap(ASTNode::boundNames)
+        return declarations.flatMap(NodeBase::boundNames)
     }
 
-    override fun varScopedDeclarations(): List<ASTNode> {
+    override fun varScopedDeclarations(): List<NodeBase> {
         return declarations
     }
 }
@@ -53,7 +54,7 @@ class VariableDeclarationList(val declarations: List<VariableDeclarationNode>) :
 class VariableDeclarationNode(
     val identifier: BindingIdentifierNode,
     val initializer: InitializerNode?
-) : StatementNode(listOfNotNull(identifier, initializer)) {
+) : NodeBase(listOfNotNull(identifier, initializer)), StatementNode {
     override fun boundNames(): List<String> {
         return identifier.boundNames()
     }

@@ -1,21 +1,52 @@
 package me.mattco.jsthing.ast
 
 import me.mattco.jsthing.ast.expressions.CallExpressionNode
-import me.mattco.jsthing.ast.expressions.ExpressionNode
-import me.mattco.jsthing.utils.stringBuilder
+import me.mattco.jsthing.ast.expressions.ParenthesizedExpressionNode
+import me.mattco.jsthing.parser.Parser
+import me.mattco.jsthing.utils.expect
 
-class InitializerNode(val node: ExpressionNode) : ASTNode(listOf(node))
+class InitializerNode(val node: ExpressionNode) : NodeBase(listOf(node))
 
-class SpreadElementNode(val expression: ExpressionNode) : ASTNode(listOf(expression))
+class SpreadElementNode(val expression: ExpressionNode) : NodeBase(listOf(expression))
 
 // CoverCallExpressionAndAsyncArrowHead
-class CCEAAAHNode(val node: ExpressionNode) : ExpressionNode(listOf(node)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
+class CCEAAAHNode(val node: ExpressionNode) : NodeBase(listOf(node)), ExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
         if (node is CallExpressionNode)
-            return AssignmentTargetType.Invalid
+            return ASTNode.AssignmentTargetType.Invalid
         TODO()
     }
 }
 
 // CoverParenthesizedExpressionAndArrowParameterList
-class CPEAAPLNode(val node: ExpressionNode) : ExpressionNode(listOf(node))
+class CPEAAPLNode(
+    val node: ExpressionNode,
+    val context: Parser.CPEAAPLContext
+) : NodeBase(listOf(node)), PrimaryExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
+        return when (context) {
+            Parser.CPEAAPLContext.PrimaryExpression -> {
+                expect(node is ParenthesizedExpressionNode)
+                node.target.assignmentTargetType()
+            }
+        }
+    }
+
+    override fun hasName(): Boolean {
+        return when (context) {
+            Parser.CPEAAPLContext.PrimaryExpression -> if (node.isFunctionDefinition()) {
+                node.hasName()
+            } else false
+        }
+    }
+
+    override fun isDestructuring() = false
+
+    override fun isFunctionDefinition(): Boolean {
+        return when (context) {
+            Parser.CPEAAPLContext.PrimaryExpression -> node.isFunctionDefinition()
+        }
+    }
+
+    override fun isIdentifierRef() = false
+}

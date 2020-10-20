@@ -1,10 +1,12 @@
 package me.mattco.jsthing.ast.expressions
 
-import me.mattco.jsthing.utils.stringBuilder
+import me.mattco.jsthing.ast.ASTNode
+import me.mattco.jsthing.ast.ExpressionNode
+import me.mattco.jsthing.ast.NodeBase
 
-open class BinaryExpression(val lhs: ExpressionNode, val rhs: ExpressionNode) : ExpressionNode(listOf(lhs, rhs)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
-        return AssignmentTargetType.Invalid
+open class BinaryExpression(val lhs: ExpressionNode, val rhs: ExpressionNode) : NodeBase(listOf(lhs, rhs)), ExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
+        return ASTNode.AssignmentTargetType.Invalid
     }
 
     override fun isFunctionDefinition() = false
@@ -21,11 +23,11 @@ class BitwiseXORExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : Binar
 class CoalesceExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs)
 
 class EqualityExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode, val op: Operator) : BinaryExpression(lhs, rhs) {
-    enum class Operator {
-        StrictEquality,
-        StrictInequality,
-        NonstrictEquality,
-        NonstrictInequality,
+    enum class Operator(val symbol: String) {
+        StrictEquality("==="),
+        StrictInequality("!=="),
+        NonstrictEquality("=="),
+        NonstrictInequality("!="),
     }
 }
 
@@ -36,28 +38,28 @@ class LogicalANDExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : Binar
 class LogicalORExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs)
 
 class MultiplicativeExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode, val op: Operator) : BinaryExpression(lhs, rhs) {
-    enum class Operator {
-        Multiply,
-        Divide,
-        Modulo,
+    enum class Operator(val symbol: String) {
+        Multiply("*"),
+        Divide("/"),
+        Modulo("%"),
     }
 }
 
 class RelationalExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode, val op: Operator) : BinaryExpression(lhs, rhs) {
-    enum class Operator {
-        LessThan,
-        GreaterThan,
-        LessThanEquals,
-        GreaterThanEquals,
-        Instanceof,
-        In,
+    enum class Operator(val symbol: String) {
+        LessThan("<"),
+        GreaterThan(">"),
+        LessThanEquals("<="),
+        GreaterThanEquals(">="),
+        Instanceof("instanceof"),
+        In("in"),
     }
 }
 
 class ShiftExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode, val op: Operator) : BinaryExpression(lhs, rhs) {
-    enum class Operator {
-        ShiftLeft,
-        ShiftRight,
-        UnsignedShiftRight
+    enum class Operator(val symbol: String) {
+        ShiftLeft("<<"),
+        ShiftRight(">>"),
+        UnsignedShiftRight(">>>")
     }
 }

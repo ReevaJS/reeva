@@ -2,12 +2,12 @@ package me.mattco.jsthing.ast
 
 import me.mattco.jsthing.ast.statements.StatementListNode
 
-class ScriptNode(val statementList: StatementListNode) : ASTNode(listOf(statementList)) {
+class ScriptNode(val statementList: StatementListNode) : NodeBase(listOf(statementList)) {
     override fun lexicallyDeclaredNames(): List<String> {
         return statementList.topLevelLexicallyDeclaredNames()
     }
 
-    override fun lexicallyScopedDeclarations(): List<ASTNode> {
+    override fun lexicallyScopedDeclarations(): List<NodeBase> {
         return statementList.topLevelLexicallyScopedDeclarations()
     }
 
@@ -15,7 +15,7 @@ class ScriptNode(val statementList: StatementListNode) : ASTNode(listOf(statemen
         return statementList.topLevelVarDeclaredNames()
     }
 
-    override fun varScopedDeclarations(): List<ASTNode> {
+    override fun varScopedDeclarations(): List<NodeBase> {
         return statementList.topLevelVarScopedDeclarations()
     }
 }

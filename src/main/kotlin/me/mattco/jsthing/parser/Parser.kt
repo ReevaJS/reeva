@@ -40,10 +40,10 @@ class Parser(text: String) {
 
     fun parseScript(): ScriptNode {
         goalSymbol = GoalSymbol.Script
-        val statementList = parseStatementList(emptySet())
+        val statementList = parseStatementList(emptySet()) ?: StatementListNode(emptyList())
         if (!isDone)
             unexpected("token ${token.value}")
-        return ScriptNode(statementList?.statements ?: emptyList())
+        return ScriptNode(statementList)
     }
 
     fun parseModule() {
@@ -56,7 +56,7 @@ class Parser(text: String) {
     }
 
     private fun parseStatementList(suffixes: Set<Suffix>): StatementListNode? {
-        val statements = mutableListOf<StatementListItem>()
+        val statements = mutableListOf<StatementListItemNode>()
 
         var statement = parseStatementListItem(suffixes) ?: return null
         statements.add(statement)
@@ -69,8 +69,8 @@ class Parser(text: String) {
         return StatementListNode(statements)
     }
 
-    private fun parseStatementListItem(suffixes: Set<Suffix>): StatementListItem? {
-        return (parseStatement(suffixes) ?: parseDeclaration(suffixes - Suffix.Return))?.let(::StatementListItem)
+    private fun parseStatementListItem(suffixes: Set<Suffix>): StatementListItemNode? {
+        return parseStatement(suffixes) ?: parseDeclaration(suffixes - Suffix.Return)
     }
 
     private fun parseStatement(suffixes: Set<Suffix>): StatementNode? {
@@ -271,7 +271,7 @@ class Parser(text: String) {
                 consume(TokenType.CloseParen)
                 automaticSemicolonInsertion()
 
-                return DoWhileNode(condition, statement)
+                return DoWhileStatementNode(condition, statement)
             }
             TokenType.While -> {
                 consume()
@@ -290,7 +290,7 @@ class Parser(text: String) {
                     return null
                 }
 
-                return WhileNode(expression, statement)
+                return WhileStatementNode(expression, statement)
             }
             TokenType.For -> {
                 consume()
@@ -417,7 +417,7 @@ class Parser(text: String) {
             consume()
             return null
         }
-        return ForInNode(ExpressionStatementNode(initializer), expression)
+        return ForInNode(ExpressionStatementNode(initializer), expression, body)
     }
 
     private fun parseForStatementType5(suffixes: Set<Suffix>): StatementNode? {
@@ -638,13 +638,10 @@ class Parser(text: String) {
         return null
     }
 
-    private fun parseLeftHandSideExpression(suffixes: Set<Suffix>): LeftHandSideExpressionNode? {
-        val expression = parseCallExpression(suffixes) ?:
+    private fun parseLeftHandSideExpression(suffixes: Set<Suffix>): ExpressionNode? {
+        return parseCallExpression(suffixes) ?:
             parseNewExpression(suffixes) ?:
-            parseOptionalExpression(suffixes) ?:
-            return null
-
-        return LeftHandSideExpressionNode(expression)
+            parseOptionalExpression(suffixes)
     }
 
     private fun parseNewExpression(suffixes: Set<Suffix>): ExpressionNode? {
@@ -768,7 +765,7 @@ class Parser(text: String) {
                     return null
                 }
                 consume()
-                MetaPropertyNode(NewTargetNode)
+                NewTargetNode
             }
             TokenType.Import -> {
                 // TODO: Should we save? Or should we error if we don't find a period
@@ -784,7 +781,7 @@ class Parser(text: String) {
                     return null
                 }
                 consume()
-                MetaPropertyNode(ImportMetaNode)
+                ImportMetaNode
             }
             else -> null
         }
@@ -890,10 +887,10 @@ class Parser(text: String) {
     private fun parsePrimaryExpression(suffixes: Set<Suffix>): PrimaryExpressionNode? {
         if (tokenType == TokenType.This) {
             consume()
-            return PrimaryExpressionNode(ThisNode)
+            return ThisNode
         }
 
-        val expression = parseIdentifierReference(suffixes) ?:
+        return parseIdentifierReference(suffixes) ?:
             parseLiteral() ?:
             parseArrayLiteral(suffixes) ?:
             parseObjectLiteral(suffixes) ?:
@@ -904,24 +901,21 @@ class Parser(text: String) {
             parseAsyncGeneratorExpression(suffixes) ?:
             parseRegularExpressionLiteral(suffixes) ?:
             parseTemplateLiteral(suffixes) ?:
-            parseCoverParenthesizedExpressionAndArrowParameterList(suffixes, CPEAAPLContext.PrimaryExpression) ?:
-            return null
-
-        return PrimaryExpressionNode(expression)
+            parseCoverParenthesizedExpressionAndArrowParameterList(suffixes, CPEAAPLContext.PrimaryExpression)
     }
 
-    private fun parseLiteral(): ExpressionNode? {
+    private fun parseLiteral(): LiteralNode? {
         return parseNullLiteral() ?:
             parseBooleanLiteral() ?:
             parseNumericLiteral() ?:
             parseStringLiteral()
     }
 
-    private fun parseNullLiteral(): ExpressionNode? {
+    private fun parseNullLiteral(): LiteralNode? {
         return if (tokenType == TokenType.NullLiteral) NullNode else null
     }
 
-    private fun parseBooleanLiteral(): ExpressionNode? {
+    private fun parseBooleanLiteral(): LiteralNode? {
         return when (tokenType) {
             TokenType.True -> TrueNode
             TokenType.False -> FalseNode
@@ -931,59 +925,59 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseNumericLiteral(): ExpressionNode? {
+    private fun parseNumericLiteral(): LiteralNode? {
         return if (tokenType == TokenType.NumericLiteral) {
             NumericLiteralNode(consume().asDouble())
         } else null
     }
 
-    private fun parseStringLiteral(): ExpressionNode? {
+    private fun parseStringLiteral(): LiteralNode? {
         return if (tokenType == TokenType.StringLiteral) {
             StringLiteralNode(consume().asString())
         } else null
     }
 
-    private fun parseArrayLiteral(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseArrayLiteral(suffixes: Set<Suffix>): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseObjectLiteral(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseObjectLiteral(suffixes: Set<Suffix>): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseFunctionExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseFunctionExpression(suffixes: Set<Suffix>): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseClassExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseClassExpression(suffixes: Set<Suffix>): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseGeneratorExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseGeneratorExpression(suffixes: Set<Suffix>): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseAsyncFunctionExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseAsyncFunctionExpression(suffixes: Set<Suffix>): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseAsyncGeneratorExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseAsyncGeneratorExpression(suffixes: Set<Suffix>): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseRegularExpressionLiteral(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseRegularExpressionLiteral(suffixes: Set<Suffix>): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseTemplateLiteral(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseTemplateLiteral(suffixes: Set<Suffix>): PrimaryExpressionNode? {
         // TODO
         return null
     }

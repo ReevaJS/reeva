@@ -1,64 +1,16 @@
 package me.mattco.jsthing.ast.expressions
 
-import me.mattco.jsthing.ast.ASTNode
-import me.mattco.jsthing.ast.ArgumentsNode
-import me.mattco.jsthing.ast.CPEAAPLNode
-import me.mattco.jsthing.ast.IdentifierReferenceNode
-import me.mattco.jsthing.ast.literals.ArrayLiteralNode
-import me.mattco.jsthing.ast.literals.LiteralNode
-import me.mattco.jsthing.ast.literals.ObjectLiteralNode
-import me.mattco.jsthing.ast.literals.ThisNode
-import me.mattco.jsthing.utils.expect
+import me.mattco.jsthing.ast.*
+import me.mattco.jsthing.ast.ASTNode.Companion.appendIndent
+import me.mattco.jsthing.ast.ASTNode.Companion.makeIndent
 import me.mattco.jsthing.utils.stringBuilder
 
-class PrimaryExpressionNode(val expression: ExpressionNode) : ExpressionNode(listOf(expression)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
-        if (expression !is CPEAAPLNode)
-            return AssignmentTargetType.Invalid
-        expect(expression.node is ParenthesizedExpression)
-        return expression.node.target.assignmentTargetType()
+class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val op: Operator) : NodeBase(listOf(lhs, rhs)), ExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
+        return ASTNode.AssignmentTargetType.Invalid
     }
 
-    override fun hasName(): Boolean {
-        if (expression !is CPEAAPLNode)
-            return super.hasName()
-        if (!expression.isFunctionDefinition())
-            return false
-        return expression.hasName()
-    }
-
-    override fun isDestructuring(): Boolean {
-        if (expression is ArrayLiteralNode || expression is ObjectLiteralNode)
-            return false
-        return super.isDestructuring()
-    }
-
-    override fun isFunctionDefinition(): Boolean {
-        return when (expression) {
-            is ThisNode,
-            is IdentifierReferenceNode,
-            is LiteralNode,
-            is ArrayLiteralNode,
-            is ObjectLiteralNode,
-            // is RegularExpressionLiteral,
-            is TemplateLiteralNode -> false
-            else -> if (expression is CPEAAPLNode) {
-                expression.node.isFunctionDefinition()
-            } else super.isFunctionDefinition()
-        }
-    }
-
-    override fun isIdentifierRef(): Boolean {
-        return expression is IdentifierReferenceNode
-    }
-}
-
-class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val op: Operator) : ExpressionNode(listOf(lhs, rhs)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
-        return AssignmentTargetType.Invalid
-    }
-
-    enum class Operator(val string: String) {
+    enum class Operator(val symbol: String) {
         Equals("="),
         Multiply("*="),
         Divide("/="),
@@ -81,19 +33,19 @@ class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode,
         makeIndent(indent)
         appendName()
         append(" (")
-        append(op.string)
+        append(op.symbol)
         append(")\n")
         append(lhs.dump(indent + 1))
         append(rhs.dump(indent + 1))
     }
 }
 
-class AwaitExpressionNode(val expression: ExpressionNode) : ExpressionNode(listOf(expression))
+class AwaitExpressionNode(val expression: ExpressionNode) : NodeBase(listOf(expression)), ExpressionNode
 
 // TODO: This isn't exactly to spec
-class CallExpressionNode(val target: ExpressionNode, val arguments: ArgumentsNode) : ExpressionNode(listOf(target, arguments)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
-        return AssignmentTargetType.Invalid
+class CallExpressionNode(val target: ExpressionNode, val arguments: ArgumentsNode) : NodeBase(listOf(target, arguments)), LeftHandSideExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
+        return ASTNode.AssignmentTargetType.Invalid
     }
 }
 
@@ -101,9 +53,9 @@ class CallExpressionNode(val target: ExpressionNode, val arguments: ArgumentsNod
 // a much better name. It is not clear from the name "ExpressionNode"
 // that the inner expression are separated by comma operators, and only
 // the last one should be returned.
-class CommaExpressionNode(val expressions: List<ExpressionNode>) : ExpressionNode(expressions) {
-    override fun assignmentTargetType(): AssignmentTargetType {
-        return AssignmentTargetType.Invalid
+class CommaExpressionNode(val expressions: List<ExpressionNode>) : NodeBase(expressions), ExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
+        return ASTNode.AssignmentTargetType.Invalid
     }
 }
 
@@ -111,43 +63,43 @@ class ConditionalExpressionNode(
     val predicate: ExpressionNode,
     val ifTrue: ExpressionNode,
     val ifFalse: ExpressionNode
-) : ExpressionNode(listOf(predicate, ifTrue, ifFalse)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
-        return AssignmentTargetType.Invalid
+) : NodeBase(listOf(predicate, ifTrue, ifFalse)), ExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
+        return ASTNode.AssignmentTargetType.Invalid
     }
 }
 
-class LeftHandSideExpressionNode(val expression: ExpressionNode) : ExpressionNode(listOf(expression)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
-        if (expression is OptionalExpressionNode)
-            return AssignmentTargetType.Invalid
-        TODO()
-    }
+//class LeftHandSideExpressionNode(val expression: ExpressionNode) : ExpressionNode(listOf(expression)) {
+//    override fun assignmentTargetType(): AssignmentTargetType {
+//        if (expression is OptionalExpressionNode)
+//            return AssignmentTargetType.Invalid
+//        TODO()
+//    }
+//
+//    override fun isDestructuring(): Boolean {
+//        if (expression is CallExpressionNode || expression is OptionalExpressionNode)
+//            return false
+//        return super.isDestructuring()
+//    }
+//
+//    override fun isFunctionDefinition(): Boolean {
+//        if (expression is CallExpressionNode || expression is OptionalExpressionNode)
+//            return false
+//        return super.isDestructuring()
+//    }
+//
+//    override fun isIdentifierRef(): Boolean {
+//        if (expression is CallExpressionNode || expression is OptionalExpressionNode)
+//            return false
+//        return super.isIdentifierRef()
+//    }
+//}
 
-    override fun isDestructuring(): Boolean {
-        if (expression is CallExpressionNode || expression is OptionalExpressionNode)
-            return false
-        return super.isDestructuring()
-    }
-
-    override fun isFunctionDefinition(): Boolean {
-        if (expression is CallExpressionNode || expression is OptionalExpressionNode)
-            return false
-        return super.isDestructuring()
-    }
-
-    override fun isIdentifierRef(): Boolean {
-        if (expression is CallExpressionNode || expression is OptionalExpressionNode)
-            return false
-        return super.isDestructuring()
-    }
-}
-
-class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ASTNode, val type: Type) : ExpressionNode(listOf(lhs, rhs)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
+class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val type: Type) : NodeBase(listOf(lhs, rhs)), LeftHandSideExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
         return when (type) {
-            Type.Computed, Type.NonComputed -> AssignmentTargetType.Simple
-            else -> AssignmentTargetType.Invalid
+            Type.Computed, Type.NonComputed -> ASTNode.AssignmentTargetType.Simple
+            else -> ASTNode.AssignmentTargetType.Invalid
         }
     }
 
@@ -180,9 +132,9 @@ class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ASTNode, val type: 
     }
 }
 
-class NewExpressionNode(val target: ExpressionNode) : ExpressionNode(listOf(target)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
-        return AssignmentTargetType.Invalid
+class NewExpressionNode(val target: ExpressionNode) : NodeBase(listOf(target)), LeftHandSideExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
+        return ASTNode.AssignmentTargetType.Invalid
     }
 
     override fun isDestructuring() = false
@@ -192,11 +144,11 @@ class NewExpressionNode(val target: ExpressionNode) : ExpressionNode(listOf(targ
     override fun isIdentifierRef() = false
 }
 
-class OptionalExpressionNode : ExpressionNode()
+class OptionalExpressionNode : NodeBase(), LeftHandSideExpressionNode
 
-class SuperPropertyNode(val target: ASTNode, val computed: Boolean) : ExpressionNode(listOf(target)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
-        return AssignmentTargetType.Simple
+class SuperPropertyNode(val target: ExpressionNode, val computed: Boolean) : NodeBase(listOf(target)), LeftHandSideExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
+        return ASTNode.AssignmentTargetType.Simple
     }
 
     override fun contains(nodeName: String): Boolean {
@@ -215,22 +167,22 @@ class SuperPropertyNode(val target: ASTNode, val computed: Boolean) : Expression
     }
 }
 
-class SuperCallNode(val arguments: ArgumentsNode) : ExpressionNode(listOf(arguments)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
-        return AssignmentTargetType.Invalid
+class SuperCallNode(val arguments: ArgumentsNode) : NodeBase(listOf(arguments)), ExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
+        return ASTNode.AssignmentTargetType.Invalid
     }
 }
 
-class ImportCallNode(val expression: ExpressionNode) : ExpressionNode(listOf(expression)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
-        return AssignmentTargetType.Invalid
+class ImportCallNode(val expression: ExpressionNode) : NodeBase(listOf(expression)), ExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
+        return ASTNode.AssignmentTargetType.Invalid
     }
 }
 
 class YieldExpressionNode(
     val target: ExpressionNode?,
     val generatorYield: Boolean
-) : ExpressionNode(listOfNotNull(target)) {
+) : NodeBase(listOfNotNull(target)), ExpressionNode {
     init {
         if (target == null && generatorYield)
             throw IllegalArgumentException("Cannot have a generatorYield expression without a target expression")
@@ -246,4 +198,4 @@ class YieldExpressionNode(
     }
 }
 
-class ParenthesizedExpression(val target: ExpressionNode) : ExpressionNode(listOf(target))
+class ParenthesizedExpressionNode(val target: ExpressionNode) : NodeBase(listOf(target)), ExpressionNode

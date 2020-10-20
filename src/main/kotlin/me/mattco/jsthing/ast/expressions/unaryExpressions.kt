@@ -1,10 +1,14 @@
 package me.mattco.jsthing.ast.expressions
 
+import me.mattco.jsthing.ast.ASTNode
+import me.mattco.jsthing.ast.ASTNode.Companion.appendIndent
+import me.mattco.jsthing.ast.ExpressionNode
+import me.mattco.jsthing.ast.NodeBase
 import me.mattco.jsthing.utils.stringBuilder
 
-class UnaryExpressionNode(val node: ExpressionNode, val op: Operator) : ExpressionNode(listOf(node)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
-        return AssignmentTargetType.Invalid
+class UnaryExpressionNode(val node: ExpressionNode, val op: Operator) : NodeBase(listOf(node)), ExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
+        return ASTNode.AssignmentTargetType.Invalid
     }
 
     override fun isFunctionDefinition() = false
@@ -29,9 +33,9 @@ class UnaryExpressionNode(val node: ExpressionNode, val op: Operator) : Expressi
     }
 }
 
-class UpdateExpressionNode(val target: ExpressionNode, val isIncrement: Boolean, val isPostfix: Boolean) : ExpressionNode(listOf(target)) {
-    override fun assignmentTargetType(): AssignmentTargetType {
-        return AssignmentTargetType.Invalid
+class UpdateExpressionNode(val target: ExpressionNode, val isIncrement: Boolean, val isPostfix: Boolean) : NodeBase(listOf(target)), ExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
+        return ASTNode.AssignmentTargetType.Invalid
     }
 
     override fun isFunctionDefinition() = false

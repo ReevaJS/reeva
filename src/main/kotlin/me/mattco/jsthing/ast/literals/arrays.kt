@@ -1,7 +1,9 @@
 package me.mattco.jsthing.ast.literals
 
-import me.mattco.jsthing.ast.expressions.ExpressionNode
+import me.mattco.jsthing.ast.ExpressionNode
+import me.mattco.jsthing.ast.NodeBase
+import me.mattco.jsthing.ast.PrimaryExpressionNode
 
-class ArrayLiteralNode : ExpressionNode()
+class ArrayLiteralNode : NodeBase(), PrimaryExpressionNode
 
-object ElisionNode : ExpressionNode()
+object ElisionNode : NodeBase(), ExpressionNode

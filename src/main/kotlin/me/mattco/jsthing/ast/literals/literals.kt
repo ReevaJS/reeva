@@ -1,11 +1,13 @@
 package me.mattco.jsthing.ast.literals
 
-import me.mattco.jsthing.ast.expressions.ExpressionNode
+import me.mattco.jsthing.ast.ASTNode.Companion.appendIndent
+import me.mattco.jsthing.ast.ExpressionNode
+import me.mattco.jsthing.ast.LiteralNode
+import me.mattco.jsthing.ast.NodeBase
+import me.mattco.jsthing.ast.PrimaryExpressionNode
 import me.mattco.jsthing.utils.stringBuilder
 
-abstract class LiteralNode : ExpressionNode()
-
-class BooleanNode(val value: Boolean) : LiteralNode() {
+class BooleanNode(val value: Boolean) : NodeBase(), LiteralNode {
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
         append(" (value=")
@@ -14,17 +16,7 @@ class BooleanNode(val value: Boolean) : LiteralNode() {
     }
 }
 
-class StringLiteralNode(val value: String) : LiteralNode() {
-    override fun dump(indent: Int) = stringBuilder {
-        appendIndent(indent)
-        appendName()
-        append(" (value=")
-        append(value)
-        append(")\n")
-    }
-}
-
-class NumericLiteralNode(val value: Double) : LiteralNode() {
+class StringLiteralNode(val value: String) : NodeBase(), LiteralNode {
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
         appendName()
@@ -34,6 +26,16 @@ class NumericLiteralNode(val value: Double) : LiteralNode() {
     }
 }
 
-object NullNode : LiteralNode()
+class NumericLiteralNode(val value: Double) : NodeBase(), LiteralNode {
+    override fun dump(indent: Int) = stringBuilder {
+        appendIndent(indent)
+        appendName()
+        append(" (value=")
+        append(value)
+        append(")\n")
+    }
+}
 
-object ThisNode : LiteralNode()
+object NullNode : NodeBase(), LiteralNode
+
+object ThisNode : NodeBase(), PrimaryExpressionNode

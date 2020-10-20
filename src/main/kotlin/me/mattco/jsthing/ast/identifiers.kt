@@ -1,9 +1,9 @@
 package me.mattco.jsthing.ast
 
-import me.mattco.jsthing.ast.expressions.ExpressionNode
+import me.mattco.jsthing.ast.ASTNode.Companion.appendIndent
 import me.mattco.jsthing.utils.stringBuilder
 
-class BindingIdentifierNode(val identifierName: String) : ASTNode() {
+class BindingIdentifierNode(val identifierName: String) : NodeBase() {
     override fun stringValue() = identifierName
 
     override fun boundNames() = listOf(identifierName)
@@ -17,7 +17,7 @@ class BindingIdentifierNode(val identifierName: String) : ASTNode() {
     }
 }
 
-class IdentifierNode(val identifierName: String) : ASTNode() {
+class IdentifierNode(val identifierName: String) : NodeBase(), ExpressionNode {
     override fun stringValue() = identifierName
 
     override fun dump(indent: Int) = stringBuilder {
@@ -29,13 +29,13 @@ class IdentifierNode(val identifierName: String) : ASTNode() {
     }
 }
 
-class IdentifierReferenceNode(val identifierName: String) : ExpressionNode() {
-    override fun stringValue() = identifierName
-
-    override fun assignmentTargetType(): AssignmentTargetType {
+class IdentifierReferenceNode(val identifierName: String) : NodeBase(), PrimaryExpressionNode {
+    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
         // TODO: Strict mode check
-        return AssignmentTargetType.Simple
+        return ASTNode.AssignmentTargetType.Simple
     }
+
+    override fun stringValue() = identifierName
 
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
@@ -46,7 +46,7 @@ class IdentifierReferenceNode(val identifierName: String) : ExpressionNode() {
     }
 }
 
-class LabelIdentifierNode(val identifierName: String) : ASTNode() {
+class LabelIdentifierNode(val identifierName: String) : NodeBase() {
     override fun stringValue() = identifierName
 
     override fun dump(indent: Int) = stringBuilder {
