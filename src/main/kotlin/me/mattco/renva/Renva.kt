@@ -11,6 +11,9 @@ fun main(args: Array<String>) {
     val source = indexFile.readText()
     val realm = Realm()
     val scriptRecord = realm.parseScript(source)
+    for (error in scriptRecord.errors) {
+        println("SyntaxError (${error.lineNumber}, ${error.columnNumber}):\n    ${error.message}")
+    }
     println(scriptRecord.scriptOrModule.dump(0))
 
     val agent = Agent("my agent")

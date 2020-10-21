@@ -1,6 +1,7 @@
 package me.mattco.renva.ast
 
 import me.mattco.renva.ast.ASTNode.Companion.appendIndent
+import me.mattco.renva.ast.statements.StatementListNode
 import me.mattco.renva.utils.stringBuilder
 
 // This is an ExpressionNode so it can be passed to MemberExpressionNode
@@ -32,3 +33,35 @@ data class ArgumentListEntry(val expression: ExpressionNode, val isSpread: Boole
         append(expression.dump(indent + 1))
     }
 }
+
+class FunctionDeclarationNode(
+    val identifier: BindingIdentifierNode?,
+    val parameters: FormalParametersNode,
+    val body: StatementListNode?,
+) : NodeBase(listOfNotNull(identifier, parameters, body)), DeclarationNode
+
+class FormalParametersNode(val parameters: List<FormalParameter>) : NodeBase() {
+    override fun dump(indent: Int) = stringBuilder {
+        parameters.forEach {
+            appendIndent(indent)
+            append("Parameter (type=")
+            append(it.type.name)
+            append(")\n")
+            append(it.first.dump(indent + 1))
+            it.second?.dump(indent + 1)?.also(::append)
+        }
+    }
+}
+
+data class FormalParameter(
+    val first: ExpressionNode,
+    val second: ExpressionNode?,
+    val type: Type,
+) {
+    enum class Type {
+        Normal,
+        Rest,
+    }
+}
+
+class ReturnNode(val node: ExpressionNode?) : NodeBase(listOfNotNull(node)), StatementNode

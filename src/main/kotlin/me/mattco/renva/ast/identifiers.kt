@@ -3,7 +3,7 @@ package me.mattco.renva.ast
 import me.mattco.renva.ast.ASTNode.Companion.appendIndent
 import me.mattco.renva.utils.stringBuilder
 
-class BindingIdentifierNode(val identifierName: String) : NodeBase() {
+class BindingIdentifierNode(val identifierName: String) : NodeBase(), ExpressionNode {
     override fun stringValue() = identifierName
 
     override fun boundNames() = listOf(identifierName)

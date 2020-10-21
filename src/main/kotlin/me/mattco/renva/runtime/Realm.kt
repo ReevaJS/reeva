@@ -52,13 +52,16 @@ class Realm {
     }
 
     fun parseScript(script: String): ScriptRecord {
-        return ScriptRecord(this, null, Parser(script).parseScript())
+        val parser = Parser(script)
+        val scriptNode = parser.parseScript()
+        val errors = parser.syntaxErrors
+        return ScriptRecord(this, null, scriptNode, errors)
     }
 
     data class ScriptRecord(
         val realm: Realm,
         var env: EnvRecord?,
         val scriptOrModule: ScriptNode,
-        val errors: List<Nothing> = emptyList() // TODO
+        val errors: List<Parser.SyntaxError> = emptyList() // TODO
     )
 }

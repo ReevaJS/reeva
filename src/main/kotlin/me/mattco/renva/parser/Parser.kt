@@ -17,7 +17,7 @@ import me.mattco.renva.utils.unreachable
 class Parser(text: String) {
     private val tokens = Lexer(text).toList() + Token(TokenType.Eof, "", "", SourceLocation(-1, -1), SourceLocation(-1, -1))
 
-    private val syntaxErrors = mutableListOf<SyntaxError>()
+    val syntaxErrors = mutableListOf<SyntaxError>()
     private lateinit var goalSymbol: GoalSymbol
 
     private var state = State(0)
@@ -193,7 +193,7 @@ class Parser(text: String) {
             else -> {}
         }
 
-        return parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn)?.let(::ExpressionStatementNode).also {
+        return parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn)?.let(::ExpressionStatementNode)?.also {
             automaticSemicolonInsertion()
         }
     }
@@ -519,8 +519,16 @@ class Parser(text: String) {
     }
 
     private fun parseReturnStatement(suffixes: Suffixes): StatementNode? {
-        // TODO
-        return null
+        if (tokenType != TokenType.Return)
+            return null
+        consume()
+        if ('\n' in token.trivia) {
+            automaticSemicolonInsertion()
+            return ReturnNode(null)
+        }
+        val expr = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn)
+        automaticSemicolonInsertion()
+        return ReturnNode(expr)
     }
 
     private fun parseWithStatement(suffixes: Suffixes): StatementNode? {
@@ -559,6 +567,93 @@ class Parser(text: String) {
     }
 
     private fun parseHoistableDeclaration(suffixes: Suffixes): StatementNode? {
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Default)
+        return parseFunctionDeclaration(newSuffixes) ?:
+        parseGeneratorDeclaration(newSuffixes) ?:
+        parseAsyncFunctionDeclaration(newSuffixes) ?:
+        parseAsyncGeneratorDeclaration(newSuffixes)
+    }
+
+    private fun parseFunctionDeclaration(suffixes: Suffixes): StatementNode? {
+        if (tokenType != TokenType.Function)
+            return null
+
+        consume()
+        val identifier = if (tokenType == TokenType.OpenParen) {
+            consume()
+            null
+        } else {
+            parseBindingIdentifier().also { consume(TokenType.OpenParen) } ?: run {
+                expected("identifier")
+                consume()
+                return null
+            }
+        }
+
+        // Null return value indicates an error
+        val parameters = parseFormalParameters(Suffixes()) ?: return null
+
+        consume(TokenType.CloseParen)
+        consume(TokenType.OpenCurly)
+        val body = parseFunctionBody(Suffixes())
+        consume(TokenType.CloseCurly)
+
+        return FunctionDeclarationNode(identifier, parameters, body)
+    }
+
+    private fun parseFormalParameters(suffixes: Suffixes): FormalParametersNode? {
+        val parameters = mutableListOf<FormalParameter>()
+
+        parseFunctionRestParameter(suffixes.filter(Sfx.Yield, Sfx.Await))?.also {
+            return FormalParametersNode(listOf(it))
+        }
+
+        var identifier = parseBindingIdentifier() ?: return null
+        var initializer = parseInitializer(suffixes.withIn)
+        parameters.add(FormalParameter(identifier, initializer?.node, FormalParameter.Type.Normal))
+
+        while (tokenType == TokenType.Comma) {
+            consume()
+            identifier = parseBindingIdentifier() ?: break
+            initializer = parseInitializer(suffixes.withIn)
+            parameters.add(FormalParameter(identifier, initializer?.node, FormalParameter.Type.Normal))
+        }
+
+        if (tokenType == TokenType.TripleDot)
+            parseFunctionRestParameter(suffixes.filter(Sfx.Yield, Sfx.Await))?.also(parameters::add)
+
+        return FormalParametersNode(parameters)
+    }
+
+    private fun parseFunctionRestParameter(suffixes: Suffixes): FormalParameter? {
+        if (tokenType != TokenType.TripleDot)
+            return null
+
+        consume()
+        // TODO: Binding patterns
+        val identifier = parseBindingIdentifier() ?: run {
+            expected("identifier")
+            consume()
+            return null
+        }
+        return FormalParameter(identifier, null, FormalParameter.Type.Rest)
+    }
+
+    private fun parseFunctionBody(suffixes: Suffixes): StatementListNode? {
+        return parseStatementList(suffixes.filter(Sfx.Yield, Sfx.Await).withReturn)
+    }
+
+    private fun parseGeneratorDeclaration(suffixes: Suffixes): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseAsyncFunctionDeclaration(suffixes: Suffixes): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseAsyncGeneratorDeclaration(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
@@ -1407,7 +1502,7 @@ class Parser(text: String) {
         if (matchAny(TokenType.CloseCurly, TokenType.Eof))
             return token
 
-        expected("semicolon");
+        expected("semicolon")
         return token
     }
 
@@ -1443,7 +1538,7 @@ class Parser(text: String) {
 
     private data class State(var cursor: Int)
 
-    private data class SyntaxError(
+    data class SyntaxError(
         val lineNumber: Int,
         val columnNumber: Int,
         val message: String
