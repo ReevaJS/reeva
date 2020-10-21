@@ -500,11 +500,9 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("EvaluatePropertyAccessWithIdentifierKey", "12.3.4")
-    fun evaluatePropertyAccessWithIdentifierKey(baseValue: JSValue, property: JSValue, isStrict: Boolean): JSValue {
-        expect(isPropertyKey(property))
+    fun evaluatePropertyAccessWithIdentifierKey(baseValue: JSValue, property: String, isStrict: Boolean): JSValue {
         val bv = requireObjectCoercible(baseValue)
-        val propertyKey = toPropertyKey(property).asString
-        return JSReference(bv, propertyKey, isStrict)
+        return JSReference(bv, property, isStrict)
     }
 
     @JvmStatic @ECMAImpl("EvaluateNew", "12.3.5.1.1")

@@ -3,6 +3,7 @@ package me.mattco.jsthing.runtime.values.nonprimitives.objects
 import me.mattco.jsthing.runtime.annotations.ECMAImpl
 import me.mattco.jsthing.runtime.values.JSValue
 import me.mattco.jsthing.runtime.values.nonprimitives.functions.JSFunction
+import me.mattco.jsthing.runtime.values.primitives.JSUndefined
 
 data class Descriptor(
     var value: JSValue,
@@ -21,6 +22,9 @@ data class Descriptor(
     @ECMAImpl("IsGenericDescriptor", "6.2.5.3")
     val isGenericDescriptor: Boolean
         get() = !isAccessorDescriptor && !isDataDescriptor
+
+    val isEmpty: Boolean
+        get() = value == JSUndefined && attributes.num == 0 && getter == null && setter == null
 
     @ECMAImpl("FromPropertyDescriptor", "6.2.5.4")
     fun toObject(): JSObject {

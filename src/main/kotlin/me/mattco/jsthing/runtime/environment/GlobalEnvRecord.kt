@@ -1,6 +1,5 @@
 package me.mattco.jsthing.runtime.environment
 
-import me.mattco.jsthing.runtime.JSGlobalObject
 import me.mattco.jsthing.runtime.annotations.ECMAImpl
 import me.mattco.jsthing.runtime.values.JSValue
 import me.mattco.jsthing.runtime.values.nonprimitives.functions.JSFunction
@@ -60,7 +59,7 @@ class GlobalEnvRecord(
     override fun deleteBinding(name: String): Boolean {
         if (declarativeRecord.hasBinding(name))
             return declarativeRecord.deleteBinding(name)
-        if (globalThis.hasOwnProperty(name)) {
+        if (globalThis.hasProperty(name)) {
             return if (objectRecord.deleteBinding(name)) {
                 varNames.remove(name)
                 true

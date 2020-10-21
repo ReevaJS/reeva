@@ -1,5 +1,7 @@
 package me.mattco.jsthing.compiler
 
-open class TopLevelScript {
+import me.mattco.jsthing.runtime.contexts.ExecutionContext
 
+abstract class TopLevelScript {
+    abstract fun run(context: ExecutionContext)
 }

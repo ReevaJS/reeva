@@ -1,41 +1,34 @@
 package me.mattco.jsthing.runtime
 
+import me.mattco.jsthing.ast.ASTNode
+import me.mattco.jsthing.ast.BindingIdentifierNode
+import me.mattco.jsthing.ast.ForBindingNode
+import me.mattco.jsthing.ast.ScriptNode
+import me.mattco.jsthing.ast.statements.VariableDeclarationNode
+import me.mattco.jsthing.compiler.ByteClassLoader
+import me.mattco.jsthing.compiler.Compiler
+import me.mattco.jsthing.compiler.TopLevelScript
+import me.mattco.jsthing.runtime.annotations.ECMAImpl
 import me.mattco.jsthing.runtime.contexts.ExecutionContext
+import me.mattco.jsthing.runtime.environment.EnvRecord
 import me.mattco.jsthing.runtime.environment.GlobalEnvRecord
-import me.mattco.jsthing.runtime.values.nonprimitives.functions.JSFunctionProto
+import me.mattco.jsthing.runtime.values.nonprimitives.functions.JSFunction
 import me.mattco.jsthing.runtime.values.nonprimitives.objects.JSObject
-import me.mattco.jsthing.runtime.values.nonprimitives.objects.JSObjectProto
+import me.mattco.jsthing.utils.expect
+import me.mattco.jsthing.utils.shouldThrowError
+import org.objectweb.asm.ClassWriter
+import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.CopyOnWriteArrayList
 
 class Agent(val signifier: Any = "Agent${agentCount++}") {
+    private lateinit var globalEnv: GlobalEnvRecord
+    private val classLoader = ByteClassLoader()
+
     init {
         if (signifier in agentIdentifiers)
             throw IllegalArgumentException("Agent cannot have duplicate signifier $signifier")
         agentIdentifiers.add(signifier)
-
-//        // Begin InitializeHostDefinedRealm
-//        val realm = Realm(this)
-//        val context = ExecutionContext(this, realm, function = null)
-//        contexts.add(context)
-//        Agent.runningExecutionContext = context
-//        realm.init()
-//
-//        // Begin SetRealmGlobalObject
-//        val globalObj = createGlobalObjectHook(realm)
-//        ecmaAssert(globalObj.isObject)
-//        realm.globalObject = globalObj
-//        val newGlobalEnv = GlobalEnvRecord.create(globalObj)
-//        realm.globalEnv = newGlobalEnv
-//        // End SetRealmGlobalObject
-//
-//        // Begin SetDefaultGlobalBindings
-//        // TODO: Add all the properties here
-//        globalObj.defineOwnProperty(
-//            "globalThis",
-//            Descriptor(globalObj, Attributes(Attributes.WRITABLE and Attributes.CONFIGURABLE))
-//        )
-//        // End SetDefaultGlobalBindings
-//        // End InitializeHostDefinedRealm
     }
 
     fun execute(scriptRecord: Realm.ScriptRecord) {
@@ -43,14 +36,113 @@ class Agent(val signifier: Any = "Agent${agentCount++}") {
         val newContext = ExecutionContext(this, realm, null, scriptRecord.scriptOrModule)
         runningContextStack.add(newContext)
 
-        val jsObjProto = JSObjectProto.create(realm)
-        val jsFuncProto = JSFunctionProto.create(realm)
-        realm.init(jsObjProto, jsFuncProto)
+        realm.init()
+        if (!::globalEnv.isInitialized) {
+            val globalObj = JSObject.create(realm)
+            realm.globalObject = globalObj
+            globalEnv = GlobalEnvRecord.create(globalObj, globalObj)
+            realm.globalEnv = globalEnv
+        } else {
+            realm.globalEnv = globalEnv
+            realm.globalObject = globalEnv.globalThis
+        }
 
-        val globalObj = JSObject.create(realm)
-        realm.globalObject = globalObj
-        val newGlobalEnv = GlobalEnvRecord.create(globalObj, globalObj)
-        realm.globalEnv = newGlobalEnv
+        newContext.variableEnv = globalEnv
+        newContext.lexicalEnv = globalEnv
+
+        runningContextStack.add(newContext)
+
+        val scriptNode = scriptRecord.scriptOrModule
+        val compiler = Compiler(scriptNode, "index_js")
+        val classNode = compiler.compile()
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+        classNode.accept(writer)
+        val bytes = writer.toByteArray()
+
+        val outFile = File("./demo/out/${classNode.name}.class")
+        val out = FileOutputStream(outFile)
+        out.write(bytes)
+        out.close()
+
+        val topLevelScript = instantiateClass<TopLevelScript>(compiler.className, bytes)
+        topLevelScript.run(runningContext)
+
+        globalDeclarationInstantiation(scriptNode, globalEnv)
+
+        // TODO: Execute here
+
+        runningContextStack.remove(newContext)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private inline fun <reified T> instantiateClass(name: String, bytes: ByteArray): T {
+        classLoader.addClass(name, bytes)
+        val instance = classLoader.loadClass(name) as Class<T>
+        return instance.newInstance()
+    }
+
+    @ECMAImpl("GlobalDeclarationInstantiation", "15.1.11")
+    private fun globalDeclarationInstantiation(script: ScriptNode, env: GlobalEnvRecord) {
+        val lexNames = script.lexicallyDeclaredNames()
+        val varNames = script.varDeclaredNames()
+        lexNames.forEach {
+            if (env.hasVarDeclaration(it))
+                shouldThrowError("SyntaxError")
+            if (env.hasLexicalDeclaration(it))
+                shouldThrowError("SyntaxError")
+            if (env.hasRestrictedGlobalProperty(it))
+                shouldThrowError("SyntaxError")
+        }
+        varNames.forEach {
+            if (env.hasLexicalDeclaration(it))
+                shouldThrowError("SyntaxError")
+        }
+        val varDeclarations = script.varScopedDeclarations()
+        val functionsToInitialize = mutableListOf<ASTNode>()
+        val declaredFunctionNames = mutableListOf<String>()
+        varDeclarations.asReversed().forEach {
+            if (it !is VariableDeclarationNode && it !is ForBindingNode && it !is BindingIdentifierNode)
+                TODO()
+        }
+        var declaredVarNames = mutableListOf<String>()
+        varDeclarations.forEach { decl ->
+            if (decl is VariableDeclarationNode || decl is ForBindingNode || decl is BindingIdentifierNode) {
+                decl.boundNames().forEach { name ->
+                    if (name !in declaredFunctionNames) {
+                        if (!env.canDeclareGlobalVar(name))
+                            shouldThrowError("TypeError")
+                        if (name !in declaredVarNames)
+                            declaredVarNames.add(name)
+                    }
+                }
+            }
+        }
+        val lexDeclarations = script.lexicallyScopedDeclarations()
+        lexDeclarations.forEach { decl ->
+            decl.boundNames().forEach { name ->
+                if (decl.isConstantDeclaration()) {
+                    env.createImmutableBinding(name, true)
+                } else {
+                    env.createMutableBinding(name, false)
+                }
+            }
+        }
+        functionsToInitialize.forEach { func ->
+            val boundNames = func.boundNames()
+            expect(boundNames.size == 1)
+            val functionName = boundNames[0]
+            val jsFunction = instantiateFunctionObject(func, env)
+            env.createGlobalFunctionBinding(functionName, jsFunction, false)
+        }
+        declaredVarNames.forEach {
+            env.createGlobalVarBinding(it, false)
+        }
+    }
+
+    // TODO: Is there a better place for this?
+    @ECMAImpl("InstantiateFunctionObject", "14.1.22")
+    private fun instantiateFunctionObject(function: ASTNode, env: EnvRecord): JSFunction {
+        TODO()
     }
 
     companion object {

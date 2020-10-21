@@ -26,11 +26,9 @@ class Realm {
     lateinit var arrayProto: JSArrayProto
         private set
 
-    fun init(objProto: JSObjectProto, funcProto: JSFunctionProto) {
-        if (!::globalObject.isInitialized)
-            throw Error("Cannot initialize Realm without globalObject")
-        objectProto = objProto
-        functionProto = funcProto
+    fun init() {
+        objectProto = JSObjectProto.create(this)
+        functionProto = JSFunctionProto(this)
         arrayProto = JSArrayProto.create(this)
     }
 
@@ -44,4 +42,6 @@ class Realm {
         val scriptOrModule: ScriptNode,
         val errors: List<Nothing> = emptyList() // TODO
     )
+
+
 }

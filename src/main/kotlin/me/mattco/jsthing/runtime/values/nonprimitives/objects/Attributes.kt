@@ -1,72 +1,72 @@
 package me.mattco.jsthing.runtime.values.nonprimitives.objects
 
-data class Attributes(var attributes: Int = 0) {
+data class Attributes(var num: Int = 0) {
     val isEmpty: Boolean
-        get() = attributes == 0
+        get() = num == 0
 
     val hasConfigurable: Boolean
-        get() = attributes and HAS_CONFIGURABLE != 0
+        get() = num and HAS_CONFIGURABLE != 0
 
     val hasEnumerable: Boolean
-        get() = attributes and HAS_ENUMERABLE != 0
+        get() = num and HAS_ENUMERABLE != 0
 
     val hasWritable: Boolean
-        get() = attributes and HAS_WRITABLE != 0
+        get() = num and HAS_WRITABLE != 0
 
     val hasGetter: Boolean
-        get() = attributes and HAS_GETTER != 0
+        get() = num and HAS_GETTER != 0
 
     val hasSetter: Boolean
-        get() = attributes and HAS_SETTER != 0
+        get() = num and HAS_SETTER != 0
 
     val isConfigurable: Boolean
-        get() = attributes and CONFIGURABLE != 0
+        get() = num and CONFIGURABLE != 0
 
     val isEnumerable: Boolean
-        get() = attributes and ENUMERABLE != 0
+        get() = num and ENUMERABLE != 0
 
     val isWritable: Boolean
-        get() = attributes and WRITABLE != 0
+        get() = num and WRITABLE != 0
 
     init {
-        if (attributes and CONFIGURABLE != 0)
-            attributes = attributes or HAS_CONFIGURABLE
-        if (attributes and ENUMERABLE != 0)
-            attributes = attributes or HAS_ENUMERABLE
-        if (attributes and WRITABLE != 0)
-            attributes = attributes or HAS_WRITABLE
+        if (num and CONFIGURABLE != 0)
+            num = num or HAS_CONFIGURABLE
+        if (num and ENUMERABLE != 0)
+            num = num or HAS_ENUMERABLE
+        if (num and WRITABLE != 0)
+            num = num or HAS_WRITABLE
     }
 
     fun setHasConfigurable() = apply {
-        attributes = attributes or HAS_CONFIGURABLE
+        num = num or HAS_CONFIGURABLE
     }
 
     fun setHasEnumerable() = apply {
-        attributes = attributes or HAS_ENUMERABLE
+        num = num or HAS_ENUMERABLE
     }
 
     fun setHasWritable() = apply {
-        attributes = attributes or HAS_WRITABLE
+        num = num or HAS_WRITABLE
     }
 
     fun setHasGetter() = apply {
-        attributes = attributes or HAS_GETTER
+        num = num or HAS_GETTER
     }
 
     fun setHasSetter() = apply {
-        attributes = attributes or HAS_SETTER
+        num = num or HAS_SETTER
     }
 
     fun setConfigurable() = apply {
-        attributes = attributes or CONFIGURABLE
+        num = num or CONFIGURABLE
     }
 
     fun setEnumerable() = apply {
-        attributes = attributes or ENUMERABLE
+        num = num or ENUMERABLE
     }
 
     fun setWritable() = apply {
-        attributes = attributes or WRITABLE
+        num = num or WRITABLE
     }
 
     companion object {

@@ -17,23 +17,33 @@ import me.mattco.jsthing.ast.statements.*
 import me.mattco.jsthing.runtime.Agent
 import me.mattco.jsthing.runtime.Operations
 import me.mattco.jsthing.runtime.Realm
+import me.mattco.jsthing.runtime.annotations.ECMAImpl
 import me.mattco.jsthing.runtime.contexts.ExecutionContext
 import me.mattco.jsthing.runtime.environment.EnvRecord
 import me.mattco.jsthing.runtime.values.JSValue
 import me.mattco.jsthing.runtime.values.nonprimitives.functions.JSFunction
 import me.mattco.jsthing.runtime.values.nonprimitives.objects.JSObject
 import me.mattco.jsthing.runtime.values.primitives.*
+import me.mattco.jsthing.utils.expect
 import me.mattco.jsthing.utils.unreachable
-import org.objectweb.asm.Opcodes
 import org.objectweb.asm.tree.ClassNode
 
 class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private val sanitizedFileName = fileName.replace(Regex("[^\\w]"), "_")
 
+    val className = "TopLevel_$sanitizedFileName$classCounter"
+
     fun compile(): ClassNode {
-        return assembleClass(public, "TopLevel_$sanitizedFileName$classCounter", superName = "me/mattco/jsthing/compiler/TopLevelScript", version = Opcodes.ASM5) {
-            method(public, "run", "V", "me/mattco/jsthing/runtime/contexts/ExecutionContext") {
+        return assembleClass(public, className, superName = "me/mattco/jsthing/compiler/TopLevelScript") {
+            method(public, "<init>", void) {
+                aload_0
+                invokespecial(TopLevelScript::class, "<init>", void)
+                _return
+            }
+
+            method(public, "run", void, ExecutionContext::class) {
                 compileScript(scriptNode)
+                _return
             }
         }
     }
@@ -81,15 +91,42 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     }
 
     private fun MethodAssembly.compileVariableStatement(variableStatement: VariableStatementNode) {
-        TODO()
+        compileVariableDeclarationList(variableStatement.declarations)
     }
 
     private fun MethodAssembly.compileVariableDeclarationList(list: VariableDeclarationList) {
-        TODO()
+        list.declarations.forEach {
+            compileVariableDeclarationNode(it)
+        }
     }
 
     private fun MethodAssembly.compileVariableDeclarationNode(node: VariableDeclarationNode) {
-        TODO()
+        if (node.initializer != null) {
+            val id = node.identifier.identifierName
+            ldc(id)
+            aconst_null
+            operation("resolveBinding", JSValue::class, String::class, EnvRecord::class)
+            if (isAnonymousFunctionDefinition(node)) {
+                TODO()
+            } else {
+                compileInitializer(node.initializer)
+                operation("getValue", JSValue::class, JSValue::class)
+            }
+            operation("putValue", void, JSValue::class, JSValue::class)
+        } else {
+            // Do nothing, this is handled by SS
+        }
+    }
+
+    @ECMAImpl("IsAnonymousFunctionDefinition", "14.1.12")
+    private fun isAnonymousFunctionDefinition(node: ASTNode): Boolean {
+        if (!node.isFunctionDefinition())
+            return false
+        return !node.hasName()
+    }
+
+    private fun MethodAssembly.compileInitializer(initializerNode: InitializerNode) {
+        compileExpression(initializerNode.node)
     }
 
     private fun MethodAssembly.compileEmptyStatement(emptyStatement: EmptyStatementNode) { }
@@ -140,11 +177,47 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     }
 
     private fun MethodAssembly.compileExpression(expressionNode: ExpressionNode) {
-        TODO()
+        when (expressionNode) {
+            is CommaExpressionNode -> compileCommaExpressionNode(expressionNode)
+            is PrimaryExpressionNode -> compilePrimaryExpression(expressionNode)
+            is LeftHandSideExpressionNode -> compileLeftHandSideExpression(expressionNode)
+            is ShortCircuitExpressionNode -> compileShortCircuitExpressionNode(expressionNode)
+            is AssignmentExpressionNode -> compileAssignmentExpression(expressionNode)
+            is ConditionalExpressionNode -> compileConditionalExpression(expressionNode)
+            is LogicalANDExpressionNode -> compileLogicalANDExpression(expressionNode)
+            is BitwiseORExpressionNode -> compileBitwiseORExpression(expressionNode)
+            is BitwiseXORExpressionNode -> compileBitwiseXORExpression(expressionNode)
+            is BitwiseANDExpressionNode -> compileBitwiseANDExpression(expressionNode)
+            is EqualityExpressionNode -> compileEqualityExpression(expressionNode)
+            is RelationalExpressionNode -> compileRelationalExpression(expressionNode)
+            is ShiftExpressionNode -> compileShiftExpression(expressionNode)
+            is AdditiveExpressionNode -> compileAdditiveExpression(expressionNode)
+            is MultiplicativeExpressionNode -> compileMultiplicationExpression(expressionNode)
+            is ExponentiationExpressionNode -> compileExponentiationExpression(expressionNode)
+            is UnaryExpressionNode -> compileUnaryExpression(expressionNode)
+            is UpdateExpressionNode -> compileUpdateExpression(expressionNode)
+            else -> unreachable()
+        }
+    }
+
+    private fun MethodAssembly.compileCommaExpressionNode(commaExpressionNode: CommaExpressionNode) {
+        commaExpressionNode.expressions.forEachIndexed { index, node ->
+            compileExpression(node)
+            if (index != commaExpressionNode.expressions.lastIndex)
+                dup
+        }
+    }
+
+    private fun MethodAssembly.compileShortCircuitExpressionNode(shortCircuitExpressionNode: ShortCircuitExpressionNode) {
+        when (shortCircuitExpressionNode) {
+            is LogicalORExpressionNode -> compileLogicalORExpression(shortCircuitExpressionNode)
+            is CoalesceExpressionNode -> compileCoalesceExpression(shortCircuitExpressionNode)
+            else -> unreachable()
+        }
     }
 
     private fun MethodAssembly.compileBindingIdentifier(bindingIdentifierNode: BindingIdentifierNode) {
-        TODO()
+        aload_0
     }
 
     private fun MethodAssembly.compileLabelIdentifier(labelIdentifierNode: LabelIdentifierNode) {
@@ -178,12 +251,14 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             is TrueNode -> pushTrue
             is FalseNode -> pushFalse
             is StringLiteralNode -> {
-                ldc(literalNode.value)
-                construct(JSString::class, String::class)
+                construct(JSString::class, String::class) {
+                    ldc(literalNode.value)
+                }
             }
             is NumericLiteralNode -> {
-                ldc(literalNode.value)
-                construct(JSNumber::class, Double::class)
+                construct(JSNumber::class, Double::class) {
+                    ldc(literalNode.value)
+                }
             }
             else -> unreachable()
         }
@@ -195,20 +270,27 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         // TODO: Strict mode
         ldc(false)
         when (memberExpressionNode.type) {
-            MemberExpressionNode.Type.NonComputed -> operation(
-                "evaluatePropertyAccessWithIdentifierKey",
-                JSValue::class,
-                JSValue::class,
-                JSValue::class,
-                Boolean::class
-            )
-            MemberExpressionNode.Type.Computed -> operation(
-                "evaluatePropertyAccessWithExpressionKey",
-                JSValue::class,
-                JSValue::class,
-                JSValue::class,
-                Boolean::class
-            )
+            MemberExpressionNode.Type.NonComputed -> {
+                expect(memberExpressionNode.rhs is IdentifierNode)
+                ldc(memberExpressionNode.rhs.identifierName)
+                operation(
+                    "evaluatePropertyAccessWithIdentifierKey",
+                    JSValue::class,
+                    JSValue::class,
+                    String::class,
+                    Boolean::class
+                )
+            }
+            MemberExpressionNode.Type.Computed -> {
+                compileExpression(memberExpressionNode.rhs)
+                operation(
+                    "evaluatePropertyAccessWithExpressionKey",
+                    JSValue::class,
+                    JSValue::class,
+                    JSValue::class,
+                    Boolean::class
+                )
+            }
             else -> TODO()
         }
 
@@ -282,7 +364,9 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         when (lhsExpressionNode) {
             is NewExpressionNode -> compileNewExpression(lhsExpressionNode)
             is CallExpressionNode -> compileCallExpression(lhsExpressionNode)
-            is OptionalExpressionNode -> compileOptionalExpression(lhsExpressionNode)
+            is MemberExpressionNode -> compileMemberExpression(lhsExpressionNode)
+//            is OptionalExpressionNode -> compileOptionalExpression(lhsExpressionNode)
+            else -> TODO()
         }
     }
 
@@ -306,8 +390,9 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         //oldValue, oldValue
         operation("checkNotBigInt", void, JSValue::class)
         // oldValue
-        ldc(1.0)
-        construct(JSNumber::class, Double::class)
+        construct(JSNumber::class, Double::class) {
+            ldc(1.0)
+        }
         // oldValue, 1.0
         if (updateExpressionNode.isIncrement) {
             operation("numericAdd", JSValue::class, JSValue::class, JSValue::class)
@@ -453,9 +538,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
      */
     private fun MethodAssembly.compileIdentifierReference(identifierReferenceNode: IdentifierReferenceNode) {
         ldc(identifierReferenceNode.identifierName)
-        swap
         aconst_null
-        swap
         operation("resolveBinding", JSValue::class, String::class, EnvRecord::class)
     }
 

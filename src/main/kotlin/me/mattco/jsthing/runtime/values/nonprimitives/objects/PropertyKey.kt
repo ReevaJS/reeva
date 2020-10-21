@@ -22,6 +22,10 @@ class PropertyKey private constructor(private val value: Any) {
         value as JSSymbol
     }
 
+    val asValue by lazy {
+        if (isString) JSString(asString) else asSymbol
+    }
+
     constructor(value: String) : this(value as Any)
     constructor(value: JSString) : this(value.string)
     constructor(value: JSSymbol) : this(value as Any)
