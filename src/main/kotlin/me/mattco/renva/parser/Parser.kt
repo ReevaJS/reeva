@@ -1011,53 +1011,53 @@ class Parser(text: String) {
     }
 
     private fun parseAssignmentExpression(suffixes: Set<Suffix>): ExpressionNode? {
-        val expr: ExpressionNode? = parseConditionalExpression(suffixes) ?:
-            if (Suffix.Yield in suffixes) {
-                parseYieldExpression(suffixes + Suffix.Yield)
-            } else null ?:
-            parseArrowFunction(suffixes) ?:
-            parseAsyncArrowFunction(suffixes)
-
-        if (expr != null)
-            return expr
-
-        saveState()
-        val lhs = parseLeftHandSideExpression(suffixes - Suffix.In)
-        if (lhs == null) {
-            discardState()
-            return null
+        fun doMatch(): ExpressionNode? {
+            return parseConditionalExpression(suffixes) ?:
+                if (Suffix.Yield in suffixes) parseYieldExpression(suffixes + Suffix.Yield) else null ?:
+                parseArrowFunction(suffixes) ?:
+                parseAsyncArrowFunction(suffixes)
         }
 
-        val op = when (tokenType) {
-            TokenType.Equals -> AssignmentExpressionNode.Operator.Equals
-            TokenType.PlusEquals -> AssignmentExpressionNode.Operator.Plus
-            TokenType.MinusEquals -> AssignmentExpressionNode.Operator.Minus
-            TokenType.AsteriskEquals -> AssignmentExpressionNode.Operator.Multiply
-            TokenType.SlashEquals -> AssignmentExpressionNode.Operator.Divide
-            TokenType.PercentEquals -> AssignmentExpressionNode.Operator.Mod
-            TokenType.DoubleAsteriskEquals -> AssignmentExpressionNode.Operator.Power
-            TokenType.ShiftLeftEquals -> AssignmentExpressionNode.Operator.ShiftLeft
-            TokenType.ShiftRightEquals -> AssignmentExpressionNode.Operator.ShiftRight
-            TokenType.UnsignedShiftRightEquals -> AssignmentExpressionNode.Operator.UnsignedShiftRight
-            TokenType.AmpersandEquals -> AssignmentExpressionNode.Operator.BitwiseAnd
-            TokenType.PipeEquals -> AssignmentExpressionNode.Operator.BitwiseOr
-            TokenType.CaretEquals -> AssignmentExpressionNode.Operator.BitwiseXor
-            TokenType.DoubleAmpersandEquals -> AssignmentExpressionNode.Operator.And
-            TokenType.DoublePipeEquals -> AssignmentExpressionNode.Operator.Or
-            TokenType.DoubleQuestionEquals -> AssignmentExpressionNode.Operator.Nullish
-            else -> {
+        var expr = doMatch() ?: return null
+        var node: AssignmentExpressionNode? = null
+
+        while (true) {
+            val op = when (tokenType) {
+                TokenType.Equals -> AssignmentExpressionNode.Operator.Equals
+                TokenType.PlusEquals -> AssignmentExpressionNode.Operator.Plus
+                TokenType.MinusEquals -> AssignmentExpressionNode.Operator.Minus
+                TokenType.AsteriskEquals -> AssignmentExpressionNode.Operator.Multiply
+                TokenType.SlashEquals -> AssignmentExpressionNode.Operator.Divide
+                TokenType.PercentEquals -> AssignmentExpressionNode.Operator.Mod
+                TokenType.DoubleAsteriskEquals -> AssignmentExpressionNode.Operator.Power
+                TokenType.ShiftLeftEquals -> AssignmentExpressionNode.Operator.ShiftLeft
+                TokenType.ShiftRightEquals -> AssignmentExpressionNode.Operator.ShiftRight
+                TokenType.UnsignedShiftRightEquals -> AssignmentExpressionNode.Operator.UnsignedShiftRight
+                TokenType.AmpersandEquals -> AssignmentExpressionNode.Operator.BitwiseAnd
+                TokenType.PipeEquals -> AssignmentExpressionNode.Operator.BitwiseOr
+                TokenType.CaretEquals -> AssignmentExpressionNode.Operator.BitwiseXor
+                TokenType.DoubleAmpersandEquals -> AssignmentExpressionNode.Operator.And
+                TokenType.DoublePipeEquals -> AssignmentExpressionNode.Operator.Or
+                TokenType.DoubleQuestionEquals -> AssignmentExpressionNode.Operator.Nullish
+                else -> return node ?: expr
+            }
+            consume()
+
+            val rhs = parseAssignmentExpression(suffixes) ?: run {
+                expected("expression")
+                consume()
                 loadState()
                 return null
             }
+
+            node = if (node == null) {
+                AssignmentExpressionNode(expr, rhs, op)
+            } else {
+                AssignmentExpressionNode(node, rhs, op)
+            }
         }
 
-        val rhs = parseAssignmentExpression(suffixes)
-        return if (rhs == null) {
-            expected("expression")
-            consume()
-            discardState()
-            null
-        } else AssignmentExpressionNode(lhs, rhs, op)
+        return node
     }
 
     private fun parseConditionalExpression(suffixes: Set<Suffix>): ExpressionNode? {
