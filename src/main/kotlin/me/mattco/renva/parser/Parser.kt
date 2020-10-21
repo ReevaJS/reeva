@@ -40,7 +40,7 @@ class Parser(text: String) {
 
     fun parseScript(): ScriptNode {
         goalSymbol = GoalSymbol.Script
-        val statementList = parseStatementList(emptySet()) ?: StatementListNode(emptyList())
+        val statementList = parseStatementList(Suffixes()) ?: StatementListNode(emptyList())
         if (!isDone)
             unexpected("token ${token.value}")
         return ScriptNode(statementList)
@@ -51,66 +51,73 @@ class Parser(text: String) {
         TODO()
     }
 
-    private fun parseScriptBody(suffixes: Set<Suffix>): StatementListNode? {
-        return parseStatementList(suffixes - Suffix.Yield - Suffix.Await - Suffix.Return)
+    private fun parseScriptBody(suffixes: Suffixes): StatementListNode? {
+        if (!suffixes.run { hasYield || hasAwait || hasReturn })
+            return parseStatementList(suffixes)
+        return null
     }
 
-    private fun parseStatementList(suffixes: Set<Suffix>): StatementListNode? {
+    private fun parseStatementList(suffixes: Suffixes): StatementListNode? {
         val statements = mutableListOf<StatementListItemNode>()
 
-        var statement = parseStatementListItem(suffixes) ?: return null
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)
+        var statement = parseStatementListItem(newSuffixes) ?: return null
         statements.add(statement)
 
         while (true) {
-            statement = parseStatementListItem(suffixes) ?: break
+            statement = parseStatementListItem(newSuffixes) ?: break
             statements.add(statement)
         }
 
         return StatementListNode(statements)
     }
 
-    private fun parseStatementListItem(suffixes: Set<Suffix>): StatementListItemNode? {
-        return parseStatement(suffixes) ?: parseDeclaration(suffixes - Suffix.Return)
+    private fun parseStatementListItem(suffixes: Suffixes): StatementListItemNode? {
+        return parseStatement(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?:
+            parseDeclaration(suffixes.filter(Sfx.Yield, Sfx.Await))
     }
 
-    private fun parseStatement(suffixes: Set<Suffix>): StatementNode? {
-        return parseBlockStatement(suffixes) ?:
-                parseVariableStatement(suffixes - Suffix.Return) ?:
+    private fun parseStatement(suffixes: Suffixes): StatementNode? {
+        val tripleSuffix = suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)
+        val doubleSuffix = suffixes.filter(Sfx.Yield, Sfx.Await)
+
+        return parseBlockStatement(tripleSuffix) ?:
+                parseVariableStatement(doubleSuffix) ?:
                 parseEmptyStatement() ?:
-                parseExpressionStatement(suffixes - Suffix.Return) ?:
-                parseIfStatement(suffixes) ?:
-                parseBreakableStatement(suffixes) ?:
-                parseContinueStatement(suffixes - Suffix.Return) ?:
-                parseBreakStatement(suffixes - Suffix.Return) ?:
-                parseReturnStatement(suffixes + Suffix.Return) ?:
-                parseWithStatement(suffixes) ?:
-                parseLabelledStatement(suffixes) ?:
-                parseThrowStatement(suffixes - Suffix.Return) ?:
-                parseTryStatement(suffixes) ?:
+                parseExpressionStatement(doubleSuffix) ?:
+                parseIfStatement(tripleSuffix) ?:
+                parseBreakableStatement(tripleSuffix) ?:
+                parseContinueStatement(doubleSuffix) ?:
+                parseBreakStatement(doubleSuffix) ?:
+                if (suffixes.hasReturn) parseReturnStatement(tripleSuffix) else null ?:
+                parseWithStatement(tripleSuffix) ?:
+                parseLabelledStatement(tripleSuffix) ?:
+                parseThrowStatement(doubleSuffix) ?:
+                parseTryStatement(tripleSuffix) ?:
                 parseDebuggerStatement()
     }
 
-    private fun parseBlockStatement(suffixes: Set<Suffix>): BlockStatementNode? {
-        return parseBlock(suffixes)?.let(::BlockStatementNode)
+    private fun parseBlockStatement(suffixes: Suffixes): BlockStatementNode? {
+        return parseBlock(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return))?.let(::BlockStatementNode)
     }
 
-    private fun parseBlock(suffixes: Set<Suffix>): BlockNode? {
+    private fun parseBlock(suffixes: Suffixes): BlockNode? {
         if (tokenType != TokenType.OpenCurly)
             return null
 
         consume()
-        val statements = parseStatementList(suffixes)
+        val statements = parseStatementList(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return))
         consume(TokenType.CloseCurly)
 
         return BlockNode(statements)
     }
 
-    private fun parseVariableStatement(suffixes: Set<Suffix>): VariableStatementNode? {
+    private fun parseVariableStatement(suffixes: Suffixes): VariableStatementNode? {
         if (tokenType != TokenType.Var)
             return null
         consume()
 
-        val list = parseVariableDeclarationList(suffixes + Suffix.In) ?: run {
+        val list = parseVariableDeclarationList(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: run {
             expected("identifier")
             consume()
             return null
@@ -121,16 +128,17 @@ class Parser(text: String) {
         return VariableStatementNode(list)
     }
 
-    private fun parseVariableDeclarationList(suffixes: Set<Suffix>): VariableDeclarationList? {
+    private fun parseVariableDeclarationList(suffixes: Suffixes): VariableDeclarationList? {
         val declarations = mutableListOf<VariableDeclarationNode>()
+        val newSuffixes = suffixes.filter(Sfx.In, Sfx.Yield, Sfx.Await)
 
-        val declaration = parseVariableDeclaration(suffixes) ?: return null
+        val declaration = parseVariableDeclaration(newSuffixes) ?: return null
         declarations.add(declaration)
 
         while (tokenType == TokenType.Comma) {
             saveState()
             consume()
-            val declaration2 = parseVariableDeclaration(suffixes)
+            val declaration2 = parseVariableDeclaration(newSuffixes)
             if (declaration2 == null) {
                 loadState()
                 break
@@ -142,20 +150,20 @@ class Parser(text: String) {
         return VariableDeclarationList(declarations)
     }
 
-    private fun parseVariableDeclaration(suffixes: Set<Suffix>): VariableDeclarationNode? {
+    private fun parseVariableDeclaration(suffixes: Suffixes): VariableDeclarationNode? {
         // TODO: Attempt the BindingPattern branch
-        val identifier = parseBindingIdentifier(suffixes - Suffix.In) ?: return null
-        val initializer = parseInitializer(suffixes)
+        val identifier = parseBindingIdentifier() ?: return null
+        val initializer = parseInitializer(suffixes.filter(Sfx.In, Sfx.Yield, Sfx.Await))
         return VariableDeclarationNode(identifier, initializer)
     }
 
-    private fun parseInitializer(suffixes: Set<Suffix>): InitializerNode? {
+    private fun parseInitializer(suffixes: Suffixes): InitializerNode? {
         if (tokenType != TokenType.Equals)
             return null
 
         saveState()
         consume()
-        val expr = parseAssignmentExpression(suffixes) ?: run {
+        val expr = parseAssignmentExpression(suffixes.filter(Sfx.In, Sfx.Yield, Sfx.Await)) ?: run {
             loadState()
             return null
         }
@@ -169,7 +177,7 @@ class Parser(text: String) {
         } else null
     }
 
-    private fun parseExpressionStatement(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseExpressionStatement(suffixes: Suffixes): StatementNode? {
         when (tokenType) {
             TokenType.OpenCurly,
             TokenType.Function,
@@ -185,15 +193,16 @@ class Parser(text: String) {
             else -> {}
         }
 
-        return parseExpression(suffixes + Suffix.In)?.let(::ExpressionStatementNode).also {
+        return parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn)?.let(::ExpressionStatementNode).also {
             automaticSemicolonInsertion()
         }
     }
 
-    private fun parseExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseExpression(suffixes: Suffixes): ExpressionNode? {
         val expressions = mutableListOf<ExpressionNode>()
+        val newSuffixes = suffixes.filter(Sfx.In, Sfx.Yield, Sfx.Await)
 
-        val expr1 = parseAssignmentExpression(suffixes) ?: return null
+        val expr1 = parseAssignmentExpression(newSuffixes) ?: return null
         expressions.add(expr1)
 
         fun returnVal() = if (expressions.size == 1) expressions[0] else CommaExpressionNode(expressions)
@@ -201,7 +210,7 @@ class Parser(text: String) {
         while (tokenType == TokenType.Comma) {
             saveState()
             consume()
-            val expr2 = parseAssignmentExpression(suffixes) ?: run {
+            val expr2 = parseAssignmentExpression(newSuffixes) ?: run {
                 loadState()
                 return returnVal()
             }
@@ -211,21 +220,21 @@ class Parser(text: String) {
         return returnVal()
     }
 
-    private fun parseIfStatement(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseIfStatement(suffixes: Suffixes): StatementNode? {
         if (tokenType != TokenType.If)
             return null
 
         consume()
         consume(TokenType.OpenParen)
 
-        val condition = parseExpression(suffixes + Suffix.In) ?: run {
+        val condition = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: run {
             expected("expression")
             consume()
             return null
         }
 
         consume(TokenType.CloseParen)
-        val trueBlock = parseStatement(suffixes) ?: run {
+        val trueBlock = parseStatement(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
             expected("statement")
             consume()
             return null
@@ -235,7 +244,7 @@ class Parser(text: String) {
             return IfStatementNode(condition, trueBlock, null)
 
         consume()
-        val falseBlock = parseStatement(suffixes) ?: run {
+        val falseBlock = parseStatement(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
             expected("statement")
             consume()
             return null
@@ -244,17 +253,21 @@ class Parser(text: String) {
         return IfStatementNode(condition, trueBlock, falseBlock)
     }
 
-    private fun parseBreakableStatement(suffixes: Set<Suffix>): StatementNode? {
-        return parseIterationStatement(suffixes) ?: parseSwitchStatement(suffixes)
+    private fun parseBreakableStatement(suffixes: Suffixes): StatementNode? {
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)
+        return parseIterationStatement(newSuffixes) ?: parseSwitchStatement(newSuffixes)
     }
 
     // @ECMA why is this nonterminal so big :(
-    private fun parseIterationStatement(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseIterationStatement(suffixes: Suffixes): StatementNode? {
+        val tripleSuffix = suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)
+        val withIn = suffixes.filter(Sfx.Yield, Sfx.Await).withIn
+
         when (tokenType) {
             TokenType.Do -> {
                 consume()
 
-                val statement = parseStatement(suffixes) ?: run {
+                val statement = parseStatement(tripleSuffix) ?: run {
                     expected("statement")
                     consume()
                     return null
@@ -262,7 +275,7 @@ class Parser(text: String) {
 
                 consume(TokenType.While)
                 consume(TokenType.OpenParen)
-                val condition = parseExpression(suffixes + Suffix.In) ?: run {
+                val condition = parseExpression(withIn) ?: run {
                     expected("expression")
                     consume()
                     return null
@@ -277,14 +290,14 @@ class Parser(text: String) {
                 consume()
                 consume(TokenType.OpenParen)
 
-                val expression = parseExpression(suffixes + Suffix.In) ?: run {
+                val expression = parseExpression(withIn) ?: run {
                     expected("expression")
                     consume()
                     return null
                 }
 
                 consume(TokenType.CloseParen)
-                val statement = parseStatement(suffixes) ?: run {
+                val statement = parseStatement(tripleSuffix) ?: run {
                     expected("statement")
                     consume()
                     return null
@@ -328,23 +341,23 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseForStatementType1(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseForStatementType1(suffixes: Suffixes): StatementNode? {
         saveState()
         if (tokenType == TokenType.Let && peek(1).type == TokenType.OpenBracket)
             return null
-        val initializer = parseExpression(suffixes - Suffix.In)
+        val initializer = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await))
         if (tokenType != TokenType.Semicolon) {
             loadState()
             return null
         }
         discardState()
         consume()
-        val condition = parseExpression(suffixes + Suffix.In)
+        val condition = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn)
         consume(TokenType.Semicolon)
         consume()
-        val incrementer = parseExpression(suffixes + Suffix.In)
+        val incrementer = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn)
         consume(TokenType.CloseParen)
-        val body = parseStatement(suffixes) ?: run {
+        val body = parseStatement(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
             expected("statement")
             consume()
             return null
@@ -353,12 +366,12 @@ class Parser(text: String) {
         return ForNode(initializer?.let(::ExpressionStatementNode), condition, incrementer, body)
     }
 
-    private fun parseForStatementType2(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseForStatementType2(suffixes: Suffixes): StatementNode? {
         if (tokenType != TokenType.Var)
             return null
         saveState()
         consume()
-        val declarations = parseVariableDeclarationList(suffixes - Suffix.In) ?: run {
+        val declarations = parseVariableDeclarationList(suffixes.filter(Sfx.Yield, Sfx.Await)) ?: run {
             loadState()
             return null
         }
@@ -367,11 +380,11 @@ class Parser(text: String) {
             return null
         }
         consume()
-        val condition = parseExpression(suffixes + Suffix.In)
+        val condition = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await))
         consume(TokenType.Semicolon)
-        val incrementer = parseExpression(suffixes + Suffix.In)
+        val incrementer = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await))
         consume(TokenType.CloseParen)
-        val body = parseStatement(suffixes) ?: run {
+        val body = parseStatement(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
             expected("statement")
             consume()
             return null
@@ -380,13 +393,14 @@ class Parser(text: String) {
         return ForNode(VariableStatementNode(declarations), condition, incrementer, body)
     }
 
-    private fun parseForStatementType3(suffixes: Set<Suffix>): StatementNode? {
-        val declaration = parseLexicalDeclaration(suffixes - Suffix.In) ?: return null
-        val condition = parseExpression(suffixes + Suffix.In)
+    private fun parseForStatementType3(suffixes: Suffixes): StatementNode? {
+        val baseSuffix = suffixes.filter(Sfx.Yield, Sfx.Await)
+        val declaration = parseLexicalDeclaration(baseSuffix) ?: return null
+        val condition = parseExpression(baseSuffix.withIn)
         consume(TokenType.Semicolon)
-        val incrementer = parseExpression(suffixes + Suffix.In)
+        val incrementer = parseExpression(baseSuffix.withIn)
         consume(TokenType.CloseParen)
-        val body = parseStatement(suffixes) ?: run {
+        val body = parseStatement(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
             expected("statement")
             consume()
             return null
@@ -395,24 +409,24 @@ class Parser(text: String) {
         return ForNode(declaration, condition, incrementer, body)
     }
 
-    private fun parseForStatementType4(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseForStatementType4(suffixes: Suffixes): StatementNode? {
         if (tokenType == TokenType.Let && peek(1).type == TokenType.OpenBracket)
             return null
         saveState()
-        val initializer = parseLeftHandSideExpression(suffixes - Suffix.In) ?: return null
+        val initializer = parseLeftHandSideExpression(suffixes.filter(Sfx.Yield, Sfx.Await)) ?: return null
         if (tokenType != TokenType.In) {
             loadState()
             return null
         }
         discardState()
         consume()
-        val expression = parseExpression(suffixes + Suffix.In) ?: run {
+        val expression = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: run {
             expected("expression")
             consume()
             return null
         }
         consume(TokenType.CloseParen)
-        val body = parseStatement(suffixes) ?: run {
+        val body = parseStatement(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
             expected("statement")
             consume()
             return null
@@ -420,80 +434,57 @@ class Parser(text: String) {
         return ForInNode(ExpressionStatementNode(initializer), expression, body)
     }
 
-    private fun parseForStatementType5(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseForStatementType5(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseForStatementType6(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseForStatementType6(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseForStatementType7(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseForStatementType7(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseForStatementType8(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseForStatementType8(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseForStatementType9(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseForStatementType9(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseForStatementType10(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseForStatementType10(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseForStatementType11(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseForStatementType11(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseForStatementType12(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseForStatementType12(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseLexicalDeclaration(suffixes: Set<Suffix>): LexicalDeclarationNode? {
-        if (!matchAny(TokenType.Let, TokenType.Const))
-            return null
-
-        saveState()
-
-        val isConst = when (consume().type) {
-            TokenType.Let -> false
-            TokenType.Const -> true
-            else -> unreachable()
-        }
-
-        val list = parseBindingList(suffixes + Suffix.In) ?: run {
-            expected("identifier")
-            consume()
-            return null
-        }
-
-        automaticSemicolonInsertion()
-        discardState()
-
-        return LexicalDeclarationNode(isConst, list)
-    }
-
-    private fun parseBindingList(suffixes: Set<Suffix>): BindingListNode? {
+    private fun parseBindingList(suffixes: Suffixes): BindingListNode? {
         val declarations = mutableListOf<LexicalBindingNode>()
+        val newSuffixes = suffixes.filter(Sfx.In, Sfx.Yield, Sfx.Await)
 
-        val declaration = parseLexicalBinding(suffixes) ?: return null
+        val declaration = parseLexicalBinding(newSuffixes) ?: return null
         declarations.add(declaration)
 
         while (tokenType == TokenType.Comma) {
             saveState()
             consume()
-            val declaration2 = parseLexicalBinding(suffixes)
+            val declaration2 = parseLexicalBinding(newSuffixes)
             if (declaration2 == null) {
                 loadState()
                 break
@@ -505,49 +496,49 @@ class Parser(text: String) {
         return BindingListNode(declarations)
     }
 
-    private fun parseLexicalBinding(suffixes: Set<Suffix>): LexicalBindingNode? {
+    private fun parseLexicalBinding(suffixes: Suffixes): LexicalBindingNode? {
         // TODO: Attempt the BindingPattern branch
-        val identifier = parseBindingIdentifier(suffixes - Suffix.In) ?: return null
-        val initializer = parseInitializer(suffixes)
+        val identifier = parseBindingIdentifier() ?: return null
+        val initializer = parseInitializer(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.In))
         return LexicalBindingNode(identifier, initializer)
     }
 
-    private fun parseSwitchStatement(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseSwitchStatement(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseContinueStatement(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseContinueStatement(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseBreakStatement(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseBreakStatement(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseReturnStatement(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseReturnStatement(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseWithStatement(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseWithStatement(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseLabelledStatement(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseLabelledStatement(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseThrowStatement(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseThrowStatement(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseTryStatement(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseTryStatement(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
@@ -560,24 +551,60 @@ class Parser(text: String) {
         return DebuggerNode
     }
 
-    private fun parseDeclaration(suffixes: Set<Suffix>): StatementNode? {
+    private fun parseDeclaration(suffixes: Suffixes): StatementNode? {
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await)
+        return parseHoistableDeclaration(newSuffixes) ?:
+            parseClassDeclaration(newSuffixes) ?:
+            parseLexicalDeclaration(newSuffixes.withIn)
+    }
+
+    private fun parseHoistableDeclaration(suffixes: Suffixes): StatementNode? {
         // TODO
         return null
     }
 
-    private fun parseIdentifierReference(suffixes: Set<Suffix>): IdentifierReferenceNode? {
+    private fun parseClassDeclaration(suffixes: Suffixes): StatementNode? {
+        // TODO
+        return null
+    }
+
+    private fun parseLexicalDeclaration(suffixes: Suffixes): StatementNode? {
+        if (!matchAny(TokenType.Let, TokenType.Const))
+            return null
+
+        saveState()
+
+        val isConst = when (consume().type) {
+            TokenType.Let -> false
+            TokenType.Const -> true
+            else -> unreachable()
+        }
+
+        val list = parseBindingList(suffixes.filter(Sfx.In, Sfx.Yield, Sfx.Await)) ?: run {
+            expected("identifier")
+            consume()
+            return null
+        }
+
+        automaticSemicolonInsertion()
+        discardState()
+
+        return LexicalDeclarationNode(isConst, list)
+    }
+
+    private fun parseIdentifierReference(suffixes: Suffixes): IdentifierReferenceNode? {
         parseIdentifier()?.let {
             return IdentifierReferenceNode(it.identifierName)
         }
 
         return when (tokenType) {
-            TokenType.Await -> if (Suffix.Await in suffixes) {
+            TokenType.Await -> if (suffixes.hasAwait) {
                 null
             } else {
                 consume()
                 IdentifierReferenceNode("yield")
             }
-            TokenType.Yield -> if (Suffix.Yield in suffixes) {
+            TokenType.Yield -> if (suffixes.hasYield) {
                 null
             } else {
                 consume()
@@ -587,7 +614,7 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseBindingIdentifier(suffixes: Set<Suffix>): BindingIdentifierNode? {
+    private fun parseBindingIdentifier(): BindingIdentifierNode? {
         parseIdentifier()?.let {
             return BindingIdentifierNode(it.identifierName)
         }
@@ -605,7 +632,7 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseLabelIdentifier(suffixes: Set<Suffix>): LabelIdentifierNode? {
+    private fun parseLabelIdentifier(suffixes: Suffixes): LabelIdentifierNode? {
         return parseIdentifierReference(suffixes)?.let { LabelIdentifierNode(it.identifierName) }
     }
 
@@ -623,33 +650,35 @@ class Parser(text: String) {
         } else IdentifierNode(consume().value)
     }
 
-    private fun parseYieldExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseYieldExpression(suffixes: Suffixes): ExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseArrowFunction(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseArrowFunction(suffixes: Suffixes): ExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseAsyncArrowFunction(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseAsyncArrowFunction(suffixes: Suffixes): ExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseLeftHandSideExpression(suffixes: Set<Suffix>): ExpressionNode? {
-        return parseCallExpression(suffixes) ?:
-            parseNewExpression(suffixes) ?:
-            parseOptionalExpression(suffixes)
+    private fun parseLeftHandSideExpression(suffixes: Suffixes): ExpressionNode? {
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await)
+        return parseCallExpression(newSuffixes) ?:
+            parseNewExpression(newSuffixes) ?:
+            parseOptionalExpression(newSuffixes)
     }
 
-    private fun parseNewExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseNewExpression(suffixes: Suffixes): ExpressionNode? {
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await)
         if (tokenType != TokenType.New)
-            return parseMemberExpression(suffixes)
+            return parseMemberExpression(newSuffixes)
 
         consume()
-        val expr = parseNewExpression(suffixes) ?: run {
+        val expr = parseNewExpression(newSuffixes) ?: run {
             expected("expression")
             consume()
             return null
@@ -657,15 +686,19 @@ class Parser(text: String) {
         return NewExpressionNode(expr, null)
     }
 
-    private fun parseCallExpression(suffixes: Set<Suffix>): ExpressionNode? {
-        val initial = parseMemberExpression(suffixes) ?:
-            parseSuperCall(suffixes) ?:
-            parseImportCall(suffixes) ?:
+    private fun parseCallExpression(suffixes: Suffixes): ExpressionNode? {
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await)
+        val initial = parseMemberExpression(newSuffixes) ?:
+            parseSuperCall(newSuffixes) ?:
+            parseImportCall(newSuffixes) ?:
             return null
 
         var callExpression: ExpressionNode? = null
 
         while (true) {
+            if (tokenType == TokenType.TemplateLiteralStart)
+                TODO()
+
             val args = parseArguments(suffixes) ?: break
             callExpression = if (callExpression == null) {
                 CallExpressionNode(initial, args)
@@ -677,33 +710,34 @@ class Parser(text: String) {
         return callExpression ?: initial
     }
 
-    private fun parseSuperCall(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseSuperCall(suffixes: Suffixes): ExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseImportCall(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseImportCall(suffixes: Suffixes): ExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseOptionalExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseOptionalExpression(suffixes: Suffixes): ExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseMemberExpression(suffixes: Set<Suffix>): ExpressionNode? {
-        val primaryExpression = parsePrimaryExpression(suffixes) ?: run {
-            parseSuperProperty(suffixes)?.also { return it }
+    private fun parseMemberExpression(suffixes: Suffixes): ExpressionNode? {
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await)
+        val primaryExpression = parsePrimaryExpression(newSuffixes) ?: run {
+            parseSuperProperty(newSuffixes)?.also { return it }
             parseMetaProperty()?.also { return it }
             if (tokenType == TokenType.New) {
                 consume()
-                val expr = parseMemberExpression(suffixes) ?: run {
+                val expr = parseMemberExpression(newSuffixes) ?: run {
                     discardState()
                     expected("expression")
                     return null
                 }
-                val args = parseArguments(suffixes) ?: run {
+                val args = parseArguments(newSuffixes) ?: run {
                     discardState()
                     expected("parenthesized arguments")
                     return null
@@ -720,7 +754,7 @@ class Parser(text: String) {
         while (true) {
             if (tokenType == TokenType.OpenBracket) {
                 consume()
-                val expression = parseExpression(suffixes + Suffix.In) ?: run {
+                val expression = parseExpression(newSuffixes.withIn) ?: run {
                     expected("expression")
                     consume()
                     return null
@@ -790,14 +824,15 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseSuperProperty(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseSuperProperty(suffixes: Suffixes): ExpressionNode? {
         if (tokenType != TokenType.Super)
             return null
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await)
         consume()
         return when (tokenType) {
             TokenType.OpenBracket -> {
                 consume()
-                val expression = parseExpression(suffixes + Suffix.In) ?: run {
+                val expression = parseExpression(newSuffixes.withIn) ?: run {
                     expected("expression")
                     consume()
                     return null
@@ -825,12 +860,13 @@ class Parser(text: String) {
         CallExpression,
     }
 
-    private fun parseCoverCallExpressionAndAsyncArrowHead(suffixes: Set<Suffix>, context: CCEAARHContext): CCEAAAHNode? {
+    private fun parseCCEAARH(suffixes: Suffixes, context: CCEAARHContext): CCEAAAHNode? {
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await)
         return when (context) {
             CCEAARHContext.CallExpression -> {
-                val memberExpr = parseMemberExpression(suffixes) ?: return null
+                val memberExpr = parseMemberExpression(newSuffixes) ?: return null
                 saveState()
-                val args = parseArguments(suffixes) ?: run {
+                val args = parseArguments(newSuffixes) ?: run {
                     loadState()
                     return null
                 }
@@ -839,12 +875,12 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseArguments(suffixes: Set<Suffix>): ArgumentsNode? {
+    private fun parseArguments(suffixes: Suffixes): ArgumentsNode? {
         if (tokenType != TokenType.OpenParen)
             return null
         consume()
 
-        val argumentsList = parseArgumentsList(suffixes)
+        val argumentsList = parseArgumentsList(suffixes.filter(Sfx.Yield, Sfx.Await))
         if (argumentsList != null && tokenType == TokenType.Comma) {
             consume()
         }
@@ -852,7 +888,8 @@ class Parser(text: String) {
         return argumentsList?.let(::ArgumentsNode)
     }
 
-    private fun parseArgumentsList(suffixes: Set<Suffix>): ArgumentsListNode? {
+    private fun parseArgumentsList(suffixes: Suffixes): ArgumentsListNode? {
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await).withIn
         val arguments = mutableListOf<ArgumentListEntry>()
         var first = true
 
@@ -867,14 +904,14 @@ class Parser(text: String) {
 
             if (tokenType == TokenType.TripleDot) {
                 consume()
-                val expr = parseAssignmentExpression(suffixes + Suffix.In) ?: run {
+                val expr = parseAssignmentExpression(newSuffixes) ?: run {
                     expected("expression")
                     consume()
                     return null
                 }
                 arguments.add(ArgumentListEntry(expr, true))
             } else {
-                val expr = parseAssignmentExpression(suffixes + Suffix.In) ?: run {
+                val expr = parseAssignmentExpression(newSuffixes) ?: run {
                     loadState()
                     return null
                 }
@@ -887,24 +924,26 @@ class Parser(text: String) {
         return ArgumentsListNode(arguments)
     }
 
-    private fun parsePrimaryExpression(suffixes: Set<Suffix>): PrimaryExpressionNode? {
+    private fun parsePrimaryExpression(suffixes: Suffixes): PrimaryExpressionNode? {
         if (tokenType == TokenType.This) {
             consume()
             return ThisNode
         }
 
-        return parseIdentifierReference(suffixes) ?:
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await)
+
+        return parseIdentifierReference(newSuffixes) ?:
             parseLiteral() ?:
-            parseArrayLiteral(suffixes) ?:
-            parseObjectLiteral(suffixes) ?:
-            parseFunctionExpression(suffixes) ?:
-            parseClassExpression(suffixes) ?:
-            parseGeneratorExpression(suffixes) ?:
-            parseAsyncFunctionExpression(suffixes) ?:
-            parseAsyncGeneratorExpression(suffixes) ?:
-            parseRegularExpressionLiteral(suffixes) ?:
-            parseTemplateLiteral(suffixes) ?:
-            parseCoverParenthesizedExpressionAndArrowParameterList(suffixes, CPEAAPLContext.PrimaryExpression)
+            parseArrayLiteral(newSuffixes) ?:
+            parseObjectLiteral(newSuffixes) ?:
+            parseFunctionExpression(newSuffixes) ?:
+            parseClassExpression(newSuffixes) ?:
+            parseGeneratorExpression(newSuffixes) ?:
+            parseAsyncFunctionExpression(newSuffixes) ?:
+            parseAsyncGeneratorExpression(newSuffixes) ?:
+            parseRegularExpressionLiteral(newSuffixes) ?:
+            parseTemplateLiteral(newSuffixes) ?:
+            parseCPEAAPL(newSuffixes, CPEAAPLContext.PrimaryExpression)
     }
 
     private fun parseLiteral(): LiteralNode? {
@@ -940,47 +979,47 @@ class Parser(text: String) {
         } else null
     }
 
-    private fun parseArrayLiteral(suffixes: Set<Suffix>): PrimaryExpressionNode? {
+    private fun parseArrayLiteral(suffixes: Suffixes): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseObjectLiteral(suffixes: Set<Suffix>): PrimaryExpressionNode? {
+    private fun parseObjectLiteral(suffixes: Suffixes): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseFunctionExpression(suffixes: Set<Suffix>): PrimaryExpressionNode? {
+    private fun parseFunctionExpression(suffixes: Suffixes): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseClassExpression(suffixes: Set<Suffix>): PrimaryExpressionNode? {
+    private fun parseClassExpression(suffixes: Suffixes): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseGeneratorExpression(suffixes: Set<Suffix>): PrimaryExpressionNode? {
+    private fun parseGeneratorExpression(suffixes: Suffixes): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseAsyncFunctionExpression(suffixes: Set<Suffix>): PrimaryExpressionNode? {
+    private fun parseAsyncFunctionExpression(suffixes: Suffixes): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseAsyncGeneratorExpression(suffixes: Set<Suffix>): PrimaryExpressionNode? {
+    private fun parseAsyncGeneratorExpression(suffixes: Suffixes): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseRegularExpressionLiteral(suffixes: Set<Suffix>): PrimaryExpressionNode? {
+    private fun parseRegularExpressionLiteral(suffixes: Suffixes): PrimaryExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseTemplateLiteral(suffixes: Set<Suffix>): PrimaryExpressionNode? {
+    private fun parseTemplateLiteral(suffixes: Suffixes): PrimaryExpressionNode? {
         // TODO
         return null
     }
@@ -989,17 +1028,14 @@ class Parser(text: String) {
         PrimaryExpression,
     }
 
-    private fun parseCoverParenthesizedExpressionAndArrowParameterList(
-        suffixes: Set<Suffix>,
-        context: CPEAAPLContext
-    ): CPEAAPLNode? {
+    private fun parseCPEAAPL(suffixes: Suffixes, context: CPEAAPLContext): CPEAAPLNode? {
         return when (context) {
             CPEAAPLContext.PrimaryExpression -> {
                 if (tokenType != TokenType.OpenParen)
                     return null
                 saveState()
                 consume()
-                val expr = parseExpression(suffixes + Suffix.In) ?: run {
+                val expr = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: run {
                     loadState()
                     return null
                 }
@@ -1010,12 +1046,14 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseAssignmentExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseAssignmentExpression(suffixes: Suffixes): ExpressionNode? {
+        val newSuffixes = suffixes.filter(Sfx.In, Sfx.Yield, Sfx.Await)
+
         fun doMatch(): ExpressionNode? {
-            return parseConditionalExpression(suffixes) ?:
-                if (Suffix.Yield in suffixes) parseYieldExpression(suffixes + Suffix.Yield) else null ?:
-                parseArrowFunction(suffixes) ?:
-                parseAsyncArrowFunction(suffixes)
+            return parseConditionalExpression(newSuffixes) ?:
+                if (suffixes.hasYield) parseYieldExpression(newSuffixes) else null ?:
+                parseArrowFunction(newSuffixes) ?:
+                parseAsyncArrowFunction(newSuffixes)
         }
 
         var expr = doMatch() ?: return null
@@ -1043,7 +1081,7 @@ class Parser(text: String) {
             }
             consume()
 
-            val rhs = parseAssignmentExpression(suffixes) ?: run {
+            val rhs = parseAssignmentExpression(newSuffixes) ?: run {
                 expected("expression")
                 consume()
                 loadState()
@@ -1056,17 +1094,16 @@ class Parser(text: String) {
                 AssignmentExpressionNode(node, rhs, op)
             }
         }
-
-        return node
     }
 
-    private fun parseConditionalExpression(suffixes: Set<Suffix>): ExpressionNode? {
-        val lhs = parseShortCircuitExpression(suffixes) ?: return null
+    private fun parseConditionalExpression(suffixes: Suffixes): ExpressionNode? {
+        val newSuffixes = suffixes.filter(Sfx.In, Sfx.Yield, Sfx.Await)
+        val lhs = parseShortCircuitExpression(newSuffixes) ?: return null
         if (tokenType != TokenType.Question)
             return lhs
 
         consume()
-        val middle = parseAssignmentExpression(suffixes + Suffix.In)
+        val middle = parseAssignmentExpression(newSuffixes.withIn)
         if (middle == null) {
             consume()
             expected("expression")
@@ -1074,7 +1111,7 @@ class Parser(text: String) {
         }
 
         consume(TokenType.Colon)
-        val rhs = parseAssignmentExpression(suffixes + Suffix.In)
+        val rhs = parseAssignmentExpression(newSuffixes.withIn)
         return if (rhs == null) {
             consume()
             expected("expression")
@@ -1082,11 +1119,11 @@ class Parser(text: String) {
         } else ConditionalExpressionNode(lhs, middle, rhs)
     }
 
-    private fun parseShortCircuitExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseShortCircuitExpression(suffixes: Suffixes): ExpressionNode? {
         return parseLogicalORExpression(suffixes) ?: parseCoalesceExpresion(suffixes)
     }
 
-    private fun parseCoalesceExpresion(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseCoalesceExpresion(suffixes: Suffixes): ExpressionNode? {
         saveState()
         val head = parseBitwiseORExpression(suffixes) ?: return null
         if (tokenType != TokenType.DoubleQuestion) {
@@ -1103,7 +1140,7 @@ class Parser(text: String) {
         } else CoalesceExpressionNode(head, expr)
     }
 
-    private fun parseLogicalORExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseLogicalORExpression(suffixes: Suffixes): ExpressionNode? {
         val lhs = parseLogicalANDExpression(suffixes) ?: return null
         if (tokenType != TokenType.DoublePipe)
             return lhs
@@ -1117,7 +1154,7 @@ class Parser(text: String) {
         } else LogicalORExpressionNode(lhs, rhs)
     }
 
-    private fun parseLogicalANDExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseLogicalANDExpression(suffixes: Suffixes): ExpressionNode? {
         val lhs = parseBitwiseORExpression(suffixes) ?: return null
         if (tokenType != TokenType.DoubleAmpersand)
             return lhs
@@ -1131,7 +1168,7 @@ class Parser(text: String) {
         } else LogicalORExpressionNode(lhs, rhs)
     }
 
-    private fun parseBitwiseORExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseBitwiseORExpression(suffixes: Suffixes): ExpressionNode? {
         val lhs = parseBitwiseXORExpression(suffixes) ?: return null
         if (tokenType != TokenType.Pipe)
             return lhs
@@ -1145,7 +1182,7 @@ class Parser(text: String) {
         } else LogicalORExpressionNode(lhs, rhs)
     }
 
-    private fun parseBitwiseXORExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseBitwiseXORExpression(suffixes: Suffixes): ExpressionNode? {
         val lhs = parseBitwiseANDExpression(suffixes) ?: return null
         if (tokenType != TokenType.Caret)
             return lhs
@@ -1159,7 +1196,7 @@ class Parser(text: String) {
         } else LogicalORExpressionNode(lhs, rhs)
     }
 
-    private fun parseBitwiseANDExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseBitwiseANDExpression(suffixes: Suffixes): ExpressionNode? {
         val lhs = parseEqualityExpression(suffixes) ?: return null
         if (tokenType != TokenType.Ampersand)
             return lhs
@@ -1173,7 +1210,7 @@ class Parser(text: String) {
         } else LogicalORExpressionNode(lhs, rhs)
     }
 
-    private fun parseEqualityExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseEqualityExpression(suffixes: Suffixes): ExpressionNode? {
         val lhs = parseRelationalExpression(suffixes) ?: return null
         val op = when (tokenType) {
             TokenType.DoubleEquals -> EqualityExpressionNode.Operator.NonstrictEquality
@@ -1193,22 +1230,21 @@ class Parser(text: String) {
         } else EqualityExpressionNode(lhs, rhs, op)
     }
 
-    private fun parseRelationalExpression(suffixes: Set<Suffix>): ExpressionNode? {
-        val lhs = parseShiftExpression(suffixes - Suffix.In) ?: return null
+    private fun parseRelationalExpression(suffixes: Suffixes): ExpressionNode? {
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await)
+        val lhs = parseShiftExpression(newSuffixes) ?: return null
         val op = when (tokenType) {
             TokenType.LessThan -> RelationalExpressionNode.Operator.LessThan
             TokenType.GreaterThan -> RelationalExpressionNode.Operator.GreaterThan
             TokenType.LessThanEquals -> RelationalExpressionNode.Operator.LessThanEquals
             TokenType.GreaterThanEquals -> RelationalExpressionNode.Operator.GreaterThanEquals
             TokenType.Instanceof -> RelationalExpressionNode.Operator.Instanceof
-            TokenType.In -> if (Suffix.In in suffixes) RelationalExpressionNode.Operator.In else return lhs
+            TokenType.In -> if (suffixes.hasIn) RelationalExpressionNode.Operator.In else return lhs
             else -> return lhs
         }
         consume()
 
-
-        val nextSuffixes = if (op == RelationalExpressionNode.Operator.In) suffixes + Suffix.In else suffixes
-        val rhs = parseRelationalExpression(nextSuffixes)
+        val rhs = parseRelationalExpression(newSuffixes)
         return if (rhs == null) {
             expected("expression")
             consume()
@@ -1216,7 +1252,7 @@ class Parser(text: String) {
         } else RelationalExpressionNode(lhs, rhs, op)
     }
 
-    private fun parseShiftExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseShiftExpression(suffixes: Suffixes): ExpressionNode? {
         val lhs = parseAdditiveExpression(suffixes) ?: return null
         val op = when (tokenType) {
             TokenType.ShiftLeft -> ShiftExpressionNode.Operator.ShiftLeft
@@ -1234,7 +1270,7 @@ class Parser(text: String) {
         } else ShiftExpressionNode(lhs, rhs, op)
     }
 
-    private fun parseAdditiveExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseAdditiveExpression(suffixes: Suffixes): ExpressionNode? {
         val lhs = parseMultiplicativeExpression(suffixes) ?: return null
         val isSubtraction = when (tokenType) {
             TokenType.Plus -> false
@@ -1251,7 +1287,7 @@ class Parser(text: String) {
         } else AdditiveExpressionNode(lhs, rhs, isSubtraction)
     }
 
-    private fun parseMultiplicativeExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseMultiplicativeExpression(suffixes: Suffixes): ExpressionNode? {
         val lhs = parseExponentiationExpression(suffixes) ?: return null
         val op = when (tokenType) {
             TokenType.Asterisk -> MultiplicativeExpressionNode.Operator.Multiply
@@ -1269,7 +1305,7 @@ class Parser(text: String) {
         } else MultiplicativeExpressionNode(lhs, rhs, op)
     }
 
-    private fun parseExponentiationExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseExponentiationExpression(suffixes: Suffixes): ExpressionNode? {
         val lhs = parseUnaryExpression(suffixes) ?: return null
         if (tokenType != TokenType.DoubleAsterisk)
             return lhs
@@ -1283,7 +1319,7 @@ class Parser(text: String) {
         } else ExponentiationExpressionNode(lhs, rhs)
     }
 
-    private fun parseUnaryExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseUnaryExpression(suffixes: Suffixes): ExpressionNode? {
         val op = when (tokenType) {
             TokenType.Delete -> UnaryExpressionNode.Operator.Delete
             TokenType.Void -> UnaryExpressionNode.Operator.Void
@@ -1293,8 +1329,8 @@ class Parser(text: String) {
             TokenType.Tilde -> UnaryExpressionNode.Operator.BitwiseNot
             TokenType.Exclamation -> UnaryExpressionNode.Operator.Not
             else -> return parseUpdateExpression(suffixes) ?: run {
-                if (Suffix.Await in suffixes) {
-                    parseAwaitExpression(suffixes + Suffix.Await)
+                if (suffixes.hasAwait) {
+                    parseAwaitExpression(suffixes)
                 } else null
             }
         }
@@ -1308,7 +1344,7 @@ class Parser(text: String) {
         } else UnaryExpressionNode(expr, op)
     }
 
-    private fun parseUpdateExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseUpdateExpression(suffixes: Suffixes): ExpressionNode? {
         val expr: ExpressionNode
         val isIncrement: Boolean
         val isPostfix: Boolean
@@ -1336,12 +1372,12 @@ class Parser(text: String) {
         return UpdateExpressionNode(expr, isIncrement, isPostfix)
     }
 
-    private fun parseAwaitExpression(suffixes: Set<Suffix>): ExpressionNode? {
+    private fun parseAwaitExpression(suffixes: Suffixes): ExpressionNode? {
         if (tokenType != TokenType.Await)
             return null
         consume()
 
-        val expr = parseUnaryExpression(suffixes + Suffix.Await)
+        val expr = parseUnaryExpression(suffixes.filter(Sfx.Yield).withAwait)
         return if (expr == null) {
             expected("expression")
             consume()
@@ -1418,11 +1454,41 @@ class Parser(text: String) {
         Script,
     }
 
-    enum class Suffix {
+    private class Suffixes private constructor(private val types: Set<Sfx>) {
+        constructor() : this(emptySet())
+
+        val hasYield: Boolean get() = Sfx.Yield in types
+        val hasAwait: Boolean get() = Sfx.Await in types
+        val hasIn: Boolean get() = Sfx.In in types
+        val hasReturn: Boolean get() = Sfx.Return in types
+        val hasDefault: Boolean get() = Sfx.Default in types
+        val hasTagged: Boolean get() = Sfx.Tagged in types
+
+        val withYield: Suffixes get() = Suffixes(types + Sfx.Yield)
+        val withAwait: Suffixes get() = Suffixes(types + Sfx.Await)
+        val withIn: Suffixes get() = Suffixes(types + Sfx.In)
+        val withReturn: Suffixes get() = Suffixes(types + Sfx.Return)
+        val withDefault: Suffixes get() = Suffixes(types + Sfx.Default)
+        val withTagged: Suffixes get() = Suffixes(types + Sfx.Tagged)
+
+        val withoutYield: Suffixes get() = Suffixes(types - Sfx.Yield)
+        val withoutAwait: Suffixes get() = Suffixes(types - Sfx.Await)
+        val withoutIn: Suffixes get() = Suffixes(types - Sfx.In)
+        val withoutReturn: Suffixes get() = Suffixes(types - Sfx.Return)
+        val withoutDefault: Suffixes get() = Suffixes(types - Sfx.Default)
+        val withoutTagged: Suffixes get() = Suffixes(types - Sfx.Tagged)
+
+        fun with(vararg types: Sfx) = Suffixes(this.types + types)
+        fun without(vararg types: Sfx) = Suffixes(this.types - types)
+        fun filter(vararg types: Sfx) = Suffixes(this.types.filter { it in types }.toSet())
+    }
+
+    enum class Sfx {
         Yield,
         Await,
         In,
         Return,
+        Default,
         Tagged,
     }
 
