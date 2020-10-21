@@ -1,6 +1,7 @@
 package me.mattco.renva.runtime
 
 import me.mattco.renva.runtime.annotations.ECMAImpl
+import me.mattco.renva.runtime.environment.DeclarativeEnvRecord
 import me.mattco.renva.runtime.environment.EnvRecord
 import me.mattco.renva.runtime.environment.FunctionEnvRecord
 import me.mattco.renva.runtime.environment.GlobalEnvRecord
@@ -461,7 +462,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("ResolveBinding", "8.3.2")
-    fun resolveBinding(name: String, env: EnvRecord?): JSValue {
+    fun resolveBinding(name: String, env: EnvRecord?): JSReference {
         val actualEnv = env ?: Agent.runningContext.lexicalEnv!!
         // TODO: Strict mode checking
         return getIdentifierReference(actualEnv, name, false)

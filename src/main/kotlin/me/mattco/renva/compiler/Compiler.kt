@@ -17,7 +17,9 @@ import me.mattco.renva.runtime.Operations
 import me.mattco.renva.runtime.Realm
 import me.mattco.renva.runtime.annotations.ECMAImpl
 import me.mattco.renva.runtime.contexts.ExecutionContext
+import me.mattco.renva.runtime.environment.DeclarativeEnvRecord
 import me.mattco.renva.runtime.environment.EnvRecord
+import me.mattco.renva.runtime.values.JSReference
 import me.mattco.renva.runtime.values.JSValue
 import me.mattco.renva.runtime.values.functions.JSFunction
 import me.mattco.renva.runtime.values.objects.JSObject
@@ -52,15 +54,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
     private fun MethodAssembly.compileStatementList(statementList: StatementListNode) {
         statementList.statements.forEach {
-            compileStatementListItem(it)
-        }
-    }
-
-    private fun MethodAssembly.compileStatementListItem(item: StatementListItemNode) {
-        when (item) {
-            is StatementNode -> compileStatement(item)
-            is DeclarationNode -> compileDeclaration(item)
-            else -> unreachable()
+            compileStatement(it as StatementNode)
         }
     }
 
@@ -73,6 +67,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             is IfStatementNode -> compileIfStatement(statement)
             is BreakableStatement -> compileBreakableStatement(statement)
             is LabelledStatement -> compileLabelledStatement(statement)
+            is LexicalDeclarationNode -> compileLexicalDeclaration(statement)
             else -> TODO()
         }
     }
@@ -80,6 +75,22 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private fun MethodAssembly.compileBlock(block: BlockNode) {
         // TODO: Scopes
         if (block.statements != null) {
+            pushContext
+            invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
+            block.statements.lexicallyScopedDeclarations().forEach { decl ->
+                decl.boundNames().forEach { name ->
+                    dup
+                    ldc(name)
+                    if (decl.isConstantDeclaration()) {
+                        ldc(true)
+                        invokevirtual(EnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
+                    } else {
+                        ldc(false)
+                        invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+                    }
+                }
+                // TODO: FunctionDeclaration check
+            }
             compileStatementList(block.statements)
         }
     }
@@ -103,7 +114,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             val id = node.identifier.identifierName
             ldc(id)
             aconst_null
-            operation("resolveBinding", JSValue::class, String::class, EnvRecord::class)
+            operation("resolveBinding", JSReference::class, String::class, EnvRecord::class)
             if (isAnonymousFunctionDefinition(node)) {
                 TODO()
             } else {
@@ -149,16 +160,25 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         TODO()
     }
 
-    private fun MethodAssembly.compileDeclaration(declarationNode: DeclarationNode) {
-        TODO()
-    }
-
     private fun MethodAssembly.compileHoistableDeclaration(hoistableDeclarationNode: HoistableDeclarationNode) {
         TODO()
     }
 
     private fun MethodAssembly.compileLexicalDeclaration(lexicalDeclarationNode: LexicalDeclarationNode) {
-        TODO()
+        lexicalDeclarationNode.bindingList.lexicalBindings.forEach {
+            expect(it.initializer != null)
+
+            ldc(it.identifier.identifierName)
+            aconst_null
+            operation("resolveBinding", JSReference::class, String::class, EnvRecord::class)
+            if (isAnonymousFunctionDefinition(lexicalDeclarationNode)) {
+                TODO()
+            } else {
+                compileExpression(it.initializer.node)
+                operation("getValue", JSValue::class, JSValue::class)
+            }
+            operation("initializeReferencedBinding", void, JSReference::class, JSValue::class)
+        }
     }
 
     private fun MethodAssembly.compileBindingList(bindingList: BindingListNode) {
@@ -171,6 +191,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
     private fun MethodAssembly.compileExpressionStatement(expressionStatementNode: ExpressionStatementNode) {
         compileExpression(expressionStatementNode.node)
+        operation("getValue", JSValue::class, JSValue::class)
         pop
     }
 
@@ -540,7 +561,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private fun MethodAssembly.compileIdentifierReference(identifierReferenceNode: IdentifierReferenceNode) {
         ldc(identifierReferenceNode.identifierName)
         aconst_null
-        operation("resolveBinding", JSValue::class, String::class, EnvRecord::class)
+        operation("resolveBinding", JSReference::class, String::class, EnvRecord::class)
     }
 
     /**
@@ -554,34 +575,37 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         operation("getGlobalObject", JSObject::class)
     }
 
-    private fun MethodAssembly.loadContext() {
-        aload_1
-    }
+    private val MethodAssembly.pushContext: Unit get() = aload_1
 
-    private fun MethodAssembly.loadAgent() {
-        loadContext()
-        getfield(ExecutionContext::class, "agent", Agent::class)
-    }
+    private val MethodAssembly.pushAgent: Unit
+        get() {
+            pushContext
+            getfield(ExecutionContext::class, "agent", Agent::class)
+        }
 
-    private fun MethodAssembly.loadRealm() {
-        loadContext()
-        getfield(ExecutionContext::class, "realm", Realm::class)
-    }
+    private val MethodAssembly.pushRealm: Unit
+        get() {
+            pushContext
+            getfield(ExecutionContext::class, "realm", Realm::class)
+        }
 
-    private fun MethodAssembly.loadFunction() {
-        loadContext()
-        getfield(ExecutionContext::class, "function", JSFunction::class)
-    }
+    private val MethodAssembly.pushFunction: Unit
+        get() {
+            pushContext
+            getfield(ExecutionContext::class, "function", JSFunction::class)
+        }
 
-    private fun MethodAssembly.loadLexicalEnv() {
-        loadContext()
-        getfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-    }
+    private val MethodAssembly.pushLexicalEnv: Unit
+        get() {
+            pushContext
+            getfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+        }
 
-    private fun MethodAssembly.loadVariableEnv() {
-        loadContext()
-        getfield(ExecutionContext::class, "variableEnv", EnvRecord::class)
-    }
+    private val MethodAssembly.pushVariableEnv: Unit
+        get() {
+            pushContext
+            getfield(ExecutionContext::class, "variableEnv", EnvRecord::class)
+        }
 
     private val MethodAssembly.pushUndefined: Unit
         get() {

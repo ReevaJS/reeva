@@ -105,4 +105,11 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
 
     @ECMAImpl("WithBaseObject", "8.1.1.1.10")
     override fun withBaseObject() = JSUndefined
+
+    companion object {
+        @JvmStatic @ECMAImpl("NewDeclarativeEnvironment", "8.1.2.2")
+        fun create(old: EnvRecord?): DeclarativeEnvRecord {
+            return DeclarativeEnvRecord(old)
+        }
+    }
 }
