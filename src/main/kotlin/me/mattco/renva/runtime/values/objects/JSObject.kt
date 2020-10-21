@@ -86,8 +86,8 @@ open class JSObject protected constructor(
                 PropertyKey(annotation.name),
                 annotation.length,
                 Attributes(annotation.attributes)
-            ) { context, arguments ->
-                it.invoke(this, context, arguments) as JSValue
+            ) { thisValue, arguments ->
+                it.invoke(this, thisValue, arguments) as JSValue
             }
         }
     }

@@ -5,7 +5,7 @@ import me.mattco.renva.runtime.values.JSValue
 import me.mattco.renva.runtime.values.objects.JSObject
 import me.mattco.renva.utils.shouldThrowError
 
-abstract class JSNativeFunction(realm: Realm, private val name: String) : JSFunction(realm, ThisMode.Global) {
+abstract class JSNativeFunction protected constructor(realm: Realm, private val name: String) : JSFunction(realm, ThisMode.Global) {
     override fun name() = name
 
     companion object {
@@ -15,6 +15,6 @@ abstract class JSNativeFunction(realm: Realm, private val name: String) : JSFunc
             override fun construct(arguments: List<JSValue>, newTarget: JSObject): JSValue {
                 shouldThrowError()
             }
-        }
+        }.also { it.init() }
     }
 }

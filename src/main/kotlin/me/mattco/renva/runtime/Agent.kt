@@ -36,7 +36,8 @@ class Agent(val signifier: Any = "Agent${agentCount++}") {
         val newContext = ExecutionContext(this, realm, null, scriptRecord.scriptOrModule)
         runningContextStack.add(newContext)
 
-        realm.init()
+        realm.initObjects()
+
         if (!::globalEnv.isInitialized) {
             val globalObj = JSObject.create(realm)
             realm.globalObject = globalObj
@@ -46,6 +47,8 @@ class Agent(val signifier: Any = "Agent${agentCount++}") {
             realm.globalEnv = globalEnv
             realm.globalObject = globalEnv.globalThis
         }
+
+        realm.populateGlobalObject()
 
         newContext.variableEnv = globalEnv
         newContext.lexicalEnv = globalEnv

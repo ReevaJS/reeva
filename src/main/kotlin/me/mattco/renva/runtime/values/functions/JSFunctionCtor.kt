@@ -1,11 +1,10 @@
-package me.mattco.renva.runtime.values.objects
+package me.mattco.renva.runtime.values.functions
 
 import me.mattco.renva.runtime.Realm
 import me.mattco.renva.runtime.values.JSValue
-import me.mattco.renva.runtime.values.functions.JSNativeFunction
 import me.mattco.renva.runtime.values.objects.JSObject
 
-class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ObjectConstructor") {
+class JSFunctionCtor private constructor(realm: Realm) : JSNativeFunction(realm, "FunctionConstructor") {
     override fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
         TODO("Not yet implemented")
     }
@@ -15,6 +14,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     companion object {
-        fun create(realm: Realm) = JSObjectCtor(realm).also { it.init() }
+        fun create(realm: Realm) = JSFunctionCtor(realm).also { it.init() }
     }
 }
