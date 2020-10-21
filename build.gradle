@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'me.mattco'
-archivesBaseName = 'jsthing'
+archivesBaseName = 'renva'
 version = '1.0-SNAPSHOT'
 
 targetCompatibility = sourceCompatibility = 1.8
