@@ -14,6 +14,8 @@ import me.mattco.jsthing.runtime.environment.EnvRecord
 import me.mattco.jsthing.runtime.environment.GlobalEnvRecord
 import me.mattco.jsthing.runtime.values.nonprimitives.functions.JSFunction
 import me.mattco.jsthing.runtime.values.nonprimitives.objects.JSObject
+import me.mattco.jsthing.runtime.values.primitives.JSNull
+import me.mattco.jsthing.runtime.values.primitives.JSNumber
 import me.mattco.jsthing.utils.expect
 import me.mattco.jsthing.utils.shouldThrowError
 import org.objectweb.asm.ClassWriter
@@ -68,8 +70,6 @@ class Agent(val signifier: Any = "Agent${agentCount++}") {
         topLevelScript.run(runningContext)
 
         globalDeclarationInstantiation(scriptNode, globalEnv)
-
-        // TODO: Execute here
 
         runningContextStack.remove(newContext)
     }

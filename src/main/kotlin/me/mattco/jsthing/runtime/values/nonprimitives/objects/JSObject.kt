@@ -119,8 +119,8 @@ open class JSObject protected constructor(
 
     @ECMAImpl("[[HasProperty]]", "9.1.7")
     fun hasProperty(property: PropertyKey): Boolean {
-        val hasOwn = getOwnProperty(property)
-        if (hasOwn != JSUndefined)
+        val hasOwn = getOwnPropertyDescriptor(property)
+        if (hasOwn != null)
             return true
         val parent = getPrototype()
         if (parent != JSNull)
@@ -146,7 +146,7 @@ open class JSObject protected constructor(
 
     @ECMAImpl("[[GetOwnProperty]]", "9.1.5")
     open fun getOwnProperty(property: PropertyKey): JSValue {
-        return properties[property]?.toObject() ?: JSUndefined
+        return properties[property]?.toObject(realm) ?: JSUndefined
     }
 
     fun defineOwnProperty(property: String, descriptor: Descriptor) = defineOwnProperty(PropertyKey(property), descriptor)
