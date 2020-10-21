@@ -654,7 +654,7 @@ class Parser(text: String) {
             consume()
             return null
         }
-        return NewExpressionNode(expr)
+        return NewExpressionNode(expr, null)
     }
 
     private fun parseCallExpression(suffixes: Set<Suffix>): ExpressionNode? {
@@ -708,7 +708,10 @@ class Parser(text: String) {
                     expected("parenthesized arguments")
                     return null
                 }
-                return MemberExpressionNode(expr, args, MemberExpressionNode.Type.New)
+                // Spec deviation: MemberExpression does not have any alternatives
+                // that involve arguments or new, as it makes the AST tree way more
+                // confusing
+                return NewExpressionNode(expr, args)
             }
             return null
         }

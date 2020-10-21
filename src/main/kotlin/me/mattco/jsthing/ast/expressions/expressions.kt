@@ -84,13 +84,14 @@ class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val
     enum class Type {
         Computed,
         NonComputed,
-        New,
         Tagged,
-        Call,
     }
 }
 
-class NewExpressionNode(val target: ExpressionNode) : NodeBase(listOf(target)), LeftHandSideExpressionNode
+class NewExpressionNode(
+    val target: ExpressionNode,
+    val arguments: ArgumentsNode?
+) : NodeBase(listOfNotNull(target, arguments)), LeftHandSideExpressionNode
 
 class OptionalExpressionNode : NodeBase(), LeftHandSideExpressionNode
 

@@ -17,18 +17,18 @@ class ArgumentsListNode(val argumentsList: List<ArgumentListEntry>) : NodeBase(a
             append("ArgumentListEntry (isSpread=")
             append(it.isSpread)
             append(")\n")
-            append(it.argument.dump(indent + 2))
+            append(it.expression.dump(indent + 2))
         }
     }
 }
 
-data class ArgumentListEntry(val argument: ExpressionNode, val isSpread: Boolean) : NodeBase(listOf(argument)) {
+data class ArgumentListEntry(val expression: ExpressionNode, val isSpread: Boolean) : NodeBase(listOf(expression)) {
     override fun dump(indent: Int) = stringBuilder {
         appendIndent(indent)
         appendName()
         append(" (isSpread=")
         append(isSpread)
         append(")\n")
-        append(argument.dump(indent + 1))
+        append(expression.dump(indent + 1))
     }
 }
