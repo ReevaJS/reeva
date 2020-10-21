@@ -16,6 +16,7 @@ import me.mattco.renva.runtime.values.objects.JSObjectProto
 
 class Realm {
     lateinit var globalObject: JSObject
+    @JvmField
     var globalEnv: GlobalEnvRecord? = null
 
     lateinit var objectProto: JSObjectProto private set

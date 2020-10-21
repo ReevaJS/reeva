@@ -70,8 +70,6 @@ class Agent(val signifier: Any = "Agent${agentCount++}") {
         val topLevelScript = instantiateClass<TopLevelScript>(compiler.className, bytes)
         topLevelScript.run(runningContext)
 
-        globalDeclarationInstantiation(scriptNode, globalEnv)
-
         runningContextStack.remove(newContext)
     }
 
@@ -80,64 +78,6 @@ class Agent(val signifier: Any = "Agent${agentCount++}") {
         classLoader.addClass(name, bytes)
         val instance = classLoader.loadClass(name) as Class<T>
         return instance.newInstance()
-    }
-
-    @ECMAImpl("GlobalDeclarationInstantiation", "15.1.11")
-    private fun globalDeclarationInstantiation(script: ScriptNode, env: GlobalEnvRecord) {
-        val lexNames = script.lexicallyDeclaredNames()
-        val varNames = script.varDeclaredNames()
-        lexNames.forEach {
-            if (env.hasVarDeclaration(it))
-                shouldThrowError("SyntaxError")
-            if (env.hasLexicalDeclaration(it))
-                shouldThrowError("SyntaxError")
-            if (env.hasRestrictedGlobalProperty(it))
-                shouldThrowError("SyntaxError")
-        }
-        varNames.forEach {
-            if (env.hasLexicalDeclaration(it))
-                shouldThrowError("SyntaxError")
-        }
-        val varDeclarations = script.varScopedDeclarations()
-        val functionsToInitialize = mutableListOf<ASTNode>()
-        val declaredFunctionNames = mutableListOf<String>()
-        varDeclarations.asReversed().forEach {
-            if (it !is VariableDeclarationNode && it !is ForBindingNode && it !is BindingIdentifierNode)
-                TODO()
-        }
-        var declaredVarNames = mutableListOf<String>()
-        varDeclarations.forEach { decl ->
-            if (decl is VariableDeclarationNode || decl is ForBindingNode || decl is BindingIdentifierNode) {
-                decl.boundNames().forEach { name ->
-                    if (name !in declaredFunctionNames) {
-                        if (!env.canDeclareGlobalVar(name))
-                            shouldThrowError("TypeError")
-                        if (name !in declaredVarNames)
-                            declaredVarNames.add(name)
-                    }
-                }
-            }
-        }
-        val lexDeclarations = script.lexicallyScopedDeclarations()
-        lexDeclarations.forEach { decl ->
-            decl.boundNames().forEach { name ->
-                if (decl.isConstantDeclaration()) {
-                    env.createImmutableBinding(name, true)
-                } else {
-                    env.createMutableBinding(name, false)
-                }
-            }
-        }
-        functionsToInitialize.forEach { func ->
-            val boundNames = func.boundNames()
-            expect(boundNames.size == 1)
-            val functionName = boundNames[0]
-            val jsFunction = instantiateFunctionObject(func, env)
-            env.createGlobalFunctionBinding(functionName, jsFunction, false)
-        }
-        declaredVarNames.forEach {
-            env.createGlobalVarBinding(it, false)
-        }
     }
 
     // TODO: Is there a better place for this?

@@ -19,12 +19,14 @@ import me.mattco.renva.runtime.annotations.ECMAImpl
 import me.mattco.renva.runtime.contexts.ExecutionContext
 import me.mattco.renva.runtime.environment.DeclarativeEnvRecord
 import me.mattco.renva.runtime.environment.EnvRecord
+import me.mattco.renva.runtime.environment.GlobalEnvRecord
 import me.mattco.renva.runtime.values.JSReference
 import me.mattco.renva.runtime.values.JSValue
 import me.mattco.renva.runtime.values.functions.JSFunction
 import me.mattco.renva.runtime.values.objects.JSObject
 import me.mattco.renva.runtime.values.primitives.*
 import me.mattco.renva.utils.expect
+import me.mattco.renva.utils.shouldThrowError
 import me.mattco.renva.utils.unreachable
 import org.objectweb.asm.tree.ClassNode
 
@@ -48,7 +50,87 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         }
     }
 
+    @ECMAImpl("GlobalDeclarationInstantiation", "15.1.11")
     private fun MethodAssembly.compileScript(script: ScriptNode) {
+        aload_1
+        getfield(ExecutionContext::class, "realm", Realm::class)
+        getfield(Realm::class, "globalEnv", GlobalEnvRecord::class)
+
+        val lexNames = script.lexicallyDeclaredNames()
+        val varNames = script.varDeclaredNames()
+        lexNames.forEach {
+            listOf("hasVarDeclaration", "hasLexicalDeclaration", "hasRestrictedGlobalProperty").forEach { method ->
+                dup
+                ldc(it)
+                invokevirtual(GlobalEnvRecord::class, method, Boolean::class, String::class)
+                ifStatement(JumpCondition.True) {
+                    shouldThrow("SyntaxError")
+                }
+            }
+        }
+        varNames.forEach {
+            dup
+            ldc(it)
+            invokevirtual(GlobalEnvRecord::class, "hasLexicalDeclaration", Boolean::class, String::class)
+            ifStatement(JumpCondition.True) {
+                shouldThrow("SyntaxError")
+            }
+        }
+
+        val varDeclarations = script.varScopedDeclarations()
+        val functionsToInitialize = mutableListOf<ASTNode>()
+        val declaredFunctionNames = mutableListOf<String>()
+        varDeclarations.asReversed().forEach {
+            if (it !is VariableDeclarationNode && it !is ForBindingNode && it !is BindingIdentifierNode)
+                TODO()
+        }
+        var declaredVarNames = mutableListOf<String>()
+        varDeclarations.forEach { decl ->
+            if (decl is VariableDeclarationNode || decl is ForBindingNode || decl is BindingIdentifierNode) {
+                decl.boundNames().forEach { name ->
+                    if (name !in declaredFunctionNames) {
+                        dup
+                        ldc(name)
+                        invokevirtual(GlobalEnvRecord::class, "canDeclareGlobalVar", Boolean::class, String::class)
+                        ifStatement(JumpCondition.True) {
+                            shouldThrow("TypeError")
+                        }
+                        if (name !in declaredVarNames)
+                            declaredVarNames.add(name)
+                    }
+                }
+            }
+        }
+        val lexDeclarations = script.lexicallyScopedDeclarations()
+        lexDeclarations.forEach { decl ->
+            decl.boundNames().forEach { name ->
+                dup
+                ldc(name)
+                if (decl.isConstantDeclaration()) {
+                    ldc(true)
+                    invokevirtual(GlobalEnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
+                    invokevirtual(GlobalEnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
+                } else {
+                    ldc(false)
+                    invokevirtual(GlobalEnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+                }
+            }
+        }
+        functionsToInitialize.forEach { func ->
+            TODO()
+            val boundNames = func.boundNames()
+            expect(boundNames.size == 1)
+            val functionName = boundNames[0]
+//            val jsFunction = instantiateFunctionObject(func, env)
+//            env.createGlobalFunctionBinding(functionName, jsFunction, false)
+        }
+        declaredVarNames.forEach {
+            dup
+            ldc(it)
+            ldc(false)
+            invokevirtual(GlobalEnvRecord::class, "createGlobalVarBinding", void, String::class, Boolean::class)
+        }
+
         compileStatementList(script.statementList)
     }
 
@@ -230,7 +312,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         commaExpressionNode.expressions.forEachIndexed { index, node ->
             compileExpression(node)
             if (index != commaExpressionNode.expressions.lastIndex)
-                dup
+                pop
         }
     }
 
@@ -573,6 +655,13 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
      */
     private fun MethodAssembly.compileThis() {
         operation("getGlobalObject", JSObject::class)
+    }
+
+    private fun MethodAssembly.shouldThrow(errorName: String) {
+        construct(java.lang.IllegalStateException::class, String::class) {
+            ldc("FIXME: This should have instead thrown a JS $errorName")
+        }
+        athrow
     }
 
     private val MethodAssembly.pushContext: Unit get() = aload_1

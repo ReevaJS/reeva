@@ -265,7 +265,7 @@ object Operations {
 
     @JvmStatic @ECMAImpl("InitializeReferencedBinding", "6.2.4.11")
     fun initializeReferencedBinding(reference: JSReference, value: JSValue) {
-        expect(!reference.isUnresolvableReference)
+        expect(!reference.isUnresolvableReference, "Unknown reference with identifier ${reference.name}")
         val base = reference.baseValue
         expect(base is EnvRecord)
         base.initializeBinding(reference.name, value)
