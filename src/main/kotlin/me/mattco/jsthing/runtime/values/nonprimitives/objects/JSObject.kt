@@ -1,5 +1,6 @@
 package me.mattco.jsthing.runtime.values.nonprimitives.objects
 
+import me.mattco.jsthing.runtime.Operations
 import me.mattco.jsthing.runtime.Realm
 import me.mattco.jsthing.runtime.annotations.ECMAImpl
 import me.mattco.jsthing.runtime.annotations.JSMethod
@@ -10,6 +11,9 @@ import me.mattco.jsthing.runtime.environment.FunctionEnvRecord
 import me.mattco.jsthing.runtime.environment.GlobalEnvRecord
 import me.mattco.jsthing.runtime.values.JSValue
 import me.mattco.jsthing.runtime.values.nonprimitives.functions.*
+import me.mattco.jsthing.runtime.values.nonprimitives.objects.Attributes.Companion.HAS_WRITABLE
+import me.mattco.jsthing.runtime.values.nonprimitives.objects.Attributes.Companion.WRITABLE
+import me.mattco.jsthing.runtime.values.primitives.JSNull
 import me.mattco.jsthing.runtime.values.primitives.JSNumber
 import me.mattco.jsthing.runtime.values.primitives.JSString
 import me.mattco.jsthing.runtime.values.primitives.JSUndefined
@@ -111,11 +115,17 @@ open class JSObject protected constructor(
         return true
     }
 
-    fun hasOwnProperty(property: String): Boolean = hasOwnProperty(PropertyKey(property))
+    fun hasProperty(property: String): Boolean = hasProperty(PropertyKey(property))
 
     @ECMAImpl("[[HasProperty]]", "9.1.7")
-    fun hasOwnProperty(property: PropertyKey): Boolean {
-        TODO()
+    fun hasProperty(property: PropertyKey): Boolean {
+        val hasOwn = getOwnProperty(property)
+        if (hasOwn != JSUndefined)
+            return true
+        val parent = getPrototype()
+        if (parent != JSNull)
+            return (parent as JSObject).hasProperty(property)
+        return false
     }
 
     @ECMAImpl("[[IsExtensible]]", "9.1.3")
@@ -129,60 +139,158 @@ open class JSObject protected constructor(
 
     fun getOwnPropertyDescriptor(property: String) = getOwnPropertyDescriptor(PropertyKey(property))
     open fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
-        TODO()
-    }
-
-    fun getOwnPropertyDescriptorObject(property: String) = getOwnPropertyDescriptorObject(PropertyKey(property))
-    fun getOwnPropertyDescriptorObject(property: PropertyKey): JSValue {
-        TODO()
+        return properties[property]
     }
 
     fun getOwnProperty(property: String) = getOwnProperty(PropertyKey(property))
 
     @ECMAImpl("[[GetOwnProperty]]", "9.1.5")
     open fun getOwnProperty(property: PropertyKey): JSValue {
-        if (property !in properties)
-            return JSUndefined
-
-        TODO()
+        return properties[property]?.toObject() ?: JSUndefined
     }
 
     fun defineOwnProperty(property: String, descriptor: Descriptor) = defineOwnProperty(PropertyKey(property), descriptor)
 
     @ECMAImpl("[[DefineOwnProperty]]", "9.1.6")
     open fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
-        TODO()
+        return validateAndApplyPropertyDescriptor(property, descriptor)
     }
 
-    fun hasProperty(property: String) = hasProperty(PropertyKey(property))
-    open fun hasProperty(property: PropertyKey): Boolean {
-        TODO()
+    private fun validateAndApplyPropertyDescriptor(property: PropertyKey, newDesc: Descriptor): Boolean {
+        val extensible = isExtensible()
+        val currentDesc = getOwnPropertyDescriptor(property)
+
+        if (currentDesc == null) {
+            if (!extensible)
+                return false
+            properties[property] = newDesc.copy()
+            return true
+        }
+
+        if (newDesc.isEmpty)
+            return true
+
+        if (currentDesc.attributes.run { hasConfigurable && !isConfigurable }) {
+            if (newDesc.attributes.isConfigurable)
+                return false
+            if (newDesc.attributes.hasEnumerable && currentDesc.attributes.isEnumerable != newDesc.attributes.isEnumerable)
+                return false
+        }
+
+        if (currentDesc.isDataDescriptor != newDesc.isDataDescriptor) {
+            if (currentDesc.attributes.run { hasConfigurable && !isConfigurable })
+                return false
+            if (currentDesc.isDataDescriptor) {
+                properties[property] = Descriptor(
+                    JSUndefined,
+                    Attributes(currentDesc.attributes.num and (WRITABLE and HAS_WRITABLE).inv()),
+                    newDesc.getter,
+                    newDesc.setter
+                )
+
+            }
+        } else if (currentDesc.isDataDescriptor && newDesc.isDataDescriptor) {
+            if (currentDesc.attributes.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {
+                if (newDesc.attributes.isWritable)
+                    return false
+                if (!newDesc.value.sameValue(currentDesc.value))
+                    return false
+            }
+        } else if (currentDesc.attributes.run { hasConfigurable && !isConfigurable }) {
+            val currentSetter = currentDesc.setter
+            val newSetter = newDesc.setter
+            if (newSetter != null && (currentSetter == null || !newSetter.sameValue(currentSetter)))
+                return false
+            val currentGetter = currentDesc.setter
+            val newGetter = newDesc.setter
+            if (newGetter != null && (currentGetter == null || !newGetter.sameValue(currentGetter)))
+                return false
+            return true
+        }
+
+        properties[property] = newDesc
+        return true
     }
 
     fun get(property: String, receiver: JSValue = this) = get(PropertyKey(property), receiver)
 
     @JvmOverloads @ECMAImpl("[[Get]]", "9.1.8")
     open fun get(property: PropertyKey, receiver: JSValue = this): JSValue {
-        TODO()
+        val desc = getOwnPropertyDescriptor(property)
+        if (desc == null) {
+            val parent = getPrototype()
+            if (parent == JSNull)
+                return JSUndefined
+            return (parent as JSObject).get(property, receiver)
+        }
+        if (desc.isDataDescriptor)
+            return desc.value
+        expect(desc.isAccessorDescriptor)
+        val getter = desc.getter ?: return JSUndefined
+        return Operations.call(getter, receiver)
     }
 
     fun set(property: String, value: JSValue, receiver: JSValue = this) = set(PropertyKey(property), value, receiver)
 
     @JvmOverloads @ECMAImpl("[[Set]]", "9.1.9")
     open fun set(property: PropertyKey, value: JSValue, receiver: JSValue = this): Boolean {
-        TODO()
+        val ownDesc = getOwnPropertyDescriptor(property)
+        return ordinarySetWithOwnDescriptor(property, value, receiver, ownDesc)
+    }
+
+    @ECMAImpl("OrdinarySetWithOwnDescriptor", "9.1.9.2")
+    private fun ordinarySetWithOwnDescriptor(property: PropertyKey, value: JSValue, receiver: JSValue, ownDesc_: Descriptor?): Boolean {
+        var ownDesc = ownDesc_
+        if (ownDesc == null) {
+            val parent = getPrototype()
+            if (parent != JSNull)
+                return (parent as JSObject).set(property, value, receiver)
+            ownDesc = Descriptor(JSUndefined, Attributes(Attributes.defaultAttributes))
+        }
+        if (ownDesc.isDataDescriptor) {
+            if (!ownDesc.attributes.isWritable)
+                return false
+            if (receiver !is JSObject)
+                return false
+            val existingDescriptor = receiver.getOwnPropertyDescriptor(property)
+            if (existingDescriptor != null) {
+                if (existingDescriptor.isAccessorDescriptor)
+                    return false
+                if (!existingDescriptor.attributes.isWritable)
+                    return false
+                val valueDesc = Descriptor(value, Attributes(0))
+                return receiver.defineOwnProperty(property, valueDesc)
+            }
+            return receiver.createDataProperty(property, value)
+        }
+        expect(ownDesc.isAccessorDescriptor)
+        val setter = ownDesc.setter ?: return false
+        Operations.call(setter, receiver, listOf(value))
+        return true
+    }
+
+    @ECMAImpl("CreateDataProperty", "7.3.5")
+    private fun createDataProperty(property: PropertyKey, value: JSValue): Boolean {
+        val newDesc = Descriptor(value, Attributes(Attributes.defaultAttributes))
+        return defineOwnProperty(property, newDesc)
     }
 
     fun delete(property: String) = delete(PropertyKey(property))
 
     @ECMAImpl("[[Delete]]", "9.1.10")
     open fun delete(property: PropertyKey): Boolean {
-        TODO()
+        val desc = getOwnPropertyDescriptor(property) ?: return true
+        if (desc.attributes.isConfigurable) {
+            properties.remove(property)
+            return true
+        }
+        return false
     }
 
     @ECMAImpl("[[OwnPropertyKeys]]", "9.1.11")
     open fun ownPropertyKeys(): List<JSValue> {
-        TODO()
+        // TODO: Ordering is wrong here
+        return properties.keys.toList().map { it.asValue }
     }
 
     fun defineNativeProperty(key: PropertyKey, attributes: Attributes, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
