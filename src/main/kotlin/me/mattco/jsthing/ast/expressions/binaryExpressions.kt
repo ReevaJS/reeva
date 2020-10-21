@@ -2,6 +2,7 @@ package me.mattco.jsthing.ast.expressions
 
 import me.mattco.jsthing.ast.ExpressionNode
 import me.mattco.jsthing.ast.NodeBase
+import me.mattco.jsthing.ast.ShortCircuitExpressionNode
 
 open class BinaryExpression(val lhs: ExpressionNode, val rhs: ExpressionNode) : NodeBase(listOf(lhs, rhs)), ExpressionNode
 
@@ -13,7 +14,7 @@ class BitwiseORExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : Binary
 
 class BitwiseXORExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs)
 
-class CoalesceExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs)
+class CoalesceExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs), ShortCircuitExpressionNode
 
 class EqualityExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode, val op: Operator) : BinaryExpression(lhs, rhs) {
     enum class Operator(val symbol: String) {
@@ -28,7 +29,7 @@ class ExponentiationExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : B
 
 class LogicalANDExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs)
 
-class LogicalORExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs)
+class LogicalORExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs), ShortCircuitExpressionNode
 
 class MultiplicativeExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode, val op: Operator) : BinaryExpression(lhs, rhs) {
     enum class Operator(val symbol: String) {

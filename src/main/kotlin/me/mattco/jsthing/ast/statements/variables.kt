@@ -25,6 +25,8 @@ class LexicalBindingNode(
 
 class VariableStatementNode(val declarations: VariableDeclarationList) : NodeBase(listOf(declarations)), StatementNode {
     override fun varDeclaredNames() = declarations.boundNames()
+
+    override fun topLevelVarDeclaredNames() = varDeclaredNames()
 }
 
 class VariableDeclarationList(val declarations: List<VariableDeclarationNode>) : NodeBase(declarations), StatementNode {
