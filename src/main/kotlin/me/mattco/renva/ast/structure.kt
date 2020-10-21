@@ -282,7 +282,7 @@ interface ExpressionNode : ASTNode
 interface LeftHandSideExpressionNode : ExpressionNode
 interface ShortCircuitExpressionNode : ExpressionNode
 interface MetaPropertyNode : LeftHandSideExpressionNode
-interface PrimaryExpressionNode : ExpressionNode
+interface PrimaryExpressionNode : LeftHandSideExpressionNode
 interface LiteralNode : PrimaryExpressionNode
 
 interface AssignmentPatternNode : ASTNode

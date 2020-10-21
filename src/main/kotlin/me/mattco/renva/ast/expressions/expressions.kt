@@ -26,7 +26,7 @@ class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode,
     }
 
     override fun dump(indent: Int) = stringBuilder {
-        makeIndent(indent)
+        appendIndent(indent)
         appendName()
         append(" (")
         append(op.symbol)

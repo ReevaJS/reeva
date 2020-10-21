@@ -9,10 +9,7 @@ import codes.som.anthony.koffee.types.TypeLike
 import me.mattco.renva.ast.*
 import me.mattco.renva.ast.expressions.*
 import me.mattco.renva.ast.LiteralNode
-import me.mattco.renva.ast.literals.NullNode
-import me.mattco.renva.ast.literals.NumericLiteralNode
-import me.mattco.renva.ast.literals.StringLiteralNode
-import me.mattco.renva.ast.literals.ThisNode
+import me.mattco.renva.ast.literals.*
 import me.mattco.renva.ast.statements.*
 import me.mattco.renva.parser.Parser
 import me.mattco.renva.runtime.Agent
@@ -179,12 +176,19 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
     private fun MethodAssembly.compileExpression(expressionNode: ExpressionNode) {
         when (expressionNode) {
+            ThisNode -> compileThis()
             is CommaExpressionNode -> compileCommaExpressionNode(expressionNode)
-            is PrimaryExpressionNode -> compilePrimaryExpression(expressionNode)
-            is LeftHandSideExpressionNode -> compileLeftHandSideExpression(expressionNode)
-            is ShortCircuitExpressionNode -> compileShortCircuitExpressionNode(expressionNode)
+            is IdentifierReferenceNode -> compileIdentifierReference(expressionNode)
+            is LiteralNode -> compileLiteral(expressionNode)
+            is CPEAAPLNode -> compileCPEAAPL(expressionNode)
+            is NewExpressionNode -> compileNewExpression(expressionNode)
+            is CallExpressionNode -> compileCallExpression(expressionNode)
+            is MemberExpressionNode -> compileMemberExpression(expressionNode)
+            is OptionalExpressionNode -> compileOptionalExpression(expressionNode)
             is AssignmentExpressionNode -> compileAssignmentExpression(expressionNode)
             is ConditionalExpressionNode -> compileConditionalExpression(expressionNode)
+            is CoalesceExpressionNode -> compileCoalesceExpression(expressionNode)
+            is LogicalORExpressionNode -> compileLogicalORExpression(expressionNode)
             is LogicalANDExpressionNode -> compileLogicalANDExpression(expressionNode)
             is BitwiseORExpressionNode -> compileBitwiseORExpression(expressionNode)
             is BitwiseXORExpressionNode -> compileBitwiseXORExpression(expressionNode)
@@ -209,16 +213,8 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         }
     }
 
-    private fun MethodAssembly.compileShortCircuitExpressionNode(shortCircuitExpressionNode: ShortCircuitExpressionNode) {
-        when (shortCircuitExpressionNode) {
-            is LogicalORExpressionNode -> compileLogicalORExpression(shortCircuitExpressionNode)
-            is CoalesceExpressionNode -> compileCoalesceExpression(shortCircuitExpressionNode)
-            else -> unreachable()
-        }
-    }
-
     private fun MethodAssembly.compileBindingIdentifier(bindingIdentifierNode: BindingIdentifierNode) {
-        aload_0
+        TODO()
     }
 
     private fun MethodAssembly.compileLabelIdentifier(labelIdentifierNode: LabelIdentifierNode) {
@@ -227,16 +223,6 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
     private fun MethodAssembly.compileIdentifier(identifierNode: IdentifierNode) {
         TODO()
-    }
-
-    private fun MethodAssembly.compilePrimaryExpression(primaryExpressionNode: ExpressionNode) {
-        when (primaryExpressionNode) {
-            ThisNode -> compileThis()
-            is IdentifierReferenceNode -> compileIdentifierReference(primaryExpressionNode)
-            is LiteralNode -> compileLiteral(primaryExpressionNode)
-            is CPEAAPLNode -> compileCPEAAPL(primaryExpressionNode)
-            else -> TODO()
-        }
     }
 
     private fun MethodAssembly.compileCPEAAPL(cpeaaplNode: CPEAAPLNode) {
@@ -371,16 +357,6 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         TODO()
     }
 
-    private fun MethodAssembly.compileLeftHandSideExpression(lhsExpressionNode: LeftHandSideExpressionNode) {
-        when (lhsExpressionNode) {
-            is NewExpressionNode -> compileNewExpression(lhsExpressionNode)
-            is CallExpressionNode -> compileCallExpression(lhsExpressionNode)
-            is MemberExpressionNode -> compileMemberExpression(lhsExpressionNode)
-            is OptionalExpressionNode -> compileOptionalExpression(lhsExpressionNode)
-            else -> TODO()
-        }
-    }
-
     private fun MethodAssembly.compileUpdateExpression(updateExpressionNode: UpdateExpressionNode) {
         compileExpression(updateExpressionNode.target)
         dup
@@ -426,7 +402,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     }
 
     private fun MethodAssembly.compileUnaryExpression(unaryExpressionNode: UnaryExpressionNode) {
-
+        TODO()
     }
 
     private fun MethodAssembly.compileExponentiationExpression(exponentiationExpressionNode: ExponentiationExpressionNode) {
@@ -530,7 +506,21 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     }
 
     private fun MethodAssembly.compileAssignmentExpression(assignmentExpressionNode: AssignmentExpressionNode) {
-        TODO()
+        expect(assignmentExpressionNode.lhs is LeftHandSideExpressionNode)
+
+        if (assignmentExpressionNode.lhs is ObjectLiteralNode || assignmentExpressionNode.lhs is ArrayLiteralNode)
+            TODO()
+
+        compileExpression(assignmentExpressionNode.lhs)
+
+        if (assignmentExpressionNode.op == AssignmentExpressionNode.Operator.Equals) {
+            compileExpression(assignmentExpressionNode.rhs)
+            operation("getValue", JSValue::class, JSValue::class)
+            dup_x1
+            operation("putValue", void, JSValue::class, JSValue::class)
+        } else {
+            TODO()
+        }
     }
 
     private fun MethodAssembly.evaluateStringOrNumericBinaryExpression(lhs: ExpressionNode, rhs: ExpressionNode, op: String) {
