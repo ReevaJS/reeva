@@ -273,6 +273,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             MemberExpressionNode.Type.NonComputed -> {
                 expect(memberExpressionNode.rhs is IdentifierNode)
                 ldc(memberExpressionNode.rhs.identifierName)
+                swap
                 operation(
                     "evaluatePropertyAccessWithIdentifierKey",
                     JSValue::class,
@@ -283,6 +284,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             }
             MemberExpressionNode.Type.Computed -> {
                 compileExpression(memberExpressionNode.rhs)
+                swap
                 operation(
                     "evaluatePropertyAccessWithExpressionKey",
                     JSValue::class,
@@ -345,6 +347,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             dup
             ldc(index)
             compileExpression(argument.expression)
+            aastore
         }
     }
 
