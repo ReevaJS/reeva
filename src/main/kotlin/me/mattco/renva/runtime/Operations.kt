@@ -365,7 +365,9 @@ object Operations {
             JSTrue -> "true"
             JSFalse -> "false"
             // TODO: Make sure to follow all of JS's number conversion rules here
-            is JSNumber -> value.number.toString()
+            is JSNumber -> if (value.isInt) {
+                value.number.toInt().toString()
+            } else value.number.toString()
             is JSSymbol -> shouldThrowError("TypeError")
             is JSObject -> return toString(toPrimitive(value, ToPrimitiveHint.AsString))
             else -> unreachable()
@@ -515,7 +517,7 @@ object Operations {
 
     @JvmStatic @ECMAImpl("EvaluateCall", "12.3.6.2")
     fun evaluateCall(target: JSValue, reference: JSValue, arguments: Array<JSValue>, tailPosition: Boolean): JSValue {
-        var thisValue = if (reference is JSReference) {
+        val thisValue = if (reference is JSReference) {
             if (reference.isPropertyReference) {
                 reference.getThisValue()
             } else {

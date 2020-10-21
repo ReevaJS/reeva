@@ -7,6 +7,7 @@ import me.mattco.renva.runtime.values.primitives.*
 import me.mattco.renva.utils.ecmaAssert
 import me.mattco.renva.utils.expect
 import me.mattco.renva.utils.unreachable
+import kotlin.math.floor
 
 abstract class JSValue : Ref {
     val type by lazy {
@@ -55,6 +56,7 @@ abstract class JSValue : Ref {
     val isObject by lazy { type == Type.Object }
 
     val isNullish by lazy { this == JSNull || this == JSUndefined }
+    val isInt by lazy { isNumber && !isInfinite && floor(asDouble) == asDouble }
     val isNaN by lazy { isNumber && asDouble.isNaN() }
     val isInfinite by lazy { isNumber && asDouble.isInfinite() }
     val isPositiveInfinity by lazy { isNumber && asDouble == Double.POSITIVE_INFINITY }
