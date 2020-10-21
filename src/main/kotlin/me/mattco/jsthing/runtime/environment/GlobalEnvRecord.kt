@@ -117,7 +117,7 @@ class GlobalEnvRecord(
 
     companion object {
         @ECMAImpl("NewGlobalEnvironment", "8.1.2.5")
-        fun create(globalObj: JSGlobalObject, thisValue: JSObject = globalObj): GlobalEnvRecord {
+        fun create(globalObj: JSObject, thisValue: JSObject = globalObj): GlobalEnvRecord {
             val objRecord = ObjectEnvRecord(globalObj, null)
             val declRecord = DeclarativeEnvRecord(null)
             val globalEnv = GlobalEnvRecord(declRecord, thisValue, null)

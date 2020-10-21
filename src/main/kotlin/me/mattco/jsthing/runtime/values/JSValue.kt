@@ -31,19 +31,19 @@ abstract class JSValue : Ref {
     val asString: String
         get() {
             expect(type == Type.String)
-            return (this as JSString).value
+            return (this as JSString).string
         }
 
     val asDouble: Double
         get() {
             expect(type == Type.Number)
-            return (this as JSNumber).value
+            return (this as JSNumber).number
         }
 
     val asInt: Int
         get() {
             expect(type == Type.Number)
-            return (this as JSNumber).value.toInt()
+            return (this as JSNumber).number.toInt()
         }
 
     val isEmpty by lazy { type == Type.Empty }
@@ -59,6 +59,7 @@ abstract class JSValue : Ref {
     val isInfinite by lazy { isNumber && asDouble.isInfinite() }
     val isPositiveInfinity by lazy { isNumber && asDouble == Double.POSITIVE_INFINITY }
     val isNegativeInfinity by lazy { isNumber && asDouble == Double.NEGATIVE_INFINITY }
+    val isZero by lazy { isNumber && asDouble == 0.0 }
     val isPositiveZero by lazy { isNumber && 1.0 / asDouble == Double.POSITIVE_INFINITY }
     val isNegativeZero by lazy { isNumber && 1.0 / asDouble == Double.NEGATIVE_INFINITY }
 
@@ -90,7 +91,7 @@ abstract class JSValue : Ref {
             Type.Boolean -> asBoolean == other.asBoolean
             Type.String -> asString == other.asString
             Type.Object -> this === other
-            else -> unreachable()
+            else -> TODO()
         }
     }
 
@@ -102,6 +103,7 @@ abstract class JSValue : Ref {
         Type.String -> asString.isNotEmpty()
         Type.Number -> !(isPositiveZero || isNegativeZero || isNaN)
         Type.Object -> true
+        else -> TODO()
     }
 
     @ECMAImpl("ToNumber", "7.1.14")
@@ -113,6 +115,7 @@ abstract class JSValue : Ref {
         Type.String -> TODO()
         Type.Number -> asDouble
         Type.Object -> TODO()
+        else -> TODO()
     }
 
     @ECMAImpl("ToObject", "7.1.18")
@@ -127,6 +130,8 @@ abstract class JSValue : Ref {
         Boolean,
         String,
         Number,
+        BigInt,
+        Symbol,
         Object,
     }
 }

@@ -46,7 +46,7 @@ open class JSObject protected constructor(
             val getter = method.getAnnotation(JSNativePropertyGetter::class.java)
             expect(getter.name !in nativeProperties)
             val methodPair = NativeMethodPair(attributes = getter.attributes, getter = {
-                method.invoke(this, it) as JSValue
+                method.invoke(this) as JSValue
             })
             nativeProperties[getter.name] = methodPair
         }
@@ -64,9 +64,7 @@ open class JSObject protected constructor(
                 nativeProperties[setter.name] = t
                 t
             }
-            methodPair.setter = { context, value ->
-                method.invoke(this, context, value)
-            }
+            methodPair.setter = { value -> method.invoke(this, value) }
         }
 
         nativeProperties.forEach { (name, methods) ->
@@ -163,14 +161,14 @@ open class JSObject protected constructor(
 
     fun get(property: String, receiver: JSValue = this) = get(PropertyKey(property), receiver)
 
-    @ECMAImpl("[[Get]]", "9.1.8")
+    @JvmOverloads @ECMAImpl("[[Get]]", "9.1.8")
     open fun get(property: PropertyKey, receiver: JSValue = this): JSValue {
         TODO()
     }
 
     fun set(property: String, value: JSValue, receiver: JSValue = this) = set(PropertyKey(property), value, receiver)
 
-    @ECMAImpl("[[Set]]", "9.1.9")
+    @JvmOverloads @ECMAImpl("[[Set]]", "9.1.9")
     open fun set(property: PropertyKey, value: JSValue, receiver: JSValue = this): Boolean {
         TODO()
     }
@@ -200,7 +198,7 @@ open class JSObject protected constructor(
     }
 
     companion object {
-        fun create(realm: Realm, prototype: JSValue) = JSObject(realm, prototype).also { it.init() }
+        fun create(realm: Realm) = JSObject(realm, realm.objectProto).also { it.init() }
 
         @JvmStatic
         protected fun thisBinding(context: ExecutionContext): JSValue {

@@ -7,11 +7,11 @@ import me.mattco.jsthing.runtime.values.JSValue
 import me.mattco.jsthing.runtime.values.nonprimitives.functions.JSNativeFunction
 
 class JSObjectCtor(realm: Realm) : JSNativeFunction(realm, "ObjectConstructor") {
-    override fun call(context: ExecutionContext, arguments: List<JSValue>): JSValue {
+    override fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
         TODO("Not yet implemented")
     }
 
-    override fun construct(context: ExecutionContext, newTarget: JSObject, arguments: List<JSValue>): JSValue {
+    override fun construct(arguments: List<JSValue>, newTarget: JSObject): JSValue {
         TODO("Not yet implemented")
     }
 }

@@ -2,9 +2,10 @@ package me.mattco.jsthing.runtime.environment
 
 import me.mattco.jsthing.runtime.annotations.ECMAImpl
 import me.mattco.jsthing.runtime.values.JSValue
+import me.mattco.jsthing.runtime.values.Ref
 import me.mattco.jsthing.runtime.values.primitives.JSUndefined
 
-abstract class EnvRecord(var outerEnv: EnvRecord?) {
+abstract class EnvRecord(@JvmField var outerEnv: EnvRecord?) : Ref {
     @ECMAImpl("HasBinding")
     abstract fun hasBinding(name: String): Boolean
 
