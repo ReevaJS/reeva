@@ -4,7 +4,7 @@ import me.mattco.renva.ast.ScriptNode
 import me.mattco.renva.runtime.Agent
 import me.mattco.renva.runtime.Realm
 import me.mattco.renva.runtime.environment.EnvRecord
-import me.mattco.renva.runtime.values.nonprimitives.functions.JSFunction
+import me.mattco.renva.runtime.values.functions.JSFunction
 
 class ExecutionContext(
     @JvmField

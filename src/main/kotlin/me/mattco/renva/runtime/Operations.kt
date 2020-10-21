@@ -5,10 +5,10 @@ import me.mattco.renva.runtime.environment.EnvRecord
 import me.mattco.renva.runtime.environment.FunctionEnvRecord
 import me.mattco.renva.runtime.environment.GlobalEnvRecord
 import me.mattco.renva.runtime.values.JSValue
-import me.mattco.renva.runtime.values.nonprimitives.JSReference
-import me.mattco.renva.runtime.values.nonprimitives.functions.JSFunction
-import me.mattco.renva.runtime.values.nonprimitives.objects.JSObject
-import me.mattco.renva.runtime.values.nonprimitives.objects.PropertyKey
+import me.mattco.renva.runtime.values.JSReference
+import me.mattco.renva.runtime.values.functions.JSFunction
+import me.mattco.renva.runtime.values.objects.JSObject
+import me.mattco.renva.runtime.values.objects.PropertyKey
 import me.mattco.renva.runtime.values.primitives.*
 import me.mattco.renva.utils.expect
 import me.mattco.renva.utils.shouldThrowError

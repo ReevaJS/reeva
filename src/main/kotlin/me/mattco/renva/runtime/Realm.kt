@@ -4,10 +4,10 @@ import me.mattco.renva.ast.ScriptNode
 import me.mattco.renva.parser.Parser
 import me.mattco.renva.runtime.environment.EnvRecord
 import me.mattco.renva.runtime.environment.GlobalEnvRecord
-import me.mattco.renva.runtime.values.nonprimitives.arrays.JSArrayProto
-import me.mattco.renva.runtime.values.nonprimitives.functions.JSFunctionProto
-import me.mattco.renva.runtime.values.nonprimitives.objects.JSObject
-import me.mattco.renva.runtime.values.nonprimitives.objects.JSObjectProto
+import me.mattco.renva.runtime.values.arrays.JSArrayProto
+import me.mattco.renva.runtime.values.functions.JSFunctionProto
+import me.mattco.renva.runtime.values.objects.JSObject
+import me.mattco.renva.runtime.values.objects.JSObjectProto
 
 class Realm {
     lateinit var globalObject: JSObject

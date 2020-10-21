@@ -2,7 +2,7 @@ package me.mattco.renva.runtime.values
 
 import me.mattco.renva.runtime.annotations.ECMAImpl
 import me.mattco.renva.runtime.values.primitives.JSNull
-import me.mattco.renva.runtime.values.nonprimitives.objects.JSObject
+import me.mattco.renva.runtime.values.objects.JSObject
 import me.mattco.renva.runtime.values.primitives.*
 import me.mattco.renva.utils.ecmaAssert
 import me.mattco.renva.utils.expect

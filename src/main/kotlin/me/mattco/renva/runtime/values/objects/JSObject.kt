@@ -1,4 +1,4 @@
-package me.mattco.renva.runtime.values.nonprimitives.objects
+package me.mattco.renva.runtime.values.objects
 
 import me.mattco.renva.runtime.Operations
 import me.mattco.renva.runtime.Realm
@@ -10,9 +10,12 @@ import me.mattco.renva.runtime.contexts.ExecutionContext
 import me.mattco.renva.runtime.environment.FunctionEnvRecord
 import me.mattco.renva.runtime.environment.GlobalEnvRecord
 import me.mattco.renva.runtime.values.JSValue
-import me.mattco.renva.runtime.values.nonprimitives.functions.*
-import me.mattco.renva.runtime.values.nonprimitives.objects.Attributes.Companion.HAS_WRITABLE
-import me.mattco.renva.runtime.values.nonprimitives.objects.Attributes.Companion.WRITABLE
+import me.mattco.renva.runtime.values.functions.*
+import me.mattco.renva.runtime.values.objects.Attributes
+import me.mattco.renva.runtime.values.objects.Attributes.Companion.HAS_WRITABLE
+import me.mattco.renva.runtime.values.objects.Attributes.Companion.WRITABLE
+import me.mattco.renva.runtime.values.objects.Descriptor
+import me.mattco.renva.runtime.values.objects.PropertyKey
 import me.mattco.renva.runtime.values.primitives.JSNull
 import me.mattco.renva.runtime.values.primitives.JSNumber
 import me.mattco.renva.runtime.values.primitives.JSString

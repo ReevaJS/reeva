@@ -1,6 +1,6 @@
 package me.mattco.renva.utils
 
-import me.mattco.renva.runtime.values.nonprimitives.objects.PropertyKey
+import me.mattco.renva.runtime.values.objects.PropertyKey
 import me.mattco.renva.runtime.values.primitives.JSFalse
 import me.mattco.renva.runtime.values.primitives.JSNumber
 import me.mattco.renva.runtime.values.primitives.JSString

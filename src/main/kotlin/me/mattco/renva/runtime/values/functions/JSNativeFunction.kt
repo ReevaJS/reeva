@@ -1,8 +1,8 @@
-package me.mattco.renva.runtime.values.nonprimitives.functions
+package me.mattco.renva.runtime.values.functions
 
 import me.mattco.renva.runtime.Realm
 import me.mattco.renva.runtime.values.JSValue
-import me.mattco.renva.runtime.values.nonprimitives.objects.JSObject
+import me.mattco.renva.runtime.values.objects.JSObject
 import me.mattco.renva.utils.shouldThrowError
 
 abstract class JSNativeFunction(realm: Realm, private val name: String) : JSFunction(realm, ThisMode.Global) {

@@ -2,8 +2,8 @@ package me.mattco.renva.runtime.environment
 
 import me.mattco.renva.runtime.annotations.ECMAImpl
 import me.mattco.renva.runtime.values.JSValue
-import me.mattco.renva.runtime.values.nonprimitives.functions.JSFunction
-import me.mattco.renva.runtime.values.nonprimitives.objects.JSObject
+import me.mattco.renva.runtime.values.functions.JSFunction
+import me.mattco.renva.runtime.values.objects.JSObject
 import me.mattco.renva.runtime.values.primitives.JSUndefined
 import me.mattco.renva.utils.shouldThrowError
 

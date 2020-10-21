@@ -1,4 +1,4 @@
-package me.mattco.renva.runtime.values.nonprimitives.objects
+package me.mattco.renva.runtime.values.objects
 
 data class Attributes(var num: Int = 0) {
     val isEmpty: Boolean

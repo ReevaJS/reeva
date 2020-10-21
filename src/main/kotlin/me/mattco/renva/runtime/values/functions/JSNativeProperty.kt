@@ -1,4 +1,4 @@
-package me.mattco.renva.runtime.values.nonprimitives.functions
+package me.mattco.renva.runtime.values.functions
 
 import me.mattco.renva.runtime.values.JSValue
 

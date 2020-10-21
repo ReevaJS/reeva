@@ -1,9 +1,9 @@
-package me.mattco.renva.runtime.values.nonprimitives.functions
+package me.mattco.renva.runtime.values.functions
 
 import me.mattco.renva.runtime.Realm
 import me.mattco.renva.runtime.environment.EnvRecord
 import me.mattco.renva.runtime.values.JSValue
-import me.mattco.renva.runtime.values.nonprimitives.objects.JSObject
+import me.mattco.renva.runtime.values.objects.JSObject
 
 typealias NativeFunctionSignature = (thisValue: JSValue, arguments: List<JSValue>) -> JSValue
 typealias NativeGetterSignature = () -> JSValue

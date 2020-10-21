@@ -1,9 +1,7 @@
-package me.mattco.renva.runtime.values.nonprimitives
+package me.mattco.renva.runtime.values
 
 import me.mattco.renva.runtime.annotations.ECMAImpl
-import me.mattco.renva.runtime.values.JSValue
-import me.mattco.renva.runtime.values.Ref
-import me.mattco.renva.runtime.values.nonprimitives.objects.JSObject
+import me.mattco.renva.runtime.values.objects.JSObject
 import me.mattco.renva.runtime.values.primitives.JSBoolean
 import me.mattco.renva.runtime.values.primitives.JSNumber
 import me.mattco.renva.runtime.values.primitives.JSString

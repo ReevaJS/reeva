@@ -21,8 +21,8 @@ import me.mattco.renva.runtime.annotations.ECMAImpl
 import me.mattco.renva.runtime.contexts.ExecutionContext
 import me.mattco.renva.runtime.environment.EnvRecord
 import me.mattco.renva.runtime.values.JSValue
-import me.mattco.renva.runtime.values.nonprimitives.functions.JSFunction
-import me.mattco.renva.runtime.values.nonprimitives.objects.JSObject
+import me.mattco.renva.runtime.values.functions.JSFunction
+import me.mattco.renva.runtime.values.objects.JSObject
 import me.mattco.renva.runtime.values.primitives.*
 import me.mattco.renva.utils.expect
 import me.mattco.renva.utils.unreachable

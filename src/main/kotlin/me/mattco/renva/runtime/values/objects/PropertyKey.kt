@@ -1,4 +1,4 @@
-package me.mattco.renva.runtime.values.nonprimitives.objects
+package me.mattco.renva.runtime.values.objects
 
 import me.mattco.renva.runtime.values.primitives.JSString
 import me.mattco.renva.runtime.values.primitives.JSSymbol

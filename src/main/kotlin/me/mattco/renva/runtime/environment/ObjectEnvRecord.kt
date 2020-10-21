@@ -2,12 +2,12 @@ package me.mattco.renva.runtime.environment
 
 import me.mattco.renva.runtime.annotations.ECMAImpl
 import me.mattco.renva.runtime.values.JSValue
-import me.mattco.renva.runtime.values.nonprimitives.objects.Attributes
-import me.mattco.renva.runtime.values.nonprimitives.objects.Attributes.Companion.CONFIGURABLE
-import me.mattco.renva.runtime.values.nonprimitives.objects.Attributes.Companion.ENUMERABLE
-import me.mattco.renva.runtime.values.nonprimitives.objects.Attributes.Companion.WRITABLE
-import me.mattco.renva.runtime.values.nonprimitives.objects.Descriptor
-import me.mattco.renva.runtime.values.nonprimitives.objects.JSObject
+import me.mattco.renva.runtime.values.objects.Attributes
+import me.mattco.renva.runtime.values.objects.Attributes.Companion.CONFIGURABLE
+import me.mattco.renva.runtime.values.objects.Attributes.Companion.ENUMERABLE
+import me.mattco.renva.runtime.values.objects.Attributes.Companion.WRITABLE
+import me.mattco.renva.runtime.values.objects.Descriptor
+import me.mattco.renva.runtime.values.objects.JSObject
 import me.mattco.renva.runtime.values.primitives.JSUndefined
 import me.mattco.renva.utils.shouldThrowError
 import me.mattco.renva.utils.unreachable
