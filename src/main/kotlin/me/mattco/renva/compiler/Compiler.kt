@@ -14,6 +14,7 @@ import me.mattco.renva.ast.literals.NumericLiteralNode
 import me.mattco.renva.ast.literals.StringLiteralNode
 import me.mattco.renva.ast.literals.ThisNode
 import me.mattco.renva.ast.statements.*
+import me.mattco.renva.parser.Parser
 import me.mattco.renva.runtime.Agent
 import me.mattco.renva.runtime.Operations
 import me.mattco.renva.runtime.Realm
@@ -233,12 +234,18 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             ThisNode -> compileThis()
             is IdentifierReferenceNode -> compileIdentifierReference(primaryExpressionNode)
             is LiteralNode -> compileLiteral(primaryExpressionNode)
+            is CPEAAPLNode -> compileCPEAAPL(primaryExpressionNode)
             else -> TODO()
         }
     }
 
     private fun MethodAssembly.compileCPEAAPL(cpeaaplNode: CPEAAPLNode) {
-        TODO()
+        when (cpeaaplNode.context) {
+            Parser.CPEAAPLContext.PrimaryExpression -> {
+                // Parenthesized expression
+                compileExpression(cpeaaplNode.node)
+            }
+        }
     }
 
     private fun MethodAssembly.compileParenthesizedExpression(parenthesizedExpressionNode: ParenthesizedExpressionNode) {
@@ -347,6 +354,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             dup
             ldc(index)
             compileExpression(argument.expression)
+            operation("getValue", JSValue::class, JSValue::class)
             aastore
         }
     }
@@ -368,7 +376,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             is NewExpressionNode -> compileNewExpression(lhsExpressionNode)
             is CallExpressionNode -> compileCallExpression(lhsExpressionNode)
             is MemberExpressionNode -> compileMemberExpression(lhsExpressionNode)
-//            is OptionalExpressionNode -> compileOptionalExpression(lhsExpressionNode)
+            is OptionalExpressionNode -> compileOptionalExpression(lhsExpressionNode)
             else -> TODO()
         }
     }
@@ -573,12 +581,6 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private fun MethodAssembly.loadFunction() {
         loadContext()
         getfield(ExecutionContext::class, "function", JSFunction::class)
-    }
-
-    private fun MethodAssembly.loadScriptOrModule() {
-        TODO()
-//        loadContext()
-//        getfield(ExecutionContext::class, "scriptOrModule", ScriptOrModule::class)
     }
 
     private fun MethodAssembly.loadLexicalEnv() {

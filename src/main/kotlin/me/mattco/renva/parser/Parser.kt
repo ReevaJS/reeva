@@ -993,8 +993,21 @@ class Parser(text: String) {
         suffixes: Set<Suffix>,
         context: CPEAAPLContext
     ): CPEAAPLNode? {
-        // TODO
-        return null
+        return when (context) {
+            CPEAAPLContext.PrimaryExpression -> {
+                if (tokenType != TokenType.OpenParen)
+                    return null
+                saveState()
+                consume()
+                val expr = parseExpression(suffixes + Suffix.In) ?: run {
+                    loadState()
+                    return null
+                }
+                consume(TokenType.CloseParen)
+                discardState()
+                return CPEAAPLNode(expr, CPEAAPLContext.PrimaryExpression)
+            }
+        }
     }
 
     private fun parseAssignmentExpression(suffixes: Set<Suffix>): ExpressionNode? {
