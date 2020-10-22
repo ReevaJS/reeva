@@ -20,10 +20,7 @@ import me.mattco.reeva.runtime.values.objects.PropertyKey
 import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.runtime.values.wrappers.JSStringObject
 import me.mattco.reeva.runtime.values.wrappers.JSSymbolObject
-import me.mattco.reeva.utils.expect
-import me.mattco.reeva.utils.shouldThrowError
-import me.mattco.reeva.utils.toValue
-import me.mattco.reeva.utils.unreachable
+import me.mattco.reeva.utils.*
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.pow
@@ -497,6 +494,13 @@ object Operations {
         return func
     }
 
+    @JvmStatic @ECMAImpl("HasOwnProperty", "7.3.12")
+    fun hasOwnProperty(value: JSValue, property: PropertyKey): JSValue {
+        ecmaAssert(value is JSObject)
+        val desc = value.getOwnProperty(property)
+        return (desc != JSUndefined).toValue()
+    }
+
     @JvmStatic @ECMAImpl("Call", "7.3.13")
     fun call(function: JSValue, thisValue: JSValue, arguments: List<JSValue> = emptyList()): JSValue {
         if (!isCallable(function))
@@ -509,6 +513,12 @@ object Operations {
         expect(isConstructor(constructor))
         expect(isConstructor(newTarget))
         return (constructor as JSFunction).construct(arguments, newTarget as JSFunction)
+    }
+
+    @JvmStatic @ECMAImpl("Invoke", "7.3.20")
+    fun invoke(value: JSValue, property: JSValue, arguments: JSArguments = emptyList()): JSValue {
+        val func = getV(value, property)
+        return call(func, value, arguments)
     }
 
     @JvmStatic @ECMAImpl("IsConstructor", "7.2.4")
