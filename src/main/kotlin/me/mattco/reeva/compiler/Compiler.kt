@@ -28,6 +28,7 @@ import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 import org.objectweb.asm.tree.ClassNode
+import java.lang.IllegalArgumentException
 
 class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private val sanitizedFileName = fileName.replace(Regex("[^\\w]"), "_")
@@ -95,7 +96,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 dup
                 ldc(functionName)
                 invokevirtual(GlobalEnvRecord::class, "canDeclareGlobalFunction", Boolean::class, String::class)
-                ifStatement (JumpCondition.False) {
+                ifStatement(JumpCondition.False) {
                     shouldThrow("TypeError")
                 }
                 declaredFunctionNames.add(functionName)
@@ -165,7 +166,8 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         when (statement) {
             is BlockStatementNode -> compileBlockStatement(statement)
             is VariableStatementNode -> compileVariableStatement(statement)
-            is EmptyStatementNode -> {}
+            is EmptyStatementNode -> {
+            }
             is ExpressionStatementNode -> compileExpressionStatement(statement)
             is IfStatementNode -> compileIfStatement(statement)
             is BreakableStatement -> compileBreakableStatement(statement)
@@ -258,7 +260,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         compileExpression(initializerNode.node)
     }
 
-    private fun MethodAssembly.compileEmptyStatement(emptyStatement: EmptyStatementNode) { }
+    private fun MethodAssembly.compileEmptyStatement(emptyStatement: EmptyStatementNode) {}
 
     private fun MethodAssembly.compileIfStatement(ifStatement: IfStatementNode) {
         TODO()
@@ -666,7 +668,9 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
     private fun MethodAssembly.evaluateStringOrNumericBinaryExpression(lhs: ExpressionNode, rhs: ExpressionNode, op: String) {
         compileExpression(lhs)
+        operation("getValue", JSValue::class, JSValue::class)
         compileExpression(rhs)
+        operation("getValue", JSValue::class, JSValue::class)
         ldc(op)
         operation("applyStringOrNumericBinaryOperator", JSValue::class, JSValue::class, JSValue::class, String::class)
     }
@@ -690,6 +694,8 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     @ECMAImpl("InstantiateFunctionObject", "14.1.22")
     private fun instantiateFunctionObject(function: FunctionDeclarationNode): ClassNode {
         val functionName = function.identifier?.identifierName ?: "default"
+        val parameters = function.parameters
+
         return assembleClass(
             public,
             "Function_${functionName}_${sanitizedFileName}_${Agent.objectCount++}",
@@ -727,6 +733,67 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 areturn
             }
 
+            method(public, "getParameterNames", Array<String>::class) {
+                if (parameters.restParameter == null) {
+                    val actualParams = parameters.functionParameters.parameters
+                    ldc(actualParams.size)
+                    anewarray<String>()
+                    actualParams.forEachIndexed { index, param ->
+                        dup
+                        ldc(index)
+                        ldc(param.bindingElement.binding.identifier.identifierName)
+                        aastore
+                    }
+                } else {
+                    TODO()
+                }
+                areturn
+            }
+
+            method(public, "getParamHasDefaultValue", Boolean::class, Int::class) {
+                if (parameters.restParameter == null) {
+                    parameters.functionParameters.parameters.forEachIndexed { index, param ->
+                        iload_1
+                        ldc(index)
+                        ifStatement(JumpCondition.Equal) {
+                            ldc(param.bindingElement.binding.initializer != null)
+                            ireturn
+                        }
+                    }
+                    construct(IllegalArgumentException::class, String::class) {
+                        ldc("Invalid index given to getParamHasDefaultValue")
+                    }
+                    athrow
+                } else {
+                    TODO()
+                }
+            }
+
+            method(public, "getDefaultParameterValue", JSValue::class, Int::class) {
+                if (parameters.restParameter == null) {
+                    parameters.functionParameters.parameters.forEachIndexed { index, param ->
+                        val binding = param.bindingElement.binding
+
+                        iload_1
+                        ldc(index)
+                        ifStatement(JumpCondition.Equal) {
+                            if (binding.initializer == null) {
+                                pushUndefined
+                            } else {
+                                compileExpression(binding.initializer.node)
+                            }
+                            areturn
+                        }
+                    }
+                    construct(IllegalArgumentException::class, String::class) {
+                        ldc("Invalid index given to getDefaultParameterValue")
+                    }
+                    athrow
+                } else {
+                    TODO()
+                }
+            }
+
             method(public, "call", JSValue::class, JSValue::class, List::class) {
                 // setup
                 aload_0
@@ -737,9 +804,8 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 aload_1
                 operation("ordinaryCallBindThis", JSValue::class, JSScriptFunction::class, ExecutionContext::class, JSValue::class)
                 pop
-                aload_0
-                aload_2
-                operation("functionDeclarationInstantiation", JSValue::class, JSScriptFunction::class, List::class)
+
+                functionDeclarationInstantiation(function, JSFunction.ThisMode.NonLexical)
 
                 // actual body
                 if (function.body.statementList != null)
@@ -757,6 +823,183 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 pushUndefined
                 areturn
             }
+        }
+    }
+
+    @ECMAImpl("FunctionDeclarationInstantiation", "9.2.10")
+    private fun MethodAssembly.functionDeclarationInstantiation(function: FunctionDeclarationNode, thisMode: JSFunction.ThisMode) {
+        val parameters = function.parameters
+        val body = function.body
+        val parameterNames = parameters.boundNames()
+        val hasDuplicates = parameterNames.groupBy { it }.size != parameterNames.size
+        val simpleParameterList = parameters.isSimpleParameterList()
+        val hasParameterExpressions = parameters.containsExpression()
+        val varNames = body.varDeclaredNames()
+        val varDeclarations = body.varScopedDeclarations()
+        val lexicalNames = body.lexicallyDeclaredNames()
+
+        val functionNames = mutableListOf<String>()
+        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
+
+        body.varScopedDeclarations().asReversed().forEach { decl ->
+            if (decl is FunctionDeclarationNode) {
+                val boundNames = decl.boundNames()
+                expect(boundNames.size == 1)
+                val declName = boundNames[0]
+                if (declName !in functionNames) {
+                    functionNames.add(0, declName)
+                    functionsToInitialize.add(decl)
+                }
+            }
+        }
+
+        var argumentsObjectNeeded = when {
+            thisMode == JSFunction.ThisMode.Lexical -> false
+            "arguments" in parameterNames -> false
+            !hasParameterExpressions && ("arguments" in functionNames || "arguments" in lexicalNames) -> false
+            else -> true
+        }
+
+        invokestatic(Agent::class, "getRunningContext", ExecutionContext::class)
+        getfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+
+        // TODO: Strict check
+        if (!hasParameterExpressions) {
+            astore(3)
+        } else {
+            invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
+            dup
+            astore(3)
+            putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+        }
+
+        parameterNames.forEach { name ->
+            aload(3)
+            ldc(name)
+            invokevirtual(EnvRecord::class, "hasBinding", Boolean::class, String::class)
+            ifStatement(JumpCondition.False) {
+                aload(3)
+                ldc(name)
+                ldc(false)
+                invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+                if (hasDuplicates) {
+                    aload(3)
+                    ldc(name)
+                    pushUndefined
+                    invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
+                }
+            }
+        }
+
+        // This will be dependent on the argumentsObjectNeeded flag
+        val parameterBindings = parameterNames
+
+        if (argumentsObjectNeeded) {
+            // TODO
+        }
+
+        aload_0
+        aload_2
+        if (hasDuplicates) {
+            pushUndefined
+        } else {
+            aload(3)
+        }
+        operation("applyFunctionArguments", void, JSScriptFunction::class, List::class, EnvRecord::class)
+
+        val varEnv: Local
+
+        if (!hasParameterExpressions) {
+            val instantiatedVarNames = parameterBindings.toMutableList()
+            varNames.forEach { name ->
+                if (name !in instantiatedVarNames) {
+                    instantiatedVarNames.add(name)
+                    aload(3)
+                    ldc(name)
+                    ldc(false)
+                    invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+                }
+            }
+            aload(3)
+            varEnv = astore()
+        } else {
+            aload(3)
+            invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
+            varEnv = astore()
+            invokestatic(Agent::class, "getRunningContext", ExecutionContext::class)
+            load(varEnv)
+            putfield(ExecutionContext::class, "variableEnv", EnvRecord::class)
+
+            val instantiatedVarNames = parameterBindings.toMutableList()
+            varNames.forEach { name ->
+                if (name !in instantiatedVarNames) {
+                    instantiatedVarNames.add(name)
+                    load(varEnv)
+                    ldc(name)
+                    ldc(false)
+                    invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+
+                    load(varEnv)
+                    ldc(name)
+
+                    if (name !in parameterBindings || name in functionNames) {
+                        pushUndefined
+                    } else {
+                        aload(3)
+                        ldc(name)
+                        ldc(false)
+                        invokevirtual(EnvRecord::class, "getBindingValue", JSValue::class, String::class, Boolean::class)
+                    }
+
+                    invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
+                }
+            }
+        }
+
+        // TODO: if (isStrict)
+        val lexEnv: Local
+        if (true) {
+            load(varEnv)
+            invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
+            lexEnv = astore()
+        } else {
+            lexEnv = varEnv
+        }
+
+        invokestatic(Agent::class, "getRunningContext", ExecutionContext::class)
+        load(lexEnv)
+        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+
+        val lexDeclarations = body.lexicallyScopedDeclarations()
+        lexDeclarations.forEach { decl ->
+            decl.boundNames().forEach { name ->
+                load(lexEnv)
+                ldc(name)
+                if (decl.isConstantDeclaration()) {
+                    ldc(true)
+                    invokevirtual(EnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
+                } else {
+                    ldc(false)
+                    invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+                }
+            }
+        }
+
+        functionsToInitialize.forEach { func ->
+            val compiledFunc = instantiateFunctionObject(func)
+            dependencies.add(compiledFunc)
+
+            val boundNames = func.boundNames()
+            expect(boundNames.size == 1)
+            val funcName = boundNames[0]
+
+            load(varEnv)
+            ldc(funcName)
+            construct(compiledFunc.name, Realm::class) {
+                pushRealm
+            }
+            ldc(false)
+            invokevirtual(EnvRecord::class, "setMutableBinding", void, String::class, JSValue::class, Boolean::class)
         }
     }
 

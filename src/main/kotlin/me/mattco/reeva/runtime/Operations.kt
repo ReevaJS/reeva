@@ -613,4 +613,23 @@ object Operations {
             else -> unreachable()
         }
     }
+
+    @JvmStatic
+    fun applyFunctionArguments(function: JSScriptFunction, arguments: List<JSValue>, env: EnvRecord?) {
+        function.getParameterNames().forEachIndexed { index, name ->
+            val lhs = resolveBinding(name, env)
+            var value = if (index > arguments.lastIndex) {
+                JSUndefined
+            } else arguments[index]
+
+            if (value == JSUndefined && function.getParamHasDefaultValue(index))
+                value = function.getDefaultParameterValue(index)
+
+            if (env == null) {
+                 putValue(lhs, value)
+            } else {
+                initializeReferencedBinding(lhs, value)
+            }
+        }
+    }
 }

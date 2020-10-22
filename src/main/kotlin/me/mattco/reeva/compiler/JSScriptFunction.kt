@@ -16,4 +16,10 @@ abstract class JSScriptFunction(
     abstract fun isClassConstructor(): Boolean
 
     abstract fun getHomeObject(): JSValue
+
+    abstract fun getParameterNames(): Array<String>
+
+    abstract fun getParamHasDefaultValue(index: Int): Boolean
+
+    abstract fun getDefaultParameterValue(index: Int): JSValue
 }
