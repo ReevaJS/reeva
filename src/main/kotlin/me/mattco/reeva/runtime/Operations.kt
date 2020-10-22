@@ -23,9 +23,14 @@ import me.mattco.reeva.runtime.values.wrappers.JSSymbolObject
 import me.mattco.reeva.utils.*
 import kotlin.math.abs
 import kotlin.math.floor
+import kotlin.math.min
 import kotlin.math.pow
 
 object Operations {
+    val MAX_SAFE_INTEGER = 2.0.pow(53) - 1
+    val MAX_32BIT_INT = 2.0.pow(32)
+    val MAX_31BIT_INT = 2.0.pow(31)
+
     @JvmStatic
     fun wrapInValue(value: Any?): JSValue = when (value) {
         null -> throw Error("Ambiguous use of null in Operations.wrapInValue")
@@ -368,6 +373,18 @@ object Operations {
         }
     }
 
+    @JvmStatic @ECMAImpl("ToIntegerOrInfinity", "7.1.5")
+    fun toIntegerOrInfinity(value: JSValue): JSValue {
+        val number = toNumber(value)
+        if (number.isNaN || number.isZero)
+            return 0.toValue()
+        if (number.isInfinite)
+            return number
+        return floor(abs(number.asDouble)).let {
+            if (number.asDouble < 0) it * -1 else it
+        }.toValue()
+    }
+
     @JvmStatic @ECMAImpl("ToInt32", "7.1.6")
     fun toInt32(value: JSValue): JSValue {
         val number = toNumber(value)
@@ -378,9 +395,9 @@ object Operations {
         if (number.asDouble < 0)
             int *= -1
 
-        val int32bit = int % 2.0.pow(32).toInt()
-        if (int32bit >= 2.0.pow(31).toInt())
-            return JSNumber(int32bit - 2.0.pow(32))
+        val int32bit = int % MAX_32BIT_INT.toInt()
+        if (int32bit >= MAX_31BIT_INT.toInt())
+            return JSNumber(int32bit - MAX_32BIT_INT)
         return JSNumber(int32bit)
     }
 
@@ -393,7 +410,7 @@ object Operations {
         var int = floor(abs(number.asDouble)).toInt()
         if (number.asDouble < 0)
             int *= -1
-        return JSNumber(int % 2.0.pow(32).toInt())
+        return JSNumber(int % MAX_32BIT_INT.toInt())
     }
 
     @JvmStatic @ECMAImpl("ToString", "7.1.17")
@@ -444,6 +461,15 @@ object Operations {
         return PropertyKey(toString(key).string)
     }
 
+    @JvmStatic @ECMAImpl("ToLength", "7.1.20")
+    fun toLength(value: JSValue): JSValue {
+        val len = toIntegerOrInfinity(value)
+        val number = len.asDouble
+        if (number < 0)
+            return 0.toValue()
+        return min(number, MAX_SAFE_INTEGER).toValue()
+    }
+
     @JvmStatic @ECMAImpl("RequireObjectCoercible", "7.2.1")
     fun requireObjectCoercible(value: JSValue): JSValue {
         if (value is JSUndefined || value is JSNull)
@@ -456,6 +482,18 @@ object Operations {
         if (value !is JSFunction)
             return false
         return value.isCallable
+    }
+
+    @JvmStatic @ECMAImpl("IsIntegralNumber", "7.2.6")
+    fun isIntegralNumber(value: JSValue): Boolean {
+        if (!value.isNumber)
+            return false
+        if (value.isNaN || value.isInfinite)
+            return false
+        val mag = abs(value.asDouble)
+        if (mag != floor(mag))
+            return false
+        return true
     }
 
     @JvmStatic @ECMAImpl("IsPropertyKey", "7.2.7")
@@ -512,6 +550,12 @@ object Operations {
         ecmaAssert(isConstructor(constructor))
         ecmaAssert(isConstructor(newTarget))
         return (constructor as JSFunction).construct(arguments, newTarget as JSFunction)
+    }
+
+    @JvmStatic @ECMAImpl("LengthOfArrayLike", "7.3.18")
+    fun lengthOfArrayLike(target: JSValue): Int {
+        ecmaAssert(target is JSObject)
+        return toLength(target.get("length")).asInt
     }
 
     @JvmStatic @ECMAImpl("Invoke", "7.3.20")
@@ -574,9 +618,16 @@ object Operations {
         return Agent.runningContext.realm.globalObject
     }
 
+    @JvmStatic @ECMAImpl("OrdinaryCreateFromConstructor", "9.1.13")
+    fun ordinaryCreateFromConstructor(constructor: JSValue, intrinsicDefaultProto: JSObject): JSObject {
+        val proto = getPrototypeFromConstructor(constructor, intrinsicDefaultProto)
+        return JSObject.create((constructor as JSObject).realm, proto)
+    }
+
     @JvmStatic @ECMAImpl("GetPrototypeFromConstructor", "9.1.14")
-    fun getPrototypeFromConstructor(constructor: JSFunction, intrinsicDefaultProto: JSObject): JSObject {
-        val proto = constructor.get("prototype")
+    fun getPrototypeFromConstructor(constructor: JSValue, intrinsicDefaultProto: JSObject): JSObject {
+        ecmaAssert(isCallable(constructor))
+        val proto = (constructor as JSObject).get("prototype")
         if (proto is JSObject)
             return proto
         return intrinsicDefaultProto
@@ -625,7 +676,7 @@ object Operations {
 
     @JvmStatic @JvmOverloads @ECMAImpl("ArrayCreate", "9.4.2.2")
     fun arrayCreate(length: Int, proto: JSObject? = Agent.runningContext.realm.arrayProto): JSValue {
-        if (length >= 2.0.pow(32) - 1)
+        if (length >= MAX_32BIT_INT - 1)
             shouldThrowError("RangeError")
         val array = JSArray.create(Agent.runningContext.realm)
         array.defineOwnProperty("length", Descriptor(JSNumber(length), Attributes(WRITABLE)))

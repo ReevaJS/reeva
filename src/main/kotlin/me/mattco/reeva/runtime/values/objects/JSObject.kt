@@ -317,7 +317,7 @@ open class JSObject protected constructor(
     }
 
     companion object {
-        fun create(realm: Realm) = JSObject(realm, realm.objectProto).also { it.init() }
+        fun create(realm: Realm, proto: JSObject = realm.objectProto) = JSObject(realm, proto).also { it.init() }
 
         @JvmStatic
         protected fun thisBinding(context: ExecutionContext): JSValue {

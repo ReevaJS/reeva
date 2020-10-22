@@ -2,6 +2,8 @@ package me.mattco.reeva.runtime.values
 
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.values.arrays.JSArray
+import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.runtime.values.functions.JSNativeProperty
 import me.mattco.reeva.runtime.values.primitives.JSNull
 import me.mattco.reeva.runtime.values.objects.JSObject
@@ -37,6 +39,8 @@ abstract class JSValue : Ref {
     val isSymbol by lazy { type == Type.Symbol }
     val isObject by lazy { type == Type.Object }
     val isAccessor by lazy { type == Type.Accessor }
+    val isFunction by lazy { this is JSFunction }
+    val isArray by lazy { this is JSArray }
 
     val isNullish by lazy { this == JSNull || this == JSUndefined }
     val isInt by lazy { isNumber && !isInfinite && floor(asDouble) == asDouble }
@@ -82,6 +86,18 @@ abstract class JSValue : Ref {
         get() {
             expect(isAccessor)
             return this as JSNativeProperty
+        }
+
+    val asFunction: JSFunction
+        get() {
+            expect(isFunction)
+            return this as JSFunction
+        }
+
+    val asArray: JSArray
+        get() {
+            expect(isArray)
+            return this as JSArray
         }
 
     val toString: String

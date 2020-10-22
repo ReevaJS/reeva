@@ -6,6 +6,7 @@ import me.mattco.reeva.runtime.environment.EnvRecord
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.arrays.JSArrayCtor
 import me.mattco.reeva.runtime.values.arrays.JSArrayProto
+import me.mattco.reeva.runtime.values.exotics.JSONObject
 import me.mattco.reeva.runtime.values.functions.JSFunctionCtor
 import me.mattco.reeva.runtime.values.functions.JSFunctionProto
 import me.mattco.reeva.runtime.values.global.JSConsole
@@ -14,12 +15,8 @@ import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.objects.JSObjectCtor
 import me.mattco.reeva.runtime.values.objects.JSObjectProto
 import me.mattco.reeva.runtime.values.primitives.JSSymbol
-import me.mattco.reeva.runtime.values.wrappers.JSStringCtor
-import me.mattco.reeva.runtime.values.wrappers.JSStringProto
-import me.mattco.reeva.runtime.values.wrappers.JSSymbolCtor
-import me.mattco.reeva.runtime.values.wrappers.JSSymbolProto
+import me.mattco.reeva.runtime.values.wrappers.*
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
 
 class Realm {
     lateinit var globalObject: JSObject
@@ -27,6 +24,7 @@ class Realm {
     var globalEnv: GlobalEnvRecord? = null
 
     lateinit var objectProto: JSObjectProto private set
+    lateinit var numberProto: JSNumberProto private set
     lateinit var stringProto: JSStringProto private set
     lateinit var symbolProto: JSSymbolProto private set
     lateinit var functionProto: JSFunctionProto private set
@@ -34,11 +32,13 @@ class Realm {
     lateinit var consoleProto: JSConsoleProto private set
 
     lateinit var objectCtor: JSObjectCtor private set
+    lateinit var numberCtor: JSNumberCtor private set
     lateinit var stringCtor: JSStringCtor private set
     lateinit var symbolCtor: JSSymbolCtor private set
     lateinit var functionCtor: JSFunctionCtor private set
     lateinit var arrayCtor: JSArrayCtor private set
 
+    lateinit var jsonObj: JSONObject private set
     lateinit var consoleObj: JSConsole private set
 
     lateinit var `@@asyncIterator`: JSSymbol private set
@@ -59,22 +59,8 @@ class Realm {
     val wellknownSymbols = mutableMapOf<String, JSSymbol>()
 
     fun initObjects() {
-        objectProto = JSObjectProto.create(this)
-        functionProto = JSFunctionProto.create(this)
-        objectProto.init()
-        functionProto.init()
-
-        stringProto = JSStringProto.create(this)
-        arrayProto = JSArrayProto.create(this)
-        consoleProto = JSConsoleProto.create(this)
-
-        stringCtor = JSStringCtor.create(this)
-        functionCtor = JSFunctionCtor.create(this)
-        objectCtor = JSObjectCtor.create(this)
-        arrayCtor = JSArrayCtor.create(this)
-
-        consoleObj = JSConsole.create(this)
-
+        // Objects can declare symbol methods, so we initialize these first, as they are not objects
+        // and do not depends on the object ctor or proto
         `@@asyncIterator` = JSSymbol("Symbol.asyncIterator").also { wellknownSymbols["@@asyncIterator"] = it }
         `@@hasInstance` = JSSymbol("Symbol.hasInstance").also { wellknownSymbols["@@hasInstance"] = it }
         `@@isConcatSpreadable` = JSSymbol("Symbol.isConcatSpreadable").also { wellknownSymbols["@@isConcatSpreadable"] = it }
@@ -89,6 +75,25 @@ class Realm {
         `@@toStringTag` = JSSymbol("Symbol.toStringTag").also { wellknownSymbols["@@toStringTag"] = it }
         `@@unscopables` = JSSymbol("Symbol.unscopables").also { wellknownSymbols["@@unscopables"] = it }
 
+        objectProto = JSObjectProto.create(this)
+        functionProto = JSFunctionProto.create(this)
+        objectCtor = JSObjectCtor.create(this)
+        objectProto.init()
+        objectProto.init()
+        functionProto.init()
+
+        numberCtor = JSNumberCtor.create(this)
+        stringCtor = JSStringCtor.create(this)
+        functionCtor = JSFunctionCtor.create(this)
+        arrayCtor = JSArrayCtor.create(this)
+
+        numberProto = JSNumberProto.create(this)
+        stringProto = JSStringProto.create(this)
+        arrayProto = JSArrayProto.create(this)
+        consoleProto = JSConsoleProto.create(this)
+        jsonObj = JSONObject.create(this)
+        consoleObj = JSConsole.create(this)
+
         // Must be created after wellknown symbols
         symbolCtor = JSSymbolCtor.create(this)
         symbolProto = JSSymbolProto.create(this)
@@ -99,8 +104,10 @@ class Realm {
         globalObject.set("Function", functionCtor)
         globalObject.set("Array", arrayCtor)
         globalObject.set("String", stringCtor)
+        globalObject.set("Number", numberCtor)
         globalObject.set("Symbol", symbolCtor)
 
+        globalObject.set("JSON", jsonObj)
         globalObject.set("console", consoleObj)
     }
 
