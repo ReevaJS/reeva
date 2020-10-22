@@ -74,7 +74,7 @@ data class Token(
 
         return StringBuilder().apply {
             var i = 1
-            while (i < value.length) {
+            while (i < value.length - 1) {
                 if (value[i] == '\\' && i + 2 < value.length) {
                     i++
                     when (value[i]) {
