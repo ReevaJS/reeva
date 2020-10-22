@@ -5,10 +5,6 @@ import me.mattco.reeva.runtime.environment.EnvRecord
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.objects.JSObject
 
-typealias NativeFunctionSignature = (thisValue: JSValue, arguments: List<JSValue>) -> JSValue
-typealias NativeGetterSignature = () -> JSValue
-typealias NativeSetterSignature = (value: JSValue) -> Unit
-
 abstract class JSFunction(
     val realm: Realm,
     val thisMode: ThisMode,

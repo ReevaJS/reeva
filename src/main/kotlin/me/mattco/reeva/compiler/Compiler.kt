@@ -344,6 +344,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             is CPEAAPLNode -> compileCPEAAPL(expressionNode)
             is NewExpressionNode -> compileNewExpression(expressionNode)
             is CallExpressionNode -> compileCallExpression(expressionNode)
+            is ArrayLiteralNode -> compileArrayLiteral(expressionNode)
             is MemberExpressionNode -> compileMemberExpression(expressionNode)
             is OptionalExpressionNode -> compileOptionalExpression(expressionNode)
             is AssignmentExpressionNode -> compileAssignmentExpression(expressionNode)
@@ -363,6 +364,27 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             is UnaryExpressionNode -> compileUnaryExpression(expressionNode)
             is UpdateExpressionNode -> compileUpdateExpression(expressionNode)
             else -> unreachable()
+        }
+    }
+
+    private fun MethodAssembly.compileArrayLiteral(arrayLiteralNode: ArrayLiteralNode) {
+        ldc(arrayLiteralNode.elements.size)
+        operation("arrayCreate", JSValue::class, Int::class)
+        arrayLiteralNode.elements.forEachIndexed { index, element ->
+            dup
+            construct(JSString::class, String::class) {
+                ldc(index.toString())
+            }
+            if (element.expression == null) {
+                // TODO: Spec doesn't specify this step, is it alright to do this?
+                pushEmpty
+            } else {
+                compileExpression(element.expression)
+                operation("getValue", JSValue::class, JSValue::class)
+                operation("toString", JSString::class, JSValue::class)
+            }
+            operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
+            pop
         }
     }
 
@@ -1069,6 +1091,11 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         get() {
             pushContext
             getfield(ExecutionContext::class, "variableEnv", EnvRecord::class)
+        }
+
+    private val MethodAssembly.pushEmpty: Unit
+        get() {
+            getstatic(JSEmpty::class, "INSTANCE", JSEmpty::class)
         }
 
     private val MethodAssembly.pushUndefined: Unit

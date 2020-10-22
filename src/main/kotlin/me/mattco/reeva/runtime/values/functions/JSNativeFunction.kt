@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.values.functions
 
 import me.mattco.reeva.runtime.Realm
+import me.mattco.reeva.runtime.annotations.NativeFunctionSignature
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.utils.shouldThrowError

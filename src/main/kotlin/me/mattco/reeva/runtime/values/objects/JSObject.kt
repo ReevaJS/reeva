@@ -2,10 +2,7 @@ package me.mattco.reeva.runtime.values.objects
 
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
-import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSMethod
-import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
-import me.mattco.reeva.runtime.annotations.JSNativePropertySetter
+import me.mattco.reeva.runtime.annotations.*
 import me.mattco.reeva.runtime.contexts.ExecutionContext
 import me.mattco.reeva.runtime.environment.FunctionEnvRecord
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
@@ -28,6 +25,8 @@ open class JSObject protected constructor(
 ) : JSValue() {
     private val properties = mutableMapOf<PropertyKey, Descriptor>()
     private var extensible: Boolean = true
+
+    open val toStringTag: String = "Object"
 
     data class NativeMethodPair(
         var attributes: Int,

@@ -2,10 +2,7 @@ package me.mattco.reeva.parser
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
-import me.mattco.reeva.ast.literals.NullNode
-import me.mattco.reeva.ast.literals.NumericLiteralNode
-import me.mattco.reeva.ast.literals.StringLiteralNode
-import me.mattco.reeva.ast.literals.ThisNode
+import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.lexer.Lexer
 import me.mattco.reeva.lexer.SourceLocation
@@ -1077,8 +1074,38 @@ class Parser(text: String) {
     }
 
     private fun parseArrayLiteral(suffixes: Suffixes): PrimaryExpressionNode? {
-        // TODO
-        return null
+        if (tokenType != TokenType.OpenBracket)
+            return null
+
+        consume()
+
+        val elements = mutableListOf<ArrayElementNode>()
+
+        fun getElement(): ArrayElementNode? {
+            if (tokenType == TokenType.Comma) {
+                consume()
+                return ArrayElementNode(null, ArrayElementNode.Type.Elision)
+            }
+            var type = if (tokenType == TokenType.TripleDot) {
+                consume()
+                ArrayElementNode.Type.Spread
+            } else ArrayElementNode.Type.Normal
+            val expr = parseAssignmentExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: run {
+                expected("expression")
+                consume()
+                return null
+            }
+            return ArrayElementNode(expr, type)
+        }
+
+        while (tokenType != TokenType.CloseParen) {
+            elements.add(getElement() ?: break)
+        }
+
+        if (elements.isNotEmpty() && elements.last().type == ArrayElementNode.Type.Elision)
+            elements.removeLast()
+
+        return ArrayLiteralNode(elements)
     }
 
     private fun parseObjectLiteral(suffixes: Suffixes): PrimaryExpressionNode? {

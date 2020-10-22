@@ -33,6 +33,9 @@ class Realm {
     fun initObjects() {
         objectProto = JSObjectProto.create(this)
         functionProto = JSFunctionProto.create(this)
+        objectProto.init()
+        functionProto.init()
+
         functionCtor = JSFunctionCtor.create(this)
         objectCtor = JSObjectCtor.create(this)
 

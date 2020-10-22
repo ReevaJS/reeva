@@ -8,7 +8,11 @@ import me.mattco.reeva.runtime.environment.FunctionEnvRecord
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.JSReference
+import me.mattco.reeva.runtime.values.arrays.JSArray
 import me.mattco.reeva.runtime.values.functions.JSFunction
+import me.mattco.reeva.runtime.values.objects.Attributes
+import me.mattco.reeva.runtime.values.objects.Attributes.Companion.WRITABLE
+import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.objects.PropertyKey
 import me.mattco.reeva.runtime.values.primitives.*
@@ -430,6 +434,21 @@ object Operations {
         return obj.get(toPropertyKey(property))
     }
 
+    @JvmStatic @ECMAImpl("CreateDataProperty", "7.3.5")
+    fun createDataProperty(target: JSValue, property: JSValue, value: JSValue): Boolean {
+        expect(target is JSObject)
+        expect(isPropertyKey(property))
+        val newDesc = Descriptor(value, Attributes(Attributes.defaultAttributes))
+        return target.defineOwnProperty(toPropertyKey(property), newDesc)
+    }
+
+    @JvmStatic @ECMAImpl("CreateDataPropertyOrThrow", "7.3.7")
+    fun createDataPropertyOrThrow(target: JSValue, property: JSValue, value: JSValue): Boolean {
+        if (!createDataProperty(target, property, value))
+            shouldThrowError("TypeError")
+        return true
+    }
+
     @JvmStatic @ECMAImpl("GetMethod", "7.3.10")
     fun getMethod(value: JSValue, key: JSValue): JSValue {
         expect(isPropertyKey(key))
@@ -548,6 +567,15 @@ object Operations {
     @JvmStatic @ECMAImpl("FunctionDeclarationInstantiation", "9.2.10")
     fun functionDeclarationInstantiation(function: JSScriptFunction, arguments: List<JSValue>): JSValue {
         TODO()
+    }
+
+    @JvmStatic @JvmOverloads @ECMAImpl("ArrayCreate", "9.4.2.2")
+    fun arrayCreate(length: Int, proto: JSObject? = Agent.runningContext.realm.arrayProto): JSValue {
+        if (length >= 2.0.pow(32) - 1)
+            shouldThrowError("RangeError")
+        val array = JSArray.create(Agent.runningContext.realm)
+        array.defineOwnProperty("length", Descriptor(JSNumber(length), Attributes(WRITABLE)))
+        return array
     }
 
     @JvmStatic @ECMAImpl("EvaluatePropertyAccessWithExpressionKey", "12.3.3")
