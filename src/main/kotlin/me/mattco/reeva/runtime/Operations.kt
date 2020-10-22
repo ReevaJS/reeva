@@ -300,6 +300,18 @@ object Operations {
         if (value !is JSObject)
             return value
 
+        val exoticToPrim = getMethod(value, value.realm.`@@toPrimitive`)
+        if (exoticToPrim != JSUndefined) {
+            val hint = when (type) {
+                ToPrimitiveHint.AsDefault, null -> "default"
+                ToPrimitiveHint.AsString -> "string"
+                ToPrimitiveHint.AsNumber -> "number"
+            }.toValue()
+            val result = call(exoticToPrim, value, listOf(hint))
+            if (result !is JSObject)
+                return result
+        }
+
         // TODO Get @@toPrimitive method
         return ordinaryToPrimitive(value, type ?: ToPrimitiveHint.AsNumber)
     }
