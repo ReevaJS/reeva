@@ -16,7 +16,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
     override fun construct(arguments: List<JSValue>, newTarget: JSValue): JSValue {
         if (newTarget == JSUndefined && arguments[0].isSymbol)
-            return "Symbol(${arguments[0].asSymbol.description ?: ""})".toValue()
+            return arguments[0].asSymbol.descriptiveString().toValue()
         val s = if (arguments.isEmpty()) {
             "".toValue()
         } else {

@@ -35,6 +35,8 @@ open class JSObject protected constructor(
     )
 
     open fun init() {
+        defineOwnProperty("prototype", Descriptor(prototype, Attributes(0)))
+
         // TODO: This is terrible for performance, but very cool :)
         // A better way to do it would be to use an annotation processor, and bake
         // these properties into the class's "init" method as direct calls to the

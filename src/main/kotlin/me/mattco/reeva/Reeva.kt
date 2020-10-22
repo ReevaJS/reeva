@@ -18,5 +18,4 @@ fun main(args: Array<String>) {
 
     val agent = Agent("my agent")
     agent.execute(scriptRecord)
-    println("poggers")
 }

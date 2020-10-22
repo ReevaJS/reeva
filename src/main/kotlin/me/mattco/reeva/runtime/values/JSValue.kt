@@ -1,5 +1,6 @@
 package me.mattco.reeva.runtime.values
 
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.values.functions.JSNativeProperty
 import me.mattco.reeva.runtime.values.primitives.JSNull
@@ -18,12 +19,34 @@ abstract class JSValue : Ref {
             is JSNull -> Type.Null
             is JSTrue, is JSFalse -> Type.Boolean
             is JSString -> Type.String
+            is JSSymbol -> Type.Symbol
             is JSNumber -> Type.Number
             is JSNativeProperty -> Type.Accessor
             is JSObject -> Type.Object
             else -> throw IllegalStateException("Unknown object type")
         }
     }
+
+    val isEmpty by lazy { type == Type.Empty }
+    val isUndefined by lazy { type == Type.Undefined }
+    val isNull by lazy { type == Type.Null }
+    val isBoolean by lazy { type == Type.Boolean }
+    val isNumber by lazy { type == Type.Number }
+    val isBigInt by lazy { type == Type.BigInt }
+    val isString by lazy { type == Type.String }
+    val isSymbol by lazy { type == Type.Symbol }
+    val isObject by lazy { type == Type.Object }
+    val isAccessor by lazy { type == Type.Accessor }
+
+    val isNullish by lazy { this == JSNull || this == JSUndefined }
+    val isInt by lazy { isNumber && !isInfinite && floor(asDouble) == asDouble }
+    val isNaN by lazy { isNumber && asDouble.isNaN() }
+    val isInfinite by lazy { isNumber && asDouble.isInfinite() }
+    val isPositiveInfinity by lazy { isNumber && asDouble == Double.POSITIVE_INFINITY }
+    val isNegativeInfinity by lazy { isNumber && asDouble == Double.NEGATIVE_INFINITY }
+    val isZero by lazy { isNumber && asDouble == 0.0 }
+    val isPositiveZero by lazy { isNumber && 1.0 / asDouble == Double.POSITIVE_INFINITY }
+    val isNegativeZero by lazy { isNumber && 1.0 / asDouble == Double.NEGATIVE_INFINITY }
 
     val asBoolean: Boolean
         get() {
@@ -61,26 +84,14 @@ abstract class JSValue : Ref {
             return this as JSNativeProperty
         }
 
-    val isEmpty by lazy { type == Type.Empty }
-    val isUndefined by lazy { type == Type.Undefined }
-    val isNull by lazy { type == Type.Null }
-    val isBoolean by lazy { type == Type.Boolean }
-    val isNumber by lazy { type == Type.Number }
-    val isBigInt by lazy { type == Type.BigInt }
-    val isString by lazy { type == Type.String }
-    val isSymbol by lazy { type == Type.Symbol }
-    val isObject by lazy { type == Type.Object }
-    val isAccessor by lazy { type == Type.Accessor }
+    val toString: String
+        get() = Operations.toString(this).string
 
-    val isNullish by lazy { this == JSNull || this == JSUndefined }
-    val isInt by lazy { isNumber && !isInfinite && floor(asDouble) == asDouble }
-    val isNaN by lazy { isNumber && asDouble.isNaN() }
-    val isInfinite by lazy { isNumber && asDouble.isInfinite() }
-    val isPositiveInfinity by lazy { isNumber && asDouble == Double.POSITIVE_INFINITY }
-    val isNegativeInfinity by lazy { isNumber && asDouble == Double.NEGATIVE_INFINITY }
-    val isZero by lazy { isNumber && asDouble == 0.0 }
-    val isPositiveZero by lazy { isNumber && 1.0 / asDouble == Double.POSITIVE_INFINITY }
-    val isNegativeZero by lazy { isNumber && 1.0 / asDouble == Double.NEGATIVE_INFINITY }
+    val toInt32: Int
+        get() = Operations.toInt32(this).asInt
+
+    val toBoolean: Boolean
+        get() = Operations.toBoolean(this).asBoolean
 
     @ECMAImpl("SameValue", "7.2.10")
     fun sameValue(other: JSValue): Boolean {

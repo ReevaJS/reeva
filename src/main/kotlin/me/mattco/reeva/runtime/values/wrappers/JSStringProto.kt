@@ -3,7 +3,6 @@ package me.mattco.reeva.runtime.values.wrappers
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
 import me.mattco.reeva.runtime.values.JSValue
-import me.mattco.reeva.runtime.values.functions.JSNativeFunction
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.toValue

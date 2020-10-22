@@ -19,6 +19,7 @@ import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.objects.PropertyKey
 import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.runtime.values.wrappers.JSStringObject
+import me.mattco.reeva.runtime.values.wrappers.JSSymbolObject
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.toValue
@@ -249,7 +250,8 @@ object Operations {
         }
 
         expect(base is EnvRecord)
-        return base.getBindingValue(reference.name, reference.isStrict)
+        expect(reference.name.isString)
+        return base.getBindingValue(reference.name.asString, reference.isStrict)
     }
 
     @JvmStatic @ECMAImpl("PutValue", "6.2.4.9")
@@ -271,7 +273,8 @@ object Operations {
                 shouldThrowError("TypeError")
         } else {
             expect(base is EnvRecord)
-            base.setMutableBinding(reference.name, value, reference.isStrict)
+            expect(reference.name.isString)
+            base.setMutableBinding(reference.name.asString, value, reference.isStrict)
         }
     }
 
@@ -280,7 +283,8 @@ object Operations {
         expect(!reference.isUnresolvableReference, "Unknown reference with identifier ${reference.name}")
         val base = reference.baseValue
         expect(base is EnvRecord)
-        base.initializeBinding(reference.name, value)
+        expect(reference.name.isString)
+        base.initializeBinding(reference.name.asString, value)
     }
 
     enum class ToPrimitiveHint(private val _text: String) {
@@ -401,6 +405,13 @@ object Operations {
         }.let(::JSString)
     }
 
+    fun toPrintableString(value: JSValue): JSString {
+        return when (value) {
+            is JSSymbol -> value.descriptiveString().toValue()
+            else -> toString(value)
+        }
+    }
+
     @JvmStatic @ECMAImpl("ToObject", "7.1.18")
     fun toObject(value: JSValue): JSObject {
         return when (value) {
@@ -408,8 +419,8 @@ object Operations {
             is JSUndefined, JSNull -> shouldThrowError("TypeError")
             is JSBoolean -> TODO()
             is JSNumber -> TODO()
-            is JSString -> JSStringObject.create(Agent.runningContext.realm, JSString(value.string))
-            is JSSymbol -> TODO()
+            is JSString -> JSStringObject.create(Agent.runningContext.realm, value)
+            is JSSymbol -> JSSymbolObject.create(Agent.runningContext.realm, value)
             is JSBigInt -> TODO()
             else -> TODO()
         }
@@ -418,8 +429,8 @@ object Operations {
     @JvmStatic @ECMAImpl("ToPropertyKey", "7.1.19")
     fun toPropertyKey(value: JSValue): PropertyKey {
         val key = toPrimitive(value, ToPrimitiveHint.AsString)
-//        if (key is JSSymbol)
-//            return PropertYKey(key.symbol)
+        if (key is JSSymbol)
+            return PropertyKey(key)
         return PropertyKey(toString(key).string)
     }
 
@@ -497,8 +508,8 @@ object Operations {
     @JvmStatic @ECMAImpl("GetIdentifierReference", "8.1.2.1")
     fun getIdentifierReference(env: EnvRecord?, name: String, isStrict: Boolean): JSReference {
         return when {
-            env == null -> JSReference(JSUndefined, name, isStrict)
-            env.hasBinding(name) -> JSReference(env, name, isStrict)
+            env == null -> JSReference(JSUndefined, PropertyKey(name), isStrict)
+            env.hasBinding(name) -> JSReference(env, PropertyKey(name), isStrict)
             else -> getIdentifierReference(env.outerEnv, name, isStrict)
         }
     }
@@ -603,14 +614,14 @@ object Operations {
     fun evaluatePropertyAccessWithExpressionKey(baseValue: JSValue, property: JSValue, isStrict: Boolean): JSValue {
         val propertyValue = getValue(property)
         val bv = requireObjectCoercible(baseValue)
-        val propertyKey = toPropertyKey(propertyValue).asString
+        val propertyKey = toPropertyKey(propertyValue)
         return JSReference(bv, propertyKey, isStrict)
     }
 
     @JvmStatic @ECMAImpl("EvaluatePropertyAccessWithIdentifierKey", "12.3.4")
     fun evaluatePropertyAccessWithIdentifierKey(baseValue: JSValue, property: String, isStrict: Boolean): JSValue {
         val bv = requireObjectCoercible(baseValue)
-        return JSReference(bv, property, isStrict)
+        return JSReference(bv, PropertyKey(property), isStrict)
     }
 
     @JvmStatic @ECMAImpl("EvaluateNew", "12.3.5.1.1")
