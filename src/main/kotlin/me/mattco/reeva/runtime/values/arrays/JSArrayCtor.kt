@@ -4,7 +4,7 @@ import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.JSNativeFunction
 
-class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ArrayConstructor") {
+class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ArrayConstructor", 1) {
     override fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
         TODO("Not yet implemented")
     }

@@ -22,7 +22,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("Object.prototype.hasOwnProperty", "19.1.3.2")
-    @JSMethod("hasOwnProperty", 1)
+    @JSMethod("hasOwnProperty", 1, Attributes.WRITABLE and Attributes.CONFIGURABLE)
     fun hasOwnProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = Operations.toPropertyKey(arguments.argument(0))
         val o = Operations.toObject(thisValue)
@@ -30,7 +30,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("Object.prototype.isPrototypeOf", "19.1.3.3")
-    @JSMethod("isPrototypeOf", 1)
+    @JSMethod("isPrototypeOf", 1, Attributes.WRITABLE and Attributes.CONFIGURABLE)
     fun isPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         var arg = arguments.argument(0)
         if (arg !is JSObject)
@@ -46,7 +46,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("Object.prototype.propertyIsEnumerable", "19.1.3.4")
-    @JSMethod("propertyIsEnumerable", 1)
+    @JSMethod("propertyIsEnumerable", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
     fun propertyIsEnumerable(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = Operations.toPropertyKey(arguments.argument(0))
         val thisObj = Operations.toObject(thisValue)
@@ -55,13 +55,13 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("Object.prototype.toLocaleString", "19.1.3.5")
-    @JSMethod("toLocaleString", 0)
+    @JSMethod("toLocaleString", 0, Attributes.CONFIGURABLE and Attributes.WRITABLE)
     fun toLocaleString(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         return Operations.invoke(thisObj, "toString".toValue())
     }
 
-    @JSMethod("toString", 0)
+    @JSMethod("toString", 0, Attributes.CONFIGURABLE and Attributes.WRITABLE)
     fun toString_(thisValue: JSValue, arguments: List<JSValue>): JSValue {
         if (thisValue == JSUndefined)
             return "[object Undefined]".toValue()
@@ -83,7 +83,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         return "[object $builtinTag]".toValue()
     }
 
-    @JSMethod("valueOf", 0)
+    @JSMethod("valueOf", 0, Attributes.CONFIGURABLE and Attributes.WRITABLE)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         return Operations.toObject(thisValue)
     }

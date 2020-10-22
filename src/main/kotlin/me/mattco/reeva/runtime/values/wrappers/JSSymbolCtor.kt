@@ -15,7 +15,7 @@ import me.mattco.reeva.utils.argument
 import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.toValue
 
-class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Symbol") {
+class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Symbol", 0) {
     override fun init() {
         super.init()
 
@@ -34,7 +34,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineOwnProperty("unscopables", Descriptor(realm.`@@unscopables`, Attributes(0)))
     }
 
-    @JSMethod("for", 1)
+    @JSMethod("for", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
     fun for_(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = arguments.argument(0).asString
         for ((globalKey, globalSymbol) in Realm.globalSymbolRegistry) {
@@ -46,7 +46,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return newSymbol
     }
 
-    @JSMethod("keyFor", 1)
+    @JSMethod("keyFor", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
     fun keyFor(thisValue: JSValue, arguments: JSArguments): JSValue {
         val sym = arguments.argument(0)
         if (!sym.isSymbol)

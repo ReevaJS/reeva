@@ -312,9 +312,7 @@ open class JSObject protected constructor(
 
     fun defineNativeFunction(key: PropertyKey, length: Int, attributes: Attributes, function: NativeFunctionSignature) {
         val name = if (key.isString) key.asString else "[${key.asSymbol.descriptiveString()}]"
-        val obj = JSNativeFunction.fromLambda(realm, name, function)
-        obj.defineOwnProperty("length", Descriptor(JSNumber(length), Attributes(Attributes.CONFIGURABLE)))
-        obj.defineOwnProperty("name", Descriptor(JSString(name), Attributes(Attributes.CONFIGURABLE)))
+        val obj = JSNativeFunction.fromLambda(realm, name, length, function)
         defineOwnProperty(key, Descriptor(obj, attributes))
     }
 
