@@ -20,10 +20,15 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         if (thisValue == JSNull)
             return "[object Null]".toValue()
 
-        val builtinTag = when (Operations.toObject(thisValue)) {
-            is JSArray -> "Array"
-            is JSFunction -> "Function"
-            else -> TODO()
+        val obj = Operations.toObject(thisValue)
+        var builtinTag = obj.get(realm.`@@toStringTag`)
+        if (builtinTag == JSUndefined) {
+            builtinTag = when (obj) {
+                is JSArray -> "Array".toValue()
+                is JSFunction -> "Function".toValue()
+                is JSStringObject -> "String".toValue()
+                else -> "Object".toValue()
+            }
         }
 
         // TODO: @@toStringTag
