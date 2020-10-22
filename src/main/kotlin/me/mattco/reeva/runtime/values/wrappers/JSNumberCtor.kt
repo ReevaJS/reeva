@@ -78,7 +78,7 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
         // TODO: Handle newTarget?
-        return JSNumberObject(realm, numberFromArg(arguments.argument(0)).toValue())
+        return JSNumberObject.create(realm, numberFromArg(arguments.argument(0)).toValue())
     }
 
     private fun numberFromArg(argument: JSValue): Double {

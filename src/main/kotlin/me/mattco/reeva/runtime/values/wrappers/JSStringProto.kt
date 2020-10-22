@@ -3,11 +3,24 @@ package me.mattco.reeva.runtime.values.wrappers
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
 import me.mattco.reeva.runtime.values.JSValue
+import me.mattco.reeva.runtime.values.objects.Attributes
+import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
+import me.mattco.reeva.runtime.values.primitives.JSString
 import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.toValue
 
-class JSStringProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
+class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JSString("")) {
+    override fun init() {
+        // No super call to avoid prototype complications
+
+        internalSetPrototype(realm.objectProto)
+        defineOwnProperty("prototype", Descriptor(realm.objectProto, Attributes(0)))
+        configureInstanceProperties()
+
+        defineOwnProperty("constructor", Descriptor(realm.stringCtor, Attributes(Attributes.CONFIGURABLE and Attributes.WRITABLE)))
+    }
+
     @JSNativePropertyGetter("length", attributes = 0)
     fun getLength(thisValue: JSValue): JSValue {
         if (thisValue !is JSStringObject)

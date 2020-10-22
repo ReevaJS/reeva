@@ -18,12 +18,27 @@ import me.mattco.reeva.utils.unreachable
 
 open class JSObject protected constructor(
     val realm: Realm,
-    private var prototype: JSValue
+    prototype: JSValue? = null
 ) : JSValue() {
     private val properties = mutableMapOf<PropertyKey, Descriptor>()
     private var extensible: Boolean = true
 
-    open val toStringTag: String = "Object"
+    // This must be a lateinit var, because otherwise some objects could not be
+    // instantiated without causing a circularity issue. For example, JSNumberProto
+    // is itself a JSNumberObject. If the JSNumberObject tried to pass the number
+    // proto to it's super constructor, it would cause problems.
+    private lateinit var prototype: JSValue
+
+    init {
+        if (prototype != null)
+            this.prototype = prototype
+    }
+
+    // To facilitate classes which must set their prototypes in the init()
+    // call instead of the class constructor
+    protected fun internalSetPrototype(prototype: JSValue) {
+        this.prototype = prototype
+    }
 
     data class NativeMethodPair(
         var attributes: Int,
@@ -34,6 +49,12 @@ open class JSObject protected constructor(
     open fun init() {
         defineOwnProperty("prototype", Descriptor(prototype, Attributes(0)))
 
+        configureInstanceProperties()
+    }
+
+    // This method exists to be called directly by subclass who cannot call their
+    // super.init() method due to prototype complications
+    protected fun configureInstanceProperties() {
         // TODO: This is terrible for performance, but very cool :)
         // A better way to do it would be to use an annotation processor, and bake
         // these properties into the class's "init" method as direct calls to the
@@ -51,7 +72,7 @@ open class JSObject protected constructor(
             })
             val key = if (getter.name.startsWith("@@")) {
                 realm.wellknownSymbols[getter.name]?.let(::PropertyKey) ?:
-                    throw IllegalArgumentException("No well known symbol found with name ${getter.name}")
+                throw IllegalArgumentException("No well known symbol found with name ${getter.name}")
             } else PropertyKey(getter.name)
             expect(key !in nativeProperties)
             nativeProperties[key] = methodPair
