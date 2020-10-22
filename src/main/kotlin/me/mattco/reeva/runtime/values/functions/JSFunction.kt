@@ -15,7 +15,7 @@ abstract class JSFunction(
 
     abstract fun name(): String
     abstract fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue
-    abstract fun construct(arguments: List<JSValue>, newTarget: JSObject): JSValue
+    abstract fun construct(arguments: List<JSValue>, newTarget: JSValue): JSValue
 
     enum class ThisMode {
         Lexical,

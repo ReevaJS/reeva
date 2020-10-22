@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.values
 
 import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.values.functions.JSNativeProperty
 import me.mattco.reeva.runtime.values.primitives.JSNull
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.*
@@ -18,6 +19,7 @@ abstract class JSValue : Ref {
             is JSTrue, is JSFalse -> Type.Boolean
             is JSString -> Type.String
             is JSNumber -> Type.Number
+            is JSNativeProperty -> Type.Accessor
             is JSObject -> Type.Object
             else -> throw IllegalStateException("Unknown object type")
         }
@@ -35,6 +37,12 @@ abstract class JSValue : Ref {
             return (this as JSString).string
         }
 
+    val asSymbol: JSSymbol
+        get() {
+            expect(type == Type.Symbol)
+            return this as JSSymbol
+        }
+
     val asDouble: Double
         get() {
             expect(type == Type.Number)
@@ -47,13 +55,22 @@ abstract class JSValue : Ref {
             return (this as JSNumber).number.toInt()
         }
 
+    val asAccessor: JSNativeProperty
+        get() {
+            expect(type == Type.Accessor)
+            return this as JSNativeProperty
+        }
+
     val isEmpty by lazy { type == Type.Empty }
     val isUndefined by lazy { type == Type.Undefined }
     val isNull by lazy { type == Type.Null }
     val isBoolean by lazy { type == Type.Boolean }
     val isNumber by lazy { type == Type.Number }
+    val isBigInt by lazy { type == Type.BigInt }
     val isString by lazy { type == Type.String }
+    val isSymbol by lazy { type == Type.Symbol }
     val isObject by lazy { type == Type.Object }
+    val isAccessor by lazy { type == Type.Accessor }
 
     val isNullish by lazy { this == JSNull || this == JSUndefined }
     val isInt by lazy { isNumber && !isInfinite && floor(asDouble) == asDouble }
@@ -120,11 +137,6 @@ abstract class JSValue : Ref {
         else -> TODO()
     }
 
-    @ECMAImpl("ToObject", "7.1.18")
-    fun toObject(): JSObject {
-        TODO()
-    }
-
     enum class Type {
         Empty,
         Undefined,
@@ -135,5 +147,6 @@ abstract class JSValue : Ref {
         BigInt,
         Symbol,
         Object,
+        Accessor,
     }
 }

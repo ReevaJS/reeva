@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package me.mattco.reeva.runtime
 
 import me.mattco.reeva.compiler.JSScriptFunction
@@ -16,6 +18,7 @@ import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.objects.PropertyKey
 import me.mattco.reeva.runtime.values.primitives.*
+import me.mattco.reeva.runtime.values.wrappers.JSStringObject
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.toValue
@@ -237,9 +240,12 @@ object Operations {
         if (reference.isPropertyReference) {
             if (reference.hasPrimitiveBase) {
                 expect(base != JSUndefined && base != JSNull)
-                base = (base as JSValue).toObject()
+                base = toObject(base as JSValue)
             }
-            return (base as JSObject).get(reference.name, reference.getThisValue())
+            val value = (base as JSObject).get(reference.name, reference.getThisValue())
+            if (value.isAccessor)
+                return value.asAccessor.callGetter(base)
+            return value
         }
 
         expect(base is EnvRecord)
@@ -258,7 +264,7 @@ object Operations {
         } else if (reference.isPropertyReference) {
             if (reference.hasPrimitiveBase) {
                 expect(base != JSUndefined && base != JSNull)
-                base = (base as JSValue).toObject()
+                base = toObject(base as JSValue)
             }
             val succeeded = (base as JSObject).set(reference.name, value, reference.getThisValue())
             if (!succeeded && reference.isStrict)
@@ -323,6 +329,7 @@ object Operations {
         JSValue.Type.Number -> (!value.isZero && !value.isNaN).toValue()
         JSValue.Type.BigInt -> TODO()
         JSValue.Type.Symbol -> TODO()
+        JSValue.Type.Accessor -> TODO()
         JSValue.Type.Object -> JSTrue
     }
 
@@ -396,10 +403,16 @@ object Operations {
 
     @JvmStatic @ECMAImpl("ToObject", "7.1.18")
     fun toObject(value: JSValue): JSObject {
-        if (value is JSObject)
-            return value
-        requireObjectCoercible(value)
-        TODO()
+        return when (value) {
+            is JSObject -> value
+            is JSUndefined, JSNull -> shouldThrowError("TypeError")
+            is JSBoolean -> TODO()
+            is JSNumber -> TODO()
+            is JSString -> JSStringObject.create(Agent.runningContext.realm, JSString(value.string))
+            is JSSymbol -> TODO()
+            is JSBigInt -> TODO()
+            else -> TODO()
+        }
     }
 
     @JvmStatic @ECMAImpl("ToPropertyKey", "7.1.19")
@@ -526,6 +539,14 @@ object Operations {
     @JvmStatic @ECMAImpl("GetGlobalObject", "8.3.6")
     fun getGlobalObject(): JSObject {
         return Agent.runningContext.realm.globalObject
+    }
+
+    @JvmStatic @ECMAImpl("GetPrototypeFromConstructor", "9.1.14")
+    fun getPrototypeFromConstructor(constructor: JSFunction, intrinsicDefaultProto: JSObject): JSObject {
+        val proto = constructor.get("prototype")
+        if (proto is JSObject)
+            return proto
+        return intrinsicDefaultProto
     }
 
     @JvmStatic @ECMAImpl("PrepareForOrdinaryCall", "9.2.1.1")

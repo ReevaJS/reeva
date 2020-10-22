@@ -48,8 +48,8 @@ open class JSObject protected constructor(
         }.forEach { method ->
             val getter = method.getAnnotation(JSNativePropertyGetter::class.java)
             expect(getter.name !in nativeProperties)
-            val methodPair = NativeMethodPair(attributes = getter.attributes, getter = {
-                method.invoke(this) as JSValue
+            val methodPair = NativeMethodPair(attributes = getter.attributes, getter = { thisValue ->
+                method.invoke(this, thisValue) as JSValue
             })
             nativeProperties[getter.name] = methodPair
         }
@@ -67,7 +67,7 @@ open class JSObject protected constructor(
                 nativeProperties[setter.name] = t
                 t
             }
-            methodPair.setter = { value -> method.invoke(this, value) }
+            methodPair.setter = { thisValue, value -> method.invoke(this, thisValue, value) }
         }
 
         nativeProperties.forEach { (name, methods) ->

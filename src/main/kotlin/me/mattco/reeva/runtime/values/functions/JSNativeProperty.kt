@@ -11,6 +11,6 @@ class JSNativeProperty(
     val hasGetter = getter != null
     val hasSetter = setter != null
 
-    fun callGetter() = getter!!.invoke()
-    fun callSetter(value: JSValue) = setter!!.invoke(value)
+    fun callGetter(thisValue: JSValue) = getter!!.invoke(thisValue)
+    fun callSetter(thisValue: JSValue, value: JSValue) = setter!!.invoke(thisValue, value)
 }

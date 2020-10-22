@@ -9,7 +9,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         TODO("Not yet implemented")
     }
 
-    override fun construct(arguments: List<JSValue>, newTarget: JSObject): JSValue {
+    override fun construct(arguments: List<JSValue>, newTarget: JSValue): JSValue {
         TODO("Not yet implemented")
     }
 

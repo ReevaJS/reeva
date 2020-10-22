@@ -13,6 +13,8 @@ import me.mattco.reeva.runtime.values.global.JSConsoleProto
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.objects.JSObjectCtor
 import me.mattco.reeva.runtime.values.objects.JSObjectProto
+import me.mattco.reeva.runtime.values.wrappers.JSStringCtor
+import me.mattco.reeva.runtime.values.wrappers.JSStringProto
 
 class Realm {
     lateinit var globalObject: JSObject
@@ -20,11 +22,13 @@ class Realm {
     var globalEnv: GlobalEnvRecord? = null
 
     lateinit var objectProto: JSObjectProto private set
+    lateinit var stringProto: JSStringProto private set
     lateinit var functionProto: JSFunctionProto private set
     lateinit var arrayProto: JSArrayProto private set
     lateinit var consoleProto: JSConsoleProto private set
 
     lateinit var objectCtor: JSObjectCtor private set
+    lateinit var stringCtor: JSStringCtor private set
     lateinit var functionCtor: JSFunctionCtor private set
     lateinit var arrayCtor: JSArrayCtor private set
 
@@ -36,12 +40,14 @@ class Realm {
         objectProto.init()
         functionProto.init()
 
+        stringProto = JSStringProto.create(this)
+        arrayProto = JSArrayProto.create(this)
+        consoleProto = JSConsoleProto.create(this)
+
+        stringCtor = JSStringCtor.create(this)
         functionCtor = JSFunctionCtor.create(this)
         objectCtor = JSObjectCtor.create(this)
-
-        arrayProto = JSArrayProto.create(this)
         arrayCtor = JSArrayCtor.create(this)
-        consoleProto = JSConsoleProto.create(this)
 
         consoleObj = JSConsole.create(this)
     }
@@ -50,6 +56,7 @@ class Realm {
         globalObject.set("Object", objectCtor)
         globalObject.set("Function", functionCtor)
         globalObject.set("Array", arrayCtor)
+        globalObject.set("String", stringCtor)
 
         globalObject.set("console", consoleObj)
     }
