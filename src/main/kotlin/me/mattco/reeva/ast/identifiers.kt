@@ -1,14 +1,13 @@
 package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
-import me.mattco.reeva.utils.stringBuilder
 
 class BindingIdentifierNode(val identifierName: String) : NodeBase(), ExpressionNode {
     override fun stringValue() = identifierName
 
     override fun boundNames() = listOf(identifierName)
 
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (identifier=")
@@ -20,7 +19,7 @@ class BindingIdentifierNode(val identifierName: String) : NodeBase(), Expression
 class IdentifierNode(val identifierName: String) : NodeBase(), ExpressionNode {
     override fun stringValue() = identifierName
 
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (identifier=")
@@ -37,7 +36,7 @@ class IdentifierReferenceNode(val identifierName: String) : NodeBase(), PrimaryE
 
     override fun stringValue() = identifierName
 
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (identifier=")
@@ -49,7 +48,7 @@ class IdentifierReferenceNode(val identifierName: String) : NodeBase(), PrimaryE
 class LabelIdentifierNode(val identifierName: String) : NodeBase() {
     override fun stringValue() = identifierName
 
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (identifier=")

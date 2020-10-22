@@ -3,10 +3,9 @@ package me.mattco.reeva.ast.expressions
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.ExpressionNode
 import me.mattco.reeva.ast.NodeBase
-import me.mattco.reeva.utils.stringBuilder
 
 class UnaryExpressionNode(val node: ExpressionNode, val op: Operator) : NodeBase(listOf(node)), ExpressionNode {
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (operator=")
@@ -27,7 +26,7 @@ class UnaryExpressionNode(val node: ExpressionNode, val op: Operator) : NodeBase
 }
 
 class UpdateExpressionNode(val target: ExpressionNode, val isIncrement: Boolean, val isPostfix: Boolean) : NodeBase(listOf(target)), ExpressionNode {
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (isIncrement=")

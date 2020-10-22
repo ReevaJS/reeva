@@ -4,7 +4,6 @@ import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.literals.StringLiteralNode
 import me.mattco.reeva.ast.statements.ExpressionStatementNode
 import me.mattco.reeva.ast.statements.StatementListNode
-import me.mattco.reeva.utils.stringBuilder
 
 // This is an ExpressionNode so it can be passed to MemberExpressionNode
 class ArgumentsNode(private val _argumentsList: ArgumentsListNode) : NodeBase(listOf(_argumentsList)), ExpressionNode {
@@ -13,7 +12,7 @@ class ArgumentsNode(private val _argumentsList: ArgumentsListNode) : NodeBase(li
 }
 
 class ArgumentsListNode(val argumentsList: List<ArgumentListEntry>) : NodeBase(argumentsList) {
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         dumpSelf(indent)
         argumentsList.forEach {
             appendIndent(indent + 1)
@@ -26,7 +25,7 @@ class ArgumentsListNode(val argumentsList: List<ArgumentListEntry>) : NodeBase(a
 }
 
 data class ArgumentListEntry(val expression: ExpressionNode, val isSpread: Boolean) : NodeBase(listOf(expression)) {
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (isSpread=")

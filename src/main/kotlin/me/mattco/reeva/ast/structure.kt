@@ -1,7 +1,6 @@
 package me.mattco.reeva.ast
 
 import me.mattco.reeva.utils.newline
-import me.mattco.reeva.utils.stringBuilder
 
 open class NodeBase(override val children: List<ASTNode> = emptyList()) : ASTNode {
     override val name: String by lazy { this::class.java.simpleName }
@@ -11,7 +10,7 @@ interface ASTNode {
     val name: String
     val children: List<ASTNode>
 
-    fun dump(indent: Int = 0): String = stringBuilder {
+    fun dump(indent: Int = 0): String = buildString {
         dumpSelf(indent)
         children.forEach {
             append(it.dump(indent + 1))
@@ -37,7 +36,7 @@ interface ASTNode {
     companion object {
         private const val INDENT = "    "
 
-        fun makeIndent(indent: Int) = stringBuilder {
+        fun makeIndent(indent: Int) = buildString {
             repeat(indent) {
                 append(INDENT)
             }

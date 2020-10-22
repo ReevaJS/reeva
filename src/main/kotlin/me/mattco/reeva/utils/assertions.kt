@@ -18,7 +18,7 @@ fun ecmaAssert(condition: Boolean, message: String? = null) {
     }
 
     if (!condition) {
-        throw ECMAError(stringBuilder {
+        throw ECMAError(buildString {
             append("ECMA assertion failed")
             if (message != null) {
                 append(": ")
@@ -35,7 +35,7 @@ fun expect(condition: Boolean, message: String? = null) {
     }
 
     if (!condition) {
-        throw ExpectationError(stringBuilder {
+        throw ExpectationError(buildString {
             append("Expectation failed")
             if (message != null) {
                 append(": ")

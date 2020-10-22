@@ -2,7 +2,6 @@ package me.mattco.reeva.ast.expressions
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
-import me.mattco.reeva.utils.stringBuilder
 
 class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val op: Operator) : NodeBase(listOf(lhs, rhs)), ExpressionNode {
     enum class Operator(val symbol: String) {
@@ -24,7 +23,7 @@ class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode,
         Nullish("??=")
     }
 
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (")
@@ -70,7 +69,7 @@ class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val
         lhs.contains(nodeName)
     } else super<NodeBase>.contains(nodeName)
 
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (type=")
@@ -99,7 +98,7 @@ class SuperPropertyNode(val target: ExpressionNode, val computed: Boolean) : Nod
 
     override fun contains(nodeName: String) = nodeName == "super"
 
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (computed=")
@@ -122,7 +121,7 @@ class YieldExpressionNode(
             throw IllegalArgumentException("Cannot have a generatorYield expression without a target expression")
     }
 
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (generatorYield=")

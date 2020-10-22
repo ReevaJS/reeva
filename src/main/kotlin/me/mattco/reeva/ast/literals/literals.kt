@@ -4,10 +4,9 @@ import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.LiteralNode
 import me.mattco.reeva.ast.NodeBase
 import me.mattco.reeva.ast.PrimaryExpressionNode
-import me.mattco.reeva.utils.stringBuilder
 
 class BooleanNode(val value: Boolean) : NodeBase(), LiteralNode {
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         append(" (value=")
         append(value)
@@ -16,7 +15,7 @@ class BooleanNode(val value: Boolean) : NodeBase(), LiteralNode {
 }
 
 class StringLiteralNode(val value: String) : NodeBase(), LiteralNode {
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (value=")
@@ -26,7 +25,7 @@ class StringLiteralNode(val value: String) : NodeBase(), LiteralNode {
 }
 
 class NumericLiteralNode(val value: Double) : NodeBase(), LiteralNode {
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (value=")

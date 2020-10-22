@@ -2,7 +2,6 @@ package me.mattco.reeva.ast.statements
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
-import me.mattco.reeva.utils.stringBuilder
 
 class BlockStatementNode(val block: BlockNode) : NodeBase(listOf(block)), StatementNode
 
@@ -190,7 +189,7 @@ class ForNode(
         return body.varScopedDeclarations()
     }
 
-    override fun dump(indent: Int) = stringBuilder {
+    override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (")
