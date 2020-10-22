@@ -263,7 +263,25 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private fun MethodAssembly.compileEmptyStatement(emptyStatement: EmptyStatementNode) {}
 
     private fun MethodAssembly.compileIfStatement(ifStatement: IfStatementNode) {
-        TODO()
+        compileExpression(ifStatement.condition)
+        operation("getValue", JSValue::class, JSValue::class)
+        operation("toBoolean", JSValue::class, JSValue::class)
+        pushTrue
+        if (ifStatement.falseBlock == null) {
+            ifStatement(JumpCondition.RefEqual) {
+                compileStatement(ifStatement.trueBlock)
+            }
+        } else {
+            ifElseStatement(JumpCondition.RefEqual) {
+                ifBlock {
+                    compileStatement(ifStatement.trueBlock)
+                }
+
+                elseBlock {
+                    compileStatement(ifStatement.falseBlock)
+                }
+            }
+        }
     }
 
     private fun MethodAssembly.compileBreakableStatement(breakableStatement: BreakableStatement) {

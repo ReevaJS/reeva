@@ -14,6 +14,7 @@ import me.mattco.reeva.runtime.values.objects.PropertyKey
 import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.shouldThrowError
+import me.mattco.reeva.utils.toValue
 import me.mattco.reeva.utils.unreachable
 import kotlin.math.abs
 import kotlin.math.floor
@@ -306,6 +307,19 @@ object Operations {
             }
         }
         shouldThrowError("TypeError")
+    }
+
+    @JvmStatic @ECMAImpl("ToBoolean", "7.1.2")
+    fun toBoolean(value: JSValue) = when (value.type) {
+        JSValue.Type.Empty -> unreachable()
+        JSValue.Type.Undefined -> JSFalse
+        JSValue.Type.Null -> JSFalse
+        JSValue.Type.Boolean -> value
+        JSValue.Type.String -> value.asString.isNotEmpty().toValue()
+        JSValue.Type.Number -> (!value.isZero && !value.isNaN).toValue()
+        JSValue.Type.BigInt -> TODO()
+        JSValue.Type.Symbol -> TODO()
+        JSValue.Type.Object -> JSTrue
     }
 
     @JvmStatic @ECMAImpl("ToNumeric", "7.1.3")
