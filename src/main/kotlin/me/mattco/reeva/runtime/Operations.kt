@@ -407,8 +407,9 @@ object Operations {
 
     fun toPrintableString(value: JSValue): JSString {
         return when (value) {
+            is JSNumber -> toString(value)
             is JSSymbol -> value.descriptiveString().toValue()
-            else -> toString(value)
+            else -> "\"${value.toString}\"".toValue()
         }
     }
 
