@@ -11,14 +11,14 @@ class FunctionEnvRecord(
     val functionObject: JSFunction,
     var thisValue: JSValue,
     var thisBindingStatus: ThisBindingStatus,
-    val homeObject: JSValue = JSNull,
-    val newTarget: JSValue = JSNull,
+    val homeObject: JSValue = JSUndefined,
+    val newTarget: JSValue = JSUndefined,
     outerEnv: EnvRecord? = null
 ) : DeclarativeEnvRecord(outerEnv) {
     init {
-        if (!homeObject.isNull && !homeObject.isObject)
+        if (!homeObject.isUndefined && !homeObject.isObject)
             throw IllegalArgumentException()
-        if (!newTarget.isNull && !newTarget.isObject)
+        if (!newTarget.isUndefined && !newTarget.isObject)
             throw IllegalArgumentException()
     }
 
