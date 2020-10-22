@@ -262,14 +262,14 @@ object Operations {
             Agent.runningContext.realm.globalObject.set(reference.name, value)
         } else if (reference.isPropertyReference) {
             if (reference.hasPrimitiveBase) {
-                expect(base != JSUndefined && base != JSNull)
+                ecmaAssert(base != JSUndefined && base != JSNull)
                 base = toObject(base as JSValue)
             }
             val succeeded = (base as JSObject).set(reference.name, value, reference.getThisValue())
             if (!succeeded && reference.isStrict)
                 shouldThrowError("TypeError")
         } else {
-            expect(base is EnvRecord)
+            ecmaAssert(base is EnvRecord)
             expect(reference.name.isString)
             base.setMutableBinding(reference.name.asString, value, reference.isStrict)
         }
@@ -277,9 +277,9 @@ object Operations {
 
     @JvmStatic @ECMAImpl("InitializeReferencedBinding", "6.2.4.11")
     fun initializeReferencedBinding(reference: JSReference, value: JSValue) {
-        expect(!reference.isUnresolvableReference, "Unknown reference with identifier ${reference.name}")
+        ecmaAssert(!reference.isUnresolvableReference, "Unknown reference with identifier ${reference.name}")
         val base = reference.baseValue
-        expect(base is EnvRecord)
+        ecmaAssert(base is EnvRecord)
         expect(reference.name.isString)
         base.initializeBinding(reference.name.asString, value)
     }
@@ -315,8 +315,8 @@ object Operations {
 
     @JvmStatic @ECMAImpl("OrdinaryToPrimitive", "7.1.1.1")
     fun ordinaryToPrimitive(value: JSValue, hint: ToPrimitiveHint): JSValue {
-        expect(value is JSObject)
-        expect(hint != ToPrimitiveHint.AsDefault)
+        ecmaAssert(value is JSObject)
+        ecmaAssert(hint != ToPrimitiveHint.AsDefault)
         val methodNames = when (hint) {
             ToPrimitiveHint.AsString -> listOf("toString", "valueOf")
             else -> listOf("valueOf", "toString")
@@ -463,15 +463,15 @@ object Operations {
 
     @JvmStatic @ECMAImpl("GetV", "7.3.3")
     fun getV(target: JSValue, property: JSValue): JSValue {
-        expect(isPropertyKey(property))
+        ecmaAssert(isPropertyKey(property))
         val obj = toObject(target)
         return obj.get(toPropertyKey(property))
     }
 
     @JvmStatic @ECMAImpl("CreateDataProperty", "7.3.5")
     fun createDataProperty(target: JSValue, property: JSValue, value: JSValue): Boolean {
-        expect(target is JSObject)
-        expect(isPropertyKey(property))
+        ecmaAssert(target is JSObject)
+        ecmaAssert(isPropertyKey(property))
         val newDesc = Descriptor(value, Attributes(Attributes.defaultAttributes))
         return target.defineOwnProperty(toPropertyKey(property), newDesc)
     }
@@ -485,7 +485,6 @@ object Operations {
 
     @JvmStatic @ECMAImpl("GetMethod", "7.3.10")
     fun getMethod(value: JSValue, key: JSValue): JSValue {
-        expect(isPropertyKey(key))
         val func = getV(value, key)
         if (func is JSUndefined || func is JSNull)
             return JSUndefined
@@ -510,8 +509,8 @@ object Operations {
 
     @JvmStatic @ECMAImpl("Construct", "7.3.14")
     fun construct(constructor: JSValue, arguments: List<JSValue>, newTarget: JSValue = constructor): JSValue {
-        expect(isConstructor(constructor))
-        expect(isConstructor(newTarget))
+        ecmaAssert(isConstructor(constructor))
+        ecmaAssert(isConstructor(newTarget))
         return (constructor as JSFunction).construct(arguments, newTarget as JSFunction)
     }
 
@@ -585,7 +584,7 @@ object Operations {
 
     @JvmStatic @ECMAImpl("PrepareForOrdinaryCall", "9.2.1.1")
     fun prepareForOrdinaryCall(function: JSScriptFunction, newTarget: JSValue): ExecutionContext {
-        expect(newTarget is JSUndefined || newTarget is JSObject)
+        ecmaAssert(newTarget is JSUndefined || newTarget is JSObject)
         val callerContext = Agent.runningContext
         val calleeContext = ExecutionContext(
             callerContext.agent,
@@ -615,7 +614,7 @@ object Operations {
         }
 
         val localEnv = calleeContext.lexicalEnv
-        expect(localEnv is FunctionEnvRecord)
+        ecmaAssert(localEnv is FunctionEnvRecord)
         return localEnv.bindThisValue(thisValue)
     }
 
@@ -661,7 +660,7 @@ object Operations {
             if (reference.isPropertyReference) {
                 reference.getThisValue()
             } else {
-                expect(reference.baseValue is EnvRecord)
+                ecmaAssert(reference.baseValue is EnvRecord)
                 reference.baseValue.withBaseObject()
             }
         } else JSUndefined

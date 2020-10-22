@@ -50,37 +50,37 @@ abstract class JSValue : Ref {
 
     val asBoolean: Boolean
         get() {
-            expect(type == Type.Boolean)
+            expect(isBoolean)
             return (this as JSBoolean).value
         }
 
     val asString: String
         get() {
-            expect(type == Type.String)
+            expect(isString)
             return (this as JSString).string
         }
 
     val asSymbol: JSSymbol
         get() {
-            expect(type == Type.Symbol)
+            expect(isSymbol)
             return this as JSSymbol
         }
 
     val asDouble: Double
         get() {
-            expect(type == Type.Number)
+            expect(isNumber)
             return (this as JSNumber).number
         }
 
     val asInt: Int
         get() {
-            expect(type == Type.Number)
+            expect(isNumber)
             return (this as JSNumber).number.toInt()
         }
 
     val asAccessor: JSNativeProperty
         get() {
-            expect(type == Type.Accessor)
+            expect(isAccessor)
             return this as JSNativeProperty
         }
 

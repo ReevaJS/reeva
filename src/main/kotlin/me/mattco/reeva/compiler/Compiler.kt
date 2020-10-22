@@ -25,6 +25,7 @@ import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.*
+import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 import org.objectweb.asm.tree.ClassNode
@@ -88,7 +89,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         varDeclarations.asReversed().forEach {
             if (it is VariableDeclarationNode || it is ForBindingNode || it is BindingIdentifierNode)
                 return@forEach
-            expect(it is FunctionDeclarationNode)
+            ecmaAssert(it is FunctionDeclarationNode)
             val boundNames = it.boundNames()
             expect(boundNames.size == 1)
             val functionName = boundNames[0]
@@ -304,6 +305,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         TODO()
     }
 
+    @ECMAImpl(section = "13.3.1.4")
     private fun MethodAssembly.compileLexicalDeclaration(lexicalDeclarationNode: LexicalDeclarationNode) {
         lexicalDeclarationNode.bindingList.lexicalBindings.forEach {
             expect(it.initializer != null)
@@ -440,6 +442,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         }
     }
 
+    @ECMAImpl(section = "12.3.2.1")
     private fun MethodAssembly.compileMemberExpression(memberExpressionNode: MemberExpressionNode) {
         compileExpression(memberExpressionNode.lhs)
         operation("getValue", JSValue::class, JSValue::class)
@@ -688,6 +691,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         TODO()
     }
 
+    @ECMAImpl(section = "12.15.4")
     private fun MethodAssembly.compileAssignmentExpression(assignmentExpressionNode: AssignmentExpressionNode) {
         expect(assignmentExpressionNode.lhs is LeftHandSideExpressionNode)
 
