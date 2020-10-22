@@ -10,17 +10,14 @@ import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.*
 import me.mattco.reeva.runtime.values.objects.Attributes.Companion.HAS_WRITABLE
 import me.mattco.reeva.runtime.values.objects.Attributes.Companion.WRITABLE
-import me.mattco.reeva.runtime.values.primitives.JSNull
-import me.mattco.reeva.runtime.values.primitives.JSNumber
-import me.mattco.reeva.runtime.values.primitives.JSString
-import me.mattco.reeva.runtime.values.primitives.JSUndefined
+import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.unreachable
 
 open class JSObject protected constructor(
-    private val realm: Realm,
+    val realm: Realm,
     private var prototype: JSValue
 ) : JSValue() {
     private val properties = mutableMapOf<PropertyKey, Descriptor>()
@@ -227,6 +224,7 @@ open class JSObject protected constructor(
     }
 
     fun get(property: String, receiver: JSValue = this) = get(PropertyKey(property), receiver)
+    fun get(property: JSSymbol, receiver: JSValue = this) = get(PropertyKey(property), receiver)
 
     @JvmOverloads @ECMAImpl("[[Get]]", "9.1.8")
     open fun get(property: PropertyKey, receiver: JSValue = this): JSValue {
@@ -313,9 +311,10 @@ open class JSObject protected constructor(
     }
 
     fun defineNativeFunction(key: PropertyKey, length: Int, attributes: Attributes, function: NativeFunctionSignature) {
-        val obj = JSNativeFunction.fromLambda(realm, key.asString, function)
+        val name = if (key.isString) key.asString else "[${key.asSymbol.descriptiveString()}]"
+        val obj = JSNativeFunction.fromLambda(realm, name, function)
         obj.defineOwnProperty("length", Descriptor(JSNumber(length), Attributes(Attributes.CONFIGURABLE)))
-        obj.defineOwnProperty("name", Descriptor(JSString(key.asString), Attributes(Attributes.CONFIGURABLE)))
+        obj.defineOwnProperty("name", Descriptor(JSString(name), Attributes(Attributes.CONFIGURABLE)))
         defineOwnProperty(key, Descriptor(obj, attributes))
     }
 

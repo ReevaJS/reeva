@@ -65,7 +65,6 @@ class Realm {
         functionProto.init()
 
         stringProto = JSStringProto.create(this)
-        symbolProto = JSSymbolProto.create(this)
         arrayProto = JSArrayProto.create(this)
         consoleProto = JSConsoleProto.create(this)
 
@@ -92,6 +91,7 @@ class Realm {
 
         // Must be created after wellknown symbols
         symbolCtor = JSSymbolCtor.create(this)
+        symbolProto = JSSymbolProto.create(this)
     }
 
     fun populateGlobalObject() {

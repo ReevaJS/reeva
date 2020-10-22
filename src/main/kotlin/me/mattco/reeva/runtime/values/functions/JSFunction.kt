@@ -6,7 +6,7 @@ import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.objects.JSObject
 
 abstract class JSFunction(
-    val realm: Realm,
+    realm: Realm,
     val thisMode: ThisMode,
     var envRecord: EnvRecord? = null,
 ) : JSObject(realm, realm.functionProto) {

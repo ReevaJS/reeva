@@ -5,6 +5,7 @@ import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
 import me.mattco.reeva.runtime.values.JSValue
+import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSSymbol
 import me.mattco.reeva.utils.JSArguments
@@ -17,6 +18,9 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         return thisSymbolValue(thisValue).description.toValue()
     }
 
+    @JSNativePropertyGetter("@@toStringTag", Attributes.CONFIGURABLE)
+    fun `get@@toStringTag`(thisValue: JSValue) = "Symbol".toValue()
+
     @JSMethod("toString", 0)
     fun toString_(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisSymbolValue(thisValue).descriptiveString().toValue()
@@ -24,6 +28,11 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
     @JSMethod("toValue", 0)
     fun toValue(thisValue: JSValue, arguments: JSArguments): JSValue {
+        return thisSymbolValue(thisValue)
+    }
+
+    @JSMethod("@@toPrimitive", 1)
+    fun `@@toPrimitive`(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisSymbolValue(thisValue)
     }
 

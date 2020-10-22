@@ -34,9 +34,6 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineOwnProperty("unscopables", Descriptor(realm.`@@unscopables`, Attributes(0)))
     }
 
-    @JSNativePropertyGetter("@@toStringTag", Attributes.CONFIGURABLE)
-    fun `get@@toStringTag`(thisValue: JSValue) = "Symbol".toValue()
-
     @JSMethod("for", 1)
     fun for_(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = arguments.argument(0).asString

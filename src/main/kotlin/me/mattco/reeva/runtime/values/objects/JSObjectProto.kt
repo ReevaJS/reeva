@@ -3,11 +3,13 @@ package me.mattco.reeva.runtime.values.objects
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
+import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.arrays.JSArray
 import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.runtime.values.primitives.JSNull
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
+import me.mattco.reeva.runtime.values.wrappers.JSStringObject
 import me.mattco.reeva.utils.toValue
 
 class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) {
