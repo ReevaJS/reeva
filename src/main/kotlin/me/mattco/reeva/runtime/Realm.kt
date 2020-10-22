@@ -55,6 +55,9 @@ class Realm {
     lateinit var `@@toStringTag`: JSSymbol private set
     lateinit var `@@unscopables`: JSSymbol private set
 
+    // To get access to the symbol via their name without reflection
+    val wellknownSymbols = mutableMapOf<String, JSSymbol>()
+
     fun initObjects() {
         objectProto = JSObjectProto.create(this)
         functionProto = JSFunctionProto.create(this)
@@ -73,19 +76,19 @@ class Realm {
 
         consoleObj = JSConsole.create(this)
 
-        `@@asyncIterator` = JSSymbol("Symbol.asyncIterator")
-        `@@hasInstance` = JSSymbol("Symbol.hasInstance")
-        `@@isConcatSpreadable` = JSSymbol("Symbol.isConcatSpreadable")
-        `@@iterator` = JSSymbol("Symbol.iterator")
-        `@@match` = JSSymbol("Symbol.match")
-        `@@matchAll` = JSSymbol("Symbol.matchAll")
-        `@@replace` = JSSymbol("Symbol.replace")
-        `@@search` = JSSymbol("Symbol.search")
-        `@@species` = JSSymbol("Symbol.species")
-        `@@split` = JSSymbol("Symbol.split")
-        `@@toPrimitive` = JSSymbol("Symbol.toPrimitive")
-        `@@toStringTag` = JSSymbol("Symbol.toStringTag")
-        `@@unscopables` = JSSymbol("Symbol.unscopables")
+        `@@asyncIterator` = JSSymbol("Symbol.asyncIterator").also { wellknownSymbols["@@asyncIterator"] = it }
+        `@@hasInstance` = JSSymbol("Symbol.hasInstance").also { wellknownSymbols["@@hasInstance"] = it }
+        `@@isConcatSpreadable` = JSSymbol("Symbol.isConcatSpreadable").also { wellknownSymbols["@@isConcatSpreadable"] = it }
+        `@@iterator` = JSSymbol("Symbol.iterator").also { wellknownSymbols["@@iterator"] = it }
+        `@@match` = JSSymbol("Symbol.match").also { wellknownSymbols["@@match"] = it }
+        `@@matchAll` = JSSymbol("Symbol.matchAll").also { wellknownSymbols["@@matchAll"] = it }
+        `@@replace` = JSSymbol("Symbol.replace").also { wellknownSymbols["@@replace"] = it }
+        `@@search` = JSSymbol("Symbol.search").also { wellknownSymbols["@@search"] = it }
+        `@@species` = JSSymbol("Symbol.species").also { wellknownSymbols["@@species"] = it }
+        `@@split` = JSSymbol("Symbol.split").also { wellknownSymbols["@@split"] = it }
+        `@@toPrimitive` = JSSymbol("Symbol.toPrimitive").also { wellknownSymbols["@@toPrimitive"] = it }
+        `@@toStringTag` = JSSymbol("Symbol.toStringTag").also { wellknownSymbols["@@toStringTag"] = it }
+        `@@unscopables` = JSSymbol("Symbol.unscopables").also { wellknownSymbols["@@unscopables"] = it }
 
         // Must be created after wellknown symbols
         symbolCtor = JSSymbolCtor.create(this)

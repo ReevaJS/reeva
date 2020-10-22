@@ -3,6 +3,7 @@ package me.mattco.reeva.runtime.values.wrappers
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
+import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.JSNativeFunction
 import me.mattco.reeva.runtime.values.objects.Attributes
@@ -32,6 +33,9 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineOwnProperty("toStringTag", Descriptor(realm.`@@toStringTag`, Attributes(0)))
         defineOwnProperty("unscopables", Descriptor(realm.`@@unscopables`, Attributes(0)))
     }
+
+    @JSNativePropertyGetter("@@toStringTag", Attributes.CONFIGURABLE)
+    fun `get@@toStringTag`(thisValue: JSValue) = "Symbol".toValue()
 
     @JSMethod("for", 1)
     fun for_(thisValue: JSValue, arguments: JSArguments): JSValue {

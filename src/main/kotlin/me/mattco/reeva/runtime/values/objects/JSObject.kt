@@ -43,45 +43,58 @@ open class JSObject protected constructor(
         // appropriate "defineXYZ" method intead of having to do all this reflection
         // every single time a property is instantiated
 
-        val nativeProperties = mutableMapOf<String, NativeMethodPair>()
+        val nativeProperties = mutableMapOf<PropertyKey, NativeMethodPair>()
 
         this::class.java.declaredMethods.filter {
             it.isAnnotationPresent(JSNativePropertyGetter::class.java)
         }.forEach { method ->
             val getter = method.getAnnotation(JSNativePropertyGetter::class.java)
-            expect(getter.name !in nativeProperties)
             val methodPair = NativeMethodPair(attributes = getter.attributes, getter = { thisValue ->
                 method.invoke(this, thisValue) as JSValue
             })
-            nativeProperties[getter.name] = methodPair
+            val key = if (getter.name.startsWith("@@")) {
+                realm.wellknownSymbols[getter.name]?.let(::PropertyKey) ?:
+                    throw IllegalArgumentException("No well known symbol found with name ${getter.name}")
+            } else PropertyKey(getter.name)
+            expect(key !in nativeProperties)
+            nativeProperties[key] = methodPair
         }
 
         this::class.java.declaredMethods.filter {
             it.isAnnotationPresent(JSNativePropertySetter::class.java)
         }.forEach { method ->
             val setter = method.getAnnotation(JSNativePropertySetter::class.java)
-            val methodPair = if (setter.name in nativeProperties) {
-                nativeProperties[setter.name]!!.also {
+            val key = if (setter.name.startsWith("@@")) {
+                realm.wellknownSymbols[setter.name]?.let(::PropertyKey) ?:
+                throw IllegalArgumentException("No well known symbol found with name ${setter.name}")
+            } else PropertyKey(setter.name)
+            val methodPair = if (key in nativeProperties) {
+                nativeProperties[key]!!.also {
                     expect(it.attributes == setter.attributes)
                 }
             } else {
                 val t = NativeMethodPair(setter.attributes)
-                nativeProperties[setter.name] = t
+                nativeProperties[key] = t
                 t
             }
             methodPair.setter = { thisValue, value -> method.invoke(this, thisValue, value) }
         }
 
         nativeProperties.forEach { (name, methods) ->
-            defineNativeProperty(PropertyKey(name), Attributes(methods.attributes), methods.getter, methods.setter)
+            defineNativeProperty(name, Attributes(methods.attributes), methods.getter, methods.setter)
         }
 
         this::class.java.declaredMethods.filter {
             it.isAnnotationPresent(JSMethod::class.java)
         }.forEach {
             val annotation = it.getAnnotation(JSMethod::class.java)
+            val key = if (annotation.name.startsWith("@@")) {
+                realm.wellknownSymbols[annotation.name]?.let(::PropertyKey) ?:
+                throw IllegalArgumentException("No well known symbol found with name ${annotation.name}")
+            } else PropertyKey(annotation.name)
+
             defineNativeFunction(
-                PropertyKey(annotation.name),
+                key,
                 annotation.length,
                 Attributes(annotation.attributes)
             ) { thisValue, arguments ->
