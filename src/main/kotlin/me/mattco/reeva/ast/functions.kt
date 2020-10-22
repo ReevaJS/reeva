@@ -1,6 +1,8 @@
 package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
+import me.mattco.reeva.ast.literals.StringLiteralNode
+import me.mattco.reeva.ast.statements.ExpressionStatementNode
 import me.mattco.reeva.ast.statements.StatementListNode
 import me.mattco.reeva.utils.stringBuilder
 
@@ -34,34 +36,137 @@ data class ArgumentListEntry(val expression: ExpressionNode, val isSpread: Boole
     }
 }
 
+// TODO: Simplify this structure a bit
 class FunctionDeclarationNode(
     val identifier: BindingIdentifierNode?,
     val parameters: FormalParametersNode,
-    val body: StatementListNode?,
-) : NodeBase(listOfNotNull(identifier, parameters, body)), DeclarationNode
+    val body: FunctionStatementList,
+) : NodeBase(listOfNotNull(identifier, parameters, body)), DeclarationNode {
+    override fun boundNames() = listOf(identifier?.identifierName ?: "*default")
 
-class FormalParametersNode(val parameters: List<FormalParameter>) : NodeBase() {
-    override fun dump(indent: Int) = stringBuilder {
-        parameters.forEach {
-            appendIndent(indent)
-            append("Parameter (type=")
-            append(it.type.name)
-            append(")\n")
-            append(it.first.dump(indent + 1))
-            it.second?.dump(indent + 1)?.also(::append)
+    override fun contains(nodeName: String) = false
+
+    override fun containsDuplicateLabels(labelSet: Set<String>) = false
+
+    override fun containsUndefinedBreakTarget(labelSet: Set<String>) = false
+
+    override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>) = false
+
+    override fun declarationPart() = this
+
+    override fun isConstantDeclaration() = false
+
+    override fun lexicallyDeclaredNames() = boundNames()
+
+    override fun lexicallyScopedDeclarations() = listOf(declarationPart())
+
+    override fun topLevelLexicallyDeclaredNames() = emptyList<String>()
+
+    override fun topLevelLexicallyScopedDeclarations() = emptyList<NodeBase>()
+
+    override fun topLevelVarDeclaredNames() = boundNames()
+
+    override fun topLevelVarScopedDeclarations() = listOf(declarationPart())
+
+    override fun varDeclaredNames() = emptyList<String>()
+
+    override fun varScopedDeclarations() = emptyList<NodeBase>()
+}
+
+// Also "FunctionBody" in the spec
+class FunctionStatementList(val statementList: StatementListNode?) : NodeBase(listOfNotNull(statementList)) {
+    override fun containsDuplicateLabels(labelSet: Set<String>) = false
+
+    override fun containsUndefinedBreakTarget(labelSet: Set<String>) =
+        statementList?.containsUndefinedBreakTarget(labelSet) ?: false
+
+    override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>) =
+        statementList?.containsUndefinedContinueTarget(iterationSet, labelSet) ?: false
+
+    override fun containsUseStrict(): Boolean {
+        statementList?.statements?.forEach { statement ->
+            if (statement is ExpressionStatementNode) {
+                val expr = statement.node
+                if (expr is StringLiteralNode && expr.value == "use strict")
+                    return true
+            }
         }
+        return false
+    }
+
+    override fun lexicallyDeclaredNames() = statementList?.topLevelLexicallyDeclaredNames() ?: emptyList()
+
+    override fun lexicallyScopedDeclarations() = statementList?.topLevelLexicallyScopedDeclarations() ?: emptyList()
+
+    override fun varDeclaredNames() = statementList?.topLevelVarDeclaredNames() ?: emptyList()
+
+    override fun varScopedDeclarations() = statementList?.topLevelVarScopedDeclarations() ?: emptyList()
+}
+
+class FormalParametersNode(
+    val functionParameters: FormalParameterListNode,
+    val restParameter: FormalRestParameterNode?
+) : NodeBase(listOfNotNull(functionParameters, restParameter)) {
+    override fun boundNames(): List<String> {
+        val list = restParameter?.element?.boundNames() ?: emptyList()
+        return list + functionParameters.boundNames()
+    }
+
+    override fun containsExpression(): Boolean {
+        if (functionParameters.parameters.isEmpty() && restParameter == null)
+            return false
+        if (functionParameters.containsExpression())
+            return true
+        return restParameter?.containsExpression() ?: false
+    }
+
+    override fun expectedArgumentCount(): Int {
+        if (functionParameters.parameters.isEmpty())
+            return 0
+        return functionParameters.expectedArgumentCount()
+    }
+
+    override fun isSimpleParameterList(): Boolean {
+        if (restParameter != null)
+            return false
+        return functionParameters.isSimpleParameterList()
     }
 }
 
-data class FormalParameter(
-    val first: ExpressionNode,
-    val second: ExpressionNode?,
-    val type: Type,
-) {
-    enum class Type {
-        Normal,
-        Rest,
+class FormalParameterListNode(val parameters: List<FormalParameterNode>) : NodeBase(parameters) {
+    override fun boundNames() = parameters.flatMap(ASTNode::boundNames)
+
+    override fun expectedArgumentCount(): Int {
+        parameters.forEachIndexed { index, parameter ->
+            if (parameter.hasInitializer())
+                return index
+        }
+        return parameters.size
+    }
+
+    override fun hasInitializer() = parameters.any(ASTNode::hasInitializer)
+
+    override fun isSimpleParameterList(): Boolean {
+        return parameters.all(ASTNode::isSimpleParameterList)
     }
 }
 
-class ReturnNode(val node: ExpressionNode?) : NodeBase(listOfNotNull(node)), StatementNode
+class FormalParameterNode(val bindingElement: BindingElementNode) : NodeBase(listOf(bindingElement))
+
+// TODO: Patterns
+class BindingElementNode(val binding: SingleNameBindingNode) : NodeBase(listOf(binding))
+
+class BindingRestElementNode(val identifier: BindingIdentifierNode) : NodeBase(listOf(identifier))
+
+class FormalRestParameterNode(val element: BindingRestElementNode) : NodeBase(listOf(element))
+
+class SingleNameBindingNode(
+    val identifier: BindingIdentifierNode,
+    val initializer: InitializerNode?
+) : NodeBase(listOfNotNull(identifier, initializer)) {
+    override fun isSimpleParameterList() = initializer == null
+
+    override fun hasInitializer() = initializer != null
+}
+
+class ReturnStatementNode(val node: ExpressionNode?) : NodeBase(listOfNotNull(node)), StatementNode

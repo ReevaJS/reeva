@@ -110,6 +110,12 @@ interface ASTNode {
         return children[0].containsUndefinedContinueTarget(iterationSet, labelSet)
     }
 
+    fun containsUseStrict(): Boolean {
+        if (children.size != 1)
+            return false
+        return children[0].containsUseStrict()
+    }
+
     fun coveredCallExpression(): NodeBase {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
@@ -129,6 +135,12 @@ interface ASTNode {
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "declarationPart, and cannot be delegated")
         return children[0].declarationPart()
+    }
+
+    fun expectedArgumentCount(): Int {
+        if (children.size != 1)
+            return 0
+        return children[0].expectedArgumentCount()
     }
 
     fun hasInitializer(): Boolean {

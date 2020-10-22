@@ -524,11 +524,11 @@ class Parser(text: String) {
         consume()
         if ('\n' in token.trivia) {
             automaticSemicolonInsertion()
-            return ReturnNode(null)
+            return ReturnStatementNode(null)
         }
         val expr = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn)
         automaticSemicolonInsertion()
-        return ReturnNode(expr)
+        return ReturnStatementNode(expr)
     }
 
     private fun parseWithStatement(suffixes: Suffixes): StatementNode? {
@@ -598,34 +598,36 @@ class Parser(text: String) {
         val body = parseFunctionBody(Suffixes())
         consume(TokenType.CloseCurly)
 
-        return FunctionDeclarationNode(identifier, parameters, body)
+        return FunctionDeclarationNode(identifier, parameters, FunctionStatementList(body))
     }
 
     private fun parseFormalParameters(suffixes: Suffixes): FormalParametersNode? {
-        val parameters = mutableListOf<FormalParameter>()
+        val parameters = mutableListOf<FormalParameterNode>()
 
         parseFunctionRestParameter(suffixes.filter(Sfx.Yield, Sfx.Await))?.also {
-            return FormalParametersNode(listOf(it))
+            return FormalParametersNode(FormalParameterListNode(emptyList()), it)
         }
+
+        var restNode: FormalRestParameterNode? = null
 
         var identifier = parseBindingIdentifier() ?: return null
         var initializer = parseInitializer(suffixes.withIn)
-        parameters.add(FormalParameter(identifier, initializer?.node, FormalParameter.Type.Normal))
+        parameters.add(FormalParameterNode(BindingElementNode(SingleNameBindingNode(identifier, initializer))))
 
         while (tokenType == TokenType.Comma) {
             consume()
             identifier = parseBindingIdentifier() ?: break
             initializer = parseInitializer(suffixes.withIn)
-            parameters.add(FormalParameter(identifier, initializer?.node, FormalParameter.Type.Normal))
+            parameters.add(FormalParameterNode(BindingElementNode(SingleNameBindingNode(identifier, initializer))))
         }
 
         if (tokenType == TokenType.TripleDot)
-            parseFunctionRestParameter(suffixes.filter(Sfx.Yield, Sfx.Await))?.also(parameters::add)
+            restNode = parseFunctionRestParameter(suffixes.filter(Sfx.Yield, Sfx.Await))
 
-        return FormalParametersNode(parameters)
+        return FormalParametersNode(FormalParameterListNode(parameters), restNode)
     }
 
-    private fun parseFunctionRestParameter(suffixes: Suffixes): FormalParameter? {
+    private fun parseFunctionRestParameter(suffixes: Suffixes): FormalRestParameterNode? {
         if (tokenType != TokenType.TripleDot)
             return null
 
@@ -636,7 +638,7 @@ class Parser(text: String) {
             consume()
             return null
         }
-        return FormalParameter(identifier, null, FormalParameter.Type.Rest)
+        return FormalRestParameterNode(BindingRestElementNode(identifier))
     }
 
     private fun parseFunctionBody(suffixes: Suffixes): StatementListNode? {
