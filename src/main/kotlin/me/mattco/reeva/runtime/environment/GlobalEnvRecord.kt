@@ -3,6 +3,8 @@ package me.mattco.reeva.runtime.environment
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.JSFunction
+import me.mattco.reeva.runtime.values.objects.Attributes
+import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.shouldThrowError
@@ -96,22 +98,51 @@ class GlobalEnvRecord(
 
     @ECMAImpl("CanDeclareGlobalVar", "8.1.1.4.15")
     fun canDeclareGlobalVar(name: String): Boolean {
-        TODO()
+        val globalObject = objectRecord.boundObject
+        if (globalObject.getOwnPropertyDescriptor(name) != null)
+            return true
+        return globalObject.isExtensible()
     }
 
     @ECMAImpl("CanDeclareGlobalFunction", "8.1.1.4.16")
     fun canDeclareGlobalFunction(name: String): Boolean {
-        TODO()
+        val globalObject = objectRecord.boundObject
+        val existingProp = globalObject.getOwnPropertyDescriptor(name) ?: return globalObject.isExtensible()
+        if (existingProp.attributes.isConfigurable)
+            return true
+        if (existingProp.isDataDescriptor && existingProp.attributes.isWritable && existingProp.attributes.isEnumerable)
+            return true
+        return false
     }
 
     @ECMAImpl("CreateGlobalVarBinding", "8.1.1.4.17")
     fun createGlobalVarBinding(name: String, canBeDeleted: Boolean) {
-        TODO()
+        val globalObject = objectRecord.boundObject
+        val hasProperty = globalObject.getOwnPropertyDescriptor(name) != null
+        if (!hasProperty && globalObject.isExtensible()) {
+            objectRecord.createMutableBinding(name, canBeDeleted)
+            objectRecord.initializeBinding(name, JSUndefined)
+        }
+        varNames.add(name)
     }
 
     @ECMAImpl("CreateGlobalFunctionBinding", "8.1.1.4.18")
     fun createGlobalFunctionBinding(name: String, function: JSFunction, canBeDeleted: Boolean) {
-        TODO()
+        val globalObject = objectRecord.boundObject
+        val existingProp = globalObject.getOwnPropertyDescriptor(name)
+        val newDesc = if (existingProp == null || existingProp.attributes.isConfigurable) {
+            val attributes = Attributes(Attributes.WRITABLE or Attributes.ENUMERABLE)
+            if (canBeDeleted)
+                attributes.setConfigurable()
+            Descriptor(function, attributes)
+        } else {
+            Descriptor(function, Attributes(0))
+        }
+        // TODO: Why do we define _and_ set here?
+        if (!globalObject.defineOwnProperty(name, newDesc))
+            shouldThrowError("TypeError")
+        globalObject.set(name, function)
+        varNames.add(name)
     }
 
     companion object {

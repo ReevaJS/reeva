@@ -13,8 +13,6 @@ class ExecutionContext(
     val realm: Realm,
     @JvmField
     val function: JSFunction?,
-    @JvmField
-    val scriptOrModule: ScriptNode
 ) {
     @JvmField
     var lexicalEnv: EnvRecord? = null

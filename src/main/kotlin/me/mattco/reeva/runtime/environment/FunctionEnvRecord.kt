@@ -3,7 +3,7 @@ package me.mattco.reeva.runtime.environment
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.JSFunction
-import me.mattco.reeva.runtime.values.functions.JSScriptFunction
+import me.mattco.reeva.compiler.JSScriptFunction
 import me.mattco.reeva.runtime.values.primitives.JSNull
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
 
@@ -77,7 +77,7 @@ class FunctionEnvRecord(
                 function,
                 JSUndefined,
                 thisBindingStatus,
-                if (function is JSScriptFunction) function.homeObject else JSNull,
+                if (function is JSScriptFunction) function.getHomeObject() else JSNull,
                 newTarget,
                 function.envRecord
             )

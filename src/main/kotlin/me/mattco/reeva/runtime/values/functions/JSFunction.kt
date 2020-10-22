@@ -23,6 +23,7 @@ abstract class JSFunction(
 
     enum class ThisMode {
         Lexical,
+        NonLexical,
         Strict,
         Global
     }

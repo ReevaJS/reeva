@@ -11,11 +11,12 @@ import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.runtime.values.objects.JSObject
 import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.tree.ClassNode
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.CopyOnWriteArrayList
 
-class Agent(val signifier: Any = "Agent${agentCount++}") {
+class Agent(val signifier: Any = "Agent${objectCount++}") {
     private lateinit var globalEnv: GlobalEnvRecord
     private val classLoader = ByteClassLoader()
 
@@ -27,7 +28,7 @@ class Agent(val signifier: Any = "Agent${agentCount++}") {
 
     fun execute(scriptRecord: Realm.ScriptRecord) {
         val realm = scriptRecord.realm
-        val newContext = ExecutionContext(this, realm, null, scriptRecord.scriptOrModule)
+        val newContext = ExecutionContext(this, realm, null)
         runningContextStack.add(newContext)
 
         realm.initObjects()
@@ -51,37 +52,40 @@ class Agent(val signifier: Any = "Agent${agentCount++}") {
 
         val scriptNode = scriptRecord.scriptOrModule
         val compiler = Compiler(scriptNode, "index_js")
-        val classNode = compiler.compile()
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
-        classNode.accept(writer)
-        val bytes = writer.toByteArray()
+        val compilationResult = compiler.compile()
 
-        val outFile = File("./demo/out/${classNode.name}.class")
-        val out = FileOutputStream(outFile)
-        out.write(bytes)
-        out.close()
+        val mainClassNode = compilationResult.mainClass
+        val dependencies = compilationResult.dependencies
+        dependencies.forEach { classNode ->
+            compileClassNode(classNode, false)
+        }
 
-        val topLevelScript = instantiateClass<TopLevelScript>(compiler.className, bytes)
+        val mainClass = compileClassNode(mainClassNode, true)
+        val topLevelScript = mainClass.newInstance() as TopLevelScript
         topLevelScript.run(runningContext)
 
         runningContextStack.remove(newContext)
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private inline fun <reified T> instantiateClass(name: String, bytes: ByteArray): T {
-        classLoader.addClass(name, bytes)
-        val instance = classLoader.loadClass(name) as Class<T>
-        return instance.newInstance()
-    }
+    private fun compileClassNode(classNode: ClassNode, isMainFile: Boolean): Class<*> {
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+        classNode.accept(writer)
+        val bytes = writer.toByteArray()
 
-    // TODO: Is there a better place for this?
-    @ECMAImpl("InstantiateFunctionObject", "14.1.22")
-    private fun instantiateFunctionObject(function: ASTNode, env: EnvRecord): JSFunction {
-        TODO()
+        if (EMIT_DEBUG_OUTPUT)
+            FileOutputStream("./demo/out/${classNode.name}.class").use { it.write(bytes) }
+
+        classLoader.addClass(classNode.name, bytes)
+        return classLoader.loadClass(classNode.name)
     }
 
     companion object {
-        private var agentCount = 0
+        // Used to ensure names of various things are unique
+        @Volatile
+        @JvmStatic
+        var objectCount = 0
+
+        private const val EMIT_DEBUG_OUTPUT = true
         private val agentIdentifiers = mutableSetOf<Any>()
 
         private val runningContextStack = CopyOnWriteArrayList<ExecutionContext>()
@@ -92,7 +96,7 @@ class Agent(val signifier: Any = "Agent${agentCount++}") {
         }
 
         @JvmStatic
-        fun popContext(context: ExecutionContext) {
+        fun popContext() {
             runningContextStack.removeLast()
         }
 

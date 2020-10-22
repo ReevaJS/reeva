@@ -1,6 +1,8 @@
 package me.mattco.reeva.runtime
 
+import me.mattco.reeva.compiler.JSScriptFunction
 import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.contexts.ExecutionContext
 import me.mattco.reeva.runtime.environment.EnvRecord
 import me.mattco.reeva.runtime.environment.FunctionEnvRecord
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
@@ -491,6 +493,47 @@ object Operations {
     @JvmStatic @ECMAImpl("GetGlobalObject", "8.3.6")
     fun getGlobalObject(): JSObject {
         return Agent.runningContext.realm.globalObject
+    }
+
+    @JvmStatic @ECMAImpl("PrepareForOrdinaryCall", "9.2.1.1")
+    fun prepareForOrdinaryCall(function: JSScriptFunction, newTarget: JSValue): ExecutionContext {
+        expect(newTarget is JSUndefined || newTarget is JSObject)
+        val callerContext = Agent.runningContext
+        val calleeContext = ExecutionContext(
+            callerContext.agent,
+            function.realm,
+            function,
+        )
+        val localEnv = FunctionEnvRecord.create(function, newTarget)
+        calleeContext.lexicalEnv = localEnv
+        calleeContext.variableEnv = localEnv
+        Agent.pushContext(calleeContext)
+        return calleeContext
+    }
+
+    // TODO: Do we really need the calleeContext here?
+    // prepareForOrdinaryCall will have just set it as the running
+    // execution context
+    @JvmStatic @ECMAImpl("OrdinaryCallBindThis", "9.2.1.2")
+    fun ordinaryCallBindThis(function: JSScriptFunction, calleeContext: ExecutionContext, thisArgument: JSValue): JSValue {
+        if (function.thisMode == JSFunction.ThisMode.Lexical)
+            return JSUndefined
+        val thisValue = if (function.thisMode == JSFunction.ThisMode.Strict) {
+            thisArgument
+        } else if (thisArgument == JSUndefined || thisArgument == JSNull) {
+            function.realm.globalEnv!!.globalThis
+        } else {
+            toObject(thisArgument)
+        }
+
+        val localEnv = calleeContext.lexicalEnv
+        expect(localEnv is FunctionEnvRecord)
+        return localEnv.bindThisValue(thisValue)
+    }
+
+    @JvmStatic @ECMAImpl("FunctionDeclarationInstantiation", "9.2.10")
+    fun functionDeclarationInstantiation(function: JSScriptFunction, arguments: List<JSValue>): JSValue {
+        TODO()
     }
 
     @JvmStatic @ECMAImpl("EvaluatePropertyAccessWithExpressionKey", "12.3.3")
