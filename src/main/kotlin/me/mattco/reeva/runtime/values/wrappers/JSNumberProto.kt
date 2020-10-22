@@ -11,6 +11,7 @@ import me.mattco.reeva.runtime.values.primitives.JSNumber
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.shouldThrowError
 
+// TODO: This apparently has to extend from JSNumberObject somehow
 class JSNumberProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {
         defineOwnProperty("constructor", Descriptor(realm.numberCtor, Attributes(Attributes.CONFIGURABLE and Attributes.WRITABLE)))

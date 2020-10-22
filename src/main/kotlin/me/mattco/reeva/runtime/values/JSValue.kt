@@ -19,7 +19,7 @@ abstract class JSValue : Ref {
             is JSEmpty -> Type.Empty
             is JSUndefined -> Type.Undefined
             is JSNull -> Type.Null
-            is JSTrue, is JSFalse -> Type.Boolean
+            is JSBoolean -> Type.Boolean
             is JSString -> Type.String
             is JSSymbol -> Type.Symbol
             is JSNumber -> Type.Number

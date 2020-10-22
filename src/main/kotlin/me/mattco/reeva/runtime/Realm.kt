@@ -25,6 +25,7 @@ class Realm {
 
     lateinit var objectProto: JSObjectProto private set
     lateinit var numberProto: JSNumberProto private set
+    lateinit var booleanProto: JSBooleanProto private set
     lateinit var stringProto: JSStringProto private set
     lateinit var symbolProto: JSSymbolProto private set
     lateinit var functionProto: JSFunctionProto private set
@@ -33,6 +34,7 @@ class Realm {
 
     lateinit var objectCtor: JSObjectCtor private set
     lateinit var numberCtor: JSNumberCtor private set
+    lateinit var booleanCtor: JSBooleanCtor private set
     lateinit var stringCtor: JSStringCtor private set
     lateinit var symbolCtor: JSSymbolCtor private set
     lateinit var functionCtor: JSFunctionCtor private set
@@ -83,11 +85,13 @@ class Realm {
         functionProto.init()
 
         numberCtor = JSNumberCtor.create(this)
+        booleanCtor = JSBooleanCtor.create(this)
         stringCtor = JSStringCtor.create(this)
         functionCtor = JSFunctionCtor.create(this)
         arrayCtor = JSArrayCtor.create(this)
 
         numberProto = JSNumberProto.create(this)
+        booleanProto = JSBooleanProto.create(this)
         stringProto = JSStringProto.create(this)
         arrayProto = JSArrayProto.create(this)
         consoleProto = JSConsoleProto.create(this)
@@ -105,6 +109,7 @@ class Realm {
         globalObject.set("Array", arrayCtor)
         globalObject.set("String", stringCtor)
         globalObject.set("Number", numberCtor)
+        globalObject.set("Boolean", booleanCtor)
         globalObject.set("Symbol", symbolCtor)
 
         globalObject.set("JSON", jsonObj)

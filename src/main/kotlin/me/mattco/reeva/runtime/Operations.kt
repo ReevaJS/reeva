@@ -338,11 +338,11 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("ToBoolean", "7.1.2")
-    fun toBoolean(value: JSValue) = when (value.type) {
+    fun toBoolean(value: JSValue): JSBoolean = when (value.type) {
         JSValue.Type.Empty -> unreachable()
         JSValue.Type.Undefined -> JSFalse
         JSValue.Type.Null -> JSFalse
-        JSValue.Type.Boolean -> value
+        JSValue.Type.Boolean -> value as JSBoolean
         JSValue.Type.String -> value.asString.isNotEmpty().toValue()
         JSValue.Type.Number -> (!value.isZero && !value.isNaN).toValue()
         JSValue.Type.BigInt -> TODO()
