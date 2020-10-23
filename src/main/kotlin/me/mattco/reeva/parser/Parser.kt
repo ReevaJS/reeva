@@ -979,7 +979,7 @@ class Parser(text: String) {
             consume()
         }
         consume(TokenType.CloseParen)
-        return argumentsList?.let(::ArgumentsNode)
+        return argumentsList?.let(::ArgumentsNode) ?: ArgumentsNode(ArgumentsListNode(emptyList()))
     }
 
     private fun parseArgumentsList(suffixes: Suffixes): ArgumentsListNode? {
