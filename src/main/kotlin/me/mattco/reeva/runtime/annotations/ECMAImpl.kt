@@ -15,4 +15,5 @@ package me.mattco.reeva.runtime.annotations
  */
 @Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY)
+@Repeatable
 annotation class ECMAImpl(val name: String = "", val section: String = "")

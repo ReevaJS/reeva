@@ -10,6 +10,7 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.LiteralNode
 import me.mattco.reeva.ast.literals.*
+import me.mattco.reeva.ast.literals.PropertyNameNode
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.Agent
@@ -198,7 +199,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private fun MethodAssembly.compileBlock(block: BlockNode) {
         // TODO: Scopes
         if (block.statements != null) {
-            pushContext
+            pushRunningContext
             invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
             block.statements.lexicallyScopedDeclarations().forEach { decl ->
                 decl.boundNames().forEach { name ->
@@ -346,6 +347,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             is CPEAAPLNode -> compileCPEAAPL(expressionNode)
             is NewExpressionNode -> compileNewExpression(expressionNode)
             is CallExpressionNode -> compileCallExpression(expressionNode)
+            is ObjectLiteralNode -> compileObjectLiteral(expressionNode)
             is ArrayLiteralNode -> compileArrayLiteral(expressionNode)
             is MemberExpressionNode -> compileMemberExpression(expressionNode)
             is OptionalExpressionNode -> compileOptionalExpression(expressionNode)
@@ -367,6 +369,67 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             is UpdateExpressionNode -> compileUpdateExpression(expressionNode)
             else -> unreachable()
         }
+    }
+
+    @ECMAImpl
+    private fun MethodAssembly.compileObjectLiteral(objectLiteralNode: ObjectLiteralNode) {
+        pushRealm
+        invokestatic(JSObject::class, "create", JSObject::class, Realm::class)
+
+        if (objectLiteralNode.list != null) {
+            objectLiteralNode.list.properties.forEach { property ->
+                dup
+                compilePropertyDefinition(property, true)
+            }
+        }
+    }
+
+    @ECMAImpl(section = "12.2.6.8")
+    @ECMAImpl(section = "14.3.8")
+    private fun MethodAssembly.compilePropertyDefinition(property: PropertyDefinitionNode, enumerable: Boolean) {
+        when (property.type) {
+            PropertyDefinitionNode.Type.KeyValue -> {
+                expect(property.first is PropertyNameNode)
+                expect(property.second != null)
+                compilePropertyName(property.first)
+                if (isAnonymousFunctionDefinition(property.second)) {
+                    TODO()
+                } else {
+                    compileExpression(property.second)
+                    operation("getValue", JSValue::class, JSValue::class)
+                }
+                ecmaAssert(enumerable)
+                operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
+                pop
+            }
+            PropertyDefinitionNode.Type.Shorthand -> {
+                expect(property.first is IdentifierReferenceNode)
+                ldc(property.first.identifierName)
+                wrapInValue
+                compileExpression(property.first)
+                operation("getValue", JSValue::class, JSValue::class)
+                expect(enumerable)
+                operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
+                pop
+            }
+            PropertyDefinitionNode.Type.Method -> TODO()
+            PropertyDefinitionNode.Type.Spread -> TODO()
+        }
+    }
+
+    private fun MethodAssembly.compilePropertyName(propertyNameNode: PropertyNameNode) {
+        val expr = propertyNameNode.expr
+
+        when {
+            propertyNameNode.isComputed -> compileExpression(expr)
+            expr is IdentifierNode -> ldc(expr.identifierName)
+            expr is StringLiteralNode -> ldc(expr.value)
+            expr is NumericLiteralNode -> ldc(expr.value)
+            else -> unreachable()
+        }
+
+        if (!propertyNameNode.isComputed)
+            wrapInValue
     }
 
     private fun MethodAssembly.compileArrayLiteral(arrayLiteralNode: ArrayLiteralNode) {
@@ -904,7 +967,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             else -> true
         }
 
-        invokestatic(Agent::class, "getRunningContext", ExecutionContext::class)
+        pushRunningContext
         getfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
 
         // TODO: Strict check
@@ -970,7 +1033,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             aload(3)
             invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
             varEnv = astore()
-            invokestatic(Agent::class, "getRunningContext", ExecutionContext::class)
+            pushRunningContext
             load(varEnv)
             putfield(ExecutionContext::class, "variableEnv", EnvRecord::class)
 
@@ -1010,7 +1073,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             lexEnv = varEnv
         }
 
-        invokestatic(Agent::class, "getRunningContext", ExecutionContext::class)
+        pushRunningContext
         load(lexEnv)
         putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
 
@@ -1065,35 +1128,38 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         athrow
     }
 
-    private val MethodAssembly.pushContext: Unit get() = aload_1
+    private val MethodAssembly.pushRunningContext: Unit
+        get() {
+            invokestatic(Agent::class, "getRunningContext", ExecutionContext::class)
+        }
 
     private val MethodAssembly.pushAgent: Unit
         get() {
-            pushContext
+            pushRunningContext
             getfield(ExecutionContext::class, "agent", Agent::class)
         }
 
     private val MethodAssembly.pushRealm: Unit
         get() {
-            pushContext
+            pushRunningContext
             getfield(ExecutionContext::class, "realm", Realm::class)
         }
 
     private val MethodAssembly.pushFunction: Unit
         get() {
-            pushContext
+            pushRunningContext
             getfield(ExecutionContext::class, "function", JSFunction::class)
         }
 
     private val MethodAssembly.pushLexicalEnv: Unit
         get() {
-            pushContext
+            pushRunningContext
             getfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
         }
 
     private val MethodAssembly.pushVariableEnv: Unit
         get() {
-            pushContext
+            pushRunningContext
             getfield(ExecutionContext::class, "variableEnv", EnvRecord::class)
         }
 

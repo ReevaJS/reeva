@@ -344,9 +344,10 @@ open class JSObject protected constructor(
     }
 
     companion object {
+        @JvmStatic
+        @JvmOverloads
         fun create(realm: Realm, proto: JSObject = realm.objectProto) = JSObject(realm, proto).also { it.init() }
 
-        @JvmStatic
         protected fun thisBinding(context: ExecutionContext): JSValue {
             val env = context.lexicalEnv ?: shouldThrowError()
             if (!env.hasThisBinding())
