@@ -567,9 +567,9 @@ class Parser(text: String) {
     private fun parseHoistableDeclaration(suffixes: Suffixes): StatementNode? {
         val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Default)
         return parseFunctionDeclaration(newSuffixes) ?:
-        parseGeneratorDeclaration(newSuffixes) ?:
-        parseAsyncFunctionDeclaration(newSuffixes) ?:
-        parseAsyncGeneratorDeclaration(newSuffixes)
+            parseGeneratorDeclaration(newSuffixes) ?:
+            parseAsyncFunctionDeclaration(newSuffixes) ?:
+            parseAsyncGeneratorDeclaration(newSuffixes)
     }
 
     private fun parseFunctionDeclaration(suffixes: Suffixes): StatementNode? {
@@ -600,6 +600,9 @@ class Parser(text: String) {
     }
 
     private fun parseFormalParameters(suffixes: Suffixes): FormalParametersNode? {
+        if (tokenType == TokenType.CloseParen)
+            return FormalParametersNode(FormalParameterListNode(emptyList()), null)
+
         val parameters = mutableListOf<FormalParameterNode>()
 
         parseFunctionRestParameter(suffixes.filter(Sfx.Yield, Sfx.Await))?.also {
