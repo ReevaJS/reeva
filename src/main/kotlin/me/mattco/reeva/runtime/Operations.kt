@@ -433,9 +433,8 @@ object Operations {
 
     fun toPrintableString(value: JSValue): JSString {
         return when (value) {
-            is JSNumber -> toString(value)
             is JSSymbol -> value.descriptiveString().toValue()
-            else -> "\"${value.toString}\"".toValue()
+            else -> "\"${toString(value).string}\"".toValue()
         }
     }
 
@@ -514,7 +513,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("IsPropertyKey", "7.2.7")
-    fun isPropertyKey(value: JSValue) = value is JSString /* || value is JSSymbol */
+    fun isPropertyKey(value: JSValue) = value is JSString || value is JSSymbol
 
     @JvmStatic @ECMAImpl("GetV", "7.3.3")
     fun getV(target: JSValue, property: JSValue): JSValue {
@@ -526,7 +525,6 @@ object Operations {
     @JvmStatic @ECMAImpl("CreateDataProperty", "7.3.5")
     fun createDataProperty(target: JSValue, property: JSValue, value: JSValue): Boolean {
         ecmaAssert(target is JSObject)
-        ecmaAssert(isPropertyKey(property))
         val newDesc = Descriptor(value, Attributes(Attributes.defaultAttributes))
         return target.defineOwnProperty(toPropertyKey(property), newDesc)
     }
@@ -534,6 +532,14 @@ object Operations {
     @JvmStatic @ECMAImpl("CreateDataPropertyOrThrow", "7.3.7")
     fun createDataPropertyOrThrow(target: JSValue, property: JSValue, value: JSValue): Boolean {
         if (!createDataProperty(target, property, value))
+            shouldThrowError("TypeError")
+        return true
+    }
+
+    @JvmStatic @ECMAImpl("DefinePropertyOrThrow", "7.3.8")
+    fun definePropertyOrThrow(target: JSValue, property: JSValue, descriptor: Descriptor): Boolean {
+        ecmaAssert(target is JSObject)
+        if (!target.defineOwnProperty(toPropertyKey(property), descriptor))
             shouldThrowError("TypeError")
         return true
     }

@@ -6,6 +6,7 @@ import me.mattco.reeva.runtime.environment.EnvRecord
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.arrays.JSArrayCtor
 import me.mattco.reeva.runtime.values.arrays.JSArrayProto
+import me.mattco.reeva.runtime.values.errors.*
 import me.mattco.reeva.runtime.values.exotics.JSONObject
 import me.mattco.reeva.runtime.values.functions.JSFunctionCtor
 import me.mattco.reeva.runtime.values.functions.JSFunctionProto
@@ -32,6 +33,14 @@ class Realm {
     lateinit var arrayProto: JSArrayProto private set
     lateinit var consoleProto: JSConsoleProto private set
 
+    lateinit var errorProto: JSErrorProto private set
+    lateinit var evalErrorProto: JSEvalErrorProto private set
+    lateinit var typeErrorProto: JSTypeErrorProto private set
+    lateinit var rangeErrorProto: JSRangeErrorProto private set
+    lateinit var referenceErrorProto: JSReferenceErrorProto private set
+    lateinit var syntaxErrorProto: JSSyntaxErrorProto private set
+    lateinit var uriErrorProto: JSURIErrorProto private set
+
     lateinit var objectCtor: JSObjectCtor private set
     lateinit var numberCtor: JSNumberCtor private set
     lateinit var booleanCtor: JSBooleanCtor private set
@@ -39,6 +48,14 @@ class Realm {
     lateinit var symbolCtor: JSSymbolCtor private set
     lateinit var functionCtor: JSFunctionCtor private set
     lateinit var arrayCtor: JSArrayCtor private set
+
+    lateinit var errorCtor: JSErrorCtor private set
+    lateinit var evalErrorCtor: JSEvalErrorCtor private set
+    lateinit var typeErrorCtor: JSTypeErrorCtor private set
+    lateinit var rangeErrorCtor: JSRangeErrorCtor private set
+    lateinit var referenceErrorCtor: JSReferenceErrorCtor private set
+    lateinit var syntaxErrorCtor: JSSyntaxErrorCtor private set
+    lateinit var uriErrorCtor: JSURIErrorCtor private set
 
     lateinit var jsonObj: JSONObject private set
     lateinit var consoleObj: JSConsole private set
@@ -90,6 +107,14 @@ class Realm {
         functionCtor = JSFunctionCtor.create(this)
         arrayCtor = JSArrayCtor.create(this)
 
+        errorCtor = JSErrorCtor.create(this)
+        evalErrorCtor = JSEvalErrorCtor.create(this)
+        typeErrorCtor = JSTypeErrorCtor.create(this)
+        rangeErrorCtor = JSRangeErrorCtor.create(this)
+        referenceErrorCtor = JSReferenceErrorCtor.create(this)
+        syntaxErrorCtor = JSSyntaxErrorCtor.create(this)
+        uriErrorCtor = JSURIErrorCtor.create(this)
+
         numberProto = JSNumberProto.create(this)
         booleanProto = JSBooleanProto.create(this)
         stringProto = JSStringProto.create(this)
@@ -97,6 +122,14 @@ class Realm {
         consoleProto = JSConsoleProto.create(this)
         jsonObj = JSONObject.create(this)
         consoleObj = JSConsole.create(this)
+
+        errorProto = JSErrorProto.create(this)
+        evalErrorProto = JSEvalErrorProto.create(this)
+        typeErrorProto = JSTypeErrorProto.create(this)
+        rangeErrorProto = JSRangeErrorProto.create(this)
+        referenceErrorProto = JSReferenceErrorProto.create(this)
+        syntaxErrorProto = JSSyntaxErrorProto.create(this)
+        uriErrorProto = JSURIErrorProto.create(this)
 
         // Must be created after wellknown symbols
         symbolCtor = JSSymbolCtor.create(this)
@@ -111,6 +144,13 @@ class Realm {
         globalObject.set("Number", numberCtor)
         globalObject.set("Boolean", booleanCtor)
         globalObject.set("Symbol", symbolCtor)
+        globalObject.set("Error", errorCtor)
+        globalObject.set("EvalError", evalErrorCtor)
+        globalObject.set("TypeError", typeErrorCtor)
+        globalObject.set("RangeError", rangeErrorCtor)
+        globalObject.set("ReferenceError", referenceErrorCtor)
+        globalObject.set("SyntaxError", syntaxErrorCtor)
+        globalObject.set("URIError", uriErrorCtor)
 
         globalObject.set("JSON", jsonObj)
         globalObject.set("console", consoleObj)
