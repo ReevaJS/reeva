@@ -45,6 +45,7 @@ abstract class JSValue : Ref {
     val isNullish by lazy { this == JSNull || this == JSUndefined }
     val isInt by lazy { isNumber && !isInfinite && floor(asDouble) == asDouble }
     val isNaN by lazy { isNumber && asDouble.isNaN() }
+    val isFinite by lazy { isNumber && asDouble.isFinite()}
     val isInfinite by lazy { isNumber && asDouble.isInfinite() }
     val isPositiveInfinity by lazy { isNumber && asDouble == Double.POSITIVE_INFINITY }
     val isNegativeInfinity by lazy { isNumber && asDouble == Double.NEGATIVE_INFINITY }

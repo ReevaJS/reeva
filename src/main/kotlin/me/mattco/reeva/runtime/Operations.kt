@@ -477,11 +477,28 @@ object Operations {
         return value
     }
 
+    @JvmStatic @ECMAImpl("IsArray", "7.2.2")
+    fun isArray(value: JSValue): Boolean {
+        if (!value.isObject)
+            return false
+        if (value is JSArray)
+            return true
+        // TODO: Proxies
+        return false
+    }
+
     @JvmStatic @ECMAImpl("IsCallable", "7.2.3")
     fun isCallable(value: JSValue): Boolean {
         if (value !is JSFunction)
             return false
         return value.isCallable
+    }
+
+    @JvmStatic @ECMAImpl("IsConstructor", "7.2.4")
+    fun isConstructor(value: JSValue): Boolean {
+        if (value !is JSFunction)
+            return false
+        return value.isConstructable
     }
 
     @JvmStatic @ECMAImpl("IsIntegralNumber", "7.2.6")
@@ -564,11 +581,28 @@ object Operations {
         return call(func, value, arguments)
     }
 
-    @JvmStatic @ECMAImpl("IsConstructor", "7.2.4")
-    fun isConstructor(value: JSValue): Boolean {
-        if (value !is JSFunction)
-            return false
-        return value.isConstructable
+    @JvmStatic @ECMAImpl("EnumerableOwnPropertyNames", "7.3.23")
+    fun enumerableOwnPropertyNames(target: JSValue, kind: JSObject.PropertyKind): List<JSValue> {
+        ecmaAssert(target is JSObject)
+        val properties = mutableListOf<JSValue>()
+        target.ownPropertyKeys().forEach { property ->
+            if (property.isSymbol)
+                return@forEach
+            val desc = target.getOwnPropertyDescriptor(property) ?: return@forEach
+            if (!desc.attributes.isEnumerable)
+                return@forEach
+            if (kind == JSObject.PropertyKind.Key) {
+                properties.add(property.asValue)
+            } else {
+                val value = target.get(property)
+                if (kind == JSObject.PropertyKind.Value) {
+                    properties.add(value)
+                } else {
+                    TODO("Create an entry array")
+                }
+            }
+        }
+        return properties
     }
 
     @JvmStatic @ECMAImpl("GetIdentifierReference", "8.1.2.1")

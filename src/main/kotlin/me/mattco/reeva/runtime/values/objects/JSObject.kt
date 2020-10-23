@@ -321,9 +321,9 @@ open class JSObject protected constructor(
     }
 
     @ECMAImpl("[[OwnPropertyKeys]]", "9.1.11")
-    open fun ownPropertyKeys(): List<JSValue> {
+    open fun ownPropertyKeys(): List<PropertyKey> {
         // TODO: Ordering is wrong here
-        return properties.keys.toList().map { it.asValue }
+        return properties.keys.toList()
     }
 
     fun defineNativeProperty(key: PropertyKey, attributes: Attributes, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
@@ -335,6 +335,12 @@ open class JSObject protected constructor(
         val name = if (key.isString) key.asString else "[${key.asSymbol.descriptiveString()}]"
         val obj = JSNativeFunction.fromLambda(realm, name, length, function)
         defineOwnProperty(key, Descriptor(obj, attributes))
+    }
+
+    enum class PropertyKind {
+        Key,
+        Value,
+        KeyValue
     }
 
     companion object {
