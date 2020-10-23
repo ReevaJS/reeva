@@ -8,6 +8,7 @@ val outDirectory = File("./demo/out/")
 val indexFile = File("./demo/index.js")
 
 fun main(args: Array<String>) {
+    val start = System.nanoTime()
     val source = indexFile.readText()
     val realm = Realm()
     val scriptRecord = realm.parseScript(source)
@@ -18,4 +19,6 @@ fun main(args: Array<String>) {
 
     val agent = Agent("my agent")
     agent.execute(scriptRecord)
+
+    println("Total time: ${(System.nanoTime() - start) / 1_000_000}ms")
 }

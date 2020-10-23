@@ -157,9 +157,11 @@ class Realm {
     }
 
     fun parseScript(script: String): ScriptRecord {
+        val start = System.nanoTime()
         val parser = Parser(script)
         val scriptNode = parser.parseScript()
         val errors = parser.syntaxErrors
+        println("Parse time: ${(System.nanoTime() - start) / 1_000_000}ms")
         return ScriptRecord(this, null, scriptNode, errors)
     }
 

@@ -13,8 +13,6 @@ import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.tree.ClassNode
 import java.io.FileOutputStream
 import java.util.concurrent.CopyOnWriteArrayList
-import kotlin.reflect.full.primaryConstructor
-import kotlin.time.measureTime
 
 class Agent(val signifier: Any = "Agent${objectCount++}") {
     private lateinit var globalEnv: GlobalEnvRecord
@@ -52,7 +50,9 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
 
         val scriptNode = scriptRecord.scriptOrModule
         val compiler = Compiler(scriptNode, "index_js")
+        var start = System.nanoTime()
         val compilationResult = compiler.compile()
+        val compileTime = System.nanoTime() - start
 
         val mainClassNode = compilationResult.mainClass
         val dependencies = compilationResult.dependencies
@@ -62,9 +62,8 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
 
         val mainClass = compileClassNode(mainClassNode, true)
         val topLevelScript = mainClass.newInstance() as TopLevelScript
-        val start = System.nanoTime()
+        start = System.nanoTime()
         val ret = topLevelScript.run(runningContext)
-        println("Took ${System.nanoTime() - start}ns")
 
         if (ret is JSErrorObject) {
             // TODO: We really need a better system to communicate errors to the caller.
@@ -78,6 +77,8 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
             print("${Operations.toPrintableString(name, withQuotes = false)}: ${Operations.toPrintableString(message, withQuotes = false)}")
             println("\u001b[0m")
         }
+        println("Compile time: ${(System.nanoTime() - start) / 1_000_000}ms")
+        println("Execution time: ${(System.nanoTime() - start) / 1_000_000}ms")
 
         runningContextStack.remove(newContext)
     }
