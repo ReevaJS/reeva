@@ -344,3 +344,13 @@ class LabelledStatement(val label: LabelIdentifierNode, val item: StatementNode)
 }
 
 class ThrowStatementNode(val expr: ExpressionNode) : NodeBase(listOf(expr)), StatementNode
+
+class TryCatchNode(
+    val tryBlock: BlockNode,
+    val catchNode: CatchNode
+) : NodeBase(listOf(tryBlock, catchNode)), StatementNode
+
+class CatchNode(
+    val catchParameter: ExpressionNode?,
+    val block: BlockNode
+) : NodeBase(listOfNotNull(catchParameter, block))

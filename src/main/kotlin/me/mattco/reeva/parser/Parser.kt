@@ -561,9 +561,49 @@ class Parser(text: String) {
         return ThrowStatementNode(expr)
     }
 
-    private fun parseTryStatement(suffixes: Suffixes): StatementNode? {
-        // TODO
-        return null
+    private fun parseTryStatement(suffixes: Suffixes): TryCatchNode? {
+        if (tokenType != TokenType.Try)
+            return null
+        consume()
+
+        val tryBlock = parseBlock(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
+            expected("block")
+            consume()
+            return null
+        }
+
+        val catchBlock = parseCatch(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
+            expected("catch keyword")
+            consume()
+            return null
+        }
+
+        return TryCatchNode(tryBlock, catchBlock)
+    }
+
+    private fun parseCatch(suffixes: Suffixes): CatchNode? {
+        if (tokenType != TokenType.Catch)
+            return null
+        consume()
+
+        val parameter = if (tokenType == TokenType.OpenParen) {
+            consume()
+            parseBindingIdentifier()?.also {
+                consume(TokenType.CloseParen)
+            } ?: run {
+                expected("identifier")
+                consume()
+                return null
+            }
+        } else null
+
+        val block = parseBlock(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
+            expected("block")
+            consume()
+            return null
+        }
+
+        return CatchNode(parameter, block)
     }
 
     private fun parseDebuggerStatement(): StatementNode? {
