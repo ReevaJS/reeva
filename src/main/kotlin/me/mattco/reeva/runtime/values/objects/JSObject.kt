@@ -1,5 +1,7 @@
 package me.mattco.reeva.runtime.values.objects
 
+import me.mattco.reeva.runtime.Agent
+import me.mattco.reeva.runtime.Agent.Companion.checkError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.*
@@ -125,9 +127,11 @@ open class JSObject protected constructor(
         }
     }
 
+    @JSThrows
     @ECMAImpl("[[GetPrototypeOf]]", "9.1.1")
     open fun getPrototype() = prototype
 
+    @JSThrows
     @ECMAImpl("[[SetPrototypeOf]]", "9.1.2")
     open fun setPrototype(newPrototype: JSValue): Boolean {
         ecmaAssert(newPrototype.isObject || newPrototype.isNull)
@@ -145,28 +149,34 @@ open class JSObject protected constructor(
                 return false
             // TODO: Handle 9.1.2.1.8.c.i?
             p = (p as JSObject).getPrototype()
+            checkError() ?: return false
         }
 
         prototype = p
         return true
     }
 
+    @JSThrows
     fun hasProperty(property: String): Boolean = hasProperty(PropertyKey(property))
 
+    @JSThrows
     @ECMAImpl("[[HasProperty]]", "9.1.7")
     fun hasProperty(property: PropertyKey): Boolean {
         val hasOwn = getOwnPropertyDescriptor(property)
         if (hasOwn != null)
             return true
         val parent = getPrototype()
+        checkError() ?: return false
         if (parent != JSNull)
             return (parent as JSObject).hasProperty(property)
         return false
     }
 
+    @JSThrows
     @ECMAImpl("[[IsExtensible]]", "9.1.3")
     open fun isExtensible() = extensible
 
+    @JSThrows
     @ECMAImpl("[[PreventExtensions]]", "9.1.4")
     open fun preventExtensions(): Boolean {
         extensible = false
@@ -178,22 +188,28 @@ open class JSObject protected constructor(
         return properties[property]
     }
 
+    @JSThrows
     fun getOwnProperty(property: String) = getOwnProperty(PropertyKey(property))
 
+    @JSThrows
     @ECMAImpl("[[GetOwnProperty]]", "9.1.5")
     open fun getOwnProperty(property: PropertyKey): JSValue {
         return properties[property]?.toObject(realm) ?: JSUndefined
     }
 
+    @JSThrows
     fun defineOwnProperty(property: String, descriptor: Descriptor) = defineOwnProperty(PropertyKey(property), descriptor)
 
+    @JSThrows
     @ECMAImpl("[[DefineOwnProperty]]", "9.1.6")
     open fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
         return validateAndApplyPropertyDescriptor(property, descriptor)
     }
 
+    @JSThrows
     private fun validateAndApplyPropertyDescriptor(property: PropertyKey, newDesc: Descriptor): Boolean {
         val extensible = isExtensible()
+        checkError() ?: return false
         val currentDesc = getOwnPropertyDescriptor(property)
 
         if (currentDesc == null) {
@@ -248,14 +264,18 @@ open class JSObject protected constructor(
         return true
     }
 
+    @JSThrows
     fun get(property: String, receiver: JSValue = this) = get(PropertyKey(property), receiver)
+    @JSThrows
     fun get(property: JSSymbol, receiver: JSValue = this) = get(PropertyKey(property), receiver)
 
+    @JSThrows
     @JvmOverloads @ECMAImpl("[[Get]]", "9.1.8")
     open fun get(property: PropertyKey, receiver: JSValue = this): JSValue {
         val desc = getOwnPropertyDescriptor(property)
         if (desc == null) {
             val parent = getPrototype()
+            checkError() ?: return INVALID_VALUE
             if (parent == JSNull)
                 return JSUndefined
             return (parent as JSObject).get(property, receiver)
@@ -267,14 +287,17 @@ open class JSObject protected constructor(
         return Operations.call(getter, receiver)
     }
 
+    @JSThrows
     fun set(property: String, value: JSValue, receiver: JSValue = this) = set(PropertyKey(property), value, receiver)
 
+    @JSThrows
     @JvmOverloads @ECMAImpl("[[Set]]", "9.1.9")
     open fun set(property: PropertyKey, value: JSValue, receiver: JSValue = this): Boolean {
         val ownDesc = getOwnPropertyDescriptor(property)
         return ordinarySetWithOwnDescriptor(property, value, receiver, ownDesc)
     }
 
+    @JSThrows
     @ECMAImpl("OrdinarySetWithOwnDescriptor", "9.1.9.2")
     private fun ordinarySetWithOwnDescriptor(property: PropertyKey, value: JSValue, receiver: JSValue, ownDesc_: Descriptor?): Boolean {
         var ownDesc = ownDesc_
@@ -303,15 +326,18 @@ open class JSObject protected constructor(
         expect(ownDesc.isAccessorDescriptor)
         val setter = ownDesc.setter ?: return false
         Operations.call(setter, receiver, listOf(value))
+        checkError() ?: return false
         return true
     }
 
+    @JSThrows
     @ECMAImpl("CreateDataProperty", "7.3.5")
     private fun createDataProperty(property: PropertyKey, value: JSValue): Boolean {
         val newDesc = Descriptor(value, Attributes(Attributes.defaultAttributes))
         return defineOwnProperty(property, newDesc)
     }
 
+    @JSThrows
     fun delete(property: String) = delete(PropertyKey(property))
 
     @ECMAImpl("[[Delete]]", "9.1.10")
@@ -324,6 +350,7 @@ open class JSObject protected constructor(
         return false
     }
 
+    @JSThrows
     @ECMAImpl("[[OwnPropertyKeys]]", "9.1.11")
     open fun ownPropertyKeys(): List<PropertyKey> {
         // TODO: Ordering is wrong here
@@ -348,6 +375,8 @@ open class JSObject protected constructor(
     }
 
     companion object {
+        val INVALID_OBJECT by lazy { JSObject(Agent.runningContext.realm) }
+
         @JvmStatic
         @JvmOverloads
         fun create(realm: Realm, proto: JSObject = realm.objectProto) = JSObject(realm, proto).also { it.init() }

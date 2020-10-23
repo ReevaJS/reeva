@@ -1,8 +1,14 @@
 package me.mattco.reeva.runtime.environment
 
 import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
+import me.mattco.reeva.runtime.values.errors.JSReferenceErrorObject
+import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
+import me.mattco.reeva.utils.ecmaAssert
+import me.mattco.reeva.utils.shouldThrowError
+import me.mattco.reeva.utils.throwError
 
 open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
     protected val bindings = mutableMapOf<String, Binding>()
@@ -12,8 +18,7 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
 
     @ECMAImpl("CreateMutableBinding", "8.1.1.1.2")
     override fun createMutableBinding(name: String, canBeDeleted: Boolean) {
-        if (hasBinding(name))
-            throw IllegalStateException("Binding already exists for name $name")
+        ecmaAssert(!hasBinding(name))
 
         bindings[name] = Binding(
             immutable = false,
@@ -24,8 +29,7 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
 
     @ECMAImpl("CreateImmutableBinding", "8.1.1.1.3")
     override fun createImmutableBinding(name: String, strict: Boolean) {
-        if (hasBinding(name))
-            throw IllegalStateException("Binding already exists for name $name")
+        ecmaAssert(!hasBinding(name))
 
         bindings[name] = Binding(
             immutable = true,
@@ -37,22 +41,23 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
 
     @ECMAImpl("InitializeBinding", "8.1.1.1.4")
     override fun initializeBinding(name: String, value: JSValue) {
-        if (!hasBinding(name))
-            throw IllegalStateException("Binding does not exist for name $name")
+        ecmaAssert(hasBinding(name))
 
         val binding = bindings[name]!!
-        if (binding.initialized)
-            throw IllegalStateException("Attempt to initialize already-initialized binding $name")
+        ecmaAssert(!binding.initialized)
 
         binding.value = value
         binding.initialized = true
     }
 
+    @JSThrows
     @ECMAImpl("SetMutableBinding", "8.1.1.1.5")
     override fun setMutableBinding(name: String, value: JSValue, throwOnFailure: Boolean) {
         if (!hasBinding(name)) {
-            if (throwOnFailure)
-                TODO("Throw ReferenceError")
+            if (throwOnFailure) {
+                throwError<JSReferenceErrorObject>("variable $name not found")
+                return
+            }
             createMutableBinding(name, canBeDeleted = true)
             initializeBinding(name, value)
             return
@@ -64,31 +69,34 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
         if (binding.strict)
             shouldThrow = true
 
-        if (!binding.initialized)
-            TODO("Throw ReferenceError")
+        if (!binding.initialized) {
+            throwError<JSReferenceErrorObject>("variable $name has not been initialized")
+            return
+        }
 
         if (!binding.immutable) {
             binding.value = value
         } else if (shouldThrow) {
-            TODO("Throw TypeError")
+            throwError<JSTypeErrorObject>("cannot set value of $name; it is constant")
         }
     }
 
+    @JSThrows
     @ECMAImpl("GetBindingValue", "8.1.1.1.6")
     override fun getBindingValue(name: String, throwOnNotFound: Boolean): JSValue {
-        if (!hasBinding(name))
-            throw IllegalStateException("No binding for $name found")
+        ecmaAssert(hasBinding(name))
 
         val binding = bindings[name]!!
-        if (!binding.initialized)
-            TODO("Throw ReferenceError")
+        if (!binding.initialized) {
+            throwError<JSReferenceErrorObject>("variable $name has not been initialized")
+            return JSValue.INVALID_VALUE
+        }
         return binding.value
     }
 
     @ECMAImpl("DeleteBinding", "8.1.1.1.7")
     override fun deleteBinding(name: String): Boolean {
-        if (!hasBinding(name))
-            throw IllegalStateException("No binding for $name found")
+        ecmaAssert(hasBinding(name))
 
         val binding = bindings[name]!!
         if (!binding.deletable)

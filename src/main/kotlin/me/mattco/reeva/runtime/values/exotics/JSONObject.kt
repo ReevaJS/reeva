@@ -1,12 +1,16 @@
 package me.mattco.reeva.runtime.values.exotics
 
+import me.mattco.reeva.runtime.Agent
+import me.mattco.reeva.runtime.Agent.Companion.checkError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
+import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.arrays.JSArray
+import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.JSObject
@@ -31,6 +35,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         TODO()
     }
 
+    @JSThrows
     @ECMAImpl("JSON.stringify", "24.5.2")
     @JSMethod("stringify", 3, Attributes.CONFIGURABLE and Attributes.WRITABLE)
     fun stringify(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -58,6 +63,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             repeat(min(10, Operations.toIntegerOrInfinity(space).asInt)) {
                 gap += " "
             }
+            checkError() ?: return INVALID_VALUE
         } else if (space.isString) {
             val str = space.asString
             gap = if (str.length <= 10) str else str.substring(0, 10)
@@ -71,16 +77,21 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             gap,
             mutableListOf()
         )
+        checkError() ?: return INVALID_VALUE
 
         return serializeJSONProperty(state, "", wrapper)?.toValue() ?: JSUndefined
     }
 
     private fun serializeJSONProperty(state: SerializeState, key: String, holder: JSObject): String? {
         var value = holder.get(key)
+        checkError() ?: return null
         if (value.isObject || value.isBigInt) {
             val toJSON = Operations.getV(value, "toJSON".toValue())
-            if (Operations.isCallable(toJSON))
+            checkError() ?: return null
+            if (Operations.isCallable(toJSON)) {
                 value = Operations.call(toJSON, value, listOf(key.toValue()))
+                checkError() ?: return null
+            }
         }
         if (value.isObject) {
             when (value) {
@@ -89,6 +100,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                 is JSBooleanObject -> value = value.value
                 is JSBigIntObject -> value = value.value
             }
+            checkError() ?: return null
         }
         if (value.isNull)
             return "null"
@@ -99,12 +111,15 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         if (value.isString)
             return quoteJSONString(value.asString)
         if (value.isNumber) {
-            if (value.isFinite)
+            if (value.isFinite) {
                 return Operations.toString(value).string
+            }
             return "null"
         }
-        if (value.isBigInt)
-            shouldThrowError("TypeError")
+        if (value.isBigInt) {
+            throwError<JSTypeErrorObject>("JSON.stringify cannot serialize BigInt values")
+            return null
+        }
         if (value.isObject && !Operations.isCallable(value)) {
             if (Operations.isArray(value))
                 return serializeJSONArray(state, value as JSArray)
@@ -155,8 +170,10 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     }
 
     private fun serializeJSONObject(state: SerializeState, value: JSObject): String {
-        if (value in state.stack)
-            shouldThrowError("TypeError")
+        if (value in state.stack) {
+            throwError<JSTypeErrorObject>("JSON.stringify cannot stringify circular objects")
+            return ""
+        }
 
         state.stack.add(value)
         val stepback = state.indent
@@ -176,16 +193,14 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             }
         }
 
-        val final = if (partial.isEmpty()) {
-            "{}"
-        } else if (state.gap.isEmpty()) {
-            buildString {
+        val final = when {
+            partial.isEmpty() -> "{}"
+            state.gap.isEmpty() -> buildString {
                 append("{")
                 append(partial.joinToString(","))
                 append("}")
             }
-        } else {
-            buildString {
+            else -> buildString {
                 append("{")
                 append("\n")
                 append(state.indent)

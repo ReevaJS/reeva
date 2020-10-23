@@ -1,15 +1,19 @@
 package me.mattco.reeva.runtime.values.wrappers
 
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
+import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
+import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSNumber
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.shouldThrowError
+import me.mattco.reeva.utils.throwError
 
 class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JSNumber(0)) {
     override fun init() {
@@ -52,6 +56,7 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
         TODO()
     }
 
+    @JSThrows
     @ECMAImpl("Number.prototype.valueOf", "20.1.3.3")
     @JSMethod("valueOf", 0, Attributes.CONFIGURABLE and Attributes.WRITABLE)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -61,13 +66,15 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
     companion object {
         fun create(realm: Realm) = JSNumberProto(realm).also { it.init() }
 
+        @JSThrows
         @ECMAImpl("thisNumberValue", "20.1.3")
         private fun thisNumberValue(value: JSValue): JSNumber {
             if (value.isNumber)
                 return value as JSNumber
             if (value is JSNumberObject)
                 return value.number
-            shouldThrowError("TypeError")
+            throwError<JSTypeErrorObject>("Number method called on incompatible object ${Operations.toPrintableString(value)}")
+            return JSNumber(0)
         }
     }
 }

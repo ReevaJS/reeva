@@ -43,4 +43,8 @@ class PropertyKey private constructor(private val value: Any) {
             return asString
         return asSymbol.toString()
     }
+
+    companion object {
+        val INVALID_KEY = PropertyKey(0)
+    }
 }

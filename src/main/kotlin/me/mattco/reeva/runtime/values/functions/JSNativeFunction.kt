@@ -2,11 +2,9 @@ package me.mattco.reeva.runtime.values.functions
 
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.NativeFunctionSignature
-import me.mattco.reeva.runtime.annotations.NativeGetterSignature
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.Descriptor
-import me.mattco.reeva.runtime.values.primitives.JSString
 import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.toValue
 

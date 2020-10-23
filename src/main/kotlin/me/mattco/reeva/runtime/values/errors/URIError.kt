@@ -2,9 +2,12 @@ package me.mattco.reeva.runtime.values.errors
 
 import me.mattco.reeva.runtime.Realm
 
-class JSURIErrorObject private constructor(realm: Realm) : JSErrorObject(realm, realm.uriErrorProto) {
+class JSURIErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.uriErrorProto) {
+    override val name = "URIError"
+
     companion object {
-        fun create(realm: Realm) = JSURIErrorObject(realm).also { it.init() }
+        @JvmStatic
+        fun create(realm: Realm, message: String? = null) = JSURIErrorObject(realm, message).also { it.init() }
     }
 }
 

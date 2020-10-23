@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.values.functions
 
 import me.mattco.reeva.runtime.Realm
+import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.environment.EnvRecord
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.objects.JSObject
@@ -14,7 +15,11 @@ abstract class JSFunction(
     open val isConstructable: Boolean = true
 
     abstract fun name(): String
+
+    @JSThrows
     abstract fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue
+
+    @JSThrows
     abstract fun construct(arguments: List<JSValue>, newTarget: JSValue): JSValue
 
     enum class ThisMode {

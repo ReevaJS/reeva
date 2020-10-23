@@ -1,7 +1,10 @@
 package me.mattco.reeva.runtime.environment
 
 import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
+import me.mattco.reeva.runtime.values.errors.JSReferenceErrorObject
+import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.Attributes.Companion.CONFIGURABLE
 import me.mattco.reeva.runtime.values.objects.Attributes.Companion.ENUMERABLE
@@ -10,6 +13,7 @@ import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.shouldThrowError
+import me.mattco.reeva.utils.throwError
 import me.mattco.reeva.utils.unreachable
 
 class ObjectEnvRecord(
@@ -26,11 +30,12 @@ class ObjectEnvRecord(
         TODO()
     }
 
+    @JSThrows
     @ECMAImpl("CreateMutableBinding", "8.1.1.2.2")
     override fun createMutableBinding(name: String, canBeDeleted: Boolean) {
         val descriptor = Descriptor(JSUndefined, Attributes(ENUMERABLE and WRITABLE and if (canBeDeleted) CONFIGURABLE else 0))
         if (!boundObject.defineOwnProperty(name, descriptor))
-            shouldThrowError("TypeError")
+            throwError<JSTypeErrorObject>("TODO")
     }
 
     @ECMAImpl("CreateImmutableBinding", "8.1.1.2.3")
@@ -38,24 +43,29 @@ class ObjectEnvRecord(
         unreachable()
     }
 
+    @JSThrows
     @ECMAImpl("InitializeBinding", "8.1.1.2.4")
     override fun initializeBinding(name: String, value: JSValue) {
         setMutableBinding(name, value, false)
     }
 
+    @JSThrows
     @ECMAImpl("SetMutableBinding", "8.1.1.2.5")
     override fun setMutableBinding(name: String, value: JSValue, throwOnFailure: Boolean) {
-        if (!boundObject.hasProperty(name) && throwOnFailure)
-            shouldThrowError("ReferenceError")
+        if (!boundObject.hasProperty(name) && throwOnFailure) {
+            throwError<JSReferenceErrorObject>("TODO")
+            return
+        }
         if (!boundObject.set(name, value) && throwOnFailure)
-            shouldThrowError("TypeError")
+            throwError<JSTypeErrorObject>("TODO")
     }
 
+    @JSThrows
     @ECMAImpl("GetBindingValue", "8.1.1.2.6")
     override fun getBindingValue(name: String, throwOnNotFound: Boolean): JSValue {
         if (!boundObject.hasProperty(name)) {
             if (throwOnNotFound)
-                shouldThrowError("ReferenceError")
+                throwError<JSReferenceErrorObject>("TODO")
             return JSUndefined
         }
         return boundObject.get(name)

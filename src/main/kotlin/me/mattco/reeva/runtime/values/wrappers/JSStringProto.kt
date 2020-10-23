@@ -2,12 +2,15 @@ package me.mattco.reeva.runtime.values.wrappers
 
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
+import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
+import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.Descriptor
-import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSString
+import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.shouldThrowError
+import me.mattco.reeva.utils.throwError
 import me.mattco.reeva.utils.toValue
 
 class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JSString("")) {
@@ -23,8 +26,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
     @JSNativePropertyGetter("length", attributes = 0)
     fun getLength(thisValue: JSValue): JSValue {
-        if (thisValue !is JSStringObject)
-            shouldThrowError("TypeError")
+        expect(thisValue is JSStringObject)
         return thisValue.string.string.length.toValue()
     }
 

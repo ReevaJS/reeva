@@ -2,12 +2,14 @@ package me.mattco.reeva.runtime.values.objects
 
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
+import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.JSNativeFunction
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
 
 class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ObjectConstructor", 1) {
+    @JSThrows
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         val value = arguments.argument(0)
         if (value.isUndefined || value.isNull)

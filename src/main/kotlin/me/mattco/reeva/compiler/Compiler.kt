@@ -17,12 +17,14 @@ import me.mattco.reeva.runtime.Agent
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.contexts.ExecutionContext
 import me.mattco.reeva.runtime.environment.DeclarativeEnvRecord
 import me.mattco.reeva.runtime.environment.EnvRecord
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.JSReference
 import me.mattco.reeva.runtime.values.JSValue
+import me.mattco.reeva.runtime.values.errors.JSErrorObject
 import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.*
@@ -35,6 +37,7 @@ import java.lang.IllegalArgumentException
 class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private val sanitizedFileName = fileName.replace(Regex("[^\\w]"), "_")
     private val dependencies = mutableListOf<ClassNode>()
+    private var needsToPopContext = false
 
     val className = "TopLevel_${sanitizedFileName}_$classCounter"
 
@@ -46,9 +49,10 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 _return
             }
 
-            method(public, "run", void, ExecutionContext::class) {
+            method(public, "run", JSValue::class, ExecutionContext::class) {
                 compileScript(scriptNode)
-                _return
+                pushUndefined
+                areturn
             }
         }
 
@@ -187,8 +191,6 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         } else {
             compileExpression(returnStatementNode.node)
         }
-        // Pop the current context off of the execution stack
-        invokestatic(Agent::class, "popContext", void)
         areturn
     }
 
@@ -199,23 +201,50 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private fun MethodAssembly.compileBlock(block: BlockNode) {
         // TODO: Scopes
         if (block.statements != null) {
-            pushRunningContext
+            pushLexicalEnv
+            pushLexicalEnv
             invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
-            block.statements.lexicallyScopedDeclarations().forEach { decl ->
-                decl.boundNames().forEach { name ->
-                    dup
-                    ldc(name)
-                    if (decl.isConstantDeclaration()) {
-                        ldc(true)
-                        invokevirtual(EnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
-                    } else {
-                        ldc(false)
-                        invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
-                    }
-                }
-                // TODO: FunctionDeclaration check
-            }
+            // oldEnv, blockEnv
+            compileBlockDeclarationInstantiation(block.statements)
+            // oldEnv, blockEnv
+            pushRunningContext
+            // oldEnv, blockEnv, context
+            // oldEnv, context, blockEnv
+            swap
+            putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
             compileStatementList(block.statements)
+            pushRunningContext
+            swap
+            putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+        }
+    }
+
+    private fun MethodAssembly.compileBlockDeclarationInstantiation(node: StatementListNode) {
+        node.lexicallyScopedDeclarations().forEach { decl ->
+            decl.boundNames().forEach { name ->
+                dup
+                ldc(name)
+                if (decl.isConstantDeclaration()) {
+                    ldc(true)
+                    invokevirtual(EnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
+                } else {
+                    ldc(false)
+                    invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+                }
+            }
+            if (decl is FunctionDeclarationNode) {
+                val compiledFunc = instantiateFunctionObject(decl)
+                dependencies.add(compiledFunc)
+
+                dup
+                val boundNames = decl.boundNames()
+                expect(boundNames.size == 1)
+                ldc(boundNames[0])
+                construct(compiledFunc.name, Realm::class) {
+                    pushRealm
+                }
+                invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
+            }
         }
     }
 
@@ -267,7 +296,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private fun MethodAssembly.compileIfStatement(ifStatement: IfStatementNode) {
         compileExpression(ifStatement.condition)
         operation("getValue", JSValue::class, JSValue::class)
-        operation("toBoolean", JSValue::class, JSValue::class)
+        operation("toBoolean", JSBoolean::class, JSValue::class)
         pushTrue
         if (ifStatement.falseBlock == null) {
             ifStatement(JumpCondition.RefEqual) {
@@ -624,6 +653,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
         dup
         //oldValue, oldValue
+        // TODO: Don't do this, it throws a java exception if it is a bigint
         operation("checkNotBigInt", void, JSValue::class)
         // oldValue
         construct(JSNumber::class, Double::class) {
@@ -803,9 +833,11 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         val functionName = function.identifier?.identifierName ?: "default"
         val parameters = function.parameters
 
+        val functionClassName = "Function_${functionName}_${sanitizedFileName}_${Agent.objectCount++}"
+
         return assembleClass(
             public,
-            "Function_${functionName}_${sanitizedFileName}_${Agent.objectCount++}",
+            functionClassName,
             superName = "me/mattco/reeva/compiler/JSScriptFunction"
         ) {
             method(public, "<init>", void, Realm::class) {
@@ -902,6 +934,9 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             }
 
             method(public, "call", JSValue::class, JSValue::class, List::class) {
+                val oldNeedsToPop = needsToPopContext
+                needsToPopContext = true
+
                 // setup
                 aload_0
                 pushUndefined
@@ -914,19 +949,38 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
                 functionDeclarationInstantiation(function, JSFunction.ThisMode.NonLexical)
 
+                // execution
+                aload_0
+                aload_1
+                aload_2
+                invokevirtual(functionClassName, "execute", JSValue::class, JSValue::class, List::class)
+
+                // Clean up execution context
+                invokestatic(Agent::class, "popContext", void)
+
+                // return the value from "execute"
+                areturn
+
+                needsToPopContext = oldNeedsToPop
+            }
+
+            method(public, "construct", JSValue::class, List::class, JSObject::class) {
+                val oldNeedsToPop = needsToPopContext
+                needsToPopContext = true
+
+                // TODO
+                pushUndefined
+                areturn
+
+                needsToPopContext = oldNeedsToPop
+            }
+
+            method(public, "execute", JSValue::class, JSValue::class, List::class) {
                 // actual body
                 if (function.body.statementList != null)
                     compileStatementList(function.body.statementList)
 
-                // The method may not have a return statement, so we insert one here just in case.
-                // If it does, it will do the exact same thing we do here
-                invokestatic(Agent::class, "popContext", void)
-                pushUndefined
-                areturn
-            }
-
-            method(public, "construct", JSValue::class, List::class, JSObject::class) {
-                // TODO
+                // In case the method doesn't have a return statement inside of itself
                 pushUndefined
                 areturn
             }
@@ -1014,7 +1068,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         }
         operation("applyFunctionArguments", void, JSScriptFunction::class, List::class, EnvRecord::class)
 
-        val varEnv: Local
+        val varEnv = 4
 
         if (!hasParameterExpressions) {
             val instantiatedVarNames = parameterBindings.toMutableList()
@@ -1028,25 +1082,25 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 }
             }
             aload(3)
-            varEnv = astore()
+            astore(varEnv)
         } else {
             aload(3)
             invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
-            varEnv = astore()
+            astore(varEnv)
             pushRunningContext
-            load(varEnv)
+            aload(varEnv)
             putfield(ExecutionContext::class, "variableEnv", EnvRecord::class)
 
             val instantiatedVarNames = parameterBindings.toMutableList()
             varNames.forEach { name ->
                 if (name !in instantiatedVarNames) {
                     instantiatedVarNames.add(name)
-                    load(varEnv)
+                    aload(varEnv)
                     ldc(name)
                     ldc(false)
                     invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
 
-                    load(varEnv)
+                    aload(varEnv)
                     ldc(name)
 
                     if (name !in parameterBindings || name in functionNames) {
@@ -1064,23 +1118,24 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         }
 
         // TODO: if (isStrict)
-        val lexEnv: Local
+        var lexEnv: Int
         if (true) {
-            load(varEnv)
+            lexEnv = 5
+            aload(varEnv)
             invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
-            lexEnv = astore()
+            astore(lexEnv)
         } else {
             lexEnv = varEnv
         }
 
         pushRunningContext
-        load(lexEnv)
+        aload(lexEnv)
         putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
 
         val lexDeclarations = body.lexicallyScopedDeclarations()
         lexDeclarations.forEach { decl ->
             decl.boundNames().forEach { name ->
-                load(lexEnv)
+                aload(lexEnv)
                 ldc(name)
                 if (decl.isConstantDeclaration()) {
                     ldc(true)
@@ -1100,7 +1155,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             expect(boundNames.size == 1)
             val funcName = boundNames[0]
 
-            load(varEnv)
+            aload(varEnv)
             ldc(funcName)
             construct(compiledFunc.name, Realm::class) {
                 pushRealm
@@ -1239,8 +1294,25 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             operation("wrapInValue", JSValue::class, Any::class)
         }
 
+    private val MethodAssembly.checkError: Unit
+        get() {
+            invokestatic(Agent::class, "hasError", Boolean::class)
+            ifStatement(JumpCondition.True) {
+                if (needsToPopContext) {
+                    invokestatic(Agent::class, "popContext", void)
+                }
+                pushRunningContext
+                getfield(ExecutionContext::class, "error", JSErrorObject::class)
+                areturn
+            }
+        }
+
     private fun MethodAssembly.operation(name: String, returnType: TypeLike, vararg parameterTypes: TypeLike) {
+        val method = Operations::class.java.declaredMethods.first { it.name == name }
         invokestatic(Operations::class, name, returnType, *parameterTypes)
+        if (method.getDeclaredAnnotation(JSThrows::class.java) != null) {
+            checkError
+        }
     }
 
     companion object {

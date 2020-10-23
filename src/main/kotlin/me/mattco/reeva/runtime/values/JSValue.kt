@@ -128,7 +128,7 @@ abstract class JSValue : Ref {
 
     @ECMAImpl("SameValueNonNumeric", "7.2.12")
     fun sameValueNonNumeric(other: JSValue): Boolean {
-        ecmaAssert(type != Type.Number /* && type != Type.BigInt */)
+        ecmaAssert(type != Type.Number && type != Type.BigInt)
         ecmaAssert(type == other.type)
         expect(type != Type.Empty)
 
@@ -165,16 +165,22 @@ abstract class JSValue : Ref {
         else -> TODO()
     }
 
-    enum class Type {
-        Empty,
-        Undefined,
-        Null,
-        Boolean,
-        String,
-        Number,
-        BigInt,
-        Symbol,
-        Object,
-        Accessor,
+    enum class Type(val typeName: kotlin.String) {
+        Empty("<empty>"),
+        Undefined("undefined"),
+        Null("null"),
+        Boolean("Boolean"),
+        String("String"),
+        Number("Number"),
+        BigInt("BigInt"),
+        Symbol("Symbol"),
+        Object("Object"),
+        Accessor("Accessor (you shouldn't see this)");
+
+        override fun toString() = typeName
+    }
+
+    companion object {
+        val INVALID_VALUE = object : JSValue() {}
     }
 }

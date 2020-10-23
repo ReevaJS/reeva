@@ -1,19 +1,20 @@
 package me.mattco.reeva.runtime.values.wrappers
 
+import me.mattco.reeva.runtime.Agent
+import me.mattco.reeva.runtime.Agent.Companion.checkError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
+import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
+import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.functions.JSNativeFunction
 import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.primitives.JSSymbol
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
-import me.mattco.reeva.utils.shouldThrowError
-import me.mattco.reeva.utils.toValue
+import me.mattco.reeva.utils.*
 
 class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Symbol", 0) {
     override fun init() {
@@ -46,11 +47,14 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return newSymbol
     }
 
+    @JSThrows
     @JSMethod("keyFor", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
     fun keyFor(thisValue: JSValue, arguments: JSArguments): JSValue {
         val sym = arguments.argument(0)
-        if (!sym.isSymbol)
-            shouldThrowError("TypeError")
+        if (!sym.isSymbol) {
+            throwError<JSTypeErrorObject>("Symbol.keyFor expects a symbol for it's first argument")
+            return INVALID_VALUE
+        }
         for ((globalKey, globalSymbol) in Realm.globalSymbolRegistry) {
             if (sym == globalSymbol)
                 return globalKey.toValue()
@@ -58,13 +62,17 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return JSUndefined
     }
 
+    @JSThrows
     override fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
         val description = Operations.toString(arguments.getOrElse(0) { JSUndefined }).string
+        checkError() ?: return INVALID_VALUE
         return JSSymbol(description)
     }
 
+    @JSThrows
     override fun construct(arguments: List<JSValue>, newTarget: JSValue): JSValue {
-        shouldThrowError("TypeError")
+        throwError<JSTypeErrorObject>("Symbol objects cannot be constructed")
+        return INVALID_VALUE
     }
 
     companion object {

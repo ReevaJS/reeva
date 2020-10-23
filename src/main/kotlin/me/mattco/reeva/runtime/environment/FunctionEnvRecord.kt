@@ -4,8 +4,12 @@ import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.compiler.JSScriptFunction
+import me.mattco.reeva.runtime.annotations.JSThrows
+import me.mattco.reeva.runtime.values.errors.JSReferenceErrorObject
+import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSNull
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
+import me.mattco.reeva.utils.throwError
 
 class FunctionEnvRecord(
     val functionObject: JSFunction,
@@ -41,10 +45,13 @@ class FunctionEnvRecord(
     @ECMAImpl("HasSuperBinding", "8.1.1.3.3")
     override fun hasSuperBinding() = hasThisBinding() && homeObject.isObject
 
+    @JSThrows
     @ECMAImpl("GetThisBinding", "8.1.1.3.4")
     fun getThisBinding(): JSValue {
-        if (!hasThisBinding())
-            throw IllegalStateException("Attempt to get non-bound 'this' value")
+        if (!hasThisBinding()) {
+            throwError<JSReferenceErrorObject>("current context has no 'this' binding")
+            return JSValue.INVALID_VALUE
+        }
 
         if (thisBindingStatus == ThisBindingStatus.Uninitialized)
             TODO("Throw ReferenceError")
@@ -57,7 +64,7 @@ class FunctionEnvRecord(
         if (homeObject == JSNull)
             return JSUndefined
 
-        TODO("return homeObject.[[GetPrototypeOf]]()")
+        return (homeObject as JSObject).getPrototype()
     }
 
     enum class ThisBindingStatus {
@@ -67,8 +74,8 @@ class FunctionEnvRecord(
     }
 
     companion object {
-        @ECMAImpl("NewFunctionEnvironment", "8.1.2.4")
-        internal fun create(function: JSFunction, newTarget: JSValue): FunctionEnvRecord {
+        @JvmStatic @ECMAImpl("NewFunctionEnvironment", "8.1.2.4")
+        fun create(function: JSFunction, newTarget: JSValue): FunctionEnvRecord {
             val thisBindingStatus = if (function.thisMode == JSFunction.ThisMode.Lexical) {
                 FunctionEnvRecord.ThisBindingStatus.Lexical
             } else FunctionEnvRecord.ThisBindingStatus.Uninitialized

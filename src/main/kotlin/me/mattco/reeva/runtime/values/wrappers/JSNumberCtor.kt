@@ -1,9 +1,11 @@
 package me.mattco.reeva.runtime.values.wrappers
 
+import me.mattco.reeva.runtime.Agent.Companion.checkError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
+import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.JSNativeFunction
 import me.mattco.reeva.runtime.values.objects.Attributes
@@ -40,6 +42,7 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return JSTrue
     }
 
+    @JSThrows
     @ECMAImpl("Number.isInteger", "20.1.2.3")
     @JSMethod("isInteger", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
     fun isInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -52,11 +55,13 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return arguments.argument(0).isNaN.toValue()
     }
 
+    @JSThrows
     @ECMAImpl("Number.isSafeInteger", "20.1.2.5")
     @JSMethod("isSafeInteger", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
     fun isSafeInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isIntegralNumber(arguments.argument(0)))
             return JSFalse
+        checkError() ?: return INVALID_VALUE
         return (abs(arguments.argument(0).asDouble) <= Operations.MAX_SAFE_INTEGER).toValue()
     }
 
@@ -72,18 +77,22 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         TODO()
     }
 
+    @JSThrows
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         return numberFromArg(arguments.argument(0)).toValue()
     }
 
+    @JSThrows
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
         // TODO: Handle newTarget?
         return JSNumberObject.create(realm, numberFromArg(arguments.argument(0)).toValue())
     }
 
+    @JSThrows
     private fun numberFromArg(argument: JSValue): Double {
         return if (!argument.isUndefined) {
             val prim = Operations.toNumeric(argument)
+            checkError() ?: return 0.0
             if (prim.isBigInt)
                 TODO()
             prim.asDouble
