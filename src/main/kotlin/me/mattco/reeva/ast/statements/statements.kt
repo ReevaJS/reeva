@@ -342,3 +342,5 @@ class LabelledStatement(val label: LabelIdentifierNode, val item: StatementNode)
         return item.varScopedDeclarations()
     }
 }
+
+class ThrowStatementNode(val expr: ExpressionNode) : NodeBase(listOf(expr)), StatementNode

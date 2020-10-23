@@ -3,8 +3,6 @@ package me.mattco.reeva.runtime.values.errors
 import me.mattco.reeva.runtime.Realm
 
 class JSRangeErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.rangeErrorProto) {
-    override val name = "RangeError"
-
     companion object {
         @JvmStatic
         fun create(realm: Realm, message: String? = null) = JSRangeErrorObject(realm, message).also { it.init() }

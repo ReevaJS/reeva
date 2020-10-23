@@ -539,9 +539,26 @@ class Parser(text: String) {
         return null
     }
 
-    private fun parseThrowStatement(suffixes: Suffixes): StatementNode? {
-        // TODO
-        return null
+    private fun parseThrowStatement(suffixes: Suffixes): ThrowStatementNode? {
+        if (tokenType != TokenType.Throw)
+            return null
+
+        consume()
+
+        if ('\n' in token.trivia) {
+            unexpected("newline, expected expression")
+            consume()
+            return null
+        }
+
+        val expr = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await)) ?: run {
+            expected("expression")
+            consume()
+            return null
+        }
+
+        automaticSemicolonInsertion()
+        return ThrowStatementNode(expr)
     }
 
     private fun parseTryStatement(suffixes: Suffixes): StatementNode? {

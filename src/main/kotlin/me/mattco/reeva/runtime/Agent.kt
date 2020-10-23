@@ -64,8 +64,15 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
         val ret = topLevelScript.run(runningContext)
 
         if (ret is JSErrorObject) {
+            // TODO: We really need a better system to communicate errors to the caller.
+            // If there is a leftover error in a context, no code will run. This may be
+            // ok, but we should allow the current error to be easily and quickly examined
+            // and consumed
             print("\u001b[31m")
-            print("${ret.name}: ${ret.message}")
+            runningContext.error = null
+            val name = Operations.getValue(ret.get("name"))
+            val message = Operations.getValue(ret.get("message"))
+            print("${Operations.toPrintableString(name, withQuotes = false)}: ${Operations.toPrintableString(message, withQuotes = false)}")
             println("\u001b[0m")
         }
 

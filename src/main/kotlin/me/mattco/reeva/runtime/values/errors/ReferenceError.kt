@@ -3,8 +3,6 @@ package me.mattco.reeva.runtime.values.errors
 import me.mattco.reeva.runtime.Realm
 
 class JSReferenceErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.referenceErrorProto) {
-    override val name = "ReferenceError"
-
     companion object {
         @JvmStatic
         fun create(realm: Realm, message: String? = null) = JSReferenceErrorObject(realm, message).also { it.init() }

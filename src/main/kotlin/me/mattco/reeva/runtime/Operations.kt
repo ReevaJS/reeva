@@ -481,10 +481,13 @@ object Operations {
         }.let(::JSString)
     }
 
-    fun toPrintableString(value: JSValue): JSString {
+    fun toPrintableString(value: JSValue, withQuotes: Boolean = true): String {
         return when (value) {
-            is JSSymbol -> value.descriptiveString().toValue()
-            else -> "\"${toString(value).string}\"".toValue()
+            is JSSymbol -> value.descriptiveString()
+            else -> {
+                val str = toString(value).string
+                if (withQuotes) "\"$str\"" else str
+            }
         }
     }
 

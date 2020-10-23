@@ -3,8 +3,6 @@ package me.mattco.reeva.runtime.values.errors
 import me.mattco.reeva.runtime.Realm
 
 class JSSyntaxErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.syntaxErrorProto) {
-    override val name = "SyntaxError"
-
     companion object {
         @JvmStatic
         fun create(realm: Realm, message: String? = null) = JSSyntaxErrorObject(realm, message).also { it.init() }

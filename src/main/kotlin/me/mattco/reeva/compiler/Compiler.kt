@@ -181,8 +181,21 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             is LexicalDeclarationNode -> compileLexicalDeclaration(statement)
             is FunctionDeclarationNode -> compileFunctionDeclaration(statement)
             is ReturnStatementNode -> compileReturnStatement(statement)
+            is ThrowStatementNode -> compileThrowStatement(statement)
             else -> TODO()
         }
+    }
+
+    private fun MethodAssembly.compileThrowStatement(throwStatementNode: ThrowStatementNode) {
+        compileExpression(throwStatementNode.expr)
+        operation("getValue", JSValue::class, JSValue::class)
+        dup
+        pushRunningContext
+        swap
+        // TODO: Allow throwing arbitrary values
+        checkcast<JSErrorObject>()
+        putfield(ExecutionContext::class, "error", JSErrorObject::class)
+        areturn
     }
 
     private fun MethodAssembly.compileReturnStatement(returnStatementNode: ReturnStatementNode) {

@@ -10,7 +10,7 @@ import me.mattco.reeva.runtime.values.primitives.JSUndefined
 class JSConsoleProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     @JSMethod("log", 0)
     fun log(thisValue: JSValue, arguments: List<JSValue>): JSValue {
-        println(arguments.joinToString(separator = " ") { Operations.toPrintableString(it).string })
+        println(arguments.joinToString(separator = " ") { Operations.toPrintableString(it) })
         return JSUndefined
     }
 

@@ -11,8 +11,6 @@ open class JSErrorObject protected constructor(
     val message: String? = null,
     errorProto: JSObject = realm.errorProto
 ) : JSObject(realm, errorProto) {
-    open val name: String = "Error"
-
     override fun init() {
         if (message != null)
             defineOwnProperty("message", Descriptor(message.toValue(), Attributes(Attributes.CONFIGURABLE and Attributes.WRITABLE)))
