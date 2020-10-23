@@ -66,11 +66,11 @@ interface ASTNode {
         return children[0].boundNames()
     }
 
-    fun computedPropertyContains(symbol: NodeBase): Boolean {
+    fun computedPropertyContains(nodeName: String): Boolean {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "computedPropertyContains, and cannot be delegated")
-        return children[0].computedPropertyContains(symbol)
+        return children[0].computedPropertyContains(nodeName)
     }
 
     fun contains(nodeName: String): Boolean {
@@ -298,7 +298,6 @@ interface LiteralNode : PrimaryExpressionNode
 
 interface AssignmentPatternNode : ASTNode
 interface ForBindingNode : ASTNode
-interface PropertyNameNode : ASTNode
 interface LiteralPropertyNameNode : ASTNode
 interface TemplateLiteralNode : ASTNode
 interface CatchParameterNode : ASTNode

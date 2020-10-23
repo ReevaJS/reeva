@@ -3,6 +3,7 @@ package me.mattco.reeva.parser
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
+import me.mattco.reeva.ast.literals.PropertyNameNode
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.lexer.Lexer
 import me.mattco.reeva.lexer.SourceLocation
@@ -1108,9 +1109,96 @@ class Parser(text: String) {
         return ArrayLiteralNode(elements)
     }
 
-    private fun parseObjectLiteral(suffixes: Suffixes): PrimaryExpressionNode? {
+    private fun parseObjectLiteral(suffixes: Suffixes): ObjectLiteralNode? {
+        if (tokenType != TokenType.OpenCurly)
+            return null
+
+        consume()
+        val list = parsePropertyDefinitionList(suffixes.filter(Sfx.Yield, Sfx.Await))
+        if (list != null && tokenType == TokenType.Comma)
+            consume()
+
+        consume(TokenType.CloseCurly)
+        return ObjectLiteralNode(list)
+    }
+
+    private fun parsePropertyDefinitionList(suffixes: Suffixes): PropertyDefinitionListNode? {
+        val properties = mutableListOf<PropertyDefinitionNode>()
+        val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await)
+
+        val def = parsePropertyDefinitionNode(newSuffixes) ?: return null
+        properties.add(def)
+
+        while (tokenType == TokenType.Comma) {
+            saveState()
+            consume()
+            val def2 = parsePropertyDefinitionNode(newSuffixes) ?: run {
+                loadState()
+                return PropertyDefinitionListNode(properties)
+            }
+            discardState()
+            properties.add(def2)
+        }
+
+        return PropertyDefinitionListNode(properties)
+    }
+
+    private fun parsePropertyDefinitionNode(suffixes: Suffixes): PropertyDefinitionNode? {
+        if (tokenType == TokenType.TripleDot) {
+            consume()
+            val expr = parseAssignmentExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: run {
+                expected("expression")
+                return null
+            }
+            return PropertyDefinitionNode(expr, null, PropertyDefinitionNode.Type.Spread)
+        } else {
+            val method = parseMethodDefinition(suffixes.filter(Sfx.Yield, Sfx.Await))
+            if (method != null)
+                return PropertyDefinitionNode(method, null, PropertyDefinitionNode.Type.Method)
+
+            val propertyName = parsePropertyNameNode(suffixes.filter(Sfx.Yield, Sfx.Await))
+            if (propertyName != null) {
+                consume(TokenType.Colon)
+                val expr = parseAssignmentExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: run {
+                    expected("expression")
+                    return null
+                }
+                return PropertyDefinitionNode(propertyName, expr, PropertyDefinitionNode.Type.KeyValue)
+            }
+
+            val identifier = parseIdentifierReference(suffixes.filter(Sfx.Yield, Sfx.Await)) ?: run {
+                expected("identifier")
+                return null
+            }
+
+            return PropertyDefinitionNode(identifier, null, PropertyDefinitionNode.Type.Shorthand)
+        }
+    }
+
+    private fun parseMethodDefinition(suffixes: Suffixes): PropertyDefinitionNode? {
         // TODO
         return null
+    }
+
+    private fun parsePropertyNameNode(suffixes: Suffixes): PropertyNameNode? {
+        if (tokenType == TokenType.OpenBracket) {
+            saveState()
+            consume()
+            val expr = parseAssignmentExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: run {
+                loadState()
+                return null
+            }
+            consume(TokenType.CloseBracket)
+            discardState()
+            return PropertyNameNode(expr, true)
+        } else {
+            val name = parseIdentifierName() ?:
+                parseStringLiteral() ?:
+                parseNumericLiteral() ?:
+                return null
+
+            return PropertyNameNode(name, false)
+        }
     }
 
     private fun parseFunctionExpression(suffixes: Suffixes): PrimaryExpressionNode? {
