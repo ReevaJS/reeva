@@ -54,7 +54,7 @@ open class JSObject protected constructor(
 
     // This method exists to be called directly by subclass who cannot call their
     // super.init() method due to prototype complications
-    protected fun configureInstanceProperties() {
+    protected fun configureInstanceProperties(clazz: Class<*> = this::class.java) {
         // TODO: This is terrible for performance, but very cool :)
         // A better way to do it would be to use an annotation processor, and bake
         // these properties into the class's "init" method as direct calls to the
@@ -63,7 +63,7 @@ open class JSObject protected constructor(
 
         val nativeProperties = mutableMapOf<PropertyKey, NativeMethodPair>()
 
-        this::class.java.declaredMethods.filter {
+        clazz.declaredMethods.filter {
             it.isAnnotationPresent(JSNativePropertyGetter::class.java)
         }.forEach { method ->
             val getter = method.getAnnotation(JSNativePropertyGetter::class.java)
@@ -78,7 +78,7 @@ open class JSObject protected constructor(
             nativeProperties[key] = methodPair
         }
 
-        this::class.java.declaredMethods.filter {
+        clazz.declaredMethods.filter {
             it.isAnnotationPresent(JSNativePropertySetter::class.java)
         }.forEach { method ->
             val setter = method.getAnnotation(JSNativePropertySetter::class.java)
@@ -102,7 +102,7 @@ open class JSObject protected constructor(
             defineNativeProperty(name, Attributes(methods.attributes), methods.getter, methods.setter)
         }
 
-        this::class.java.declaredMethods.filter {
+        clazz.declaredMethods.filter {
             it.isAnnotationPresent(JSMethod::class.java)
         }.forEach {
             val annotation = it.getAnnotation(JSMethod::class.java)
@@ -118,6 +118,10 @@ open class JSObject protected constructor(
             ) { thisValue, arguments ->
                 it.invoke(this, thisValue, arguments) as JSValue
             }
+        }
+
+        if (clazz.superclass != Object::class.java) {
+            configureInstanceProperties(clazz.superclass)
         }
     }
 
