@@ -561,7 +561,7 @@ class Parser(text: String) {
         return ThrowStatementNode(expr)
     }
 
-    private fun parseTryStatement(suffixes: Suffixes): TryCatchNode? {
+    private fun parseTryStatement(suffixes: Suffixes): TryStatementNode? {
         if (tokenType != TokenType.Try)
             return null
         consume()
@@ -578,7 +578,7 @@ class Parser(text: String) {
             return null
         }
 
-        return TryCatchNode(tryBlock, catchBlock)
+        return TryStatementNode(tryBlock, catchBlock)
     }
 
     private fun parseCatch(suffixes: Suffixes): CatchNode? {

@@ -36,12 +36,15 @@ import java.lang.IllegalArgumentException
 
 class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private val sanitizedFileName = fileName.replace(Regex("[^\\w]"), "_")
+    private val activeClassNames = mutableListOf<String>()
     private val dependencies = mutableListOf<ClassNode>()
     private var needsToPopContext = false
-
-    val className = "TopLevel_${sanitizedFileName}_$classCounter"
+    private var tryBlocks = mutableListOf<Pair<String, BlockNode>>()
 
     fun compile(): CompilationResult {
+        val className = "TopLevel_${sanitizedFileName}_$classCounter"
+        activeClassNames.add(className)
+
         val mainClass = assembleClass(public, className, superName = "me/mattco/reeva/compiler/TopLevelScript") {
             method(public, "<init>", void) {
                 aload_0
@@ -54,6 +57,20 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 pushUndefined
                 areturn
             }
+
+            tryBlocks.forEach {
+                method(public, it.first, JSValue::class, JSValue::class, List::class) {
+                    compileBlock(it.second)
+                    pushUndefined
+                    areturn
+                }
+            }
+        }
+
+        activeClassNames.removeLast()
+
+        if (activeClassNames.isNotEmpty()) {
+            throw IllegalStateException("activeClassNames is not empty!")
         }
 
         return CompilationResult(mainClass, dependencies)
@@ -182,20 +199,136 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             is FunctionDeclarationNode -> compileFunctionDeclaration(statement)
             is ReturnStatementNode -> compileReturnStatement(statement)
             is ThrowStatementNode -> compileThrowStatement(statement)
+            is TryStatementNode -> compileTryStatementNode(statement)
             else -> TODO()
+        }
+    }
+
+    private fun MethodAssembly.compileTryStatementNode(tryStatementNode: TryStatementNode) {
+        /**
+         * When we enter a try block, we want to "intercept" all returns from the function
+         * and investigate whether or not they are because an error was thrown (i.e. a call
+         * to checkError), or if they are an actual return statement. The easiest way to do
+         * this is to make a new function to enclose any return statement. The contents of
+         * the try-block become their own function. Note that the catch block is still
+         * evaluated in the current function, as there is no need to intercept return
+         * statements inside of it
+         */
+
+        val name = "try_block_${tryBlocks.size}"
+
+        tryBlocks.add(name to tryStatementNode.tryBlock)
+
+        aload_0
+        if (activeClassNames.size == 1) {
+            // This is a TopLevelScript
+            pushUndefined
+            construct(ArrayList::class)
+        } else {
+            aload_1
+            aload_2
+        }
+        invokevirtual(activeClassNames.last(), name, JSValue::class, JSValue::class, List::class)
+
+        invokestatic(Agent::class, "hasError", Boolean::class)
+        ifStatement(JumpCondition.True) {
+            pushRunningContext
+            dup
+            getfield(ExecutionContext::class, "error", JSErrorObject::class)
+            // context, errorObj
+            swap
+            // errorObj, context
+            aconst_null
+            // errorObj, context, null
+            putfield(ExecutionContext::class, "error", JSErrorObject::class)
+            // errorObj
+
+            // catch block
+            val catchNode = tryStatementNode.catchNode
+            if (catchNode.catchParameter == null) {
+                compileBlock(catchNode.block)
+            } else {
+                pushLexicalEnv
+                pushLexicalEnv
+                // errorObj, oldEnv, oldEnv
+                invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
+                // errorObj, oldEnv, catchEnv
+                catchNode.catchParameter.boundNames().forEach { name ->
+                    dup
+                    ldc(name)
+                    ldc(false)
+                    invokevirtual(DeclarativeEnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+                }
+
+                // errorObj, oldEnv, catchEnv
+                dup_x1
+                // errorObj, catchEnv, oldEnv, catchEnv
+
+                pushRunningContext
+                // errorObj, catchEnv, oldEnv, catchEnv, context
+                swap
+                // errorObj, catchEnv, oldEnv, context, catchEnv
+                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+                // errorObj, catchEnv, oldEnv
+
+                dup2_x1
+                // catchEnv, oldEnv, errorObj, catchEnv, oldEnv
+                pop
+                // catchEnv, oldEnv, errorObj, catchEnv
+                swap
+                // catchEnv, oldEnv, catchEnv, errorObj
+                initializeBoundName(catchNode.catchParameter.identifierName)
+                // catchEnv, oldEnv, catchEnv
+                pop
+                // catchEnv, oldEnv
+
+                // custom checkError with some additional behavior
+                invokestatic(Agent::class, "hasError", Boolean::class)
+                ifStatement(JumpCondition.True) {
+                    pushRunningContext
+                    // catchEnv, oldEnv, context
+                    swap
+                    // catchEnv, context, oldEnv
+                    putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+                    if (needsToPopContext) {
+                        invokestatic(Agent::class, "popContext", void)
+                    }
+                    pushRunningContext
+                    getfield(ExecutionContext::class, "error", JSErrorObject::class)
+                    areturn
+                }
+
+                // catchEnv, oldEnv
+                compileBlock(catchNode.block)
+                // catchEnv, oldEnv
+                pushRunningContext
+                // catchEnv, oldEnv, context
+                swap
+                // catchEnv, context, oldEnv
+                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+                // catchEnv
+                pop
+            }
         }
     }
 
     private fun MethodAssembly.compileThrowStatement(throwStatementNode: ThrowStatementNode) {
         compileExpression(throwStatementNode.expr)
+        // expr
         operation("getValue", JSValue::class, JSValue::class)
-        dup
+        // value
+//        dup
+        // value, value
         pushRunningContext
+        // value, value, context
         swap
+        // value, context, value
         // TODO: Allow throwing arbitrary values
         checkcast<JSErrorObject>()
+        // value, context, JSErrorObject
         putfield(ExecutionContext::class, "error", JSErrorObject::class)
-        areturn
+        // value
+        checkError
     }
 
     private fun MethodAssembly.compileReturnStatement(returnStatementNode: ReturnStatementNode) {
@@ -847,6 +980,8 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         val parameters = function.parameters
 
         val functionClassName = "Function_${functionName}_${sanitizedFileName}_${Agent.objectCount++}"
+        activeClassNames.add(functionClassName)
+        val previousTryBlockCount = tryBlocks.size
 
         return assembleClass(
             public,
@@ -997,6 +1132,20 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 pushUndefined
                 areturn
             }
+
+            tryBlocks.subList(previousTryBlockCount, tryBlocks.lastIndex).forEach {
+                method(public, it.first, JSValue::class, JSValue::class, List::class) {
+                    compileBlock(it.second)
+                    pushUndefined
+                    areturn
+                }
+            }
+
+            repeat(tryBlocks.size - previousTryBlockCount) {
+                tryBlocks.removeLast()
+            }
+        }.also {
+            activeClassNames.removeLast()
         }
     }
 
@@ -1187,6 +1336,48 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
      */
     private fun MethodAssembly.compileThis() {
         operation("getGlobalObject", JSObject::class)
+    }
+
+    // Stack args:
+    //    1. env (EnvRecord)
+    //    2. value (JSValue)
+    private fun MethodAssembly.initializeBoundName(name: String) {
+        // env, value
+        swap
+        // value, env
+        dup
+        // value, env, env
+        ifElseStatement(JumpCondition.NonNull) {
+            ifBlock {
+                // value, env
+                dup_x1
+                // env, value, env
+                swap
+                // env, env, value
+                ldc(name)
+                // env, env, value, string
+                swap
+                // env, env, string, value
+                invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
+                // env
+            }
+
+            elseBlock {
+                // value, env
+                dup_x1
+                // env, value, env
+                ldc(name)
+                // env, value, env, string
+                swap
+                // env, value, string, env
+                operation("resolveBinding", JSReference::class, String::class, EnvRecord::class)
+                // env, value, ref
+                swap
+                // env, ref, value
+                operation("putValue", void, JSValue::class, JSValue::class)
+                // env
+            }
+        }
     }
 
     private fun MethodAssembly.shouldThrow(errorName: String) {

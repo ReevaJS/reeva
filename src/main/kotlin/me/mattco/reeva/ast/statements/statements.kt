@@ -345,12 +345,46 @@ class LabelledStatement(val label: LabelIdentifierNode, val item: StatementNode)
 
 class ThrowStatementNode(val expr: ExpressionNode) : NodeBase(listOf(expr)), StatementNode
 
-class TryCatchNode(
+class TryStatementNode(
     val tryBlock: BlockNode,
     val catchNode: CatchNode
-) : NodeBase(listOf(tryBlock, catchNode)), StatementNode
+) : NodeBase(listOf(tryBlock, catchNode)), StatementNode {
+    override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
+        return tryBlock.containsDuplicateLabels(labelSet) || catchNode.containsDuplicateLabels(labelSet)
+    }
+
+    override fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
+        return tryBlock.containsUndefinedBreakTarget(labelSet) ||
+            catchNode.containsUndefinedBreakTarget(labelSet)
+    }
+
+    override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
+        return tryBlock.containsUndefinedContinueTarget(iterationSet, labelSet) ||
+            catchNode.containsUndefinedContinueTarget(iterationSet, labelSet)
+    }
+
+    override fun varDeclaredNames() = tryBlock.varDeclaredNames() + catchNode.varDeclaredNames()
+
+    override fun varScopedDeclarations() = tryBlock.varScopedDeclarations() + catchNode.varScopedDeclarations()
+}
 
 class CatchNode(
-    val catchParameter: ExpressionNode?,
+    val catchParameter: BindingIdentifierNode?,
     val block: BlockNode
-) : NodeBase(listOfNotNull(catchParameter, block))
+) : NodeBase(listOfNotNull(catchParameter, block)) {
+    override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
+        return block.containsDuplicateLabels(labelSet)
+    }
+
+    override fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
+        return block.containsUndefinedBreakTarget(labelSet)
+    }
+
+    override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
+        return block.containsUndefinedContinueTarget(iterationSet, emptySet())
+    }
+
+    override fun varDeclaredNames() = block.varDeclaredNames()
+
+    override fun varScopedDeclarations() = block.varScopedDeclarations()
+}
