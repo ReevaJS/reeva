@@ -87,7 +87,7 @@ class Parser(text: String) {
                 parseBreakableStatement(tripleSuffix) ?:
                 parseContinueStatement(doubleSuffix) ?:
                 parseBreakStatement(doubleSuffix) ?:
-                if (suffixes.hasReturn) parseReturnStatement(tripleSuffix) else null ?:
+                (if (suffixes.hasReturn) parseReturnStatement(tripleSuffix) else null) ?:
                 parseWithStatement(tripleSuffix) ?:
                 parseLabelledStatement(tripleSuffix) ?:
                 parseThrowStatement(doubleSuffix) ?:
