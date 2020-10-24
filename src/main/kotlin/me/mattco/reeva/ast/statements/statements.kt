@@ -163,8 +163,8 @@ class WhileStatementNode(val condition: ExpressionNode, val body: StatementNode)
     }
 }
 
-class ForNode(
-    val initializer: StatementNode?,
+class ForStatementNode(
+    val initializer: ASTNode?, // can be an expression or a statement
     val condition: ExpressionNode?,
     val incrementer: ExpressionNode?,
     val body: StatementNode,

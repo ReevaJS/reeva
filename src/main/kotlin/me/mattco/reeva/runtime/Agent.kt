@@ -84,7 +84,7 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
     }
 
     private fun compileClassNode(classNode: ClassNode, isMainFile: Boolean): Class<*> {
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES or ClassWriter.COMPUTE_MAXS)
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
         classNode.accept(writer)
         val bytes = writer.toByteArray()
 

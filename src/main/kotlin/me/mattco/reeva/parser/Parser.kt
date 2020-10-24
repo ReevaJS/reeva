@@ -361,7 +361,7 @@ class Parser(text: String) {
             return null
         }
 
-        return ForNode(initializer?.let(::ExpressionStatementNode), condition, incrementer, body)
+        return ForStatementNode(initializer, condition, incrementer, body)
     }
 
     private fun parseForStatementType2(suffixes: Suffixes): StatementNode? {
@@ -388,7 +388,7 @@ class Parser(text: String) {
             return null
         }
 
-        return ForNode(VariableStatementNode(declarations), condition, incrementer, body)
+        return ForStatementNode(VariableStatementNode(declarations), condition, incrementer, body)
     }
 
     private fun parseForStatementType3(suffixes: Suffixes): StatementNode? {
@@ -404,7 +404,7 @@ class Parser(text: String) {
             return null
         }
 
-        return ForNode(declaration, condition, incrementer, body)
+        return ForStatementNode(declaration, condition, incrementer, body)
     }
 
     private fun parseForStatementType4(suffixes: Suffixes): StatementNode? {

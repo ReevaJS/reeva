@@ -217,7 +217,151 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             is ReturnStatementNode -> compileReturnStatement(statement)
             is ThrowStatementNode -> compileThrowStatement(statement)
             is TryStatementNode -> compileTryStatementNode(statement)
+            is ForStatementNode -> compileForStatementNode(statement)
             else -> TODO()
+        }
+    }
+
+    private fun MethodAssembly.compileForStatementNode(forStatementNode: ForStatementNode) {
+        val initializer = forStatementNode.initializer
+        val condition = forStatementNode.condition
+        val incrementer = forStatementNode.incrementer
+        val body = forStatementNode.body
+        var perIterationBindings = listOf<String>()
+
+        fun createPerIterationEnvironment() {
+            if (perIterationBindings.isEmpty())
+                return
+
+            pushLexicalEnv
+            // lastIterationEnv
+            dup
+            // lastIterationEnv, lastIterationEnv
+            getfield(EnvRecord::class, "outerEnv", EnvRecord::class)
+            // ecmaAssert(the last result is not null)
+
+            invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
+            // lastIterationEnv, thisIterationEnv
+
+            perIterationBindings.forEach { binding ->
+                // lastIterationEnv, thisIterationEnv
+                dup
+                // lastIterationEnv, thisIterationEnv, thisIterationEnv
+                ldc(binding)
+                ldc(false)
+                invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+
+                // lastIterationEnv, thisIterationEnv
+                swap
+                // thisIterationEnv, lastIterationEnv
+                dup2
+                // thisIterationEnv, lastIterationEnv, thisIterationEnv, lastIterationEnv
+                ldc(binding)
+                ldc(true)
+                // thisIterationEnv, lastIterationEnv, thisIterationEnv, lastIterationEnv, binding, true
+                invokevirtual(EnvRecord::class, "getBindingValue", JSValue::class, String::class, Boolean::class)
+                // thisIterationEnv, lastIterationEnv, thisIterationEnv, lastValue
+                ldc(binding)
+                // thisIterationEnv, lastIterationEnv, thisIterationEnv, lastValue, binding
+                swap
+                // thisIterationEnv, lastIterationEnv, thisIterationEnv, binding, lastValue
+                invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
+                // thisIterationEnv, lastIterationEnv
+                swap
+                // lastIterationEnv, thisIterationEnv
+            }
+
+            // lastIterationEnv, thisIterationEnv
+            pushRunningContext
+            // lastIterationEnv, thisIterationEnv, context
+            swap
+            // lastIterationEnv, context, thisIterationEnv
+            putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+            // lastIterationEnv
+            pop
+        }
+
+        val name = "for_block_${Agent.objectCount++}"
+        addExtraMethodToCurrentClass(name) {
+            compileStatement(body)
+            createPerIterationEnvironment()
+            pushUndefined
+            areturn
+        }
+
+        when (initializer) {
+            is ExpressionNode -> compileExpression(initializer)
+            is VariableDeclarationNode -> compileVariableDeclarationNode(initializer)
+            is LexicalDeclarationNode -> {
+                pushLexicalEnv
+                // oldEnv
+                dup
+                // oldEnv, oldEnv
+                invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
+                // oldEnv, loopEnv
+
+                val isConst = initializer.isConstantDeclaration()
+                val boundNames = initializer.boundNames()
+                boundNames.forEach { name ->
+                    dup
+                    ldc(name)
+                    if (isConst) {
+                        ldc(true)
+                        invokevirtual(EnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
+                    } else {
+                        ldc(false)
+                        invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+                    }
+                }
+
+                // oldEnv, loopEnv
+                pushRunningContext
+                // oldEnv, loopEnv, context
+                swap
+                // oldEnv, context, loopEnv
+                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+                // oldEnv
+
+                compileLexicalDeclaration(initializer)
+
+                if (!isConst)
+                    perIterationBindings = boundNames
+            }
+        }
+
+        createPerIterationEnvironment()
+
+        val start = L[Agent.objectCount++]
+        val end = L[Agent.objectCount++]
+
+        +start
+
+        if (condition != null) {
+            compileExpression(condition)
+            operation("getValue", JSValue::class, JSValue::class)
+            operation("toBoolean", JSBoolean::class, JSValue::class)
+            pushFalse
+            jump(JumpCondition.RefEqual, end)
+        }
+
+        invokeExtraMethod(name)
+        pop
+
+        if (incrementer != null) {
+            compileExpression(incrementer)
+            operation("getValue", JSValue::class, JSValue::class)
+            pop
+        }
+
+        goto(start)
+        +end
+
+        if (initializer is LexicalDeclarationNode) {
+            // oldEnv
+            pushRunningContext
+            swap
+            // context, oldEnv
+            putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
         }
     }
 
@@ -232,7 +376,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
          * statements inside of it
          */
 
-        val name = "try_block_${extraMethods.size}"
+        val name = "try_block_${Agent.objectCount++}"
         addExtraMethodToCurrentClass(name) {
             compileBlock(tryStatementNode.tryBlock)
         }
