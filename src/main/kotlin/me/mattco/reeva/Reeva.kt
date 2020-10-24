@@ -15,7 +15,7 @@ fun main(args: Array<String>) {
     for (error in scriptRecord.errors) {
         println("SyntaxError (${error.lineNumber}, ${error.columnNumber}):\n    ${error.message}")
     }
-    println(scriptRecord.scriptOrModule.dump(0))
+//    println(scriptRecord.scriptOrModule.dump(0))
 
     val agent = Agent("my agent")
     agent.execute(scriptRecord)
