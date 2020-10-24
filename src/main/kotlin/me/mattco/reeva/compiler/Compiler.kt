@@ -792,47 +792,43 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
     private fun MethodAssembly.compileUpdateExpression(updateExpressionNode: UpdateExpressionNode) {
         compileExpression(updateExpressionNode.target)
-        dup
-        val lhs = astore()
         // lhs
-
-        var returnValue: Local? = null
-
+        dup
+        // lhs, lhs
         operation("getValue", JSValue::class, JSValue::class)
         operation("toNumeric", JSValue::class, JSValue::class)
-        if (updateExpressionNode.isPostfix) {
-            dup
-            returnValue = astore()
-        }
-        // oldValue
+        // lhs, oldValue
 
+        // TODO: Don't do this, it throws a Java exception
         dup
-        //oldValue, oldValue
-        // TODO: Don't do this, it throws a java exception if it is a bigint
         operation("checkNotBigInt", void, JSValue::class)
-        // oldValue
+
+        // lhs, oldValue
+        dup_x1
+        // oldValue, lhs, oldValue
         construct(JSNumber::class, Double::class) {
             ldc(1.0)
         }
-        // oldValue, 1.0
+        // oldValue, lhs, oldValue, 1.0
         if (updateExpressionNode.isIncrement) {
             operation("numericAdd", JSValue::class, JSValue::class, JSValue::class)
         } else {
             operation("numericSubtract", JSValue::class, JSValue::class, JSValue::class)
         }
-        // newValue
-        if (!updateExpressionNode.isPostfix) {
-            dup
-            returnValue = astore()
+        // oldValue, lhs, newValue
+        if (updateExpressionNode.isPostfix) {
+            operation("putValue", void, JSValue::class, JSValue::class)
+            // oldValue
+        } else {
+            dup_x1
+            // oldValue, newValue, lhs, newValue
+            operation("putValue", void, JSValue::class, JSValue::class)
+            // oldValue, newValue
+            swap
+            // newValue, oldValue
+            pop
+            // newValue
         }
-
-        aload(lhs)
-        swap
-        // lhs, newValue
-        operation("putValue", void, JSValue::class, JSValue::class)
-        // empty
-
-        load(returnValue!!)
     }
 
     private fun MethodAssembly.compileUnaryExpression(unaryExpressionNode: UnaryExpressionNode) {
