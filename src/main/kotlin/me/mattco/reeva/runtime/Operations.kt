@@ -484,6 +484,9 @@ object Operations {
     fun toPrintableString(value: JSValue, withQuotes: Boolean = true): String {
         return when (value) {
             is JSSymbol -> value.descriptiveString()
+            is JSNumber -> toString(value).string
+            is JSUndefined -> "undefined"
+            is JSNull -> "null"
             else -> {
                 val str = toString(value).string
                 if (withQuotes) "\"$str\"" else str
