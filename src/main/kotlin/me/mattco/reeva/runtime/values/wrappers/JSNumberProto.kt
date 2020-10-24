@@ -23,42 +23,42 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
         defineOwnProperty("prototype", Descriptor(realm.objectProto, Attributes(0)))
         configureInstanceProperties()
 
-        defineOwnProperty("constructor", Descriptor(realm.numberCtor, Attributes(Attributes.CONFIGURABLE and Attributes.WRITABLE)))
+        defineOwnProperty("constructor", Descriptor(realm.numberCtor, Attributes(Attributes.CONFIGURABLE or Attributes.WRITABLE)))
     }
 
     @ECMAImpl("Number.prototype.toExponential", "20.1.3.2")
-    @JSMethod("toExponential", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("toExponential", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun toExponential(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("Number.prototype.toFixed", "20.1.3.3")
-    @JSMethod("toFixed", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("toFixed", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun toFixed(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("Number.prototype.toLocaleString", "20.1.3.3")
-    @JSMethod("toLocaleString", 0, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("toLocaleString", 0, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun toLocaleString(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("Number.prototype.toPrecision", "20.1.3.3")
-    @JSMethod("toPrecision", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("toPrecision", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun toPrecision(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("Number.prototype.toString", "20.1.3.3")
-    @JSMethod("toString", 0, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("toString", 0, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @JSThrows
     @ECMAImpl("Number.prototype.valueOf", "20.1.3.3")
-    @JSMethod("valueOf", 0, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("valueOf", 0, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisNumberValue(thisValue)
     }

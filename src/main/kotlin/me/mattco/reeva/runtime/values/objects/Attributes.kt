@@ -57,16 +57,28 @@ data class Attributes(var num: Int = 0) {
         num = num or HAS_SETTER
     }
 
-    fun setConfigurable() = apply {
-        num = num or CONFIGURABLE
+    fun setConfigurable(configurable: Boolean = true) = apply {
+        num = if (configurable) {
+            num or CONFIGURABLE
+        } else {
+            num and CONFIGURABLE.inv()
+        }
     }
 
-    fun setEnumerable() = apply {
-        num = num or ENUMERABLE
+    fun setEnumerable(enumerable: Boolean = true) = apply {
+        num = if (enumerable) {
+            num or ENUMERABLE
+        } else {
+            num and ENUMERABLE.inv()
+        }
     }
 
-    fun setWritable() = apply {
-        num = num or WRITABLE
+    fun setWritable(writable: Boolean = true) = apply {
+        num = if (writable) {
+            num or WRITABLE
+        } else {
+            num and WRITABLE.inv()
+        }
     }
 
     companion object {

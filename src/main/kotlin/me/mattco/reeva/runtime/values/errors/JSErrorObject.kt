@@ -13,7 +13,7 @@ open class JSErrorObject protected constructor(
 ) : JSObject(realm, errorProto) {
     override fun init() {
         if (message != null)
-            defineOwnProperty("message", Descriptor(message.toValue(), Attributes(Attributes.CONFIGURABLE and Attributes.WRITABLE)))
+            defineOwnProperty("message", Descriptor(message.toValue(), Attributes(Attributes.CONFIGURABLE or Attributes.WRITABLE)))
     }
 
     companion object {

@@ -35,7 +35,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineOwnProperty("unscopables", Descriptor(realm.`@@unscopables`, Attributes(0)))
     }
 
-    @JSMethod("for", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("for", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun for_(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = arguments.argument(0).asString
         for ((globalKey, globalSymbol) in Realm.globalSymbolRegistry) {
@@ -48,7 +48,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @JSThrows
-    @JSMethod("keyFor", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("keyFor", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun keyFor(thisValue: JSValue, arguments: JSArguments): JSValue {
         val sym = arguments.argument(0)
         if (!sym.isSymbol) {

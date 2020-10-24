@@ -219,8 +219,9 @@ open class JSObject protected constructor(
             return true
         }
 
-        if (newDesc.isEmpty)
-            return true
+        // Doesn't play nice with a manually set undefined
+//        if (newDesc.isEmpty)
+//            return true
 
         if (currentDesc.attributes.run { hasConfigurable && !isConfigurable }) {
             if (newDesc.attributes.isConfigurable)
@@ -235,11 +236,17 @@ open class JSObject protected constructor(
             if (currentDesc.isDataDescriptor) {
                 properties[property] = Descriptor(
                     JSUndefined,
-                    Attributes(currentDesc.attributes.num and (WRITABLE and HAS_WRITABLE).inv()),
+                    Attributes(currentDesc.attributes.num and (WRITABLE or HAS_WRITABLE).inv()),
                     newDesc.getter,
-                    newDesc.setter
+                    newDesc.setter,
                 )
-
+            } else {
+                properties[property] = Descriptor(
+                    newDesc.value,
+                    Attributes(currentDesc.attributes.num and (WRITABLE or HAS_WRITABLE).inv()),
+                    null,
+                    null,
+                )
             }
         } else if (currentDesc.isDataDescriptor && newDesc.isDataDescriptor) {
             if (currentDesc.attributes.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {
@@ -260,7 +267,25 @@ open class JSObject protected constructor(
             return true
         }
 
-        properties[property] = newDesc
+        val d = properties[property]!!
+
+        if (newDesc.isDataDescriptor) {
+            // To distinguish undefined from a non-specified property
+            d.value = newDesc.value
+        }
+
+        d.getter = newDesc.getter
+        d.setter = newDesc.setter
+
+        newDesc.attributes.apply {
+            if (hasConfigurable)
+                d.attributes.setConfigurable(isConfigurable)
+            if (hasEnumerable)
+                d.attributes.setEnumerable(isEnumerable)
+            if (hasWritable)
+                d.attributes.setWritable(isWritable)
+        }
+
         return true
     }
 

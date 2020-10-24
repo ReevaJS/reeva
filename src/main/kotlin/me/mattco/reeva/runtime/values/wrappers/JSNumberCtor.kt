@@ -32,7 +32,7 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @ECMAImpl("Number.isFinite", "20.1.2.2")
-    @JSMethod("isFinite", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("isFinite", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun isFinite(thisValue: JSValue, arguments: JSArguments): JSValue {
         val number = arguments.argument(0)
         if (!number.isNumber)
@@ -44,20 +44,20 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
     @JSThrows
     @ECMAImpl("Number.isInteger", "20.1.2.3")
-    @JSMethod("isInteger", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("isInteger", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun isInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
         return Operations.isIntegralNumber(arguments.argument(0)).toValue()
     }
 
     @ECMAImpl("Number.isNaN", "20.1.2.4")
-    @JSMethod("isNaN", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("isNaN", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun isNaN(thisValue: JSValue, arguments: JSArguments): JSValue {
         return arguments.argument(0).isNaN.toValue()
     }
 
     @JSThrows
     @ECMAImpl("Number.isSafeInteger", "20.1.2.5")
-    @JSMethod("isSafeInteger", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("isSafeInteger", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun isSafeInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isIntegralNumber(arguments.argument(0)))
             return JSFalse
@@ -66,13 +66,13 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @ECMAImpl("Number.parseFloat", "20.1.2.12")
-    @JSMethod("parseFloat", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("parseFloat", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun parseFloat(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("Number.parseInt", "20.1.2.13")
-    @JSMethod("parseInt", 1, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("parseInt", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun parseInt(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }

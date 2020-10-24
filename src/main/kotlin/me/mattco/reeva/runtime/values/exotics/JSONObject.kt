@@ -30,14 +30,14 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     }
 
     @ECMAImpl("JSON.parse", "24.5.1")
-    @JSMethod("parse", 2, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("parse", 2, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun parse(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @JSThrows
     @ECMAImpl("JSON.stringify", "24.5.2")
-    @JSMethod("stringify", 3, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("stringify", 3, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun stringify(thisValue: JSValue, arguments: JSArguments): JSValue {
         // TODO: ReplacerFunction
 

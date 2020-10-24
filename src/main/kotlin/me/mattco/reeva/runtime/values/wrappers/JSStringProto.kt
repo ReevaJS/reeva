@@ -21,7 +21,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         defineOwnProperty("prototype", Descriptor(realm.objectProto, Attributes(0)))
         configureInstanceProperties()
 
-        defineOwnProperty("constructor", Descriptor(realm.stringCtor, Attributes(Attributes.CONFIGURABLE and Attributes.WRITABLE)))
+        defineOwnProperty("constructor", Descriptor(realm.stringCtor, Attributes(Attributes.CONFIGURABLE or Attributes.WRITABLE)))
     }
 
     @JSNativePropertyGetter("length", attributes = 0)

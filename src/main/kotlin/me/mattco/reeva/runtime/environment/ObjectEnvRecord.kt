@@ -33,7 +33,7 @@ class ObjectEnvRecord(
     @JSThrows
     @ECMAImpl("CreateMutableBinding", "8.1.1.2.2")
     override fun createMutableBinding(name: String, canBeDeleted: Boolean) {
-        val descriptor = Descriptor(JSUndefined, Attributes(ENUMERABLE and WRITABLE and if (canBeDeleted) CONFIGURABLE else 0))
+        val descriptor = Descriptor(JSUndefined, Attributes(ENUMERABLE or WRITABLE or if (canBeDeleted) CONFIGURABLE else 0))
         if (!boundObject.defineOwnProperty(name, descriptor))
             throwError<JSTypeErrorObject>("TODO")
     }

@@ -32,7 +32,7 @@ open class JSErrorCtor protected constructor(
             Operations.toString(message)
         } else "".toValue()
 
-        val msgDesc = Descriptor(messageValue, Attributes(Attributes.CONFIGURABLE and Attributes.WRITABLE))
+        val msgDesc = Descriptor(messageValue, Attributes(Attributes.CONFIGURABLE or Attributes.WRITABLE))
         Operations.definePropertyOrThrow(obj, "message".toValue(), msgDesc)
 
         return obj

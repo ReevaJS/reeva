@@ -132,6 +132,14 @@ class DoWhileStatementNode(val condition: ExpressionNode, val body: StatementNod
         return body.containsUndefinedContinueTarget(iterationSet, emptySet())
     }
 
+    override fun topLevelVarDeclaredNames(): List<String> {
+        return body.varDeclaredNames()
+    }
+
+    override fun topLevelVarScopedDeclarations(): List<NodeBase> {
+        return body.varScopedDeclarations()
+    }
+
     override fun varDeclaredNames(): List<String> {
         return body.varDeclaredNames()
     }
@@ -152,6 +160,14 @@ class WhileStatementNode(val condition: ExpressionNode, val body: StatementNode)
 
     override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
         return body.containsUndefinedContinueTarget(iterationSet, emptySet())
+    }
+
+    override fun topLevelVarDeclaredNames(): List<String> {
+        return body.varDeclaredNames()
+    }
+
+    override fun topLevelVarScopedDeclarations(): List<NodeBase> {
+        return body.varScopedDeclarations()
     }
 
     override fun varDeclaredNames(): List<String> {
@@ -181,12 +197,20 @@ class ForStatementNode(
         return body.containsUndefinedContinueTarget(iterationSet, emptySet())
     }
 
+    override fun topLevelVarDeclaredNames() = varDeclaredNames()
+
+    override fun topLevelVarScopedDeclarations() = varScopedDeclarations()
+
     override fun varDeclaredNames(): List<String> {
-        return body.varDeclaredNames()
+        return body.varDeclaredNames() + if (initializer is VariableStatementNode) {
+            initializer.varDeclaredNames()
+        } else emptyList()
     }
 
     override fun varScopedDeclarations(): List<NodeBase> {
-        return body.varScopedDeclarations()
+        return body.varScopedDeclarations() + if (initializer is VariableStatementNode) {
+            initializer.varScopedDeclarations()
+        } else emptyList()
     }
 
     override fun dump(indent: Int) = buildString {

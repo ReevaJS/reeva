@@ -19,11 +19,11 @@ open class JSErrorProto protected constructor(
     override fun init() {
         super.init()
 
-        defineOwnProperty("constructor", Descriptor(realm.errorCtor, Attributes(Attributes.CONFIGURABLE and Attributes.WRITABLE)))
-        defineOwnProperty("name", Descriptor(name.toValue(), Attributes(Attributes.CONFIGURABLE and Attributes.WRITABLE)))
+        defineOwnProperty("constructor", Descriptor(realm.errorCtor, Attributes(Attributes.CONFIGURABLE or Attributes.WRITABLE)))
+        defineOwnProperty("name", Descriptor(name.toValue(), Attributes(Attributes.CONFIGURABLE or Attributes.WRITABLE)))
     }
 
-    @JSMethod("toString", 0, Attributes.CONFIGURABLE and Attributes.WRITABLE)
+    @JSMethod("toString", 0, Attributes.CONFIGURABLE or Attributes.WRITABLE)
     fun toString_(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
             shouldThrowError("TypeError")

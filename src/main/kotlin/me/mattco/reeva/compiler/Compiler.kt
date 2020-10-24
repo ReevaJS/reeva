@@ -134,7 +134,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                         dup
                         ldc(name)
                         invokevirtual(GlobalEnvRecord::class, "canDeclareGlobalVar", Boolean::class, String::class)
-                        ifStatement(JumpCondition.True) {
+                        ifStatement(JumpCondition.False) {
                             shouldThrow("TypeError")
                         }
                         if (name !in declaredVarNames)
@@ -291,7 +291,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
         when (initializer) {
             is ExpressionNode -> compileExpression(initializer)
-            is VariableDeclarationNode -> compileVariableDeclarationNode(initializer)
+            is VariableStatementNode -> compileVariableStatement(initializer)
             is LexicalDeclarationNode -> {
                 pushLexicalEnv
                 // oldEnv
@@ -327,6 +327,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 if (!isConst)
                     perIterationBindings = boundNames
             }
+            else -> unreachable()
         }
 
         createPerIterationEnvironment()
