@@ -12,10 +12,9 @@ import me.mattco.reeva.runtime.values.functions.JSFunctionCtor
 import me.mattco.reeva.runtime.values.functions.JSFunctionProto
 import me.mattco.reeva.runtime.values.global.JSConsole
 import me.mattco.reeva.runtime.values.global.JSConsoleProto
-import me.mattco.reeva.runtime.values.objects.JSObject
-import me.mattco.reeva.runtime.values.objects.JSObjectCtor
-import me.mattco.reeva.runtime.values.objects.JSObjectProto
+import me.mattco.reeva.runtime.values.objects.*
 import me.mattco.reeva.runtime.values.primitives.JSSymbol
+import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.runtime.values.wrappers.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -154,6 +153,8 @@ class Realm {
 
         globalObject.set("JSON", jsonObj)
         globalObject.set("console", consoleObj)
+
+        globalObject.defineOwnProperty("undefined", Descriptor(JSUndefined, Attributes(0)))
     }
 
     fun parseScript(script: String): ScriptRecord {
