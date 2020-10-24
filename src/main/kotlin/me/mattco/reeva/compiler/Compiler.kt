@@ -5,6 +5,7 @@ import codes.som.anthony.koffee.assembleClass
 import codes.som.anthony.koffee.insns.jvm.*
 import codes.som.anthony.koffee.insns.sugar.*
 import codes.som.anthony.koffee.modifiers.public
+import codes.som.anthony.koffee.sugar.ClassAssemblyExtension.init
 import codes.som.anthony.koffee.types.TypeLike
 import codes.som.anthony.koffee.types.coerceType
 import me.mattco.reeva.ast.*
@@ -40,14 +41,20 @@ import java.lang.IllegalArgumentException
 
 class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private val sanitizedFileName = fileName.replace(Regex("[^\\w]"), "_")
-    private val activeClassNames = mutableListOf<String>()
     private val dependencies = mutableListOf<ClassNode>()
     private var needsToPopContext = false
     private val extraMethods = mutableListOf<MethodNode>()
 
+    private val methodStates = mutableListOf<MethodState>()
+    data class MethodState(
+        val className: String,
+        val methodName: String,
+        val returnType: TypeLike,
+        val isTopLevel: Boolean = false,
+    )
+
     fun compile(): CompilationResult {
         val className = "TopLevel_${sanitizedFileName}_$classCounter"
-        activeClassNames.add(className)
 
         val mainClass = assembleClass(public, className, superName = "me/mattco/reeva/compiler/TopLevelScript") {
             method(public, "<init>", void) {
@@ -57,20 +64,22 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             }
 
             method(public, "run", JSValue::class, ExecutionContext::class) {
+                methodStates.add(MethodState(className, "run", JSValue::class, true))
                 compileScript(scriptNode)
                 pushUndefined
                 areturn
+                methodStates.removeLast()
             }
 
             extraMethods.forEach {
+                methodStates.add(MethodState(className, it.name, Type.getReturnType(it.desc)))
                 node.methods.add(it)
+                methodStates.removeLast()
             }
         }
 
-        activeClassNames.removeLast()
-
-        if (activeClassNames.isNotEmpty()) {
-            throw IllegalStateException("activeClassNames is not empty!")
+        if (methodStates.isNotEmpty()) {
+            throw IllegalStateException("methodStates is not empty!")
         }
 
         return CompilationResult(mainClass, dependencies)
@@ -285,8 +294,6 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         addExtraMethodToCurrentClass(name) {
             compileStatement(body)
             createPerIterationEnvironment()
-            pushUndefined
-            areturn
         }
 
         when (initializer) {
@@ -447,8 +454,19 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                     if (needsToPopContext) {
                         invokestatic(Agent::class, "popContext", void)
                     }
-                    pushRunningContext
-                    getfield(ExecutionContext::class, "error", JSErrorObject::class)
+                    when (coerceType(methodStates.last().returnType)) {
+                        coerceType(CompletionRecord::class) -> {
+                            construct(CompletionRecord::class, CompletionRecord.Type::class, JSValue::class) {
+                                getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
+                                pushRunningContext
+                                getfield(ExecutionContext::class, "error", JSErrorObject::class)
+                            }
+                        }
+                        else -> {
+                            pushRunningContext
+                            getfield(ExecutionContext::class, "error", JSErrorObject::class)
+                        }
+                    }
                     areturn
                 }
 
@@ -486,11 +504,24 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     }
 
     private fun MethodAssembly.compileReturnStatement(returnStatementNode: ReturnStatementNode) {
+        getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
         if (returnStatementNode.node == null) {
             pushUndefined
         } else {
             compileExpression(returnStatementNode.node)
         }
+
+        // Type, expr
+        new<CompletionRecord>()
+        // Type, expr, record
+        dup_x2
+        // record, Type, expr, record
+        dup_x2
+        // record, record, Type, expr, record
+        pop
+        // record, record, Type, expr
+        invokespecial(CompletionRecord::class, "<init>", void, CompletionRecord.Type::class, JSValue::class)
+
         areturn
     }
 
@@ -1130,7 +1161,6 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         val parameters = function.parameters
 
         val functionClassName = "Function_${functionName}_${sanitizedFileName}_${Agent.objectCount++}"
-        activeClassNames.add(functionClassName)
         val previousExtraMethodCount = extraMethods.size
 
         return assembleClass(
@@ -1233,6 +1263,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             }
 
             method(public, "call", JSValue::class, JSValue::class, List::class) {
+                methodStates.add(MethodState(functionClassName, "call", JSValue::class))
                 val oldNeedsToPop = needsToPopContext
                 needsToPopContext = true
 
@@ -1252,18 +1283,21 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 aload_0
                 aload_1
                 aload_2
-                invokevirtual(functionClassName, "execute", JSValue::class, JSValue::class, List::class)
+                invokevirtual(functionClassName, "execute", CompletionRecord::class, JSValue::class, List::class)
 
                 // Clean up execution context
                 invokestatic(Agent::class, "popContext", void)
 
                 // return the value from "execute"
+                getfield(CompletionRecord::class, "value", JSValue::class)
                 areturn
 
                 needsToPopContext = oldNeedsToPop
+                methodStates.removeLast()
             }
 
             method(public, "construct", JSValue::class, List::class, JSValue::class) {
+                methodStates.add(MethodState(functionClassName, "construct", JSValue::class))
                 val oldNeedsToPop = needsToPopContext
                 needsToPopContext = true
 
@@ -1272,27 +1306,33 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 areturn
 
                 needsToPopContext = oldNeedsToPop
+                methodStates.removeLast()
             }
 
-            method(public, "execute", JSValue::class, JSValue::class, List::class) {
+            method(public, "execute", CompletionRecord::class, JSValue::class, List::class) {
+                methodStates.add(MethodState(functionClassName, "execute", CompletionRecord::class))
                 // actual body
                 if (function.body.statementList != null)
                     compileStatementList(function.body.statementList)
 
                 // In case the method doesn't have a return statement inside of itself
-                pushUndefined
+                construct(CompletionRecord::class, CompletionRecord.Type::class, JSValue::class) {
+                    getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
+                    pushUndefined
+                }
                 areturn
+                methodStates.removeLast()
             }
 
             extraMethods.subList(previousExtraMethodCount, extraMethods.size).forEach {
+                methodStates.add(MethodState(functionClassName, it.name, Type.getReturnType(it.desc)))
                 node.methods.add(it)
+                methodStates.removeLast()
             }
 
             repeat(extraMethods.size - previousExtraMethodCount) {
                 extraMethods.removeLast()
             }
-        }.also {
-            activeClassNames.removeLast()
         }
     }
 
@@ -1532,26 +1572,35 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         name: String,
         routine: MethodAssembly.() -> Unit
     ) {
-        val descriptor = Type.getMethodDescriptor(coerceType(JSValue::class), coerceType(JSValue::class), coerceType(List::class))
+        methodStates.add(MethodState(methodStates.last().className, name, CompletionRecord::class, false))
+        val descriptor = Type.getMethodDescriptor(coerceType(CompletionRecord::class), coerceType(JSValue::class), coerceType(List::class))
 
         val methodNode = MethodNode(Opcodes.ASM7, public.access, name, descriptor, null, null)
         val methodAssembly = MethodAssembly(methodNode)
-        routine(methodAssembly)
+
+        methodAssembly.apply {
+            routine(this)
+            construct(CompletionRecord::class, CompletionRecord.Type::class, JSValue::class) {
+                getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
+                pushUndefined
+            }
+            areturn
+        }
 
         extraMethods.add(methodNode)
+        methodStates.removeLast()
     }
 
     private fun MethodAssembly.invokeExtraMethod(name: String) {
         aload_0
-        if (activeClassNames.size == 1) {
-            // This is a TopLevelScript
+        if (methodStates.last().isTopLevel) {
             pushUndefined
             construct(ArrayList::class)
         } else {
             aload_1
             aload_2
         }
-        invokevirtual(activeClassNames.last(), name, JSValue::class, JSValue::class, List::class)
+        invokevirtual(methodStates.last().className, name, CompletionRecord::class, JSValue::class, List::class)
     }
 
     private fun MethodAssembly.shouldThrow(errorName: String) {
@@ -1679,8 +1728,19 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 if (needsToPopContext) {
                     invokestatic(Agent::class, "popContext", void)
                 }
-                pushRunningContext
-                getfield(ExecutionContext::class, "error", JSErrorObject::class)
+                when (coerceType(methodStates.last().returnType)) {
+                    coerceType(CompletionRecord::class) -> {
+                        construct(CompletionRecord::class, CompletionRecord.Type::class, JSValue::class) {
+                            getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
+                            pushRunningContext
+                            getfield(ExecutionContext::class, "error", JSErrorObject::class)
+                        }
+                    }
+                    else -> {
+                        pushRunningContext
+                        getfield(ExecutionContext::class, "error", JSErrorObject::class)
+                    }
+                }
                 areturn
             }
         }

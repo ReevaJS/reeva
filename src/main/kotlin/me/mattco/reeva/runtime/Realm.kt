@@ -169,7 +169,7 @@ class Realm {
         val realm: Realm,
         var env: EnvRecord?,
         val scriptOrModule: ScriptNode,
-        val errors: List<Parser.SyntaxError> = emptyList() // TODO
+        val errors: List<Parser.SyntaxError> = emptyList()
     )
 
     companion object {
