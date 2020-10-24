@@ -1676,7 +1676,7 @@ class Parser(text: String) {
             return consume()
         if ('\n' in token.trivia)
             return token
-        if (matchAny(TokenType.CloseCurly, TokenType.Eof))
+        if (tokenType == TokenType.CloseCurly || tokenType == TokenType.Eof)
             return token
 
         expected("semicolon")
