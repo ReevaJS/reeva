@@ -6,6 +6,7 @@ import codes.som.anthony.koffee.insns.jvm.*
 import codes.som.anthony.koffee.insns.sugar.*
 import codes.som.anthony.koffee.modifiers.public
 import codes.som.anthony.koffee.types.TypeLike
+import codes.som.anthony.koffee.types.coerceType
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.LiteralNode
@@ -31,7 +32,10 @@ import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.Type
 import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.MethodNode
 import java.lang.IllegalArgumentException
 
 class Compiler(private val scriptNode: ScriptNode, fileName: String) {
@@ -39,7 +43,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private val activeClassNames = mutableListOf<String>()
     private val dependencies = mutableListOf<ClassNode>()
     private var needsToPopContext = false
-    private var tryBlocks = mutableListOf<Pair<String, BlockNode>>()
+    private val extraMethods = mutableListOf<MethodNode>()
 
     fun compile(): CompilationResult {
         val className = "TopLevel_${sanitizedFileName}_$classCounter"
@@ -58,12 +62,8 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 areturn
             }
 
-            tryBlocks.forEach {
-                method(public, it.first, JSValue::class, JSValue::class, List::class) {
-                    compileBlock(it.second)
-                    pushUndefined
-                    areturn
-                }
+            extraMethods.forEach {
+                node.methods.add(it)
             }
         }
 
@@ -161,12 +161,29 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             val compiledFunc = instantiateFunctionObject(func)
             dependencies.add(compiledFunc)
 
+            // env
             dup
+            dup
+            // env, env, env
+            new(compiledFunc.name)
+            // env, env, env, func
+            dup_x1
+            // env, env, func, env, func
+            swap
+            // env, env, func, func, env
+            pushRealm
+            // env, env, func, func, env, realm
+            swap
+            // env, env, func, func, realm, env
+            invokespecial(compiledFunc.name, "<init>", void, Realm::class, EnvRecord::class)
+            // env, env, func
+
             ldc(func.identifier?.identifierName ?: "default")
-            construct(compiledFunc.name, Realm::class) {
-                pushRealm
-            }
+            // env, env, func, string
+            swap
+            // env, env, string, func
             ldc(false)
+            // env, env, string, func, boolean
             invokevirtual(GlobalEnvRecord::class, "createGlobalFunctionBinding", void, String::class, JSFunction::class, Boolean::class)
         }
         declaredVarNames.forEach {
@@ -215,20 +232,12 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
          * statements inside of it
          */
 
-        val name = "try_block_${tryBlocks.size}"
-
-        tryBlocks.add(name to tryStatementNode.tryBlock)
-
-        aload_0
-        if (activeClassNames.size == 1) {
-            // This is a TopLevelScript
-            pushUndefined
-            construct(ArrayList::class)
-        } else {
-            aload_1
-            aload_2
+        val name = "try_block_${extraMethods.size}"
+        addExtraMethodToCurrentClass(name) {
+            compileBlock(tryStatementNode.tryBlock)
         }
-        invokevirtual(activeClassNames.last(), name, JSValue::class, JSValue::class, List::class)
+
+        invokeExtraMethod(name)
 
         invokestatic(Agent::class, "hasError", Boolean::class)
         ifStatement(JumpCondition.True) {
@@ -981,20 +990,21 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
         val functionClassName = "Function_${functionName}_${sanitizedFileName}_${Agent.objectCount++}"
         activeClassNames.add(functionClassName)
-        val previousTryBlockCount = tryBlocks.size
+        val previousExtraMethodCount = extraMethods.size
 
         return assembleClass(
             public,
             functionClassName,
             superName = "me/mattco/reeva/compiler/JSScriptFunction"
         ) {
-            method(public, "<init>", void, Realm::class) {
+            method(public, "<init>", void, Realm::class, EnvRecord::class) {
                 aload_0
                 aload_1
                 getstatic(JSFunction.ThisMode::class, "NonLexical", JSFunction.ThisMode::class)
                 // TODO: Strict mode
                 ldc(false)
-                invokespecial(JSScriptFunction::class, "<init>", void, Realm::class, JSFunction.ThisMode::class, Boolean::class)
+                aload_2
+                invokespecial(JSScriptFunction::class, "<init>", void, Realm::class, JSFunction.ThisMode::class, Boolean::class, EnvRecord::class)
                 _return
             }
 
@@ -1112,7 +1122,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 needsToPopContext = oldNeedsToPop
             }
 
-            method(public, "construct", JSValue::class, List::class, JSObject::class) {
+            method(public, "construct", JSValue::class, List::class, JSValue::class) {
                 val oldNeedsToPop = needsToPopContext
                 needsToPopContext = true
 
@@ -1133,16 +1143,12 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 areturn
             }
 
-            tryBlocks.subList(previousTryBlockCount, tryBlocks.lastIndex).forEach {
-                method(public, it.first, JSValue::class, JSValue::class, List::class) {
-                    compileBlock(it.second)
-                    pushUndefined
-                    areturn
-                }
+            extraMethods.subList(previousExtraMethodCount, extraMethods.size).forEach {
+                node.methods.add(it)
             }
 
-            repeat(tryBlocks.size - previousTryBlockCount) {
-                tryBlocks.removeLast()
+            repeat(extraMethods.size - previousExtraMethodCount) {
+                extraMethods.removeLast()
             }
         }.also {
             activeClassNames.removeLast()
@@ -1319,8 +1325,9 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
             aload(varEnv)
             ldc(funcName)
-            construct(compiledFunc.name, Realm::class) {
+            construct(compiledFunc.name, Realm::class, EnvRecord::class) {
                 pushRealm
+                aload(lexEnv)
             }
             ldc(false)
             invokevirtual(EnvRecord::class, "setMutableBinding", void, String::class, JSValue::class, Boolean::class)
@@ -1378,6 +1385,32 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 // env
             }
         }
+    }
+
+    private fun addExtraMethodToCurrentClass(
+        name: String,
+        routine: MethodAssembly.() -> Unit
+    ) {
+        val descriptor = Type.getMethodDescriptor(coerceType(JSValue::class), coerceType(JSValue::class), coerceType(List::class))
+
+        val methodNode = MethodNode(Opcodes.ASM7, public.access, name, descriptor, null, null)
+        val methodAssembly = MethodAssembly(methodNode)
+        routine(methodAssembly)
+
+        extraMethods.add(methodNode)
+    }
+
+    private fun MethodAssembly.invokeExtraMethod(name: String) {
+        aload_0
+        if (activeClassNames.size == 1) {
+            // This is a TopLevelScript
+            pushUndefined
+            construct(ArrayList::class)
+        } else {
+            aload_1
+            aload_2
+        }
+        invokevirtual(activeClassNames.last(), name, JSValue::class, JSValue::class, List::class)
     }
 
     private fun MethodAssembly.shouldThrow(errorName: String) {
