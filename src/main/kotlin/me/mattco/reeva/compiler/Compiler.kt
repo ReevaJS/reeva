@@ -794,7 +794,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             PropertyDefinitionNode.Type.Shorthand -> {
                 expect(property.first is IdentifierReferenceNode)
                 ldc(property.first.identifierName)
-                wrapInValue
+                wrapObjectInValue
                 compileExpression(property.first)
                 operation("getValue", JSValue::class, JSValue::class)
                 expect(enumerable)
@@ -811,14 +811,20 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
         when {
             propertyNameNode.isComputed -> compileExpression(expr)
-            expr is IdentifierNode -> ldc(expr.identifierName)
-            expr is StringLiteralNode -> ldc(expr.value)
-            expr is NumericLiteralNode -> ldc(expr.value)
+            expr is IdentifierNode -> {
+                ldc(expr.identifierName)
+                wrapObjectInValue
+            }
+            expr is StringLiteralNode -> {
+                ldc(expr.value)
+                wrapDoubleInValue
+            }
+            expr is NumericLiteralNode -> {
+                ldc(expr.value)
+                wrapDoubleInValue
+            }
             else -> unreachable()
         }
-
-        if (!propertyNameNode.isComputed)
-            wrapInValue
     }
 
     private fun MethodAssembly.compileArrayLiteral(arrayLiteralNode: ArrayLiteralNode) {
@@ -1221,8 +1227,8 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 // lval, rval
                 operation("toPropertyKey", PropertyKey::class, JSValue::class)
                 // lval, key
-                invokevirtual(JSObject::class, "hasProperty", JSValue::class, PropertyKey::class)
-                wrapInValue
+                invokevirtual(JSObject::class, "hasProperty", Boolean::class, PropertyKey::class)
+                wrapBooleanInValue
             }
         }
     }
@@ -1909,9 +1915,34 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private val MethodAssembly.toObject: Unit
         get() = invokevirtual(JSValue::class, "toObject", JSObject::class)
 
-    private val MethodAssembly.wrapInValue: Unit
+    private val MethodAssembly.wrapObjectInValue: Unit
         get() {
             operation("wrapInValue", JSValue::class, Any::class)
+        }
+
+    private val MethodAssembly.wrapIntInValue: Unit
+        get() {
+            new<JSNumber>()
+            dup_x1
+            swap
+            invokespecial(JSNumber::class, "<init>", void, Int::class)
+        }
+
+    private val MethodAssembly.wrapDoubleInValue: Unit
+        get() {
+            new<JSNumber>()
+            dup_x2
+            dup_x2
+            pop
+            invokespecial(JSNumber::class, "<init>", void, Double::class)
+        }
+
+    private val MethodAssembly.wrapBooleanInValue: Unit
+        get() {
+            new<JSBoolean>()
+            dup_x1
+            swap
+            invokespecial(JSBoolean::class, "<init>", void, Boolean::class)
         }
 
     private val MethodAssembly.returnFromFunction: Unit
