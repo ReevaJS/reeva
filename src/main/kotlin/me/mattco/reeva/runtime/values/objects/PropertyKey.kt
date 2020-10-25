@@ -1,5 +1,6 @@
 package me.mattco.reeva.runtime.values.objects
 
+import me.mattco.reeva.runtime.values.primitives.JSNumber
 import me.mattco.reeva.runtime.values.primitives.JSString
 import me.mattco.reeva.runtime.values.primitives.JSSymbol
 import me.mattco.reeva.utils.expect
@@ -8,26 +9,29 @@ import me.mattco.reeva.utils.expect
  * Represents a key in a JSObject's property map. This class is extremely useless
  * at the moment, but will be used later on when Symbol support is added
  */
-class PropertyKey private constructor(private val value: Any) {
+data class PropertyKey private constructor(internal val value: Any) {
     val isString = value is String
+    val isInt = value is Int
+    val isDouble = value is Double
     val isSymbol = value is JSSymbol
 
-    val asString by lazy {
-        expect(isString)
-        value as String
-    }
-
-    val asSymbol by lazy {
-        expect(isSymbol)
-        value as JSSymbol
-    }
+    val asString by lazy { value as String }
+    val asInt by lazy { value as Int }
+    val asDouble by lazy { if (isInt) asInt.toDouble() else value as Double }
+    val asSymbol by lazy { value as JSSymbol }
 
     val asValue by lazy {
-        if (isString) JSString(asString) else asSymbol
+        when {
+            isString -> JSString(asString)
+            isSymbol -> asSymbol
+            else -> JSNumber(asDouble)
+        }
     }
 
     constructor(value: String) : this(value as Any)
     constructor(value: JSString) : this(value.string)
+    constructor(value: Double) : this(value as Any)
+    constructor(value: Int) : this(value as Any)
     constructor(value: JSSymbol) : this(value as Any)
 
     override fun equals(other: Any?): Boolean {
@@ -39,9 +43,12 @@ class PropertyKey private constructor(private val value: Any) {
     }
 
     override fun toString(): String {
-        if (isString)
-            return asString
-        return asSymbol.toString()
+        return when {
+            isString -> asString
+            isInt -> asInt.toString()
+            isDouble -> asDouble.toString()
+            else -> asSymbol.descriptiveString()
+        }
     }
 
     companion object {

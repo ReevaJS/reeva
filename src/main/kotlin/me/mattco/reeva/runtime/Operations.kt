@@ -34,6 +34,9 @@ object Operations {
     val MAX_32BIT_INT = 2.0.pow(32)
     val MAX_31BIT_INT = 2.0.pow(31)
 
+    // Note this common gotcha: In Kotlin this really does accept any
+    // value, however it gets translated to Object in Java, which can't
+    // accept primitives.
     @JvmStatic
     fun wrapInValue(value: Any?): JSValue = when (value) {
         null -> throw Error("Ambiguous use of null in Operations.wrapInValue")
@@ -520,6 +523,8 @@ object Operations {
     fun toPropertyKey(value: JSValue): PropertyKey {
         val key = toPrimitive(value, ToPrimitiveHint.AsString)
         checkError() ?: return PropertyKey.INVALID_KEY
+        if (key is JSNumber && key.number.let { floor(it) == it })
+            return PropertyKey(key.number.toInt())
         if (key is JSSymbol)
             return PropertyKey(key)
         return PropertyKey(toString(key).string)

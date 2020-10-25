@@ -12,6 +12,7 @@ import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.*
 import me.mattco.reeva.runtime.values.objects.Descriptor.Companion.HAS_WRITABLE
 import me.mattco.reeva.runtime.values.objects.Descriptor.Companion.WRITABLE
+import me.mattco.reeva.runtime.values.objects.index.IndexedProperties
 import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.utils.*
 
@@ -19,7 +20,8 @@ open class JSObject protected constructor(
     val realm: Realm,
     prototype: JSValue? = null
 ) : JSValue() {
-    private val properties = mutableMapOf<PropertyKey, Descriptor>()
+    private val storage = mutableMapOf<StringOrSymbol, Descriptor>()
+    private val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
 
     // This must be a lateinit var, because otherwise some objects could not be
@@ -153,8 +155,9 @@ open class JSObject protected constructor(
         return true
     }
 
-    @JSThrows
-    fun hasProperty(property: String): Boolean = hasProperty(PropertyKey(property))
+    @JSThrows fun hasProperty(property: String): Boolean = hasProperty(property.key())
+    @JSThrows fun hasProperty(property: JSSymbol) = hasProperty(property.key())
+    @JSThrows fun hasProperty(property: Int) = hasProperty(property.key())
 
     @JSThrows
     @ECMAImpl("[[HasProperty]]", "9.1.7")
@@ -182,7 +185,7 @@ open class JSObject protected constructor(
 
     fun getOwnPropertyDescriptor(property: String) = getOwnPropertyDescriptor(PropertyKey(property))
     open fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
-        return properties[property]
+        return internalGet(property)
     }
 
     @JSThrows
@@ -191,7 +194,7 @@ open class JSObject protected constructor(
     @JSThrows
     @ECMAImpl("[[GetOwnProperty]]", "9.1.5")
     open fun getOwnProperty(property: PropertyKey): JSValue {
-        return properties[property]?.toObject(realm) ?: JSUndefined
+        return internalGet(property)?.toObject(realm) ?: JSUndefined
     }
 
     @JSThrows
@@ -223,7 +226,7 @@ open class JSObject protected constructor(
         if (currentDesc == null) {
             if (!extensible)
                 return false
-            properties[property] = newDesc.copy()
+            internalSet(property, newDesc.copy())
             return true
         }
 
@@ -242,19 +245,19 @@ open class JSObject protected constructor(
             if (currentDesc.run { hasConfigurable && !isConfigurable })
                 return false
             if (currentDesc.isDataDescriptor) {
-                properties[property] = Descriptor(
+                internalSet(property, Descriptor(
                     JSUndefined,
                     currentDesc.attributes and (WRITABLE or HAS_WRITABLE).inv(),
                     newDesc.getter,
                     newDesc.setter,
-                )
+                ))
             } else {
-                properties[property] = Descriptor(
+                internalSet(property, Descriptor(
                     newDesc.value,
                     currentDesc.attributes and (WRITABLE or HAS_WRITABLE).inv(),
                     null,
                     null,
-                )
+                ))
             }
         } else if (currentDesc.isDataDescriptor && newDesc.isDataDescriptor) {
             if (currentDesc.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {
@@ -275,22 +278,20 @@ open class JSObject protected constructor(
             return true
         }
 
-        val d = properties[property]!!
-
         if (newDesc.isDataDescriptor) {
             // To distinguish undefined from a non-specified property
-            d.value = newDesc.value
+            currentDesc.value = newDesc.value
         }
 
-        d.getter = newDesc.getter
-        d.setter = newDesc.setter
+        currentDesc.getter = newDesc.getter
+        currentDesc.setter = newDesc.setter
 
         if (newDesc.hasConfigurable)
-            d.setConfigurable(newDesc.isConfigurable)
+            currentDesc.setConfigurable(newDesc.isConfigurable)
         if (newDesc.hasEnumerable)
-            d.setEnumerable(newDesc.isEnumerable)
+            currentDesc.setEnumerable(newDesc.isEnumerable)
         if (newDesc.hasWritable)
-            d.setWritable(newDesc.isWritable)
+            currentDesc.setWritable(newDesc.isWritable)
 
         return true
     }
@@ -372,7 +373,7 @@ open class JSObject protected constructor(
     open fun delete(property: PropertyKey): Boolean {
         val desc = getOwnPropertyDescriptor(property) ?: return true
         if (desc.isConfigurable) {
-            properties.remove(property)
+            internalDelete(property)
             return true
         }
         return false
@@ -382,7 +383,9 @@ open class JSObject protected constructor(
     @ECMAImpl("[[OwnPropertyKeys]]", "9.1.11")
     open fun ownPropertyKeys(): List<PropertyKey> {
         // TODO: Ordering is wrong here
-        return properties.keys.toList()
+        return indexedProperties.indices().map(::PropertyKey) + storage.keys.map {
+            if (it.isString) PropertyKey(it.asString) else PropertyKey(it.asSymbol)
+        }
     }
 
     fun defineNativeAccessor(key: PropertyKey, attributes: Int, getter: JSFunction?, setter: JSFunction?) {
@@ -401,10 +404,92 @@ open class JSObject protected constructor(
         defineOwnProperty(key, Descriptor(obj, attributes))
     }
 
+    private fun internalGet(property: PropertyKey): Descriptor? {
+        val stringOrSymbol = when {
+            property.isInt -> {
+                if (property.asInt >= 0)
+                    return indexedProperties.get(this, property.asInt, false)
+                StringOrSymbol(property.asInt.toString())
+            }
+            property.isDouble -> StringOrSymbol(property.asDouble.toString())
+            property.isSymbol -> StringOrSymbol(property.asSymbol)
+            else -> StringOrSymbol(property.asString)
+        }
+
+        return storage[stringOrSymbol]
+    }
+
+    private fun internalSet(property: PropertyKey, descriptor: Descriptor) {
+        val stringOrSymbol = when {
+            property.isInt -> {
+                if (property.asInt >= 0) {
+                    indexedProperties.set(this, property.asInt, descriptor.value, descriptor.attributes)
+                    return
+                }
+                StringOrSymbol(property.asInt.toString())
+            }
+            property.isDouble -> StringOrSymbol(property.asDouble.toString())
+            property.isSymbol -> StringOrSymbol(property.asSymbol)
+            else -> StringOrSymbol(property.asString)
+        }
+
+        storage[stringOrSymbol] = descriptor
+    }
+
+    private fun internalDelete(property: PropertyKey) {
+        val stringOrSymbol = when {
+            property.isInt -> {
+                if (property.asInt >= 0) {
+                    indexedProperties.remove(property.asInt)
+                    return
+                }
+                StringOrSymbol(property.asInt.toString())
+            }
+            property.isDouble -> StringOrSymbol(property.asDouble.toString())
+            property.isSymbol -> StringOrSymbol(property.asSymbol)
+            else -> StringOrSymbol(property.asString)
+        }
+
+        storage.remove(stringOrSymbol)
+    }
+
     enum class PropertyKind {
         Key,
         Value,
         KeyValue
+    }
+
+    data class StringOrSymbol private constructor(private val value: Any) {
+        val isString = value is String
+        val isSymbol = value is JSSymbol
+
+        val asString by lazy { value as String }
+        val asSymbol by lazy { value as JSSymbol }
+
+        val asValue by lazy {
+            if (isString) JSString(asString) else asSymbol
+        }
+
+        constructor(value: String) : this(value as Any)
+        constructor(value: JSString) : this(value.string)
+        constructor(value: JSSymbol) : this(value as Any)
+
+        constructor(key: PropertyKey) : this(when {
+            key.isInt -> key.asInt.toString()
+            key.isDouble -> key.asDouble.toString()
+            key.isString -> key.asString
+            else -> key.asSymbol
+        })
+
+        override fun toString(): String {
+            if (isString)
+                return asString
+            return asSymbol.toString()
+        }
+
+        companion object {
+            val INVALID_KEY = StringOrSymbol(0)
+        }
     }
 
     companion object {

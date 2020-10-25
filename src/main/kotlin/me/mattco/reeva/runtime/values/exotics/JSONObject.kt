@@ -12,6 +12,7 @@ import me.mattco.reeva.runtime.values.arrays.JSArray
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
+import me.mattco.reeva.runtime.values.objects.PropertyKey
 import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.runtime.values.wrappers.JSBigIntObject
 import me.mattco.reeva.runtime.values.wrappers.JSBooleanObject
@@ -76,17 +77,17 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         )
         checkError() ?: return INVALID_VALUE
 
-        return serializeJSONProperty(state, "", wrapper)?.toValue() ?: JSUndefined
+        return serializeJSONProperty(state, "".key(), wrapper)?.toValue() ?: JSUndefined
     }
 
-    private fun serializeJSONProperty(state: SerializeState, key: String, holder: JSObject): String? {
+    private fun serializeJSONProperty(state: SerializeState, key: PropertyKey, holder: JSObject): String? {
         var value = holder.get(key)
         checkError() ?: return null
         if (value.isObject || value.isBigInt) {
             val toJSON = Operations.getV(value, "toJSON".toValue())
             checkError() ?: return null
             if (Operations.isCallable(toJSON)) {
-                value = Operations.call(toJSON, value, listOf(key.toValue()))
+                value = Operations.call(toJSON, value, listOf(key.asValue))
                 checkError() ?: return null
             }
         }
@@ -177,11 +178,11 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         state.indent += state.gap
         val partial = mutableListOf<String>()
 
-        Operations.enumerableOwnPropertyNames(value, JSObject.PropertyKind.Key).forEach { property ->
-            val strP = serializeJSONProperty(state, property.asString, value)
+        Operations.enumerableOwnPropertyNames(value, PropertyKind.Key).forEach { property ->
+            val strP = serializeJSONProperty(state, Operations.toPropertyKey(property), value)
             if (strP != null) {
                 partial.add(buildString {
-                    append(quoteJSONString(property.asString))
+                    append(quoteJSONString(Operations.toString(property).string))
                     append(":")
                     if (state.gap.isNotEmpty())
                         append(" ")

@@ -139,7 +139,7 @@ data class Descriptor(
         const val HAS_ENUMERABLE = 1 shl 6
         const val HAS_WRITABLE = 1 shl 7
 
-        const val defaultAttributes = CONFIGURABLE or ENUMERABLE or WRITABLE
+        const val defaultAttributes = CONFIGURABLE or ENUMERABLE or WRITABLE or HAS_CONFIGURABLE or HAS_ENUMERABLE or HAS_WRITABLE
 
         @ECMAImpl("ToPropertyDescriptor", "6.2.5.5")
         fun fromObject(obj: JSObject): Descriptor {
