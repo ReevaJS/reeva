@@ -512,8 +512,16 @@ class Parser(text: String) {
     }
 
     private fun parseBreakStatement(suffixes: Suffixes): StatementNode? {
-        // TODO
-        return null
+        if (tokenType != TokenType.Break)
+            return null
+        consume()
+        if ('\n' in token.trivia) {
+            automaticSemicolonInsertion()
+            return BreakStatementNode(null)
+        }
+        val expr = parseLabelIdentifier(suffixes.filter(Sfx.Yield, Sfx.Await))
+        automaticSemicolonInsertion()
+        return BreakStatementNode(expr)
     }
 
     private fun parseReturnStatement(suffixes: Suffixes): StatementNode? {

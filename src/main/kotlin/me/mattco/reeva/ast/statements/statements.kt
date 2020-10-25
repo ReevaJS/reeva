@@ -412,3 +412,5 @@ class CatchNode(
 
     override fun varScopedDeclarations() = block.varScopedDeclarations()
 }
+
+class BreakStatementNode(val label: LabelIdentifierNode?) : NodeBase(listOfNotNull(label)), StatementNode

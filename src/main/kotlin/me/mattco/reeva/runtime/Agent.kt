@@ -6,7 +6,6 @@ import me.mattco.reeva.compiler.TopLevelScript
 import me.mattco.reeva.runtime.contexts.ExecutionContext
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.errors.JSErrorObject
-import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.utils.expect
 import org.objectweb.asm.ClassWriter
