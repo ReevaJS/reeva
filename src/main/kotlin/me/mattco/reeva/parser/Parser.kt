@@ -1117,7 +1117,10 @@ class Parser(text: String) {
     }
 
     private fun parseNullLiteral(): LiteralNode? {
-        return if (tokenType == TokenType.NullLiteral) NullNode else null
+        return if (tokenType == TokenType.NullLiteral) {
+            consume()
+            NullNode
+        } else null
     }
 
     private fun parseBooleanLiteral(): LiteralNode? {
