@@ -336,6 +336,8 @@ open class JSObject protected constructor(
         if (newDesc.hasWritable)
             currentDesc.setWritable(newDesc.isWritable)
 
+        internalSet(property, currentDesc)
+
         return true
     }
 

@@ -121,7 +121,7 @@ data class Descriptor(
         when (val v = value) {
             is JSNativeProperty -> v.set(thisValue!!, newValue)
             is JSAccessor -> v.callSetter(thisValue!!, newValue)
-            else -> value = v
+            else -> value = newValue
         }
     }
 
