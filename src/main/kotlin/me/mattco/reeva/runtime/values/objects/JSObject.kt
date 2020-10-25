@@ -48,15 +48,15 @@ open class JSObject protected constructor(
     )
 
     open fun init() {
-        defineOwnProperty("prototype", Descriptor(prototype, 0))
+        defineOwnProperty("prototype", prototype, 0)
 
         configureInstanceProperties()
     }
 
     // This method exists to be called directly by subclass who cannot call their
     // super.init() method due to prototype complications
-    protected fun configureInstanceProperties(clazz: Class<*> = this::class.java) {
-        // TODO: This is terrible for performance, but very cool :)
+    protected fun configureInstanceProperties() {
+        // TODO: This is probably terrible for performance, but very cool :)
         // A better way to do it would be to use an annotation processor, and bake
         // these properties into the class's "init" method as direct calls to the
         // appropriate "defineXYZ" method intead of having to do all this reflection
@@ -64,7 +64,7 @@ open class JSObject protected constructor(
 
         val nativeProperties = mutableMapOf<PropertyKey, NativeMethodPair>()
 
-        clazz.declaredMethods.filter {
+        this::class.java.declaredMethods.filter {
             it.isAnnotationPresent(JSNativePropertyGetter::class.java)
         }.forEach { method ->
             val getter = method.getAnnotation(JSNativePropertyGetter::class.java)
@@ -79,7 +79,7 @@ open class JSObject protected constructor(
             nativeProperties[key] = methodPair
         }
 
-        clazz.declaredMethods.filter {
+        this::class.java.declaredMethods.filter {
             it.isAnnotationPresent(JSNativePropertySetter::class.java)
         }.forEach { method ->
             val setter = method.getAnnotation(JSNativePropertySetter::class.java)
@@ -103,7 +103,7 @@ open class JSObject protected constructor(
             defineNativeProperty(name, methods.attributes, methods.getter, methods.setter)
         }
 
-        clazz.declaredMethods.filter {
+        this::class.java.declaredMethods.filter {
             it.isAnnotationPresent(JSMethod::class.java)
         }.forEach {
             val annotation = it.getAnnotation(JSMethod::class.java)
@@ -119,10 +119,6 @@ open class JSObject protected constructor(
             ) { thisValue, arguments ->
                 it.invoke(this, thisValue, arguments) as JSValue
             }
-        }
-
-        if (clazz.superclass != Object::class.java) {
-            configureInstanceProperties(clazz.superclass)
         }
     }
 
