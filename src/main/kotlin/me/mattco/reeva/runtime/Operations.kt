@@ -493,13 +493,24 @@ object Operations {
         }.let(::JSString)
     }
 
-    fun toPrintableString(value: JSValue, withQuotes: Boolean = true): String {
+    fun toPrintableString(value: JSValue): String {
         return when (value) {
-            is JSSymbol -> value.descriptiveString()
-            is JSString -> {
-                val str = toString(value).string
-                if (withQuotes) "\"$str\"" else str
+            is JSUndefined -> "undefined"
+            is JSNull -> "null"
+            is JSTrue -> "true"
+            is JSFalse -> "false"
+            is JSNumber -> when {
+                value.isNaN -> "NaN"
+                value.isPositiveInfinity -> "Infinity"
+                value.isNegativeInfinity -> "-Infinity"
+                value.isInt -> value.asInt.toString()
+                else -> value.asDouble.toString()
             }
+            is JSString -> value.string
+            is JSSymbol -> value.descriptiveString()
+            is JSObject -> "[object <${value::class.java.simpleName}>]"
+            is JSAccessor -> "<accessor>"
+            is JSNativeProperty -> "<native-property>"
             else -> toString(value).string
         }
     }
