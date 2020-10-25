@@ -9,10 +9,7 @@ import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.arrays.JSArrayObject
 import me.mattco.reeva.runtime.values.functions.JSFunction
-import me.mattco.reeva.runtime.values.primitives.JSFalse
-import me.mattco.reeva.runtime.values.primitives.JSNull
-import me.mattco.reeva.runtime.values.primitives.JSTrue
-import me.mattco.reeva.runtime.values.primitives.JSUndefined
+import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.runtime.values.wrappers.JSStringObject
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
@@ -20,6 +17,7 @@ import me.mattco.reeva.utils.toValue
 
 class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) {
     override fun init() {
+        super.init()
         defineOwnProperty("constructor", realm.objectCtor, 0)
     }
 
@@ -76,7 +74,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
 
     // Doesn't throw because Symbol overrides this method,
     @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-    fun toString_(thisValue: JSValue, arguments: List<JSValue>): JSValue {
+    fun toString(thisValue: JSValue, arguments: List<JSValue>): JSValue {
         if (thisValue == JSUndefined)
             return "[object Undefined]".toValue()
         if (thisValue == JSNull)
@@ -84,18 +82,21 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
 
         val obj = Operations.toObject(thisValue)
         checkError() ?: return INVALID_VALUE
-        var builtinTag = obj.get(realm.`@@toStringTag`)
-        if (builtinTag == JSUndefined) {
-            builtinTag = when (obj) {
-                is JSArrayObject -> "Array".toValue()
-                is JSFunction -> "Function".toValue()
-                is JSStringObject -> "String".toValue()
-                else -> "Object".toValue()
+        val tag = obj.get(realm.`@@toStringTag`).let {
+            if (it is JSString) {
+                it.string
+            } else {
+                when (obj) {
+                    is JSArrayObject -> "Array"
+                    is JSFunction -> "Function"
+                    is JSStringObject -> "String"
+                    else -> "Object"
+                }
             }
         }
 
         // TODO: @@toStringTag
-        return "[object $builtinTag]".toValue()
+        return "[object $tag]".toValue()
     }
 
     @JSThrows

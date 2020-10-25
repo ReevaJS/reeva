@@ -73,7 +73,7 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
             runningContext.error = null
             val name = Operations.getValue(ret.get("name"))
             val message = Operations.getValue(ret.get("message"))
-            print("${Operations.toPrintableString(name, withQuotes = false)}: ${Operations.toPrintableString(message, withQuotes = false)}")
+            print("${Operations.toPrintableString(name)}: ${Operations.toPrintableString(message)}")
             println("\u001b[0m")
         }
         println("Compile time: ${(System.nanoTime() - start) / 1_000_000}ms")
