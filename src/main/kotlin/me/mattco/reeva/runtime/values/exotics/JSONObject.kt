@@ -8,7 +8,7 @@ import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
-import me.mattco.reeva.runtime.values.arrays.JSArray
+import me.mattco.reeva.runtime.values.arrays.JSArrayObject
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
@@ -120,7 +120,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         }
         if (value.isObject && !Operations.isCallable(value)) {
             if (Operations.isArray(value))
-                return serializeJSONArray(state, value as JSArray)
+                return serializeJSONArray(state, value as JSArrayObject)
             return serializeJSONObject(state, value as JSObject)
         }
         return null
@@ -163,8 +163,41 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         return listOf(c1, c2)
     }
 
-    private fun serializeJSONArray(state: SerializeState, value: JSArray): String {
-        TODO()
+    private fun serializeJSONArray(state: SerializeState, value: JSArrayObject): String {
+        if (value in state.stack) {
+            throwError<JSTypeErrorObject>("JSON.stringify cannot stringify circular objects")
+            return ""
+        }
+
+        state.stack.add(value)
+        val stepback = state.indent
+        state.indent += state.gap
+        val partial = mutableListOf<String>()
+        val len = Operations.lengthOfArrayLike(value)
+        for (i in 0 until len) {
+            val strP = serializeJSONProperty(state, i.key(), value)
+            partial.add(strP ?: "null")
+        }
+        val final = when {
+            partial.isEmpty() -> "[]"
+            state.gap.isEmpty() -> buildString {
+                append("[")
+                append(partial.joinToString(","))
+                append("]")
+            }
+            else -> buildString {
+                append("[\n")
+                append(state.indent)
+                append(partial.joinToString(",\n${state.indent}"))
+                append("\n")
+                append(stepback)
+                append("]")
+            }
+        }
+
+        state.stack.removeLast()
+        state.indent = stepback
+        return final
     }
 
     private fun serializeJSONObject(state: SerializeState, value: JSObject): String {
@@ -203,6 +236,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                 append("\n")
                 append(state.indent)
                 append(partial.joinToString(",\n${state.indent}"))
+                append("\n")
                 append(stepback)
                 append("}")
             }
