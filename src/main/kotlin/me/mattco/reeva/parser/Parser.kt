@@ -1167,9 +1167,11 @@ class Parser(text: String) {
             return ArrayElementNode(expr, type)
         }
 
-        while (tokenType != TokenType.CloseParen) {
+        while (tokenType != TokenType.CloseBracket) {
             elements.add(getElement() ?: break)
         }
+
+        consume(TokenType.CloseBracket)
 
         if (elements.isNotEmpty() && elements.last().type == ArrayElementNode.Type.Elision)
             elements.removeLast()
