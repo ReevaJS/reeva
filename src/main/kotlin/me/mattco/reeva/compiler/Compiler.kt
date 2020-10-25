@@ -27,8 +27,10 @@ import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.JSReference
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.errors.JSErrorObject
+import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.runtime.values.objects.JSObject
+import me.mattco.reeva.runtime.values.objects.PropertyKey
 import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.expect
@@ -1043,22 +1045,6 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         )
     }
 
-    private fun MethodAssembly.compileRelationalExpression(relationalExpressionNode: RelationalExpressionNode) {
-        evaluateStringOrNumericBinaryExpression(
-            relationalExpressionNode.lhs,
-            relationalExpressionNode.rhs,
-            relationalExpressionNode.op.symbol
-        )
-    }
-
-    private fun MethodAssembly.compileEqualityExpression(equalityExpressionNode: EqualityExpressionNode) {
-        evaluateStringOrNumericBinaryExpression(
-            equalityExpressionNode.lhs,
-            equalityExpressionNode.rhs,
-            equalityExpressionNode.op.symbol
-        )
-    }
-
     private fun MethodAssembly.compileBitwiseANDExpression(bitwiseANDExpressionNode: BitwiseANDExpressionNode) {
         evaluateStringOrNumericBinaryExpression(
             bitwiseANDExpressionNode.lhs,
@@ -1083,28 +1069,161 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         )
     }
 
+    private fun MethodAssembly.compileRelationalExpression(relationalExpressionNode: RelationalExpressionNode) {
+        compileExpression(relationalExpressionNode.lhs)
+        operation("getValue", JSValue::class, JSValue::class)
+        // lval
+        compileExpression(relationalExpressionNode.rhs)
+        operation("getValue", JSValue::class, JSValue::class)
+        // lval, rval
+
+        when (relationalExpressionNode.op) {
+            RelationalExpressionNode.Operator.LessThan -> {
+                ldc(true)
+                operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
+                dup
+                pushUndefined
+                // r, r, undefined
+                ifStatement(JumpCondition.RefEqual) {
+                    // r
+                    pop
+                    pushFalse
+                }
+            }
+            RelationalExpressionNode.Operator.GreaterThan -> {
+                swap
+                ldc(false)
+                operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
+                dup
+                pushUndefined
+                // r, r, undefined
+                ifStatement(JumpCondition.RefEqual) {
+                    // r
+                    pop
+                    pushFalse
+                }
+            }
+            RelationalExpressionNode.Operator.LessThanEquals -> {
+                swap
+                ldc(false)
+                operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
+                dup
+                pushFalse
+                // r, r, false
+                ifStatement(JumpCondition.RefEqual) {
+                    // r
+                    pop
+                    pushTrue
+                }
+            }
+            RelationalExpressionNode.Operator.GreaterThanEquals -> {
+                ldc(true)
+                operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
+                dup
+                pushFalse
+                // r, r, false
+                ifStatement(JumpCondition.RefEqual) {
+                    // r
+                    pop
+                    pushTrue
+                }
+            }
+            RelationalExpressionNode.Operator.Instanceof -> {
+                operation("instanceofOperator", JSValue::class, JSValue::class, JSValue::class)
+            }
+            RelationalExpressionNode.Operator.In -> {
+                // lval, rval
+                dup
+                // lval, rval, rval
+                instanceof<JSObject>()
+                // lval, rval, boolean
+                ifStatement(JumpCondition.False) {
+                    pushRealm
+                    ldc("right-hand side of 'in' operator must be an object")
+                    invokestatic(JSTypeErrorObject::class, "create", JSTypeErrorObject::class, Realm::class, String::class)
+                    invokestatic(Agent::class, "throwError", void, JSErrorObject::class)
+                    returnFromFunction
+                }
+                // lval, rval
+                operation("toPropertyKey", PropertyKey::class, JSValue::class)
+                // lval, key
+                invokevirtual(JSObject::class, "hasProperty", JSValue::class, PropertyKey::class)
+                wrapInValue
+            }
+        }
+    }
+
+    private fun MethodAssembly.compileEqualityExpression(equalityExpressionNode: EqualityExpressionNode) {
+        compileExpression(equalityExpressionNode.lhs)
+        operation("getValue", JSValue::class, JSValue::class)
+        compileExpression(equalityExpressionNode.rhs)
+        operation("getValue", JSValue::class, JSValue::class)
+        when (equalityExpressionNode.op) {
+            EqualityExpressionNode.Operator.StrictEquality, EqualityExpressionNode.Operator.StrictInequality -> {
+                operation("strictEqualityComparison", JSValue::class, JSValue::class, JSValue::class)
+            }
+            else -> {
+                operation("abstractEqualityComparison", JSValue::class, JSValue::class, JSValue::class)
+            }
+        }
+        when (equalityExpressionNode.op) {
+            EqualityExpressionNode.Operator.NonstrictEquality, EqualityExpressionNode.Operator.NonstrictInequality -> {
+                dup
+                pushTrue
+                ifStatement(JumpCondition.RefEqual) {
+                    pop
+                    pushFalse
+                }
+            }
+            else -> {}
+        }
+    }
+
     private fun MethodAssembly.compileLogicalANDExpression(logicalANDExpressionNode: LogicalANDExpressionNode) {
-        evaluateStringOrNumericBinaryExpression(
-            logicalANDExpressionNode.lhs,
-            logicalANDExpressionNode.rhs,
-            "&&"
-        )
+        compileExpression(logicalANDExpressionNode.lhs)
+        operation("getValue", JSValue::class, JSValue::class)
+        dup
+        // lval, lval
+        operation("toBoolean", JSValue::class, JSValue::class)
+        // lval, lbool
+        pushTrue
+        ifStatement(JumpCondition.RefEqual) {
+            // lval
+            pop
+            compileExpression(logicalANDExpressionNode.rhs)
+            operation("getValue", JSValue::class, JSValue::class)
+        }
     }
 
     private fun MethodAssembly.compileLogicalORExpression(logicalORExpressionNode: LogicalORExpressionNode) {
-        evaluateStringOrNumericBinaryExpression(
-            logicalORExpressionNode.lhs,
-            logicalORExpressionNode.rhs,
-            "||"
-        )
+        compileExpression(logicalORExpressionNode.lhs)
+        operation("getValue", JSValue::class, JSValue::class)
+        dup
+        // lval, lval
+        operation("toBoolean", JSBoolean::class, JSValue::class)
+        // lval, lbool
+        pushFalse
+        ifStatement(JumpCondition.RefEqual) {
+            // lval
+            pop
+            compileExpression(logicalORExpressionNode.rhs)
+            operation("getValue", JSValue::class, JSValue::class)
+        }
     }
 
     private fun MethodAssembly.compileCoalesceExpression(coalesceExpressionNode: CoalesceExpressionNode) {
-        evaluateStringOrNumericBinaryExpression(
-            coalesceExpressionNode.lhs,
-            coalesceExpressionNode.rhs,
-            "??"
-        )
+        compileExpression(coalesceExpressionNode.lhs)
+        operation("getValue", JSValue::class, JSValue::class)
+        dup
+        // lval, lval
+        operation("isNullish", Boolean::class, JSValue::class)
+        // lval, bool
+        ifStatement(JumpCondition.True) {
+            // lval
+            pop
+            compileExpression(coalesceExpressionNode.rhs)
+            operation("getValue", JSValue::class, JSValue::class)
+        }
     }
 
     private fun MethodAssembly.compileConditionalExpression(conditionalExpressionNode: ConditionalExpressionNode) {
@@ -1721,27 +1840,32 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             operation("wrapInValue", JSValue::class, Any::class)
         }
 
-    private val MethodAssembly.checkError: Unit
+    private val MethodAssembly.returnFromFunction: Unit
         get() {
-            invokestatic(Agent::class, "hasError", Boolean::class)
-            ifStatement(JumpCondition.True) {
-                if (needsToPopContext) {
-                    invokestatic(Agent::class, "popContext", void)
-                }
-                when (coerceType(methodStates.last().returnType)) {
-                    coerceType(CompletionRecord::class) -> {
-                        construct(CompletionRecord::class, CompletionRecord.Type::class, JSValue::class) {
-                            getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
-                            pushRunningContext
-                            getfield(ExecutionContext::class, "error", JSErrorObject::class)
-                        }
-                    }
-                    else -> {
+            if (needsToPopContext) {
+                invokestatic(Agent::class, "popContext", void)
+            }
+            when (coerceType(methodStates.last().returnType)) {
+                coerceType(CompletionRecord::class) -> {
+                    construct(CompletionRecord::class, CompletionRecord.Type::class, JSValue::class) {
+                        getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
                         pushRunningContext
                         getfield(ExecutionContext::class, "error", JSErrorObject::class)
                     }
                 }
-                areturn
+                else -> {
+                    pushRunningContext
+                    getfield(ExecutionContext::class, "error", JSErrorObject::class)
+                }
+            }
+            areturn
+        }
+
+    private val MethodAssembly.checkError: Unit
+        get() {
+            invokestatic(Agent::class, "hasError", Boolean::class)
+            ifStatement(JumpCondition.True) {
+                returnFromFunction
             }
         }
 

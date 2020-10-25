@@ -51,6 +51,11 @@ object Operations {
         expect(value !is JSBigInt)
     }
 
+    @JvmStatic
+    fun isNullish(value: JSValue): Boolean {
+        return value == JSUndefined || value == JSNull
+    }
+
     @JvmStatic @ECMAImpl("Number::unaryMinus(x)", "6.1.6.1.1")
     fun numericUnaryMinus(value: JSValue): JSValue {
         expect(value is JSNumber)
@@ -484,13 +489,11 @@ object Operations {
     fun toPrintableString(value: JSValue, withQuotes: Boolean = true): String {
         return when (value) {
             is JSSymbol -> value.descriptiveString()
-            is JSNumber -> toString(value).string
-            is JSUndefined -> "undefined"
-            is JSNull -> "null"
-            else -> {
+            is JSString -> {
                 val str = toString(value).string
                 if (withQuotes) "\"$str\"" else str
             }
+            else -> toString(value).string
         }
     }
 
@@ -581,6 +584,92 @@ object Operations {
 
     @JvmStatic @ECMAImpl("IsPropertyKey", "7.2.7")
     fun isPropertyKey(value: JSValue) = value is JSString || value is JSSymbol
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("Abstract Relational Comparison", "7.2.13")
+    fun abstractRelationalComparison(lhs: JSValue, rhs: JSValue, leftFirst: Boolean): JSValue {
+        val px: JSValue
+        val py: JSValue
+
+        if (leftFirst) {
+            px = toPrimitive(lhs, ToPrimitiveHint.AsNumber)
+            checkError() ?: return JSValue.INVALID_VALUE
+            py = toPrimitive(rhs, ToPrimitiveHint.AsNumber)
+            checkError() ?: return JSValue.INVALID_VALUE
+        } else {
+            py = toPrimitive(rhs, ToPrimitiveHint.AsNumber)
+            checkError() ?: return JSValue.INVALID_VALUE
+            px = toPrimitive(lhs, ToPrimitiveHint.AsNumber)
+            checkError() ?: return JSValue.INVALID_VALUE
+        }
+
+        if (px is JSString && py is JSString)
+            TODO()
+
+        if (px is JSBigInt && py is JSString)
+            TODO()
+        if (px is JSString && py is JSBigInt)
+            TODO()
+
+        val nx = toNumeric(px)
+        checkError() ?: return JSValue.INVALID_VALUE
+        val ny = toNumeric(py)
+        checkError() ?: return JSValue.INVALID_VALUE
+
+        if (nx is JSNumber && ny is JSNumber)
+            return numericLessThan(nx, ny)
+
+        TODO()
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("Abstract Equality Comparison", "7.2.14")
+    fun abstractEqualityComparison(lhs: JSValue, rhs: JSValue): JSValue {
+        if (lhs.type == rhs.type)
+            return strictEqualityComparison(lhs, rhs)
+
+        if (lhs == JSNull && rhs == JSUndefined)
+            return JSTrue
+        if (lhs == JSUndefined && rhs == JSNull)
+            return JSTrue
+
+        if (lhs is JSNumber && rhs is JSString)
+            return abstractEqualityComparison(lhs, toNumber(rhs))
+        if (lhs is JSString && rhs is JSNumber)
+            return abstractEqualityComparison(toNumber(lhs), rhs)
+
+        if (lhs is JSBigInt && rhs is JSString)
+            TODO()
+        if (lhs is JSString && rhs is JSBigInt)
+            TODO()
+
+        if (lhs is JSBoolean)
+            return abstractEqualityComparison(toNumber(lhs), rhs)
+        if (rhs is JSBoolean)
+            return abstractEqualityComparison(lhs, toNumber(rhs))
+
+        if ((lhs is JSString || lhs is JSNumber || lhs is JSBigInt || lhs is JSSymbol) && rhs is JSObject)
+            return abstractEqualityComparison(lhs, toPrimitive(rhs))
+        if ((rhs is JSString || rhs is JSNumber || rhs is JSBigInt || rhs is JSSymbol) && lhs is JSObject)
+            return abstractEqualityComparison(toPrimitive(lhs), rhs)
+
+        if ((lhs is JSBigInt && rhs is JSNumber) || (lhs is JSNumber && rhs is JSBigInt))
+            TODO()
+
+        return JSFalse
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("Strict Equality Comparison", "7.2.15")
+    fun strictEqualityComparison(lhs: JSValue, rhs: JSValue): JSValue {
+        if (lhs.type != rhs.type)
+            return JSFalse
+        if (lhs is JSNumber)
+            return numericEqual(lhs, rhs)
+        if (lhs is JSBigInt)
+            TODO()
+        return lhs.sameValueNonNumeric(rhs).toValue()
+    }
 
     @JSThrows
     @JvmStatic @ECMAImpl("GetV", "7.3.3")
@@ -680,6 +769,32 @@ object Operations {
         val func = getV(value, property)
         checkError() ?: return JSValue.INVALID_VALUE
         return call(func, value, arguments)
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("OrdinaryHasInstance", "7.3.21")
+    fun ordinaryHasInstance(ctor: JSFunction, target: JSValue): JSValue {
+        if (!isCallable(ctor))
+            return JSFalse
+
+        // TODO: [[BoundTargetFunction]] slot check
+        if (target !is JSObject)
+            return JSFalse
+
+        val ctorProto = ctor.get("prototype")
+        if (ctorProto !is JSObject) {
+            throwError<JSTypeErrorObject>("TODO: message")
+            return JSFalse
+        }
+
+        var obj = target
+        while (true) {
+            obj = (obj as JSObject).getPrototype()
+            if (obj == JSNull)
+                return JSFalse
+            if (ctorProto.sameValue(obj))
+                return JSTrue
+        }
     }
 
     @JSThrows
@@ -875,6 +990,29 @@ object Operations {
         if (tailPosition)
             TODO()
         return call(target as JSFunction, thisValue, arguments.toList())
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("InstanceofOperator")
+    fun instanceofOperator(target: JSValue, ctor: JSValue): JSValue {
+        if (ctor !is JSObject) {
+            throwError<JSTypeErrorObject>("right-hand side of 'instanceof' operator must be an object")
+            return JSValue.INVALID_VALUE
+        }
+
+        val instOfHandler = getMethod(target, Agent.runningContext.realm.`@@hasInstance`)
+        if (instOfHandler !is JSUndefined) {
+            val temp = call(instOfHandler, ctor, listOf(target))
+            checkError() ?: return JSValue.INVALID_VALUE
+            return toBoolean(temp)
+        }
+
+        if (!isCallable(ctor)) {
+            throwError<JSTypeErrorObject>("right-hand side of 'instanceof' operator must be callable")
+            return JSValue.INVALID_VALUE
+        }
+
+        return ordinaryHasInstance(ctor as JSFunction, target)
     }
 
     @JSThrows
