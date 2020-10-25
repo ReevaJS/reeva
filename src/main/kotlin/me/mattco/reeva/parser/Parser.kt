@@ -1170,7 +1170,10 @@ class Parser(text: String) {
             return ArrayElementNode(expr, type)
         }
 
-        while (tokenType != TokenType.CloseBracket) {
+        elements.add(getElement() ?: return ArrayLiteralNode(elements))
+
+        while (tokenType == TokenType.Comma) {
+            consume()
             elements.add(getElement() ?: break)
         }
 
