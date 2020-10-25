@@ -1,9 +1,9 @@
 package me.mattco.reeva.runtime.values.primitives
 
 import me.mattco.reeva.runtime.annotations.JSThrows
-import me.mattco.reeva.runtime.annotations.NativeGetterSignature
-import me.mattco.reeva.runtime.annotations.NativeSetterSignature
 import me.mattco.reeva.runtime.values.JSValue
+import me.mattco.reeva.utils.NativeGetterSignature
+import me.mattco.reeva.utils.NativeSetterSignature
 
 class JSNativeProperty(
     private val getter: NativeGetterSignature?,

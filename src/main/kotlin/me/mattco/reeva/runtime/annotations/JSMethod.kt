@@ -3,7 +3,6 @@ package me.mattco.reeva.runtime.annotations
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.objects.Descriptor
 
-typealias NativeFunctionSignature = (thisValue: JSValue, arguments: List<JSValue>) -> JSValue
 
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FUNCTION)

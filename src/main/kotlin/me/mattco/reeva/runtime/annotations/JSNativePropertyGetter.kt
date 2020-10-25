@@ -9,4 +9,3 @@ annotation class JSNativePropertyGetter(
     val name: String,
     val attributes: Int = Descriptor.defaultAttributes
 )
-typealias NativeGetterSignature = (thisValue: JSValue) -> JSValue

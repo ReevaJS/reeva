@@ -9,4 +9,3 @@ annotation class JSNativePropertySetter(
     val name: String,
     val attributes: Int = Descriptor.defaultAttributes
 )
-typealias NativeSetterSignature = (thisValue: JSValue, value: JSValue) -> Unit
