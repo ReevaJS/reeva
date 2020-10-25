@@ -2,7 +2,7 @@ package me.mattco.reeva.runtime.values
 
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.values.arrays.JSArray
+import me.mattco.reeva.runtime.values.arrays.JSArrayObject
 import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.runtime.values.primitives.JSNativeProperty
 import me.mattco.reeva.runtime.values.primitives.JSNull
@@ -41,7 +41,7 @@ abstract class JSValue : Ref {
     val isObject by lazy { type == Type.Object }
     val isAccessor by lazy { type == Type.Accessor }
     val isFunction by lazy { this is JSFunction }
-    val isArray by lazy { this is JSArray }
+    val isArray by lazy { this is JSArrayObject }
 
     val isNullish by lazy { this == JSNull || this == JSUndefined }
     val isInt by lazy { isNumber && !isInfinite && floor(asDouble) == asDouble }
@@ -96,10 +96,10 @@ abstract class JSValue : Ref {
             return this as JSFunction
         }
 
-    val asArray: JSArray
+    val asArray: JSArrayObject
         get() {
             expect(isArray)
-            return this as JSArray
+            return this as JSArrayObject
         }
 
     val toString: String
@@ -115,7 +115,10 @@ abstract class JSValue : Ref {
     fun sameValue(other: JSValue): Boolean {
         if (type != other.type)
             return false
-        // TODO: Number vs BigInt
+        if (type == Type.Number)
+            return Operations.numericSameValue(this, other).value
+        if (type == Type.BigInt)
+            TODO()
         return sameValueNonNumeric(other)
     }
 

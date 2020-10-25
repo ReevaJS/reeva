@@ -7,6 +7,8 @@ import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.objects.index.IndexedStorage.Companion.SPARSE_ARRAY_THRESHOLD
 import me.mattco.reeva.runtime.values.primitives.JSAccessor
 import me.mattco.reeva.runtime.values.primitives.JSEmpty
+import me.mattco.reeva.runtime.values.primitives.JSNativeProperty
+import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.expect
 
 class IndexedProperties private constructor(
@@ -24,33 +26,36 @@ class IndexedProperties private constructor(
 
     fun hasIndex(index: Int) = storage.hasIndex(index)
 
-    fun get(thisValue: JSObject?, index: Int, evaluateAccessors: Boolean = true): Descriptor? {
-        val result = storage.get(index) ?: return null
-        if (!evaluateAccessors)
-            return result
-        val value = result.value
-        if (value is JSAccessor) {
-            expect(thisValue != null)
-            return Descriptor(value.callGetter(thisValue), result.attributes)
-        }
-        return result
+    fun getDescriptor(index: Int): Descriptor? {
+        return storage.get(index)
     }
 
-    fun set(thisValue: JSObject?, index: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes, evaluateAccessors: Boolean = true) {
+    fun get(thisValue: JSValue, index: Int): JSValue {
+        return storage.get(index)?.getActualValue(thisValue) ?: return JSUndefined
+    }
+
+    fun setDescriptor(index: Int, value: JSValue, attributes: Int) {
         if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD || attributes != Descriptor.defaultAttributes))
             switchToGenericStorage()
-        if (storage is SimpleIndexedStorage || !evaluateAccessors) {
+
+        storage.set(index, value, attributes)
+    }
+
+    fun set(thisValue: JSValue, index: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
+        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD || attributes != Descriptor.defaultAttributes))
+            switchToGenericStorage()
+
+        if (storage is SimpleIndexedStorage) {
             storage.set(index, value, attributes)
             return
         }
 
-        val existingValue = storage.get(index)
-        if (existingValue != null && existingValue.value is JSAccessor) {
-            expect(thisValue != null)
-            (existingValue.value as JSAccessor).callSetter(thisValue, value)
-        } else {
+        val existingValue = storage.get(index) ?: run {
             storage.set(index, value, attributes)
+            return
         }
+        existingValue.setActualValue(thisValue, value)
+        existingValue.attributes = attributes
     }
 
     fun remove(index: Int): Boolean {
@@ -68,35 +73,24 @@ class IndexedProperties private constructor(
     }
 
     fun removeFirst(thisValue: JSObject?): Descriptor {
-        val first = storage.removeFirst()
-        if (first.value is JSAccessor) {
-            expect(thisValue != null)
-            return Descriptor((first.value as JSAccessor).callGetter(thisValue), first.attributes)
-        }
-        return first
+        return storage.removeFirst()
     }
 
     fun removeLast(thisValue: JSObject?): Descriptor {
-        val last = storage.removeLast()
-        if (last.value is JSAccessor) {
-            expect(thisValue != null)
-            return Descriptor((last.value as JSAccessor).callGetter(thisValue), last.attributes)
-        }
-        return last
+        return storage.removeLast()
     }
 
     fun add(value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
-        set(null, arrayLikeSize, value, attributes)
+        setDescriptor(arrayLikeSize, value, attributes)
     }
 
-    fun addAll(thisValue: JSObject, properties: IndexedProperties, evaluateAccessors: Boolean = true) {
+    fun addAll(properties: IndexedProperties) {
         if (storage is SimpleIndexedStorage && properties.storage !is SimpleIndexedStorage)
             switchToGenericStorage()
 
         properties.indices().forEach { index ->
-            val element = properties.get(thisValue, index, evaluateAccessors)!!
-            checkError() ?: return
-            storage.set(storage.arrayLikeSize, element.value, element.attributes)
+            val desc = properties.getDescriptor(index)!!
+            setDescriptor(index, desc.getRawValue(), desc.attributes)
         }
     }
 
@@ -118,7 +112,7 @@ class IndexedProperties private constructor(
             (storage as GenericIndexedStorage).also {
                 indices.ensureCapacity(it.packedElements.size)
                 it.packedElements.forEachIndexed { index, descriptor ->
-                    if (descriptor.value != JSEmpty)
+                    if (descriptor.getRawValue() != JSEmpty)
                         indices.add(index)
                 }
                 indices.addAll(it.sparseElements.keys.sorted())

@@ -9,6 +9,7 @@ import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
+import me.mattco.reeva.utils.key
 import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.throwError
 
@@ -153,7 +154,7 @@ class GlobalEnvRecord(
             Descriptor(function, 0)
         }
         // TODO: Why do we define _and_ set here?
-        if (!globalObject.defineOwnProperty(name, newDesc)) {
+        if (!globalObject.defineOwnProperty(name.key(), newDesc)) {
             throwError<JSTypeErrorObject>("TODO")
         }
         globalObject.set(name, function)

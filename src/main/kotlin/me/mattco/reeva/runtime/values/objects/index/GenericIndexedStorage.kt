@@ -26,7 +26,7 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
 
     override fun hasIndex(index: Int): Boolean {
         if (index < SPARSE_ARRAY_THRESHOLD)
-            return index < packedElements.size && packedElements[index].value !is JSEmpty
+            return index < packedElements.size && packedElements[index].getRawValue() !is JSEmpty
         return index in sparseElements
     }
 
@@ -64,7 +64,7 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
 
         if (index < SPARSE_ARRAY_THRESHOLD) {
             if (index < packedElements.size)
-                packedElements[index].value = JSEmpty
+                packedElements[index].setRawValue(JSEmpty)
         } else {
             sparseElements.remove(index)
         }
@@ -115,7 +115,7 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
 
         return if (sizeBacker <= SPARSE_ARRAY_THRESHOLD) {
             val last = packedElements[sizeBacker]
-            packedElements[sizeBacker].value = JSEmpty
+            packedElements[sizeBacker].setRawValue(JSEmpty)
             last
         } else {
             val result = sparseElements[sizeBacker]

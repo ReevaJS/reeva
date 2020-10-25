@@ -14,7 +14,7 @@ class SimpleIndexedStorage : IndexedStorage {
     override val arrayLikeSize: Int
         get() = sizeBacker
 
-    override fun hasIndex(index: Int) = index < sizeBacker && elements[index] !is JSEmpty
+    override fun hasIndex(index: Int) = index < sizeBacker && elements[index] != JSEmpty
 
     override fun get(index: Int) = if (index < elements.size) {
         Descriptor(elements[index], Descriptor.defaultAttributes)

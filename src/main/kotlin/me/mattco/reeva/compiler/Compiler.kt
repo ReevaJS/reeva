@@ -829,11 +829,11 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
     private fun MethodAssembly.compileArrayLiteral(arrayLiteralNode: ArrayLiteralNode) {
         ldc(arrayLiteralNode.elements.size)
-        operation("arrayCreate", JSValue::class, Int::class)
+        operation("arrayCreate", JSObject::class, Int::class)
         arrayLiteralNode.elements.forEachIndexed { index, element ->
             dup
-            construct(JSString::class, String::class) {
-                ldc(index.toString())
+            construct(JSNumber::class, Int::class) {
+                ldc(index)
             }
             if (element.expression == null) {
                 // TODO: Spec doesn't specify this step, is it alright to do this?
@@ -841,7 +841,6 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             } else {
                 compileExpression(element.expression)
                 operation("getValue", JSValue::class, JSValue::class)
-                operation("toString", JSString::class, JSValue::class)
             }
             operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
             pop

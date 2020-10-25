@@ -7,7 +7,7 @@ import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
-import me.mattco.reeva.runtime.values.arrays.JSArray
+import me.mattco.reeva.runtime.values.arrays.JSArrayObject
 import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.runtime.values.primitives.JSFalse
 import me.mattco.reeva.runtime.values.primitives.JSNull
@@ -87,7 +87,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         var builtinTag = obj.get(realm.`@@toStringTag`)
         if (builtinTag == JSUndefined) {
             builtinTag = when (obj) {
-                is JSArray -> "Array".toValue()
+                is JSArrayObject -> "Array".toValue()
                 is JSFunction -> "Function".toValue()
                 is JSStringObject -> "String".toValue()
                 else -> "Object".toValue()

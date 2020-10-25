@@ -12,7 +12,7 @@ import me.mattco.reeva.runtime.environment.FunctionEnvRecord
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.JSReference
-import me.mattco.reeva.runtime.values.arrays.JSArray
+import me.mattco.reeva.runtime.values.arrays.JSArrayObject
 import me.mattco.reeva.runtime.values.errors.JSRangeErrorObject
 import me.mattco.reeva.runtime.values.errors.JSReferenceErrorObject
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
@@ -197,27 +197,31 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("Number::equal", "6.1.6.1.13")
-    fun numericEqual(lhs: JSValue, rhs: JSValue): JSValue {
+    fun numericEqual(lhs: JSValue, rhs: JSValue): JSBoolean {
         if (lhs.isNaN || rhs.isNaN)
-            return JSUndefined
+            return JSFalse
         // TODO: Other requirements
-        return wrapInValue(lhs.asDouble == rhs.asDouble)
+        return (lhs.asDouble == rhs.asDouble).toValue()
     }
 
     @JvmStatic @ECMAImpl("Number::sameValue", "6.1.6.1.14")
-    fun numericSameValue(lhs: JSValue, rhs: JSValue): JSValue {
-        if (lhs.isNaN || rhs.isNaN)
-            return JSUndefined
-        // TODO: Other requirements
-        return wrapInValue(lhs.asDouble == rhs.asDouble)
+    fun numericSameValue(lhs: JSValue, rhs: JSValue): JSBoolean {
+        if (lhs.isNaN && rhs.isNaN)
+            return JSTrue
+        if (lhs.isPositiveZero && rhs.isNegativeZero)
+            return false.toValue()
+        if (lhs.isNegativeZero && rhs.isPositiveZero)
+            return false.toValue()
+        return (lhs.asDouble == rhs.asDouble).toValue()
     }
 
     @JvmStatic @ECMAImpl("Number::sameValueZero", "6.1.6.1.15")
-    fun numericSameValueZero(lhs: JSValue, rhs: JSValue): JSValue {
-        if (lhs.isNaN || rhs.isNaN)
-            return JSUndefined
-        // TODO: Other requirements
-        return wrapInValue(lhs.asDouble == rhs.asDouble)
+    fun numericSameValueZero(lhs: JSValue, rhs: JSValue): JSBoolean {
+        if (lhs.isNaN && rhs.isNaN)
+            return JSTrue
+        if (lhs.isZero && rhs.isZero)
+            return true.toValue()
+        return (lhs.asDouble == rhs.asDouble).toValue()
     }
 
     @JvmStatic @ECMAImpl("Number::bitwiseAND", "6.1.6.1.17")
@@ -555,7 +559,7 @@ object Operations {
     fun isArray(value: JSValue): Boolean {
         if (!value.isObject)
             return false
-        if (value is JSArray)
+        if (value is JSArrayObject)
             return true
         // TODO: Proxies
         return false
@@ -693,7 +697,7 @@ object Operations {
         ecmaAssert(target is JSObject)
         return target.defineOwnProperty(toPropertyKey(property).also {
             checkError() ?: return false
-        }, value, Descriptor.defaultAttributes)
+        }, Descriptor(value, Descriptor.defaultAttributes))
     }
 
     @JSThrows
@@ -935,13 +939,13 @@ object Operations {
 
     @JSThrows
     @JvmStatic @JvmOverloads @ECMAImpl("ArrayCreate", "9.4.2.2")
-    fun arrayCreate(length: Int, proto: JSObject? = Agent.runningContext.realm.arrayProto): JSValue {
+    fun arrayCreate(length: Int, proto: JSObject? = Agent.runningContext.realm.arrayProto): JSObject {
         if (length >= MAX_32BIT_INT - 1) {
             throwError<JSRangeErrorObject>("array length $length is too large")
-            return JSValue.INVALID_VALUE
+            return JSObject.INVALID_OBJECT
         }
-        val array = JSArray.create(Agent.runningContext.realm)
-        array.defineOwnProperty("length", JSNumber(length), Descriptor.WRITABLE)
+        val array = JSArrayObject.create(Agent.runningContext.realm, proto)
+        array.indexedProperties.setArrayLikeSize(length)
         return array
     }
 

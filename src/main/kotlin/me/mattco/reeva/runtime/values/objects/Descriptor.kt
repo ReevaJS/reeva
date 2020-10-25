@@ -5,11 +5,13 @@ import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.runtime.values.primitives.JSAccessor
+import me.mattco.reeva.runtime.values.primitives.JSEmpty
+import me.mattco.reeva.runtime.values.primitives.JSNativeProperty
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.toValue
 
 data class Descriptor(
-    var value: JSValue,
+    private var value: JSValue,
     var attributes: Int,
     var getter: JSFunction? = null,
     var setter: JSFunction? = null
@@ -107,8 +109,30 @@ data class Descriptor(
         }
     }
 
+    fun getActualValue(thisValue: JSValue?): JSValue {
+        return when (val v = value) {
+            is JSNativeProperty -> v.get(thisValue!!)
+            is JSAccessor -> v.callGetter(thisValue!!)
+            else -> v
+        }
+    }
+
+    fun setActualValue(thisValue: JSValue?, newValue: JSValue) {
+        when (val v = value) {
+            is JSNativeProperty -> v.set(thisValue!!, newValue)
+            is JSAccessor -> v.callSetter(thisValue!!, newValue)
+            else -> value = v
+        }
+    }
+
+    fun getRawValue(): JSValue = value
+
+    fun setRawValue(value: JSValue) {
+        this.value = value
+    }
+
     @ECMAImpl("FromPropertyDescriptor", "6.2.5.4")
-    fun toObject(realm: Realm): JSObject {
+    fun toObject(realm: Realm, thisValue: JSValue): JSObject {
         val obj = JSObject.create(realm)
         if (isAccessorDescriptor) {
             if (getter != null)
@@ -116,7 +140,7 @@ data class Descriptor(
             if (setter != null)
                 obj.set("set", setter!!)
         } else if (isDataDescriptor) {
-            obj.set("value", value)
+            obj.set("value", getActualValue(thisValue))
         }
 
         if (hasConfigurable)

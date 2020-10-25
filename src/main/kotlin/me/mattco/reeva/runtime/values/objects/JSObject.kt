@@ -21,7 +21,7 @@ open class JSObject protected constructor(
     prototype: JSValue? = null
 ) : JSValue() {
     private val storage = mutableMapOf<StringOrSymbol, Descriptor>()
-    private val indexedProperties = IndexedProperties()
+    internal val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
 
     // This must be a lateinit var, because otherwise some objects could not be
@@ -231,33 +231,28 @@ open class JSObject protected constructor(
         return true
     }
 
-    fun getOwnPropertyDescriptor(property: String) = getOwnPropertyDescriptor(PropertyKey(property))
+    @JSThrows fun getOwnPropertyDescriptor(property: String) = getOwnPropertyDescriptor(property.key())
+    @JSThrows fun getOwnPropertyDescriptor(property: JSSymbol) = getOwnPropertyDescriptor(property.key())
+    @JSThrows fun getOwnPropertyDescriptor(property: Int) = getOwnPropertyDescriptor(property.key())
+
+    @JSThrows
     open fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
         return internalGet(property)
     }
 
-    @JSThrows
-    fun getOwnProperty(property: String) = getOwnProperty(PropertyKey(property))
+    @JSThrows fun getOwnProperty(property: String) = getOwnProperty(property.key())
+    @JSThrows fun getOwnProperty(property: JSSymbol) = getOwnProperty(property.key())
+    @JSThrows fun getOwnProperty(property: Int) = getOwnProperty(property.key())
 
     @JSThrows
     @ECMAImpl("[[GetOwnProperty]]", "9.1.5")
     open fun getOwnProperty(property: PropertyKey): JSValue {
-        return internalGet(property)?.toObject(realm) ?: JSUndefined
+        return internalGet(property)?.toObject(realm, this) ?: JSUndefined
     }
 
-    @JSThrows
-    fun defineOwnProperty(property: String, value: JSValue, attributes: Int = Descriptor.defaultAttributes) =
-        defineOwnProperty(PropertyKey(property), value, attributes)
-
-    @JSThrows
-    fun defineOwnProperty(property: PropertyKey, value: JSValue, attributes: Int = Descriptor.defaultAttributes): Boolean {
-        return defineOwnProperty(property, Descriptor(value, attributes))
-    }
-
-    @JSThrows
-    fun defineOwnProperty(property: String, descriptor: Descriptor): Boolean {
-        return defineOwnProperty(property.key(), descriptor)
-    }
+    @JSThrows fun defineOwnProperty(property: String, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
+    @JSThrows fun defineOwnProperty(property: JSSymbol, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
+    @JSThrows fun defineOwnProperty(property: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
 
     @JSThrows
     @ECMAImpl("[[DefineOwnProperty]]", "9.1.6")
@@ -271,7 +266,7 @@ open class JSObject protected constructor(
         checkError() ?: return false
         val currentDesc = getOwnPropertyDescriptor(property)
 
-        if (currentDesc == null) {
+        if (currentDesc == null || currentDesc.getRawValue() == JSEmpty) {
             if (!extensible)
                 return false
             internalSet(property, newDesc.copy())
@@ -301,7 +296,7 @@ open class JSObject protected constructor(
                 ))
             } else {
                 internalSet(property, Descriptor(
-                    newDesc.value,
+                    newDesc.getActualValue(this),
                     currentDesc.attributes and (WRITABLE or HAS_WRITABLE).inv(),
                     null,
                     null,
@@ -311,7 +306,7 @@ open class JSObject protected constructor(
             if (currentDesc.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {
                 if (newDesc.isWritable)
                     return false
-                if (!newDesc.value.sameValue(currentDesc.value))
+                if (!newDesc.getActualValue(this).sameValue(currentDesc.getActualValue(this)))
                     return false
             }
         } else if (currentDesc.run { hasConfigurable && !isConfigurable }) {
@@ -328,7 +323,7 @@ open class JSObject protected constructor(
 
         if (newDesc.isDataDescriptor) {
             // To distinguish undefined from a non-specified property
-            currentDesc.value = newDesc.value
+            currentDesc.setActualValue(this, newDesc.getActualValue(this))
         }
 
         currentDesc.getter = newDesc.getter
@@ -344,10 +339,9 @@ open class JSObject protected constructor(
         return true
     }
 
-    @JSThrows
-    fun get(property: String, receiver: JSValue = this) = get(PropertyKey(property), receiver)
-    @JSThrows
-    fun get(property: JSSymbol, receiver: JSValue = this) = get(PropertyKey(property), receiver)
+    @JSThrows fun get(property: String, receiver: JSValue = this) = get(property.key(), receiver)
+    @JSThrows fun get(property: JSSymbol, receiver: JSValue = this) = get(property.key(), receiver)
+    @JSThrows fun get(property: Int, receiver: JSValue = this) = get(property.key(), receiver)
 
     @JSThrows
     @JvmOverloads @ECMAImpl("[[Get]]", "9.1.8")
@@ -360,19 +354,14 @@ open class JSObject protected constructor(
                 return JSUndefined
             return (parent as JSObject).get(property, receiver)
         }
-        if (desc.isDataDescriptor) {
-            val value = desc.value
-            if (value is JSAccessor)
-                return value.callGetter(this)
-            return value
-        }
         if (desc.isAccessorDescriptor)
             return desc.getter?.call(this, emptyList()) ?: JSUndefined
-        return desc.value
+        return desc.getActualValue(receiver)
     }
 
-    @JSThrows
-    fun set(property: String, value: JSValue, receiver: JSValue = this) = set(PropertyKey(property), value, receiver)
+    @JSThrows fun set(property: String, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
+    @JSThrows fun set(property: JSSymbol, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
+    @JSThrows fun set(property: Int, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
 
     @JSThrows
     @JvmOverloads @ECMAImpl("[[Set]]", "9.1.9")
@@ -405,7 +394,7 @@ open class JSObject protected constructor(
                 val valueDesc = Descriptor(value, 0)
                 return receiver.defineOwnProperty(property, valueDesc)
             }
-            return receiver.defineOwnProperty(property, value, Descriptor.defaultAttributes)
+            return receiver.defineOwnProperty(property, Descriptor(value, Descriptor.defaultAttributes))
         }
         expect(ownDesc.isAccessorDescriptor)
         val setter = ownDesc.setter ?: return false
@@ -414,16 +403,15 @@ open class JSObject protected constructor(
         return true
     }
 
-    @JSThrows
-    fun delete(property: String) = delete(PropertyKey(property))
+    @JSThrows fun delete(property: String) = delete(property.key())
+    @JSThrows fun delete(property: JSSymbol) = delete(property.key())
+    @JSThrows fun delete(property: Int) = delete(property.key())
 
     @ECMAImpl("[[Delete]]", "9.1.10")
     open fun delete(property: PropertyKey): Boolean {
         val desc = getOwnPropertyDescriptor(property) ?: return true
-        if (desc.isConfigurable) {
-            internalDelete(property)
-            return true
-        }
+        if (desc.isConfigurable)
+            return internalDelete(property)
         return false
     }
 
@@ -438,25 +426,26 @@ open class JSObject protected constructor(
 
     fun defineNativeAccessor(key: PropertyKey, attributes: Int, getter: JSFunction?, setter: JSFunction?) {
         val value = JSAccessor(getter, setter)
-        defineOwnProperty(key, Descriptor(value, attributes))
+        internalSet(key, Descriptor(value, attributes))
     }
 
     fun defineNativeProperty(key: PropertyKey, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
         val value = JSNativeProperty(getter, setter)
-        defineOwnProperty(key, Descriptor(value, attributes))
+        internalSet(key, Descriptor(value, attributes))
     }
 
     fun defineNativeFunction(key: PropertyKey, length: Int, attributes: Int, function: NativeFunctionSignature) {
         val name = if (key.isString) key.asString else "[${key.asSymbol.descriptiveString()}]"
         val obj = JSNativeFunction.fromLambda(realm, name, length, function)
-        defineOwnProperty(key, Descriptor(obj, attributes))
+        internalSet(key, Descriptor(obj, attributes))
     }
 
+    @JSThrows
     private fun internalGet(property: PropertyKey): Descriptor? {
         val stringOrSymbol = when {
             property.isInt -> {
                 if (property.asInt >= 0)
-                    return indexedProperties.get(this, property.asInt, false)
+                    return indexedProperties.getDescriptor(property.asInt)
                 StringOrSymbol(property.asInt.toString())
             }
             property.isDouble -> StringOrSymbol(property.asDouble.toString())
@@ -471,7 +460,7 @@ open class JSObject protected constructor(
         val stringOrSymbol = when {
             property.isInt -> {
                 if (property.asInt >= 0) {
-                    indexedProperties.set(this, property.asInt, descriptor.value, descriptor.attributes)
+                    indexedProperties.set(this, property.asInt, descriptor.getActualValue(this), descriptor.attributes)
                     return
                 }
                 StringOrSymbol(property.asInt.toString())
@@ -484,13 +473,11 @@ open class JSObject protected constructor(
         storage[stringOrSymbol] = descriptor
     }
 
-    private fun internalDelete(property: PropertyKey) {
+    private fun internalDelete(property: PropertyKey): Boolean {
         val stringOrSymbol = when {
             property.isInt -> {
-                if (property.asInt >= 0) {
-                    indexedProperties.remove(property.asInt)
-                    return
-                }
+                if (property.asInt >= 0)
+                    return indexedProperties.remove(property.asInt)
                 StringOrSymbol(property.asInt.toString())
             }
             property.isDouble -> StringOrSymbol(property.asDouble.toString())
@@ -499,6 +486,7 @@ open class JSObject protected constructor(
         }
 
         storage.remove(stringOrSymbol)
+        return true
     }
 
     enum class PropertyKind {
