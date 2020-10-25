@@ -5,7 +5,6 @@ import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
-import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.primitives.JSString
 import me.mattco.reeva.utils.expect
@@ -18,10 +17,10 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         // No super call to avoid prototype complications
 
         internalSetPrototype(realm.objectProto)
-        defineOwnProperty("prototype", Descriptor(realm.objectProto, Attributes(0)))
+        defineOwnProperty("prototype", realm.objectProto, 0)
         configureInstanceProperties()
 
-        defineOwnProperty("constructor", Descriptor(realm.stringCtor, Attributes(Attributes.CONFIGURABLE or Attributes.WRITABLE)))
+        defineOwnProperty("constructor", realm.stringCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     @JSNativePropertyGetter("length", attributes = 0)

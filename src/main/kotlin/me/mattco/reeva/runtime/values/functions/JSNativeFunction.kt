@@ -3,7 +3,6 @@ package me.mattco.reeva.runtime.values.functions
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.NativeFunctionSignature
 import me.mattco.reeva.runtime.values.JSValue
-import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.toValue
@@ -14,8 +13,8 @@ abstract class JSNativeFunction protected constructor(
     private val length: Int,
 ) : JSFunction(realm, ThisMode.Global) {
     override fun init() {
-        defineOwnProperty("length", Descriptor(length.toValue(), Attributes(Attributes.CONFIGURABLE)))
-        defineOwnProperty("name", Descriptor(name.toValue(), Attributes(Attributes.CONFIGURABLE)))
+        defineOwnProperty("length", length.toValue(), Descriptor.CONFIGURABLE)
+        defineOwnProperty("name", name.toValue(), Descriptor.CONFIGURABLE)
     }
 
     override fun name() = name

@@ -1,7 +1,7 @@
 package me.mattco.reeva.runtime.annotations
 
 import me.mattco.reeva.runtime.values.JSValue
-import me.mattco.reeva.runtime.values.objects.Attributes
+import me.mattco.reeva.runtime.values.objects.Descriptor
 
 typealias NativeFunctionSignature = (thisValue: JSValue, arguments: List<JSValue>) -> JSValue
 
@@ -10,5 +10,5 @@ typealias NativeFunctionSignature = (thisValue: JSValue, arguments: List<JSValue
 annotation class JSMethod(
     val name: String,
     val length: Int,
-    val attributes: Int = Attributes.defaultAttributes
+    val attributes: Int = Descriptor.defaultAttributes
 )

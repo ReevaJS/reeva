@@ -10,13 +10,10 @@ import me.mattco.reeva.runtime.environment.FunctionEnvRecord
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.*
-import me.mattco.reeva.runtime.values.objects.Attributes.Companion.HAS_WRITABLE
-import me.mattco.reeva.runtime.values.objects.Attributes.Companion.WRITABLE
+import me.mattco.reeva.runtime.values.objects.Descriptor.Companion.HAS_WRITABLE
+import me.mattco.reeva.runtime.values.objects.Descriptor.Companion.WRITABLE
 import me.mattco.reeva.runtime.values.primitives.*
-import me.mattco.reeva.utils.ecmaAssert
-import me.mattco.reeva.utils.expect
-import me.mattco.reeva.utils.shouldThrowError
-import me.mattco.reeva.utils.unreachable
+import me.mattco.reeva.utils.*
 
 open class JSObject protected constructor(
     val realm: Realm,
@@ -49,7 +46,7 @@ open class JSObject protected constructor(
     )
 
     open fun init() {
-        defineOwnProperty("prototype", Descriptor(prototype, Attributes(0)))
+        defineOwnProperty("prototype", Descriptor(prototype, 0))
 
         configureInstanceProperties()
     }
@@ -101,7 +98,7 @@ open class JSObject protected constructor(
         }
 
         nativeProperties.forEach { (name, methods) ->
-            defineNativeProperty(name, Attributes(methods.attributes), methods.getter, methods.setter)
+            defineNativeProperty(name, methods.attributes, methods.getter, methods.setter)
         }
 
         clazz.declaredMethods.filter {
@@ -116,7 +113,7 @@ open class JSObject protected constructor(
             defineNativeFunction(
                 key,
                 annotation.length,
-                Attributes(annotation.attributes)
+                annotation.attributes
             ) { thisValue, arguments ->
                 it.invoke(this, thisValue, arguments) as JSValue
             }
@@ -198,7 +195,18 @@ open class JSObject protected constructor(
     }
 
     @JSThrows
-    fun defineOwnProperty(property: String, descriptor: Descriptor) = defineOwnProperty(PropertyKey(property), descriptor)
+    fun defineOwnProperty(property: String, value: JSValue, attributes: Int = Descriptor.defaultAttributes) =
+        defineOwnProperty(PropertyKey(property), value, attributes)
+
+    @JSThrows
+    fun defineOwnProperty(property: PropertyKey, value: JSValue, attributes: Int = Descriptor.defaultAttributes): Boolean {
+        return defineOwnProperty(property, Descriptor(value, attributes))
+    }
+
+    @JSThrows
+    fun defineOwnProperty(property: String, descriptor: Descriptor): Boolean {
+        return defineOwnProperty(property.key(), descriptor)
+    }
 
     @JSThrows
     @ECMAImpl("[[DefineOwnProperty]]", "9.1.6")
@@ -223,39 +231,39 @@ open class JSObject protected constructor(
 //        if (newDesc.isEmpty)
 //            return true
 
-        if (currentDesc.attributes.run { hasConfigurable && !isConfigurable }) {
-            if (newDesc.attributes.isConfigurable)
+        if (currentDesc.run { hasConfigurable && !isConfigurable }) {
+            if (newDesc.isConfigurable)
                 return false
-            if (newDesc.attributes.hasEnumerable && currentDesc.attributes.isEnumerable != newDesc.attributes.isEnumerable)
+            if (newDesc.hasEnumerable && currentDesc.isEnumerable != newDesc.isEnumerable)
                 return false
         }
 
         if (currentDesc.isDataDescriptor != newDesc.isDataDescriptor) {
-            if (currentDesc.attributes.run { hasConfigurable && !isConfigurable })
+            if (currentDesc.run { hasConfigurable && !isConfigurable })
                 return false
             if (currentDesc.isDataDescriptor) {
                 properties[property] = Descriptor(
                     JSUndefined,
-                    Attributes(currentDesc.attributes.num and (WRITABLE or HAS_WRITABLE).inv()),
+                    currentDesc.attributes and (WRITABLE or HAS_WRITABLE).inv(),
                     newDesc.getter,
                     newDesc.setter,
                 )
             } else {
                 properties[property] = Descriptor(
                     newDesc.value,
-                    Attributes(currentDesc.attributes.num and (WRITABLE or HAS_WRITABLE).inv()),
+                    currentDesc.attributes and (WRITABLE or HAS_WRITABLE).inv(),
                     null,
                     null,
                 )
             }
         } else if (currentDesc.isDataDescriptor && newDesc.isDataDescriptor) {
-            if (currentDesc.attributes.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {
-                if (newDesc.attributes.isWritable)
+            if (currentDesc.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {
+                if (newDesc.isWritable)
                     return false
                 if (!newDesc.value.sameValue(currentDesc.value))
                     return false
             }
-        } else if (currentDesc.attributes.run { hasConfigurable && !isConfigurable }) {
+        } else if (currentDesc.run { hasConfigurable && !isConfigurable }) {
             val currentSetter = currentDesc.setter
             val newSetter = newDesc.setter
             if (newSetter != null && (currentSetter == null || !newSetter.sameValue(currentSetter)))
@@ -277,14 +285,12 @@ open class JSObject protected constructor(
         d.getter = newDesc.getter
         d.setter = newDesc.setter
 
-        newDesc.attributes.apply {
-            if (hasConfigurable)
-                d.attributes.setConfigurable(isConfigurable)
-            if (hasEnumerable)
-                d.attributes.setEnumerable(isEnumerable)
-            if (hasWritable)
-                d.attributes.setWritable(isWritable)
-        }
+        if (newDesc.hasConfigurable)
+            d.setConfigurable(newDesc.isConfigurable)
+        if (newDesc.hasEnumerable)
+            d.setEnumerable(newDesc.isEnumerable)
+        if (newDesc.hasWritable)
+            d.setWritable(newDesc.isWritable)
 
         return true
     }
@@ -305,11 +311,15 @@ open class JSObject protected constructor(
                 return JSUndefined
             return (parent as JSObject).get(property, receiver)
         }
-        if (desc.isDataDescriptor)
-            return desc.value
-        expect(desc.isAccessorDescriptor)
-        val getter = desc.getter ?: return JSUndefined
-        return Operations.call(getter, receiver)
+        if (desc.isDataDescriptor) {
+            val value = desc.value
+            if (value is JSAccessor)
+                return value.callGetter(this)
+            return value
+        }
+        if (desc.isAccessorDescriptor)
+            return desc.getter?.call(this, emptyList()) ?: JSUndefined
+        return desc.value
     }
 
     @JSThrows
@@ -330,10 +340,10 @@ open class JSObject protected constructor(
             val parent = getPrototype()
             if (parent != JSNull)
                 return (parent as JSObject).set(property, value, receiver)
-            ownDesc = Descriptor(JSUndefined, Attributes(Attributes.defaultAttributes))
+            ownDesc = Descriptor(JSUndefined, Descriptor.defaultAttributes)
         }
         if (ownDesc.isDataDescriptor) {
-            if (!ownDesc.attributes.isWritable)
+            if (!ownDesc.isWritable)
                 return false
             if (receiver !is JSObject)
                 return false
@@ -341,12 +351,12 @@ open class JSObject protected constructor(
             if (existingDescriptor != null) {
                 if (existingDescriptor.isAccessorDescriptor)
                     return false
-                if (!existingDescriptor.attributes.isWritable)
+                if (!existingDescriptor.isWritable)
                     return false
-                val valueDesc = Descriptor(value, Attributes(0))
+                val valueDesc = Descriptor(value, 0)
                 return receiver.defineOwnProperty(property, valueDesc)
             }
-            return receiver.createDataProperty(property, value)
+            return receiver.defineOwnProperty(property, value, Descriptor.defaultAttributes)
         }
         expect(ownDesc.isAccessorDescriptor)
         val setter = ownDesc.setter ?: return false
@@ -356,19 +366,12 @@ open class JSObject protected constructor(
     }
 
     @JSThrows
-    @ECMAImpl("CreateDataProperty", "7.3.5")
-    private fun createDataProperty(property: PropertyKey, value: JSValue): Boolean {
-        val newDesc = Descriptor(value, Attributes(Attributes.defaultAttributes))
-        return defineOwnProperty(property, newDesc)
-    }
-
-    @JSThrows
     fun delete(property: String) = delete(PropertyKey(property))
 
     @ECMAImpl("[[Delete]]", "9.1.10")
     open fun delete(property: PropertyKey): Boolean {
         val desc = getOwnPropertyDescriptor(property) ?: return true
-        if (desc.attributes.isConfigurable) {
+        if (desc.isConfigurable) {
             properties.remove(property)
             return true
         }
@@ -382,12 +385,17 @@ open class JSObject protected constructor(
         return properties.keys.toList()
     }
 
-    fun defineNativeProperty(key: PropertyKey, attributes: Attributes, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
-        val property = JSNativeProperty(getter, setter)
-        defineOwnProperty(key, Descriptor(property, attributes))
+    fun defineNativeAccessor(key: PropertyKey, attributes: Int, getter: JSFunction?, setter: JSFunction?) {
+        val value = JSAccessor(getter, setter)
+        defineOwnProperty(key, Descriptor(value, attributes))
     }
 
-    fun defineNativeFunction(key: PropertyKey, length: Int, attributes: Attributes, function: NativeFunctionSignature) {
+    fun defineNativeProperty(key: PropertyKey, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
+        val value = JSNativeProperty(getter, setter)
+        defineOwnProperty(key, Descriptor(value, attributes))
+    }
+
+    fun defineNativeFunction(key: PropertyKey, length: Int, attributes: Int, function: NativeFunctionSignature) {
         val name = if (key.isString) key.asString else "[${key.asSymbol.descriptiveString()}]"
         val obj = JSNativeFunction.fromLambda(realm, name, length, function)
         defineOwnProperty(key, Descriptor(obj, attributes))

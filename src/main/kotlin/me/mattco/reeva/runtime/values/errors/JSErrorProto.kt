@@ -4,7 +4,6 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.values.JSValue
-import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
@@ -19,11 +18,11 @@ open class JSErrorProto protected constructor(
     override fun init() {
         super.init()
 
-        defineOwnProperty("constructor", Descriptor(realm.errorCtor, Attributes(Attributes.CONFIGURABLE or Attributes.WRITABLE)))
-        defineOwnProperty("name", Descriptor(name.toValue(), Attributes(Attributes.CONFIGURABLE or Attributes.WRITABLE)))
+        defineOwnProperty("constructor", realm.errorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        defineOwnProperty("name", name.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
-    @JSMethod("toString", 0, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toString_(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
             shouldThrowError("TypeError")

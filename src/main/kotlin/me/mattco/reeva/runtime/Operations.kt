@@ -17,8 +17,6 @@ import me.mattco.reeva.runtime.values.errors.JSRangeErrorObject
 import me.mattco.reeva.runtime.values.errors.JSReferenceErrorObject
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.functions.JSFunction
-import me.mattco.reeva.runtime.values.objects.Attributes
-import me.mattco.reeva.runtime.values.objects.Attributes.Companion.WRITABLE
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.objects.PropertyKey
@@ -261,8 +259,10 @@ object Operations {
             }
             val value = (base as JSObject).get(reference.name, reference.getThisValue())
             checkError() ?: return JSValue.INVALID_VALUE
-            if (value.isAccessor)
-                return value.asAccessor.callGetter(base)
+            if (value is JSNativeProperty)
+                return value.get(base)
+            if (value is JSAccessor)
+                return value.callGetter(base)
             return value
         }
 
@@ -378,8 +378,8 @@ object Operations {
         JSValue.Type.Number -> (!value.isZero && !value.isNaN).toValue()
         JSValue.Type.BigInt -> TODO()
         JSValue.Type.Symbol -> JSTrue
-        JSValue.Type.Accessor -> TODO()
         JSValue.Type.Object -> JSTrue
+        else -> unreachable()
     }
 
     @JSThrows
@@ -686,10 +686,9 @@ object Operations {
     @JvmStatic @ECMAImpl("CreateDataProperty", "7.3.5")
     fun createDataProperty(target: JSValue, property: JSValue, value: JSValue): Boolean {
         ecmaAssert(target is JSObject)
-        val newDesc = Descriptor(value, Attributes(Attributes.defaultAttributes))
         return target.defineOwnProperty(toPropertyKey(property).also {
             checkError() ?: return false
-        }, newDesc)
+        }, value, Descriptor.defaultAttributes)
     }
 
     @JSThrows
@@ -806,7 +805,7 @@ object Operations {
             if (property.isSymbol)
                 return@forEach
             val desc = target.getOwnPropertyDescriptor(property) ?: return@forEach
-            if (!desc.attributes.isEnumerable)
+            if (!desc.isEnumerable)
                 return@forEach
             if (kind == JSObject.PropertyKind.Key) {
                 properties.add(property.asValue)
@@ -937,7 +936,7 @@ object Operations {
             return JSValue.INVALID_VALUE
         }
         val array = JSArray.create(Agent.runningContext.realm)
-        array.defineOwnProperty("length", Descriptor(JSNumber(length), Attributes(WRITABLE)))
+        array.defineOwnProperty("length", JSNumber(length), Descriptor.WRITABLE)
         return array
     }
 

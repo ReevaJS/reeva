@@ -154,7 +154,7 @@ class Realm {
         globalObject.set("JSON", jsonObj)
         globalObject.set("console", consoleObj)
 
-        globalObject.defineOwnProperty("undefined", Descriptor(JSUndefined, Attributes(0)))
+        globalObject.defineOwnProperty("undefined", JSUndefined, 0)
     }
 
     fun parseScript(script: String): ScriptRecord {

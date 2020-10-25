@@ -10,7 +10,6 @@ import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.functions.JSNativeFunction
-import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.primitives.JSSymbol
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
@@ -20,22 +19,22 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun init() {
         super.init()
 
-        defineOwnProperty("asyncIterator", Descriptor(realm.`@@asyncIterator`, Attributes(0)))
-        defineOwnProperty("hasInstance", Descriptor(realm.`@@hasInstance`, Attributes(0)))
-        defineOwnProperty("isConcatSpreadable", Descriptor(realm.`@@isConcatSpreadable`, Attributes(0)))
-        defineOwnProperty("iterator", Descriptor(realm.`@@iterator`, Attributes(0)))
-        defineOwnProperty("match", Descriptor(realm.`@@match`, Attributes(0)))
-        defineOwnProperty("matchAll", Descriptor(realm.`@@matchAll`, Attributes(0)))
-        defineOwnProperty("replace", Descriptor(realm.`@@replace`, Attributes(0)))
-        defineOwnProperty("search", Descriptor(realm.`@@search`, Attributes(0)))
-        defineOwnProperty("species", Descriptor(realm.`@@species`, Attributes(0)))
-        defineOwnProperty("split", Descriptor(realm.`@@split`, Attributes(0)))
-        defineOwnProperty("toPrimitive", Descriptor(realm.`@@toPrimitive`, Attributes(0)))
-        defineOwnProperty("toStringTag", Descriptor(realm.`@@toStringTag`, Attributes(0)))
-        defineOwnProperty("unscopables", Descriptor(realm.`@@unscopables`, Attributes(0)))
+        defineOwnProperty("asyncIterator", realm.`@@asyncIterator`, 0)
+        defineOwnProperty("hasInstance", realm.`@@hasInstance`, 0)
+        defineOwnProperty("isConcatSpreadable", realm.`@@isConcatSpreadable`, 0)
+        defineOwnProperty("iterator", realm.`@@iterator`, 0)
+        defineOwnProperty("match", realm.`@@match`, 0)
+        defineOwnProperty("matchAll", realm.`@@matchAll`, 0)
+        defineOwnProperty("replace", realm.`@@replace`, 0)
+        defineOwnProperty("search", realm.`@@search`, 0)
+        defineOwnProperty("species", realm.`@@species`, 0)
+        defineOwnProperty("split", realm.`@@split`, 0)
+        defineOwnProperty("toPrimitive", realm.`@@toPrimitive`, 0)
+        defineOwnProperty("toStringTag", realm.`@@toStringTag`, 0)
+        defineOwnProperty("unscopables", realm.`@@unscopables`, 0)
     }
 
-    @JSMethod("for", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("for", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun for_(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = arguments.argument(0).asString
         for ((globalKey, globalSymbol) in Realm.globalSymbolRegistry) {
@@ -48,7 +47,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @JSThrows
-    @JSMethod("keyFor", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("keyFor", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun keyFor(thisValue: JSValue, arguments: JSArguments): JSValue {
         val sym = arguments.argument(0)
         if (!sym.isSymbol) {

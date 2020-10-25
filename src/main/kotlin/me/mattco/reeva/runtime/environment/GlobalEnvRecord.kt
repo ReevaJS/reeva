@@ -6,7 +6,6 @@ import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.functions.JSFunction
-import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
@@ -102,7 +101,7 @@ class GlobalEnvRecord(
     @ECMAImpl("HasRestrictedGlobalProperty", "8.1.1.4.14")
     fun hasRestrictedGlobalProperty(name: String): Boolean {
         val existingProp = globalThis.getOwnPropertyDescriptor(name) ?: return false
-        if (existingProp.attributes.isConfigurable)
+        if (existingProp.isConfigurable)
             return false
         return true
     }
@@ -122,9 +121,9 @@ class GlobalEnvRecord(
     fun canDeclareGlobalFunction(name: String): Boolean {
         val globalObject = objectRecord.boundObject
         val existingProp = globalObject.getOwnPropertyDescriptor(name) ?: return globalObject.isExtensible()
-        if (existingProp.attributes.isConfigurable)
+        if (existingProp.isConfigurable)
             return true
-        if (existingProp.isDataDescriptor && existingProp.attributes.isWritable && existingProp.attributes.isEnumerable)
+        if (existingProp.isDataDescriptor && existingProp.isWritable && existingProp.isEnumerable)
             return true
         return false
     }
@@ -145,13 +144,13 @@ class GlobalEnvRecord(
     fun createGlobalFunctionBinding(name: String, function: JSFunction, canBeDeleted: Boolean) {
         val globalObject = objectRecord.boundObject
         val existingProp = globalObject.getOwnPropertyDescriptor(name)
-        val newDesc = if (existingProp == null || existingProp.attributes.isConfigurable) {
-            val attributes = Attributes(Attributes.WRITABLE or Attributes.ENUMERABLE)
-            if (canBeDeleted)
-                attributes.setConfigurable()
-            Descriptor(function, attributes)
+        val newDesc = if (existingProp == null || existingProp.isConfigurable) {
+            Descriptor(function, Descriptor.WRITABLE or Descriptor.ENUMERABLE).also {
+                if (canBeDeleted)
+                    it.setConfigurable()
+            }
         } else {
-            Descriptor(function, Attributes(0))
+            Descriptor(function, 0)
         }
         // TODO: Why do we define _and_ set here?
         if (!globalObject.defineOwnProperty(name, newDesc)) {

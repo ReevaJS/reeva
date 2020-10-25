@@ -7,7 +7,6 @@ import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
-import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSNumber
@@ -20,45 +19,45 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
         // No super call to avoid prototype complications
 
         internalSetPrototype(realm.objectProto)
-        defineOwnProperty("prototype", Descriptor(realm.objectProto, Attributes(0)))
+        defineOwnProperty("prototype", realm.objectProto, 0)
         configureInstanceProperties()
 
-        defineOwnProperty("constructor", Descriptor(realm.numberCtor, Attributes(Attributes.CONFIGURABLE or Attributes.WRITABLE)))
+        defineOwnProperty("constructor", realm.numberCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     @ECMAImpl("Number.prototype.toExponential", "20.1.3.2")
-    @JSMethod("toExponential", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("toExponential", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toExponential(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("Number.prototype.toFixed", "20.1.3.3")
-    @JSMethod("toFixed", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("toFixed", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toFixed(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("Number.prototype.toLocaleString", "20.1.3.3")
-    @JSMethod("toLocaleString", 0, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("toLocaleString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toLocaleString(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("Number.prototype.toPrecision", "20.1.3.3")
-    @JSMethod("toPrecision", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("toPrecision", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toPrecision(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("Number.prototype.toString", "20.1.3.3")
-    @JSMethod("toString", 0, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @JSThrows
     @ECMAImpl("Number.prototype.valueOf", "20.1.3.3")
-    @JSMethod("valueOf", 0, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("valueOf", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisNumberValue(thisValue)
     }

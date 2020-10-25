@@ -5,14 +5,9 @@ import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.errors.JSReferenceErrorObject
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
-import me.mattco.reeva.runtime.values.objects.Attributes
-import me.mattco.reeva.runtime.values.objects.Attributes.Companion.CONFIGURABLE
-import me.mattco.reeva.runtime.values.objects.Attributes.Companion.ENUMERABLE
-import me.mattco.reeva.runtime.values.objects.Attributes.Companion.WRITABLE
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
-import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.throwError
 import me.mattco.reeva.utils.unreachable
 
@@ -33,8 +28,8 @@ class ObjectEnvRecord(
     @JSThrows
     @ECMAImpl("CreateMutableBinding", "8.1.1.2.2")
     override fun createMutableBinding(name: String, canBeDeleted: Boolean) {
-        val descriptor = Descriptor(JSUndefined, Attributes(ENUMERABLE or WRITABLE or if (canBeDeleted) CONFIGURABLE else 0))
-        if (!boundObject.defineOwnProperty(name, descriptor))
+        val attrs = Descriptor.ENUMERABLE or Descriptor.WRITABLE or if (canBeDeleted) Descriptor.CONFIGURABLE else 0
+        if (!boundObject.defineOwnProperty(name, JSUndefined, attrs))
             throwError<JSTypeErrorObject>("TODO")
     }
 

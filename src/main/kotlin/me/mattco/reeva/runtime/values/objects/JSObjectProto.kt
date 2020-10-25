@@ -20,12 +20,12 @@ import me.mattco.reeva.utils.toValue
 
 class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) {
     override fun init() {
-        defineOwnProperty("constructor", Descriptor(realm.objectCtor, Attributes(0)))
+        defineOwnProperty("constructor", realm.objectCtor, 0)
     }
 
     @JSThrows
     @ECMAImpl("Object.prototype.hasOwnProperty", "19.1.3.2")
-    @JSMethod("hasOwnProperty", 1, Attributes.WRITABLE and Attributes.CONFIGURABLE)
+    @JSMethod("hasOwnProperty", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun hasOwnProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = Operations.toPropertyKey(arguments.argument(0))
         checkError() ?: return INVALID_VALUE
@@ -36,7 +36,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
 
     @JSThrows
     @ECMAImpl("Object.prototype.isPrototypeOf", "19.1.3.3")
-    @JSMethod("isPrototypeOf", 1, Attributes.WRITABLE and Attributes.CONFIGURABLE)
+    @JSMethod("isPrototypeOf", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun isPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         var arg = arguments.argument(0)
         if (arg !is JSObject)
@@ -55,19 +55,19 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
 
     @JSThrows
     @ECMAImpl("Object.prototype.propertyIsEnumerable", "19.1.3.4")
-    @JSMethod("propertyIsEnumerable", 1, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("propertyIsEnumerable", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun propertyIsEnumerable(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = Operations.toPropertyKey(arguments.argument(0))
         checkError() ?: return INVALID_VALUE
         val thisObj = Operations.toObject(thisValue)
         checkError() ?: return INVALID_VALUE
         val desc = thisObj.getOwnPropertyDescriptor(key) ?: return JSFalse
-        return desc.attributes.isEnumerable.toValue()
+        return desc.isEnumerable.toValue()
     }
 
     @JSThrows
     @ECMAImpl("Object.prototype.toLocaleString", "19.1.3.5")
-    @JSMethod("toLocaleString", 0, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("toLocaleString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toLocaleString(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         checkError() ?: return INVALID_VALUE
@@ -75,7 +75,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     // Doesn't throw because Symbol overrides this method,
-    @JSMethod("toString", 0, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toString_(thisValue: JSValue, arguments: List<JSValue>): JSValue {
         if (thisValue == JSUndefined)
             return "[object Undefined]".toValue()
@@ -99,7 +99,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @JSThrows
-    @JSMethod("valueOf", 0, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("valueOf", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         return Operations.toObject(thisValue)
     }

@@ -4,7 +4,7 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.values.arrays.JSArray
 import me.mattco.reeva.runtime.values.functions.JSFunction
-import me.mattco.reeva.runtime.values.functions.JSNativeProperty
+import me.mattco.reeva.runtime.values.primitives.JSNativeProperty
 import me.mattco.reeva.runtime.values.primitives.JSNull
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.*
@@ -23,7 +23,8 @@ abstract class JSValue : Ref {
             is JSString -> Type.String
             is JSSymbol -> Type.Symbol
             is JSNumber -> Type.Number
-            is JSNativeProperty -> Type.Accessor
+            is JSNativeProperty -> Type.NativeProperty
+            is JSAccessor -> Type.Accessor
             is JSObject -> Type.Object
             else -> throw IllegalStateException("Unknown object type")
         }
@@ -175,6 +176,7 @@ abstract class JSValue : Ref {
         BigInt("BigInt"),
         Symbol("Symbol"),
         Object("Object"),
+        NativeProperty("NativeProperty (you shouldn't see this)"),
         Accessor("Accessor (you shouldn't see this)");
 
         override fun toString() = typeName

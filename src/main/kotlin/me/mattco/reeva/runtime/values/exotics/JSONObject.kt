@@ -1,6 +1,5 @@
 package me.mattco.reeva.runtime.values.exotics
 
-import me.mattco.reeva.runtime.Agent
 import me.mattco.reeva.runtime.Agent.Companion.checkError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
@@ -11,8 +10,7 @@ import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.arrays.JSArray
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
-import me.mattco.reeva.runtime.values.functions.JSFunction
-import me.mattco.reeva.runtime.values.objects.Attributes
+import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.runtime.values.wrappers.JSBigIntObject
@@ -20,24 +18,23 @@ import me.mattco.reeva.runtime.values.wrappers.JSBooleanObject
 import me.mattco.reeva.runtime.values.wrappers.JSNumberObject
 import me.mattco.reeva.runtime.values.wrappers.JSStringObject
 import me.mattco.reeva.utils.*
-import kotlin.math.floor
 import kotlin.math.min
 
 class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    @JSNativePropertyGetter("@@toStringTag", Attributes.CONFIGURABLE)
+    @JSNativePropertyGetter("@@toStringTag", Descriptor.CONFIGURABLE)
     fun `get@@toStringTag`(thisValue: JSValue): JSValue {
         return "JSON".toValue()
     }
 
     @ECMAImpl("JSON.parse", "24.5.1")
-    @JSMethod("parse", 2, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("parse", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun parse(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @JSThrows
     @ECMAImpl("JSON.stringify", "24.5.2")
-    @JSMethod("stringify", 3, Attributes.CONFIGURABLE or Attributes.WRITABLE)
+    @JSMethod("stringify", 3, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun stringify(thisValue: JSValue, arguments: JSArguments): JSValue {
         // TODO: ReplacerFunction
 

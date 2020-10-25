@@ -5,7 +5,6 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.JSNativeFunction
-import me.mattco.reeva.runtime.values.objects.Attributes
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
@@ -32,7 +31,7 @@ open class JSErrorCtor protected constructor(
             Operations.toString(message)
         } else "".toValue()
 
-        val msgDesc = Descriptor(messageValue, Attributes(Attributes.CONFIGURABLE or Attributes.WRITABLE))
+        val msgDesc = Descriptor(messageValue, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         Operations.definePropertyOrThrow(obj, "message".toValue(), msgDesc)
 
         return obj
