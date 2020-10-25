@@ -229,8 +229,20 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             is ThrowStatementNode -> compileThrowStatement(statement)
             is TryStatementNode -> compileTryStatementNode(statement)
             is ForStatementNode -> compileForStatementNode(statement)
+            is BreakStatementNode -> compileBreakStatement(statement)
             else -> TODO()
         }
+    }
+
+    private fun MethodAssembly.compileBreakStatement(breakStatementNode: BreakStatementNode) {
+        if (breakStatementNode.label != null)
+            TODO()
+
+        construct(CompletionRecord::class, CompletionRecord.Type::class, JSValue::class) {
+            getstatic(CompletionRecord.Type::class, "Break", CompletionRecord.Type::class)
+            pushUndefined
+        }
+        areturn
     }
 
     private fun MethodAssembly.compileForStatementNode(forStatementNode: ForStatementNode) {
@@ -355,7 +367,22 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         }
 
         invokeExtraMethod(name)
-        pop
+        // TODO: Check label
+        getfield(CompletionRecord::class, "type", CompletionRecord.Type::class)
+        dup
+        // type, type
+        getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
+        // type, type, Type.Return
+        ifStatement(JumpCondition.RefEqual) {
+            // type
+            pop
+            goto(end)
+        }
+        // type
+        getstatic(CompletionRecord.Type::class, "Break", CompletionRecord.Type::class)
+        ifStatement(JumpCondition.RefEqual) {
+            goto(end)
+        }
 
         if (incrementer != null) {
             compileExpression(incrementer)
@@ -1010,7 +1037,54 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     }
 
     private fun MethodAssembly.compileUnaryExpression(unaryExpressionNode: UnaryExpressionNode) {
-        TODO()
+        compileExpression(unaryExpressionNode.node)
+        when (unaryExpressionNode.op) {
+            UnaryExpressionNode.Operator.Delete -> {
+                operation("deleteOperator", JSValue::class, JSValue::class)
+            }
+            UnaryExpressionNode.Operator.Void -> {
+                operation("getValue", JSValue::class, JSValue::class)
+                pop
+                pushUndefined
+            }
+            UnaryExpressionNode.Operator.Typeof -> {
+                operation("typeofOperator", JSValue::class, JSValue::class)
+            }
+            UnaryExpressionNode.Operator.Plus -> {
+                operation("getValue", JSValue::class, JSValue::class)
+                operation("toNumber", JSValue::class, JSValue::class)
+            }
+            UnaryExpressionNode.Operator.Minus -> {
+                operation("getValue", JSValue::class, JSValue::class)
+                operation("toNumeric", JSValue::class, JSValue::class)
+                dup
+                // TODO
+                operation("checkNotBigInt", void, JSValue::class)
+                operation("numericUnaryMinus", JSValue::class, JSValue::class)
+            }
+            UnaryExpressionNode.Operator.BitwiseNot -> {
+                operation("getValue", JSValue::class, JSValue::class)
+                operation("toNumeric", JSValue::class, JSValue::class)
+                dup
+                // TODO
+                operation("checkNotBigInt", void, JSValue::class)
+                operation("numericBitwiseNOT", JSValue::class, JSValue::class)
+            }
+            UnaryExpressionNode.Operator.Not -> {
+                operation("getValue", JSValue::class, JSValue::class)
+                operation("toBoolean", JSValue::class, JSValue::class)
+                pushTrue
+                ifElseStatement(JumpCondition.RefEqual) {
+                    ifBlock {
+                        pushFalse
+                    }
+
+                    elseBlock {
+                        pushTrue
+                    }
+                }
+            }
+        }
     }
 
     private fun MethodAssembly.compileExponentiationExpression(exponentiationExpressionNode: ExponentiationExpressionNode) {

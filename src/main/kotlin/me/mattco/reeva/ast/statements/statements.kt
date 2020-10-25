@@ -413,4 +413,10 @@ class CatchNode(
     override fun varScopedDeclarations() = block.varScopedDeclarations()
 }
 
-class BreakStatementNode(val label: LabelIdentifierNode?) : NodeBase(listOfNotNull(label)), StatementNode
+class BreakStatementNode(val label: LabelIdentifierNode?) : NodeBase(listOfNotNull(label)), StatementNode {
+    override fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
+        if (label == null)
+            return false
+        return label.identifierName !in labelSet
+    }
+}

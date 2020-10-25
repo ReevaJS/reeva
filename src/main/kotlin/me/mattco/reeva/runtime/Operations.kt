@@ -993,7 +993,55 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("InstanceofOperator")
+    @JvmStatic @ECMAImpl("The delete Operator", "12.5.3")
+    fun deleteOperator(value: JSValue): JSValue {
+        if (value !is JSReference)
+            return JSTrue
+        if (value.isUnresolvableReference) {
+            ecmaAssert(!value.isStrict)
+            return JSTrue
+        }
+        if (value.isPropertyReference) {
+            if (value.isSuperReference)
+                TODO()
+            expect(value.baseValue is JSValue)
+            val baseObj = toObject(value.baseValue)
+            val deleteStatus = baseObj.delete(value.name)
+            if (!deleteStatus && value.isStrict)
+                TODO()
+            return deleteStatus.toValue()
+        } else {
+            ecmaAssert(value.baseValue is EnvRecord)
+            expect(value.name.isString)
+            return value.baseValue.deleteBinding(value.name.asString).toValue()
+        }
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("The typeof Operator", "12.5.5")
+    fun typeofOperator(value: JSValue): JSValue {
+        if (value is JSReference) {
+            if (value.isUnresolvableReference)
+                return "undefined".toValue()
+        }
+        val v = getValue(value)
+        checkError() ?: return JSValue.INVALID_VALUE
+        return when (v) {
+            JSUndefined -> "undefined"
+            JSNull -> "object"
+            is JSBoolean -> "boolean"
+            is JSNumber -> "number"
+            is JSString -> "string"
+            is JSSymbol -> "symbol"
+            is JSBigInt -> "bigint"
+            is JSFunction -> "function"
+            is JSObject -> "object"
+            else -> unreachable()
+        }.toValue()
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("InstanceofOperator", "12.10.4")
     fun instanceofOperator(target: JSValue, ctor: JSValue): JSValue {
         if (ctor !is JSObject) {
             throwError<JSTypeErrorObject>("right-hand side of 'instanceof' operator must be an object")
