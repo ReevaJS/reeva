@@ -1278,8 +1278,19 @@ class Parser(text: String) {
     }
 
     private fun parseFunctionExpression(suffixes: Suffixes): PrimaryExpressionNode? {
-        // TODO
-        return null
+        if (tokenType != TokenType.Function)
+            return null
+
+        consume()
+        val id = parseBindingIdentifier()
+        consume(TokenType.OpenParen)
+        val args = parseFormalParameters(Suffixes()) ?: return null
+        consume(TokenType.CloseParen)
+        consume(TokenType.OpenCurly)
+        val body = parseFunctionBody(Suffixes())
+        consume(TokenType.CloseCurly)
+
+        return FunctionExpressionNode(id, args, FunctionStatementList(body))
     }
 
     private fun parseClassExpression(suffixes: Suffixes): PrimaryExpressionNode? {

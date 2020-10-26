@@ -5,7 +5,7 @@ import me.mattco.reeva.ast.LiteralNode
 import me.mattco.reeva.ast.NodeBase
 import me.mattco.reeva.ast.PrimaryExpressionNode
 
-class BooleanNode(val value: Boolean) : NodeBase(), LiteralNode {
+sealed class BooleanNode(val value: Boolean) : NodeBase(), LiteralNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         append(" (value=")
@@ -13,6 +13,10 @@ class BooleanNode(val value: Boolean) : NodeBase(), LiteralNode {
         append(")\n")
     }
 }
+
+object TrueNode : BooleanNode(true)
+
+object FalseNode : BooleanNode(false)
 
 class StringLiteralNode(val value: String) : NodeBase(), LiteralNode {
     override fun dump(indent: Int) = buildString {

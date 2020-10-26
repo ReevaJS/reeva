@@ -529,7 +529,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
                 if (Operations.toBoolean(testValue) == JSFalse)
                     return normalCompletion(value)
             }
-            val result = interpretStatement(body).ifAbrupt { return it }
+            val result = interpretStatement(body)
             if (!loopContinues(result, labelSet))
                 return normalCompletion(value)
             if (result.value != JSEmpty)
@@ -690,6 +690,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             ThisNode -> interpretThis()
             is CommaExpressionNode -> interpretCommaExpressionNode(expression)
             is IdentifierReferenceNode -> interpretIdentifierReference(expression)
+            is FunctionExpressionNode -> interpretFunctionExpression(expression)
             is LiteralNode -> interpretLiteral(expression)
             is CPEAAPLNode -> interpretCPEAAPL(expression)
             is NewExpressionNode -> interpretNewExpression(expression)
@@ -739,6 +740,42 @@ class Interpreter(private val record: Realm.ScriptRecord) {
         val value = Operations.resolveBinding(identifierReference.identifierName)
         ifError { return it }
         return normalCompletion(value)
+    }
+
+    private fun interpretFunctionExpression(functionExpressionNode: FunctionExpressionNode): Completion {
+        return if (functionExpressionNode.identifier == null) {
+            val scope = Agent.runningContext.lexicalEnv!!
+            val sourceText = "TODO"
+            val closure = ordinaryFunctionCreate(
+                record.realm.functionProto,
+                sourceText,
+                functionExpressionNode.parameters,
+                functionExpressionNode.body,
+                JSFunction.ThisMode.NonLexical,
+                false,
+                scope,
+            )
+            setFunctionName(closure, "".key())
+            normalCompletion(closure)
+        } else {
+            val scope = Agent.runningContext.lexicalEnv!!
+            val funcEnv = DeclarativeEnvRecord.create(scope)
+            val name = functionExpressionNode.identifier.identifierName
+            funcEnv.createImmutableBinding(name, false)
+            val sourceText = "TODO"
+            val closure = ordinaryFunctionCreate(
+                record.realm.functionProto,
+                sourceText,
+                functionExpressionNode.parameters,
+                functionExpressionNode.body,
+                JSFunction.ThisMode.NonLexical,
+                false,
+                funcEnv,
+            )
+            setFunctionName(closure, name.key())
+            funcEnv.initializeBinding(name, closure)
+            normalCompletion(closure)
+        }
     }
 
     private fun interpretLiteral(literalNode: LiteralNode): Completion {
@@ -858,7 +895,8 @@ class Interpreter(private val record: Realm.ScriptRecord) {
     }
 
     private fun interpretArrayLiteral(arrayLiteralNode: ArrayLiteralNode): Completion {
-        val array = JSArrayObject.create(Agent.runningContext.realm)
+        val array = Operations.arrayCreate(arrayLiteralNode.elements.size)
+        ifError { return it }
         if (arrayLiteralNode.elements.isEmpty())
             return normalCompletion(array)
         arrayLiteralNode.elements.forEachIndexed { index, element ->

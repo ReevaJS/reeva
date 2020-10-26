@@ -35,7 +35,6 @@ data class ArgumentListEntry(val expression: ExpressionNode, val isSpread: Boole
     }
 }
 
-// TODO: Simplify this structure a bit
 class FunctionDeclarationNode(
     val identifier: BindingIdentifierNode?,
     val parameters: FormalParametersNode,
@@ -70,6 +69,18 @@ class FunctionDeclarationNode(
     override fun varDeclaredNames() = emptyList<String>()
 
     override fun varScopedDeclarations() = emptyList<NodeBase>()
+}
+
+class FunctionExpressionNode(
+    val identifier: BindingIdentifierNode?,
+    val parameters: FormalParametersNode,
+    val body: FunctionStatementList,
+) : NodeBase(listOfNotNull(identifier, parameters, body)), PrimaryExpressionNode {
+    override fun contains(nodeName: String) = false
+
+    override fun hasName() = identifier != null
+
+    override fun isFunctionDefinition() = true
 }
 
 // Also "FunctionBody" in the spec

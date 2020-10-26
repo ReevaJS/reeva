@@ -969,21 +969,20 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         compileArguments(callExpressionNode.arguments)
         // TODO: Tail calls
         ldc(false)
-        operation("evaluateCall", JSValue::class, JSValue::class, JSValue::class, Array<JSValue>::class, Boolean::class)
+        operation("evaluateCall", JSValue::class, JSValue::class, JSValue::class, List::class, Boolean::class)
     }
 
     private fun MethodAssembly.compileArguments(argumentsNode: ArgumentsNode) {
         val arguments = argumentsNode.arguments
-        ldc(arguments.size)
-        anewarray<JSValue>()
+        construct(java.util.ArrayList::class)
         arguments.forEachIndexed { index, argument ->
             if (argument.isSpread)
                 TODO()
             dup
-            ldc(index)
             compileExpression(argument.expression)
             operation("getValue", JSValue::class, JSValue::class)
-            aastore
+            invokevirtual(ArrayList::class, "add", Boolean::class, Object::class)
+            pop
         }
     }
 
