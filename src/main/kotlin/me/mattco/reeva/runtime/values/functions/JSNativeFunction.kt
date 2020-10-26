@@ -18,8 +18,6 @@ abstract class JSNativeFunction protected constructor(
         defineOwnProperty("name", name.toValue(), Descriptor.CONFIGURABLE)
     }
 
-    override fun name() = name
-
     companion object {
         fun fromLambda(realm: Realm, name: String, length: Int, lambda: NativeFunctionSignature) =
             object : JSNativeFunction(realm, name, length) {

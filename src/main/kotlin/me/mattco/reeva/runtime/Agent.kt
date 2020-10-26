@@ -3,6 +3,7 @@ package me.mattco.reeva.runtime
 import me.mattco.reeva.compiler.ByteClassLoader
 import me.mattco.reeva.compiler.Compiler
 import me.mattco.reeva.compiler.TopLevelScript
+import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.contexts.ExecutionContext
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.errors.JSErrorObject
@@ -23,7 +24,51 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
         agentIdentifiers.add(signifier)
     }
 
-    fun execute(scriptRecord: Realm.ScriptRecord) {
+    fun interpretedEvaluation(scriptRecord: Realm.ScriptRecord) {
+        val realm = scriptRecord.realm
+        val newContext = ExecutionContext(this, realm, null)
+        runningContextStack.add(newContext)
+
+        realm.initObjects()
+
+        if (!::globalEnv.isInitialized) {
+            val globalObj = JSObject.create(realm)
+            realm.globalObject = globalObj
+            globalEnv = GlobalEnvRecord.create(globalObj, globalObj)
+            realm.globalEnv = globalEnv
+        } else {
+            realm.globalEnv = globalEnv
+            realm.globalObject = globalEnv.globalThis
+        }
+
+        realm.populateGlobalObject()
+
+        newContext.variableEnv = globalEnv
+        newContext.lexicalEnv = globalEnv
+
+        runningContextStack.add(newContext)
+
+        val interpreter = Interpreter(scriptRecord)
+        val start = System.nanoTime()
+        val interpretationResult = interpreter.interpret(newContext)
+        val interpretTime = System.nanoTime() - start
+
+        if (interpretationResult.isAbrupt) {
+            print("\u001b[31m")
+            runningContext.error = null
+            val error = interpretationResult.value
+            expect(error is JSErrorObject)
+            val name = Operations.getValue(error.get("name"))
+            val message = Operations.getValue(error.get("message"))
+            print("${Operations.toPrintableString(name)}: ${Operations.toPrintableString(message)}")
+            println("\u001b[0m")
+        }
+        println("Execution time: ${interpretTime / 1_000_000}ms")
+
+        runningContextStack.remove(newContext)
+    }
+
+    fun compiledEvaluation(scriptRecord: Realm.ScriptRecord) {
         val realm = scriptRecord.realm
         val newContext = ExecutionContext(this, realm, null)
         runningContextStack.add(newContext)
@@ -62,7 +107,7 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
         val mainClass = compileClassNode(mainClassNode, true)
         val topLevelScript = mainClass.newInstance() as TopLevelScript
         start = System.nanoTime()
-        val ret = topLevelScript.run(runningContext)
+        val ret = topLevelScript.run(newContext)
 
         if (ret is JSErrorObject) {
             // TODO: We really need a better system to communicate errors to the caller.

@@ -3,24 +3,21 @@ package me.mattco.reeva.runtime.environment
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.functions.JSFunction
-import me.mattco.reeva.compiler.JSScriptFunction
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.errors.JSReferenceErrorObject
 import me.mattco.reeva.runtime.values.objects.JSObject
-import me.mattco.reeva.runtime.values.primitives.JSNull
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.throwError
 
 class FunctionEnvRecord(
-    val functionObject: JSFunction,
+    val function: JSFunction,
     var thisValue: JSValue,
     var thisBindingStatus: ThisBindingStatus,
-    val homeObject: JSValue = JSUndefined,
     val newTarget: JSValue = JSUndefined,
     outerEnv: EnvRecord? = null
 ) : DeclarativeEnvRecord(outerEnv) {
     init {
-        if (!homeObject.isUndefined && !homeObject.isObject)
+        if (!function.homeObject.isUndefined && !function.homeObject.isObject)
             throw IllegalArgumentException()
         if (!newTarget.isUndefined && !newTarget.isObject)
             throw IllegalArgumentException()
@@ -43,7 +40,7 @@ class FunctionEnvRecord(
     override fun hasThisBinding() = thisBindingStatus != ThisBindingStatus.Lexical
 
     @ECMAImpl("HasSuperBinding", "8.1.1.3.3")
-    override fun hasSuperBinding() = hasThisBinding() && homeObject.isObject
+    override fun hasSuperBinding() = hasThisBinding() && function.homeObject.isObject
 
     @JSThrows
     @ECMAImpl("GetThisBinding", "8.1.1.3.4")
@@ -61,10 +58,10 @@ class FunctionEnvRecord(
 
     @ECMAImpl("GetSuperBase", "8.1.1.3.5")
     fun getSuperBase(): JSValue {
-        if (homeObject == JSNull)
+        if (function.homeObject == JSUndefined)
             return JSUndefined
 
-        return (homeObject as JSObject).getPrototype()
+        return (function.homeObject as JSObject).getPrototype()
     }
 
     enum class ThisBindingStatus {
@@ -77,14 +74,13 @@ class FunctionEnvRecord(
         @JvmStatic @ECMAImpl("NewFunctionEnvironment", "8.1.2.4")
         fun create(function: JSFunction, newTarget: JSValue): FunctionEnvRecord {
             val thisBindingStatus = if (function.thisMode == JSFunction.ThisMode.Lexical) {
-                FunctionEnvRecord.ThisBindingStatus.Lexical
-            } else FunctionEnvRecord.ThisBindingStatus.Uninitialized
+                ThisBindingStatus.Lexical
+            } else ThisBindingStatus.Uninitialized
 
             return FunctionEnvRecord(
                 function,
                 JSUndefined,
                 thisBindingStatus,
-                if (function is JSScriptFunction) function.getHomeObject() else JSNull,
                 newTarget,
                 function.envRecord
             )

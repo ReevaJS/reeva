@@ -10,14 +10,10 @@ import me.mattco.reeva.runtime.values.primitives.JSUndefined
 abstract class JSScriptFunction @JvmOverloads constructor(
     realm: Realm,
     thisMode: ThisMode,
-    val strict: Boolean,
+    isStrict: Boolean,
     envRecord: EnvRecord? = null,
-) : JSFunction(realm, thisMode, envRecord) {
+) : JSFunction(realm, thisMode, envRecord, isStrict = isStrict) {
     abstract fun getSourceText(): String
-
-    abstract fun isClassConstructor(): Boolean
-
-    abstract fun getHomeObject(): JSValue
 
     abstract fun getParameterNames(): Array<String>
 

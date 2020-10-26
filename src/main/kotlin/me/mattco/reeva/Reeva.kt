@@ -18,7 +18,7 @@ fun main(args: Array<String>) {
 //    println(scriptRecord.scriptOrModule.dump(0))
 
     val agent = Agent("my agent")
-    agent.execute(scriptRecord)
+    agent.interpretedEvaluation(scriptRecord)
 
     println("Total time: ${(System.nanoTime() - start) / 1_000_000}ms")
 }

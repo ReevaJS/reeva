@@ -10,7 +10,7 @@ import me.mattco.reeva.runtime.values.JSValue
  * are only used to return from generated functions, and do
  * not exist throughout the runtime.
  */
-data class CompletionRecord @JvmOverloads constructor(
+data class Completion @JvmOverloads constructor(
     @JvmField
     val type: Type,
     @JvmField
@@ -18,7 +18,26 @@ data class CompletionRecord @JvmOverloads constructor(
     @JvmField
     val target: String? = null,
 ) {
+    val isNormal: Boolean
+        get() = type == Type.Normal
+
+    val isReturn: Boolean
+        get() = type == Type.Return
+
+    val isBreak: Boolean
+        get() = type == Type.Break
+
+    val isContinue: Boolean
+        get() = type == Type.Continue
+
+    val isThrow: Boolean
+        get() = type == Type.Throw
+
+    val isAbrupt: Boolean
+        get() = !isNormal
+
     enum class Type {
+        Normal,
         Return,
         Break,
         Continue,

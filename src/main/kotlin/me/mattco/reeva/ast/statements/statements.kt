@@ -119,7 +119,7 @@ class IfStatementNode(
     }
 }
 
-class DoWhileStatementNode(val condition: ExpressionNode, val body: StatementNode) : NodeBase(listOf(condition, body)), StatementNode {
+class DoWhileStatementNode(val condition: ExpressionNode, val body: StatementNode) : NodeBase(listOf(condition, body)), IterationStatement {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return body.containsDuplicateLabels(labelSet)
     }
@@ -149,7 +149,7 @@ class DoWhileStatementNode(val condition: ExpressionNode, val body: StatementNod
     }
 }
 
-class WhileStatementNode(val condition: ExpressionNode, val body: StatementNode) : NodeBase(listOf(condition, body)), StatementNode {
+class WhileStatementNode(val condition: ExpressionNode, val body: StatementNode) : NodeBase(listOf(condition, body)), IterationStatement {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return body.containsDuplicateLabels(labelSet)
     }
@@ -184,7 +184,7 @@ class ForStatementNode(
     val condition: ExpressionNode?,
     val incrementer: ExpressionNode?,
     val body: StatementNode,
-) : NodeBase(listOfNotNull(initializer, condition, incrementer, body)), StatementNode {
+) : NodeBase(listOfNotNull(initializer, condition, incrementer, body)), IterationStatement {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return body.containsDuplicateLabels(labelSet)
     }
@@ -237,7 +237,7 @@ class ForInNode(
     val decl: StatementNode,
     val expression: ExpressionNode,
     val body: StatementNode
-) : NodeBase(listOf(decl, expression)), StatementNode {
+) : NodeBase(listOf(decl, expression)), IterationStatement {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return body.containsDuplicateLabels(labelSet)
     }
@@ -263,7 +263,7 @@ class ForOfNode(
     val decl: StatementNode,
     val expression: ExpressionNode,
     val body: StatementNode
-) : NodeBase(listOf(decl, expression)), StatementNode {
+) : NodeBase(listOf(decl, expression)), IterationStatement {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return body.containsDuplicateLabels(labelSet)
     }
@@ -289,7 +289,7 @@ class ForAwaitOfNode(
     val decl: StatementNode,
     val expression: ExpressionNode,
     val body: StatementNode
-) : NodeBase(listOf(decl, expression)), StatementNode {
+) : NodeBase(listOf(decl, expression)), IterationStatement {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return body.containsDuplicateLabels(labelSet)
     }
@@ -311,7 +311,7 @@ class ForAwaitOfNode(
     }
 }
 
-class LabelledStatement(val label: LabelIdentifierNode, val item: StatementNode) : NodeBase(listOf(label, item)), StatementNode {
+class LabelledStatementNode(val label: LabelIdentifierNode, val item: StatementNode) : NodeBase(listOf(label, item)), StatementNode {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         if (label.identifierName in labelSet)
             return true

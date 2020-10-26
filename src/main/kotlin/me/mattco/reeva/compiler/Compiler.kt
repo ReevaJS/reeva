@@ -5,7 +5,6 @@ import codes.som.anthony.koffee.assembleClass
 import codes.som.anthony.koffee.insns.jvm.*
 import codes.som.anthony.koffee.insns.sugar.*
 import codes.som.anthony.koffee.modifiers.public
-import codes.som.anthony.koffee.sugar.ClassAssemblyExtension.init
 import codes.som.anthony.koffee.types.TypeLike
 import codes.som.anthony.koffee.types.coerceType
 import me.mattco.reeva.ast.*
@@ -222,7 +221,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             is ExpressionStatementNode -> compileExpressionStatement(statement)
             is IfStatementNode -> compileIfStatement(statement)
             is BreakableStatement -> compileBreakableStatement(statement)
-            is LabelledStatement -> compileLabelledStatement(statement)
+            is LabelledStatementNode -> compileLabelledStatement(statement)
             is LexicalDeclarationNode -> compileLexicalDeclaration(statement)
             is FunctionDeclarationNode -> compileFunctionDeclaration(statement)
             is ReturnStatementNode -> compileReturnStatement(statement)
@@ -238,8 +237,8 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         if (breakStatementNode.label != null)
             TODO()
 
-        construct(CompletionRecord::class, CompletionRecord.Type::class, JSValue::class) {
-            getstatic(CompletionRecord.Type::class, "Break", CompletionRecord.Type::class)
+        construct(Completion::class, Completion.Type::class, JSValue::class) {
+            getstatic(Completion.Type::class, "Break", Completion.Type::class)
             pushUndefined
         }
         areturn
@@ -368,10 +367,10 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
         invokeExtraMethod(name)
         // TODO: Check label
-        getfield(CompletionRecord::class, "type", CompletionRecord.Type::class)
+        getfield(Completion::class, "type", Completion.Type::class)
         dup
         // type, type
-        getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
+        getstatic(Completion.Type::class, "Return", Completion.Type::class)
         // type, type, Type.Return
         ifStatement(JumpCondition.RefEqual) {
             // type
@@ -379,7 +378,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             goto(end)
         }
         // type
-        getstatic(CompletionRecord.Type::class, "Break", CompletionRecord.Type::class)
+        getstatic(Completion.Type::class, "Break", Completion.Type::class)
         ifStatement(JumpCondition.RefEqual) {
             goto(end)
         }
@@ -484,9 +483,9 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                         invokestatic(Agent::class, "popContext", void)
                     }
                     when (coerceType(methodStates.last().returnType)) {
-                        coerceType(CompletionRecord::class) -> {
-                            construct(CompletionRecord::class, CompletionRecord.Type::class, JSValue::class) {
-                                getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
+                        coerceType(Completion::class) -> {
+                            construct(Completion::class, Completion.Type::class, JSValue::class) {
+                                getstatic(Completion.Type::class, "Return", Completion.Type::class)
                                 pushRunningContext
                                 getfield(ExecutionContext::class, "error", JSErrorObject::class)
                             }
@@ -533,7 +532,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     }
 
     private fun MethodAssembly.compileReturnStatement(returnStatementNode: ReturnStatementNode) {
-        getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
+        getstatic(Completion.Type::class, "Return", Completion.Type::class)
         if (returnStatementNode.node == null) {
             pushUndefined
         } else {
@@ -541,7 +540,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         }
 
         // Type, expr
-        new<CompletionRecord>()
+        new<Completion>()
         // Type, expr, record
         dup_x2
         // record, Type, expr, record
@@ -549,7 +548,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         // record, record, Type, expr, record
         pop
         // record, record, Type, expr
-        invokespecial(CompletionRecord::class, "<init>", void, CompletionRecord.Type::class, JSValue::class)
+        invokespecial(Completion::class, "<init>", void, Completion.Type::class, JSValue::class)
 
         areturn
     }
@@ -687,7 +686,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         TODO()
     }
 
-    private fun MethodAssembly.compileLabelledStatement(labelledStatement: LabelledStatement) {
+    private fun MethodAssembly.compileLabelledStatement(labelledStatement: LabelledStatementNode) {
         TODO()
     }
 
@@ -1481,13 +1480,13 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 aload_0
                 aload_1
                 aload_2
-                invokevirtual(functionClassName, "execute", CompletionRecord::class, JSValue::class, List::class)
+                invokevirtual(functionClassName, "execute", Completion::class, JSValue::class, List::class)
 
                 // Clean up execution context
                 invokestatic(Agent::class, "popContext", void)
 
                 // return the value from "execute"
-                getfield(CompletionRecord::class, "value", JSValue::class)
+                getfield(Completion::class, "value", JSValue::class)
                 areturn
 
                 needsToPopContext = oldNeedsToPop
@@ -1507,15 +1506,15 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 methodStates.removeLast()
             }
 
-            method(public, "execute", CompletionRecord::class, JSValue::class, List::class) {
-                methodStates.add(MethodState(functionClassName, "execute", CompletionRecord::class))
+            method(public, "execute", Completion::class, JSValue::class, List::class) {
+                methodStates.add(MethodState(functionClassName, "execute", Completion::class))
                 // actual body
                 if (function.body.statementList != null)
                     compileStatementList(function.body.statementList)
 
                 // In case the method doesn't have a return statement inside of itself
-                construct(CompletionRecord::class, CompletionRecord.Type::class, JSValue::class) {
-                    getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
+                construct(Completion::class, Completion.Type::class, JSValue::class) {
+                    getstatic(Completion.Type::class, "Return", Completion.Type::class)
                     pushUndefined
                 }
                 areturn
@@ -1609,7 +1608,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         aload_0
         aload_2
         if (hasDuplicates) {
-            pushUndefined
+            aconst_null
         } else {
             aload(3)
         }
@@ -1721,7 +1720,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
      *   JSValue
      */
     private fun MethodAssembly.compileThis() {
-        operation("getGlobalObject", JSObject::class)
+        operation("resolveThisBinding", JSObject::class)
     }
 
     // Stack args:
@@ -1770,16 +1769,16 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         name: String,
         routine: MethodAssembly.() -> Unit
     ) {
-        methodStates.add(MethodState(methodStates.last().className, name, CompletionRecord::class, false))
-        val descriptor = Type.getMethodDescriptor(coerceType(CompletionRecord::class), coerceType(JSValue::class), coerceType(List::class))
+        methodStates.add(MethodState(methodStates.last().className, name, Completion::class, false))
+        val descriptor = Type.getMethodDescriptor(coerceType(Completion::class), coerceType(JSValue::class), coerceType(List::class))
 
         val methodNode = MethodNode(Opcodes.ASM7, public.access, name, descriptor, null, null)
         val methodAssembly = MethodAssembly(methodNode)
 
         methodAssembly.apply {
             routine(this)
-            construct(CompletionRecord::class, CompletionRecord.Type::class, JSValue::class) {
-                getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
+            construct(Completion::class, Completion.Type::class, JSValue::class) {
+                getstatic(Completion.Type::class, "Return", Completion.Type::class)
                 pushUndefined
             }
             areturn
@@ -1798,7 +1797,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             aload_1
             aload_2
         }
-        invokevirtual(methodStates.last().className, name, CompletionRecord::class, JSValue::class, List::class)
+        invokevirtual(methodStates.last().className, name, Completion::class, JSValue::class, List::class)
     }
 
     private fun MethodAssembly.shouldThrow(errorName: String) {
@@ -1950,9 +1949,9 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 invokestatic(Agent::class, "popContext", void)
             }
             when (coerceType(methodStates.last().returnType)) {
-                coerceType(CompletionRecord::class) -> {
-                    construct(CompletionRecord::class, CompletionRecord.Type::class, JSValue::class) {
-                        getstatic(CompletionRecord.Type::class, "Return", CompletionRecord.Type::class)
+                coerceType(Completion::class) -> {
+                    construct(Completion::class, Completion.Type::class, JSValue::class) {
+                        getstatic(Completion.Type::class, "Return", Completion.Type::class)
                         pushRunningContext
                         getfield(ExecutionContext::class, "error", JSErrorObject::class)
                     }

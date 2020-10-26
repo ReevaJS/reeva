@@ -747,6 +747,13 @@ object Operations {
     }
 
     @JSThrows
+    @JvmStatic @ECMAImpl("HasProperty", "7.3.11")
+    fun hasProperty(value: JSValue, property: PropertyKey): JSValue {
+        ecmaAssert(value is JSObject)
+        return value.hasProperty(property).toValue()
+    }
+
+    @JSThrows
     @JvmStatic @ECMAImpl("HasOwnProperty", "7.3.12")
     fun hasOwnProperty(value: JSValue, property: PropertyKey): JSValue {
         ecmaAssert(value is JSObject)
@@ -857,7 +864,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("ResolveBinding", "8.3.2")
-    fun resolveBinding(name: String, env: EnvRecord?): JSReference {
+    fun resolveBinding(name: String, env: EnvRecord? = null): JSReference {
         val actualEnv = env ?: Agent.runningContext.lexicalEnv!!
         // TODO: Strict mode checking
         return getIdentifierReference(actualEnv, name, false)
@@ -910,7 +917,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("PrepareForOrdinaryCall", "9.2.1.1")
-    fun prepareForOrdinaryCall(function: JSScriptFunction, newTarget: JSValue): ExecutionContext {
+    fun prepareForOrdinaryCall(function: JSFunction, newTarget: JSValue): ExecutionContext {
         ecmaAssert(newTarget is JSUndefined || newTarget is JSObject)
         val callerContext = Agent.runningContext
         val calleeContext = ExecutionContext(
@@ -930,7 +937,7 @@ object Operations {
     // execution context
     @JSThrows
     @JvmStatic @ECMAImpl("OrdinaryCallBindThis", "9.2.1.2")
-    fun ordinaryCallBindThis(function: JSScriptFunction, calleeContext: ExecutionContext, thisArgument: JSValue): JSValue {
+    fun ordinaryCallBindThis(function: JSFunction, calleeContext: ExecutionContext, thisArgument: JSValue): JSValue {
         if (function.thisMode == JSFunction.ThisMode.Lexical)
             return JSUndefined
         val thisValue = if (function.thisMode == JSFunction.ThisMode.Strict) {
@@ -993,7 +1000,7 @@ object Operations {
 
     @JSThrows
     @JvmStatic @ECMAImpl("EvaluateCall", "12.3.6.2")
-    fun evaluateCall(target: JSValue, reference: JSValue, arguments: Array<JSValue>, tailPosition: Boolean): JSValue {
+    fun evaluateCall(target: JSValue, reference: JSValue, arguments: List<JSValue>, tailPosition: Boolean): JSValue {
         val thisValue = if (reference is JSReference) {
             if (reference.isPropertyReference) {
                 reference.getThisValue()
@@ -1005,6 +1012,7 @@ object Operations {
 
         if (!isCallable(target)) {
             throwError<JSTypeErrorObject>("object of type ${target.type} is not callable")
+            return JSValue.INVALID_VALUE
         }
         if (tailPosition)
             TODO()
@@ -1020,7 +1028,7 @@ object Operations {
             ecmaAssert(!value.isStrict)
             return JSTrue
         }
-        if (value.isPropertyReference) {
+        return if (value.isPropertyReference) {
             if (value.isSuperReference)
                 TODO()
             expect(value.baseValue is JSValue)
@@ -1028,11 +1036,11 @@ object Operations {
             val deleteStatus = baseObj.delete(value.name)
             if (!deleteStatus && value.isStrict)
                 TODO()
-            return deleteStatus.toValue()
+            deleteStatus.toValue()
         } else {
             ecmaAssert(value.baseValue is EnvRecord)
             expect(value.name.isString)
-            return value.baseValue.deleteBinding(value.name.asString).toValue()
+            value.baseValue.deleteBinding(value.name.asString).toValue()
         }
     }
 

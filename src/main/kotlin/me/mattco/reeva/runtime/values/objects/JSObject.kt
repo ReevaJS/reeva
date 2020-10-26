@@ -459,7 +459,17 @@ open class JSObject protected constructor(
     }
 
     private fun internalSet(property: PropertyKey, descriptor: Descriptor) {
+
         val stringOrSymbol = when {
+            property.isString -> {
+                property.asString.toIntOrNull()?.let {
+                    if (it >= 0) {
+                        indexedProperties.set(this, it, descriptor.getActualValue(this), descriptor.attributes)
+                        return
+                    }
+                }
+                StringOrSymbol(property.asString)
+            }
             property.isInt -> {
                 if (property.asInt >= 0) {
                     indexedProperties.set(this, property.asInt, descriptor.getActualValue(this), descriptor.attributes)
@@ -469,7 +479,7 @@ open class JSObject protected constructor(
             }
             property.isDouble -> StringOrSymbol(property.asDouble.toString())
             property.isSymbol -> StringOrSymbol(property.asSymbol)
-            else -> StringOrSymbol(property.asString)
+            else -> unreachable()
         }
 
         storage[stringOrSymbol] = descriptor

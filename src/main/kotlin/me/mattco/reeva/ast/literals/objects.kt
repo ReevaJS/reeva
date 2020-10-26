@@ -49,8 +49,8 @@ class PropertyDefinitionNode(
     }
 
     enum class Type {
-        Shorthand,
         KeyValue,
+        Shorthand,
         Method,
         Spread
     }
