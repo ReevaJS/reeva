@@ -1095,7 +1095,7 @@ class Parser(text: String) {
 
         val newSuffixes = suffixes.filter(Sfx.Yield, Sfx.Await)
 
-        return parseIdentifierReference(newSuffixes) ?:
+        val result = parseIdentifierReference(newSuffixes) ?:
             parseLiteral() ?:
             parseArrayLiteral(newSuffixes) ?:
             parseObjectLiteral(newSuffixes) ?:
@@ -1105,8 +1105,21 @@ class Parser(text: String) {
             parseAsyncFunctionExpression(newSuffixes) ?:
             parseAsyncGeneratorExpression(newSuffixes) ?:
             parseRegularExpressionLiteral(newSuffixes) ?:
-            parseTemplateLiteral(newSuffixes) ?:
-            parseCPEAAPL(newSuffixes, CPEAAPLContext.PrimaryExpression)
+            parseTemplateLiteral(newSuffixes)
+
+        if (result != null)
+            return result
+
+        saveState()
+        val cpeaapl = parseCPEAAPL(newSuffixes) ?: run {
+            discardState()
+            return null
+        }
+
+        if (cpeaapl.covered.isEmpty() || cpeaapl.covered[0].isSpread)
+            return null
+
+        return cpeaapl.covered[0].node as? PrimaryExpressionNode
     }
 
     private fun parseLiteral(): LiteralNode? {
@@ -1323,26 +1336,46 @@ class Parser(text: String) {
         return null
     }
 
-    enum class CPEAAPLContext {
-        PrimaryExpression,
-    }
+    private fun parseCPEAAPL(suffixes: Suffixes): CPEAAPLNode? {
+        if (tokenType != TokenType.OpenParen)
+            return null
 
-    private fun parseCPEAAPL(suffixes: Suffixes, context: CPEAAPLContext): CPEAAPLNode? {
-        return when (context) {
-            CPEAAPLContext.PrimaryExpression -> {
-                if (tokenType != TokenType.OpenParen)
-                    return null
-                saveState()
+        consume()
+
+        fun parsePart(): CPEAPPLPart? {
+            if (tokenType == TokenType.TripleDot) {
                 consume()
-                val expr = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: run {
-                    loadState()
+                val name = parseBindingIdentifier() ?: run {
+                    expected("identifier")
                     return null
                 }
-                consume(TokenType.CloseParen)
-                discardState()
-                return CPEAAPLNode(expr, CPEAAPLContext.PrimaryExpression)
+                return CPEAPPLPart(name, true)
+            }
+            val expr = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: return null
+            return CPEAPPLPart(expr, false)
+        }
+
+        val parts = mutableListOf<CPEAPPLPart>()
+
+        while (tokenType != TokenType.CloseParen) {
+            val part = parsePart() ?: break
+            parts.add(part)
+            if (part.isSpread) {
+                break
+            } else if (tokenType == TokenType.Comma) {
+                consume()
             }
         }
+
+        if (parts.isEmpty())
+            return null
+
+        if (!parts.last().isSpread && tokenType == TokenType.Comma)
+            consume()
+
+        consume(TokenType.CloseParen)
+
+        return CPEAAPLNode(parts)
     }
 
     private fun parseAssignmentExpression(suffixes: Suffixes): ExpressionNode? {

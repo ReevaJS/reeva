@@ -692,7 +692,6 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             is IdentifierReferenceNode -> interpretIdentifierReference(expression)
             is FunctionExpressionNode -> interpretFunctionExpression(expression)
             is LiteralNode -> interpretLiteral(expression)
-            is CPEAAPLNode -> interpretCPEAAPL(expression)
             is NewExpressionNode -> interpretNewExpression(expression)
             is CallExpressionNode -> interpretCallExpression(expression)
             is ObjectLiteralNode -> interpretObjectLiteral(expression)
@@ -788,14 +787,6 @@ class Interpreter(private val record: Realm.ScriptRecord) {
         }
         ifError { return it }
         return normalCompletion(value)
-    }
-
-    private fun interpretCPEAAPL(cpeaaplNode: CPEAAPLNode): Completion {
-        return when (cpeaaplNode.context) {
-            Parser.CPEAAPLContext.PrimaryExpression -> {
-                interpretExpression(cpeaaplNode.node)
-            }
-        }
     }
 
     private fun interpretNewExpression(newExpressionNode: NewExpressionNode): Completion {

@@ -732,7 +732,6 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             is CommaExpressionNode -> compileCommaExpressionNode(expressionNode)
             is IdentifierReferenceNode -> compileIdentifierReference(expressionNode)
             is LiteralNode -> compileLiteral(expressionNode)
-            is CPEAAPLNode -> compileCPEAAPL(expressionNode)
             is NewExpressionNode -> compileNewExpression(expressionNode)
             is CallExpressionNode -> compileCallExpression(expressionNode)
             is ObjectLiteralNode -> compileObjectLiteral(expressionNode)
@@ -864,15 +863,6 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
     private fun MethodAssembly.compileIdentifier(identifierNode: IdentifierNode) {
         TODO()
-    }
-
-    private fun MethodAssembly.compileCPEAAPL(cpeaaplNode: CPEAAPLNode) {
-        when (cpeaaplNode.context) {
-            Parser.CPEAAPLContext.PrimaryExpression -> {
-                // Parenthesized expression
-                compileExpression(cpeaaplNode.node)
-            }
-        }
     }
 
     private fun MethodAssembly.compileParenthesizedExpression(parenthesizedExpressionNode: ParenthesizedExpressionNode) {

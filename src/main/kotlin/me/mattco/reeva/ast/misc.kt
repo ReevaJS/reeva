@@ -19,30 +19,6 @@ class CCEAAAHNode(val node: ExpressionNode) : NodeBase(listOf(node)), Expression
 }
 
 // CoverParenthesizedExpressionAndArrowParameterList
-class CPEAAPLNode(
-    val node: ExpressionNode,
-    val context: Parser.CPEAAPLContext
-) : NodeBase(listOf(node)), PrimaryExpressionNode {
-    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
-        return when (context) {
-            Parser.CPEAAPLContext.PrimaryExpression -> {
-                expect(node is ParenthesizedExpressionNode)
-                node.target.assignmentTargetType()
-            }
-        }
-    }
+class CPEAAPLNode(val covered: List<CPEAPPLPart>)
 
-    override fun hasName(): Boolean {
-        return when (context) {
-            Parser.CPEAAPLContext.PrimaryExpression -> if (node.isFunctionDefinition()) {
-                node.hasName()
-            } else false
-        }
-    }
-
-    override fun isFunctionDefinition(): Boolean {
-        return when (context) {
-            Parser.CPEAAPLContext.PrimaryExpression -> node.isFunctionDefinition()
-        }
-    }
-}
+class CPEAPPLPart(val node: ASTNode, val isSpread: Boolean)
