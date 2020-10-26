@@ -420,3 +420,5 @@ class BreakStatementNode(val label: LabelIdentifierNode?) : NodeBase(listOfNotNu
         return label.identifierName !in labelSet
     }
 }
+
+class ReturnStatementNode(val node: ExpressionNode?) : NodeBase(listOfNotNull(node)), StatementNode

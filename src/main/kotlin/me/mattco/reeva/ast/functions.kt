@@ -179,4 +179,67 @@ class SingleNameBindingNode(
     override fun hasInitializer() = initializer != null
 }
 
-class ReturnStatementNode(val node: ExpressionNode?) : NodeBase(listOfNotNull(node)), StatementNode
+class ArrowFunctionNode(
+    val parameters: ASTNode, // FormalParameterNode or BindingIdentifierNode
+    val body: ASTNode, // Expression or FunctionStatementList
+) : NodeBase(listOf(parameters, body)), ExpressionNode {
+    override fun contains(nodeName: String): Boolean {
+        if (nodeName !in listOf("NewTargetNode", "SuperPropertyNode", "SuperCallNode", "ThisNode", "super"))
+            return false
+        if (parameters.contains(nodeName))
+            return true
+        return body.contains(nodeName)
+    }
+
+    override fun containsExpression(): Boolean {
+        if (parameters is BindingIdentifierNode)
+            return false
+        return parameters.containsExpression()
+    }
+
+    override fun containsUseStrict(): Boolean {
+        if (body is ExpressionNode)
+            return false
+        return super<NodeBase>.containsUseStrict()
+    }
+
+    override fun expectedArgumentCount(): Int {
+        if (parameters is BindingIdentifierNode)
+            return 1
+        return parameters.expectedArgumentCount()
+    }
+
+    override fun hasName() = false
+
+    override fun isSimpleParameterList(): Boolean {
+        if (parameters is BindingIdentifierNode)
+            return true
+        return parameters.isSimpleParameterList()
+    }
+
+    override fun lexicallyDeclaredNames(): List<String> {
+        if (body is ExpressionNode)
+            return emptyList()
+        return body.lexicallyDeclaredNames()
+    }
+
+    override fun lexicallyScopedDeclarations(): List<NodeBase> {
+        if (body is ExpressionNode)
+            return emptyList()
+        return body.lexicallyScopedDeclarations()
+    }
+
+    override fun varDeclaredNames(): List<String> {
+        if (body is ExpressionNode)
+            return emptyList()
+        return body.varDeclaredNames()
+    }
+
+    override fun varScopedDeclarations(): List<NodeBase> {
+        if (body is ExpressionNode)
+            return emptyList()
+        return body.varScopedDeclarations()
+    }
+}
+
+class ArrowParameters(parameters: List<CPEAPPLPart>) : NodeBase()

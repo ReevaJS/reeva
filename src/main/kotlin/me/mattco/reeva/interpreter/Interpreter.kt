@@ -5,7 +5,6 @@ import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.compiler.Completion
-import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.Agent
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
@@ -15,7 +14,6 @@ import me.mattco.reeva.runtime.environment.DeclarativeEnvRecord
 import me.mattco.reeva.runtime.environment.EnvRecord
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.JSValue
-import me.mattco.reeva.runtime.values.arrays.JSArrayObject
 import me.mattco.reeva.runtime.values.errors.JSErrorObject
 import me.mattco.reeva.runtime.values.errors.JSReferenceErrorObject
 import me.mattco.reeva.runtime.values.errors.JSSyntaxErrorObject
@@ -691,6 +689,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             is CommaExpressionNode -> interpretCommaExpressionNode(expression)
             is IdentifierReferenceNode -> interpretIdentifierReference(expression)
             is FunctionExpressionNode -> interpretFunctionExpression(expression)
+            is ArrowFunctionNode -> interpretArrowFunction(expression)
             is LiteralNode -> interpretLiteral(expression)
             is NewExpressionNode -> interpretNewExpression(expression)
             is CallExpressionNode -> interpretCallExpression(expression)
@@ -775,6 +774,39 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             funcEnv.initializeBinding(name, closure)
             normalCompletion(closure)
         }
+    }
+
+    private fun interpretArrowFunction(arrowFunctionNode: ArrowFunctionNode): Completion {
+        val scope = Agent.runningContext.lexicalEnv!!
+        val sourceText = "TODO"
+        val parameters = arrowFunctionNode.parameters.let {
+            if (it is BindingIdentifierNode) {
+                FormalParametersNode(
+                    FormalParameterListNode(
+                        listOf(FormalParameterNode(BindingElementNode(SingleNameBindingNode(it, null))))
+                    ),
+                    null
+                )
+            } else it as FormalParametersNode
+        }
+        val body = arrowFunctionNode.body.let {
+            if (it is ExpressionNode) {
+                FunctionStatementList(StatementListNode(listOf(
+                    ReturnStatementNode(it)
+                )))
+            } else it as FunctionStatementList
+        }
+        val closure = ordinaryFunctionCreate(
+            record.realm.functionProto,
+            sourceText,
+            parameters,
+            body,
+            JSFunction.ThisMode.Lexical,
+            false,
+            scope,
+        )
+        setFunctionName(closure, "".key())
+        return normalCompletion(closure)
     }
 
     private fun interpretLiteral(literalNode: LiteralNode): Completion {

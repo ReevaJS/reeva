@@ -10,6 +10,7 @@ import me.mattco.reeva.lexer.SourceLocation
 import me.mattco.reeva.lexer.Token
 import me.mattco.reeva.lexer.TokenType
 import me.mattco.reeva.utils.all
+import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 
 class Parser(text: String) {
@@ -818,9 +819,83 @@ class Parser(text: String) {
         return null
     }
 
-    private fun parseArrowFunction(suffixes: Suffixes): ExpressionNode? {
-        // TODO
-        return null
+    private fun parseArrowFunction(suffixes: Suffixes): ArrowFunctionNode? {
+        saveState()
+        val parameters = parseArrowParameters(suffixes.filter(Sfx.Yield, Sfx.Await)) ?: run {
+            discardState()
+            return null
+        }
+        if ('\n' in token.trivia) {
+            loadState()
+            return null
+        }
+        if (tokenType != TokenType.Arrow) {
+            loadState()
+            return null
+        }
+        consume()
+        val body = parseConciseBody(suffixes.filter(Sfx.In)) ?: run {
+            expected("arrow function body")
+            discardState()
+            return null
+        }
+        return ArrowFunctionNode(parameters, body)
+    }
+
+    private fun parseArrowParameters(suffixes: Suffixes): ASTNode? {
+        val identifier = parseBindingIdentifier()
+        if (identifier != null)
+            return identifier
+
+        val cpeaapl = parseCPEAAPL(suffixes.filter(Sfx.Yield, Sfx.Await)) ?: return null
+
+        val elements = cpeaapl.covered
+
+        if (elements.count { it.isSpread } > 1) {
+            syntaxError("arrow function cannot have multiple rest parameters")
+            return null
+        }
+
+        if (elements.indexOfFirst { it.isSpread }.let { it != -1 && it != elements.lastIndex }) {
+            syntaxError("arrow function cannot have normal parameters after a rest parameter")
+            return null
+        }
+
+        for (element in elements) {
+            if (!element.isSpread && element.node !is AssignmentExpressionNode && element.node !is BindingIdentifierNode) {
+                syntaxError("Invalid arrow function parameter")
+                return null
+            }
+        }
+
+        val parameters = elements.filterNot { it.isSpread }.map {
+            val (identifier, initializer) = if (it.node is AssignmentExpressionNode) {
+                expect(it.node.lhs is BindingIdentifierNode)
+                it.node.lhs to it.node.rhs
+            } else {
+                expect(it.node is BindingIdentifierNode)
+                it.node to null
+            }
+
+            FormalParameterNode(BindingElementNode(SingleNameBindingNode(identifier, initializer?.let(::InitializerNode))))
+        }
+
+        val restParameter = elements.firstOrNull { it.isSpread }?.let {
+            FormalRestParameterNode(BindingRestElementNode(it.node as BindingIdentifierNode))
+        }
+
+        return FormalParametersNode(FormalParameterListNode(parameters), restParameter)
+    }
+
+    private fun parseConciseBody(suffixes: Suffixes): ASTNode? {
+        return if (tokenType == TokenType.OpenCurly) {
+            consume()
+            val body = parseFunctionBody(Suffixes().withReturn)
+            consume(TokenType.CloseCurly)
+            FunctionStatementList(body ?: StatementListNode(emptyList()))
+        } else {
+            parseExpression(suffixes.filter(Sfx.In))
+        }
     }
 
     private fun parseAsyncArrowFunction(suffixes: Suffixes): ExpressionNode? {
@@ -1116,10 +1191,12 @@ class Parser(text: String) {
             return null
         }
 
-        if (cpeaapl.covered.isEmpty() || cpeaapl.covered[0].isSpread)
+        if (cpeaapl.covered.isEmpty() || cpeaapl.covered[0].isSpread || cpeaapl.covered[0].node !is PrimaryExpressionNode) {
+            loadState()
             return null
+        }
 
-        return cpeaapl.covered[0].node as? PrimaryExpressionNode
+        return cpeaapl.covered[0].node as PrimaryExpressionNode
     }
 
     private fun parseLiteral(): LiteralNode? {
