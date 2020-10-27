@@ -84,6 +84,7 @@ enum class TokenType(val category: Category, val meta: String? = null) {
     Import(Category.Keyword, "import"),
     Interface(Category.Keyword, "interface"),
     In(Category.Keyword, "in"),
+    Of(Category.Keyword, "of"),
     Instanceof(Category.Keyword, "instanceof"),
     Let(Category.Keyword, "let"),
     New(Category.Keyword, "new"),

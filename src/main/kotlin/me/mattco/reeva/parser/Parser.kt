@@ -319,12 +319,10 @@ class Parser(text: String) {
         if (tokenType == TokenType.Await)
             TODO()
         consume(TokenType.OpenParen)
-        return parseNormalForStatement(suffixes) ?: parseForInStatement(suffixes) ?: parseForOfStatement(suffixes)
+        return parseNormalForStatement(suffixes) ?: parseForInOfStatement(suffixes)
     }
 
     private fun parseNormalForStatement(suffixes: Suffixes): StatementNode? {
-        if (tokenType == TokenType.Await)
-            return null
         val initializer = when (tokenType) {
             TokenType.Semicolon -> {
                 consume()
@@ -371,12 +369,76 @@ class Parser(text: String) {
         return ForStatementNode(initializer, condition, incrementer, body)
     }
 
-    private fun parseForInStatement(suffixes: Suffixes): StatementNode? {
-        return null
-    }
+    private fun parseForInOfStatement(suffixes: Suffixes): StatementNode? {
+        val initializer = when (tokenType) {
+            TokenType.Var -> {
+                consume()
+                parseBindingIdentifier()?.let(::ForBindingNode) ?: run {
+                    expected("identifier")
+                    consume()
+                    return null
+                }
+            }
+            TokenType.Let, TokenType.Const -> {
+                val isConst = consume().type == TokenType.Const
+                val identifier = parseBindingIdentifier() ?: run {
+                    expected("identifier")
+                    consume()
+                    return null
+                }
+                ForDeclarationNode(isConst, ForBindingNode(identifier))
+            }
+            else -> {
+                saveState()
+                parseLeftHandSideExpression(suffixes.filter(Sfx.Yield, Sfx.Await))?.also { discardState() } ?: run {
+                    loadState()
+                    return null
+                }
+            }
+        }
 
-    private fun parseForOfStatement(suffixes: Suffixes): StatementNode? {
-        return null
+        val isIn = when (tokenType) {
+            TokenType.In -> {
+                consume()
+                true
+            }
+            TokenType.Of -> {
+                consume()
+                false
+            }
+            else -> {
+                expected("'in' or 'of'")
+                consume()
+                return null
+            }
+        }
+
+        val expression = if (isIn) {
+            parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: run {
+                expected("expression")
+                consume()
+                return null
+            }
+        } else {
+            parseAssignmentExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: run {
+                expected("expression")
+                consume()
+                return null
+            }
+        }
+
+        consume(TokenType.CloseParen)
+        val body = parseStatement(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
+            expected("statement")
+            consume()
+            return null
+        }
+
+        return if (isIn) {
+            ForInNode(initializer, expression, body)
+        } else {
+            ForOfNode(initializer, expression, body)
+        }
     }
 
     private fun parseBindingList(suffixes: Suffixes): BindingListNode? {

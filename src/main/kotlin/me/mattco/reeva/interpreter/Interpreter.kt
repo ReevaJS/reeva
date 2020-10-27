@@ -441,8 +441,8 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             is DoWhileStatementNode -> interpretDoWhileStatement(iterationStatement, labelSet)
             is WhileStatementNode -> interpretWhileStatement(iterationStatement, labelSet)
             is ForStatementNode -> interpretForStatement(iterationStatement, labelSet)
-            is ForOfNode -> interpretForOfNode(iterationStatement, labelSet)
             is ForInNode -> TODO()
+            is ForOfNode -> interpretForOfNode(iterationStatement, labelSet)
             else -> TODO()
         }
     }
@@ -912,8 +912,15 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             is UnaryExpressionNode -> interpretUnaryExpression(expression)
             is UpdateExpressionNode -> interpretUpdateExpression(expression)
             is ParenthesizedExpressionNode -> interpretExpression(expression.target)
+            is ForBindingNode -> interpretForBinding(expression)
             else -> unreachable()
         }
+    }
+
+    private fun interpretForBinding(forBindingNode: ForBindingNode): Completion {
+        val result = Operations.resolveBinding(forBindingNode.identifier.identifierName)
+        ifError { return it }
+        return normalCompletion(result)
     }
 
     private fun interpretThis(): Completion {
