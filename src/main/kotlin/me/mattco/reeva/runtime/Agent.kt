@@ -16,7 +16,6 @@ import java.io.FileOutputStream
 import java.util.concurrent.CopyOnWriteArrayList
 
 class Agent(val signifier: Any = "Agent${objectCount++}") {
-    private lateinit var globalEnv: GlobalEnvRecord
     private val classLoader = ByteClassLoader()
 
     init {
@@ -25,48 +24,39 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
         agentIdentifiers.add(signifier)
     }
 
-    fun interpretedEvaluation(scriptRecord: Realm.ScriptRecord) {
+    data class EvaluationResult(
+        val error: String?,
+    )
+
+    fun interpretedEvaluation(scriptRecord: Realm.ScriptRecord): EvaluationResult {
         val realm = scriptRecord.realm
         val newContext = ExecutionContext(this, realm, null)
         runningContextStack.add(newContext)
 
-        realm.initObjects()
-
-        if (!::globalEnv.isInitialized) {
-            val globalObj = JSObject.create(realm)
-            realm.globalObject = globalObj
-            globalEnv = GlobalEnvRecord.create(globalObj, globalObj)
-            realm.globalEnv = globalEnv
-        } else {
-            realm.globalEnv = globalEnv
-            realm.globalObject = globalEnv.globalThis
+        if (!realm.isGloballyInitialized) {
+            realm.initObjects()
+            realm.setGlobalObject(JSObject.create(realm))
+            realm.populateGlobalObject()
         }
 
-        realm.populateGlobalObject()
-
-        newContext.variableEnv = globalEnv
-        newContext.lexicalEnv = globalEnv
+        newContext.variableEnv = realm.globalEnv
+        newContext.lexicalEnv = realm.globalEnv
 
         runningContextStack.add(newContext)
 
-        val interpreter = Interpreter(scriptRecord)
         val start = System.nanoTime()
+        val interpreter = Interpreter(scriptRecord)
         val interpretationResult = interpreter.interpret(newContext)
-        val interpretTime = System.nanoTime() - start
+        println("Interpretation time: ${(System.nanoTime() - start) / 1_000_000}ms")
 
-        if (interpretationResult.isAbrupt) {
-            print("\u001b[31m")
+        return if (interpretationResult.isAbrupt) {
             runningContext.error = null
-            val error = interpretationResult.value
-            println(Operations.toString(error).string)
-            if (runningContext.error != null) {
-                println("oops, we had an error while printing the error")
-            }
-            println("\u001b[0m")
+            EvaluationResult(Operations.toString(interpretationResult.value).string)
+        } else {
+            EvaluationResult(null)
+        }.also {
+            runningContextStack.remove(newContext)
         }
-        println("Execution time: ${interpretTime / 1_000_000}ms")
-
-        runningContextStack.remove(newContext)
     }
 
     fun compiledEvaluation(scriptRecord: Realm.ScriptRecord) {
@@ -76,20 +66,13 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
 
         realm.initObjects()
 
-        if (!::globalEnv.isInitialized) {
-            val globalObj = JSObject.create(realm)
-            realm.globalObject = globalObj
-            globalEnv = GlobalEnvRecord.create(globalObj, globalObj)
-            realm.globalEnv = globalEnv
-        } else {
-            realm.globalEnv = globalEnv
-            realm.globalObject = globalEnv.globalThis
-        }
+        if (!realm.isGloballyInitialized)
+            realm.setGlobalObject(JSObject.create(realm))
 
         realm.populateGlobalObject()
 
-        newContext.variableEnv = globalEnv
-        newContext.lexicalEnv = globalEnv
+        newContext.variableEnv = realm.globalEnv
+        newContext.lexicalEnv = realm.globalEnv
 
         runningContextStack.add(newContext)
 

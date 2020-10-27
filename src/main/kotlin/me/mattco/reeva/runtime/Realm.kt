@@ -20,10 +20,14 @@ import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.runtime.values.wrappers.*
 import java.util.concurrent.ConcurrentHashMap
 
-class Realm {
+class Realm(globalObject: JSObject? = null) {
+    internal val isGloballyInitialized: Boolean
+        get() = ::globalObject.isInitialized && ::globalEnv.isInitialized
+
     lateinit var globalObject: JSObject
-    @JvmField
-    var globalEnv: GlobalEnvRecord? = null
+        private set
+    lateinit var globalEnv: GlobalEnvRecord
+        private set
 
     lateinit var objectProto: JSObjectProto private set
     lateinit var numberProto: JSNumberProto private set
@@ -79,6 +83,16 @@ class Realm {
 
     // To get access to the symbol via their name without reflection
     val wellknownSymbols = mutableMapOf<String, JSSymbol>()
+
+    init {
+        if (globalObject != null)
+            setGlobalObject(globalObject)
+    }
+
+    fun setGlobalObject(obj: JSObject) {
+        globalObject = obj
+        globalEnv = GlobalEnvRecord.create(globalObject, globalObject)
+    }
 
     fun initObjects() {
         // Objects can declare symbol methods, so we initialize these first, as they are not objects
