@@ -1249,7 +1249,9 @@ class Parser(text: String) {
         val elements = mutableListOf<ArrayElementNode>()
 
         fun getElement(): ArrayElementNode? {
-            if (tokenType == TokenType.Comma) {
+            if (tokenType == TokenType.CloseBracket) {
+                return null
+            } else if (tokenType == TokenType.Comma) {
                 consume()
                 return ArrayElementNode(null, ArrayElementNode.Type.Elision)
             }
@@ -1265,7 +1267,10 @@ class Parser(text: String) {
             return ArrayElementNode(expr, type)
         }
 
-        elements.add(getElement() ?: return ArrayLiteralNode(elements))
+        elements.add(getElement() ?: run {
+            consume(TokenType.CloseBracket)
+            return ArrayLiteralNode(elements)
+        })
 
         while (tokenType == TokenType.Comma) {
             consume()
