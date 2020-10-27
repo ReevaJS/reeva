@@ -108,7 +108,7 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSObject? = 
                 return false
             if (index >= oldLen) {
                 oldLenDesc.setActualValue(this, (index + 1).toValue())
-                val succeeded = super.defineOwnProperty("length".key(), descriptor)
+                val succeeded = super.defineOwnProperty("length".key(), oldLenDesc)
                 checkError() ?: return false
                 ecmaAssert(succeeded)
             }
