@@ -23,17 +23,17 @@ open class JSErrorProto protected constructor(
     }
 
     @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-    fun toString_(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
             shouldThrowError("TypeError")
 
-        val name = get("name").let {
+        val name = thisValue.get("name").let {
             if (it == JSUndefined) {
                 "Error".toValue()
             } else Operations.toString(it)
         }
 
-        val message = get("message").let {
+        val message = thisValue.get("message").let {
             if (it == JSUndefined) {
                 "".toValue()
             } else Operations.toString(it)

@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.values.errors
 
 import me.mattco.reeva.runtime.Realm
+import me.mattco.reeva.runtime.values.objects.JSObject
 
 class JSSyntaxErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.syntaxErrorProto) {
     companion object {
@@ -9,7 +10,12 @@ class JSSyntaxErrorObject private constructor(realm: Realm, message: String? = n
     }
 }
 
-class JSSyntaxErrorProto private constructor(realm: Realm) : JSErrorProto(realm, "SyntaxError") {
+class JSSyntaxErrorProto private constructor(realm: Realm) : JSObject(realm, realm.errorProto) {
+    override fun init() {
+        super.init()
+        defineOwnProperty("constructor", realm.syntaxErrorCtor)
+    }
+
     companion object {
         fun create(realm: Realm) = JSSyntaxErrorProto(realm).also { it.init() }
     }

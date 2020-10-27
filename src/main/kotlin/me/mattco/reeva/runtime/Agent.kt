@@ -57,10 +57,10 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
             print("\u001b[31m")
             runningContext.error = null
             val error = interpretationResult.value
-            expect(error is JSErrorObject)
-            val name = Operations.getValue(error.get("name"))
-            val message = Operations.getValue(error.get("message"))
-            print("${Operations.toPrintableString(name)}: ${Operations.toPrintableString(message)}")
+            println(Operations.toString(error).string)
+            if (runningContext.error != null) {
+                println("oops, we had an error while printing the error")
+            }
             println("\u001b[0m")
         }
         println("Execution time: ${interpretTime / 1_000_000}ms")

@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.values.errors
 
 import me.mattco.reeva.runtime.Realm
+import me.mattco.reeva.runtime.values.objects.JSObject
 
 class JSReferenceErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.referenceErrorProto) {
     companion object {
@@ -9,7 +10,12 @@ class JSReferenceErrorObject private constructor(realm: Realm, message: String? 
     }
 }
 
-class JSReferenceErrorProto private constructor(realm: Realm) : JSErrorProto(realm, "ReferenceError") {
+class JSReferenceErrorProto private constructor(realm: Realm) : JSObject(realm, realm.errorProto) {
+    override fun init() {
+        super.init()
+        defineOwnProperty("constructor", realm.referenceErrorCtor)
+    }
+
     companion object {
         fun create(realm: Realm) = JSReferenceErrorProto(realm).also { it.init() }
     }

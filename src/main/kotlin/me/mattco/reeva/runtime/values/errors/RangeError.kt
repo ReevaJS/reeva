@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.values.errors
 
 import me.mattco.reeva.runtime.Realm
+import me.mattco.reeva.runtime.values.objects.JSObject
 
 class JSRangeErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.rangeErrorProto) {
     companion object {
@@ -9,7 +10,12 @@ class JSRangeErrorObject private constructor(realm: Realm, message: String? = nu
     }
 }
 
-class JSRangeErrorProto private constructor(realm: Realm) : JSErrorProto(realm, "RangeError") {
+class JSRangeErrorProto private constructor(realm: Realm) : JSObject(realm, realm.errorProto) {
+    override fun init() {
+        super.init()
+        defineOwnProperty("constructor", realm.rangeErrorCtor)
+    }
+
     companion object {
         fun create(realm: Realm) = JSRangeErrorProto(realm).also { it.init() }
     }
