@@ -47,7 +47,7 @@ class Lexer(private val source: String) : Iterable<Token> {
                     do {
                         consume()
                     } while (!isDone && char != '\n')
-                } else if (match('/', '*', '*')) {
+                } else if (match('/', '*')) {
                     consume()
                     do {
                         consume()
