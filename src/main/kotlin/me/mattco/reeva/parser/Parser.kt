@@ -1218,12 +1218,12 @@ class Parser(text: String) {
             return null
         }
 
-        if (cpeaapl.covered.isEmpty() || cpeaapl.covered[0].isSpread || cpeaapl.covered[0].node !is PrimaryExpressionNode) {
+        if (cpeaapl.covered.isEmpty() || cpeaapl.covered[0].isSpread || cpeaapl.covered[0].node !is ExpressionNode) {
             loadState()
             return null
         }
 
-        return cpeaapl.covered[0].node as PrimaryExpressionNode
+        return ParenthesizedExpressionNode(cpeaapl.covered[0].node as ExpressionNode)
     }
 
     private fun parseLiteral(): LiteralNode? {

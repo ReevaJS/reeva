@@ -736,6 +736,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             is ExponentiationExpressionNode -> interpretExponentiationExpression(expression)
             is UnaryExpressionNode -> interpretUnaryExpression(expression)
             is UpdateExpressionNode -> interpretUpdateExpression(expression)
+            is ParenthesizedExpressionNode -> interpretExpression(expression.target)
             else -> unreachable()
         }
     }

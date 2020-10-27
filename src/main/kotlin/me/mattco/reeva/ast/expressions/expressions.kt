@@ -131,4 +131,4 @@ class YieldExpressionNode(
     }
 }
 
-class ParenthesizedExpressionNode(val target: ExpressionNode) : NodeBase(listOf(target)), ExpressionNode
+class ParenthesizedExpressionNode(val target: ExpressionNode) : NodeBase(listOf(target)), PrimaryExpressionNode
