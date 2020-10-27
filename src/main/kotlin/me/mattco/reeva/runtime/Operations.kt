@@ -849,6 +849,69 @@ object Operations {
         return properties
     }
 
+    enum class IteratorHint {
+        Sync,
+        Async
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("GetIterator", "7.4.1")
+    fun getIterator(obj: JSValue, hint: IteratorHint? = IteratorHint.Sync, _method: JSFunction? = null): IteratorRecord? {
+        if (hint == IteratorHint.Async)
+            TODO()
+        val method = _method ?: getMethod(obj, Agent.runningContext.realm.`@@iterator`)
+        val iterator = call(method, obj)
+        if (iterator !is JSObject) {
+            throwError<JSTypeErrorObject>("iterator must be an object")
+            return null
+        }
+        val nextMethod = getV(obj, "next".toValue())
+        return IteratorRecord(iterator, nextMethod, false)
+    }
+
+    data class IteratorRecord(val iterator: JSValue, val nextMethod: JSValue, var done: Boolean)
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("IteratorNext", "7.4.2")
+    fun iteratorNext(record: IteratorRecord, value: JSValue? = null): JSObject {
+        val result = if (value == null) {
+            call(record.nextMethod, record.iterator)
+        } else {
+            call(record.nextMethod, record.iterator, listOf(value))
+        }
+        if (result !is JSObject) {
+            throwError<JSTypeErrorObject>("iterator result must be an object")
+            return JSObject.INVALID_OBJECT
+        }
+        return result
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("IteratorComplete", "7.4.3")
+    fun iteratorComplete(result: JSValue): JSBoolean {
+        ecmaAssert(result is JSObject)
+        val done = result.get("done")
+        checkError() ?: return JSFalse
+        return toBoolean(done)
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("IteratorValue", "7.4.4")
+    fun iteratorValue(result: JSValue): JSValue {
+        ecmaAssert(result is JSObject)
+        return result.get("value")
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("IteratorStep", "7.4.5")
+    fun iteratorStep(record: IteratorRecord): JSValue {
+        val result = iteratorNext(record)
+        val done = iteratorComplete(result)
+        if (done == JSTrue)
+            return JSFalse
+        return result
+    }
+
     @JvmStatic @ECMAImpl("GetIdentifierReference", "8.1.2.1")
     fun getIdentifierReference(env: EnvRecord?, name: String, isStrict: Boolean): JSReference {
         return when {

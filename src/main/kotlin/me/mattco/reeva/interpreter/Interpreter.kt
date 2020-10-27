@@ -868,12 +868,23 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             return emptyList()
         val arguments = mutableListOf<JSValue>()
         argumentEntries.forEach { entry ->
-            if (entry.isSpread)
-                TODO()
             val ref = interpretExpression(entry.expression).ifAbrupt { return null }
             val value = Operations.getValue(ref.value)
-            ifError { return null }
-            arguments.add(value)
+            if (entry.isSpread) {
+                val record = Operations.getIterator(value) ?: return null
+                ifError { return null }
+                while (true) {
+                    val next = Operations.iteratorStep(record)
+                    if (next == JSFalse)
+                        break
+                    val nextArg = Operations.iteratorValue(next)
+                    ifError { return null }
+                    arguments.add(nextArg)
+                }
+            } else {
+                ifError { return null }
+                arguments.add(value)
+            }
         }
         return arguments
     }
