@@ -298,7 +298,6 @@ interface PrimaryExpressionNode : LeftHandSideExpressionNode
 interface LiteralNode : PrimaryExpressionNode
 
 interface AssignmentPatternNode : ASTNode
-interface ForBindingNode : ASTNode
 interface LiteralPropertyNameNode : ASTNode
 interface TemplateLiteralNode : ASTNode
 interface CatchParameterNode : ASTNode

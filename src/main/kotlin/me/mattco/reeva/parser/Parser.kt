@@ -12,6 +12,7 @@ import me.mattco.reeva.lexer.TokenType
 import me.mattco.reeva.utils.all
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
+import kotlin.properties.Delegates
 
 class Parser(text: String) {
     private val tokens = Lexer(text).toList() + Token(TokenType.Eof, "", "", SourceLocation(-1, -1), SourceLocation(-1, -1))
@@ -305,55 +306,60 @@ class Parser(text: String) {
                 return WhileStatementNode(expression, statement)
             }
             TokenType.For -> {
-                consume()
-
-                if (tokenType == TokenType.Await) {
-                    consume()
-                    consume(TokenType.OpenParen)
-
-                    return parseForStatementType10(suffixes) ?:
-                        parseForStatementType11(suffixes) ?:
-                        parseForStatementType12(suffixes) ?: run {
-                            expected("initializer statement")
-                            consume()
-                            null
-                        }
-                }
-
-                consume(TokenType.OpenParen)
-
-                return parseForStatementType1(suffixes) ?:
-                    parseForStatementType2(suffixes) ?:
-                    parseForStatementType3(suffixes) ?:
-                    parseForStatementType4(suffixes) ?:
-                    parseForStatementType5(suffixes) ?:
-                    parseForStatementType6(suffixes) ?:
-                    parseForStatementType7(suffixes) ?:
-                    parseForStatementType8(suffixes) ?:
-                    parseForStatementType9(suffixes) ?: run {
-                        expected("initializer statement")
-                        consume()
-                        null
-                    }
+                return parseForStatement(suffixes)
             }
             else -> return null
         }
     }
 
-    private fun parseForStatementType1(suffixes: Suffixes): StatementNode? {
-        saveState()
-        if (tokenType == TokenType.Let && peek(1).type == TokenType.OpenBracket)
+    private fun parseForStatement(suffixes: Suffixes): StatementNode? {
+        if (tokenType != TokenType.For)
             return null
-        val initializer = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await))
-        if (tokenType != TokenType.Semicolon) {
-            loadState()
-            return null
-        }
-        discardState()
         consume()
+        if (tokenType == TokenType.Await)
+            TODO()
+        consume(TokenType.OpenParen)
+        return parseNormalForStatement(suffixes) ?: parseForInStatement(suffixes) ?: parseForOfStatement(suffixes)
+    }
+
+    private fun parseNormalForStatement(suffixes: Suffixes): StatementNode? {
+        if (tokenType == TokenType.Await)
+            return null
+        val initializer = when (tokenType) {
+            TokenType.Semicolon -> {
+                consume()
+                null
+            }
+            TokenType.Var -> {
+                saveState()
+                consume()
+                val declList = parseVariableDeclarationList(suffixes.filter(Sfx.Yield, Sfx.Await))
+                if (declList == null || tokenType != TokenType.Semicolon) {
+                    loadState()
+                    return null
+                } else {
+                    consume()
+                    discardState()
+                }
+                VariableStatementNode(declList)
+            }
+            TokenType.Let, TokenType.Const -> parseLexicalDeclaration(suffixes.filter(Sfx.Yield, Sfx.Await), forceSemi = true) ?: return null
+            else -> {
+                saveState()
+                val expr = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await))
+                if (expr == null || tokenType != TokenType.Semicolon) {
+                    loadState()
+                    return null
+                } else {
+                    consume()
+                    discardState()
+                }
+                expr
+            }
+        }
+
         val condition = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn)
         consume(TokenType.Semicolon)
-        consume()
         val incrementer = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn)
         consume(TokenType.CloseParen)
         val body = parseStatement(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
@@ -365,111 +371,11 @@ class Parser(text: String) {
         return ForStatementNode(initializer, condition, incrementer, body)
     }
 
-    private fun parseForStatementType2(suffixes: Suffixes): StatementNode? {
-        if (tokenType != TokenType.Var)
-            return null
-        saveState()
-        consume()
-        val declarations = parseVariableDeclarationList(suffixes.filter(Sfx.Yield, Sfx.Await)) ?: run {
-            loadState()
-            return null
-        }
-        if (tokenType != TokenType.Semicolon) {
-            loadState()
-            return null
-        }
-        consume()
-        val condition = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await))
-        consume(TokenType.Semicolon)
-        val incrementer = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await))
-        consume(TokenType.CloseParen)
-        val body = parseStatement(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
-            expected("statement")
-            consume()
-            return null
-        }
-
-        return ForStatementNode(VariableStatementNode(declarations), condition, incrementer, body)
-    }
-
-    private fun parseForStatementType3(suffixes: Suffixes): StatementNode? {
-        val baseSuffix = suffixes.filter(Sfx.Yield, Sfx.Await)
-        val declaration = parseLexicalDeclaration(baseSuffix) ?: return null
-        val condition = parseExpression(baseSuffix.withIn)
-        consume(TokenType.Semicolon)
-        val incrementer = parseExpression(baseSuffix.withIn)
-        consume(TokenType.CloseParen)
-        val body = parseStatement(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
-            expected("statement")
-            consume()
-            return null
-        }
-
-        return ForStatementNode(declaration, condition, incrementer, body)
-    }
-
-    private fun parseForStatementType4(suffixes: Suffixes): StatementNode? {
-        if (tokenType == TokenType.Let && peek(1).type == TokenType.OpenBracket)
-            return null
-        saveState()
-        val initializer = parseLeftHandSideExpression(suffixes.filter(Sfx.Yield, Sfx.Await)) ?: return null
-        if (tokenType != TokenType.In) {
-            loadState()
-            return null
-        }
-        discardState()
-        consume()
-        val expression = parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: run {
-            expected("expression")
-            consume()
-            return null
-        }
-        consume(TokenType.CloseParen)
-        val body = parseStatement(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
-            expected("statement")
-            consume()
-            return null
-        }
-        return ForInNode(ExpressionStatementNode(initializer), expression, body)
-    }
-
-    private fun parseForStatementType5(suffixes: Suffixes): StatementNode? {
-        // TODO
+    private fun parseForInStatement(suffixes: Suffixes): StatementNode? {
         return null
     }
 
-    private fun parseForStatementType6(suffixes: Suffixes): StatementNode? {
-        // TODO
-        return null
-    }
-
-    private fun parseForStatementType7(suffixes: Suffixes): StatementNode? {
-        // TODO
-        return null
-    }
-
-    private fun parseForStatementType8(suffixes: Suffixes): StatementNode? {
-        // TODO
-        return null
-    }
-
-    private fun parseForStatementType9(suffixes: Suffixes): StatementNode? {
-        // TODO
-        return null
-    }
-
-    private fun parseForStatementType10(suffixes: Suffixes): StatementNode? {
-        // TODO
-        return null
-    }
-
-    private fun parseForStatementType11(suffixes: Suffixes): StatementNode? {
-        // TODO
-        return null
-    }
-
-    private fun parseForStatementType12(suffixes: Suffixes): StatementNode? {
-        // TODO
+    private fun parseForOfStatement(suffixes: Suffixes): StatementNode? {
         return null
     }
 
@@ -732,7 +638,7 @@ class Parser(text: String) {
         return null
     }
 
-    private fun parseLexicalDeclaration(suffixes: Suffixes): StatementNode? {
+    private fun parseLexicalDeclaration(suffixes: Suffixes, forceSemi: Boolean = false): StatementNode? {
         if (!matchAny(TokenType.Let, TokenType.Const))
             return null
 
@@ -750,7 +656,17 @@ class Parser(text: String) {
             return null
         }
 
-        automaticSemicolonInsertion()
+        if (forceSemi) {
+            // For use in a for statement
+            if (tokenType != TokenType.Semicolon) {
+                loadState()
+                return null
+            }
+            consume()
+        } else {
+            automaticSemicolonInsertion()
+        }
+
         discardState()
 
         return LexicalDeclarationNode(isConst, list)

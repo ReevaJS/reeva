@@ -2,6 +2,7 @@
 
 package me.mattco.reeva.runtime
 
+import me.mattco.reeva.compiler.Completion
 import me.mattco.reeva.compiler.JSScriptFunction
 import me.mattco.reeva.runtime.Agent.Companion.checkError
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -936,6 +937,36 @@ object Operations {
         if (done == JSTrue)
             return JSFalse
         return result
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("IteratorClose", "7.4.6")
+    fun iteratorClose(record: IteratorRecord, completion: Completion): Completion {
+        var innerResult = getMethod(record.iterator, "return".toValue()).let {
+            if (Agent.hasError())
+                Completion(Completion.Type.Throw, JSEmpty)
+            else Completion(Completion.Type.Normal, it)
+        }
+        if (innerResult.isNormal) {
+            val return_ = innerResult.value
+            if (return_ is JSUndefined)
+                return completion
+            innerResult = call(return_, record.iterator).let {
+                if (Agent.hasError())
+                    Completion(Completion.Type.Throw, JSEmpty)
+                else Completion(Completion.Type.Normal, it)
+            }
+        }
+
+        if (completion.isThrow)
+            return completion
+        if (innerResult.isThrow)
+            return innerResult
+        if (innerResult.value !is JSObject) {
+            throwError<JSTypeErrorObject>("TODO: message")
+            return Completion(Completion.Type.Throw, JSEmpty)
+        }
+        return completion
     }
 
     @JSThrows

@@ -248,7 +248,7 @@ class ForStatementNode(
 }
 
 class ForInNode(
-    val decl: StatementNode,
+    val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
 ) : NodeBase(listOf(decl, expression)), IterationStatement {
@@ -265,16 +265,20 @@ class ForInNode(
     }
 
     override fun varDeclaredNames(): List<String> {
+        if (decl is ForBindingNode)
+            return decl.boundNames()
         return body.varDeclaredNames()
     }
 
     override fun varScopedDeclarations(): List<NodeBase> {
+        if (decl is ForBindingNode)
+            return listOf(decl)
         return body.varScopedDeclarations()
     }
 }
 
 class ForOfNode(
-    val decl: StatementNode,
+    val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
 ) : NodeBase(listOf(decl, expression)), IterationStatement {
@@ -291,16 +295,20 @@ class ForOfNode(
     }
 
     override fun varDeclaredNames(): List<String> {
+        if (decl is ForBindingNode)
+            return decl.boundNames()
         return body.varDeclaredNames()
     }
 
     override fun varScopedDeclarations(): List<NodeBase> {
+        if (decl is ForBindingNode)
+            return listOf(decl)
         return body.varScopedDeclarations()
     }
 }
 
 class ForAwaitOfNode(
-    val decl: StatementNode,
+    val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
 ) : NodeBase(listOf(decl, expression)), IterationStatement {
@@ -317,13 +325,21 @@ class ForAwaitOfNode(
     }
 
     override fun varDeclaredNames(): List<String> {
+        if (decl is ForBindingNode)
+            return decl.boundNames()
         return body.varDeclaredNames()
     }
 
     override fun varScopedDeclarations(): List<NodeBase> {
+        if (decl is ForBindingNode)
+            return listOf(decl)
         return body.varScopedDeclarations()
     }
 }
+
+class ForBindingNode(val identifier: BindingIdentifierNode) : NodeBase(listOf(identifier)), ExpressionNode
+
+class ForDeclarationNode(val isConst: Boolean, val binding: ForBindingNode) : NodeBase(listOf(binding))
 
 class LabelledStatementNode(val label: LabelIdentifierNode, val item: StatementNode) : NodeBase(listOf(label, item)), StatementNode {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {

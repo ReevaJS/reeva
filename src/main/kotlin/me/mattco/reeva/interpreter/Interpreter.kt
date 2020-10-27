@@ -13,8 +13,8 @@ import me.mattco.reeva.runtime.contexts.ExecutionContext
 import me.mattco.reeva.runtime.environment.DeclarativeEnvRecord
 import me.mattco.reeva.runtime.environment.EnvRecord
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
+import me.mattco.reeva.runtime.values.JSReference
 import me.mattco.reeva.runtime.values.JSValue
-import me.mattco.reeva.runtime.values.arrays.JSArrayObject
 import me.mattco.reeva.runtime.values.errors.JSErrorObject
 import me.mattco.reeva.runtime.values.errors.JSReferenceErrorObject
 import me.mattco.reeva.runtime.values.errors.JSSyntaxErrorObject
@@ -441,10 +441,180 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             is DoWhileStatementNode -> interpretDoWhileStatement(iterationStatement, labelSet)
             is WhileStatementNode -> interpretWhileStatement(iterationStatement, labelSet)
             is ForStatementNode -> interpretForStatement(iterationStatement, labelSet)
+            is ForOfNode -> interpretForOfNode(iterationStatement, labelSet)
             is ForInNode -> TODO()
-            is ForOfNode -> TODO()
             else -> TODO()
         }
+    }
+
+    private fun interpretForOfNode(forOfNode: ForOfNode, labelSet: Set<String>): Completion {
+        val keyResult = forInOfHeadEvaluation(
+            if (forOfNode.decl is ForDeclarationNode) {
+                forOfNode.decl.boundNames()
+            } else emptyList(),
+            forOfNode.expression,
+            IterationKind.Iterate,
+        ) ?: return throwCompletion()
+
+        return forInOfBodyEvaluation(
+            forOfNode.decl,
+            forOfNode.body,
+            keyResult,
+            IterationKind.Iterate,
+            when (forOfNode.decl) {
+                is VariableDeclarationNode -> LHSKind.VarBinding
+                is ForDeclarationNode -> LHSKind.LexicalBinding
+                else -> LHSKind.Assignment
+            },
+            labelSet
+        )
+    }
+
+    private fun forInOfHeadEvaluation(uninitializedBoundNames: List<String>, expr: ExpressionNode, iterationKind: IterationKind): Operations.IteratorRecord? {
+        if (iterationKind == IterationKind.AsyncIterate)
+            TODO()
+
+        val oldEnv = Agent.runningContext.lexicalEnv
+        if (uninitializedBoundNames.isNotEmpty()) {
+            ecmaAssert(uninitializedBoundNames.groupBy { it }.size == uninitializedBoundNames.size)
+            val newEnv = DeclarativeEnvRecord.create(oldEnv)
+            uninitializedBoundNames.forEach { name ->
+                newEnv.createMutableBinding(name, false)
+            }
+            Agent.runningContext.lexicalEnv = newEnv
+        }
+
+        val exprRef = interpretExpression(expr)
+        Agent.runningContext.lexicalEnv = oldEnv
+        exprRef.ifAbrupt { return null }
+        val exprValue = Operations.getValue(exprRef.value)
+        ifError { return null }
+
+        if (iterationKind == IterationKind.Enumerate) {
+            TODO()
+//            if (exprValue == JSUndefined || exprValue == JSEmpty)
+//                return breakCompletion()
+//            val obj = Operations.toObject(exprValue)
+//            val iterator = enumerateObjectProperties(obj)
+        } else {
+            val iterator = Operations.getIterator(exprValue, Operations.IteratorHint.Sync)
+            ifError { return null }
+            return iterator
+        }
+    }
+
+    private fun forInOfBodyEvaluation(
+        lhs: ASTNode,
+        statement: StatementNode,
+        iteratorRecord: Operations.IteratorRecord,
+        iterationKind: IterationKind,
+        lhsKind: LHSKind,
+        labelSet: Set<String>,
+        iteratorKind: Operations.IteratorHint? = Operations.IteratorHint.Sync
+    ): Completion {
+        if (iterationKind == IterationKind.AsyncIterate)
+            TODO()
+        if (iteratorKind == Operations.IteratorHint.Async)
+            TODO()
+
+        val oldEnv = Agent.runningContext.lexicalEnv
+        var value: JSValue = JSEmpty
+        val destructuring = lhs.isDestructuring()
+        if (destructuring && lhsKind == LHSKind.Assignment)
+            TODO()
+
+        while (true) {
+            val nextResult = Operations.call(iteratorRecord.nextMethod, iteratorRecord.iterator)
+            ifError { return it }
+            if (nextResult !is JSObject) {
+                throwError<JSTypeErrorObject>("TODO: message")
+                return throwCompletion()
+            }
+
+            val done = Operations.iteratorComplete(nextResult)
+            if (done == JSTrue)
+                return normalCompletion(value)
+
+            val nextValue = Operations.iteratorValue(nextResult)
+            lateinit var lhsRef: Completion
+
+            if (lhsKind != LHSKind.LexicalBinding) {
+                if (!destructuring) {
+                    lhsRef = interpretExpression(lhs as ExpressionNode)
+                }
+            } else {
+                ecmaAssert(lhs is ForDeclarationNode)
+                val iterationEnv = DeclarativeEnvRecord.create(oldEnv)
+                bindingInstantiation(lhs, iterationEnv)
+                Agent.runningContext.lexicalEnv = iterationEnv
+                if (!destructuring) {
+                    val boundNames = lhs.boundNames()
+                    expect(boundNames.size == 1)
+                    lhsRef = normalCompletion(Operations.resolveBinding(boundNames[0]))
+                }
+            }
+
+            val status = if (!destructuring) {
+                if (lhsRef.isAbrupt) {
+                    lhsRef
+                } else if (lhsKind == LHSKind.LexicalBinding) {
+                    Operations.initializeReferencedBinding(lhsRef.value as JSReference, nextValue)
+                    if (Agent.hasError()) throwCompletion() else normalCompletion()
+                } else {
+                    Operations.putValue(lhsRef.value, nextValue)
+                    if (Agent.hasError()) throwCompletion() else normalCompletion()
+                }
+            } else {
+                TODO()
+            }
+
+            if (status.isAbrupt) {
+                Agent.runningContext.lexicalEnv = oldEnv
+                return if (iterationKind == IterationKind.Enumerate) {
+                    status
+                } else {
+                    Operations.iteratorClose(iteratorRecord, status)
+                }
+            }
+
+            val result = interpretStatement(statement)
+            Agent.runningContext.lexicalEnv = oldEnv
+            if (!loopContinues(result, labelSet)) {
+                return if (iterationKind == IterationKind.Enumerate) {
+                    updateEmpty(result, value)
+                } else {
+                    Operations.iteratorClose(iteratorRecord, updateEmpty(result, value))
+                }
+            } else {
+                if (result.value != JSEmpty)
+                    value = result.value
+            }
+        }
+    }
+
+    private fun bindingInstantiation(forDeclarationNode: ForDeclarationNode, env: EnvRecord): Completion {
+        ecmaAssert(env is DeclarativeEnvRecord)
+        forDeclarationNode.binding.boundNames().forEach { name ->
+            if (forDeclarationNode.isConst) {
+                env.createImmutableBinding(name, true)
+            } else {
+                env.createMutableBinding(name, false)
+            }
+            ifError { return it }
+        }
+        return normalCompletion()
+    }
+
+    enum class IterationKind {
+        Enumerate,
+        Iterate,
+        AsyncIterate,
+    }
+
+    enum class LHSKind {
+        Assignment,
+        VarBinding,
+        LexicalBinding,
     }
 
     private fun interpretDoWhileStatement(doWhileStatementNode: DoWhileStatementNode, labelSet: Set<String>): Completion {
