@@ -937,12 +937,39 @@ class Parser(text: String) {
             if (tokenType == TokenType.TemplateLiteralStart)
                 TODO()
 
-            val args = parseArguments(suffixes) ?: break
-            callExpression = if (callExpression == null) {
-                CallExpressionNode(initial, args)
-            } else {
-                CallExpressionNode(callExpression, args)
-            }
+            if (tokenType == TokenType.OpenParen) {
+                val args = parseArguments(suffixes) ?: break
+                callExpression = if (callExpression == null) {
+                    CallExpressionNode(initial, args)
+                } else {
+                    CallExpressionNode(callExpression, args)
+                }
+            } else if (tokenType == TokenType.OpenBracket) {
+                consume()
+                val expression = parseExpression(newSuffixes.withIn) ?: run {
+                    expected("expression")
+                    consume()
+                    return null
+                }
+                consume(TokenType.CloseBracket)
+                callExpression = if (callExpression == null) {
+                    MemberExpressionNode(initial, expression, MemberExpressionNode.Type.Computed)
+                } else {
+                    MemberExpressionNode(callExpression, expression, MemberExpressionNode.Type.Computed)
+                }
+            } else if (tokenType == TokenType.Period) {
+                consume()
+                val identifier = parseIdentifierName() ?: run {
+                    expected("identifier")
+                    consume()
+                    return null
+                }
+                callExpression = if (callExpression == null) {
+                    MemberExpressionNode(initial, identifier, MemberExpressionNode.Type.NonComputed)
+                } else {
+                    MemberExpressionNode(callExpression, identifier, MemberExpressionNode.Type.NonComputed)
+                }
+            } else break
         }
 
         return callExpression ?: initial
