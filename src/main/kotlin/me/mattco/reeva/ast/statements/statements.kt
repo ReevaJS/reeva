@@ -72,17 +72,23 @@ class StatementListNode(val statements: List<StatementListItemNode>) : NodeBase(
 
     override fun topLevelVarDeclaredNames(): List<String> {
         return statements.flatMap {
-            if (it is LabelledStatementNode) {
-                it.topLevelVarDeclaredNames()
-            } else it.varDeclaredNames()
+            when (it) {
+                is LabelledStatementNode -> it.topLevelVarDeclaredNames()
+                is DeclarationNode -> if (it is LexicalDeclarationNode /* it is ClassDeclarationNode*/) {
+                    emptyList()
+                } else it.boundNames()
+                else -> it.varDeclaredNames()
+            }
         }
     }
 
     override fun topLevelVarScopedDeclarations(): List<NodeBase> {
         return statements.flatMap {
-            if (it is LabelledStatementNode) {
-                it.topLevelVarScopedDeclarations()
-            } else it.varScopedDeclarations()
+            when (it) {
+                is LabelledStatementNode -> it.topLevelVarScopedDeclarations()
+                is DeclarationNode -> listOf(it.declarationPart())
+                else -> it.varScopedDeclarations()
+            }
         }
     }
 
