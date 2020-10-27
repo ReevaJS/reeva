@@ -37,8 +37,6 @@ class JSInterpretedFunction(
     isStrict,
     prototype
 ) {
-    val constructorKind = ConstructorKind.Base
-
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (isClassConstructor) {
             throwError<JSTypeErrorObject>("TODO: message")
@@ -89,10 +87,5 @@ class JSInterpretedFunction(
         }
         return constructorEnv.getThisBinding()
 
-    }
-
-    enum class ConstructorKind {
-        Base,
-        Derived,
     }
 }

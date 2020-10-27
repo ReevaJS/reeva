@@ -107,8 +107,9 @@ class Interpreter(private val record: Realm.ScriptRecord) {
         return normalCompletion(JSEmpty)
     }
 
+    //  This is public because it is used by the eval global function
     @ECMAImpl("InstantiateFunctionObject", "14.1.22")
-    private fun instantiateFunctionObject(functionNode: FunctionDeclarationNode, scope: EnvRecord): JSFunction {
+    fun instantiateFunctionObject(functionNode: FunctionDeclarationNode, scope: EnvRecord): JSFunction {
         val sourceText = "TODO"
         val function = ordinaryFunctionCreate(
             record.realm.functionProto,
