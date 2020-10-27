@@ -181,7 +181,7 @@ class Lexer(private val source: String) : Iterable<Token> {
                 consume()
                 tokenType = TokenType.StringLiteral
             }
-        } else if (char == '/' && lastToken !in slashMeansDivision) {
+        } else if (char == '/' && lastToken.type !in slashMeansDivision) {
             consume()
             tokenType = TokenType.RegexLiteral
 
