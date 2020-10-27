@@ -27,10 +27,16 @@ class Test262Runner(private val name: String, private val script: String, privat
         realm.initObjects()
         val globalObject = Test262GlobalObject.create(realm)
         realm.setGlobalObject(globalObject)
-        realm.populateGlobalObject()
         Agent.popContext()
 
-        val pretestRecord = realm.parseScript(pretestScript)
+        var requiredScript = pretestScript
+
+        metadata.includes?.forEach { include ->
+            requiredScript += '\n'
+            requiredScript += File(harnessDirectory, include).readText()
+        }
+
+        val pretestRecord = realm.parseScript(requiredScript)
         Assertions.assertTrue(pretestRecord.errors.isEmpty()) {
             val error = pretestRecord.errors[0]
             "(${error.lineNumber}, ${error.columnNumber}: ${error.message}"
@@ -55,7 +61,9 @@ class Test262Runner(private val name: String, private val script: String, privat
         private val test262Directory = File("./src/test/resources/test262/")
         private val testDirectory = File(test262Directory, "test")
         private val harnessDirectory = File(test262Directory, "harness")
+        private val targetDirectory: File? = File(testDirectory, "built-ins/Boolean")
         private lateinit var pretestScript: String
+
         private val agent = Agent()
 
         @BeforeClass
@@ -72,7 +80,7 @@ class Test262Runner(private val name: String, private val script: String, privat
         @Parameterized.Parameters(name = "{index}: {0}")
         @JvmStatic
         fun test262testProvider(): List<Array<Any>> {
-            return testDirectory.walkTopDown().onEnter {
+            return (targetDirectory ?: testDirectory).walkTopDown().onEnter {
                 it.name != "intl402" && it.name != "annexB"
             }.filter {
                 !it.isDirectory && !it.name.endsWith("_FIXTURE.js")
