@@ -28,9 +28,9 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
         val error: String?,
     )
 
-    fun interpretedEvaluation(scriptRecord: Realm.ScriptRecord): EvaluationResult {
+    fun interpretedEvaluation(scriptRecord: Realm.ScriptRecord, context: ExecutionContext? = null): EvaluationResult {
         val realm = scriptRecord.realm
-        val newContext = ExecutionContext(this, realm, null)
+        val newContext = context ?: ExecutionContext(this, realm, null)
         runningContextStack.add(newContext)
 
         if (!realm.isGloballyInitialized) {

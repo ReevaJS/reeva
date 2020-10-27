@@ -15,6 +15,7 @@ import me.mattco.reeva.runtime.values.global.JSConsoleProto
 import me.mattco.reeva.runtime.values.iterators.JSArrayIteratorProto
 import me.mattco.reeva.runtime.values.iterators.JSIteratorProto
 import me.mattco.reeva.runtime.values.objects.*
+import me.mattco.reeva.runtime.values.primitives.JSNumber
 import me.mattco.reeva.runtime.values.primitives.JSSymbol
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.runtime.values.wrappers.*
@@ -174,6 +175,9 @@ class Realm(globalObject: JSObject? = null) {
         globalObject.set("JSON", jsonObj)
         globalObject.set("console", consoleObj)
 
+        globalObject.defineOwnProperty("Infinity", JSNumber(Double.POSITIVE_INFINITY), 0)
+        globalObject.defineOwnProperty("NaN", JSNumber(Double.NaN), 0)
+        globalObject.defineOwnProperty("globalThis", globalEnv.globalThis, Descriptor.WRITABLE or Descriptor.CONFIGURABLE)
         globalObject.defineOwnProperty("undefined", JSUndefined, 0)
     }
 
