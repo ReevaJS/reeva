@@ -2,8 +2,9 @@
 
 package me.mattco.reeva.runtime
 
-import me.mattco.reeva.compiler.Completion
+import me.mattco.reeva.interpreter.Completion
 import me.mattco.reeva.compiler.JSScriptFunction
+import me.mattco.reeva.interpreter.Record
 import me.mattco.reeva.runtime.Agent.Companion.checkError
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows
@@ -883,20 +884,24 @@ object Operations {
 
     @JSThrows
     @JvmStatic @ECMAImpl("GetIterator", "7.4.1")
-    fun getIterator(obj: JSValue, hint: IteratorHint? = IteratorHint.Sync, _method: JSFunction? = null): IteratorRecord? {
+    fun getIterator(obj: JSValue, hint: IteratorHint? = IteratorHint.Sync, _method: JSFunction? = null): JSValue {
         if (hint == IteratorHint.Async)
             TODO()
         val method = _method ?: getMethod(obj, Agent.runningContext.realm.`@@iterator`)
+        if (method == JSUndefined) {
+            throwError<JSTypeErrorObject>("${toPrintableString(obj)} is not iterable")
+            return JSValue.INVALID_VALUE
+        }
         val iterator = call(method, obj)
         if (iterator !is JSObject) {
             throwError<JSTypeErrorObject>("iterator must be an object")
-            return null
+            return JSValue.INVALID_VALUE
         }
         val nextMethod = getV(iterator, "next".toValue())
         return IteratorRecord(iterator, nextMethod, false)
     }
 
-    data class IteratorRecord(val iterator: JSValue, val nextMethod: JSValue, var done: Boolean)
+    data class IteratorRecord(val iterator: JSValue, val nextMethod: JSValue, var done: Boolean) : Record()
 
     @JSThrows
     @JvmStatic @ECMAImpl("IteratorNext", "7.4.2")

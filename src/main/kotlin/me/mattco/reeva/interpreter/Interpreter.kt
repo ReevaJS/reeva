@@ -4,7 +4,6 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
-import me.mattco.reeva.compiler.Completion
 import me.mattco.reeva.runtime.Agent
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
@@ -21,6 +20,7 @@ import me.mattco.reeva.runtime.values.errors.JSSyntaxErrorObject
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.runtime.values.functions.JSInterpretedFunction
+import me.mattco.reeva.runtime.values.iterators.JSObjectPropertyIterator
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.objects.PropertyKey
@@ -441,10 +441,33 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             is DoWhileStatementNode -> interpretDoWhileStatement(iterationStatement, labelSet)
             is WhileStatementNode -> interpretWhileStatement(iterationStatement, labelSet)
             is ForStatementNode -> interpretForStatement(iterationStatement, labelSet)
-            is ForInNode -> TODO()
+            is ForInNode -> interpretForInNode(iterationStatement, labelSet)
             is ForOfNode -> interpretForOfNode(iterationStatement, labelSet)
             else -> TODO()
         }
+    }
+
+    private fun interpretForInNode(forInNode: ForInNode, labelSet: Set<String>): Completion {
+        val keyResult = forInOfHeadEvaluation(
+            if (forInNode.decl is ForDeclarationNode) {
+                forInNode.decl.boundNames()
+            } else emptyList(),
+            forInNode.expression,
+            IterationKind.Enumerate
+        ).ifAbrupt { return it }
+
+        return forInOfBodyEvaluation(
+            forInNode.decl,
+            forInNode.body,
+            keyResult.value as Operations.IteratorRecord,
+            IterationKind.Enumerate,
+            when (forInNode.decl) {
+                is VariableDeclarationNode -> LHSKind.VarBinding
+                is ForDeclarationNode -> LHSKind.LexicalBinding
+                else -> LHSKind.Assignment
+            },
+            labelSet
+        )
     }
 
     private fun interpretForOfNode(forOfNode: ForOfNode, labelSet: Set<String>): Completion {
@@ -454,12 +477,12 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             } else emptyList(),
             forOfNode.expression,
             IterationKind.Iterate,
-        ) ?: return throwCompletion()
+        ).ifAbrupt { return it }
 
         return forInOfBodyEvaluation(
             forOfNode.decl,
             forOfNode.body,
-            keyResult,
+            keyResult.value as Operations.IteratorRecord,
             IterationKind.Iterate,
             when (forOfNode.decl) {
                 is VariableDeclarationNode -> LHSKind.VarBinding
@@ -470,7 +493,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
         )
     }
 
-    private fun forInOfHeadEvaluation(uninitializedBoundNames: List<String>, expr: ExpressionNode, iterationKind: IterationKind): Operations.IteratorRecord? {
+    private fun forInOfHeadEvaluation(uninitializedBoundNames: List<String>, expr: ExpressionNode, iterationKind: IterationKind): Completion {
         if (iterationKind == IterationKind.AsyncIterate)
             TODO()
 
@@ -486,20 +509,22 @@ class Interpreter(private val record: Realm.ScriptRecord) {
 
         val exprRef = interpretExpression(expr)
         Agent.runningContext.lexicalEnv = oldEnv
-        exprRef.ifAbrupt { return null }
+        exprRef.ifAbrupt { return it }
         val exprValue = Operations.getValue(exprRef.value)
-        ifError { return null }
+        ifError { return it }
 
         if (iterationKind == IterationKind.Enumerate) {
-            TODO()
-//            if (exprValue == JSUndefined || exprValue == JSEmpty)
-//                return breakCompletion()
-//            val obj = Operations.toObject(exprValue)
-//            val iterator = enumerateObjectProperties(obj)
+            if (exprValue == JSUndefined || exprValue == JSEmpty)
+                return breakCompletion()
+            val obj = Operations.toObject(exprValue)
+            val iterator = JSObjectPropertyIterator.create(Agent.runningContext.realm, obj)
+            val nextMethod = Operations.getV(iterator, "next".toValue())
+            ifError { return it }
+            return normalCompletion(Operations.IteratorRecord(iterator, nextMethod, false))
         } else {
             val iterator = Operations.getIterator(exprValue, Operations.IteratorHint.Sync)
-            ifError { return null }
-            return iterator
+            ifError { return it }
+            return normalCompletion(iterator)
         }
     }
 
@@ -1055,8 +1080,10 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             val ref = interpretExpression(entry.expression).ifAbrupt { return null }
             val value = Operations.getValue(ref.value)
             if (entry.isSpread) {
-                val record = Operations.getIterator(value) ?: return null
-                ifError { return null }
+                val record = Operations.getIterator(value).let {
+                    ifError { return null }
+                    it as Operations.IteratorRecord
+                }
                 while (true) {
                     val next = Operations.iteratorStep(record)
                     if (next == JSFalse)

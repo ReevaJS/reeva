@@ -1,4 +1,4 @@
-package me.mattco.reeva.compiler
+package me.mattco.reeva.interpreter
 
 import me.mattco.reeva.runtime.values.JSValue
 

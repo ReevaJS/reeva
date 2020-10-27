@@ -13,6 +13,7 @@ import me.mattco.reeva.ast.LiteralNode
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.literals.PropertyNameNode
 import me.mattco.reeva.ast.statements.*
+import me.mattco.reeva.interpreter.Completion
 import me.mattco.reeva.runtime.Agent
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm

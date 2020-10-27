@@ -1,15 +1,12 @@
 package me.mattco.reeva.runtime.values.functions
 
-import me.mattco.reeva.ast.FormalParametersNode
-import me.mattco.reeva.ast.FunctionStatementList
-import me.mattco.reeva.compiler.Completion
+import me.mattco.reeva.interpreter.Completion
 import me.mattco.reeva.runtime.Agent
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.environment.EnvRecord
 import me.mattco.reeva.runtime.environment.FunctionEnvRecord
 import me.mattco.reeva.runtime.values.JSValue
-import me.mattco.reeva.runtime.values.errors.JSErrorObject
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSUndefined

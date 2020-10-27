@@ -5,7 +5,7 @@ import me.mattco.reeva.ast.FunctionDeclarationNode
 import me.mattco.reeva.ast.statements.ForBindingNode
 import me.mattco.reeva.ast.statements.StatementListNode
 import me.mattco.reeva.ast.statements.VariableDeclarationNode
-import me.mattco.reeva.compiler.Completion
+import me.mattco.reeva.interpreter.Completion
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows

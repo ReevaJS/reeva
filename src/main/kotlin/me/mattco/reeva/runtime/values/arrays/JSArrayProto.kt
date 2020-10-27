@@ -30,7 +30,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, null
         defineOwnProperty(realm.`@@iterator`, internalGet("values".key())!!.getRawValue())
     }
 
-    @JSMethod("forEach", 1)
+    @JSMethod("forEach", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun forEach(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         checkError() ?: return INVALID_VALUE
@@ -52,21 +52,21 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, null
         return JSUndefined
     }
 
-    @JSMethod("keys", 0)
+    @JSMethod("keys", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun keys(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         checkError() ?: return INVALID_VALUE
         return createArrayIterator(realm, obj, PropertyKind.Key)
     }
 
-    @JSMethod("entries", 0)
+    @JSMethod("entries", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         checkError() ?: return INVALID_VALUE
         return createArrayIterator(realm, obj, PropertyKind.KeyValue)
     }
 
-    @JSMethod("values", 0)
+    @JSMethod("values", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         checkError() ?: return INVALID_VALUE
