@@ -16,7 +16,7 @@ import me.mattco.reeva.runtime.values.primitives.JSString
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
-open class JSArrayObject protected constructor(realm: Realm, proto: JSObject? = realm.arrayProto) : JSObject(realm, proto) {
+open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = realm.arrayProto) : JSObject(realm, proto) {
     @JSNativePropertyGetter("length", Descriptor.WRITABLE)
     fun getLength(thisValue: JSValue): JSValue {
         expect(thisValue is JSObject)

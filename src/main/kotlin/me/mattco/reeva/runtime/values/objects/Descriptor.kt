@@ -1,13 +1,15 @@
 package me.mattco.reeva.runtime.values.objects
 
+import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
+import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.functions.JSFunction
-import me.mattco.reeva.runtime.values.primitives.JSAccessor
-import me.mattco.reeva.runtime.values.primitives.JSEmpty
-import me.mattco.reeva.runtime.values.primitives.JSNativeProperty
-import me.mattco.reeva.runtime.values.primitives.JSUndefined
+import me.mattco.reeva.runtime.values.primitives.*
+import me.mattco.reeva.utils.throwError
 import me.mattco.reeva.utils.toValue
 
 data class Descriptor(
@@ -165,9 +167,63 @@ data class Descriptor(
 
         const val defaultAttributes = CONFIGURABLE or ENUMERABLE or WRITABLE or HAS_CONFIGURABLE or HAS_ENUMERABLE or HAS_WRITABLE
 
+        @JSThrows
         @ECMAImpl("ToPropertyDescriptor", "6.2.5.5")
-        fun fromObject(obj: JSObject): Descriptor {
-            TODO()
+        fun fromObject(obj: JSValue): Descriptor {
+            val descriptor = Descriptor(JSEmpty, 0)
+            if (obj !is JSObject) {
+                throwError<JSTypeErrorObject>("TODO: message")
+                return descriptor
+            }
+            if (obj.hasProperty("enumerable")) {
+                descriptor.setHasEnumerable()
+                descriptor.setEnumerable(Operations.toBoolean(obj.get("enumerable")) == JSTrue)
+                checkError() ?: return descriptor
+            }
+
+            if (obj.hasProperty("configurable")) {
+                descriptor.setHasConfigurable()
+                descriptor.setConfigurable(Operations.toBoolean(obj.get("configurable")) == JSTrue)
+                checkError() ?: return descriptor
+            }
+
+            if (obj.hasProperty("writable")) {
+                descriptor.setHasWritable()
+                descriptor.setWritable(Operations.toBoolean(obj.get("writable")) == JSTrue)
+                checkError() ?: return descriptor
+            }
+
+            if (obj.hasProperty("value")) {
+                descriptor.setRawValue(obj.get("value"))
+                checkError() ?: return descriptor
+            }
+
+            if (obj.hasProperty("get")) {
+                val getter = obj.get("get")
+                checkError() ?: return descriptor
+                if (!Operations.isCallable(getter) && getter != JSUndefined) {
+                    throwError<JSTypeErrorObject>("descriptor's 'get' property must be undefined or callable")
+                    return descriptor
+                }
+            }
+
+            if (obj.hasProperty("set")) {
+                val setter = obj.get("set")
+                checkError() ?: return descriptor
+                if (!Operations.isCallable(setter) && setter != JSUndefined) {
+                    throwError<JSTypeErrorObject>("descriptor's 'set' property must be undefined or callable")
+                    return descriptor
+                }
+            }
+
+            if (descriptor.getter != null || descriptor.setter != null) {
+                if (descriptor.value != JSEmpty || descriptor.hasWritable) {
+                    throwError<JSTypeErrorObject>("descriptor cannot specify 'get' or 'set' property with a 'value' or 'writable' property")
+                    return descriptor
+                }
+            }
+
+            return descriptor
         }
     }
 }

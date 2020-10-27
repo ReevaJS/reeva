@@ -11,10 +11,11 @@ import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.values.iterators.JSArrayIterator
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
+import me.mattco.reeva.runtime.values.primitives.JSNull
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
-class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, null) {
+class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, realm.objectProto) {
     override fun init() {
         // No super call to avoid prototype complications
 

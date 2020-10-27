@@ -16,6 +16,8 @@ abstract class JSNativeFunction protected constructor(
     override val isConstructable = false
 
     override fun init() {
+        super.init()
+
         defineOwnProperty("length", length.toValue(), Descriptor.CONFIGURABLE)
         defineOwnProperty("name", name.toValue(), Descriptor.CONFIGURABLE)
     }

@@ -118,8 +118,8 @@ class Realm(globalObject: JSObject? = null) {
         functionProto = JSFunctionProto.create(this)
         objectCtor = JSObjectCtor.create(this)
         objectProto.init()
-        objectProto.init()
         functionProto.init()
+        objectCtor.init()
 
         numberCtor = JSNumberCtor.create(this)
         booleanCtor = JSBooleanCtor.create(this)

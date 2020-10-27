@@ -18,22 +18,35 @@ import me.mattco.reeva.utils.*
 
 open class JSObject protected constructor(
     val realm: Realm,
-    prototype: JSValue? = null
+    private var prototype: JSValue = JSNull
 ) : JSValue() {
     private val storage = mutableMapOf<StringOrSymbol, Descriptor>()
     internal val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
 
-    private var prototype: JSValue = JSNull
+    var isSealed = false
+        internal set(value) {
+            if (value)
+                expect(!field)
+            field = value
+        }
+    var isFrozen = false
+        internal set(value) {
+            if (value)
+                expect(!field)
+            field = value
+        }
 
     init {
-        if (prototype != null)
-            this.prototype = prototype
+        if (prototype !is JSObject && prototype !is JSNull)
+            throw IllegalArgumentException("Invalid prototype provided to JSObject constructor")
     }
 
     // To facilitate classes which must set their prototypes in the init()
     // call instead of the class constructor
     protected fun internalSetPrototype(prototype: JSValue) {
+        if (prototype !is JSObject && prototype !is JSNull)
+            throw IllegalArgumentException("Invalid prototype provided to internalSetPrototype")
         this.prototype = prototype
     }
 
@@ -540,7 +553,7 @@ open class JSObject protected constructor(
 
         @JvmStatic
         @JvmOverloads
-        fun create(realm: Realm, proto: JSObject = realm.objectProto) = JSObject(realm, proto).also { it.init() }
+        fun create(realm: Realm, proto: JSValue = realm.objectProto) = JSObject(realm, proto).also { it.init() }
 
         protected fun thisBinding(context: ExecutionContext): JSValue {
             val env = context.lexicalEnv ?: shouldThrowError()

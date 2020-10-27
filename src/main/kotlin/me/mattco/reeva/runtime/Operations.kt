@@ -721,30 +721,47 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("CreateDataProperty", "7.3.5")
     fun createDataProperty(target: JSValue, property: JSValue, value: JSValue): Boolean {
-        ecmaAssert(target is JSObject)
-        return target.defineOwnProperty(toPropertyKey(property).also {
+        return createDataProperty(target, toPropertyKey(property).also {
             checkError() ?: return false
-        }, Descriptor(value, Descriptor.defaultAttributes))
+        }, value)
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("CreateDataProperty", "7.3.5")
+    fun createDataProperty(target: JSValue, property: PropertyKey, value: JSValue): Boolean {
+        ecmaAssert(target is JSObject)
+        return target.defineOwnProperty(property, Descriptor(value, Descriptor.defaultAttributes))
+    }
+
+    @JSThrows
+    fun createDataPropertyOrThrow(target: JSValue, property: JSValue, value: JSValue): Boolean {
+        return createDataPropertyOrThrow(target, toPropertyKey(property).also {
+            checkError() ?: return false
+        }, value)
     }
 
     @JSThrows
     @JvmStatic @ECMAImpl("CreateDataPropertyOrThrow", "7.3.7")
-    fun createDataPropertyOrThrow(target: JSValue, property: JSValue, value: JSValue): Boolean {
+    fun createDataPropertyOrThrow(target: JSValue, property: PropertyKey, value: JSValue): Boolean {
         if (!createDataProperty(target, property, value)) {
-            throwError<JSTypeErrorObject>("unable to create property \"${toPrintableString(property)}\" on object ${toPrintableString(target)}")
+            throwError<JSTypeErrorObject>("unable to create property \"$property\" on object ${toPrintableString(target)}")
             return false
         }
         return true
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("DefinePropertyOrThrow", "7.3.8")
     fun definePropertyOrThrow(target: JSValue, property: JSValue, descriptor: Descriptor): Boolean {
+        return definePropertyOrThrow(target, toPropertyKey(property), descriptor)
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("DefinePropertyOrThrow", "7.3.8")
+    fun definePropertyOrThrow(target: JSValue, property: PropertyKey, descriptor: Descriptor): Boolean {
         ecmaAssert(target is JSObject)
-        if (!target.defineOwnProperty(toPropertyKey(property), descriptor)) {
-            throwError<JSTypeErrorObject>("unable to define property \"${toPrintableString(property)}\" on object ${toPrintableString(target)}")
+        if (!target.defineOwnProperty(property, descriptor)) {
+            throwError<JSTypeErrorObject>("unable to define property \"$property\" on object ${toPrintableString(target)}")
             return false
         }
         return true
@@ -796,6 +813,39 @@ object Operations {
         ecmaAssert(isConstructor(constructor))
         ecmaAssert(isConstructor(newTarget))
         return (constructor as JSFunction).construct(arguments, newTarget as JSFunction)
+    }
+
+    enum class IntegrityLevel {
+        Sealed,
+        Frozen,
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("SetIntegrityLevel", "7.3.15")
+    fun setIntegrityLevel(obj: JSObject, level: IntegrityLevel): Boolean {
+        if (!obj.preventExtensions())
+            return false
+        val keys = obj.ownPropertyKeys()
+        if (level == IntegrityLevel.Sealed) {
+            keys.forEach { key ->
+                definePropertyOrThrow(obj, key, Descriptor(JSEmpty, Descriptor.HAS_CONFIGURABLE))
+                checkError() ?: return false
+            }
+            obj.isSealed = true
+        } else {
+            keys.forEach { key ->
+                val currentDesc = obj.getOwnPropertyDescriptor(key) ?: return@forEach
+                val desc = if (currentDesc.isAccessorDescriptor) {
+                    Descriptor(JSEmpty, Descriptor.HAS_CONFIGURABLE)
+                } else {
+                    Descriptor(JSEmpty, Descriptor.HAS_CONFIGURABLE or Descriptor.HAS_WRITABLE)
+                }
+                definePropertyOrThrow(obj, key, desc)
+                checkError() ?: return false
+            }
+            obj.isFrozen = true
+        }
+        return true
     }
 
     @JSThrows
@@ -1269,6 +1319,52 @@ object Operations {
             "^" -> numericBitwiseXOR(lnum, rnum)
             "|" -> numericBitwiseOR(lnum, rnum)
             else -> unreachable()
+        }
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("AddEntriesFromIterable", "23.1.1.2")
+    fun addEntriesFromIterable(target: JSObject, iterable: JSValue, adder: JSFunction): JSObject {
+        // TODO: This whole method is super scuffed
+        ecmaAssert(iterable != JSUndefined && iterable != JSNull)
+        val record = getIterator(iterable) as? IteratorRecord ?: return JSObject.INVALID_OBJECT
+        while (true) {
+            val next = iteratorStep(record)
+            if (next == JSFalse)
+                return target
+            val nextItem = iteratorValue(next)
+            if (nextItem !is JSObject) {
+                val error = Completion(Completion.Type.Throw, JSTypeErrorObject.create(target.realm, "TODO: message"))
+                return iteratorClose(record, error).let {
+                    if (it.isAbrupt)
+                        JSObject.INVALID_OBJECT
+                    else it.value as? JSObject ?: JSObject.INVALID_OBJECT
+                }
+            }
+            val key = nextItem.get(0)
+            checkError() ?: run {
+                return iteratorClose(record, Completion(Completion.Type.Throw, Agent.runningContext.error!!)).let {
+                    if (it.isAbrupt)
+                        JSObject.INVALID_OBJECT
+                    else it.value as? JSObject ?: JSObject.INVALID_OBJECT
+                }
+            }
+            val value = nextItem.get(1)
+            checkError() ?: run {
+                return iteratorClose(record, Completion(Completion.Type.Throw, Agent.runningContext.error!!)).let {
+                    if (it.isAbrupt)
+                        JSObject.INVALID_OBJECT
+                    else it.value as? JSObject ?: JSObject.INVALID_OBJECT
+                }
+            }
+            call(adder, target, listOf(key, value))
+            checkError() ?: run {
+                return iteratorClose(record, Completion(Completion.Type.Throw, Agent.runningContext.error!!)).let {
+                    if (it.isAbrupt)
+                        JSObject.INVALID_OBJECT
+                    else it.value as? JSObject ?: JSObject.INVALID_OBJECT
+                }
+            }
         }
     }
 
