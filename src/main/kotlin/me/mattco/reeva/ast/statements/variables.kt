@@ -61,4 +61,6 @@ class VariableDeclarationNode(
     val initializer: InitializerNode?
 ) : NodeBase(listOfNotNull(identifier, initializer)), StatementNode {
     override fun boundNames() = identifier.boundNames()
+
+    override fun varScopedDeclarations() = listOf(this)
 }

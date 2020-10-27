@@ -29,7 +29,7 @@ import me.mattco.reeva.utils.*
 
 class Interpreter(private val record: Realm.ScriptRecord) {
     fun interpret(scriptContext: ExecutionContext): Completion {
-        val globalEnv = record.realm.globalEnv!!
+        val globalEnv = record.realm.globalEnv
         val result = globalDeclarationInstantiation(record.scriptOrModule, globalEnv).let {
             if (it.isNormal)
                 interpretScript(record.scriptOrModule)
