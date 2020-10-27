@@ -1005,19 +1005,30 @@ class Interpreter(private val record: Realm.ScriptRecord) {
     }
 
     private fun interpretAssignmentExpression(assignmentExpressionNode: AssignmentExpressionNode): Completion {
-        if (assignmentExpressionNode.op != AssignmentExpressionNode.Operator.Equals)
-            TODO()
-
         if (assignmentExpressionNode.lhs.let { it is ObjectLiteralNode && it is ArrayLiteralNode })
             TODO()
 
-        val lref = interpretExpression(assignmentExpressionNode.lhs).ifAbrupt { return it }
-        val rref = interpretExpression(assignmentExpressionNode.rhs).ifAbrupt { return it }
-        val rval = Operations.getValue(rref.value)
-        ifError { return it }
-        Operations.putValue(lref.value, rval)
-        ifError { return it }
-        return normalCompletion(rval)
+        if (assignmentExpressionNode.op == AssignmentExpressionNode.Operator.Equals) {
+            val lref = interpretExpression(assignmentExpressionNode.lhs).ifAbrupt { return it }
+            val rref = interpretExpression(assignmentExpressionNode.rhs).ifAbrupt { return it }
+            val rval = Operations.getValue(rref.value)
+            ifError { return it }
+            Operations.putValue(lref.value, rval)
+            ifError { return it }
+            return normalCompletion(rval)
+        } else {
+            val lref = interpretExpression(assignmentExpressionNode.lhs).ifAbrupt { return it }
+            val lval = Operations.getValue(lref.value)
+            ifError { return it }
+            val rref = interpretExpression(assignmentExpressionNode.rhs).ifAbrupt { return it }
+            val rval = Operations.getValue(rref.value)
+            ifError { return it }
+            val newValue = Operations.applyStringOrNumericBinaryOperator(lval, rval, assignmentExpressionNode.op.symbol.dropLast(1))
+            ifError { return it }
+            Operations.putValue(lref.value, newValue)
+            ifError { return it }
+            return normalCompletion(newValue)
+        }
     }
 
     private fun interpretConditionalExpression(conditionalExpressionNode: ConditionalExpressionNode): Completion {
