@@ -342,10 +342,13 @@ class Interpreter(private val record: Realm.ScriptRecord) {
     }
 
     private fun interpretStatementList(statementListNode: StatementListNode): Completion {
+        var lastValue: JSValue = JSEmpty
         statementListNode.statements.forEach { statement ->
-            interpretStatement(statement as StatementNode).ifAbrupt { return it }
+            val result = interpretStatement(statement as StatementNode).ifAbrupt { return it }
+            if (result.value != JSEmpty)
+                lastValue = result.value
         }
-        return normalCompletion(JSEmpty)
+        return normalCompletion(lastValue)
     }
 
     private fun interpretStatement(statement: StatementNode): Completion {
@@ -412,8 +415,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
     }
 
     private fun interpretExpressionStatement(expressionStatement: ExpressionStatementNode): Completion {
-        interpretExpression(expressionStatement.node).ifAbrupt { return it }
-        return normalCompletion()
+        return interpretExpression(expressionStatement.node)
     }
 
     private fun interpretIfStatement(ifStatement: IfStatementNode): Completion {
