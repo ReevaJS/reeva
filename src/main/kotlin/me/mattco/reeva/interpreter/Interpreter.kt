@@ -895,7 +895,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
         ifError { return it }
         val args = argumentsListEvaluation(callExpressionNode.arguments) ?: return throwCompletion()
         val result = Operations.evaluateCall(func, ref.value, args, false)
-        ifError { return returnCompletion() }
+        ifError { return it }
         return normalCompletion(result)
     }
 

@@ -41,7 +41,6 @@ class JSInterpretedFunction(
             throwError<JSTypeErrorObject>("TODO: message")
             return INVALID_VALUE
         }
-        val callerContext = Agent.runningContext
         val calleeContext = Operations.prepareForOrdinaryCall(this, JSUndefined)
         if (Agent.hasError())
             return INVALID_VALUE
@@ -52,7 +51,7 @@ class JSInterpretedFunction(
         if (result.isReturn)
             return result.value
         if (result.isAbrupt) {
-            Agent.throwError(result.value as JSErrorObject)
+            Agent.throwError(result.value)
             return INVALID_VALUE
         }
         return JSUndefined

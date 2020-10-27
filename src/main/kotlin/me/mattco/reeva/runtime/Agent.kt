@@ -6,6 +6,7 @@ import me.mattco.reeva.compiler.TopLevelScript
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.contexts.ExecutionContext
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
+import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.errors.JSErrorObject
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.utils.expect
@@ -193,7 +194,7 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
         fun hasError() = runningContext.error != null
 
         @JvmStatic
-        fun throwError(error: JSErrorObject) {
+        fun throwError(error: JSValue) {
             expect(runningContext.error == null)
             runningContext.error = error
         }
