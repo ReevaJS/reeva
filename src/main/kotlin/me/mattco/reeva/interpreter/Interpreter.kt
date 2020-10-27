@@ -668,6 +668,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
     private fun interpretTryStatement(tryStatementNode: TryStatementNode): Completion {
         val blockResult = interpretBlock(tryStatementNode.tryBlock)
         val catchResult = if (blockResult.isThrow) {
+            Agent.runningContext.error = null
             if (tryStatementNode.catchNode.catchParameter == null) {
                 interpretBlock(tryStatementNode.catchNode.block)
             } else {
