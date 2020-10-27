@@ -240,8 +240,22 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("Number::toString", "6.1.6.1.20")
-    fun numericToString(lhs: JSValue): JSValue {
-        TODO()
+    fun numericToString(value: JSValue): JSValue {
+        expect(value is JSNumber)
+        if (value.isNaN)
+            return "NaN".toValue()
+        if (value.isZero)
+            return "0".toValue()
+        if (value.number < 0)
+            return JSString("-" + numericToString(JSNumber(-value.number)))
+        if (value.isPositiveInfinity)
+            return "Infinity".toValue()
+
+        // TODO: Better conversion, preferably V8's algorithm
+        // (mfbt/double-conversion/double-conversion.{h,cc}
+        if (value.isInt)
+            return value.asInt.toString().toValue()
+        return value.asDouble.toString().toValue()
     }
 
     /**************
