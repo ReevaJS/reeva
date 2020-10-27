@@ -14,6 +14,7 @@ import me.mattco.reeva.runtime.environment.DeclarativeEnvRecord
 import me.mattco.reeva.runtime.environment.EnvRecord
 import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.JSValue
+import me.mattco.reeva.runtime.values.arrays.JSArrayObject
 import me.mattco.reeva.runtime.values.errors.JSErrorObject
 import me.mattco.reeva.runtime.values.errors.JSReferenceErrorObject
 import me.mattco.reeva.runtime.values.errors.JSSyntaxErrorObject
@@ -221,9 +222,6 @@ class Interpreter(private val record: Realm.ScriptRecord) {
 
         val parameterBindings = parameterNames
 
-        if (formals.restParameter != null)
-            TODO()
-
         formals.functionParameters.parameters.forEachIndexed { index, parameter ->
             val lhs = Operations.resolveBinding(parameter.bindingElement.binding.identifier.identifierName)
             ifError { return it }
@@ -236,6 +234,30 @@ class Interpreter(private val record: Realm.ScriptRecord) {
                 val defaultValue = Operations.getValue(result.value)
                 ifError { return it }
                 value = defaultValue
+            }
+
+            if (hasDuplicates) {
+                Operations.putValue(lhs, value)
+            } else {
+                Operations.initializeReferencedBinding(lhs, value)
+            }
+        }
+
+        if (formals.restParameter != null) {
+            val id = formals.restParameter.element.identifier.identifierName
+            val startingIndex = formals.functionParameters.parameters.size
+            val lhs = Operations.resolveBinding(id)
+            ifError { return it }
+            val value = if (startingIndex > arguments.lastIndex) {
+                Operations.arrayCreate(0).also {
+                    ifError { return it }
+                }
+            } else {
+                val arr = Operations.arrayCreate(arguments.lastIndex - startingIndex + 1)
+                arguments.subList(startingIndex, arguments.size).forEachIndexed { index, value ->
+                    Operations.createDataPropertyOrThrow(arr, index.toValue(), value)
+                }
+                arr
             }
 
             if (hasDuplicates) {
