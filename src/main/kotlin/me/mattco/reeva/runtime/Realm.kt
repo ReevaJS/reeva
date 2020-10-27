@@ -92,7 +92,7 @@ class Realm(globalObject: JSObject? = null) {
 
     fun setGlobalObject(obj: JSObject) {
         globalObject = obj
-        globalEnv = GlobalEnvRecord.create(globalObject, globalObject)
+        globalEnv = GlobalEnvRecord.create(globalObject)
     }
 
     fun initObjects() {
@@ -154,31 +154,6 @@ class Realm(globalObject: JSObject? = null) {
         // Must be created after wellknown symbols
         symbolCtor = JSSymbolCtor.create(this)
         symbolProto = JSSymbolProto.create(this)
-    }
-
-    fun populateGlobalObject() {
-        globalObject.set("Object", objectCtor)
-        globalObject.set("Function", functionCtor)
-        globalObject.set("Array", arrayCtor)
-        globalObject.set("String", stringCtor)
-        globalObject.set("Number", numberCtor)
-        globalObject.set("Boolean", booleanCtor)
-        globalObject.set("Symbol", symbolCtor)
-        globalObject.set("Error", errorCtor)
-        globalObject.set("EvalError", evalErrorCtor)
-        globalObject.set("TypeError", typeErrorCtor)
-        globalObject.set("RangeError", rangeErrorCtor)
-        globalObject.set("ReferenceError", referenceErrorCtor)
-        globalObject.set("SyntaxError", syntaxErrorCtor)
-        globalObject.set("URIError", uriErrorCtor)
-
-        globalObject.set("JSON", jsonObj)
-        globalObject.set("console", consoleObj)
-
-        globalObject.defineOwnProperty("Infinity", JSNumber(Double.POSITIVE_INFINITY), 0)
-        globalObject.defineOwnProperty("NaN", JSNumber(Double.NaN), 0)
-        globalObject.defineOwnProperty("globalThis", globalEnv.globalThis, Descriptor.WRITABLE or Descriptor.CONFIGURABLE)
-        globalObject.defineOwnProperty("undefined", JSUndefined, 0)
     }
 
     fun parseScript(script: String): ScriptRecord {

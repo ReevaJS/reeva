@@ -35,8 +35,7 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
 
         if (!realm.isGloballyInitialized) {
             realm.initObjects()
-            realm.setGlobalObject(JSObject.create(realm))
-            realm.populateGlobalObject()
+            realm.setGlobalObject(JSGlobalObject.create(realm))
         }
 
         newContext.variableEnv = realm.globalEnv
@@ -64,12 +63,10 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
         val newContext = ExecutionContext(this, realm, null)
         runningContextStack.add(newContext)
 
-        realm.initObjects()
-
-        if (!realm.isGloballyInitialized)
+        if (!realm.isGloballyInitialized) {
+            realm.initObjects()
             realm.setGlobalObject(JSObject.create(realm))
-
-        realm.populateGlobalObject()
+        }
 
         newContext.variableEnv = realm.globalEnv
         newContext.lexicalEnv = realm.globalEnv
