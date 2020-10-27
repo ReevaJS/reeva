@@ -382,7 +382,9 @@ class Interpreter(private val record: Realm.ScriptRecord) {
         val blockEnv = DeclarativeEnvRecord.create(Agent.runningContext.lexicalEnv)
         blockDeclarationInstantiation(block.statements, blockEnv)
         Agent.runningContext.lexicalEnv = blockEnv
-        return interpretStatementList(block.statements)
+        return interpretStatementList(block.statements).also {
+            Agent.runningContext.lexicalEnv = oldEnv
+        }
     }
 
     private fun blockDeclarationInstantiation(statements: StatementListNode, env: DeclarativeEnvRecord) {
