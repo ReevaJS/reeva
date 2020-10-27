@@ -24,11 +24,7 @@ open class JSObject protected constructor(
     internal val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
 
-    // This must be a lateinit var, because otherwise some objects could not be
-    // instantiated without causing a circularity issue. For example, JSNumberProto
-    // is itself a JSNumberObject. If the JSNumberObject tried to pass the number
-    // proto to it's super constructor, it would cause problems.
-    private lateinit var prototype: JSValue
+    private var prototype: JSValue = JSNull
 
     init {
         if (prototype != null)
@@ -443,7 +439,7 @@ open class JSObject protected constructor(
     }
 
     @JSThrows
-    private fun internalGet(property: PropertyKey): Descriptor? {
+    protected fun internalGet(property: PropertyKey): Descriptor? {
         val stringOrSymbol = when {
             property.isInt -> {
                 if (property.asInt >= 0)
@@ -458,8 +454,7 @@ open class JSObject protected constructor(
         return storage[stringOrSymbol]
     }
 
-    private fun internalSet(property: PropertyKey, descriptor: Descriptor) {
-
+    protected fun internalSet(property: PropertyKey, descriptor: Descriptor) {
         val stringOrSymbol = when {
             property.isString -> {
                 property.asString.toIntOrNull()?.let {

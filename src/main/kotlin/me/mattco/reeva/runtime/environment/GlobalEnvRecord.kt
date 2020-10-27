@@ -29,7 +29,8 @@ class GlobalEnvRecord(
     @ECMAImpl("CreateMutableBinding", "8.1.1.4.2")
     override fun createMutableBinding(name: String, canBeDeleted: Boolean) {
         if (declarativeRecord.hasBinding(name)) {
-            throwError<JSTypeErrorObject>("TODO")
+            // TODO: This appears to be a syntax error in spidermonkey
+            throwError<JSTypeErrorObject>("redeclaration of lexical variable $name")
         } else {
             declarativeRecord.createMutableBinding(name, canBeDeleted)
         }

@@ -3,17 +3,16 @@ package me.mattco.reeva.runtime.values.arrays
 import me.mattco.reeva.runtime.Agent.Companion.checkError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.contexts.ExecutionContext
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
+import me.mattco.reeva.runtime.values.iterators.JSArrayIterator
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
-import me.mattco.reeva.utils.throwError
-import me.mattco.reeva.utils.toValue
+import me.mattco.reeva.utils.*
 
 class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, null) {
     override fun init() {
@@ -24,6 +23,11 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, null
         configureInstanceProperties()
 
         defineOwnProperty("constructor", realm.arrayCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+
+        // "The initial values of the @@iterator property is the same function object as the initial
+        // value of the Array.prototype.values property.
+        // https://tc39.es/ecma262/#sec-array.prototype-@@iterator
+        defineOwnProperty(realm.`@@iterator`, internalGet("values".key())!!.getRawValue())
     }
 
     @JSMethod("forEach", 1)
@@ -48,7 +52,33 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, null
         return JSUndefined
     }
 
+    @JSMethod("keys", 0)
+    fun keys(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        checkError() ?: return INVALID_VALUE
+        return createArrayIterator(realm, obj, PropertyKind.Key)
+    }
+
+    @JSMethod("entries", 0)
+    fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        checkError() ?: return INVALID_VALUE
+        return createArrayIterator(realm, obj, PropertyKind.KeyValue)
+    }
+
+    @JSMethod("values", 0)
+    fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        checkError() ?: return INVALID_VALUE
+        return createArrayIterator(realm, obj, PropertyKind.Value)
+    }
+
     companion object {
         fun create(realm: Realm) = JSArrayProto(realm).also { it.init() }
+
+        @ECMAImpl("CreateArrayIterator", "22.1.5.1")
+        private fun createArrayIterator(realm: Realm, array: JSObject, kind: PropertyKind): JSValue {
+            return JSArrayIterator.create(realm, array, 0, kind)
+        }
     }
 }

@@ -781,6 +781,16 @@ object Operations {
     }
 
     @JSThrows
+    @JvmStatic @ECMAImpl("CreateArrayFromList", "7.3.17")
+    fun createArrayFromList(elements: List<JSValue>): JSValue {
+        val array = arrayCreate(elements.size)
+        elements.forEachIndexed { index, value ->
+            createDataPropertyOrThrow(array, index.toValue(), value)
+        }
+        return array
+    }
+
+    @JSThrows
     @JvmStatic @ECMAImpl("LengthOfArrayLike", "7.3.18")
     fun lengthOfArrayLike(target: JSValue): Int {
         ecmaAssert(target is JSObject)
@@ -865,7 +875,7 @@ object Operations {
             throwError<JSTypeErrorObject>("iterator must be an object")
             return null
         }
-        val nextMethod = getV(obj, "next".toValue())
+        val nextMethod = getV(iterator, "next".toValue())
         return IteratorRecord(iterator, nextMethod, false)
     }
 
@@ -910,6 +920,17 @@ object Operations {
         if (done == JSTrue)
             return JSFalse
         return result
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("CreateIterResultObject", "7.4.8")
+    fun createIterResultObject(value: JSValue, done: Boolean): JSValue {
+        val obj = JSObject.create(Agent.runningContext.realm)
+        createDataPropertyOrThrow(obj, "value".toValue(), value)
+        checkError() ?: return JSValue.INVALID_VALUE
+        createDataPropertyOrThrow(obj, "done".toValue(), done.toValue())
+        checkError() ?: return JSValue.INVALID_VALUE
+        return obj
     }
 
     @JvmStatic @ECMAImpl("GetIdentifierReference", "8.1.2.1")

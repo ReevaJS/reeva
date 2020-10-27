@@ -12,6 +12,8 @@ import me.mattco.reeva.runtime.values.functions.JSFunctionCtor
 import me.mattco.reeva.runtime.values.functions.JSFunctionProto
 import me.mattco.reeva.runtime.values.global.JSConsole
 import me.mattco.reeva.runtime.values.global.JSConsoleProto
+import me.mattco.reeva.runtime.values.iterators.JSArrayIteratorProto
+import me.mattco.reeva.runtime.values.iterators.JSIteratorProto
 import me.mattco.reeva.runtime.values.objects.*
 import me.mattco.reeva.runtime.values.primitives.JSSymbol
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
@@ -30,6 +32,8 @@ class Realm {
     lateinit var symbolProto: JSSymbolProto private set
     lateinit var functionProto: JSFunctionProto private set
     lateinit var arrayProto: JSArrayProto private set
+    lateinit var iteratorProto: JSIteratorProto private set
+    lateinit var arrayIteratorProto: JSArrayIteratorProto private set
     lateinit var consoleProto: JSConsoleProto private set
 
     lateinit var errorProto: JSErrorProto private set
@@ -118,6 +122,8 @@ class Realm {
         booleanProto = JSBooleanProto.create(this)
         stringProto = JSStringProto.create(this)
         arrayProto = JSArrayProto.create(this)
+        iteratorProto = JSIteratorProto.create(this)
+        arrayIteratorProto = JSArrayIteratorProto.create(this)
         consoleProto = JSConsoleProto.create(this)
         jsonObj = JSONObject.create(this)
         consoleObj = JSConsole.create(this)
