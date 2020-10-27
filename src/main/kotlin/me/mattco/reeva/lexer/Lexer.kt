@@ -28,7 +28,7 @@ class Lexer(private val source: String) : Iterable<Token> {
         get() = cursor >= source.length
 
     private val char: Char
-        get() = source[cursor]
+        get() = if (isDone) 0.toChar() else source[cursor]
 
     fun nextToken(): Token {
         val triviaStartCursor = cursor
