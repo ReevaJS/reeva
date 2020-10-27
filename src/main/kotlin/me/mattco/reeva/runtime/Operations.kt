@@ -21,6 +21,8 @@ import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.objects.PropertyKey
 import me.mattco.reeva.runtime.values.primitives.*
+import me.mattco.reeva.runtime.values.wrappers.JSBooleanObject
+import me.mattco.reeva.runtime.values.wrappers.JSNumberObject
 import me.mattco.reeva.runtime.values.wrappers.JSStringObject
 import me.mattco.reeva.runtime.values.wrappers.JSSymbolObject
 import me.mattco.reeva.utils.*
@@ -538,8 +540,8 @@ object Operations {
                 throwError<JSTypeErrorObject>("cannot convert ${value.type} to Object")
                 return JSObject.INVALID_OBJECT
             }
-            is JSBoolean -> TODO()
-            is JSNumber -> TODO()
+            is JSBoolean -> JSBooleanObject.create(Agent.runningContext.realm, value)
+            is JSNumber -> JSNumberObject.create(Agent.runningContext.realm, value)
             is JSString -> JSStringObject.create(Agent.runningContext.realm, value)
             is JSSymbol -> JSSymbolObject.create(Agent.runningContext.realm, value)
             is JSBigInt -> TODO()
