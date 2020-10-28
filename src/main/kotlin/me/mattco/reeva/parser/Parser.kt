@@ -43,6 +43,9 @@ class Parser(text: String) {
         val statementList = parseStatementList(Suffixes()) ?: StatementListNode(emptyList())
         if (!isDone)
             unexpected("token ${token.value}")
+        if (stateStack.size != 1) {
+            throw IllegalStateException("parseScript ended with ${stateStack.size - 1} extra states on the stack")
+        }
         return ScriptNode(statementList)
     }
 
@@ -167,6 +170,7 @@ class Parser(text: String) {
             loadState()
             return null
         }
+        discardState()
         return InitializerNode(expr)
     }
 
@@ -214,6 +218,7 @@ class Parser(text: String) {
                 loadState()
                 return returnVal()
             }
+            discardState()
             expressions.add(expr2)
         }
 
@@ -800,7 +805,7 @@ class Parser(text: String) {
     private fun parseArrowFunction(suffixes: Suffixes): ArrowFunctionNode? {
         saveState()
         val parameters = parseArrowParameters(suffixes.filter(Sfx.Yield, Sfx.Await)) ?: run {
-            discardState()
+            loadState()
             return null
         }
         if ('\n' in token.trivia) {
@@ -812,9 +817,9 @@ class Parser(text: String) {
             return null
         }
         consume()
+        discardState()
         val body = parseConciseBody(suffixes.filter(Sfx.In)) ?: run {
             expected("arrow function body")
-            discardState()
             return null
         }
         return ArrowFunctionNode(parameters, body)
@@ -825,34 +830,41 @@ class Parser(text: String) {
         if (identifier != null)
             return identifier
 
-        val cpeaapl = parseCPEAAPL(suffixes.filter(Sfx.Yield, Sfx.Await)) ?: return null
+        saveState()
+
+        val cpeaapl = parseCPEAAPL(suffixes.filter(Sfx.Yield, Sfx.Await)) ?: run {
+            loadState()
+            return null
+        }
 
         val elements = cpeaapl.covered
 
         if (elements.count { it.isSpread } > 1) {
-            syntaxError("arrow function cannot have multiple rest parameters")
+            loadState()
             return null
         }
 
         if (elements.indexOfFirst { it.isSpread }.let { it != -1 && it != elements.lastIndex }) {
-            syntaxError("arrow function cannot have normal parameters after a rest parameter")
+            loadState()
             return null
         }
 
         for (element in elements) {
-            if (!element.isSpread && element.node !is AssignmentExpressionNode && element.node !is BindingIdentifierNode) {
-                syntaxError("Invalid arrow function parameter")
+            if (!element.isSpread && element.node !is AssignmentExpressionNode && element.node !is IdentifierReferenceNode) {
+                loadState()
                 return null
             }
         }
 
+        discardState()
+
         val parameters = elements.filterNot { it.isSpread }.map {
             val (identifier, initializer) = if (it.node is AssignmentExpressionNode) {
-                expect(it.node.lhs is BindingIdentifierNode)
-                it.node.lhs to it.node.rhs
+                expect(it.node.lhs is IdentifierReferenceNode)
+                BindingIdentifierNode(it.node.lhs.identifierName) to it.node.rhs
             } else {
-                expect(it.node is BindingIdentifierNode)
-                it.node to null
+                expect(it.node is IdentifierReferenceNode)
+                BindingIdentifierNode(it.node.identifierName) to null
             }
 
             FormalParameterNode(BindingElementNode(SingleNameBindingNode(identifier, initializer?.let(::InitializerNode))))
@@ -1113,6 +1125,7 @@ class Parser(text: String) {
                     loadState()
                     return null
                 }
+                discardState()
                 return CCEAAAHNode(CallExpressionNode(memberExpr, args))
             }
         }
@@ -1140,8 +1153,10 @@ class Parser(text: String) {
             saveState()
 
             if (!first) {
-                if (tokenType != TokenType.Comma)
+                if (tokenType != TokenType.Comma) {
+                    discardState()
                     break
+                }
                 consume()
             }
 
@@ -1150,6 +1165,7 @@ class Parser(text: String) {
                 val expr = parseAssignmentExpression(newSuffixes) ?: run {
                     expected("expression")
                     consume()
+                    discardState()
                     return null
                 }
                 arguments.add(ArgumentListEntry(expr, true))
@@ -1161,6 +1177,7 @@ class Parser(text: String) {
                 arguments.add(ArgumentListEntry(expr, false))
             }
 
+            discardState()
             first = false
         } while (true)
 
@@ -1201,6 +1218,7 @@ class Parser(text: String) {
             return null
         }
 
+        discardState()
         return ParenthesizedExpressionNode(cpeaapl.covered[0].node as ExpressionNode)
     }
 
@@ -1454,8 +1472,10 @@ class Parser(text: String) {
             }
         }
 
-        if (parts.isEmpty())
-            return null
+        if (parts.isEmpty()) {
+            consume(TokenType.CloseParen)
+            return CPEAAPLNode(emptyList())
+        }
 
         if (!parts.last().isSpread && tokenType == TokenType.Comma)
             consume()
@@ -1469,9 +1489,9 @@ class Parser(text: String) {
         val newSuffixes = suffixes.filter(Sfx.In, Sfx.Yield, Sfx.Await)
 
         fun doMatch(): ExpressionNode? {
-            return parseConditionalExpression(newSuffixes) ?:
+            return parseArrowFunction(newSuffixes) ?:
+                parseConditionalExpression(newSuffixes) ?:
                 if (suffixes.hasYield) parseYieldExpression(newSuffixes) else null ?:
-                parseArrowFunction(newSuffixes) ?:
                 parseAsyncArrowFunction(newSuffixes)
         }
 
@@ -1544,12 +1564,16 @@ class Parser(text: String) {
 
     private fun parseCoalesceExpresion(suffixes: Suffixes): ExpressionNode? {
         saveState()
-        val head = parseBitwiseORExpression(suffixes) ?: return null
+        val head = parseBitwiseORExpression(suffixes) ?: run {
+            loadState()
+            return null
+        }
         if (tokenType != TokenType.DoubleQuestion) {
             loadState()
             return null
         }
         consume()
+        discardState()
 
         val expr = parseCoalesceExpresion(suffixes)
         return if (expr == null) {
