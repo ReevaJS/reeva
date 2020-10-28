@@ -13,6 +13,10 @@ import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
 class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ArrayConstructor", 1) {
+    init {
+        isConstructable = true
+    }
+
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         return construct(arguments, JSUndefined)
     }

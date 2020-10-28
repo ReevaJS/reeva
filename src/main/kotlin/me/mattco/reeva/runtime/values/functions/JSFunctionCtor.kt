@@ -4,6 +4,10 @@ import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.values.JSValue
 
 class JSFunctionCtor private constructor(realm: Realm) : JSNativeFunction(realm, "FunctionConstructor", 1) {
+    init {
+        isConstructable = true
+    }
+
     override fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
         TODO("Not yet implemented")
     }

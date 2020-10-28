@@ -15,6 +15,10 @@ open class JSErrorCtor protected constructor(
     realm: Realm,
     name: String = "Error"
 ) : JSNativeFunction(realm, name, 1) {
+    init {
+        isConstructable = true
+    }
+
     open fun constructErrorObj(): JSErrorObject {
         return JSErrorObject.create(realm)
     }

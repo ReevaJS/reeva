@@ -16,6 +16,10 @@ import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
 class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Symbol", 0) {
+    init {
+        isConstructable = true
+    }
+
     override fun init() {
         super.init()
 
