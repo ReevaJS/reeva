@@ -145,11 +145,9 @@ data class Descriptor(
             obj.set("value", getActualValue(thisValue))
         }
 
-        if (hasConfigurable)
-            obj.set("configurable", isConfigurable.toValue())
-        if (hasEnumerable)
-            obj.set("enumerable", isEnumerable.toValue())
-        if (hasWritable)
+        obj.set("configurable", isConfigurable.toValue())
+        obj.set("enumerable", isEnumerable.toValue())
+        if (isDataDescriptor)
             obj.set("writable", isWritable.toValue())
 
         return obj
