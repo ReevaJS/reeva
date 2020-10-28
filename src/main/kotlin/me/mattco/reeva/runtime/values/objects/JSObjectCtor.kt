@@ -23,14 +23,16 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
     @JSThrows
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val value = arguments.argument(0)
-        if (value.isUndefined || value.isNull)
-            return JSObject.create(realm)
-        return Operations.toObject(value)
+        return construct(arguments, JSUndefined)
     }
 
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-        TODO("Not yet implemented")
+        val value = arguments.argument(0)
+        if (newTarget != JSUndefined && newTarget != Agent.runningContext.function)
+            return Operations.ordinaryCreateFromConstructor(newTarget, realm.objectProto)
+        if (value.isUndefined || value.isNull)
+            return JSObject.create(realm)
+        return Operations.toObject(value)
     }
 
     @JSMethod("assign", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
