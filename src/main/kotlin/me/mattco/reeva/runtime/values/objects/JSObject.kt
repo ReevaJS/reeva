@@ -85,7 +85,7 @@ open class JSObject protected constructor(
                 method.invoke(this, thisValue) as JSValue
             })
             val key = if (getter.name.startsWith("@@")) {
-                realm.wellknownSymbols[getter.name]?.let(::PropertyKey) ?:
+                Realm.wellknownSymbols[getter.name]?.let(::PropertyKey) ?:
                 throw IllegalArgumentException("No well known symbol found with name ${getter.name}")
             } else PropertyKey(getter.name)
             expect(key !in nativeProperties)
@@ -97,7 +97,7 @@ open class JSObject protected constructor(
         }.forEach { method ->
             val setter = method.getAnnotation(JSNativePropertySetter::class.java)
             val key = if (setter.name.startsWith("@@")) {
-                realm.wellknownSymbols[setter.name]?.let(::PropertyKey) ?:
+                Realm.wellknownSymbols[setter.name]?.let(::PropertyKey) ?:
                 throw IllegalArgumentException("No well known symbol found with name ${setter.name}")
             } else PropertyKey(setter.name)
             val methodPair = if (key in nativeProperties) {
@@ -129,7 +129,7 @@ open class JSObject protected constructor(
                 }
             )
             val key = if (getter.name.startsWith("@@")) {
-                realm.wellknownSymbols[getter.name]?.let(::PropertyKey) ?:
+                Realm.wellknownSymbols[getter.name]?.let(::PropertyKey) ?:
                 throw IllegalArgumentException("No well known symbol found with name ${getter.name}")
             } else PropertyKey(getter.name)
             expect(key !in nativeAccessors)
@@ -141,7 +141,7 @@ open class JSObject protected constructor(
         }.forEach { method ->
             val setter = method.getAnnotation(JSNativeAccessorSetter::class.java)
             val key = if (setter.name.startsWith("@@")) {
-                realm.wellknownSymbols[setter.name]?.let(::PropertyKey) ?:
+                Realm.wellknownSymbols[setter.name]?.let(::PropertyKey) ?:
                 throw IllegalArgumentException("No well known symbol found with name ${setter.name}")
             } else PropertyKey(setter.name)
             val methodPair = if (key in nativeAccessors) {
@@ -167,7 +167,7 @@ open class JSObject protected constructor(
         }.forEach {
             val annotation = it.getAnnotation(JSMethod::class.java)
             val key = if (annotation.name.startsWith("@@")) {
-                realm.wellknownSymbols[annotation.name]?.let(::PropertyKey) ?:
+                Realm.wellknownSymbols[annotation.name]?.let(::PropertyKey) ?:
                 throw IllegalArgumentException("No well known symbol found with name ${annotation.name}")
             } else PropertyKey(annotation.name)
 

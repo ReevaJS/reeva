@@ -18,7 +18,7 @@ import me.mattco.reeva.utils.toValue
 class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {
         super.init()
-        defineOwnProperty(realm.`@@toStringTag`, "Reflect".toValue(), Descriptor.CONFIGURABLE)
+        defineOwnProperty(Realm.`@@toStringTag`, "Reflect".toValue(), Descriptor.CONFIGURABLE)
     }
 
     @JSMethod("apply", 3, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)

@@ -16,7 +16,7 @@ import me.mattco.reeva.utils.toValue
 class JSArrayIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
     override fun init() {
         super.init()
-        defineOwnProperty(realm.`@@toStringTag`, "Array Iterator".toValue(), Descriptor.CONFIGURABLE)
+        defineOwnProperty(Realm.`@@toStringTag`, "Array Iterator".toValue(), Descriptor.CONFIGURABLE)
     }
 
     @JSMethod("next", 0)

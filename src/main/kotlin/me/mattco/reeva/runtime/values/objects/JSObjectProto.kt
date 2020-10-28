@@ -85,7 +85,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
 
         val obj = Operations.toObject(thisValue)
         ifError { return INVALID_VALUE }
-        val tag = obj.get(realm.`@@toStringTag`).let {
+        val tag = obj.get(Realm.`@@toStringTag`).let {
             if (it is JSString) {
                 it.string
             } else {

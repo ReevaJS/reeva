@@ -29,7 +29,7 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         defineOwnProperty("SQRT1_2", JSNumber(0.7071067811865476), 0)
         defineOwnProperty("SQRT2", JSNumber(1.4142135623730951), 0)
 
-        defineOwnProperty(realm.`@@toStringTag`, "Math".toValue(), 0)
+        defineOwnProperty(Realm.`@@toStringTag`, "Math".toValue(), 0)
     }
 
     @JSMethod("abs", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)

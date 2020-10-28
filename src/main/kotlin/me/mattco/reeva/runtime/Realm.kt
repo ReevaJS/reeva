@@ -74,23 +74,6 @@ class Realm(globalObject: JSObject? = null) {
     lateinit var jsonObj: JSONObject private set
     lateinit var consoleObj: JSConsole private set
 
-    lateinit var `@@asyncIterator`: JSSymbol private set
-    lateinit var `@@hasInstance`: JSSymbol private set
-    lateinit var `@@isConcatSpreadable`: JSSymbol private set
-    lateinit var `@@iterator`: JSSymbol private set
-    lateinit var `@@match`: JSSymbol private set
-    lateinit var `@@matchAll`: JSSymbol private set
-    lateinit var `@@replace`: JSSymbol private set
-    lateinit var `@@search`: JSSymbol private set
-    lateinit var `@@species`: JSSymbol private set
-    lateinit var `@@split`: JSSymbol private set
-    lateinit var `@@toPrimitive`: JSSymbol private set
-    lateinit var `@@toStringTag`: JSSymbol private set
-    lateinit var `@@unscopables`: JSSymbol private set
-
-    // To get access to the symbol via their name without reflection
-    val wellknownSymbols = mutableMapOf<String, JSSymbol>()
-
     init {
         if (globalObject != null)
             setGlobalObject(globalObject)
@@ -102,21 +85,25 @@ class Realm(globalObject: JSObject? = null) {
     }
 
     fun initObjects() {
-        // Objects can declare symbol methods, so we initialize these first, as they are not objects
-        // and do not depends on the object ctor or proto
-        `@@asyncIterator` = JSSymbol("Symbol.asyncIterator").also { wellknownSymbols["@@asyncIterator"] = it }
-        `@@hasInstance` = JSSymbol("Symbol.hasInstance").also { wellknownSymbols["@@hasInstance"] = it }
-        `@@isConcatSpreadable` = JSSymbol("Symbol.isConcatSpreadable").also { wellknownSymbols["@@isConcatSpreadable"] = it }
-        `@@iterator` = JSSymbol("Symbol.iterator").also { wellknownSymbols["@@iterator"] = it }
-        `@@match` = JSSymbol("Symbol.match").also { wellknownSymbols["@@match"] = it }
-        `@@matchAll` = JSSymbol("Symbol.matchAll").also { wellknownSymbols["@@matchAll"] = it }
-        `@@replace` = JSSymbol("Symbol.replace").also { wellknownSymbols["@@replace"] = it }
-        `@@search` = JSSymbol("Symbol.search").also { wellknownSymbols["@@search"] = it }
-        `@@species` = JSSymbol("Symbol.species").also { wellknownSymbols["@@species"] = it }
-        `@@split` = JSSymbol("Symbol.split").also { wellknownSymbols["@@split"] = it }
-        `@@toPrimitive` = JSSymbol("Symbol.toPrimitive").also { wellknownSymbols["@@toPrimitive"] = it }
-        `@@toStringTag` = JSSymbol("Symbol.toStringTag").also { wellknownSymbols["@@toStringTag"] = it }
-        `@@unscopables` = JSSymbol("Symbol.unscopables").also { wellknownSymbols["@@unscopables"] = it }
+        if (!wellknownSymbolsInitialized) {
+            // Objects can declare symbol methods, so we initialize these first, as they are not objects
+            // and do not depends on the object ctor or proto
+            `@@asyncIterator` = JSSymbol("Symbol.asyncIterator").also { wellknownSymbols["@@asyncIterator"] = it }
+            `@@hasInstance` = JSSymbol("Symbol.hasInstance").also { wellknownSymbols["@@hasInstance"] = it }
+            `@@isConcatSpreadable` = JSSymbol("Symbol.isConcatSpreadable").also { wellknownSymbols["@@isConcatSpreadable"] = it }
+            `@@iterator` = JSSymbol("Symbol.iterator").also { wellknownSymbols["@@iterator"] = it }
+            `@@match` = JSSymbol("Symbol.match").also { wellknownSymbols["@@match"] = it }
+            `@@matchAll` = JSSymbol("Symbol.matchAll").also { wellknownSymbols["@@matchAll"] = it }
+            `@@replace` = JSSymbol("Symbol.replace").also { wellknownSymbols["@@replace"] = it }
+            `@@search` = JSSymbol("Symbol.search").also { wellknownSymbols["@@search"] = it }
+            `@@species` = JSSymbol("Symbol.species").also { wellknownSymbols["@@species"] = it }
+            `@@split` = JSSymbol("Symbol.split").also { wellknownSymbols["@@split"] = it }
+            `@@toPrimitive` = JSSymbol("Symbol.toPrimitive").also { wellknownSymbols["@@toPrimitive"] = it }
+            `@@toStringTag` = JSSymbol("Symbol.toStringTag").also { wellknownSymbols["@@toStringTag"] = it }
+            `@@unscopables` = JSSymbol("Symbol.unscopables").also { wellknownSymbols["@@unscopables"] = it }
+
+            wellknownSymbolsInitialized = true
+        }
 
         objectProto = JSObjectProto.create(this)
         functionProto = JSFunctionProto.create(this)
@@ -200,5 +187,24 @@ class Realm(globalObject: JSObject? = null) {
 
     companion object {
         internal val globalSymbolRegistry = ConcurrentHashMap<String, JSSymbol>()
+
+        private var wellknownSymbolsInitialized = false
+
+        // To get access to the symbol via their name without reflection
+        val wellknownSymbols = mutableMapOf<String, JSSymbol>()
+
+        lateinit var `@@asyncIterator`: JSSymbol private set
+        lateinit var `@@hasInstance`: JSSymbol private set
+        lateinit var `@@isConcatSpreadable`: JSSymbol private set
+        lateinit var `@@iterator`: JSSymbol private set
+        lateinit var `@@match`: JSSymbol private set
+        lateinit var `@@matchAll`: JSSymbol private set
+        lateinit var `@@replace`: JSSymbol private set
+        lateinit var `@@search`: JSSymbol private set
+        lateinit var `@@species`: JSSymbol private set
+        lateinit var `@@split`: JSSymbol private set
+        lateinit var `@@toPrimitive`: JSSymbol private set
+        lateinit var `@@toStringTag`: JSSymbol private set
+        lateinit var `@@unscopables`: JSSymbol private set
     }
 }

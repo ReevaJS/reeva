@@ -353,7 +353,7 @@ object Operations {
         if (value !is JSObject)
             return value
 
-        val exoticToPrim = getMethod(value, value.realm.`@@toPrimitive`)
+        val exoticToPrim = getMethod(value, Realm.`@@toPrimitive`)
         ifError { return JSValue.INVALID_VALUE }
         if (exoticToPrim != JSUndefined) {
             val hint = when (type) {
@@ -980,7 +980,7 @@ object Operations {
     fun getIterator(obj: JSValue, hint: IteratorHint? = IteratorHint.Sync, _method: JSFunction? = null): JSValue {
         if (hint == IteratorHint.Async)
             TODO()
-        val method = _method ?: getMethod(obj, Agent.runningContext.realm.`@@iterator`)
+        val method = _method ?: getMethod(obj, Realm.`@@iterator`)
         if (method == JSUndefined) {
             throwError<JSTypeErrorObject>("${toPrintableString(obj)} is not iterable")
             return JSValue.INVALID_VALUE
@@ -1406,7 +1406,7 @@ object Operations {
             return JSValue.INVALID_VALUE
         }
 
-        val instOfHandler = getMethod(target, Agent.runningContext.realm.`@@hasInstance`)
+        val instOfHandler = getMethod(target, Realm.`@@hasInstance`)
         if (instOfHandler !is JSUndefined) {
             val temp = call(instOfHandler, ctor, listOf(target))
             ifError { return JSValue.INVALID_VALUE }
