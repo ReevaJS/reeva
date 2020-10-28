@@ -157,6 +157,20 @@ class Realm(globalObject: JSObject? = null) {
         // Must be created after wellknown symbols
         symbolCtor = JSSymbolCtor.create(this)
         symbolProto = JSSymbolProto.create(this)
+
+        // These can't be in the init method of the objects due to circularity
+        numberCtor.defineOwnProperty("prototype", numberProto, 0)
+        stringCtor.defineOwnProperty("prototype", stringProto, 0)
+        booleanCtor.defineOwnProperty("prototype", booleanProto, 0)
+        arrayCtor.defineOwnProperty("prototype", arrayProto, 0)
+        symbolCtor.defineOwnProperty("prototype", symbolProto, 0)
+        errorCtor.defineOwnProperty("prototype", errorProto, 0)
+        evalErrorCtor.defineOwnProperty("prototype", evalErrorProto, 0)
+        typeErrorCtor.defineOwnProperty("prototype", typeErrorProto, 0)
+        rangeErrorCtor.defineOwnProperty("prototype", rangeErrorProto, 0)
+        referenceErrorCtor.defineOwnProperty("prototype", referenceErrorProto, 0)
+        syntaxErrorCtor.defineOwnProperty("prototype", syntaxErrorProto, 0)
+        uriErrorCtor.defineOwnProperty("prototype", uriErrorProto, 0)
     }
 
     fun parseScript(script: String): ScriptRecord {
