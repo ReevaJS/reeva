@@ -773,6 +773,17 @@ object Operations {
     }
 
     @JSThrows
+    @JvmStatic @ECMAImpl("7.3.9")
+    fun deletePropertyOrThrow(target: JSValue, property: PropertyKey): Boolean {
+        ecmaAssert(target is JSObject)
+        if (!target.delete(property)) {
+            throwError<JSTypeErrorObject>("unable to delete property \"$property\" on object ${toPrintableString(target)}")
+            return false
+        }
+        return true
+    }
+
+    @JSThrows
     @JvmStatic @ECMAImpl("7.3.10")
     fun getMethod(value: JSValue, key: JSValue): JSValue {
         val func = getV(value, key)
@@ -1295,6 +1306,32 @@ object Operations {
         val array = JSArrayObject.create(Agent.runningContext.realm, proto)
         array.indexedProperties.setArrayLikeSize(length)
         return array
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("9.4.2.3")
+    fun arraySpeciesCreate(originalArray: JSObject, length: Int): JSValue {
+        if (!isArray(originalArray))
+            return arrayCreate(length)
+        var ctor = originalArray.get("constructor")
+        if (isConstructor(ctor)) {
+            val ctorRealm = (ctor as JSObject).realm
+            if (Agent.runningContext.realm != ctorRealm && ctor.sameValue(ctorRealm.arrayCtor)) {
+                ctor = JSUndefined
+            }
+        }
+        if (ctor is JSObject) {
+            ctor = ctor.get(Realm.`@@species`)
+            if (ctor == JSNull)
+                ctor = JSUndefined
+        }
+        if (ctor == JSUndefined)
+            return arrayCreate(length)
+        if (!isConstructor(ctor)) {
+            throwError<JSTypeErrorObject>("TODO: message")
+            return JSValue.INVALID_VALUE
+        }
+        return construct(ctor, listOf(length.toValue()))
     }
 
     @JSThrows

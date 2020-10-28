@@ -10,10 +10,7 @@ import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSNull
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
-import me.mattco.reeva.utils.throwError
-import me.mattco.reeva.utils.toValue
+import me.mattco.reeva.utils.*
 
 class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {
@@ -23,7 +20,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
 
     @JSMethod("apply", 3, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun apply(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val (target, thisArg, argumentsList) = arguments.slice(0..2)
+        val (target, thisArg, argumentsList) = arguments.takeArgs(0..2)
 
         if (!Operations.isCallable(target)) {
             throwError<JSTypeErrorObject>("TODO: message")
@@ -37,7 +34,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
 
     @JSMethod("construct", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun construct(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val (target, argumentsList) = arguments.slice(0..1)
+        val (target, argumentsList) = arguments.takeArgs(0..1)
         val newTarget = if (arguments.size <= 2) {
             target
         } else arguments.argument(2).also {
@@ -59,7 +56,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
 
     @JSMethod("defineProperty", 3, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun defineProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val (target, propertyKey, attributes) = arguments.slice(0..2)
+        val (target, propertyKey, attributes) = arguments.takeArgs(0..2)
         if (target !is JSObject) {
             throwError<JSTypeErrorObject>("TODO: message")
             return INVALID_VALUE
@@ -72,7 +69,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
 
     @JSMethod("deleteProperty", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun deleteProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val (target, propertyKey) = arguments.slice(0..1)
+        val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject) {
             throwError<JSTypeErrorObject>("TODO: message")
             return INVALID_VALUE
@@ -84,7 +81,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
 
     @JSMethod("get", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun get(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val (target, propertyKey, receiver) = arguments.slice(0..2)
+        val (target, propertyKey, receiver) = arguments.takeArgs(0..2)
         if (target !is JSObject) {
             throwError<JSTypeErrorObject>("TODO: message")
             return INVALID_VALUE
@@ -96,7 +93,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
 
     @JSMethod("getOwnPropertyDescriptor", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun getOwnPropertyDescriptor(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val (target, propertyKey) = arguments.slice(0..1)
+        val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject) {
             throwError<JSTypeErrorObject>("TODO: message")
             return INVALID_VALUE
@@ -118,7 +115,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
 
     @JSMethod("has", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun has(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val (target, propertyKey) = arguments.slice(0..1)
+        val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject) {
             throwError<JSTypeErrorObject>("TODO: message")
             return INVALID_VALUE
@@ -162,7 +159,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
 
     @JSMethod("set", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun set(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val (target, propertyKey, value, receiver) = arguments.slice(0..3)
+        val (target, propertyKey, value, receiver) = arguments.takeArgs(0..3)
         if (target !is JSObject) {
             throwError<JSTypeErrorObject>("TODO: message")
             return INVALID_VALUE
@@ -174,7 +171,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
 
     @JSMethod("setPrototypeOf", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun setPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val (target, proto) = arguments.slice(0..1)
+        val (target, proto) = arguments.takeArgs(0..1)
         if (target !is JSObject) {
             throwError<JSTypeErrorObject>("TODO: message")
             return INVALID_VALUE

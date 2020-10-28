@@ -22,13 +22,6 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
         return thisValue.indexedProperties.arrayLikeSize.toValue()
     }
 
-    @JSNativePropertySetter("length", Descriptor.WRITABLE)
-    fun setLength(thisValue: JSValue, argument: JSValue) {
-        // TODO: This is not complete, and will also crash
-        expect(thisValue is JSObject)
-        thisValue.indexedProperties.setArrayLikeSize(argument.asInt)
-    }
-
     @ECMAImpl("9.4.2.1", "[[DefineOwnProperty]]")
     @ECMAImpl("9.4.2.4", "ArrayLengthSet")
     override fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
