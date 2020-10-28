@@ -68,9 +68,9 @@ object Operations {
         if (value.isNaN)
             return value
         if (value.isPositiveInfinity)
-            return JSNumber(Double.NEGATIVE_INFINITY)
+            return JSNumber.NEGATIVE_INFINITY
         if (value.isNegativeInfinity)
-            return JSNumber(Double.POSITIVE_INFINITY)
+            return JSNumber.POSITIVE_INFINITY
         // TODO: -0 -> +0? +0 -> -0?
         return JSNumber(-value.number)
     }
@@ -96,10 +96,10 @@ object Operations {
         val baseMag = abs(base.asDouble)
         when {
             baseMag > 1 && exponent.isPositiveInfinity -> return exponent
-            baseMag > 1 && exponent.isNegativeInfinity -> return JSNumber(0)
-            baseMag == 1.0 && exponent.isInfinite -> return JSNumber(Double.NaN)
-            baseMag < 1 && exponent.isPositiveInfinity -> return JSNumber(0)
-            baseMag < 1 && exponent.isNegativeInfinity -> return JSNumber(Double.POSITIVE_INFINITY)
+            baseMag > 1 && exponent.isNegativeInfinity -> return JSNumber.ZERO
+            baseMag == 1.0 && exponent.isInfinite -> return JSNumber.NaN
+            baseMag < 1 && exponent.isPositiveInfinity -> return JSNumber.ZERO
+            baseMag < 1 && exponent.isNegativeInfinity -> return JSNumber.POSITIVE_INFINITY
         }
 
         // TODO: Other requirements here
@@ -111,9 +111,9 @@ object Operations {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
         if (lhs.isNaN || rhs.isNaN)
-            return JSNumber(Double.NaN)
+            return JSNumber.NaN
         if ((lhs.isZero || rhs.isZero) && (lhs.isInfinite || rhs.isInfinite))
-            return JSNumber(Double.NaN)
+            return JSNumber.NaN
         // TODO: Other requirements
         return JSNumber(lhs.asDouble * rhs.asDouble)
     }
@@ -123,7 +123,7 @@ object Operations {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
         if (lhs.isNaN || rhs.isNaN)
-            return JSNumber(Double.NaN)
+            return JSNumber.NaN
         // TODO: Other requirements
         return JSNumber(lhs.asDouble / rhs.asDouble)
     }
@@ -133,7 +133,7 @@ object Operations {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
         if (lhs.isNaN || rhs.isNaN)
-            return JSNumber(Double.NaN)
+            return JSNumber.NaN
         // TODO: Other requirements
         return JSNumber(lhs.asDouble.rem(rhs.asDouble))
     }
@@ -143,10 +143,10 @@ object Operations {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
         if (lhs.isNaN || rhs.isNaN)
-            return JSNumber(Double.NaN)
+            return JSNumber.NaN
         if (lhs.isInfinite && rhs.isInfinite) {
             if (lhs.isPositiveInfinity != rhs.isPositiveInfinity)
-                return JSNumber(Double.NaN)
+                return JSNumber.NaN
             return lhs
         }
         if (lhs.isInfinite)
@@ -156,7 +156,7 @@ object Operations {
         if (lhs.isNegativeZero && rhs.isNegativeZero)
             return lhs
         if (lhs.isZero && rhs.isZero)
-            return JSNumber(0)
+            return JSNumber.ZERO
         // TODO: Overflow
         return JSNumber(lhs.number + rhs.number)
     }
@@ -171,7 +171,7 @@ object Operations {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
         if (lhs.isNaN || rhs.isNaN)
-            return JSNumber(Double.NaN)
+            return JSNumber.NaN
         return JSNumber(toInt32(lhs).asInt shl (toUint32(rhs).asInt % 32))
     }
 
@@ -180,7 +180,7 @@ object Operations {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
         if (lhs.isNaN || rhs.isNaN)
-            return JSNumber(Double.NaN)
+            return JSNumber.NaN
         return JSNumber(toInt32(lhs).asInt shr (toUint32(rhs).asInt % 32))
     }
 
@@ -189,7 +189,7 @@ object Operations {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
         if (lhs.isNaN || rhs.isNaN)
-            return JSNumber(Double.NaN)
+            return JSNumber.NaN
         return JSNumber(toInt32(lhs).asInt ushr (toUint32(rhs).asInt % 32))
     }
 
@@ -422,8 +422,8 @@ object Operations {
     @JvmStatic @ECMAImpl("7.1.4")
     fun toNumber(value: JSValue): JSValue {
         return when (value) {
-            JSUndefined -> JSNumber(Double.NaN)
-            JSNull, JSFalse -> JSNumber(0)
+            JSUndefined -> JSNumber.NaN
+            JSNull, JSFalse -> JSNumber.ZERO
             JSTrue -> JSNumber(1)
             is JSNumber -> return value
             is JSString -> TODO()
@@ -460,7 +460,7 @@ object Operations {
         val number = toNumber(value)
         ifError { return JSValue.INVALID_VALUE }
         if (number.isZero || number.isInfinite || number.isNaN)
-            return JSNumber(0)
+            return JSNumber.ZERO
 
         var int = floor(abs(number.asDouble)).toInt()
         if (number.asDouble < 0)
@@ -478,7 +478,7 @@ object Operations {
         val number = toNumber(value)
         ifError { return JSValue.INVALID_VALUE }
         if (number.isZero || number.isInfinite || number.isNaN)
-            return JSNumber(0)
+            return JSNumber.ZERO
 
         var int = floor(abs(number.asDouble)).toInt()
         if (number.asDouble < 0)

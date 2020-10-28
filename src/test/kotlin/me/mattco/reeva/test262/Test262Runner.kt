@@ -61,7 +61,7 @@ class Test262Runner(private val name: String, private val script: String, privat
         private val test262Directory = File("./src/test/resources/test262/")
         private val testDirectory = File(test262Directory, "test")
         private val harnessDirectory = File(test262Directory, "harness")
-        private val targetDirectory: File? = File(testDirectory, "built-ins/Reflect")
+        private val targetDirectory: File? = File(testDirectory, "built-ins/Math")
         private lateinit var pretestScript: String
 
         private val agent = Agent()

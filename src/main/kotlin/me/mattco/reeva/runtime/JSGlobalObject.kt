@@ -47,11 +47,12 @@ open class JSGlobalObject protected constructor(
         set("TypeError", realm.typeErrorCtor)
         set("URIError", realm.uriErrorCtor)
 
+        set("Math", realm.mathObj)
         set("JSON", realm.jsonObj)
         set("console", realm.consoleObj)
 
-        defineOwnProperty("Infinity", JSNumber(Double.POSITIVE_INFINITY), 0)
-        defineOwnProperty("NaN", JSNumber(Double.NaN), 0)
+        defineOwnProperty("Infinity", JSNumber.POSITIVE_INFINITY, 0)
+        defineOwnProperty("NaN", JSNumber.NaN, 0)
         defineOwnProperty("globalThis", this, Descriptor.WRITABLE or Descriptor.CONFIGURABLE)
         defineOwnProperty("undefined", JSUndefined, 0)
         defineNativeFunction("id".key(), 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::id)

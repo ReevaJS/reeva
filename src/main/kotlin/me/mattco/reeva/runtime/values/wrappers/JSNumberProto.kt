@@ -14,7 +14,7 @@ import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.throwError
 
-class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JSNumber(0)) {
+class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JSNumber.ZERO) {
     override fun init() {
         // No super call to avoid prototype complications
 
@@ -73,7 +73,7 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
             if (value is JSNumberObject)
                 return value.number
             throwError<JSTypeErrorObject>("Number method called on incompatible object ${Operations.toPrintableString(value)}")
-            return JSNumber(0)
+            return JSNumber.ZERO
         }
     }
 }
