@@ -420,7 +420,11 @@ class Interpreter(private val record: Realm.ScriptRecord) {
     }
 
     private fun interpretExpressionStatement(expressionStatement: ExpressionStatementNode): Completion {
-        return interpretExpression(expressionStatement.node)
+        val result = interpretExpression(expressionStatement.node)
+        ifError { return it }
+        Operations.getValue(result.value)
+        ifError { return it }
+        return result
     }
 
     private fun interpretIfStatement(ifStatement: IfStatementNode): Completion {
