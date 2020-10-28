@@ -13,8 +13,6 @@ abstract class JSNativeFunction protected constructor(
     private val name: String,
     private val length: Int,
 ) : JSFunction(realm, ThisMode.Global) {
-    override val isConstructable = false
-
     override fun init() {
         super.init()
 

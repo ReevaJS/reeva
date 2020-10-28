@@ -162,8 +162,9 @@ data class Descriptor(
         const val HAS_CONFIGURABLE = 1 shl 5
         const val HAS_ENUMERABLE = 1 shl 6
         const val HAS_WRITABLE = 1 shl 7
+        const val HAS_BASIC = HAS_CONFIGURABLE or HAS_ENUMERABLE or HAS_WRITABLE
 
-        const val defaultAttributes = CONFIGURABLE or ENUMERABLE or WRITABLE or HAS_CONFIGURABLE or HAS_ENUMERABLE or HAS_WRITABLE
+        const val defaultAttributes = CONFIGURABLE or ENUMERABLE or WRITABLE or HAS_BASIC
 
         @JSThrows
         @ECMAImpl("ToPropertyDescriptor", "6.2.5.5")

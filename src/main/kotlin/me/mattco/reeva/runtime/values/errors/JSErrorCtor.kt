@@ -15,8 +15,6 @@ open class JSErrorCtor protected constructor(
     realm: Realm,
     name: String = "Error"
 ) : JSNativeFunction(realm, name, 1) {
-    override val isConstructable = true
-
     open fun constructErrorObj(): JSErrorObject {
         return JSErrorObject.create(realm)
     }

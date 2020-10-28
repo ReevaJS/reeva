@@ -122,6 +122,9 @@ class Interpreter(private val record: Realm.ScriptRecord) {
         )
         if (functionNode.identifier != null)
             setFunctionName(function, functionNode.identifier.identifierName.key())
+
+        Operations.makeConstructor(function)
+
         return function
     }
 
@@ -985,6 +988,8 @@ class Interpreter(private val record: Realm.ScriptRecord) {
                 scope,
             )
             setFunctionName(closure, "".key())
+            Operations.makeConstructor(closure)
+            ifError { return it }
             normalCompletion(closure)
         } else {
             val scope = Agent.runningContext.lexicalEnv!!
@@ -1002,6 +1007,8 @@ class Interpreter(private val record: Realm.ScriptRecord) {
                 funcEnv,
             )
             setFunctionName(closure, name.key())
+            Operations.makeConstructor(closure)
+            ifError { return it }
             funcEnv.initializeBinding(name, closure)
             normalCompletion(closure)
         }

@@ -1142,6 +1142,31 @@ object Operations {
     }
 
     @JSThrows
+    @JvmStatic @ECMAImpl("MakeConstructor", "9.2.5")
+    fun makeConstructor(function: JSFunction, writablePrototype: Boolean = true, prototype: JSObject? = null) {
+        ecmaAssert(!function.hasProperty("prototype"))
+        ecmaAssert(!function.isConstructable)
+        ecmaAssert(function.isExtensible())
+
+        function.constructorKind = JSFunction.ConstructorKind.Base
+        function.isConstructable = true
+
+        val realProto = prototype ?: run {
+            val proto = JSObject.create(function.realm)
+            var attrs = Descriptor.HAS_BASIC or Descriptor.CONFIGURABLE
+            if (writablePrototype)
+                attrs = attrs or Descriptor.WRITABLE
+            definePropertyOrThrow(proto, "constructor".key(), Descriptor(function, attrs))
+            checkError() ?: return
+            proto
+        }
+        var attrs = Descriptor.HAS_BASIC
+        if (writablePrototype)
+            attrs = attrs or Descriptor.WRITABLE
+        definePropertyOrThrow(function, "prototype".key(), Descriptor(realProto, attrs))
+    }
+
+    @JSThrows
     @JvmStatic @JvmOverloads @ECMAImpl("ArrayCreate", "9.4.2.2")
     fun arrayCreate(length: Int, proto: JSObject? = Agent.runningContext.realm.arrayProto): JSObject {
         if (length >= MAX_32BIT_INT - 1) {

@@ -1,5 +1,6 @@
 package me.mattco.reeva.runtime.values.functions
 
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.environment.EnvRecord
@@ -16,10 +17,10 @@ abstract class JSFunction(
     val isStrict: Boolean = false,
     prototype: JSObject = realm.functionProto,
 ) : JSObject(realm, prototype) {
-    open val constructorKind = ConstructorKind.Base
+    var constructorKind = ConstructorKind.Base
 
-    open val isCallable: Boolean = true
-    open val isConstructable: Boolean = true
+    var isCallable: Boolean = true
+    var isConstructable: Boolean = false
 
     @JSThrows
     abstract fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue

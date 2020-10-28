@@ -159,6 +159,8 @@ class Realm(globalObject: JSObject? = null) {
         symbolProto = JSSymbolProto.create(this)
 
         // These can't be in the init method of the objects due to circularity
+        objectCtor.defineOwnProperty("prototype", objectProto, 0)
+        functionCtor.defineOwnProperty("prototype", functionProto, 0)
         numberCtor.defineOwnProperty("prototype", numberProto, 0)
         stringCtor.defineOwnProperty("prototype", stringProto, 0)
         booleanCtor.defineOwnProperty("prototype", booleanProto, 0)

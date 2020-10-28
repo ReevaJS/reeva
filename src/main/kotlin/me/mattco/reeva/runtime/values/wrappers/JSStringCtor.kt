@@ -10,8 +10,6 @@ import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.toValue
 
 class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "String", 1) {
-    override val isConstructable = true
-
     @JSThrows
     override fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
         return if (arguments.isEmpty()) {

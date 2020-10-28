@@ -7,8 +7,6 @@ import me.mattco.reeva.runtime.values.functions.JSNativeFunction
 import me.mattco.reeva.utils.argument
 
 class JSBooleanCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Boolean", 1) {
-    override val isConstructable = true
-
     override fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
         return Operations.toBoolean(arguments.argument(0))
     }

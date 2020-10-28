@@ -17,8 +17,6 @@ import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
 class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ObjectConstructor", 1) {
-    override val isConstructable = true
-
     @JSThrows
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         val value = arguments.argument(0)

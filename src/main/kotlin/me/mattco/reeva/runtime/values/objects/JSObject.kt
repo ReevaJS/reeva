@@ -63,8 +63,6 @@ open class JSObject protected constructor(
     )
 
     open fun init() {
-        defineOwnProperty("prototype", prototype, 0)
-
         configureInstanceProperties()
     }
 

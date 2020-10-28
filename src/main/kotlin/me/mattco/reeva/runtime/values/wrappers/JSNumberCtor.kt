@@ -17,8 +17,6 @@ import me.mattco.reeva.utils.toValue
 import kotlin.math.abs
 
 class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Number", 1) {
-    override val isConstructable = true
-
     override fun init() {
         super.init()
 
