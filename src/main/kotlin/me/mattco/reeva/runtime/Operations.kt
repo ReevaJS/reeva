@@ -5,7 +5,7 @@ package me.mattco.reeva.runtime
 import me.mattco.reeva.interpreter.Completion
 import me.mattco.reeva.compiler.JSScriptFunction
 import me.mattco.reeva.interpreter.Record
-import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Agent.Companion.ifError
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.contexts.ExecutionContext
@@ -280,10 +280,10 @@ object Operations {
             if (reference.hasPrimitiveBase) {
                 expect(base != JSUndefined && base != JSNull)
                 base = toObject(base as JSValue)
-                checkError() ?: return JSValue.INVALID_VALUE
+                ifError { return JSValue.INVALID_VALUE }
             }
             val value = (base as JSObject).get(reference.name, reference.getThisValue())
-            checkError() ?: return JSValue.INVALID_VALUE
+            ifError { return JSValue.INVALID_VALUE }
             if (value is JSNativeProperty)
                 return value.get(base)
             if (value is JSAccessor)
@@ -310,12 +310,12 @@ object Operations {
                 return
             }
             Agent.runningContext.realm.globalObject.set(reference.name, value)
-            checkError() ?: return
+            ifError { return }
         } else if (reference.isPropertyReference) {
             if (reference.hasPrimitiveBase) {
                 ecmaAssert(base != JSUndefined && base != JSNull)
                 base = toObject(base as JSValue)
-                checkError() ?: return
+                ifError { return }
             }
             val succeeded = (base as JSObject).set(reference.name, value, reference.getThisValue())
             if (!succeeded && reference.isStrict) {
@@ -353,7 +353,7 @@ object Operations {
             return value
 
         val exoticToPrim = getMethod(value, value.realm.`@@toPrimitive`)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         if (exoticToPrim != JSUndefined) {
             val hint = when (type) {
                 ToPrimitiveHint.AsDefault, null -> "default"
@@ -361,7 +361,7 @@ object Operations {
                 ToPrimitiveHint.AsNumber -> "number"
             }.toValue()
             val result = call(exoticToPrim, value, listOf(hint))
-            checkError() ?: return JSValue.INVALID_VALUE
+            ifError { return JSValue.INVALID_VALUE }
             if (result !is JSObject)
                 return result
         }
@@ -381,10 +381,10 @@ object Operations {
         }
         methodNames.forEach { methodName ->
             val method = value.get(methodName)
-            checkError() ?: return JSValue.INVALID_VALUE
+            ifError { return JSValue.INVALID_VALUE }
             if (isCallable(method)) {
                 val result = call(method, value)
-                checkError() ?: return JSValue.INVALID_VALUE
+                ifError { return JSValue.INVALID_VALUE }
                 if (result !is JSObject)
                     return result
             }
@@ -411,7 +411,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.1.3")
     fun toNumeric(value: JSValue): JSValue {
         val primValue = toPrimitive(value, ToPrimitiveHint.AsNumber)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         if (primValue is JSBigInt)
             return primValue
         return toNumber(primValue)
@@ -432,7 +432,7 @@ object Operations {
             }
             is JSObject -> {
                 val prim = toPrimitive(value, ToPrimitiveHint.AsNumber)
-                checkError() ?: return JSValue.INVALID_VALUE
+                ifError { return JSValue.INVALID_VALUE }
                 prim
             }
             else -> unreachable()
@@ -443,7 +443,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.1.5")
     fun toIntegerOrInfinity(value: JSValue): JSValue {
         val number = toNumber(value)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         if (number.isNaN || number.isZero)
             return 0.toValue()
         if (number.isInfinite)
@@ -457,7 +457,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.1.6")
     fun toInt32(value: JSValue): JSValue {
         val number = toNumber(value)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber(0)
 
@@ -475,7 +475,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.1.7")
     fun toUint32(value: JSValue): JSValue {
         val number = toNumber(value)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber(0)
 
@@ -504,7 +504,7 @@ object Operations {
             }
             is JSObject -> {
                 val prim = toPrimitive(value, ToPrimitiveHint.AsString)
-                checkError() ?: return "".toValue()
+                ifError { return "".toValue() }
                 return toString(prim)
             }
             else -> unreachable()
@@ -555,7 +555,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.1.19")
     fun toPropertyKey(value: JSValue): PropertyKey {
         val key = toPrimitive(value, ToPrimitiveHint.AsString)
-        checkError() ?: return PropertyKey.INVALID_KEY
+        ifError { return PropertyKey.INVALID_KEY }
         if (key is JSNumber && key.number.let { floor(it) == it })
             return PropertyKey(key.number.toInt())
         if (key is JSSymbol)
@@ -567,7 +567,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.1.20")
     fun toLength(value: JSValue): JSValue {
         val len = toIntegerOrInfinity(value)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         val number = len.asDouble
         if (number < 0)
             return 0.toValue()
@@ -631,14 +631,14 @@ object Operations {
 
         if (leftFirst) {
             px = toPrimitive(lhs, ToPrimitiveHint.AsNumber)
-            checkError() ?: return JSValue.INVALID_VALUE
+            ifError { return JSValue.INVALID_VALUE }
             py = toPrimitive(rhs, ToPrimitiveHint.AsNumber)
-            checkError() ?: return JSValue.INVALID_VALUE
+            ifError { return JSValue.INVALID_VALUE }
         } else {
             py = toPrimitive(rhs, ToPrimitiveHint.AsNumber)
-            checkError() ?: return JSValue.INVALID_VALUE
+            ifError { return JSValue.INVALID_VALUE }
             px = toPrimitive(lhs, ToPrimitiveHint.AsNumber)
-            checkError() ?: return JSValue.INVALID_VALUE
+            ifError { return JSValue.INVALID_VALUE }
         }
 
         if (px is JSString && py is JSString)
@@ -650,9 +650,9 @@ object Operations {
             TODO()
 
         val nx = toNumeric(px)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         val ny = toNumeric(py)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
 
         if (nx is JSNumber && ny is JSNumber)
             return numericLessThan(nx, ny)
@@ -714,16 +714,16 @@ object Operations {
     fun getV(target: JSValue, property: JSValue): JSValue {
         ecmaAssert(isPropertyKey(property))
         val obj = toObject(target)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         return obj.get(toPropertyKey(property).also {
-            checkError() ?: return JSValue.INVALID_VALUE
+            ifError { return JSValue.INVALID_VALUE }
         })
     }
 
     @JSThrows
     fun createDataProperty(target: JSValue, property: JSValue, value: JSValue): Boolean {
         return createDataProperty(target, toPropertyKey(property).also {
-            checkError() ?: return false
+            ifError { return false }
         }, value)
     }
 
@@ -737,7 +737,7 @@ object Operations {
     @JSThrows
     fun createDataPropertyOrThrow(target: JSValue, property: JSValue, value: JSValue): Boolean {
         return createDataPropertyOrThrow(target, toPropertyKey(property).also {
-            checkError() ?: return false
+            ifError { return false }
         }, value)
     }
 
@@ -771,7 +771,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.3.10")
     fun getMethod(value: JSValue, key: JSValue): JSValue {
         val func = getV(value, key)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         if (func is JSUndefined || func is JSNull)
             return JSUndefined
         if (!isCallable(func)) {
@@ -793,7 +793,7 @@ object Operations {
     fun hasOwnProperty(value: JSValue, property: PropertyKey): JSValue {
         ecmaAssert(value is JSObject)
         val desc = value.getOwnProperty(property)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         return (desc != JSUndefined).toValue()
     }
 
@@ -829,7 +829,7 @@ object Operations {
         if (level == IntegrityLevel.Sealed) {
             keys.forEach { key ->
                 definePropertyOrThrow(obj, key, Descriptor(JSEmpty, Descriptor.HAS_CONFIGURABLE))
-                checkError() ?: return false
+                ifError { return false }
             }
             obj.isSealed = true
         } else {
@@ -841,7 +841,7 @@ object Operations {
                     Descriptor(JSEmpty, Descriptor.HAS_CONFIGURABLE or Descriptor.HAS_WRITABLE)
                 }
                 definePropertyOrThrow(obj, key, desc)
-                checkError() ?: return false
+                ifError { return false }
             }
             obj.isFrozen = true
         }
@@ -863,7 +863,7 @@ object Operations {
     fun lengthOfArrayLike(target: JSValue): Int {
         ecmaAssert(target is JSObject)
         return toLength(target.get("length").also {
-            checkError() ?: return 0
+            ifError { return 0 }
         }).asInt
     }
 
@@ -905,7 +905,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.3.20")
     fun invoke(value: JSValue, property: JSValue, arguments: JSArguments = emptyList()): JSValue {
         val func = getV(value, property)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         return call(func, value, arguments)
     }
 
@@ -950,7 +950,7 @@ object Operations {
                 properties.add(property.asValue)
             } else {
                 val value = target.get(property)
-                checkError() ?: return emptyList()
+                ifError { return emptyList() }
                 if (kind == JSObject.PropertyKind.Value) {
                     properties.add(value)
                 } else {
@@ -1007,7 +1007,7 @@ object Operations {
     fun iteratorComplete(result: JSValue): JSBoolean {
         ecmaAssert(result is JSObject)
         val done = result.get("done")
-        checkError() ?: return JSFalse
+        ifError { return JSFalse }
         return toBoolean(done)
     }
 
@@ -1063,9 +1063,9 @@ object Operations {
     fun createIterResultObject(value: JSValue, done: Boolean): JSValue {
         val obj = JSObject.create(Agent.runningContext.realm)
         createDataPropertyOrThrow(obj, "value".toValue(), value)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         createDataPropertyOrThrow(obj, "done".toValue(), done.toValue())
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         return obj
     }
 
@@ -1121,7 +1121,7 @@ object Operations {
     @JvmStatic @ECMAImpl("9.1.13")
     fun ordinaryCreateFromConstructor(constructor: JSValue, intrinsicDefaultProto: JSObject): JSObject {
         val proto = getPrototypeFromConstructor(constructor, intrinsicDefaultProto)
-        checkError() ?: return JSObject.INVALID_OBJECT
+        ifError { return JSObject.INVALID_OBJECT }
         return JSObject.create((constructor as JSObject).realm, proto)
     }
 
@@ -1130,7 +1130,7 @@ object Operations {
     fun getPrototypeFromConstructor(constructor: JSValue, intrinsicDefaultProto: JSObject): JSObject {
         ecmaAssert(isCallable(constructor))
         val proto = (constructor as JSObject).get("prototype")
-        checkError() ?: return JSObject.INVALID_OBJECT
+        ifError { return JSObject.INVALID_OBJECT }
         if (proto is JSObject)
             return proto
         return intrinsicDefaultProto
@@ -1166,7 +1166,7 @@ object Operations {
             function.realm.globalEnv!!.globalThis
         } else {
             toObject(thisArgument).also {
-                checkError() ?: return JSValue.INVALID_VALUE
+                ifError { return JSValue.INVALID_VALUE }
             }
         }
 
@@ -1191,7 +1191,7 @@ object Operations {
             if (writablePrototype)
                 attrs = attrs or Descriptor.WRITABLE
             definePropertyOrThrow(proto, "constructor".key(), Descriptor(function, attrs))
-            checkError() ?: return
+            ifError { return }
             proto
         }
         var attrs = Descriptor.HAS_BASIC
@@ -1216,11 +1216,11 @@ object Operations {
     @JvmStatic @ECMAImpl("12.3.3")
     fun evaluatePropertyAccessWithExpressionKey(baseValue: JSValue, property: JSValue, isStrict: Boolean): JSValue {
         val propertyValue = getValue(property)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         val bv = requireObjectCoercible(baseValue)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         val propertyKey = toPropertyKey(propertyValue)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         return JSReference(bv, propertyKey, isStrict)
     }
 
@@ -1228,7 +1228,7 @@ object Operations {
     @JvmStatic @ECMAImpl("12.3.4")
     fun evaluatePropertyAccessWithIdentifierKey(baseValue: JSValue, property: String, isStrict: Boolean): JSValue {
         val bv = requireObjectCoercible(baseValue)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         return JSReference(bv, PropertyKey(property), isStrict)
     }
 
@@ -1297,7 +1297,7 @@ object Operations {
                 return "undefined".toValue()
         }
         val v = getValue(value)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         return when (v) {
             JSUndefined -> "undefined"
             JSNull -> "object"
@@ -1323,7 +1323,7 @@ object Operations {
         val instOfHandler = getMethod(target, Agent.runningContext.realm.`@@hasInstance`)
         if (instOfHandler !is JSUndefined) {
             val temp = call(instOfHandler, ctor, listOf(target))
-            checkError() ?: return JSValue.INVALID_VALUE
+            ifError { return JSValue.INVALID_VALUE }
             return toBoolean(temp)
         }
 
@@ -1343,19 +1343,19 @@ object Operations {
             val rprim = toPrimitive(rhs)
             if (lprim.isString || rprim.isString) {
                 val lstr = toString(lprim)
-                checkError() ?: return JSValue.INVALID_VALUE
+                ifError { return JSValue.INVALID_VALUE }
                 val rstr = toString(rprim)
-                checkError() ?: return JSValue.INVALID_VALUE
+                ifError { return JSValue.INVALID_VALUE }
                 return JSString(lstr.string + rstr.string)
 
             }
         }
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
 
         val lnum = toNumeric(lhs)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         val rnum = toNumeric(rhs)
-        checkError() ?: return JSValue.INVALID_VALUE
+        ifError { return JSValue.INVALID_VALUE }
         if (lnum.type != rnum.type) {
             throwError<JSTypeErrorObject>("cannot apply operator $op to type ${lnum.type} and ${rnum.type}")
             return JSUndefined
@@ -1401,7 +1401,7 @@ object Operations {
                 }
             }
             val key = nextItem.get(0)
-            checkError() ?: run {
+            ifError {
                 return iteratorClose(record, Completion(Completion.Type.Throw, Agent.runningContext.error!!)).let {
                     if (it.isAbrupt)
                         JSObject.INVALID_OBJECT
@@ -1409,7 +1409,7 @@ object Operations {
                 }
             }
             val value = nextItem.get(1)
-            checkError() ?: run {
+            ifError {
                 return iteratorClose(record, Completion(Completion.Type.Throw, Agent.runningContext.error!!)).let {
                     if (it.isAbrupt)
                         JSObject.INVALID_OBJECT
@@ -1417,7 +1417,7 @@ object Operations {
                 }
             }
             call(adder, target, listOf(key, value))
-            checkError() ?: run {
+            ifError {
                 return iteratorClose(record, Completion(Completion.Type.Throw, Agent.runningContext.error!!)).let {
                     if (it.isAbrupt)
                         JSObject.INVALID_OBJECT

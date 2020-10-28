@@ -1,6 +1,6 @@
 package me.mattco.reeva.runtime.values.functions
 
-import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
@@ -34,7 +34,7 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
         if (array == JSUndefined || array == JSNull)
             return Operations.call(thisValue, arguments.argument(0))
         val argList = Operations.createListFromArrayLike(array)
-        checkError() ?: return INVALID_VALUE
+        ifError { return INVALID_VALUE }
         return Operations.call(thisValue, arguments.argument(0), argList)
     }
 

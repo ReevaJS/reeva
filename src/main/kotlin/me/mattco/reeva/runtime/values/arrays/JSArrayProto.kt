@@ -1,6 +1,6 @@
 package me.mattco.reeva.runtime.values.arrays
 
-import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -34,9 +34,9 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     @JSMethod("forEach", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun forEach(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
-        checkError() ?: return INVALID_VALUE
+        ifError { return INVALID_VALUE }
         val len = Operations.lengthOfArrayLike(obj)
-        checkError() ?: return INVALID_VALUE
+        ifError { return INVALID_VALUE }
         val callbackFn = arguments.argument(0)
         if (!Operations.isCallable(callbackFn)) {
             throwError<JSTypeErrorObject>("the first argument to Array.prototype.forEach must be callable")
@@ -46,7 +46,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             if (index >= len)
                 break
             val value = obj.indexedProperties.get(thisValue, index)
-            checkError() ?: return INVALID_VALUE
+            ifError { return INVALID_VALUE }
             Operations.call(callbackFn, arguments.argument(1), listOf(value, index.toValue(), obj))
         }
 
@@ -56,21 +56,21 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     @JSMethod("keys", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun keys(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
-        checkError() ?: return INVALID_VALUE
+        ifError { return INVALID_VALUE }
         return createArrayIterator(realm, obj, PropertyKind.Key)
     }
 
     @JSMethod("entries", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
-        checkError() ?: return INVALID_VALUE
+        ifError { return INVALID_VALUE }
         return createArrayIterator(realm, obj, PropertyKind.KeyValue)
     }
 
     @JSMethod("values", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
-        checkError() ?: return INVALID_VALUE
+        ifError { return INVALID_VALUE }
         return createArrayIterator(realm, obj, PropertyKind.Value)
     }
 

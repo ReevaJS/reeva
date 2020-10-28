@@ -1,6 +1,6 @@
 package me.mattco.reeva.runtime.values.wrappers
 
-import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.JSThrows
@@ -29,7 +29,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             "".toValue()
         } else {
             Operations.toString(arguments[0]).also {
-                checkError() ?: return INVALID_VALUE
+                ifError { return INVALID_VALUE }
             }
         }
         if (newTarget == JSUndefined)

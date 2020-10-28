@@ -1,6 +1,6 @@
 package me.mattco.reeva.runtime.values.objects
 
-import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -177,29 +177,29 @@ data class Descriptor(
             if (obj.hasProperty("enumerable")) {
                 descriptor.setHasEnumerable()
                 descriptor.setEnumerable(Operations.toBoolean(obj.get("enumerable")) == JSTrue)
-                checkError() ?: return descriptor
+                ifError { return descriptor }
             }
 
             if (obj.hasProperty("configurable")) {
                 descriptor.setHasConfigurable()
                 descriptor.setConfigurable(Operations.toBoolean(obj.get("configurable")) == JSTrue)
-                checkError() ?: return descriptor
+                ifError { return descriptor }
             }
 
             if (obj.hasProperty("writable")) {
                 descriptor.setHasWritable()
                 descriptor.setWritable(Operations.toBoolean(obj.get("writable")) == JSTrue)
-                checkError() ?: return descriptor
+                ifError { return descriptor }
             }
 
             if (obj.hasProperty("value")) {
                 descriptor.setRawValue(obj.get("value"))
-                checkError() ?: return descriptor
+                ifError { return descriptor }
             }
 
             if (obj.hasProperty("get")) {
                 val getter = obj.get("get")
-                checkError() ?: return descriptor
+                ifError { return descriptor }
                 if (!Operations.isCallable(getter) && getter != JSUndefined) {
                     throwError<JSTypeErrorObject>("descriptor's 'get' property must be undefined or callable")
                     return descriptor
@@ -208,7 +208,7 @@ data class Descriptor(
 
             if (obj.hasProperty("set")) {
                 val setter = obj.get("set")
-                checkError() ?: return descriptor
+                ifError { return descriptor }
                 if (!Operations.isCallable(setter) && setter != JSUndefined) {
                     throwError<JSTypeErrorObject>("descriptor's 'set' property must be undefined or callable")
                     return descriptor

@@ -1,6 +1,6 @@
 package me.mattco.reeva.runtime.environment
 
-import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Agent.Companion.ifError
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
@@ -10,7 +10,6 @@ import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.key
-import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.throwError
 
 class GlobalEnvRecord(
@@ -159,7 +158,7 @@ class GlobalEnvRecord(
             throwError<JSTypeErrorObject>("TODO")
         }
         globalObject.set(name, function)
-        checkError() ?: return
+        ifError { return }
         varNames.add(name)
     }
 

@@ -1532,42 +1532,6 @@ class Interpreter(private val record: Realm.ScriptRecord) {
         }.let(::normalCompletion)
     }
 
-    private inline fun Completion.ifNormal(block: (Completion) -> Unit): Completion {
-        if (isNormal)
-            block(this)
-        return this
-    }
-
-    private inline fun Completion.ifReturn(block: (Completion) -> Unit): Completion {
-        if (isReturn)
-            block(this)
-        return this
-    }
-
-    private inline fun Completion.ifBreak(block: (Completion) -> Unit): Completion {
-        if (isBreak)
-            block(this)
-        return this
-    }
-
-    private inline fun Completion.ifContinue(block: (Completion) -> Unit): Completion {
-        if (isContinue)
-            block(this)
-        return this
-    }
-
-    private inline fun Completion.ifThrow(block: (Completion) -> Unit): Completion {
-        if (isThrow)
-            block(this)
-        return this
-    }
-
-    private inline fun Completion.ifAbrupt(block: (Completion) -> Unit): Completion {
-        if (type != Completion.Type.Normal)
-            block(this)
-        return this
-    }
-
     private fun normalCompletion(argument: JSValue = JSEmpty) = Completion(Completion.Type.Normal, argument, null)
 
     private fun returnCompletion(argument: JSValue = JSUndefined) = Completion(Completion.Type.Return, argument, null)

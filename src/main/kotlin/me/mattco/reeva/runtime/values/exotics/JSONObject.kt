@@ -1,6 +1,6 @@
 package me.mattco.reeva.runtime.values.exotics
 
-import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -61,7 +61,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             repeat(min(10, Operations.toIntegerOrInfinity(space).asInt)) {
                 gap += " "
             }
-            checkError() ?: return INVALID_VALUE
+            ifError { return INVALID_VALUE }
         } else if (space.isString) {
             val str = space.asString
             gap = if (str.length <= 10) str else str.substring(0, 10)
@@ -75,20 +75,20 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             gap,
             mutableListOf()
         )
-        checkError() ?: return INVALID_VALUE
+        ifError { return INVALID_VALUE }
 
         return serializeJSONProperty(state, "".key(), wrapper)?.toValue() ?: JSUndefined
     }
 
     private fun serializeJSONProperty(state: SerializeState, key: PropertyKey, holder: JSObject): String? {
         var value = holder.get(key)
-        checkError() ?: return null
+        ifError { return null }
         if (value.isObject || value.isBigInt) {
             val toJSON = Operations.getV(value, "toJSON".toValue())
-            checkError() ?: return null
+            ifError { return null }
             if (Operations.isCallable(toJSON)) {
                 value = Operations.call(toJSON, value, listOf(key.asValue))
-                checkError() ?: return null
+                ifError { return null }
             }
         }
         if (value.isObject) {
@@ -98,7 +98,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                 is JSBooleanObject -> value = value.value
                 is JSBigIntObject -> value = value.value
             }
-            checkError() ?: return null
+            ifError { return null }
         }
         if (value.isNull)
             return "null"

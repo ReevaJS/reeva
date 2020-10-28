@@ -1,6 +1,5 @@
 package me.mattco.reeva.runtime.values.objects.index
 
-import me.mattco.reeva.runtime.Agent.Companion.checkError
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject

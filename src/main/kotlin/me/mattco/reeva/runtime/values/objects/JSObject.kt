@@ -1,7 +1,7 @@
 package me.mattco.reeva.runtime.values.objects
 
 import me.mattco.reeva.runtime.Agent
-import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.*
@@ -203,7 +203,7 @@ open class JSObject protected constructor(
                 return false
             // TODO: Handle 9.1.2.1.8.c.i?
             p = (p as JSObject).getPrototype()
-            checkError() ?: return false
+            ifError { return false }
         }
 
         prototype = p
@@ -221,7 +221,7 @@ open class JSObject protected constructor(
         if (hasOwn != null)
             return true
         val parent = getPrototype()
-        checkError() ?: return false
+        ifError { return false }
         if (parent != JSNull)
             return (parent as JSObject).hasProperty(property)
         return false
@@ -270,7 +270,7 @@ open class JSObject protected constructor(
     @JSThrows
     private fun validateAndApplyPropertyDescriptor(property: PropertyKey, newDesc: Descriptor): Boolean {
         val extensible = isExtensible()
-        checkError() ?: return false
+        ifError { return false }
         val currentDesc = getOwnPropertyDescriptor(property)
 
         if (currentDesc == null || currentDesc.getRawValue() == JSEmpty) {
@@ -358,7 +358,7 @@ open class JSObject protected constructor(
         val desc = getOwnPropertyDescriptor(property)
         if (desc == null) {
             val parent = getPrototype()
-            checkError() ?: return INVALID_VALUE
+            ifError { return INVALID_VALUE }
             if (parent == JSNull)
                 return JSUndefined
             return (parent as JSObject).get(property, receiver)
@@ -408,7 +408,7 @@ open class JSObject protected constructor(
         expect(ownDesc.isAccessorDescriptor)
         val setter = ownDesc.setter ?: return false
         Operations.call(setter, receiver, listOf(value))
-        checkError() ?: return false
+        ifError { return false }
         return true
     }
 

@@ -36,6 +36,36 @@ data class Completion @JvmOverloads constructor(
     val isAbrupt: Boolean
         get() = !isNormal
 
+    inline fun ifNormal(block: (Completion) -> Unit) = apply {
+        if (isNormal)
+            block(this)
+    }
+
+    inline fun ifReturn(block: (Completion) -> Unit) = apply {
+        if (isReturn)
+            block(this)
+    }
+
+    inline fun ifBreak(block: (Completion) -> Unit) = apply {
+        if (isBreak)
+            block(this)
+    }
+
+    inline fun ifContinue(block: (Completion) -> Unit) = apply {
+        if (isContinue)
+            block(this)
+    }
+
+    inline fun ifThrow(block: (Completion) -> Unit) = apply {
+        if (isThrow)
+            block(this)
+    }
+
+    inline fun ifAbrupt(block: (Completion) -> Unit) = apply {
+        if (type != Completion.Type.Normal)
+            block(this)
+    }
+
     enum class Type {
         Normal,
         Return,

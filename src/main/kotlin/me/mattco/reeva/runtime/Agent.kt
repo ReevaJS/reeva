@@ -148,26 +148,10 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
             runningContextStack.removeLast()
         }
 
-        /**
-         * Checks the running execution context for errors. Designed
-         * to be used in the following way:
-         *
-         * fun method(): JSValue {
-         *     // ...
-         *     checkError() ?: return JSUndefined
-         *     // ...
-         * }
-         *
-         * where the "checkError()" call would return a nullable
-         * value if there _is_ an error present. This is a bit
-         * odd, but allows the above elegant syntax instead of having
-         * to do checkError()?.also { return JSUndefined }
-         */
         @JvmStatic
-        fun checkError(): Unit? {
-            if (runningContext.error != null)
-                return null
-            return Unit
+        inline fun ifError(block: (JSValue) -> Unit) {
+            if (hasError())
+                block(runningContext.error!!)
         }
 
         @JvmStatic

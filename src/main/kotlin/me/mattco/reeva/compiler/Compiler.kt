@@ -758,7 +758,6 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         }
     }
 
-    @ECMAImpl
     private fun MethodAssembly.compileObjectLiteral(objectLiteralNode: ObjectLiteralNode) {
         pushRealm
         invokestatic(JSObject::class, "create", JSObject::class, Realm::class)
@@ -1974,31 +1973,3 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             get() = field++
     }
 }
-
-/*
-function foo() {
-}
-
-{
-    function foo() {}
-}
-
-export foo;
- */
-
-/*
-abstract class CompiledProgram {
-
-    abstract fun run()
-
-}
-
-
-
-
-class TopLevel_libjs { }
-
-class Function_foo$0_libjs { }
-
-class Function_foo$1_libjs { }
- */

@@ -1,7 +1,7 @@
 package me.mattco.reeva.runtime.values.arrays
 
 import me.mattco.reeva.runtime.Agent
-import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
@@ -28,7 +28,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         } else newTarget
 
         val proto = Operations.getPrototypeFromConstructor(newTargetReal, realm.arrayProto)
-        checkError() ?: return INVALID_VALUE
+        ifError { return INVALID_VALUE }
 
         return when (arguments.size) {
             0 -> JSArrayObject.create(realm, proto)
@@ -37,7 +37,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                 val lengthArg = arguments[0]
                 val length = if (lengthArg.isNumber) {
                     val intLen = Operations.toUint32(lengthArg)
-                    checkError() ?: return INVALID_VALUE
+                    ifError { return INVALID_VALUE }
                     // TODO: The spec says "if intLen is not the same value as len...", does that refer to the
                     // operation SameValue? Or is it different?
                     if (!intLen.sameValue(lengthArg)) {
@@ -47,7 +47,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                     intLen.asInt
                 } else {
                     array.set(0, lengthArg)
-                    checkError() ?: return INVALID_VALUE
+                    ifError { return INVALID_VALUE }
                     1
                 }
                 array.indexedProperties.setArrayLikeSize(length)
@@ -55,7 +55,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
             }
             else -> {
                 val array = Operations.arrayCreate(arguments.size, proto)
-                checkError() ?: return INVALID_VALUE
+                ifError { return INVALID_VALUE }
                 arguments.forEachIndexed { index, value ->
                     array.indexedProperties.set(array, index, value)
                 }

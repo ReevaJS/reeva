@@ -1,6 +1,6 @@
 package me.mattco.reeva.runtime.values.iterators
 
-import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
@@ -41,15 +41,15 @@ class JSArrayIteratorProto private constructor(realm: Realm) : JSObject(realm, r
         }
 
         val elementKey = index.toValue()
-        checkError() ?: return INVALID_VALUE
+        ifError { return INVALID_VALUE }
         val elementValue = array.get(index)
-        checkError() ?: return INVALID_VALUE
+        ifError { return INVALID_VALUE }
 
         if (kind == PropertyKind.Value) {
             return Operations.createIterResultObject(elementValue, false)
         } else {
             val listArray = Operations.createArrayFromList(listOf(index.toValue(), elementValue))
-            checkError() ?: return INVALID_VALUE
+            ifError { return INVALID_VALUE }
             return Operations.createIterResultObject(listArray, false)
         }
     }

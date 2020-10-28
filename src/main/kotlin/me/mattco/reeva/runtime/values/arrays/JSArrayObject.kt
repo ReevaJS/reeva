@@ -1,6 +1,6 @@
 package me.mattco.reeva.runtime.values.arrays
 
-import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -11,7 +11,6 @@ import me.mattco.reeva.runtime.values.errors.JSRangeErrorObject
 import me.mattco.reeva.runtime.values.objects.Descriptor
 import me.mattco.reeva.runtime.values.objects.JSObject
 import me.mattco.reeva.runtime.values.objects.PropertyKey
-import me.mattco.reeva.runtime.values.primitives.JSNumber
 import me.mattco.reeva.runtime.values.primitives.JSString
 import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.utils.*
@@ -39,9 +38,9 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
                 return super.defineOwnProperty(property, descriptor)
             val newLenDesc = descriptor.copy()
             val newLenObj = Operations.toUint32(value)
-            checkError() ?: return false
+            ifError { return false }
             val numberLen = Operations.toNumeric(value)
-            checkError() ?: return false
+            ifError { return false }
             if (!newLenObj.sameValue(numberLen)) {
                 throwError<JSRangeErrorObject>("invalid array length: ${Operations.toPrintableString(value)}")
                 return false
@@ -49,7 +48,7 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
             val newLen = newLenObj.asInt
             newLenDesc.setActualValue(this, newLenObj)
             val oldLenDesc = getOwnPropertyDescriptor("length")
-            checkError() ?: return false
+            ifError { return false }
             expect(oldLenDesc != null)
             ecmaAssert(oldLenDesc.isDataDescriptor)
             ecmaAssert(!oldLenDesc.isConfigurable)
@@ -65,7 +64,7 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
                 false
             }
             val succeeded = super.defineOwnProperty(property, newLenDesc)
-            checkError() ?: return false
+            ifError { return false }
             if (!succeeded)
                 return false
             indexedProperties.indices().filter {
@@ -82,7 +81,7 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
             }
             if (!newWritable) {
                 val succeeded = super.defineOwnProperty(property, Descriptor(JSUndefined, Descriptor.HAS_WRITABLE))
-                checkError() ?: return false
+                ifError { return false }
                 ecmaAssert(succeeded)
             }
             return true
@@ -90,7 +89,7 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
 
         if (property.isInt && property.asInt >= 0 || (property.isString && property.asString.toIntOrNull() != null)) {
             val oldLenDesc = getOwnPropertyDescriptor("length")
-            checkError() ?: return false
+            ifError { return false }
             expect(oldLenDesc != null)
             ecmaAssert(oldLenDesc.isDataDescriptor)
             ecmaAssert(!oldLenDesc.isConfigurable)
@@ -99,17 +98,17 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
             }
             ecmaAssert(oldLen >= 0)
             val index = Operations.toUint32(property.asValue).asInt
-            checkError() ?: return false
+            ifError { return false }
             if (index >= oldLen && !oldLenDesc.isWritable)
                 return false
             val succeeded = super.defineOwnProperty(property, descriptor)
-            checkError() ?: return false
+            ifError { return false }
             if (!succeeded)
                 return false
             if (index >= oldLen) {
                 oldLenDesc.setActualValue(this, (index + 1).toValue())
                 val succeeded = super.defineOwnProperty("length".key(), oldLenDesc)
-                checkError() ?: return false
+                ifError { return false }
                 ecmaAssert(succeeded)
             }
             return true

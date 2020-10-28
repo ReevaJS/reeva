@@ -1,7 +1,7 @@
 package me.mattco.reeva.runtime.values.wrappers
 
 import me.mattco.reeva.runtime.Agent
-import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
@@ -68,7 +68,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     @JSThrows
     override fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
         val description = Operations.toString(arguments.getOrElse(0) { JSUndefined }).string
-        checkError() ?: return INVALID_VALUE
+        ifError { return INVALID_VALUE }
         return JSSymbol(description)
     }
 

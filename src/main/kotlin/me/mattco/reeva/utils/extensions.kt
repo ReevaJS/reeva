@@ -1,7 +1,7 @@
 package me.mattco.reeva.utils
 
 import me.mattco.reeva.runtime.Agent
-import me.mattco.reeva.runtime.Agent.Companion.checkError
+import me.mattco.reeva.runtime.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Realm
 import me.mattco.reeva.runtime.values.errors.JSErrorObject
 import me.mattco.reeva.runtime.values.objects.PropertyKey
@@ -27,7 +27,7 @@ fun String.toValue() = JSString(this)
 fun Number.toValue() = JSNumber(this.toDouble())
 
 inline fun <reified T : JSErrorObject> throwError(message: String? = null) {
-    checkError() ?: return
+    ifError { return }
     val obj = T::class.java.getDeclaredMethod("create", Realm::class.java, String::class.java)
         .invoke(null, Agent.runningContext.realm, message) as T
     Agent.throwError(obj)
