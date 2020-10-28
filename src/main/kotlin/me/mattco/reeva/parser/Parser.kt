@@ -1360,10 +1360,7 @@ class Parser(text: String) {
                 return PropertyDefinitionNode(propertyName, expr, PropertyDefinitionNode.Type.KeyValue)
             }
 
-            val identifier = parseIdentifierReference(suffixes.filter(Sfx.Yield, Sfx.Await)) ?: run {
-                expected("identifier")
-                return null
-            }
+            val identifier = parseIdentifierReference(suffixes.filter(Sfx.Yield, Sfx.Await)) ?: return null
 
             return PropertyDefinitionNode(identifier, null, PropertyDefinitionNode.Type.Shorthand)
         }
