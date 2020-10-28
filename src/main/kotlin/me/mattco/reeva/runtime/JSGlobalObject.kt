@@ -52,7 +52,13 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("NaN", JSNumber(Double.NaN), 0)
         defineOwnProperty("globalThis", this, Descriptor.WRITABLE or Descriptor.CONFIGURABLE)
         defineOwnProperty("undefined", JSUndefined, 0)
+        defineNativeFunction("id".key(), 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::id)
         defineNativeFunction("eval".key(), 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::eval)
+    }
+
+    fun id(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val o = arguments.argument(0)
+        return "${o::class.java.simpleName}@${Integer.toHexString(o.hashCode())}".toValue()
     }
 
     fun eval(thisValue: JSValue, arguments: JSArguments): JSValue {
