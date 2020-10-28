@@ -148,7 +148,7 @@ class Lexer(private val source: String) : Iterable<Token> {
                         // TODO: Prevent in strict mode
                         do {
                             consume()
-                        } while (char >= '0' && char <= '7')
+                        } while (char in '0'..'7')
                     }
                 }
             } else {

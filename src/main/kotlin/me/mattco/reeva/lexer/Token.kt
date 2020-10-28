@@ -54,14 +54,14 @@ data class Token(
 
         if (value[0] == '0' && value.length >= 2) {
             if (value[1] == 'x' || value[1] == 'X')
-                return value.substring(2).toInt(16).toDouble()
+                return value.substring(2).toLong(16).toDouble()
             if (value[1] == 'o' || value[1] == 'O')
-                return value.substring(2).toInt(8).toDouble()
+                return value.substring(2).toLong(8).toDouble()
             if (value[1] == 'b' || value[1] == 'B')
-                return value.substring(2).toInt(2).toDouble()
+                return value.substring(2).toLong(2).toDouble()
             if (value[1].isDigit()) {
                 // TODO: Syntax error in strict mode
-                return value.substring(1).toInt(8).toDouble()
+                return value.substring(1).toLong(8).toDouble()
             }
         }
         return value.toDouble()
