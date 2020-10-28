@@ -28,7 +28,7 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
     @JSThrows
     @ECMAImpl("Boolean.prototype.toString", "19.3.3.2")
     @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-    fun toString_(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         val b = thisBooleanValue(thisValue)
         return if (b.value) "true".toValue() else "false".toValue()
     }

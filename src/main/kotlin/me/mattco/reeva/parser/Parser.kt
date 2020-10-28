@@ -1584,7 +1584,7 @@ class Parser(text: String) {
             expected("expression")
             consume()
             null
-        } else LogicalORExpressionNode(lhs, rhs)
+        } else LogicalANDExpressionNode(lhs, rhs)
     }
 
     private fun parseBitwiseORExpression(suffixes: Suffixes): ExpressionNode? {
@@ -1598,7 +1598,7 @@ class Parser(text: String) {
             expected("expression")
             consume()
             null
-        } else LogicalORExpressionNode(lhs, rhs)
+        } else BitwiseORExpressionNode(lhs, rhs)
     }
 
     private fun parseBitwiseXORExpression(suffixes: Suffixes): ExpressionNode? {
@@ -1612,7 +1612,7 @@ class Parser(text: String) {
             expected("expression")
             consume()
             null
-        } else LogicalORExpressionNode(lhs, rhs)
+        } else BitwiseXORExpressionNode(lhs, rhs)
     }
 
     private fun parseBitwiseANDExpression(suffixes: Suffixes): ExpressionNode? {
@@ -1626,7 +1626,7 @@ class Parser(text: String) {
             expected("expression")
             consume()
             null
-        } else LogicalORExpressionNode(lhs, rhs)
+        } else BitwiseANDExpressionNode(lhs, rhs)
     }
 
     private fun parseEqualityExpression(suffixes: Suffixes): ExpressionNode? {
