@@ -15,12 +15,12 @@ import me.mattco.reeva.utils.toValue
 data class Descriptor(
     private var value: JSValue,
     var attributes: Int,
-    var getter: JSFunction? = null,
-    var setter: JSFunction? = null
+    var getter: JSValue = JSEmpty,
+    var setter: JSValue = JSEmpty
 ) {
     @ECMAImpl("6.2.5.1")
     val isAccessorDescriptor: Boolean
-        get() = getter != null || setter != null
+        get() = getter != JSEmpty || setter != JSEmpty
 
     @ECMAImpl("6.2.5.2")
     val isDataDescriptor: Boolean
@@ -137,10 +137,10 @@ data class Descriptor(
     fun toObject(realm: Realm, thisValue: JSValue): JSObject {
         val obj = JSObject.create(realm)
         if (isAccessorDescriptor) {
-            if (getter != null)
-                obj.set("get", getter!!)
-            if (setter != null)
-                obj.set("set", setter!!)
+            if (hasGetter)
+                obj.set("get", getter)
+            if (hasSetter)
+                obj.set("set", setter)
         } else if (isDataDescriptor) {
             obj.set("value", getActualValue(thisValue))
         }
@@ -219,6 +219,7 @@ data class Descriptor(
                     throwError<JSTypeErrorObject>("descriptor's 'get' property must be undefined or callable")
                     return descriptor
                 }
+                descriptor.getter = getter
             }
 
             if (obj.hasProperty("set")) {
@@ -228,9 +229,10 @@ data class Descriptor(
                     throwError<JSTypeErrorObject>("descriptor's 'set' property must be undefined or callable")
                     return descriptor
                 }
+                descriptor.setter = setter
             }
 
-            if (descriptor.getter != null || descriptor.setter != null) {
+            if (descriptor.hasGetter || descriptor.hasSetter) {
                 if (descriptor.value != JSEmpty || descriptor.hasWritable) {
                     throwError<JSTypeErrorObject>("descriptor cannot specify 'get' or 'set' property with a 'value' or 'writable' property")
                     return descriptor

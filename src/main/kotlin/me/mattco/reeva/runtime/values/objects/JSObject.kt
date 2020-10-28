@@ -283,7 +283,7 @@ open class JSObject protected constructor(
             return (parent as JSObject).get(property, receiver)
         }
         if (desc.isAccessorDescriptor)
-            return desc.getter?.call(this, emptyList()) ?: JSUndefined
+            return if (desc.hasGetter) Operations.call(desc.getter, this) else JSUndefined
         return desc.getActualValue(receiver)
     }
 

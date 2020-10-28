@@ -1161,8 +1161,6 @@ object Operations {
                 target?.internalSet(property!!, Descriptor(
                     newDesc.getActualValue(target),
                     currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
-                    null,
-                    null,
                 ))
             }
         } else if (currentDesc.isDataDescriptor && newDesc.isDataDescriptor) {
