@@ -8,8 +8,11 @@ import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.arrays.JSArrayObject
+import me.mattco.reeva.runtime.values.errors.JSErrorObject
 import me.mattco.reeva.runtime.values.functions.JSFunction
 import me.mattco.reeva.runtime.values.primitives.*
+import me.mattco.reeva.runtime.values.wrappers.JSBooleanObject
+import me.mattco.reeva.runtime.values.wrappers.JSNumberObject
 import me.mattco.reeva.runtime.values.wrappers.JSStringObject
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
@@ -89,6 +92,9 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
                 when (obj) {
                     is JSArrayObject -> "Array"
                     is JSFunction -> "Function"
+                    is JSErrorObject -> "Error"
+                    is JSBooleanObject -> "Boolean"
+                    is JSNumberObject -> "Number"
                     is JSStringObject -> "String"
                     else -> "Object"
                 }
