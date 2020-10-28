@@ -7,7 +7,8 @@ import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.arrays.JSArrayCtor
 import me.mattco.reeva.runtime.values.arrays.JSArrayProto
 import me.mattco.reeva.runtime.values.errors.*
-import me.mattco.reeva.runtime.values.exotics.JSONObject
+import me.mattco.reeva.runtime.values.builtins.JSONObject
+import me.mattco.reeva.runtime.values.builtins.JSReflectObject
 import me.mattco.reeva.runtime.values.functions.JSFunctionCtor
 import me.mattco.reeva.runtime.values.functions.JSFunctionProto
 import me.mattco.reeva.runtime.values.global.JSConsole
@@ -16,9 +17,7 @@ import me.mattco.reeva.runtime.values.iterators.JSArrayIteratorProto
 import me.mattco.reeva.runtime.values.iterators.JSIteratorProto
 import me.mattco.reeva.runtime.values.iterators.JSObjectPropertyIteratorProto
 import me.mattco.reeva.runtime.values.objects.*
-import me.mattco.reeva.runtime.values.primitives.JSNumber
 import me.mattco.reeva.runtime.values.primitives.JSSymbol
-import me.mattco.reeva.runtime.values.primitives.JSUndefined
 import me.mattco.reeva.runtime.values.wrappers.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -67,6 +66,7 @@ class Realm(globalObject: JSObject? = null) {
     lateinit var syntaxErrorCtor: JSSyntaxErrorCtor private set
     lateinit var uriErrorCtor: JSURIErrorCtor private set
 
+    lateinit var reflectObj: JSReflectObject private set
     lateinit var jsonObj: JSONObject private set
     lateinit var consoleObj: JSConsole private set
 
@@ -143,6 +143,7 @@ class Realm(globalObject: JSObject? = null) {
         arrayIteratorProto = JSArrayIteratorProto.create(this)
         objectPropertyIteratorProto = JSObjectPropertyIteratorProto.create(this)
         consoleProto = JSConsoleProto.create(this)
+        reflectObj = JSReflectObject.create(this)
         jsonObj = JSONObject.create(this)
         consoleObj = JSConsole.create(this)
 

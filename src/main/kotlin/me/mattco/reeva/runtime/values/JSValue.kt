@@ -169,6 +169,12 @@ abstract class JSValue : Ref {
         else -> TODO()
     }
 
+    fun ifUndefined(value: JSValue) = if (this == JSUndefined) value else this
+
+    fun ifNull(value: JSValue) = if (this == JSUndefined) value else this
+
+    fun ifNullish(value: JSValue) = if (this == JSUndefined || this == JSNull) value else this
+
     enum class Type(val typeName: kotlin.String) {
         Empty("<empty>"),
         Undefined("undefined"),
