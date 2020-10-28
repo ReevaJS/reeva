@@ -108,7 +108,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
     }
 
     //  This is public because it is used by the eval global function
-    @ECMAImpl("InstantiateFunctionObject", "14.1.22")
+    @ECMAImpl("14.1.22")
     fun instantiateFunctionObject(functionNode: FunctionDeclarationNode, scope: EnvRecord): JSFunction {
         val sourceText = "TODO"
         val function = ordinaryFunctionCreate(
@@ -128,7 +128,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
         return function
     }
 
-    @ECMAImpl("OrdinaryFunctionCreate", "9.2.3")
+    @ECMAImpl("9.2.3")
     private fun ordinaryFunctionCreate(
         prototype: JSObject,
         sourceText: String,
@@ -324,7 +324,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
         return normalCompletion()
     }
 
-    @ECMAImpl("SetFunctionName", "9.2.8")
+    @ECMAImpl("9.2.8")
     private fun setFunctionName(function: JSFunction, name: PropertyKey, prefix: String? = null): Boolean {
         ecmaAssert(function.isExtensible())
         val nameString = when {
@@ -786,7 +786,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
         return normalCompletion(JSUndefined)
     }
 
-    @ECMAImpl("LoopContinues", "13.7.1.2")
+    @ECMAImpl("13.7.1.2")
     private fun loopContinues(completion: Completion, labelSet: Set<String>): Boolean {
         return when {
             completion.isNormal -> true

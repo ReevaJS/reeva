@@ -13,10 +13,10 @@ import me.mattco.reeva.utils.throwError
 open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
     protected val bindings = mutableMapOf<String, Binding>()
 
-    @ECMAImpl("HasBinding", "8.1.1.1.1")
+    @ECMAImpl("8.1.1.1.1")
     override fun hasBinding(name: String) = name in bindings
 
-    @ECMAImpl("CreateMutableBinding", "8.1.1.1.2")
+    @ECMAImpl("8.1.1.1.2")
     override fun createMutableBinding(name: String, canBeDeleted: Boolean) {
         ecmaAssert(!hasBinding(name))
 
@@ -27,7 +27,7 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
         )
     }
 
-    @ECMAImpl("CreateImmutableBinding", "8.1.1.1.3")
+    @ECMAImpl("8.1.1.1.3")
     override fun createImmutableBinding(name: String, strict: Boolean) {
         ecmaAssert(!hasBinding(name))
 
@@ -39,7 +39,7 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
         )
     }
 
-    @ECMAImpl("InitializeBinding", "8.1.1.1.4")
+    @ECMAImpl("8.1.1.1.4")
     override fun initializeBinding(name: String, value: JSValue) {
         ecmaAssert(hasBinding(name))
 
@@ -51,7 +51,7 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
     }
 
     @JSThrows
-    @ECMAImpl("SetMutableBinding", "8.1.1.1.5")
+    @ECMAImpl("8.1.1.1.5")
     override fun setMutableBinding(name: String, value: JSValue, throwOnFailure: Boolean) {
         if (!hasBinding(name)) {
             if (throwOnFailure) {
@@ -82,7 +82,7 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
     }
 
     @JSThrows
-    @ECMAImpl("GetBindingValue", "8.1.1.1.6")
+    @ECMAImpl("8.1.1.1.6")
     override fun getBindingValue(name: String, throwOnNotFound: Boolean): JSValue {
         ecmaAssert(hasBinding(name))
 
@@ -94,7 +94,7 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
         return binding.value
     }
 
-    @ECMAImpl("DeleteBinding", "8.1.1.1.7")
+    @ECMAImpl("8.1.1.1.7")
     override fun deleteBinding(name: String): Boolean {
         ecmaAssert(hasBinding(name))
 
@@ -105,17 +105,17 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
         return true
     }
 
-    @ECMAImpl("HasThisBinding", "8.1.1.1.8")
+    @ECMAImpl("8.1.1.1.8")
     override fun hasThisBinding() = false
 
-    @ECMAImpl("HasSuperBinding", "8.1.1.1.9")
+    @ECMAImpl("8.1.1.1.9")
     override fun hasSuperBinding() = false
 
-    @ECMAImpl("WithBaseObject", "8.1.1.1.10")
+    @ECMAImpl("8.1.1.1.10")
     override fun withBaseObject() = JSUndefined
 
     companion object {
-        @JvmStatic @ECMAImpl("NewDeclarativeEnvironment", "8.1.2.2")
+        @JvmStatic @ECMAImpl("8.1.2.2", "NewDeclarativeEnvironment")
         fun create(old: EnvRecord?): DeclarativeEnvRecord {
             return DeclarativeEnvRecord(old)
         }

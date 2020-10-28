@@ -34,7 +34,7 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineOwnProperty("POSITIVE_INFINITY", Double.POSITIVE_INFINITY.toValue(), 0)
     }
 
-    @ECMAImpl("Number.isFinite", "20.1.2.2")
+    @ECMAImpl("20.1.2.2")
     @JSMethod("isFinite", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun isFinite(thisValue: JSValue, arguments: JSArguments): JSValue {
         val number = arguments.argument(0)
@@ -46,20 +46,20 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @JSThrows
-    @ECMAImpl("Number.isInteger", "20.1.2.3")
+    @ECMAImpl("20.1.2.3")
     @JSMethod("isInteger", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun isInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
         return Operations.isIntegralNumber(arguments.argument(0)).toValue()
     }
 
-    @ECMAImpl("Number.isNaN", "20.1.2.4")
+    @ECMAImpl("20.1.2.4")
     @JSMethod("isNaN", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun isNaN(thisValue: JSValue, arguments: JSArguments): JSValue {
         return arguments.argument(0).isNaN.toValue()
     }
 
     @JSThrows
-    @ECMAImpl("Number.isSafeInteger", "20.1.2.5")
+    @ECMAImpl("20.1.2.5")
     @JSMethod("isSafeInteger", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun isSafeInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isIntegralNumber(arguments.argument(0)))
@@ -68,13 +68,13 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return (abs(arguments.argument(0).asDouble) <= Operations.MAX_SAFE_INTEGER).toValue()
     }
 
-    @ECMAImpl("Number.parseFloat", "20.1.2.12")
+    @ECMAImpl("20.1.2.12")
     @JSMethod("parseFloat", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun parseFloat(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
-    @ECMAImpl("Number.parseInt", "20.1.2.13")
+    @ECMAImpl("20.1.2.13")
     @JSMethod("parseInt", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun parseInt(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()

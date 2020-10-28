@@ -26,7 +26,7 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
     }
 
     @JSThrows
-    @ECMAImpl("Boolean.prototype.toString", "19.3.3.2")
+    @ECMAImpl("19.3.3.2")
     @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         val b = thisBooleanValue(thisValue)
@@ -34,7 +34,7 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
     }
 
     @JSThrows
-    @ECMAImpl("Boolean.prototype.valueOf", "19.3.3.2")
+    @ECMAImpl("19.3.3.2")
     @JSMethod("valueOf", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisBooleanValue(thisValue)

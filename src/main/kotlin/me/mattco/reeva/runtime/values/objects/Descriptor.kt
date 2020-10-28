@@ -18,15 +18,15 @@ data class Descriptor(
     var getter: JSFunction? = null,
     var setter: JSFunction? = null
 ) {
-    @ECMAImpl("IsAccessorDescriptor", "6.2.5.1")
+    @ECMAImpl("6.2.5.1")
     val isAccessorDescriptor: Boolean
         get() = getter != null || setter != null
 
-    @ECMAImpl("IsDataDescriptor", "6.2.5.2")
+    @ECMAImpl("6.2.5.2")
     val isDataDescriptor: Boolean
         get() = !value.isEmpty || hasWritable
 
-    @ECMAImpl("IsGenericDescriptor", "6.2.5.3")
+    @ECMAImpl("6.2.5.3")
     val isGenericDescriptor: Boolean
         get() = !isAccessorDescriptor && !isDataDescriptor
 
@@ -133,7 +133,7 @@ data class Descriptor(
         this.value = value
     }
 
-    @ECMAImpl("FromPropertyDescriptor", "6.2.5.4")
+    @ECMAImpl("6.2.5.4", "FromPropertyDescriptor")
     fun toObject(realm: Realm, thisValue: JSValue): JSObject {
         val obj = JSObject.create(realm)
         if (isAccessorDescriptor) {
@@ -167,7 +167,7 @@ data class Descriptor(
         const val defaultAttributes = CONFIGURABLE or ENUMERABLE or WRITABLE or HAS_BASIC
 
         @JSThrows
-        @ECMAImpl("ToPropertyDescriptor", "6.2.5.5")
+        @ECMAImpl("6.2.5.5", "ToPropertyDescriptor")
         fun fromObject(obj: JSValue): Descriptor {
             val descriptor = Descriptor(JSEmpty, 0)
             if (obj !is JSObject) {

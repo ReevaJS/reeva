@@ -279,7 +279,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return Operations.createArrayFromList(keyList)
     }
 
-    @ECMAImpl("ObjectDefineProperties", "19.1.2.3.1")
+    @ECMAImpl("19.1.2.3.1")
     private fun objectDefineProperties(target: JSObject, properties: JSValue): JSObject {
         val props = Operations.toObject(properties)
         checkError() ?: return INVALID_OBJECT

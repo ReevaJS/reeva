@@ -7,14 +7,14 @@ import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.utils.expect
 
 open class JSReference(
-    @JvmField @ECMAImpl("GetBase", "6.2.4.1")
+    @JvmField @ECMAImpl("6.2.4.1", "GetBase")
     val baseValue: Ref,
-    @JvmField @ECMAImpl("GetReferencedName", "6.2.4.2")
+    @JvmField @ECMAImpl("6.2.4.2", "GetReferencedName")
     val name: PropertyKey,
-    @JvmField @ECMAImpl("IsStrictReference", "6.2.4.3")
+    @JvmField @ECMAImpl("6.2.4.3", "IsStrictReference")
     val isStrict: Boolean
 ) : JSValue() {
-    @ECMAImpl("HasPrimitiveBase", "6.2.4.4")
+    @ECMAImpl("6.2.4.4")
     val hasPrimitiveBase = when (baseValue) {
         is JSBigInt,
         is JSSymbol,
@@ -24,20 +24,20 @@ open class JSReference(
         else -> false
     }
 
-    @ECMAImpl("IsPropertyReference", "6.2.4.5")
+    @ECMAImpl("6.2.4.5")
     val isPropertyReference = when {
         baseValue is JSObject -> true
         hasPrimitiveBase -> true
         else -> false
     }
 
-    @ECMAImpl("IsUnresolvableReference", "6.2.4.6")
+    @ECMAImpl("6.2.4.6")
     val isUnresolvableReference = baseValue == JSUndefined
 
-    @ECMAImpl("IsSuperReference", "6.2.4.7")
+    @ECMAImpl("6.2.4.7")
     val isSuperReference by lazy { this is JSSuperReference }
 
-    @ECMAImpl("GetThisValue", "6.2.4.10")
+    @ECMAImpl("6.2.4.10")
     fun getThisValue(): JSValue {
         expect(isPropertyReference)
         if (isSuperReference)

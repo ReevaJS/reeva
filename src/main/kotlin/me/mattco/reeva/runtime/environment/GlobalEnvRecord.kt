@@ -21,12 +21,12 @@ class GlobalEnvRecord(
     private val objectRecord = ObjectEnvRecord(globalThis, this)
     private val varNames = mutableListOf<String>()
 
-    @ECMAImpl("HasBinding", "8.1.1.4.1")
+    @ECMAImpl("8.1.1.4.1")
     override fun hasBinding(name: String): Boolean {
         return declarativeRecord.hasBinding(name) || objectRecord.hasBinding(name)
     }
 
-    @ECMAImpl("CreateMutableBinding", "8.1.1.4.2")
+    @ECMAImpl("8.1.1.4.2")
     override fun createMutableBinding(name: String, canBeDeleted: Boolean) {
         if (declarativeRecord.hasBinding(name)) {
             // TODO: This appears to be a syntax error in spidermonkey
@@ -36,7 +36,7 @@ class GlobalEnvRecord(
         }
     }
 
-    @ECMAImpl("CreateImmutableBinding", "8.1.1.4.3")
+    @ECMAImpl("8.1.1.4.3")
     override fun createImmutableBinding(name: String, throwOnRepeatInitialization: Boolean) {
         if (declarativeRecord.hasBinding(name)) {
             throwError<JSTypeErrorObject>("TODO")
@@ -46,7 +46,7 @@ class GlobalEnvRecord(
     }
 
     @JSThrows
-    @ECMAImpl("InitializeBinding", "8.1.1.4.4")
+    @ECMAImpl("8.1.1.4.4")
     override fun initializeBinding(name: String, value: JSValue) {
         if (declarativeRecord.hasBinding(name)) {
             declarativeRecord.initializeBinding(name, value)
@@ -54,7 +54,7 @@ class GlobalEnvRecord(
     }
 
     @JSThrows
-    @ECMAImpl("SetMutableBinding", "8.1.1.4.5")
+    @ECMAImpl("8.1.1.4.5")
     override fun setMutableBinding(name: String, value: JSValue, throwOnFailure: Boolean) {
         if (declarativeRecord.hasBinding(name)) {
             declarativeRecord.setMutableBinding(name, value, throwOnFailure)
@@ -62,14 +62,14 @@ class GlobalEnvRecord(
     }
 
     @JSThrows
-    @ECMAImpl("GetBindingValue", "8.1.1.4.6")
+    @ECMAImpl("8.1.1.4.6")
     override fun getBindingValue(name: String, throwOnNotFound: Boolean): JSValue {
         return if (declarativeRecord.hasBinding(name)) {
             declarativeRecord.getBindingValue(name, throwOnNotFound)
         } else objectRecord.getBindingValue(name, throwOnNotFound)
     }
 
-    @ECMAImpl("DeleteBinding", "8.1.1.4.7")
+    @ECMAImpl("8.1.1.4.7")
     override fun deleteBinding(name: String): Boolean {
         if (declarativeRecord.hasBinding(name))
             return declarativeRecord.deleteBinding(name)
@@ -82,25 +82,25 @@ class GlobalEnvRecord(
         return true
     }
 
-    @ECMAImpl("HasThisBinding", "8.1.1.4.8")
+    @ECMAImpl("8.1.1.4.8")
     override fun hasThisBinding() = true
 
-    @ECMAImpl("HasSuperBinding", "8.1.1.4.9")
+    @ECMAImpl("8.1.1.4.9")
     override fun hasSuperBinding() = false
 
-    @ECMAImpl("WithBaseObject", "8.1.1.4.10")
+    @ECMAImpl("8.1.1.4.10")
     override fun withBaseObject() = JSUndefined
 
-    @ECMAImpl("GetThisBinding", "8.1.1.4.11")
+    @ECMAImpl("8.1.1.4.11")
     fun getThisBinding() = globalThis
 
-    @ECMAImpl("HasVarDeclaration", "8.1.1.4.12")
+    @ECMAImpl("8.1.1.4.12")
     fun hasVarDeclaration(name: String) = name in varNames
 
-    @ECMAImpl("HasLexicalDeclaration", "8.1.1.4.13")
+    @ECMAImpl("8.1.1.4.13")
     fun hasLexicalDeclaration(name: String) = declarativeRecord.hasBinding(name)
 
-    @ECMAImpl("HasRestrictedGlobalProperty", "8.1.1.4.14")
+    @ECMAImpl("8.1.1.4.14")
     fun hasRestrictedGlobalProperty(name: String): Boolean {
         val existingProp = globalThis.getOwnPropertyDescriptor(name) ?: return false
         if (existingProp.isConfigurable)
@@ -110,7 +110,7 @@ class GlobalEnvRecord(
 
     // TODO: Can the global object be a proxy? If not, this method can't throw
     @JSThrows
-    @ECMAImpl("CanDeclareGlobalVar", "8.1.1.4.15")
+    @ECMAImpl("8.1.1.4.15")
     fun canDeclareGlobalVar(name: String): Boolean {
         val globalObject = objectRecord.boundObject
         if (globalObject.getOwnPropertyDescriptor(name) != null)
@@ -119,7 +119,7 @@ class GlobalEnvRecord(
     }
 
     // TODO: Can the global object be a proxy? If not, this method can't throw
-    @ECMAImpl("CanDeclareGlobalFunction", "8.1.1.4.16")
+    @ECMAImpl("8.1.1.4.16")
     fun canDeclareGlobalFunction(name: String): Boolean {
         val globalObject = objectRecord.boundObject
         val existingProp = globalObject.getOwnPropertyDescriptor(name) ?: return globalObject.isExtensible()
@@ -131,7 +131,7 @@ class GlobalEnvRecord(
     }
 
     @JSThrows
-    @ECMAImpl("CreateGlobalVarBinding", "8.1.1.4.17")
+    @ECMAImpl("8.1.1.4.17")
     fun createGlobalVarBinding(name: String, canBeDeleted: Boolean) {
         val globalObject = objectRecord.boundObject
         val hasProperty = globalObject.getOwnPropertyDescriptor(name) != null
@@ -142,7 +142,7 @@ class GlobalEnvRecord(
         varNames.add(name)
     }
 
-    @ECMAImpl("CreateGlobalFunctionBinding", "8.1.1.4.18")
+    @ECMAImpl("8.1.1.4.18")
     fun createGlobalFunctionBinding(name: String, function: JSFunction, canBeDeleted: Boolean) {
         val globalObject = objectRecord.boundObject
         val existingProp = globalObject.getOwnPropertyDescriptor(name)
@@ -164,7 +164,7 @@ class GlobalEnvRecord(
     }
 
     companion object {
-        @ECMAImpl("NewGlobalEnvironment", "8.1.2.5")
+        @ECMAImpl("8.1.2.5", "NewGlobalEnvironment")
         fun create(globalObj: JSObject): GlobalEnvRecord {
             val objRecord = ObjectEnvRecord(globalObj, null)
             val declRecord = DeclarativeEnvRecord(null)

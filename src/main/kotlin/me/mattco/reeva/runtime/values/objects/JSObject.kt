@@ -182,11 +182,11 @@ open class JSObject protected constructor(
     }
 
     @JSThrows
-    @ECMAImpl("[[GetPrototypeOf]]", "9.1.1")
+    @ECMAImpl("9.1.1")
     open fun getPrototype() = prototype
 
     @JSThrows
-    @ECMAImpl("[[SetPrototypeOf]]", "9.1.2")
+    @ECMAImpl("9.1.2")
     open fun setPrototype(newPrototype: JSValue): Boolean {
         ecmaAssert(newPrototype.isObject || newPrototype.isNull)
         if (newPrototype.sameValue(prototype))
@@ -215,7 +215,7 @@ open class JSObject protected constructor(
     @JSThrows fun hasProperty(property: Int) = hasProperty(property.key())
 
     @JSThrows
-    @ECMAImpl("[[HasProperty]]", "9.1.7")
+    @ECMAImpl("9.1.7")
     fun hasProperty(property: PropertyKey): Boolean {
         val hasOwn = getOwnPropertyDescriptor(property)
         if (hasOwn != null)
@@ -228,11 +228,11 @@ open class JSObject protected constructor(
     }
 
     @JSThrows
-    @ECMAImpl("[[IsExtensible]]", "9.1.3")
+    @ECMAImpl("9.1.3")
     open fun isExtensible() = extensible
 
     @JSThrows
-    @ECMAImpl("[[PreventExtensions]]", "9.1.4")
+    @ECMAImpl("9.1.4")
     open fun preventExtensions(): Boolean {
         extensible = false
         return true
@@ -252,7 +252,7 @@ open class JSObject protected constructor(
     @JSThrows fun getOwnProperty(property: Int) = getOwnProperty(property.key())
 
     @JSThrows
-    @ECMAImpl("[[GetOwnProperty]]", "9.1.5")
+    @ECMAImpl("9.1.5")
     open fun getOwnProperty(property: PropertyKey): JSValue {
         return internalGet(property)?.toObject(realm, this) ?: JSUndefined
     }
@@ -262,7 +262,7 @@ open class JSObject protected constructor(
     @JSThrows fun defineOwnProperty(property: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
 
     @JSThrows
-    @ECMAImpl("[[DefineOwnProperty]]", "9.1.6")
+    @ECMAImpl("9.1.6")
     open fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
         return validateAndApplyPropertyDescriptor(property, descriptor)
     }
@@ -353,7 +353,7 @@ open class JSObject protected constructor(
     @JSThrows fun get(property: Int, receiver: JSValue = this) = get(property.key(), receiver)
 
     @JSThrows
-    @JvmOverloads @ECMAImpl("[[Get]]", "9.1.8")
+    @JvmOverloads @ECMAImpl("9.1.8")
     open fun get(property: PropertyKey, receiver: JSValue = this): JSValue {
         val desc = getOwnPropertyDescriptor(property)
         if (desc == null) {
@@ -373,14 +373,14 @@ open class JSObject protected constructor(
     @JSThrows fun set(property: Int, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
 
     @JSThrows
-    @JvmOverloads @ECMAImpl("[[Set]]", "9.1.9")
+    @JvmOverloads @ECMAImpl("9.1.9")
     open fun set(property: PropertyKey, value: JSValue, receiver: JSValue = this): Boolean {
         val ownDesc = getOwnPropertyDescriptor(property)
         return ordinarySetWithOwnDescriptor(property, value, receiver, ownDesc)
     }
 
     @JSThrows
-    @ECMAImpl("OrdinarySetWithOwnDescriptor", "9.1.9.2")
+    @ECMAImpl("9.1.9.2")
     private fun ordinarySetWithOwnDescriptor(property: PropertyKey, value: JSValue, receiver: JSValue, ownDesc_: Descriptor?): Boolean {
         var ownDesc = ownDesc_
         if (ownDesc == null) {
@@ -416,7 +416,7 @@ open class JSObject protected constructor(
     @JSThrows fun delete(property: JSSymbol) = delete(property.key())
     @JSThrows fun delete(property: Int) = delete(property.key())
 
-    @ECMAImpl("[[Delete]]", "9.1.10")
+    @ECMAImpl("9.1.10")
     open fun delete(property: PropertyKey): Boolean {
         val desc = getOwnPropertyDescriptor(property) ?: return true
         if (desc.isConfigurable)
@@ -425,7 +425,7 @@ open class JSObject protected constructor(
     }
 
     @JSThrows
-    @ECMAImpl("[[OwnPropertyKeys]]", "9.1.11")
+    @ECMAImpl("9.1.11")
     open fun ownPropertyKeys(): List<PropertyKey> {
         // TODO: Ordering is wrong here
         return indexedProperties.indices().map(::PropertyKey) + storage.keys.map {

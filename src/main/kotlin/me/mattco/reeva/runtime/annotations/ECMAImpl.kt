@@ -6,7 +6,7 @@ package me.mattco.reeva.runtime.annotations
  *
  * As an example, an annotation for the implementation of the
  * NewFunctionEnvironment (https://tc39.es/ecma262/#sec-newfunctionenvironment)
- * operation would be @ECMAImpl("NewFunctionEnvironment", "8.1.2.4")
+ * operation would be @ECMAImpl("8.1.2.4", "NewFunctionEnvironment")
  *
  * Sometimes an operation does not have a name, as is the case with
  * section of Static and Runtime Semantics blocks. In this case, only the
@@ -16,4 +16,4 @@ package me.mattco.reeva.runtime.annotations
 @Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY)
 @Repeatable
-annotation class ECMAImpl(val name: String = "", val section: String = "")
+annotation class ECMAImpl(val section: String, val name: String = "")

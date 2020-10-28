@@ -25,7 +25,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @JSThrows
-    @ECMAImpl("Object.prototype.hasOwnProperty", "19.1.3.2")
+    @ECMAImpl("19.1.3.2")
     @JSMethod("hasOwnProperty", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun hasOwnProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = Operations.toPropertyKey(arguments.argument(0))
@@ -36,7 +36,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @JSThrows
-    @ECMAImpl("Object.prototype.isPrototypeOf", "19.1.3.3")
+    @ECMAImpl("19.1.3.3")
     @JSMethod("isPrototypeOf", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun isPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         var arg = arguments.argument(0)
@@ -55,7 +55,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @JSThrows
-    @ECMAImpl("Object.prototype.propertyIsEnumerable", "19.1.3.4")
+    @ECMAImpl("19.1.3.4")
     @JSMethod("propertyIsEnumerable", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun propertyIsEnumerable(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = Operations.toPropertyKey(arguments.argument(0))
@@ -67,7 +67,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @JSThrows
-    @ECMAImpl("Object.prototype.toLocaleString", "19.1.3.5")
+    @ECMAImpl("19.1.3.5")
     @JSMethod("toLocaleString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toLocaleString(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)

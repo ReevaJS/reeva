@@ -30,8 +30,8 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
         thisValue.indexedProperties.setArrayLikeSize(argument.asInt)
     }
 
-    @ECMAImpl("[[DefineOwnProperty]]", "9.4.2.1")
-    @ECMAImpl("ArrayLengthSet", "9.4.2.4")
+    @ECMAImpl("9.4.2.1", "[[DefineOwnProperty]]")
+    @ECMAImpl("9.4.2.4", "ArrayLengthSet")
     override fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
         if (property.isString && property.asString == "length") {
             val value = descriptor.getActualValue(this)

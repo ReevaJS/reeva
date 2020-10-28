@@ -61,7 +61,7 @@ object Operations {
         return value == JSUndefined || value == JSNull
     }
 
-    @JvmStatic @ECMAImpl("Number::unaryMinus(x)", "6.1.6.1.1")
+    @JvmStatic @ECMAImpl("6.1.6.1.1")
     fun numericUnaryMinus(value: JSValue): JSValue {
         expect(value is JSNumber)
         if (value.isNaN)
@@ -74,14 +74,14 @@ object Operations {
         return JSNumber(-value.number)
     }
 
-    @JvmStatic @ECMAImpl("Number::bitwiseNOT", "6.1.6.1.2")
+    @JvmStatic @ECMAImpl("6.1.6.1.2")
     fun numericBitwiseNOT(value: JSValue): JSValue {
         expect(value is JSNumber)
         val oldValue = toInt32(value)
         return JSNumber(oldValue.asDouble.toInt().inv())
     }
 
-    @JvmStatic @ECMAImpl("Number::exponentiate", "6.1.6.1.3")
+    @JvmStatic @ECMAImpl("6.1.6.1.3")
     fun numericExponentiate(base: JSValue, exponent: JSValue): JSValue {
         expect(base is JSNumber)
         expect(exponent is JSNumber)
@@ -105,7 +105,7 @@ object Operations {
         return JSNumber(base.asDouble.pow(exponent.asDouble))
     }
 
-    @JvmStatic @ECMAImpl("Number::multiply", "6.1.6.1.4")
+    @JvmStatic @ECMAImpl("6.1.6.1.4")
     fun numericMultiply(lhs: JSValue, rhs: JSValue): JSValue {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
@@ -117,7 +117,7 @@ object Operations {
         return JSNumber(lhs.asDouble * rhs.asDouble)
     }
 
-    @JvmStatic @ECMAImpl("Number::divide", "6.1.6.1.5")
+    @JvmStatic @ECMAImpl("6.1.6.1.5")
     fun numericDivide(lhs: JSValue, rhs: JSValue): JSValue {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
@@ -127,7 +127,7 @@ object Operations {
         return JSNumber(lhs.asDouble / rhs.asDouble)
     }
 
-    @JvmStatic @ECMAImpl("Number::remainder", "6.1.6.1.6")
+    @JvmStatic @ECMAImpl("6.1.6.1.6")
     fun numericRemainder(lhs: JSValue, rhs: JSValue): JSValue {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
@@ -137,7 +137,7 @@ object Operations {
         return JSNumber(lhs.asDouble.rem(rhs.asDouble))
     }
 
-    @JvmStatic @ECMAImpl("Number::add", "6.1.6.1.7")
+    @JvmStatic @ECMAImpl("6.1.6.1.7")
     fun numericAdd(lhs: JSValue, rhs: JSValue): JSValue {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
@@ -160,12 +160,12 @@ object Operations {
         return JSNumber(lhs.number + rhs.number)
     }
 
-    @JvmStatic @ECMAImpl("Number::subtract", "6.1.6.1.8")
+    @JvmStatic @ECMAImpl("6.1.6.1.8")
     fun numericSubtract(lhs: JSValue, rhs: JSValue): JSValue {
         return numericAdd(lhs, numericUnaryMinus(rhs))
     }
 
-    @JvmStatic @ECMAImpl("Number::leftShift", "6.1.6.1.9")
+    @JvmStatic @ECMAImpl("6.1.6.1.9")
     fun numericLeftShift(lhs: JSValue, rhs: JSValue): JSValue {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
@@ -174,7 +174,7 @@ object Operations {
         return JSNumber(toInt32(lhs).asInt shl (toUint32(rhs).asInt % 32))
     }
 
-    @JvmStatic @ECMAImpl("Number::signedRightShift", "6.1.6.1.10")
+    @JvmStatic @ECMAImpl("6.1.6.1.10")
     fun numericSignedRightShift(lhs: JSValue, rhs: JSValue): JSValue {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
@@ -183,7 +183,7 @@ object Operations {
         return JSNumber(toInt32(lhs).asInt shr (toUint32(rhs).asInt % 32))
     }
 
-    @JvmStatic @ECMAImpl("Number::unsignedRightShift", "6.1.6.1.11")
+    @JvmStatic @ECMAImpl("6.1.6.1.11")
     fun numericUnsignedRightShift(lhs: JSValue, rhs: JSValue): JSValue {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
@@ -192,7 +192,7 @@ object Operations {
         return JSNumber(toInt32(lhs).asInt ushr (toUint32(rhs).asInt % 32))
     }
 
-    @JvmStatic @ECMAImpl("Number::lessThan", "6.1.6.1.12")
+    @JvmStatic @ECMAImpl("6.1.6.1.12")
     fun numericLessThan(lhs: JSValue, rhs: JSValue): JSValue {
         if (lhs.isNaN || rhs.isNaN)
             return JSUndefined
@@ -200,7 +200,7 @@ object Operations {
         return wrapInValue(lhs.asDouble < rhs.asDouble)
     }
 
-    @JvmStatic @ECMAImpl("Number::equal", "6.1.6.1.13")
+    @JvmStatic @ECMAImpl("6.1.6.1.13")
     fun numericEqual(lhs: JSValue, rhs: JSValue): JSBoolean {
         if (lhs.isNaN || rhs.isNaN)
             return JSFalse
@@ -208,7 +208,7 @@ object Operations {
         return (lhs.asDouble == rhs.asDouble).toValue()
     }
 
-    @JvmStatic @ECMAImpl("Number::sameValue", "6.1.6.1.14")
+    @JvmStatic @ECMAImpl("6.1.6.1.14")
     fun numericSameValue(lhs: JSValue, rhs: JSValue): JSBoolean {
         if (lhs.isNaN && rhs.isNaN)
             return JSTrue
@@ -219,7 +219,7 @@ object Operations {
         return (lhs.asDouble == rhs.asDouble).toValue()
     }
 
-    @JvmStatic @ECMAImpl("Number::sameValueZero", "6.1.6.1.15")
+    @JvmStatic @ECMAImpl("6.1.6.1.15")
     fun numericSameValueZero(lhs: JSValue, rhs: JSValue): JSBoolean {
         if (lhs.isNaN && rhs.isNaN)
             return JSTrue
@@ -228,22 +228,22 @@ object Operations {
         return (lhs.asDouble == rhs.asDouble).toValue()
     }
 
-    @JvmStatic @ECMAImpl("Number::bitwiseAND", "6.1.6.1.17")
+    @JvmStatic @ECMAImpl("6.1.6.1.17")
     fun numericBitwiseAND(lhs: JSValue, rhs: JSValue): JSValue {
         return JSNumber(toInt32(lhs).asInt and toInt32(rhs).asInt)
     }
 
-    @JvmStatic @ECMAImpl("Number::bitwiseXOR", "6.1.6.1.18")
+    @JvmStatic @ECMAImpl("6.1.6.1.18")
     fun numericBitwiseXOR(lhs: JSValue, rhs: JSValue): JSValue {
         return JSNumber(toInt32(lhs).asInt xor toInt32(rhs).asInt)
     }
 
-    @JvmStatic @ECMAImpl("Number::bitwiseOR", "6.1.6.1.19")
+    @JvmStatic @ECMAImpl("6.1.6.1.19")
     fun numericBitwiseOR(lhs: JSValue, rhs: JSValue): JSValue {
         return JSNumber(toInt32(lhs).asInt or toInt32(rhs).asInt)
     }
 
-    @JvmStatic @ECMAImpl("Number::toString", "6.1.6.1.20")
+    @JvmStatic @ECMAImpl("6.1.6.1.20")
     fun numericToString(value: JSValue): JSValue {
         expect(value is JSNumber)
         if (value.isNaN)
@@ -267,7 +267,7 @@ object Operations {
      **************/
 
     @JSThrows
-    @JvmStatic @ECMAImpl("GetValue", "6.2.4.8")
+    @JvmStatic @ECMAImpl("6.2.4.8")
     fun getValue(reference: JSValue): JSValue {
         if (reference !is JSReference)
             return reference
@@ -297,7 +297,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("PutValue", "6.2.4.9")
+    @JvmStatic @ECMAImpl("6.2.4.9")
     fun putValue(reference: JSValue, value: JSValue) {
         if (reference !is JSReference) {
             throwError<JSReferenceErrorObject>("cannot assign value to ${toPrintableString(value)}")
@@ -329,7 +329,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("InitializeReferencedBinding", "6.2.4.11")
+    @JvmStatic @ECMAImpl("6.2.4.11")
     fun initializeReferencedBinding(reference: JSReference, value: JSValue) {
         ecmaAssert(!reference.isUnresolvableReference, "Unknown reference with identifier ${reference.name}")
         val base = reference.baseValue
@@ -347,7 +347,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("ToPrimitive", "7.1.1")
+    @JvmStatic @ECMAImpl("7.1.1")
     fun toPrimitive(value: JSValue, type: ToPrimitiveHint? = null): JSValue {
         if (value !is JSObject)
             return value
@@ -371,7 +371,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("OrdinaryToPrimitive", "7.1.1.1")
+    @JvmStatic @ECMAImpl("7.1.1.1")
     fun ordinaryToPrimitive(value: JSValue, hint: ToPrimitiveHint): JSValue {
         ecmaAssert(value is JSObject)
         ecmaAssert(hint != ToPrimitiveHint.AsDefault)
@@ -393,7 +393,7 @@ object Operations {
         return JSValue.INVALID_VALUE
     }
 
-    @JvmStatic @ECMAImpl("ToBoolean", "7.1.2")
+    @JvmStatic @ECMAImpl("7.1.2")
     fun toBoolean(value: JSValue): JSBoolean = when (value.type) {
         JSValue.Type.Empty -> unreachable()
         JSValue.Type.Undefined -> JSFalse
@@ -408,7 +408,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("ToNumeric", "7.1.3")
+    @JvmStatic @ECMAImpl("7.1.3")
     fun toNumeric(value: JSValue): JSValue {
         val primValue = toPrimitive(value, ToPrimitiveHint.AsNumber)
         checkError() ?: return JSValue.INVALID_VALUE
@@ -418,7 +418,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("ToNumber", "7.1.4")
+    @JvmStatic @ECMAImpl("7.1.4")
     fun toNumber(value: JSValue): JSValue {
         return when (value) {
             JSUndefined -> JSNumber(Double.NaN)
@@ -440,7 +440,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("ToIntegerOrInfinity", "7.1.5")
+    @JvmStatic @ECMAImpl("7.1.5")
     fun toIntegerOrInfinity(value: JSValue): JSValue {
         val number = toNumber(value)
         checkError() ?: return JSValue.INVALID_VALUE
@@ -454,7 +454,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("ToInt32", "7.1.6")
+    @JvmStatic @ECMAImpl("7.1.6")
     fun toInt32(value: JSValue): JSValue {
         val number = toNumber(value)
         checkError() ?: return JSValue.INVALID_VALUE
@@ -472,7 +472,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("ToUint32", "7.1.7")
+    @JvmStatic @ECMAImpl("7.1.7")
     fun toUint32(value: JSValue): JSValue {
         val number = toNumber(value)
         checkError() ?: return JSValue.INVALID_VALUE
@@ -486,7 +486,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("ToString", "7.1.17")
+    @JvmStatic @ECMAImpl("7.1.17")
     fun toString(value: JSValue): JSString {
         return when (value) {
             is JSString -> return value
@@ -534,7 +534,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("ToObject", "7.1.18")
+    @JvmStatic @ECMAImpl("7.1.18")
     fun toObject(value: JSValue): JSObject {
         return when (value) {
             is JSObject -> value
@@ -552,7 +552,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("ToPropertyKey", "7.1.19")
+    @JvmStatic @ECMAImpl("7.1.19")
     fun toPropertyKey(value: JSValue): PropertyKey {
         val key = toPrimitive(value, ToPrimitiveHint.AsString)
         checkError() ?: return PropertyKey.INVALID_KEY
@@ -564,7 +564,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("ToLength", "7.1.20")
+    @JvmStatic @ECMAImpl("7.1.20")
     fun toLength(value: JSValue): JSValue {
         val len = toIntegerOrInfinity(value)
         checkError() ?: return JSValue.INVALID_VALUE
@@ -575,7 +575,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("RequireObjectCoercible", "7.2.1")
+    @JvmStatic @ECMAImpl("7.2.1")
     fun requireObjectCoercible(value: JSValue): JSValue {
         if (value is JSUndefined || value is JSNull) {
             throwError<JSTypeErrorObject>("cannot convert ${value.type} to Object")
@@ -584,7 +584,7 @@ object Operations {
         return value
     }
 
-    @JvmStatic @ECMAImpl("IsArray", "7.2.2")
+    @JvmStatic @ECMAImpl("7.2.2")
     fun isArray(value: JSValue): Boolean {
         if (!value.isObject)
             return false
@@ -594,21 +594,21 @@ object Operations {
         return false
     }
 
-    @JvmStatic @ECMAImpl("IsCallable", "7.2.3")
+    @JvmStatic @ECMAImpl("7.2.3")
     fun isCallable(value: JSValue): Boolean {
         if (value !is JSFunction)
             return false
         return value.isCallable
     }
 
-    @JvmStatic @ECMAImpl("IsConstructor", "7.2.4")
+    @JvmStatic @ECMAImpl("7.2.4")
     fun isConstructor(value: JSValue): Boolean {
         if (value !is JSFunction)
             return false
         return value.isConstructable
     }
 
-    @JvmStatic @ECMAImpl("IsIntegralNumber", "7.2.6")
+    @JvmStatic @ECMAImpl("7.2.6")
     fun isIntegralNumber(value: JSValue): Boolean {
         if (!value.isNumber)
             return false
@@ -620,11 +620,11 @@ object Operations {
         return true
     }
 
-    @JvmStatic @ECMAImpl("IsPropertyKey", "7.2.7")
+    @JvmStatic @ECMAImpl("7.2.7")
     fun isPropertyKey(value: JSValue) = value is JSString || value is JSSymbol
 
     @JSThrows
-    @JvmStatic @ECMAImpl("Abstract Relational Comparison", "7.2.13")
+    @JvmStatic @ECMAImpl("7.2.13")
     fun abstractRelationalComparison(lhs: JSValue, rhs: JSValue, leftFirst: Boolean): JSValue {
         val px: JSValue
         val py: JSValue
@@ -661,7 +661,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("Abstract Equality Comparison", "7.2.14")
+    @JvmStatic @ECMAImpl("7.2.14")
     fun abstractEqualityComparison(lhs: JSValue, rhs: JSValue): JSValue {
         if (lhs.type == rhs.type)
             return strictEqualityComparison(lhs, rhs)
@@ -698,7 +698,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("Strict Equality Comparison", "7.2.15")
+    @JvmStatic @ECMAImpl("7.2.15")
     fun strictEqualityComparison(lhs: JSValue, rhs: JSValue): JSValue {
         if (lhs.type != rhs.type)
             return JSFalse
@@ -710,7 +710,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("GetV", "7.3.3")
+    @JvmStatic @ECMAImpl("7.3.3")
     fun getV(target: JSValue, property: JSValue): JSValue {
         ecmaAssert(isPropertyKey(property))
         val obj = toObject(target)
@@ -728,7 +728,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("CreateDataProperty", "7.3.5")
+    @JvmStatic @ECMAImpl("7.3.5")
     fun createDataProperty(target: JSValue, property: PropertyKey, value: JSValue): Boolean {
         ecmaAssert(target is JSObject)
         return target.defineOwnProperty(property, Descriptor(value, Descriptor.defaultAttributes))
@@ -742,7 +742,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("CreateDataPropertyOrThrow", "7.3.7")
+    @JvmStatic @ECMAImpl("7.3.7")
     fun createDataPropertyOrThrow(target: JSValue, property: PropertyKey, value: JSValue): Boolean {
         if (!createDataProperty(target, property, value)) {
             throwError<JSTypeErrorObject>("unable to create property \"$property\" on object ${toPrintableString(target)}")
@@ -757,7 +757,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("DefinePropertyOrThrow", "7.3.8")
+    @JvmStatic @ECMAImpl("7.3.8")
     fun definePropertyOrThrow(target: JSValue, property: PropertyKey, descriptor: Descriptor): Boolean {
         ecmaAssert(target is JSObject)
         if (!target.defineOwnProperty(property, descriptor)) {
@@ -768,7 +768,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("GetMethod", "7.3.10")
+    @JvmStatic @ECMAImpl("7.3.10")
     fun getMethod(value: JSValue, key: JSValue): JSValue {
         val func = getV(value, key)
         checkError() ?: return JSValue.INVALID_VALUE
@@ -782,14 +782,14 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("HasProperty", "7.3.11")
+    @JvmStatic @ECMAImpl("7.3.11")
     fun hasProperty(value: JSValue, property: PropertyKey): JSValue {
         ecmaAssert(value is JSObject)
         return value.hasProperty(property).toValue()
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("HasOwnProperty", "7.3.12")
+    @JvmStatic @ECMAImpl("7.3.12")
     fun hasOwnProperty(value: JSValue, property: PropertyKey): JSValue {
         ecmaAssert(value is JSObject)
         val desc = value.getOwnProperty(property)
@@ -798,7 +798,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("Call", "7.3.13")
+    @JvmStatic @ECMAImpl("7.3.13")
     fun call(function: JSValue, thisValue: JSValue, arguments: List<JSValue> = emptyList()): JSValue {
         if (!isCallable(function)) {
             throwError<JSTypeErrorObject>("cannot call value ${toPrintableString(function)}")
@@ -808,7 +808,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("Construct", "7.3.14")
+    @JvmStatic @ECMAImpl("7.3.14")
     fun construct(constructor: JSValue, arguments: List<JSValue>, newTarget: JSValue = constructor): JSValue {
         ecmaAssert(isConstructor(constructor))
         ecmaAssert(isConstructor(newTarget))
@@ -821,7 +821,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("SetIntegrityLevel", "7.3.15")
+    @JvmStatic @ECMAImpl("7.3.15")
     fun setIntegrityLevel(obj: JSObject, level: IntegrityLevel): Boolean {
         if (!obj.preventExtensions())
             return false
@@ -849,7 +849,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("CreateArrayFromList", "7.3.17")
+    @JvmStatic @ECMAImpl("7.3.17")
     fun createArrayFromList(elements: List<JSValue>): JSValue {
         val array = arrayCreate(elements.size)
         elements.forEachIndexed { index, value ->
@@ -859,7 +859,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("LengthOfArrayLike", "7.3.18")
+    @JvmStatic @ECMAImpl("7.3.18")
     fun lengthOfArrayLike(target: JSValue): Int {
         ecmaAssert(target is JSObject)
         return toLength(target.get("length").also {
@@ -868,7 +868,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("CreateListFromArrayLike", "7.3.19")
+    @JvmStatic @ECMAImpl("7.3.19")
     fun createListFromArrayLike(obj: JSValue, types: List<JSValue.Type>? = null): List<JSValue> {
         val elementTypes = types ?: listOf(
             JSValue.Type.Undefined,
@@ -902,7 +902,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("Invoke", "7.3.20")
+    @JvmStatic @ECMAImpl("7.3.20")
     fun invoke(value: JSValue, property: JSValue, arguments: JSArguments = emptyList()): JSValue {
         val func = getV(value, property)
         checkError() ?: return JSValue.INVALID_VALUE
@@ -910,7 +910,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("OrdinaryHasInstance", "7.3.21")
+    @JvmStatic @ECMAImpl("7.3.21")
     fun ordinaryHasInstance(ctor: JSFunction, target: JSValue): JSValue {
         if (!isCallable(ctor))
             return JSFalse
@@ -936,7 +936,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("EnumerableOwnPropertyNames", "7.3.23")
+    @JvmStatic @ECMAImpl("7.3.23")
     fun enumerableOwnPropertyNames(target: JSValue, kind: JSObject.PropertyKind): List<JSValue> {
         ecmaAssert(target is JSObject)
         val properties = mutableListOf<JSValue>()
@@ -967,7 +967,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("GetIterator", "7.4.1")
+    @JvmStatic @ECMAImpl("7.4.1")
     fun getIterator(obj: JSValue, hint: IteratorHint? = IteratorHint.Sync, _method: JSFunction? = null): JSValue {
         if (hint == IteratorHint.Async)
             TODO()
@@ -988,7 +988,7 @@ object Operations {
     data class IteratorRecord(val iterator: JSValue, val nextMethod: JSValue, var done: Boolean) : Record()
 
     @JSThrows
-    @JvmStatic @ECMAImpl("IteratorNext", "7.4.2")
+    @JvmStatic @ECMAImpl("7.4.2")
     fun iteratorNext(record: IteratorRecord, value: JSValue? = null): JSObject {
         val result = if (value == null) {
             call(record.nextMethod, record.iterator)
@@ -1003,7 +1003,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("IteratorComplete", "7.4.3")
+    @JvmStatic @ECMAImpl("7.4.3")
     fun iteratorComplete(result: JSValue): JSBoolean {
         ecmaAssert(result is JSObject)
         val done = result.get("done")
@@ -1012,14 +1012,14 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("IteratorValue", "7.4.4")
+    @JvmStatic @ECMAImpl("7.4.4")
     fun iteratorValue(result: JSValue): JSValue {
         ecmaAssert(result is JSObject)
         return result.get("value")
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("IteratorStep", "7.4.5")
+    @JvmStatic @ECMAImpl("7.4.5")
     fun iteratorStep(record: IteratorRecord): JSValue {
         val result = iteratorNext(record)
         val done = iteratorComplete(result)
@@ -1029,7 +1029,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("IteratorClose", "7.4.6")
+    @JvmStatic @ECMAImpl("7.4.6")
     fun iteratorClose(record: IteratorRecord, completion: Completion): Completion {
         var innerResult = getMethod(record.iterator, "return".toValue()).let {
             if (Agent.hasError())
@@ -1059,7 +1059,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("CreateIterResultObject", "7.4.8")
+    @JvmStatic @ECMAImpl("7.4.8")
     fun createIterResultObject(value: JSValue, done: Boolean): JSValue {
         val obj = JSObject.create(Agent.runningContext.realm)
         createDataPropertyOrThrow(obj, "value".toValue(), value)
@@ -1069,7 +1069,7 @@ object Operations {
         return obj
     }
 
-    @JvmStatic @ECMAImpl("GetIdentifierReference", "8.1.2.1")
+    @JvmStatic @ECMAImpl("8.1.2.1")
     fun getIdentifierReference(env: EnvRecord?, name: String, isStrict: Boolean): JSReference {
         return when {
             env == null -> JSReference(JSUndefined, PropertyKey(name), isStrict)
@@ -1078,19 +1078,19 @@ object Operations {
         }
     }
 
-    @JvmStatic @ECMAImpl("GetActiveScriptOrModule", "8.3.1")
+    @JvmStatic @ECMAImpl("8.3.1")
     fun getActiveScriptOrModule() {
         TODO()
     }
 
-    @JvmStatic @ECMAImpl("ResolveBinding", "8.3.2")
+    @JvmStatic @ECMAImpl("8.3.2")
     fun resolveBinding(name: String, env: EnvRecord? = null): JSReference {
         val actualEnv = env ?: Agent.runningContext.lexicalEnv!!
         // TODO: Strict mode checking
         return getIdentifierReference(actualEnv, name, false)
     }
 
-    @JvmStatic @ECMAImpl("GetThisEnvironment", "8.3.3")
+    @JvmStatic @ECMAImpl("8.3.3")
     fun getThisEnvironment(): EnvRecord {
         // As the spec states, this is guaranteed to resolve without
         // any NPEs as there is always at least a global environment
@@ -1102,7 +1102,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("ResolveThisBinding", "8.3.4")
+    @JvmStatic @ECMAImpl("8.3.4")
     fun resolveThisBinding(): JSValue {
         return when (val env = getThisEnvironment()) {
             is FunctionEnvRecord -> env.getThisBinding()
@@ -1112,13 +1112,13 @@ object Operations {
         }
     }
 
-    @JvmStatic @ECMAImpl("GetGlobalObject", "8.3.6")
+    @JvmStatic @ECMAImpl("8.3.6")
     fun getGlobalObject(): JSObject {
         return Agent.runningContext.realm.globalObject
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("OrdinaryCreateFromConstructor", "9.1.13")
+    @JvmStatic @ECMAImpl("9.1.13")
     fun ordinaryCreateFromConstructor(constructor: JSValue, intrinsicDefaultProto: JSObject): JSObject {
         val proto = getPrototypeFromConstructor(constructor, intrinsicDefaultProto)
         checkError() ?: return JSObject.INVALID_OBJECT
@@ -1126,7 +1126,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("GetPrototypeFromConstructor", "9.1.14")
+    @JvmStatic @ECMAImpl("9.1.14")
     fun getPrototypeFromConstructor(constructor: JSValue, intrinsicDefaultProto: JSObject): JSObject {
         ecmaAssert(isCallable(constructor))
         val proto = (constructor as JSObject).get("prototype")
@@ -1136,7 +1136,7 @@ object Operations {
         return intrinsicDefaultProto
     }
 
-    @JvmStatic @ECMAImpl("PrepareForOrdinaryCall", "9.2.1.1")
+    @JvmStatic @ECMAImpl("9.2.1.1")
     fun prepareForOrdinaryCall(function: JSFunction, newTarget: JSValue): ExecutionContext {
         ecmaAssert(newTarget is JSUndefined || newTarget is JSObject)
         val callerContext = Agent.runningContext
@@ -1156,7 +1156,7 @@ object Operations {
     // prepareForOrdinaryCall will have just set it as the running
     // execution context
     @JSThrows
-    @JvmStatic @ECMAImpl("OrdinaryCallBindThis", "9.2.1.2")
+    @JvmStatic @ECMAImpl("9.2.1.2")
     fun ordinaryCallBindThis(function: JSFunction, calleeContext: ExecutionContext, thisArgument: JSValue): JSValue {
         if (function.thisMode == JSFunction.ThisMode.Lexical)
             return JSUndefined
@@ -1176,7 +1176,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("MakeConstructor", "9.2.5")
+    @JvmStatic @ECMAImpl("9.2.5")
     fun makeConstructor(function: JSFunction, writablePrototype: Boolean = true, prototype: JSObject? = null) {
         ecmaAssert(!function.hasProperty("prototype"))
         ecmaAssert(!function.isConstructable)
@@ -1201,7 +1201,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @JvmOverloads @ECMAImpl("ArrayCreate", "9.4.2.2")
+    @JvmStatic @JvmOverloads @ECMAImpl("9.4.2.2")
     fun arrayCreate(length: Int, proto: JSObject? = Agent.runningContext.realm.arrayProto): JSObject {
         if (length >= MAX_32BIT_INT - 1) {
             throwError<JSRangeErrorObject>("array length $length is too large")
@@ -1213,7 +1213,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("EvaluatePropertyAccessWithExpressionKey", "12.3.3")
+    @JvmStatic @ECMAImpl("12.3.3")
     fun evaluatePropertyAccessWithExpressionKey(baseValue: JSValue, property: JSValue, isStrict: Boolean): JSValue {
         val propertyValue = getValue(property)
         checkError() ?: return JSValue.INVALID_VALUE
@@ -1225,7 +1225,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("EvaluatePropertyAccessWithIdentifierKey", "12.3.4")
+    @JvmStatic @ECMAImpl("12.3.4")
     fun evaluatePropertyAccessWithIdentifierKey(baseValue: JSValue, property: String, isStrict: Boolean): JSValue {
         val bv = requireObjectCoercible(baseValue)
         checkError() ?: return JSValue.INVALID_VALUE
@@ -1233,7 +1233,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("EvaluateNew", "12.3.5.1.1")
+    @JvmStatic @ECMAImpl("12.3.5.1.1")
     fun evaluateNew(target: JSValue, arguments: Array<JSValue>): JSValue {
         val constructor = getValue(target)
         if (!isConstructor(constructor)) {
@@ -1244,7 +1244,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("EvaluateCall", "12.3.6.2")
+    @JvmStatic @ECMAImpl("12.3.6.2")
     fun evaluateCall(target: JSValue, reference: JSValue, arguments: List<JSValue>, tailPosition: Boolean): JSValue {
         val thisValue = if (reference is JSReference) {
             if (reference.isPropertyReference) {
@@ -1265,7 +1265,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("The delete Operator", "12.5.3")
+    @JvmStatic @ECMAImpl("12.5.3")
     fun deleteOperator(value: JSValue): JSValue {
         if (value !is JSReference)
             return JSTrue
@@ -1290,7 +1290,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("The typeof Operator", "12.5.5")
+    @JvmStatic @ECMAImpl("12.5.5")
     fun typeofOperator(value: JSValue): JSValue {
         if (value is JSReference) {
             if (value.isUnresolvableReference)
@@ -1313,7 +1313,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("InstanceofOperator", "12.10.4")
+    @JvmStatic @ECMAImpl("12.10.4")
     fun instanceofOperator(target: JSValue, ctor: JSValue): JSValue {
         if (ctor !is JSObject) {
             throwError<JSTypeErrorObject>("right-hand side of 'instanceof' operator must be an object")
@@ -1336,7 +1336,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("ApplyStringOrNumericBinaryOperator", "12.15.5")
+    @JvmStatic @ECMAImpl("12.15.5")
     fun applyStringOrNumericBinaryOperator(lhs: JSValue, rhs: JSValue, op: String): JSValue {
         if (op == "+") {
             val lprim = toPrimitive(lhs)
@@ -1382,7 +1382,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("AddEntriesFromIterable", "23.1.1.2")
+    @JvmStatic @ECMAImpl("23.1.1.2")
     fun addEntriesFromIterable(target: JSObject, iterable: JSValue, adder: JSFunction): JSObject {
         // TODO: This whole method is super scuffed
         ecmaAssert(iterable != JSUndefined && iterable != JSNull)

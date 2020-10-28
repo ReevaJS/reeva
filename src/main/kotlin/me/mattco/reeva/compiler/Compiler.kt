@@ -88,7 +88,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
     data class CompilationResult(val mainClass: ClassNode, val dependencies: List<ClassNode>)
 
-    @ECMAImpl("GlobalDeclarationInstantiation", "15.1.11")
+    @ECMAImpl("15.1.11", "GlobalDeclarationInstantiation")
     private fun MethodAssembly.compileScript(script: ScriptNode) {
         aload_1
         getfield(ExecutionContext::class, "realm", Realm::class)
@@ -639,7 +639,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         }
     }
 
-    @ECMAImpl("IsAnonymousFunctionDefinition", "14.1.12")
+    @ECMAImpl("14.1.12")
     private fun isAnonymousFunctionDefinition(node: ASTNode): Boolean {
         if (!node.isFunctionDefinition())
             return false
@@ -1341,7 +1341,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     /*
      * SCRIPT FUNCTION COMPILATION
      */
-    @ECMAImpl("InstantiateFunctionObject", "14.1.22")
+    @ECMAImpl("14.1.22")
     private fun instantiateFunctionObject(function: FunctionDeclarationNode): ClassNode {
         val functionName = function.identifier?.identifierName ?: "default"
         val parameters = function.parameters
@@ -1522,7 +1522,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         }
     }
 
-    @ECMAImpl("FunctionDeclarationInstantiation", "9.2.10")
+    @ECMAImpl("9.2.10")
     private fun MethodAssembly.functionDeclarationInstantiation(function: FunctionDeclarationNode, thisMode: JSFunction.ThisMode) {
         val parameters = function.parameters
         val body = function.body

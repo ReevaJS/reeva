@@ -65,7 +65,7 @@ open class JSGlobalObject protected constructor(
         return performEval(arguments.argument(0), strictCaller = false, direct = false)
     }
 
-    @JSThrows @ECMAImpl("PerformEval", "18.2.1.1")
+    @JSThrows @ECMAImpl("18.2.1.1")
     private fun performEval(argument: JSValue, strictCaller: Boolean, direct: Boolean): JSValue {
         if (!direct)
             ecmaAssert(!strictCaller)

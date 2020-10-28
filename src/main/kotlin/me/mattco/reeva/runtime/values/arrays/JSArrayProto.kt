@@ -77,7 +77,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     companion object {
         fun create(realm: Realm) = JSArrayProto(realm).also { it.init() }
 
-        @ECMAImpl("CreateArrayIterator", "22.1.5.1")
+        @ECMAImpl("22.1.5.1")
         private fun createArrayIterator(realm: Realm, array: JSObject, kind: PropertyKind): JSValue {
             return JSArrayIterator.create(realm, array, 0, kind)
         }

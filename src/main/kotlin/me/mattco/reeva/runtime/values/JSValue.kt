@@ -111,7 +111,7 @@ abstract class JSValue : Ref {
     val toBoolean: Boolean
         get() = Operations.toBoolean(this).asBoolean
 
-    @ECMAImpl("SameValue", "7.2.10")
+    @ECMAImpl("7.2.10")
     fun sameValue(other: JSValue): Boolean {
         if (type != other.type)
             return false
@@ -122,7 +122,7 @@ abstract class JSValue : Ref {
         return sameValueNonNumeric(other)
     }
 
-    @ECMAImpl("SameValueZero", "7.2.11")
+    @ECMAImpl("7.2.11")
     fun sameValueZero(other: JSValue): Boolean {
         if (type != other.type)
             return false
@@ -130,7 +130,7 @@ abstract class JSValue : Ref {
         return sameValueNonNumeric(other)
     }
 
-    @ECMAImpl("SameValueNonNumeric", "7.2.12")
+    @ECMAImpl("7.2.12")
     fun sameValueNonNumeric(other: JSValue): Boolean {
         ecmaAssert(type != Type.Number && type != Type.BigInt)
         ecmaAssert(type == other.type)
@@ -146,7 +146,7 @@ abstract class JSValue : Ref {
         }
     }
 
-    @ECMAImpl("ToBoolean", "7.1.2")
+    @ECMAImpl("7.1.2")
     fun toBoolean() = when (type) {
         Type.Empty -> unreachable()
         Type.Undefined, Type.Null -> false
@@ -157,7 +157,7 @@ abstract class JSValue : Ref {
         else -> TODO()
     }
 
-    @ECMAImpl("ToNumber", "7.1.14")
+    @ECMAImpl("7.1.14")
     fun toNumber() = when (type) {
         Type.Empty -> unreachable()
         Type.Undefined -> Double.NaN
