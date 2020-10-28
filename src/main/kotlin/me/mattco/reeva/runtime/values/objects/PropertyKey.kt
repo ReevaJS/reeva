@@ -53,5 +53,16 @@ data class PropertyKey private constructor(internal val value: Any) {
 
     companion object {
         val INVALID_KEY = PropertyKey(0)
+
+        fun from(value: Any): PropertyKey? {
+            return when (value) {
+                is String -> PropertyKey(value)
+                is JSString -> PropertyKey(value)
+                is Double -> PropertyKey(value)
+                is Int -> PropertyKey(value)
+                is JSSymbol -> PropertyKey(value)
+                else -> null
+            }
+        }
     }
 }

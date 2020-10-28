@@ -216,7 +216,7 @@ open class JSObject protected constructor(
 
     @JSThrows
     @ECMAImpl("9.1.7")
-    fun hasProperty(property: PropertyKey): Boolean {
+    open fun hasProperty(property: PropertyKey): Boolean {
         val hasOwn = getOwnPropertyDescriptor(property)
         if (hasOwn != null)
             return true
@@ -253,8 +253,8 @@ open class JSObject protected constructor(
 
     @JSThrows
     @ECMAImpl("9.1.5")
-    open fun getOwnProperty(property: PropertyKey): JSValue {
-        return internalGet(property)?.toObject(realm, this) ?: JSUndefined
+    fun getOwnProperty(property: PropertyKey): JSValue {
+        return getOwnPropertyDescriptor(property)?.toObject(realm, this) ?: JSUndefined
     }
 
     @JSThrows fun defineOwnProperty(property: String, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
@@ -264,88 +264,7 @@ open class JSObject protected constructor(
     @JSThrows
     @ECMAImpl("9.1.6")
     open fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
-        return validateAndApplyPropertyDescriptor(property, descriptor)
-    }
-
-    @JSThrows
-    private fun validateAndApplyPropertyDescriptor(property: PropertyKey, newDesc: Descriptor): Boolean {
-        val extensible = isExtensible()
-        ifError { return false }
-        val currentDesc = getOwnPropertyDescriptor(property)
-
-        if (currentDesc == null || currentDesc.getRawValue() == JSEmpty) {
-            if (!extensible)
-                return false
-            internalSet(property, newDesc.copy())
-            return true
-        }
-
-        // Doesn't play nice with a manually set undefined
-//        if (newDesc.isEmpty)
-//            return true
-
-        if (currentDesc.run { hasConfigurable && !isConfigurable }) {
-            if (newDesc.isConfigurable)
-                return false
-            if (newDesc.hasEnumerable && currentDesc.isEnumerable != newDesc.isEnumerable)
-                return false
-        }
-
-        if (currentDesc.isDataDescriptor != newDesc.isDataDescriptor) {
-            if (currentDesc.run { hasConfigurable && !isConfigurable })
-                return false
-            if (currentDesc.isDataDescriptor) {
-                internalSet(property, Descriptor(
-                    JSUndefined,
-                    currentDesc.attributes and (WRITABLE or HAS_WRITABLE).inv(),
-                    newDesc.getter,
-                    newDesc.setter,
-                ))
-            } else {
-                internalSet(property, Descriptor(
-                    newDesc.getActualValue(this),
-                    currentDesc.attributes and (WRITABLE or HAS_WRITABLE).inv(),
-                    null,
-                    null,
-                ))
-            }
-        } else if (currentDesc.isDataDescriptor && newDesc.isDataDescriptor) {
-            if (currentDesc.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {
-                if (newDesc.isWritable)
-                    return false
-                if (!newDesc.getActualValue(this).sameValue(currentDesc.getActualValue(this)))
-                    return false
-            }
-        } else if (currentDesc.run { hasConfigurable && !isConfigurable }) {
-            val currentSetter = currentDesc.setter
-            val newSetter = newDesc.setter
-            if (newSetter != null && (currentSetter == null || !newSetter.sameValue(currentSetter)))
-                return false
-            val currentGetter = currentDesc.setter
-            val newGetter = newDesc.setter
-            if (newGetter != null && (currentGetter == null || !newGetter.sameValue(currentGetter)))
-                return false
-            return true
-        }
-
-        if (newDesc.isDataDescriptor) {
-            // To distinguish undefined from a non-specified property
-            currentDesc.setActualValue(this, newDesc.getActualValue(this))
-        }
-
-        currentDesc.getter = newDesc.getter
-        currentDesc.setter = newDesc.setter
-
-        if (newDesc.hasConfigurable)
-            currentDesc.setConfigurable(newDesc.isConfigurable)
-        if (newDesc.hasEnumerable)
-            currentDesc.setEnumerable(newDesc.isEnumerable)
-        if (newDesc.hasWritable)
-            currentDesc.setWritable(newDesc.isWritable)
-
-        internalSet(property, currentDesc)
-
-        return true
+        return Operations.validateAndApplyPropertyDescriptor(this, property, isExtensible(), descriptor, getOwnPropertyDescriptor(property))
     }
 
     @JSThrows fun get(property: String, receiver: JSValue = this) = get(property.key(), receiver)
@@ -450,7 +369,7 @@ open class JSObject protected constructor(
     }
 
     @JSThrows
-    protected fun internalGet(property: PropertyKey): Descriptor? {
+    internal fun internalGet(property: PropertyKey): Descriptor? {
         val stringOrSymbol = when {
             property.isInt -> {
                 if (property.asInt >= 0)
@@ -465,7 +384,7 @@ open class JSObject protected constructor(
         return storage[stringOrSymbol]
     }
 
-    protected fun internalSet(property: PropertyKey, descriptor: Descriptor) {
+    internal fun internalSet(property: PropertyKey, descriptor: Descriptor) {
         val stringOrSymbol = when {
             property.isString -> {
                 property.asString.toIntOrNull()?.let {
@@ -491,7 +410,7 @@ open class JSObject protected constructor(
         storage[stringOrSymbol] = descriptor
     }
 
-    private fun internalDelete(property: PropertyKey): Boolean {
+    internal fun internalDelete(property: PropertyKey): Boolean {
         val stringOrSymbol = when {
             property.isInt -> {
                 if (property.asInt >= 0)

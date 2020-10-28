@@ -8,6 +8,7 @@ import me.mattco.reeva.runtime.values.arrays.JSArrayCtor
 import me.mattco.reeva.runtime.values.arrays.JSArrayProto
 import me.mattco.reeva.runtime.values.errors.*
 import me.mattco.reeva.runtime.values.builtins.JSONObject
+import me.mattco.reeva.runtime.values.builtins.JSProxyCtor
 import me.mattco.reeva.runtime.values.builtins.JSReflectObject
 import me.mattco.reeva.runtime.values.functions.JSFunctionCtor
 import me.mattco.reeva.runtime.values.functions.JSFunctionProto
@@ -57,6 +58,7 @@ class Realm(globalObject: JSObject? = null) {
     lateinit var symbolCtor: JSSymbolCtor private set
     lateinit var functionCtor: JSFunctionCtor private set
     lateinit var arrayCtor: JSArrayCtor private set
+    lateinit var proxyCtor: JSProxyCtor private set
 
     lateinit var errorCtor: JSErrorCtor private set
     lateinit var evalErrorCtor: JSEvalErrorCtor private set
@@ -126,6 +128,7 @@ class Realm(globalObject: JSObject? = null) {
         stringCtor = JSStringCtor.create(this)
         functionCtor = JSFunctionCtor.create(this)
         arrayCtor = JSArrayCtor.create(this)
+        proxyCtor = JSProxyCtor.create(this)
 
         errorCtor = JSErrorCtor.create(this)
         evalErrorCtor = JSEvalErrorCtor.create(this)

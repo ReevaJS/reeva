@@ -15,6 +15,7 @@ import me.mattco.reeva.runtime.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.values.JSValue
 import me.mattco.reeva.runtime.values.JSReference
 import me.mattco.reeva.runtime.values.arrays.JSArrayObject
+import me.mattco.reeva.runtime.values.builtins.JSProxyObject
 import me.mattco.reeva.runtime.values.errors.JSRangeErrorObject
 import me.mattco.reeva.runtime.values.errors.JSReferenceErrorObject
 import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
@@ -596,6 +597,8 @@ object Operations {
 
     @JvmStatic @ECMAImpl("7.2.3")
     fun isCallable(value: JSValue): Boolean {
+        if (value is JSProxyObject)
+            return value.isCallable
         if (value !is JSFunction)
             return false
         return value.isCallable
@@ -603,6 +606,8 @@ object Operations {
 
     @JvmStatic @ECMAImpl("7.2.4")
     fun isConstructor(value: JSValue): Boolean {
+        if (value is JSProxyObject)
+            return value.isConstructor
         if (value !is JSFunction)
             return false
         return value.isConstructable
@@ -804,6 +809,8 @@ object Operations {
             throwError<JSTypeErrorObject>("cannot call value ${toPrintableString(function)}")
             return JSValue.INVALID_VALUE
         }
+        if (function is JSProxyObject)
+            return function.call(thisValue, arguments)
         return (function as JSFunction).call(thisValue, arguments)
     }
 
@@ -812,7 +819,9 @@ object Operations {
     fun construct(constructor: JSValue, arguments: List<JSValue>, newTarget: JSValue = constructor): JSValue {
         ecmaAssert(isConstructor(constructor))
         ecmaAssert(isConstructor(newTarget))
-        return (constructor as JSFunction).construct(arguments, newTarget as JSFunction)
+        if (constructor is JSProxyObject)
+            return constructor.construct(arguments, newTarget)
+        return (constructor as JSFunction).construct(arguments, newTarget)
     }
 
     enum class IntegrityLevel {
@@ -1117,6 +1126,84 @@ object Operations {
         return Agent.runningContext.realm.globalObject
     }
 
+    @JvmStatic @ECMAImpl("9.1.6.2")
+    fun isCompatiblePropertyDescriptor(extensible: Boolean, desc: Descriptor, current: Descriptor?): Boolean {
+        return validateAndApplyPropertyDescriptor(null, null, extensible, desc, current)
+    }
+
+    @JSThrows
+    fun validateAndApplyPropertyDescriptor(target: JSObject?, property: PropertyKey?, extensible: Boolean, newDesc: Descriptor, currentDesc: Descriptor?): Boolean {
+        if (currentDesc == null) {
+            if (!extensible)
+                return false
+            target?.internalSet(property!!, newDesc.copy())
+            return true
+        }
+
+        if (currentDesc.run { hasConfigurable && !isConfigurable }) {
+            if (newDesc.isConfigurable)
+                return false
+            if (newDesc.hasEnumerable && currentDesc.isEnumerable != newDesc.isEnumerable)
+                return false
+        }
+
+        if (currentDesc.isDataDescriptor != newDesc.isDataDescriptor) {
+            if (currentDesc.run { hasConfigurable && !isConfigurable })
+                return false
+            if (currentDesc.isDataDescriptor) {
+                target?.internalSet(property!!, Descriptor(
+                    JSUndefined,
+                    currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
+                    newDesc.getter,
+                    newDesc.setter,
+                ))
+            } else {
+                target?.internalSet(property!!, Descriptor(
+                    newDesc.getActualValue(target),
+                    currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
+                    null,
+                    null,
+                ))
+            }
+        } else if (currentDesc.isDataDescriptor && newDesc.isDataDescriptor) {
+            if (currentDesc.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {
+                if (newDesc.isWritable)
+                    return false
+                if (!newDesc.getActualValue(target).sameValue(currentDesc.getActualValue(target)))
+                    return false
+            }
+        } else if (currentDesc.run { hasConfigurable && !isConfigurable }) {
+            val currentSetter = currentDesc.setter
+            val newSetter = newDesc.setter
+            if (newSetter != null && (currentSetter == null || !newSetter.sameValue(currentSetter)))
+                return false
+            val currentGetter = currentDesc.setter
+            val newGetter = newDesc.setter
+            if (newGetter != null && (currentGetter == null || !newGetter.sameValue(currentGetter)))
+                return false
+            return true
+        }
+
+        if (newDesc.isDataDescriptor) {
+            // To distinguish undefined from a non-specified property
+            currentDesc.setActualValue(target, newDesc.getActualValue(target))
+        }
+
+        currentDesc.getter = newDesc.getter
+        currentDesc.setter = newDesc.setter
+
+        if (newDesc.hasConfigurable)
+            currentDesc.setConfigurable(newDesc.isConfigurable)
+        if (newDesc.hasEnumerable)
+            currentDesc.setEnumerable(newDesc.isEnumerable)
+        if (newDesc.hasWritable)
+            currentDesc.setWritable(newDesc.isWritable)
+
+        target?.internalSet(property!!, currentDesc)
+
+        return true
+    }
+
     @JSThrows
     @JvmStatic @ECMAImpl("9.1.13")
     fun ordinaryCreateFromConstructor(constructor: JSValue, intrinsicDefaultProto: JSObject): JSObject {
@@ -1307,6 +1394,7 @@ object Operations {
             is JSSymbol -> "symbol"
             is JSBigInt -> "bigint"
             is JSFunction -> "function"
+            is JSProxyObject -> return typeofOperator(v.target)
             is JSObject -> "object"
             else -> unreachable()
         }.toValue()

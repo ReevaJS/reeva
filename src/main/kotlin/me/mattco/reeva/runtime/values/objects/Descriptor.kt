@@ -153,6 +153,21 @@ data class Descriptor(
         return obj
     }
 
+    @ECMAImpl("6.2.5.6")
+    fun complete() = apply {
+        if (isGenericDescriptor) {
+            if (value == JSEmpty)
+                value = JSUndefined
+            if (!hasWritable)
+                attributes = attributes or HAS_WRITABLE
+        }
+
+        if (!hasConfigurable)
+            attributes = attributes or HAS_CONFIGURABLE
+        if (!hasEnumerable)
+            attributes = attributes or HAS_ENUMERABLE
+    }
+
     companion object {
         const val CONFIGURABLE = 1 shl 0
         const val ENUMERABLE = 1 shl 1
