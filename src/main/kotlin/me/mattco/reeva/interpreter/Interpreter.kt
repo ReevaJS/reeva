@@ -1392,13 +1392,13 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             RelationalExpressionNode.Operator.LessThanEquals -> {
                 Operations.abstractRelationalComparison(rval, lval, false).let { value ->
                     ifError { return it }
-                    if (value == JSFalse) JSTrue else value
+                    if (value == JSFalse) JSTrue else JSFalse
                 }
             }
             RelationalExpressionNode.Operator.GreaterThanEquals -> {
                 Operations.abstractRelationalComparison(lval, rval, true).let { value ->
                     ifError { return it }
-                    if (value == JSFalse) JSTrue else value
+                    if (value == JSFalse) JSTrue else JSFalse
                 }
             }
             RelationalExpressionNode.Operator.Instanceof -> Operations.instanceofOperator(lval, rval).also {
