@@ -868,6 +868,40 @@ object Operations {
     }
 
     @JSThrows
+    @JvmStatic @ECMAImpl("CreateListFromArrayLike", "7.3.19")
+    fun createListFromArrayLike(obj: JSValue, types: List<JSValue.Type>? = null): List<JSValue> {
+        val elementTypes = types ?: listOf(
+            JSValue.Type.Undefined,
+            JSValue.Type.Null,
+            JSValue.Type.Boolean,
+            JSValue.Type.String,
+            JSValue.Type.Symbol,
+            JSValue.Type.Number,
+            JSValue.Type.BigInt,
+            JSValue.Type.Object,
+        )
+
+        if (obj !is JSObject) {
+            throwError<JSTypeErrorObject>("TODO: message")
+            return emptyList()
+        }
+
+        val length = lengthOfArrayLike(obj)
+        val list = mutableListOf<JSValue>()
+
+        for (i in 0 until length) {
+            val next = obj.get(i)
+            if (next.type !in elementTypes) {
+                throwError<JSTypeErrorObject>("TODO: message")
+                return emptyList()
+            }
+            list.add(next)
+        }
+
+        return list
+    }
+
+    @JSThrows
     @JvmStatic @ECMAImpl("Invoke", "7.3.20")
     fun invoke(value: JSValue, property: JSValue, arguments: JSArguments = emptyList()): JSValue {
         val func = getV(value, property)
