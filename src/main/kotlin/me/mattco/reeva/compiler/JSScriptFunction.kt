@@ -1,11 +1,9 @@
 package me.mattco.reeva.compiler
 
-import me.mattco.reeva.runtime.Realm
-import me.mattco.reeva.runtime.environment.EnvRecord
-import me.mattco.reeva.runtime.values.JSValue
-import me.mattco.reeva.runtime.values.functions.JSFunction
-import me.mattco.reeva.runtime.values.objects.JSObject
-import me.mattco.reeva.runtime.values.primitives.JSUndefined
+import me.mattco.reeva.core.Realm
+import me.mattco.reeva.core.environment.EnvRecord
+import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.functions.JSFunction
 
 abstract class JSScriptFunction @JvmOverloads constructor(
     realm: Realm,

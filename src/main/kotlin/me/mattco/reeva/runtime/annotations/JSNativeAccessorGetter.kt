@@ -1,6 +1,6 @@
 package me.mattco.reeva.runtime.annotations
 
-import me.mattco.reeva.runtime.values.objects.Descriptor
+import me.mattco.reeva.runtime.objects.Descriptor
 
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FUNCTION)

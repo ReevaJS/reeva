@@ -4,30 +4,31 @@ package me.mattco.reeva.runtime
 
 import me.mattco.reeva.interpreter.Completion
 import me.mattco.reeva.compiler.JSScriptFunction
+import me.mattco.reeva.core.Agent
 import me.mattco.reeva.interpreter.Record
-import me.mattco.reeva.runtime.Agent.Companion.ifError
+import me.mattco.reeva.core.Agent.Companion.ifError
+import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows
-import me.mattco.reeva.runtime.contexts.ExecutionContext
-import me.mattco.reeva.runtime.environment.EnvRecord
-import me.mattco.reeva.runtime.environment.FunctionEnvRecord
-import me.mattco.reeva.runtime.environment.GlobalEnvRecord
-import me.mattco.reeva.runtime.values.JSValue
-import me.mattco.reeva.runtime.values.JSReference
-import me.mattco.reeva.runtime.values.arrays.JSArrayObject
-import me.mattco.reeva.runtime.values.builtins.JSProxyObject
-import me.mattco.reeva.runtime.values.errors.JSRangeErrorObject
-import me.mattco.reeva.runtime.values.errors.JSReferenceErrorObject
-import me.mattco.reeva.runtime.values.errors.JSTypeErrorObject
-import me.mattco.reeva.runtime.values.functions.JSFunction
-import me.mattco.reeva.runtime.values.objects.Descriptor
-import me.mattco.reeva.runtime.values.objects.JSObject
-import me.mattco.reeva.runtime.values.objects.PropertyKey
+import me.mattco.reeva.core.ExecutionContext
+import me.mattco.reeva.core.environment.EnvRecord
+import me.mattco.reeva.core.environment.FunctionEnvRecord
+import me.mattco.reeva.core.environment.GlobalEnvRecord
+import me.mattco.reeva.runtime.arrays.JSArrayObject
+import me.mattco.reeva.runtime.builtins.JSProxyObject
+import me.mattco.reeva.runtime.errors.JSRangeErrorObject
+import me.mattco.reeva.runtime.errors.JSReferenceErrorObject
+import me.mattco.reeva.runtime.errors.JSTypeErrorObject
+import me.mattco.reeva.runtime.functions.JSFunction
+import me.mattco.reeva.runtime.primitives.*
+import me.mattco.reeva.runtime.objects.Descriptor
+import me.mattco.reeva.runtime.objects.JSObject
+import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.values.primitives.*
-import me.mattco.reeva.runtime.values.wrappers.JSBooleanObject
-import me.mattco.reeva.runtime.values.wrappers.JSNumberObject
-import me.mattco.reeva.runtime.values.wrappers.JSStringObject
-import me.mattco.reeva.runtime.values.wrappers.JSSymbolObject
+import me.mattco.reeva.runtime.wrappers.JSBooleanObject
+import me.mattco.reeva.runtime.wrappers.JSNumberObject
+import me.mattco.reeva.runtime.wrappers.JSStringObject
+import me.mattco.reeva.runtime.wrappers.JSSymbolObject
 import me.mattco.reeva.utils.*
 import kotlin.math.abs
 import kotlin.math.floor
@@ -1167,12 +1168,14 @@ object Operations {
                     currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
                     newDesc.getter,
                     newDesc.setter,
-                ))
+                )
+                )
             } else {
                 target?.internalSet(property!!, Descriptor(
                     newDesc.getActualValue(target),
                     currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
-                ))
+                )
+                )
             }
         } else if (currentDesc.isDataDescriptor && newDesc.isDataDescriptor) {
             if (currentDesc.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {

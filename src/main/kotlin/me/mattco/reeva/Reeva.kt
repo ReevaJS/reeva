@@ -1,7 +1,7 @@
 package me.mattco.reeva
 
-import me.mattco.reeva.runtime.Agent
-import me.mattco.reeva.runtime.Realm
+import me.mattco.reeva.core.Agent
+import me.mattco.reeva.core.Realm
 import java.io.File
 
 val outDirectory = File("./demo/out/")

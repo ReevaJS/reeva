@@ -1,7 +1,7 @@
 package me.mattco.reeva.utils
 
-import me.mattco.reeva.runtime.values.JSValue
-import me.mattco.reeva.runtime.values.primitives.JSUndefined
+import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.primitives.JSUndefined
 
 typealias JSArguments = List<JSValue>
 

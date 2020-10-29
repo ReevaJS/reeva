@@ -1,6 +1,6 @@
 package me.mattco.reeva.interpreter
 
-import me.mattco.reeva.runtime.values.JSValue
+import me.mattco.reeva.runtime.JSValue
 
 /**
  * A record of the termination status of a compiler function.

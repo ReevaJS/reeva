@@ -1,9 +1,9 @@
 package me.mattco.reeva.test262
 
 import com.charleskorn.kaml.Yaml
-import me.mattco.reeva.runtime.Agent
-import me.mattco.reeva.runtime.Realm
-import me.mattco.reeva.runtime.contexts.ExecutionContext
+import me.mattco.reeva.core.Agent
+import me.mattco.reeva.core.Realm
+import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.utils.expect
 import org.junit.BeforeClass
 import org.junit.Test

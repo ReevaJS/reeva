@@ -3,7 +3,7 @@ package me.mattco.reeva.ast.literals
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.values.primitives.JSNumber
+import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.utils.unreachable
 
 class ObjectLiteralNode(val list: PropertyDefinitionListNode?) : NodeBase(listOfNotNull(list)), PrimaryExpressionNode
