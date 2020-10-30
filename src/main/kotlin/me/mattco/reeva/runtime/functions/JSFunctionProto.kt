@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.functions
 
 import me.mattco.reeva.core.Agent.Companion.ifError
+import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
@@ -12,7 +13,6 @@ import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
-import me.mattco.reeva.utils.throwError
 
 class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     @JSMethod("call", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)

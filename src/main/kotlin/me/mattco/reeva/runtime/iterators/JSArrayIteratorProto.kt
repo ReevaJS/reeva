@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.iterators
 
 import me.mattco.reeva.core.Agent.Companion.ifError
+import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
@@ -10,7 +11,6 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.throwError
 import me.mattco.reeva.utils.toValue
 
 class JSArrayIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {

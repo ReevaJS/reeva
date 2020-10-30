@@ -1,151 +1,96 @@
 package me.mattco.reeva.core
 
-import me.mattco.reeva.compiler.ByteClassLoader
-import me.mattco.reeva.compiler.Compiler
-import me.mattco.reeva.compiler.TopLevelScript
-import me.mattco.reeva.interpreter.Interpreter
-import me.mattco.reeva.runtime.JSGlobalObject
-import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.Reeva
+import me.mattco.reeva.core.tasks.Microtask
+import me.mattco.reeva.core.tasks.Task
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.errors.JSErrorObject
-import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.utils.expect
-import org.objectweb.asm.ClassWriter
-import org.objectweb.asm.tree.ClassNode
-import java.io.FileOutputStream
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.ConcurrentLinkedDeque
 
-class Agent(val signifier: Any = "Agent${objectCount++}") {
-    private val classLoader = ByteClassLoader()
+class Agent private constructor() {
+    @Volatile
+    internal var shouldLoop = false
+
+    private val tasks = ConcurrentLinkedDeque<Task<*>>()
+    private val microTasks = ConcurrentLinkedDeque<Microtask>()
+    private val runningContextStack = ConcurrentLinkedDeque<ExecutionContext>()
+
+    val runningContext: ExecutionContext
+        get() = runningContextStack.last
 
     init {
-        if (signifier in agentIdentifiers)
-            throw IllegalArgumentException("Agent cannot have duplicate signifier $signifier")
-        agentIdentifiers.add(signifier)
+        activeAgentList.add(this)
     }
 
-    data class EvaluationResult(
-        val error: String?,
-    )
-
-    fun interpretedEvaluation(scriptRecord: Realm.ScriptRecord, context: ExecutionContext? = null): EvaluationResult {
-        val realm = scriptRecord.realm
-        val newContext = context ?: ExecutionContext(this, realm, null)
-        runningContextStack.add(newContext)
-
-        if (!realm.isGloballyInitialized) {
-            realm.initObjects()
-            realm.setGlobalObject(JSGlobalObject.create(realm))
-        }
-
-        newContext.variableEnv = realm.globalEnv
-        newContext.lexicalEnv = realm.globalEnv
-
-        runningContextStack.add(newContext)
-
-        val start = System.nanoTime()
-        val interpreter = Interpreter(scriptRecord)
-        val interpretationResult = interpreter.interpret(newContext)
-        println("Interpretation time: ${(System.nanoTime() - start) / 1_000_000}ms")
-
-        return if (interpretationResult.isAbrupt) {
-            runningContext.error = null
-            EvaluationResult(Operations.toString(interpretationResult.value).string)
-        } else {
-            EvaluationResult(null)
-        }.also {
-            runningContextStack.remove(newContext)
-        }
+    internal inline fun <reified T> runTask(task: Task<T>): T {
+        tasks.add(task)
+        val result = runTasks()
+        expect(result is T)
+        return result
     }
 
-    fun compiledEvaluation(scriptRecord: Realm.ScriptRecord) {
-        val realm = scriptRecord.realm
-        val newContext = ExecutionContext(this, realm, null)
-        runningContextStack.add(newContext)
-
-        if (!realm.isGloballyInitialized) {
-            realm.initObjects()
-            realm.setGlobalObject(JSObject.create(realm))
-        }
-
-        newContext.variableEnv = realm.globalEnv
-        newContext.lexicalEnv = realm.globalEnv
-
-        runningContextStack.add(newContext)
-
-        val scriptNode = scriptRecord.scriptOrModule
-        val compiler = Compiler(scriptNode, "index_js")
-        var start = System.nanoTime()
-        val compilationResult = compiler.compile()
-        val compileTime = System.nanoTime() - start
-
-        val mainClassNode = compilationResult.mainClass
-        val dependencies = compilationResult.dependencies
-        dependencies.forEach { classNode ->
-            compileClassNode(classNode, false)
-        }
-
-        val mainClass = compileClassNode(mainClassNode, true)
-        val topLevelScript = mainClass.newInstance() as TopLevelScript
-        start = System.nanoTime()
-        val ret = topLevelScript.run(newContext)
-
-        if (ret is JSErrorObject) {
-            // TODO: We really need a better system to communicate errors to the caller.
-            // If there is a leftover error in a context, no code will run. This may be
-            // ok, but we should allow the current error to be easily and quickly examined
-            // and consumed
-            print("\u001b[31m")
-            runningContext.error = null
-            val name = Operations.getValue(ret.get("name"))
-            val message = Operations.getValue(ret.get("message"))
-            print("${Operations.toPrintableString(name)}: ${Operations.toPrintableString(message)}")
-            println("\u001b[0m")
-        }
-        println("Compile time: ${(System.nanoTime() - start) / 1_000_000}ms")
-        println("Execution time: ${(System.nanoTime() - start) / 1_000_000}ms")
-
-        runningContextStack.remove(newContext)
+    internal fun submitTask(task: Task<*>) {
+        tasks.add(task)
     }
 
-    private fun compileClassNode(classNode: ClassNode, isMainFile: Boolean): Class<*> {
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        classNode.accept(writer)
-        val bytes = writer.toByteArray()
+    internal fun submitMicrotask(microTask: Microtask) {
+        microTasks.add(microTask)
+    }
 
-        if (EMIT_DEBUG_OUTPUT)
-            FileOutputStream("./demo/out/${classNode.name}.class").use { it.write(bytes) }
+    private fun runTasks(): Any? {
+        expect(tasks.isNotEmpty())
 
-        classLoader.addClass(classNode.name, bytes)
-        return classLoader.loadClass(classNode.name)
+        val result = runTaskLoop()
+        while (tasks.isNotEmpty() || shouldLoop) {
+            if (tasks.isNotEmpty())
+                runTaskLoop()
+        }
+
+        return result
+    }
+
+    private fun runTaskLoop(): Any? {
+        val task = tasks.removeFirst()
+        val context = task.makeContext()
+        runningContextStack.add(context)
+        val result = task.execute()
+
+        while (microTasks.isNotEmpty())
+            microTasks.removeFirst().execute()
+
+        runningContextStack.remove(context)
+        return result
+    }
+
+    internal fun teardown() {
+        shouldLoop = false
+        tasks.clear()
+        microTasks.clear()
     }
 
     companion object {
-        // Used to ensure names of various things are unique
-        @Volatile
-        @JvmStatic
-        var objectCount = 0
+        internal val activeAgentList = mutableListOf<Agent>()
 
-        private const val EMIT_DEBUG_OUTPUT = true
-        private val agentIdentifiers = mutableSetOf<Any>()
+        private val activeAgents = object : ThreadLocal<Agent>() {
+            override fun initialValue() = Agent()
+        }
 
-        private val runningContextStack = CopyOnWriteArrayList<ExecutionContext>()
+        val activeAgent: Agent
+            get() = activeAgents.get()
 
-        // TODO: This is a hack for now, and doesn't really do much. However,
-        // This should more-or-less be the final API. At any one time there is
-        // only one running ExecutingContext, so this should be totally realizable
-        @JvmStatic
         val runningContext: ExecutionContext
-            get() = runningContextStack.last()
+            get() = activeAgent.runningContext
+
 
         @JvmStatic
         fun pushContext(context: ExecutionContext) {
-            runningContextStack.add(context)
+            activeAgent.runningContextStack.add(context)
         }
 
         @JvmStatic
         fun popContext() {
-            runningContextStack.removeLast()
+            activeAgent.runningContextStack.removeLast()
         }
 
         @JvmStatic
@@ -161,6 +106,14 @@ class Agent(val signifier: Any = "Agent${objectCount++}") {
         fun throwError(error: JSValue) {
             expect(runningContext.error == null)
             runningContext.error = error
+        }
+
+        @JvmStatic
+        inline fun <reified T : JSErrorObject> throwError(message: String? = null) {
+            ifError { return }
+            val obj = T::class.java.getDeclaredMethod("create", Realm::class.java, String::class.java)
+                .invoke(null, runningContext.realm, message) as T
+            throwError(obj)
         }
     }
 }

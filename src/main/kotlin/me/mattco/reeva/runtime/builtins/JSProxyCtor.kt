@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.builtins
 
 import me.mattco.reeva.core.Agent.Companion.ifError
+import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
@@ -13,7 +14,6 @@ import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
 import me.mattco.reeva.utils.key
-import me.mattco.reeva.utils.throwError
 
 class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Proxy", 2) {
     init {

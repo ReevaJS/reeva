@@ -1,6 +1,8 @@
 package me.mattco.reeva.core.environment
 
 import me.mattco.reeva.core.Agent.Companion.ifError
+import me.mattco.reeva.core.Agent.Companion.throwError
+import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
@@ -10,14 +12,13 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.key
-import me.mattco.reeva.utils.throwError
 
 class GlobalEnvRecord(
     val declarativeRecord: DeclarativeEnvRecord,
     val globalThis: JSObject,
     outerEnv: EnvRecord? = null
 ) : EnvRecord(outerEnv) {
-    private val objectRecord = ObjectEnvRecord(globalThis, this)
+    private val objectRecord = ObjectEnvRecord(globalThis, false, this)
     private val varNames = mutableListOf<String>()
 
     @ECMAImpl("8.1.1.4.1")
@@ -165,7 +166,7 @@ class GlobalEnvRecord(
     companion object {
         @ECMAImpl("8.1.2.5", "NewGlobalEnvironment")
         fun create(globalObj: JSObject): GlobalEnvRecord {
-            val objRecord = ObjectEnvRecord(globalObj, null)
+            val objRecord = ObjectEnvRecord(globalObj, false, null)
             val declRecord = DeclarativeEnvRecord(null)
             val globalEnv = GlobalEnvRecord(declRecord, globalObj, null)
 

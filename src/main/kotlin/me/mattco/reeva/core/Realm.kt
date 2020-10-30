@@ -7,7 +7,6 @@ import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.arrays.JSArrayCtor
 import me.mattco.reeva.runtime.arrays.JSArrayProto
 import me.mattco.reeva.runtime.builtins.JSMathObject
-import me.mattco.reeva.runtime.values.errors.*
 import me.mattco.reeva.runtime.builtins.JSONObject
 import me.mattco.reeva.runtime.errors.*
 import me.mattco.reeva.runtime.builtins.JSProxyCtor
@@ -22,13 +21,12 @@ import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObjectCtor
 import me.mattco.reeva.runtime.objects.JSObjectProto
 import me.mattco.reeva.runtime.iterators.JSObjectPropertyIteratorProto
-import me.mattco.reeva.runtime.values.objects.*
 import me.mattco.reeva.runtime.primitives.JSSymbol
-import me.mattco.reeva.runtime.values.wrappers.*
 import me.mattco.reeva.runtime.wrappers.*
 import java.util.concurrent.ConcurrentHashMap
 
-class Realm(globalObject: JSObject? = null) {
+@Suppress("ObjectPropertyName")
+class Realm {
     internal val isGloballyInitialized: Boolean
         get() = ::globalObject.isInitialized && ::globalEnv.isInitialized
 
@@ -79,37 +77,12 @@ class Realm(globalObject: JSObject? = null) {
     lateinit var jsonObj: JSONObject private set
     lateinit var consoleObj: JSConsole private set
 
-    init {
-        if (globalObject != null)
-            setGlobalObject(globalObject)
-    }
-
     fun setGlobalObject(obj: JSObject) {
         globalObject = obj
         globalEnv = GlobalEnvRecord.create(globalObject)
     }
 
     fun initObjects() {
-        if (!wellknownSymbolsInitialized) {
-            // Objects can declare symbol methods, so we initialize these first, as they are not objects
-            // and do not depends on the object ctor or proto
-            `@@asyncIterator` = JSSymbol("Symbol.asyncIterator").also { wellknownSymbols["@@asyncIterator"] = it }
-            `@@hasInstance` = JSSymbol("Symbol.hasInstance").also { wellknownSymbols["@@hasInstance"] = it }
-            `@@isConcatSpreadable` = JSSymbol("Symbol.isConcatSpreadable").also { wellknownSymbols["@@isConcatSpreadable"] = it }
-            `@@iterator` = JSSymbol("Symbol.iterator").also { wellknownSymbols["@@iterator"] = it }
-            `@@match` = JSSymbol("Symbol.match").also { wellknownSymbols["@@match"] = it }
-            `@@matchAll` = JSSymbol("Symbol.matchAll").also { wellknownSymbols["@@matchAll"] = it }
-            `@@replace` = JSSymbol("Symbol.replace").also { wellknownSymbols["@@replace"] = it }
-            `@@search` = JSSymbol("Symbol.search").also { wellknownSymbols["@@search"] = it }
-            `@@species` = JSSymbol("Symbol.species").also { wellknownSymbols["@@species"] = it }
-            `@@split` = JSSymbol("Symbol.split").also { wellknownSymbols["@@split"] = it }
-            `@@toPrimitive` = JSSymbol("Symbol.toPrimitive").also { wellknownSymbols["@@toPrimitive"] = it }
-            `@@toStringTag` = JSSymbol("Symbol.toStringTag").also { wellknownSymbols["@@toStringTag"] = it }
-            `@@unscopables` = JSSymbol("Symbol.unscopables").also { wellknownSymbols["@@unscopables"] = it }
-
-            wellknownSymbolsInitialized = true
-        }
-
         objectProto = JSObjectProto.create(this)
         functionProto = JSFunctionProto.create(this)
         objectCtor = JSObjectCtor.create(this)
@@ -174,15 +147,6 @@ class Realm(globalObject: JSObject? = null) {
         uriErrorCtor.defineOwnProperty("prototype", uriErrorProto, 0)
     }
 
-    fun parseScript(script: String): ScriptRecord {
-        val start = System.nanoTime()
-        val parser = Parser(script)
-        val scriptNode = parser.parseScript()
-        val errors = parser.syntaxErrors
-        println("Parse time: ${(System.nanoTime() - start) / 1_000_000}ms")
-        return ScriptRecord(this, null, scriptNode, errors)
-    }
-
     data class ScriptRecord(
         val realm: Realm,
         var env: EnvRecord?,
@@ -190,10 +154,8 @@ class Realm(globalObject: JSObject? = null) {
         val errors: List<Parser.SyntaxError> = emptyList()
     )
 
-    companion object {
-        internal val globalSymbolRegistry = ConcurrentHashMap<String, JSSymbol>()
-
-        private var wellknownSymbolsInitialized = false
+    internal companion object {
+        val globalSymbolRegistry = ConcurrentHashMap<String, JSSymbol>()
 
         // To get access to the symbol via their name without reflection
         val wellknownSymbols = mutableMapOf<String, JSSymbol>()
@@ -211,5 +173,21 @@ class Realm(globalObject: JSObject? = null) {
         lateinit var `@@toPrimitive`: JSSymbol private set
         lateinit var `@@toStringTag`: JSSymbol private set
         lateinit var `@@unscopables`: JSSymbol private set
+
+        fun setupSymbols() {
+            `@@asyncIterator` = JSSymbol("Symbol.asyncIterator").also { wellknownSymbols["@@asyncIterator"] = it }
+            `@@hasInstance` = JSSymbol("Symbol.hasInstance").also { wellknownSymbols["@@hasInstance"] = it }
+            `@@isConcatSpreadable` = JSSymbol("Symbol.isConcatSpreadable").also { wellknownSymbols["@@isConcatSpreadable"] = it }
+            `@@iterator` = JSSymbol("Symbol.iterator").also { wellknownSymbols["@@iterator"] = it }
+            `@@match` = JSSymbol("Symbol.match").also { wellknownSymbols["@@match"] = it }
+            `@@matchAll` = JSSymbol("Symbol.matchAll").also { wellknownSymbols["@@matchAll"] = it }
+            `@@replace` = JSSymbol("Symbol.replace").also { wellknownSymbols["@@replace"] = it }
+            `@@search` = JSSymbol("Symbol.search").also { wellknownSymbols["@@search"] = it }
+            `@@species` = JSSymbol("Symbol.species").also { wellknownSymbols["@@species"] = it }
+            `@@split` = JSSymbol("Symbol.split").also { wellknownSymbols["@@split"] = it }
+            `@@toPrimitive` = JSSymbol("Symbol.toPrimitive").also { wellknownSymbols["@@toPrimitive"] = it }
+            `@@toStringTag` = JSSymbol("Symbol.toStringTag").also { wellknownSymbols["@@toStringTag"] = it }
+            `@@unscopables` = JSSymbol("Symbol.unscopables").also { wellknownSymbols["@@unscopables"] = it }
+        }
     }
 }

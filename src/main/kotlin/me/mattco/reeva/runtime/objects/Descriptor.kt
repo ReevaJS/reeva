@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.objects
 
 import me.mattco.reeva.core.Agent.Companion.ifError
+import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -8,8 +9,6 @@ import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.runtime.values.primitives.*
-import me.mattco.reeva.utils.throwError
 import me.mattco.reeva.utils.toValue
 
 data class Descriptor(

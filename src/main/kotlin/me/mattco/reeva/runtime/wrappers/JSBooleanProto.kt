@@ -1,5 +1,6 @@
 package me.mattco.reeva.runtime.wrappers
 
+import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -11,7 +12,6 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSBoolean
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.throwError
 import me.mattco.reeva.utils.toValue
 
 class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, JSFalse) {

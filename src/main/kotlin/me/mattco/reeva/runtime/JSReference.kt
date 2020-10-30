@@ -4,7 +4,6 @@ import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.utils.expect
 
 open class JSReference(

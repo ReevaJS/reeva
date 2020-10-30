@@ -6,8 +6,6 @@ import me.mattco.reeva.runtime.functions.JSFunction
 
 class ExecutionContext(
     @JvmField
-    val agent: Agent,
-    @JvmField
     val realm: Realm,
     @JvmField
     val function: JSFunction?,

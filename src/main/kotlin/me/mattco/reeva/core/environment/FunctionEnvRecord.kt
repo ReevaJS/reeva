@@ -1,5 +1,7 @@
 package me.mattco.reeva.core.environment
 
+import me.mattco.reeva.core.Agent.Companion.throwError
+import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSFunction
@@ -7,7 +9,6 @@ import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.errors.JSReferenceErrorObject
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.throwError
 
 class FunctionEnvRecord(
     val function: JSFunction,

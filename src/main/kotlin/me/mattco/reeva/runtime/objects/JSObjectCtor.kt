@@ -2,6 +2,7 @@ package me.mattco.reeva.runtime.objects
 
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Agent.Companion.ifError
+import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl

@@ -5,6 +5,7 @@ import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.core.Agent
+import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -25,15 +26,14 @@ import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
-import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.utils.*
 
-class Interpreter(private val record: Realm.ScriptRecord) {
-    fun interpret(scriptContext: ExecutionContext): Completion {
-        val globalEnv = record.realm.globalEnv
-        val result = globalDeclarationInstantiation(record.scriptOrModule, globalEnv).let {
+class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNode) {
+    fun interpret(): Completion {
+        val globalEnv = realm.globalEnv
+        val result = globalDeclarationInstantiation(scriptOrModule, globalEnv).let {
             if (it.isNormal)
-                interpretScript(record.scriptOrModule)
+                interpretScript(scriptOrModule)
             else it
         }.let {
             if (it.isNormal && it.value == JSEmpty)
@@ -113,7 +113,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
     fun instantiateFunctionObject(functionNode: FunctionDeclarationNode, scope: EnvRecord): JSFunction {
         val sourceText = "TODO"
         val function = ordinaryFunctionCreate(
-            record.realm.functionProto,
+            realm.functionProto,
             sourceText,
             functionNode.parameters,
             functionNode.body,
@@ -984,7 +984,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             val scope = Agent.runningContext.lexicalEnv!!
             val sourceText = "TODO"
             val closure = ordinaryFunctionCreate(
-                record.realm.functionProto,
+                realm.functionProto,
                 sourceText,
                 functionExpressionNode.parameters,
                 functionExpressionNode.body,
@@ -1003,7 +1003,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             funcEnv.createImmutableBinding(name, false)
             val sourceText = "TODO"
             val closure = ordinaryFunctionCreate(
-                record.realm.functionProto,
+                realm.functionProto,
                 sourceText,
                 functionExpressionNode.parameters,
                 functionExpressionNode.body,
@@ -1040,7 +1040,7 @@ class Interpreter(private val record: Realm.ScriptRecord) {
             } else it as FunctionStatementList
         }
         val closure = ordinaryFunctionCreate(
-            record.realm.functionProto,
+            realm.functionProto,
             sourceText,
             parameters,
             body,

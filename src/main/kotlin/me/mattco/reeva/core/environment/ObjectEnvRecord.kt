@@ -1,5 +1,7 @@
 package me.mattco.reeva.core.environment
 
+import me.mattco.reeva.core.Agent.Companion.throwError
+import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
@@ -8,13 +10,12 @@ import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.throwError
 import me.mattco.reeva.utils.unreachable
 
 class ObjectEnvRecord(
     val boundObject: JSObject,
-    outerEnv: EnvRecord? = null,
     var withEnvironment: Boolean = false,
+    outerEnv: EnvRecord? = null,
 ) : EnvRecord(outerEnv) {
     @ECMAImpl("8.1.1.2.1")
     override fun hasBinding(name: String): Boolean {

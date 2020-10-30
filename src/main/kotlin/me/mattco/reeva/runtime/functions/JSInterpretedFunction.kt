@@ -2,6 +2,7 @@ package me.mattco.reeva.runtime.functions
 
 import me.mattco.reeva.interpreter.Completion
 import me.mattco.reeva.core.Agent
+import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.environment.EnvRecord
@@ -13,7 +14,6 @@ import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.expect
-import me.mattco.reeva.utils.throwError
 
 class JSInterpretedFunction(
     realm: Realm,

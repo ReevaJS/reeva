@@ -76,7 +76,7 @@ class PropertyNameNode(val expr: ExpressionNode, val isComputed: Boolean) : Node
         expr is IdentifierNode -> expr.identifierName
         expr is StringLiteralNode -> expr.value
         // This is kinda scuffed
-        expr is NumericLiteralNode -> Operations.toString(JSNumber(expr.value)).string
+        expr is NumericLiteralNode -> expr.value.toString()
         else -> unreachable()
     }
 }

@@ -1,5 +1,6 @@
 package me.mattco.reeva.runtime.wrappers
 
+import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -13,7 +14,6 @@ import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.shouldThrowError
-import me.mattco.reeva.utils.throwError
 import me.mattco.reeva.utils.toValue
 
 class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {

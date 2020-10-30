@@ -1,10 +1,13 @@
 package me.mattco.reeva.test262
 
 import com.charleskorn.kaml.Yaml
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ExecutionContext
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.utils.expect
+import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.Test
 import org.junit.jupiter.api.Assertions
@@ -21,14 +24,6 @@ class Test262Runner(private val name: String, private val script: String, privat
         Assumptions.assumeTrue(metadata.negative == null)
         Assumptions.assumeTrue(metadata.features?.any { "intl" in it.toLowerCase() } != true)
 
-        val realm = Realm()
-        val context = ExecutionContext(agent, realm, null)
-        Agent.pushContext(context)
-        realm.initObjects()
-        val globalObject = Test262GlobalObject.create(realm)
-        realm.setGlobalObject(globalObject)
-        Agent.popContext()
-
         var requiredScript = pretestScript
 
         metadata.includes?.forEach { include ->
@@ -36,24 +31,13 @@ class Test262Runner(private val name: String, private val script: String, privat
             requiredScript += File(harnessDirectory, include).readText()
         }
 
-        val pretestRecord = realm.parseScript(requiredScript)
-        Assertions.assertTrue(pretestRecord.errors.isEmpty()) {
-            val error = pretestRecord.errors[0]
-            "(${error.lineNumber}, ${error.columnNumber}: ${error.message}"
-        }
-        val testRecord = realm.parseScript(script)
-        Assertions.assertTrue(testRecord.errors.isEmpty()) {
-            val error = testRecord.errors[0]
-            "(${error.lineNumber}, ${error.columnNumber}: ${error.message}"
-        }
+        val realm = Reeva.makeRealm()
 
-        val pretestResult = agent.interpretedEvaluation(pretestRecord)
-        Assertions.assertTrue(pretestResult.error == null) {
-            pretestResult.error
-        }
-        val testResult = agent.interpretedEvaluation(testRecord)
-        Assertions.assertTrue(testResult.error == null) {
-            testResult.error
+        val pretestResult = Reeva.evaluate("$requiredScript;\n\n$script", realm)
+        Assertions.assertTrue(!pretestResult.isError) {
+            Reeva.with(realm) {
+                Operations.toString(pretestResult.value).string
+            }
         }
     }
 
@@ -61,11 +45,9 @@ class Test262Runner(private val name: String, private val script: String, privat
         private val test262Directory = File("./src/test/resources/test262/")
         private val testDirectory = File(test262Directory, "test")
         private val harnessDirectory = File(test262Directory, "harness")
-        private val targetDirectory: File? = File(testDirectory, "built-ins/Object")
+        private val targetDirectory: File? = File(testDirectory, "built-ins/Boolean")
 //        private val targetDirectory: File? = null
         private lateinit var pretestScript: String
-
-        private val agent = Agent()
 
         @BeforeClass
         @JvmStatic
@@ -74,8 +56,10 @@ class Test262Runner(private val name: String, private val script: String, privat
                 throw IllegalStateException("The test262 repo must be cloned into src/test/resources/test262/")
 
             val assertText = File(harnessDirectory, "assert.js").readText()
-            val stdText = File(harnessDirectory, "sta.js").readText()
-            pretestScript = "$assertText\n$stdText\n"
+            val staText = File(harnessDirectory, "sta.js").readText()
+            pretestScript = "$assertText\n$staText\n"
+
+            Reeva.setup()
         }
 
         @Parameterized.Parameters(name = "{index}: {0}")
@@ -97,6 +81,12 @@ class Test262Runner(private val name: String, private val script: String, privat
 
                 arrayOf(name, contents, metadata)
             }
+        }
+
+        @AfterClass
+        @JvmStatic
+        fun teardown() {
+            Reeva.teardown()
         }
     }
 }

@@ -7,6 +7,7 @@ import me.mattco.reeva.compiler.JSScriptFunction
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.interpreter.Record
 import me.mattco.reeva.core.Agent.Companion.ifError
+import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows
@@ -24,7 +25,6 @@ import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
-import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.runtime.wrappers.JSBooleanObject
 import me.mattco.reeva.runtime.wrappers.JSNumberObject
 import me.mattco.reeva.runtime.wrappers.JSStringObject
@@ -1238,12 +1238,7 @@ object Operations {
     @JvmStatic @ECMAImpl("9.2.1.1")
     fun prepareForOrdinaryCall(function: JSFunction, newTarget: JSValue): ExecutionContext {
         ecmaAssert(newTarget is JSUndefined || newTarget is JSObject)
-        val callerContext = Agent.runningContext
-        val calleeContext = ExecutionContext(
-            callerContext.agent,
-            function.realm,
-            function,
-        )
+        val calleeContext = ExecutionContext(function.realm, function)
         val localEnv = FunctionEnvRecord.create(function, newTarget)
         calleeContext.lexicalEnv = localEnv
         calleeContext.variableEnv = localEnv

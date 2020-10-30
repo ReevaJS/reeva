@@ -7,6 +7,7 @@ import codes.som.anthony.koffee.insns.sugar.*
 import codes.som.anthony.koffee.modifiers.public
 import codes.som.anthony.koffee.types.TypeLike
 import codes.som.anthony.koffee.types.coerceType
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.LiteralNode
@@ -31,7 +32,6 @@ import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
-import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
@@ -304,7 +304,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             pop
         }
 
-        val name = "for_block_${Agent.objectCount++}"
+        val name = "for_block_${Reeva.objectCount++}"
         addExtraMethodToCurrentClass(name) {
             compileStatement(body)
             createPerIterationEnvironment()
@@ -353,8 +353,8 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
 
         createPerIterationEnvironment()
 
-        val start = L[Agent.objectCount++]
-        val end = L[Agent.objectCount++]
+        val start = L[Reeva.objectCount++]
+        val end = L[Reeva.objectCount++]
 
         +start
 
@@ -413,7 +413,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
          * statements inside of it
          */
 
-        val name = "try_block_${Agent.objectCount++}"
+        val name = "try_block_${Reeva.objectCount++}"
         addExtraMethodToCurrentClass(name) {
             compileBlock(tryStatementNode.tryBlock)
         }
@@ -1346,7 +1346,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         val functionName = function.identifier?.identifierName ?: "default"
         val parameters = function.parameters
 
-        val functionClassName = "Function_${functionName}_${sanitizedFileName}_${Agent.objectCount++}"
+        val functionClassName = "Function_${functionName}_${sanitizedFileName}_${Reeva.objectCount++}"
         val previousExtraMethodCount = extraMethods.size
 
         return assembleClass(

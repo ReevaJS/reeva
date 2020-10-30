@@ -6,6 +6,7 @@ import me.mattco.reeva.ast.statements.ForBindingNode
 import me.mattco.reeva.ast.statements.StatementListNode
 import me.mattco.reeva.ast.statements.VariableDeclarationNode
 import me.mattco.reeva.core.Agent
+import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.interpreter.Completion
 import me.mattco.reeva.interpreter.Interpreter
@@ -13,6 +14,7 @@ import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.environment.*
+import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.errors.JSSyntaxErrorObject
 import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.functions.JSFunction
@@ -93,13 +95,15 @@ open class JSGlobalObject protected constructor(
             }
         }
 
-        val record = realm.parseScript(argument.string)
-        if (record.errors.isNotEmpty()) {
-            throwError<JSSyntaxErrorObject>(record.errors.first().message)
+        val parser = Parser(argument.string)
+        val scriptNode = parser.parseScript()
+
+        if (parser.syntaxErrors.isNotEmpty()) {
+            throwError<JSSyntaxErrorObject>(parser.syntaxErrors.first().message)
             return INVALID_VALUE
         }
 
-        val body = record.scriptOrModule.statementList
+        val body = scriptNode.statementList
         if (!inFunction && body.contains("NewTargetNode")) {
             throwError<JSSyntaxErrorObject>("new.target accessed outside of a function")
             return INVALID_OBJECT
@@ -115,7 +119,7 @@ open class JSGlobalObject protected constructor(
             return INVALID_OBJECT
         }
 
-        val strictEval = strictCaller || record.scriptOrModule.isStrict()
+        val strictEval = strictCaller || scriptNode.isStrict()
         val context = Agent.runningContext
         var (varEnv, lexEnv) = if (direct) {
             context.variableEnv!! to DeclarativeEnvRecord.create(context.lexicalEnv)
@@ -126,16 +130,16 @@ open class JSGlobalObject protected constructor(
         if (strictEval)
             varEnv = lexEnv
 
-        val evalContext = ExecutionContext(context.agent, evalRealm, null)
+        val evalContext = ExecutionContext(evalRealm, null)
         evalContext.variableEnv = varEnv
         evalContext.lexicalEnv = lexEnv
         Agent.pushContext(evalContext)
 
-        val interpreter = Interpreter(record)
+        val interpreter = Interpreter(realm, scriptNode)
 
-        var result = evalDeclarationInstantiation(record.scriptOrModule.statementList, varEnv, lexEnv, strictEval, interpreter)
+        var result = evalDeclarationInstantiation(scriptNode.statementList, varEnv, lexEnv, strictEval, interpreter)
         if (result.isNormal)
-            result = Interpreter(record).interpret(evalContext)
+            result = interpreter.interpret()
         if (result.isNormal && result.value == JSEmpty)
             result = Completion(Completion.Type.Normal, JSUndefined)
 

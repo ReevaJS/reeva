@@ -12,9 +12,7 @@ import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.values.functions.*
 import me.mattco.reeva.runtime.objects.index.IndexedProperties
-import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.utils.*
 
 open class JSObject protected constructor(

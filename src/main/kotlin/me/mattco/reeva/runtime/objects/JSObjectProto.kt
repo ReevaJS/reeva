@@ -11,7 +11,6 @@ import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.errors.JSErrorObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.runtime.values.primitives.*
 import me.mattco.reeva.runtime.wrappers.JSBooleanObject
 import me.mattco.reeva.runtime.wrappers.JSNumberObject
 import me.mattco.reeva.runtime.wrappers.JSStringObject
