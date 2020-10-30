@@ -7,6 +7,7 @@ import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.NativeFunctionSignature
 import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.toValue
+import java.lang.reflect.InvocationTargetException
 
 abstract class JSNativeFunction protected constructor(
     realm: Realm,
@@ -23,7 +24,11 @@ abstract class JSNativeFunction protected constructor(
     companion object {
         fun fromLambda(realm: Realm, name: String, length: Int, lambda: NativeFunctionSignature) =
             object : JSNativeFunction(realm, name, length) {
-                override fun call(thisValue: JSValue, arguments: JSArguments) = lambda(thisValue, arguments)
+                override fun call(thisValue: JSValue, arguments: JSArguments) = try {
+                    lambda(thisValue, arguments)
+                } catch (e: InvocationTargetException) {
+                    throw e.targetException
+                }
 
                 override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
                     shouldThrowError()

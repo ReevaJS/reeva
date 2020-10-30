@@ -1,17 +1,16 @@
 package me.mattco.reeva.runtime.wrappers
 
-import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSBoolean
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.utils.JSArguments
+import me.mattco.reeva.utils.throwTypeError
 import me.mattco.reeva.utils.toValue
 
 class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, JSFalse) {
@@ -48,8 +47,7 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
                 return value as JSBoolean
             if (value is JSBooleanObject)
                 return value.value
-            throwError<JSTypeErrorObject>("Boolean method called on incompatible object ${Operations.toPrintableString(value)}")
-            return JSFalse
+            throwTypeError("Boolean method called on incompatible object ${Operations.toPrintableString(value)}")
         }
     }
 }

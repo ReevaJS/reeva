@@ -1,6 +1,5 @@
 package me.mattco.reeva.runtime.wrappers
 
-import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -11,6 +10,7 @@ import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.utils.JSArguments
+import me.mattco.reeva.utils.throwTypeError
 
 class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JSNumber.ZERO) {
     override fun init() {
@@ -70,8 +70,7 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
                 return value as JSNumber
             if (value is JSNumberObject)
                 return value.number
-            throwError<JSTypeErrorObject>("Number method called on incompatible object ${Operations.toPrintableString(value)}")
-            return JSNumber.ZERO
+            throwTypeError("Number method called on incompatible object ${Operations.toPrintableString(value)}")
         }
     }
 }

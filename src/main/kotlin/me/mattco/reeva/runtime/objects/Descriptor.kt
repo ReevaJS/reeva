@@ -1,7 +1,5 @@
 package me.mattco.reeva.runtime.objects
 
-import me.mattco.reeva.core.Agent.Companion.ifError
-import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -9,6 +7,7 @@ import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.primitives.*
+import me.mattco.reeva.utils.throwTypeError
 import me.mattco.reeva.utils.toValue
 
 data class Descriptor(
@@ -30,7 +29,7 @@ data class Descriptor(
         get() = !isAccessorDescriptor && !isDataDescriptor
 
     val isEmpty: Boolean
-        get() = value == JSUndefined && attributes == 0 && getter == null && setter == null
+        get() = value == JSUndefined && attributes == 0 && !hasGetter && !hasSetter
 
 
     val hasConfigurable: Boolean
@@ -183,59 +182,46 @@ data class Descriptor(
         @JSThrows
         @ECMAImpl("6.2.5.5", "ToPropertyDescriptor")
         fun fromObject(obj: JSValue): Descriptor {
+            if (obj !is JSObject)
+                throwTypeError("TODO: message")
+
             val descriptor = Descriptor(JSEmpty, 0)
-            if (obj !is JSObject) {
-                throwError<JSTypeErrorObject>("TODO: message")
-                return descriptor
-            }
             if (obj.hasProperty("enumerable")) {
                 descriptor.setHasEnumerable()
                 descriptor.setEnumerable(Operations.toBoolean(obj.get("enumerable")) == JSTrue)
-                ifError { return descriptor }
             }
 
             if (obj.hasProperty("configurable")) {
                 descriptor.setHasConfigurable()
                 descriptor.setConfigurable(Operations.toBoolean(obj.get("configurable")) == JSTrue)
-                ifError { return descriptor }
             }
 
             if (obj.hasProperty("writable")) {
                 descriptor.setHasWritable()
                 descriptor.setWritable(Operations.toBoolean(obj.get("writable")) == JSTrue)
-                ifError { return descriptor }
             }
 
             if (obj.hasProperty("value")) {
                 descriptor.setRawValue(obj.get("value"))
-                ifError { return descriptor }
             }
 
             if (obj.hasProperty("get")) {
                 val getter = obj.get("get")
-                ifError { return descriptor }
-                if (!Operations.isCallable(getter) && getter != JSUndefined) {
-                    throwError<JSTypeErrorObject>("descriptor's 'get' property must be undefined or callable")
-                    return descriptor
-                }
+                if (!Operations.isCallable(getter) && getter != JSUndefined)
+                    throwTypeError("descriptor's 'get' property must be undefined or callable")
                 descriptor.getter = getter
             }
 
             if (obj.hasProperty("set")) {
                 val setter = obj.get("set")
-                ifError { return descriptor }
-                if (!Operations.isCallable(setter) && setter != JSUndefined) {
-                    throwError<JSTypeErrorObject>("descriptor's 'set' property must be undefined or callable")
-                    return descriptor
-                }
+                if (!Operations.isCallable(setter) && setter != JSUndefined)
+                    throwTypeError("descriptor's 'set' property must be undefined or callable")
                 descriptor.setter = setter
             }
 
             if (descriptor.hasGetter || descriptor.hasSetter) {
-                if (descriptor.value != JSEmpty || descriptor.hasWritable) {
-                    throwError<JSTypeErrorObject>("descriptor cannot specify 'get' or 'set' property with a 'value' or 'writable' property")
-                    return descriptor
-                }
+                if (descriptor.value != JSEmpty || descriptor.hasWritable)
+                    throwTypeError("descriptor cannot specify 'get' or 'set' property with a 'value' or 'writable' property")
             }
 
             return descriptor

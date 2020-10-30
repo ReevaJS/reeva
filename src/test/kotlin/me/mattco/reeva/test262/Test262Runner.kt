@@ -2,9 +2,6 @@ package me.mattco.reeva.test262
 
 import com.charleskorn.kaml.Yaml
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.core.Agent
-import me.mattco.reeva.core.Realm
-import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.utils.expect
 import org.junit.AfterClass
@@ -17,16 +14,16 @@ import org.junit.runners.Parameterized
 import java.io.File
 
 @RunWith(Parameterized::class)
-class Test262Runner(private val name: String, private val script: String, private val metadata: Test262Metadata) {
+class Test262Runner(private var name: String?, private var script: String?, private var metadata: Test262Metadata?) {
     @Test
     fun test262Test() {
-        Assumptions.assumeTrue(metadata.flags == null)
-        Assumptions.assumeTrue(metadata.negative == null)
-        Assumptions.assumeTrue(metadata.features?.any { "intl" in it.toLowerCase() } != true)
+        Assumptions.assumeTrue(metadata!!.flags == null)
+        Assumptions.assumeTrue(metadata!!.negative == null)
+        Assumptions.assumeTrue(metadata!!.features?.any { "intl" in it.toLowerCase() } != true)
 
         var requiredScript = pretestScript
 
-        metadata.includes?.forEach { include ->
+        metadata!!.includes?.forEach { include ->
             requiredScript += '\n'
             requiredScript += File(harnessDirectory, include).readText()
         }
@@ -39,6 +36,10 @@ class Test262Runner(private val name: String, private val script: String, privat
                 Operations.toString(pretestResult.value).string
             }
         }
+
+        name = null
+        script = null
+        metadata = null
     }
 
     companion object {

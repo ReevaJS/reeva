@@ -1,13 +1,10 @@
 package me.mattco.reeva.runtime.wrappers
 
-import me.mattco.reeva.core.Agent.Companion.ifError
-import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSSymbol
@@ -53,10 +50,8 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     @JSMethod("keyFor", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun keyFor(thisValue: JSValue, arguments: JSArguments): JSValue {
         val sym = arguments.argument(0)
-        if (!sym.isSymbol) {
-            throwError<JSTypeErrorObject>("Symbol.keyFor expects a symbol for it's first argument")
-            return INVALID_VALUE
-        }
+        if (!sym.isSymbol)
+            throwTypeError("Symbol.keyFor expects a symbol for it's first argument")
         for ((globalKey, globalSymbol) in Realm.globalSymbolRegistry) {
             if (sym == globalSymbol)
                 return globalKey.toValue()
@@ -67,14 +62,12 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     @JSThrows
     override fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
         val description = Operations.toString(arguments.getOrElse(0) { JSUndefined }).string
-        ifError { return INVALID_VALUE }
         return JSSymbol(description)
     }
 
     @JSThrows
     override fun construct(arguments: List<JSValue>, newTarget: JSValue): JSValue {
-        throwError<JSTypeErrorObject>("Symbol objects cannot be constructed")
-        return INVALID_VALUE
+        throwTypeError("Symbol objects cannot be constructed")
     }
 
     companion object {

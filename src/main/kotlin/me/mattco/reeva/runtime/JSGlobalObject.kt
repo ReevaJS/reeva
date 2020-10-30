@@ -6,7 +6,6 @@ import me.mattco.reeva.ast.statements.ForBindingNode
 import me.mattco.reeva.ast.statements.StatementListNode
 import me.mattco.reeva.ast.statements.VariableDeclarationNode
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.interpreter.Completion
 import me.mattco.reeva.interpreter.Interpreter
@@ -16,7 +15,6 @@ import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.environment.*
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.errors.JSSyntaxErrorObject
-import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -98,26 +96,18 @@ open class JSGlobalObject protected constructor(
         val parser = Parser(argument.string)
         val scriptNode = parser.parseScript()
 
-        if (parser.syntaxErrors.isNotEmpty()) {
-            throwError<JSSyntaxErrorObject>(parser.syntaxErrors.first().message)
-            return INVALID_VALUE
-        }
+        if (parser.syntaxErrors.isNotEmpty())
+            throwSyntaxError(parser.syntaxErrors.first().message)
 
         val body = scriptNode.statementList
-        if (!inFunction && body.contains("NewTargetNode")) {
-            throwError<JSSyntaxErrorObject>("new.target accessed outside of a function")
-            return INVALID_OBJECT
-        }
+        if (!inFunction && body.contains("NewTargetNode"))
+            throwSyntaxError("new.target accessed outside of a function")
 
-        if (!inMethod && body.contains("SuperPropertyNode")) {
-            throwError<JSSyntaxErrorObject>("super property accessed outside of a method")
-            return INVALID_OBJECT
-        }
+        if (!inMethod && body.contains("SuperPropertyNode"))
+            throwSyntaxError("super property accessed outside of a method")
 
-        if (!inDerivedConstructor && body.contains("SuperCallNode")) {
-            throwError<JSSyntaxErrorObject>("super call outside of a constructor")
-            return INVALID_OBJECT
-        }
+        if (!inDerivedConstructor && body.contains("SuperCallNode"))
+            throwSyntaxError("super call outside of a constructor")
 
         val strictEval = strictCaller || scriptNode.isStrict()
         val context = Agent.runningContext
@@ -137,14 +127,12 @@ open class JSGlobalObject protected constructor(
 
         val interpreter = Interpreter(realm, scriptNode)
 
-        var result = evalDeclarationInstantiation(scriptNode.statementList, varEnv, lexEnv, strictEval, interpreter)
-        if (result.isNormal)
-            result = interpreter.interpret()
-        if (result.isNormal && result.value == JSEmpty)
-            result = Completion(Completion.Type.Normal, JSUndefined)
-
-        Agent.popContext()
-        return result.value
+        try {
+            evalDeclarationInstantiation(scriptNode.statementList, varEnv, lexEnv, strictEval, interpreter)
+            return interpreter.interpret().let { if (it == JSEmpty) JSUndefined else it }
+        } finally {
+            Agent.popContext()
+        }
     }
 
     private fun evalDeclarationInstantiation(
@@ -153,26 +141,22 @@ open class JSGlobalObject protected constructor(
         lexEnv: EnvRecord,
         strictEval: Boolean,
         interpreter: Interpreter,
-    ): Completion {
+    ) {
         val varNames = body.varDeclaredNames()
         val varDeclarations = body.varScopedDeclarations()
         if (!strictEval) {
             if (varEnv is GlobalEnvRecord) {
                 varNames.forEach { name ->
-                    if (varEnv.hasLexicalDeclaration(name)) {
-                        throwError<JSSyntaxErrorObject>("TODO: message")
-                        return Completion(Completion.Type.Throw, Agent.runningContext.error!!)
-                    }
+                    if (varEnv.hasLexicalDeclaration(name))
+                        throwSyntaxError("TODO: message")
                 }
             }
             var thisEnv = lexEnv
             while (thisEnv != varEnv) {
                 if (thisEnv !is ObjectEnvRecord) {
                     varNames.forEach { name ->
-                        if (thisEnv.hasBinding(name)) {
-                            throwError<JSSyntaxErrorObject>("TODO: message")
-                            return Completion(Completion.Type.Throw, Agent.runningContext.error!!)
-                        }
+                        if (thisEnv.hasBinding(name))
+                            throwSyntaxError("TODO: message")
                     }
                 }
                 thisEnv = thisEnv.outerEnv!!
@@ -186,10 +170,8 @@ open class JSGlobalObject protected constructor(
             val functionName = decl.boundNames()[0]
             if (functionName !in declaredFunctionNames) {
                 if (varEnv is GlobalEnvRecord) {
-                    if (!varEnv.canDeclareGlobalFunction(functionName)) {
-                        throwError<JSTypeErrorObject>("TODO: message")
-                        return Completion(Completion.Type.Throw, Agent.runningContext.error!!)
-                    }
+                    if (!varEnv.canDeclareGlobalFunction(functionName))
+                        throwTypeError("TODO: message")
                     declaredFunctionNames.add(functionName)
                     functionsToInitialize.add(0, decl as FunctionDeclarationNode)
                 }
@@ -203,10 +185,8 @@ open class JSGlobalObject protected constructor(
             decl.boundNames().forEach { name ->
                 if (name !in declaredFunctionNames) {
                     if (varEnv is GlobalEnvRecord) {
-                        if (!varEnv.canDeclareGlobalVar(name)) {
-                            throwError<JSTypeErrorObject>("TODO: message")
-                            return Completion(Completion.Type.Throw, Agent.runningContext.error!!)
-                        }
+                        if (!varEnv.canDeclareGlobalVar(name))
+                            throwTypeError("TODO: message")
                     }
                     if (name !in declaredVarNames)
                         declaredVarNames.add(name)
@@ -246,7 +226,6 @@ open class JSGlobalObject protected constructor(
                 varEnv.initializeBinding(name, JSUndefined)
             }
         }
-        return Completion(Completion.Type.Normal, JSEmpty)
     }
 
     companion object {

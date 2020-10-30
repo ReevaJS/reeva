@@ -1,6 +1,5 @@
 package me.mattco.reeva.runtime.objects
 
-import me.mattco.reeva.core.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -29,9 +28,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     @JSMethod("hasOwnProperty", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun hasOwnProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = Operations.toPropertyKey(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         val o = Operations.toObject(thisValue)
-        ifError { return INVALID_VALUE }
         return Operations.hasOwnProperty(o, key)
     }
 
@@ -43,10 +40,8 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         if (arg !is JSObject)
             return JSFalse
         val thisObj = Operations.toObject(thisValue)
-        ifError { return INVALID_VALUE }
         while (true) {
             arg = (arg as JSObject).getPrototype()
-            ifError { return INVALID_VALUE }
             if (arg == JSNull)
                 return JSFalse
             if (arg.sameValue(thisObj))
@@ -59,9 +54,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     @JSMethod("propertyIsEnumerable", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun propertyIsEnumerable(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = Operations.toPropertyKey(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         val thisObj = Operations.toObject(thisValue)
-        ifError { return INVALID_VALUE }
         val desc = thisObj.getOwnPropertyDescriptor(key) ?: return JSFalse
         return desc.isEnumerable.toValue()
     }
@@ -71,7 +64,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     @JSMethod("toLocaleString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toLocaleString(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
-        ifError { return INVALID_VALUE }
         return Operations.invoke(thisObj, "toString".toValue())
     }
 
@@ -84,7 +76,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
             return "[object Null]".toValue()
 
         val obj = Operations.toObject(thisValue)
-        ifError { return INVALID_VALUE }
         val tag = obj.get(Realm.`@@toStringTag`).let {
             if (it is JSString) {
                 it.string

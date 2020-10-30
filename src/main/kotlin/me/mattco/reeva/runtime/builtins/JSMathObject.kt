@@ -1,6 +1,5 @@
 package me.mattco.reeva.runtime.builtins
 
-import me.mattco.reeva.core.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
@@ -35,65 +34,55 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
     @JSMethod("abs", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun abs(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.abs(x.asDouble).toValue()
     }
 
     @JSMethod("acos", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun acos(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.acos(x.asDouble).toValue()
     }
 
     @JSMethod("acosh", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun acosh(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.acosh(x.asDouble).toValue()
     }
 
     @JSMethod("asin", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun asin(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.asin(x.asDouble).toValue()
     }
 
     @JSMethod("asinh", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun asinh(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.asinh(x.asDouble).toValue()
     }
 
     @JSMethod("atan", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun atan(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.atan(x.asDouble).toValue()
     }
 
     @JSMethod("atanh", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun atanh(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.atanh(x.asDouble).toValue()
     }
 
     @JSMethod("atan2", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun atan2(thisValue: JSValue, arguments: JSArguments): JSValue {
         val y = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         val x = Operations.toNumber(arguments.argument(1))
-        ifError { return INVALID_VALUE }
         return kotlin.math.atan2(y.asDouble, x.asDouble).toValue()
     }
 
     @JSMethod("cbrt", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun cbrt(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         val doubleVal = x.asDouble
         if (doubleVal.isNaN() || doubleVal == 0.0 || doubleVal.isInfinite())
             return x
@@ -103,63 +92,54 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
     @JSMethod("ceil", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun ceil(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.ceil(x.asDouble).toValue()
     }
 
     @JSMethod("clz32", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun clz32(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toUint32(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return x.asInt.toUInt().countLeadingZeroBits().toValue()
     }
 
     @JSMethod("cos", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun cos(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.cos(x.asDouble).toValue()
     }
 
     @JSMethod("cosh", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun cosh(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.cosh(x.asDouble).toValue()
     }
 
     @JSMethod("exp", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun exp(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.exp(x.asDouble).toValue()
     }
 
     @JSMethod("expm1", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun expm1(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.expm1(x.asDouble).toValue()
     }
 
     @JSMethod("floor", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun floor(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.floor(x.asDouble).toValue()
     }
 
     @JSMethod("fround", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun fround(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return x.asDouble.toFloat().toDouble().toValue()
     }
 
     @JSMethod("hypot", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun hypot(thisValue: JSValue, arguments: JSArguments): JSValue {
         val coerced = arguments.map(Operations::toNumber)
-        ifError { return INVALID_VALUE }
         var onlyZero = true
 
         // The spec says the first parameter that is NaN or Infinity should be returned,
@@ -183,9 +163,7 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
     @JSMethod("imul", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun imul(thisValue: JSValue, arguments: JSArguments): JSValue {
         val a = Operations.toUint32(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         val b = Operations.toUint32(arguments.argument(1))
-        ifError { return INVALID_VALUE }
         val product = (a.asInt * b.asInt) % Operations.MAX_32BIT_INT
         if (product >= Operations.MAX_31BIT_INT)
             return (product - Operations.MAX_32BIT_INT).toValue()
@@ -195,28 +173,24 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
     @JSMethod("log", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun log(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.ln(x.asDouble).toValue()
     }
 
     @JSMethod("log1p", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun log1p(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.ln1p(x.asDouble).toValue()
     }
 
     @JSMethod("log10", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun log10(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.log10(x.asDouble).toValue()
     }
 
     @JSMethod("log2", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun log2(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.log2(x.asDouble).toValue()
     }
 
@@ -225,7 +199,6 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         if (arguments.isEmpty())
             return JSNumber.NEGATIVE_INFINITY
         val coerced = arguments.map(Operations::toNumber)
-        ifError { return INVALID_VALUE }
         return coerced.map { it.asDouble }.maxOrNull()!!.toValue()
     }
 
@@ -234,16 +207,13 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         if (arguments.isEmpty())
             return JSNumber.POSITIVE_INFINITY
         val coerced = arguments.map(Operations::toNumber)
-        ifError { return INVALID_VALUE }
         return coerced.map { it.asDouble }.minOrNull()!!.toValue()
     }
 
     @JSMethod("pow", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun pow(thisValue: JSValue, arguments: JSArguments): JSValue {
         val base = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         val exp = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return base.asDouble.pow(exp.asDouble).toValue()
     }
 
@@ -255,7 +225,6 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
     @JSMethod("round", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun round(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         val doubleVal = x.asDouble
         if (doubleVal < 0.0 && doubleVal >= -0.5)
             return JSNumber.NEGATIVE_ZERO
@@ -268,49 +237,42 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
     @JSMethod("sign", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun sign(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.sign(x.asDouble).toValue()
     }
 
     @JSMethod("sin", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun sin(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.sin(x.asDouble).toValue()
     }
 
     @JSMethod("sinh", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun sinh(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.sinh(x.asDouble).toValue()
     }
 
     @JSMethod("sqrt", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun sqrt(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.sqrt(x.asDouble).toValue()
     }
 
     @JSMethod("tan", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun tan(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.tan(x.asDouble).toValue()
     }
 
     @JSMethod("tanh", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun tanh(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.tanh(x.asDouble).toValue()
     }
 
     @JSMethod("trunc", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun trunc(thisValue: JSValue, arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
-        ifError { return INVALID_VALUE }
         return kotlin.math.truncate(x.asDouble).toValue()
     }
 

@@ -4,6 +4,7 @@ import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.JSGlobalObject
@@ -30,7 +31,10 @@ class EvaluationTask(private val script: String, private val realm: Realm) : Tas
         if (parser.syntaxErrors.isNotEmpty())
             TODO()
 
-        val result = Interpreter(realm, scriptNode).interpret()
-        return Reeva.Result(result.value, result.isAbrupt)
+        return try {
+            Reeva.Result(Interpreter(realm, scriptNode).interpret(), false)
+        } catch (e: ThrowException) {
+            Reeva.Result(e.value, true)
+        }
     }
 }

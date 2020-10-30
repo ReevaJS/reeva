@@ -1,17 +1,14 @@
 package me.mattco.reeva.core.environment
 
-import me.mattco.reeva.core.Agent.Companion.ifError
-import me.mattco.reeva.core.Agent.Companion.throwError
-import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.key
+import me.mattco.reeva.utils.throwTypeError
 
 class GlobalEnvRecord(
     val declarativeRecord: DeclarativeEnvRecord,
@@ -30,7 +27,7 @@ class GlobalEnvRecord(
     override fun createMutableBinding(name: String, canBeDeleted: Boolean) {
         if (declarativeRecord.hasBinding(name)) {
             // TODO: This appears to be a syntax error in spidermonkey
-            throwError<JSTypeErrorObject>("redeclaration of lexical variable $name")
+            throwTypeError("redeclaration of lexical variable $name")
         } else {
             declarativeRecord.createMutableBinding(name, canBeDeleted)
         }
@@ -39,7 +36,7 @@ class GlobalEnvRecord(
     @ECMAImpl("8.1.1.4.3")
     override fun createImmutableBinding(name: String, throwOnRepeatInitialization: Boolean) {
         if (declarativeRecord.hasBinding(name)) {
-            throwError<JSTypeErrorObject>("TODO")
+            throwTypeError("TODO")
         } else {
             declarativeRecord.createImmutableBinding(name, throwOnRepeatInitialization)
         }
@@ -155,11 +152,9 @@ class GlobalEnvRecord(
             Descriptor(function, 0)
         }
         // TODO: Why do we define _and_ set here?
-        if (!globalObject.defineOwnProperty(name.key(), newDesc)) {
-            throwError<JSTypeErrorObject>("TODO")
-        }
+        if (!globalObject.defineOwnProperty(name.key(), newDesc))
+            throwTypeError("TODO")
         globalObject.set(name, function)
-        ifError { return }
         varNames.add(name)
     }
 

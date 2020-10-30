@@ -4,21 +4,14 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
-import me.mattco.reeva.core.Agent
-import me.mattco.reeva.core.Agent.Companion.throwError
+import me.mattco.reeva.core.*
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.JSReference
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.errors.JSErrorObject
-import me.mattco.reeva.runtime.errors.JSReferenceErrorObject
-import me.mattco.reeva.runtime.errors.JSSyntaxErrorObject
-import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSInterpretedFunction
 import me.mattco.reeva.runtime.iterators.JSObjectPropertyIterator
@@ -27,38 +20,28 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.utils.*
+import kotlin.jvm.Throws
 
 class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNode) {
-    fun interpret(): Completion {
+    @Throws(ThrowException::class)
+    fun interpret(): JSValue {
         val globalEnv = realm.globalEnv
-        val result = globalDeclarationInstantiation(scriptOrModule, globalEnv).let {
-            if (it.isNormal)
-                interpretScript(scriptOrModule)
-            else it
-        }.let {
-            if (it.isNormal && it.value == JSEmpty)
-                normalCompletion(JSUndefined)
-            else it
-        }
-
-        if (!Agent.hasError())
-            expect(result.isNormal)
-
-        return result
+        globalDeclarationInstantiation(scriptOrModule, globalEnv)
+        return interpretScript(scriptOrModule)
     }
 
-    private fun globalDeclarationInstantiation(body: ScriptNode, env: GlobalEnvRecord): Completion {
+    private fun globalDeclarationInstantiation(body: ScriptNode, env: GlobalEnvRecord) {
         val lexNames = body.lexicallyDeclaredNames()
         val varNames = body.varDeclaredNames()
         lexNames.forEach {
             if (env.hasVarDeclaration(it))
-                return syntaxError("TODO: message")
+                throwSyntaxError("TODO: message")
             if (env.hasLexicalDeclaration(it))
-                return syntaxError("TODO: message")
+                throwSyntaxError("TODO: message")
         }
         varNames.forEach {
             if (env.hasLexicalDeclaration(it))
-                return syntaxError("TODO: message")
+                throwSyntaxError("TODO: message")
         }
         val varDeclarations = body.varScopedDeclarations()
         val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
@@ -68,7 +51,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                 val functionName = it.boundNames()[0]
                 if (functionName !in declaredFunctionNames) {
                     if (!env.canDeclareGlobalFunction(functionName))
-                        return typeError("TODO: message")
+                        throwTypeError("TODO: message")
                     declaredFunctionNames.add(functionName)
                     functionsToInitialize.add(0, it as FunctionDeclarationNode)
                 }
@@ -81,7 +64,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             it.boundNames().forEach { name ->
                 if (name !in declaredFunctionNames) {
                     if (!env.canDeclareGlobalVar(name))
-                        return typeError("TODO: message")
+                        throwTypeError("TODO: message")
                     if (name !in declaredVarNames)
                         declaredVarNames.add(name)
                 }
@@ -105,7 +88,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         declaredVarNames.forEach {
             env.createGlobalVarBinding(it, false)
         }
-        return normalCompletion(JSEmpty)
     }
 
     //  This is public because it is used by the eval global function
@@ -153,10 +135,10 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             prototype,
             sourceText,
         ) { function, arguments ->
-            functionDeclarationInstantiation(function, parameterList, arguments, body).ifAbrupt { return@JSInterpretedFunction it }
+            functionDeclarationInstantiation(function, parameterList, arguments, body)
             if (body.statementList != null) {
                 interpretStatementList(body.statementList)
-            } else normalCompletion(JSUndefined)
+            } else JSUndefined
         }
 
         Operations.definePropertyOrThrow(
@@ -173,7 +155,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         formals: FormalParametersNode,
         arguments: JSArguments,
         body: FunctionStatementList,
-    ): Completion {
+    ) {
         val calleeContext = Agent.runningContext
         val strict = function.isStrict
         val parameterNames = formals.boundNames()
@@ -229,15 +211,13 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
 
         formals.functionParameters.parameters.forEachIndexed { index, parameter ->
             val lhs = Operations.resolveBinding(parameter.bindingElement.binding.identifier.identifierName)
-            ifError { return it }
             var value = if (index > arguments.lastIndex) {
                 JSUndefined
             } else arguments[index]
 
             if (value == JSUndefined && parameter.bindingElement.binding.initializer != null) {
-                val result = interpretExpression(parameter.bindingElement.binding.initializer.node).ifAbrupt { return it }
-                val defaultValue = Operations.getValue(result.value)
-                ifError { return it }
+                val result = interpretExpression(parameter.bindingElement.binding.initializer.node)
+                val defaultValue = Operations.getValue(result)
                 value = defaultValue
             }
 
@@ -252,11 +232,8 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             val id = formals.restParameter.element.identifier.identifierName
             val startingIndex = formals.functionParameters.parameters.size
             val lhs = Operations.resolveBinding(id)
-            ifError { return it }
             val value = if (startingIndex > arguments.lastIndex) {
-                Operations.arrayCreate(0).also {
-                    ifError { return it }
-                }
+                Operations.arrayCreate(0)
             } else {
                 val arr = Operations.arrayCreate(arguments.lastIndex - startingIndex + 1)
                 arguments.subList(startingIndex, arguments.size).forEachIndexed { index, value ->
@@ -294,7 +271,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                 val initialValue = if (name !in parameterBindings || name in functionNames) {
                     JSUndefined
                 } else env.getBindingValue(name, false)
-                ifError { return it }
                 varEnv.initializeBinding(name, initialValue)
             }
             varEnv
@@ -321,8 +297,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             val function = instantiateFunctionObject(decl, lexEnv)
             varEnv.setMutableBinding(functionName, function, false)
         }
-
-        return normalCompletion()
     }
 
     @ECMAImpl("9.2.8")
@@ -341,25 +315,25 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         return Operations.definePropertyOrThrow(function, "name".toValue(), Descriptor(nameString.toValue(), Descriptor.CONFIGURABLE))
     }
 
-    private fun interpretScript(scriptNode: ScriptNode): Completion {
+    private fun interpretScript(scriptNode: ScriptNode): JSValue {
         return interpretStatementList(scriptNode.statementList)
     }
 
-    private fun interpretStatementList(statementListNode: StatementListNode): Completion {
+    private fun interpretStatementList(statementListNode: StatementListNode): JSValue {
         var lastValue: JSValue = JSEmpty
         statementListNode.statements.forEach { statement ->
-            val result = interpretStatement(statement as StatementNode).ifAbrupt { return it }
-            if (result.value != JSEmpty)
-                lastValue = result.value
+            val result = interpretStatement(statement as StatementNode)
+            if (result != JSEmpty)
+                lastValue = result
         }
-        return normalCompletion(lastValue)
+        return lastValue
     }
 
-    private fun interpretStatement(statement: StatementNode): Completion {
+    private fun interpretStatement(statement: StatementNode): JSValue {
         return when (statement) {
             is BlockStatementNode -> interpretBlockStatement(statement)
             is VariableStatementNode -> interpretVariableStatement(statement)
-            is EmptyStatementNode -> normalCompletion()
+            is EmptyStatementNode -> JSEmpty
             is ExpressionStatementNode -> interpretExpressionStatement(statement)
             is IfStatementNode -> interpretIfStatement(statement)
             is BreakableStatement -> interpretBreakableStatement(statement)
@@ -375,13 +349,13 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         }
     }
 
-    private fun interpretBlockStatement(blockStatementNode: BlockStatementNode): Completion {
+    private fun interpretBlockStatement(blockStatementNode: BlockStatementNode): JSValue {
         return interpretBlock(blockStatementNode.block)
     }
 
-    private fun interpretBlock(block: BlockNode): Completion {
+    private fun interpretBlock(block: BlockNode): JSValue {
         if (block.statements == null)
-            return normalCompletion(JSEmpty)
+            return JSEmpty
         val oldEnv = Agent.runningContext.lexicalEnv
         val blockEnv = DeclarativeEnvRecord.create(Agent.runningContext.lexicalEnv)
         blockDeclarationInstantiation(block.statements, blockEnv)
@@ -408,43 +382,37 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         }
     }
 
-    private fun interpretVariableStatement(variableStatementNode: VariableStatementNode): Completion {
+    private fun interpretVariableStatement(variableStatementNode: VariableStatementNode): JSValue {
         variableStatementNode.declarations.declarations.forEach { decl ->
             if (decl.initializer == null)
                 return@forEach
             val lhs = Operations.resolveBinding(decl.identifier.identifierName)
-            val rhsResult = interpretExpression(decl.initializer.node).ifAbrupt { return it }
-            val rhs = Operations.getValue(rhsResult.value)
+            val rhsResult = interpretExpression(decl.initializer.node)
+            val rhs = Operations.getValue(rhsResult)
             Operations.putValue(lhs, rhs)
         }
-        return normalCompletion()
+        return JSUndefined
     }
 
-    private fun interpretExpressionStatement(expressionStatement: ExpressionStatementNode): Completion {
-        val result = interpretExpression(expressionStatement.node)
-        ifError { return it }
-        Operations.getValue(result.value)
-        ifError { return it }
-        return result
+    private fun interpretExpressionStatement(expressionStatement: ExpressionStatementNode): JSValue {
+        return interpretExpression(expressionStatement.node).also(Operations::getValue)
     }
 
-    private fun interpretIfStatement(ifStatement: IfStatementNode): Completion {
-        val exprRef = interpretExpression(ifStatement.condition).ifAbrupt { return it }
-        val exprValue = Operations.toBoolean(Operations.getValue(exprRef.value))
-        ifError { return it }
-        if (exprValue.value) {
-            return updateEmpty(interpretStatement(ifStatement.trueBlock), JSUndefined)
-        } else if (ifStatement.falseBlock != null) {
-            return updateEmpty(interpretStatement(ifStatement.falseBlock), JSUndefined)
+    private fun interpretIfStatement(ifStatement: IfStatementNode): JSValue {
+        val exprRef = interpretExpression(ifStatement.condition)
+        val exprValue = Operations.toBoolean(Operations.getValue(exprRef))
+        return when {
+            exprValue.value -> updateEmpty(JSUndefined) { interpretStatement(ifStatement.trueBlock) }
+            ifStatement.falseBlock != null -> updateEmpty(JSUndefined) { interpretStatement(ifStatement.falseBlock) }
+            else -> JSUndefined
         }
-        return normalCompletion(JSUndefined)
     }
 
-    private fun interpretBreakableStatement(breakableStatementNode: BreakableStatement): Completion {
+    private fun interpretBreakableStatement(breakableStatementNode: BreakableStatement): JSValue {
         return labelledEvaluation(breakableStatementNode, emptySet())
     }
 
-    private fun interpretIterationStatement(iterationStatement: IterationStatement, labelSet: Set<String>): Completion {
+    private fun interpretIterationStatement(iterationStatement: IterationStatement, labelSet: Set<String>): JSValue {
         return when (iterationStatement) {
             is DoWhileStatementNode -> interpretDoWhileStatement(iterationStatement, labelSet)
             is WhileStatementNode -> interpretWhileStatement(iterationStatement, labelSet)
@@ -455,19 +423,19 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         }
     }
 
-    private fun interpretForInNode(forInNode: ForInNode, labelSet: Set<String>): Completion {
+    private fun interpretForInNode(forInNode: ForInNode, labelSet: Set<String>): JSValue {
         val keyResult = forInOfHeadEvaluation(
             if (forInNode.decl is ForDeclarationNode) {
                 forInNode.decl.boundNames()
             } else emptyList(),
             forInNode.expression,
             IterationKind.Enumerate
-        ).ifAbrupt { return it }
+        )
 
         return forInOfBodyEvaluation(
             forInNode.decl,
             forInNode.body,
-            keyResult.value as Operations.IteratorRecord,
+            keyResult,
             IterationKind.Enumerate,
             when (forInNode.decl) {
                 is VariableDeclarationNode -> LHSKind.VarBinding
@@ -478,19 +446,19 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         )
     }
 
-    private fun interpretForOfNode(forOfNode: ForOfNode, labelSet: Set<String>): Completion {
+    private fun interpretForOfNode(forOfNode: ForOfNode, labelSet: Set<String>): JSValue {
         val keyResult = forInOfHeadEvaluation(
             if (forOfNode.decl is ForDeclarationNode) {
                 forOfNode.decl.boundNames()
             } else emptyList(),
             forOfNode.expression,
             IterationKind.Iterate,
-        ).ifAbrupt { return it }
+        )
 
         return forInOfBodyEvaluation(
             forOfNode.decl,
             forOfNode.body,
-            keyResult.value as Operations.IteratorRecord,
+            keyResult,
             IterationKind.Iterate,
             when (forOfNode.decl) {
                 is VariableDeclarationNode -> LHSKind.VarBinding
@@ -501,7 +469,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         )
     }
 
-    private fun forInOfHeadEvaluation(uninitializedBoundNames: List<String>, expr: ExpressionNode, iterationKind: IterationKind): Completion {
+    private fun forInOfHeadEvaluation(uninitializedBoundNames: List<String>, expr: ExpressionNode, iterationKind: IterationKind): Operations.IteratorRecord {
         if (iterationKind == IterationKind.AsyncIterate)
             TODO()
 
@@ -517,23 +485,16 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
 
         val exprRef = interpretExpression(expr)
         Agent.runningContext.lexicalEnv = oldEnv
-        exprRef.ifAbrupt { return it }
-        val exprValue = Operations.getValue(exprRef.value)
-        ifError { return it }
+        val exprValue = Operations.getValue(exprRef)
 
-        if (iterationKind == IterationKind.Enumerate) {
+        return if (iterationKind == IterationKind.Enumerate) {
             if (exprValue == JSUndefined || exprValue == JSEmpty)
-                return breakCompletion()
+                throw BreakException(null)
             val obj = Operations.toObject(exprValue)
             val iterator = JSObjectPropertyIterator.create(Agent.runningContext.realm, obj)
             val nextMethod = Operations.getV(iterator, "next".toValue())
-            ifError { return it }
-            return normalCompletion(Operations.IteratorRecord(iterator, nextMethod, false))
-        } else {
-            val iterator = Operations.getIterator(exprValue, Operations.IteratorHint.Sync)
-            ifError { return it }
-            return normalCompletion(iterator)
-        }
+            Operations.IteratorRecord(iterator, nextMethod, false)
+        } else Operations.getIterator(exprValue, Operations.IteratorHint.Sync)
     }
 
     private fun forInOfBodyEvaluation(
@@ -544,7 +505,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         lhsKind: LHSKind,
         labelSet: Set<String>,
         iteratorKind: Operations.IteratorHint? = Operations.IteratorHint.Sync
-    ): Completion {
+    ): JSValue {
         if (iterationKind == IterationKind.AsyncIterate)
             TODO()
         if (iteratorKind == Operations.IteratorHint.Async)
@@ -553,79 +514,70 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         val oldEnv = Agent.runningContext.lexicalEnv
         var value: JSValue = JSEmpty
         val destructuring = lhs.isDestructuring()
-        if (destructuring && lhsKind == LHSKind.Assignment)
+        if (destructuring)
             TODO()
 
         while (true) {
             val nextResult = Operations.call(iteratorRecord.nextMethod, iteratorRecord.iterator)
-            ifError { return it }
-            if (nextResult !is JSObject) {
-                throwError<JSTypeErrorObject>("TODO: message")
-                return throwCompletion()
-            }
+            if (nextResult !is JSObject)
+                throwTypeError("TODO: message")
 
             val done = Operations.iteratorComplete(nextResult)
             if (done == JSTrue)
-                return normalCompletion(value)
+                return value
 
             val nextValue = Operations.iteratorValue(nextResult)
-            lateinit var lhsRef: Completion
 
-            if (lhsKind != LHSKind.LexicalBinding) {
-                if (!destructuring) {
-                    lhsRef = interpretExpression(lhs as ExpressionNode)
-                }
-            } else {
-                ecmaAssert(lhs is ForDeclarationNode)
-                val iterationEnv = DeclarativeEnvRecord.create(oldEnv)
-                bindingInstantiation(lhs, iterationEnv)
-                Agent.runningContext.lexicalEnv = iterationEnv
-                if (!destructuring) {
+
+            try {
+                val lhsRef = if (lhsKind != LHSKind.LexicalBinding) {
+                    interpretExpression(lhs as ExpressionNode)
+                } else {
+                    ecmaAssert(lhs is ForDeclarationNode)
+                    val iterationEnv = DeclarativeEnvRecord.create(oldEnv)
+                    bindingInstantiation(lhs, iterationEnv)
+                    Agent.runningContext.lexicalEnv = iterationEnv
                     val boundNames = lhs.boundNames()
                     expect(boundNames.size == 1)
-                    lhsRef = normalCompletion(Operations.resolveBinding(boundNames[0]))
+                    Operations.resolveBinding(boundNames[0])
                 }
-            }
 
-            val status = if (!destructuring) {
-                if (lhsRef.isAbrupt) {
-                    lhsRef
-                } else if (lhsKind == LHSKind.LexicalBinding) {
-                    Operations.initializeReferencedBinding(lhsRef.value as JSReference, nextValue)
-                    if (Agent.hasError()) throwCompletion() else normalCompletion()
+                if (lhsKind == LHSKind.LexicalBinding) {
+                    Operations.initializeReferencedBinding(lhsRef as JSReference, nextValue)
                 } else {
-                    Operations.putValue(lhsRef.value, nextValue)
-                    if (Agent.hasError()) throwCompletion() else normalCompletion()
+                    Operations.putValue(lhsRef, nextValue)
                 }
-            } else {
-                TODO()
-            }
-
-            if (status.isAbrupt) {
+            } catch (e: Throwable) {
                 Agent.runningContext.lexicalEnv = oldEnv
-                return if (iterationKind == IterationKind.Enumerate) {
-                    status
-                } else {
-                    Operations.iteratorClose(iteratorRecord, status)
-                }
+                if (iterationKind != IterationKind.Enumerate)
+                    Operations.iteratorClose(iteratorRecord, value)
+                throw e
             }
 
-            val result = interpretStatement(statement)
-            Agent.runningContext.lexicalEnv = oldEnv
-            if (!loopContinues(result, labelSet)) {
-                return if (iterationKind == IterationKind.Enumerate) {
-                    updateEmpty(result, value)
-                } else {
-                    Operations.iteratorClose(iteratorRecord, updateEmpty(result, value))
+            val result = try {
+                interpretStatement(statement)
+            } catch (e: FlowException) {
+                if (e is ThrowException) {
+                    if (iterationKind != IterationKind.Enumerate)
+                        Operations.iteratorClose(iteratorRecord, value)
+                    throw e
                 }
-            } else {
-                if (result.value != JSEmpty)
-                    value = result.value
+                if (!loopContinues(e, labelSet)) {
+                    if (iterationKind != IterationKind.Enumerate)
+                        Operations.iteratorClose(iteratorRecord, value)
+                    return value
+                }
+                JSEmpty
+            } finally {
+                Agent.runningContext.lexicalEnv = oldEnv
             }
+
+            if (result != JSEmpty)
+                value = result
         }
     }
 
-    private fun bindingInstantiation(forDeclarationNode: ForDeclarationNode, env: EnvRecord): Completion {
+    private fun bindingInstantiation(forDeclarationNode: ForDeclarationNode, env: EnvRecord): JSValue {
         ecmaAssert(env is DeclarativeEnvRecord)
         forDeclarationNode.binding.boundNames().forEach { name ->
             if (forDeclarationNode.isConst) {
@@ -633,9 +585,8 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             } else {
                 env.createMutableBinding(name, false)
             }
-            ifError { return it }
         }
-        return normalCompletion()
+        return JSEmpty
     }
 
     enum class IterationKind {
@@ -650,43 +601,53 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         LexicalBinding,
     }
 
-    private fun interpretDoWhileStatement(doWhileStatementNode: DoWhileStatementNode, labelSet: Set<String>): Completion {
+    private fun interpretDoWhileStatement(doWhileStatementNode: DoWhileStatementNode, labelSet: Set<String>): JSValue {
         var value: JSValue = JSUndefined
         while (true) {
-            val result = interpretStatement(doWhileStatementNode.body)
-            if (!loopContinues(result, labelSet))
-                return updateEmpty(result, value)
-            if (result.value != JSEmpty)
-                value = result.value
-            val exprRef = interpretExpression(doWhileStatementNode.condition).ifAbrupt { return it }
-            val exprValue = Operations.getValue(exprRef.value)
-            ifError { return it }
+            val result = try {
+                interpretStatement(doWhileStatementNode.body)
+            } catch (e: FlowException) {
+                if (e is ThrowException)
+                    throw e
+                if (!loopContinues(e, labelSet))
+                    return value
+                JSEmpty
+            }
+            if (result != JSEmpty)
+                value = result
+            val exprRef = interpretExpression(doWhileStatementNode.condition)
+            val exprValue = Operations.getValue(exprRef)
             if (Operations.toBoolean(exprValue) == JSFalse)
-                return normalCompletion(value)
+                return value
         }
     }
 
-    private fun interpretWhileStatement(whileStatementNode: WhileStatementNode, labelSet: Set<String>): Completion {
+    private fun interpretWhileStatement(whileStatementNode: WhileStatementNode, labelSet: Set<String>): JSValue {
         var value: JSValue = JSUndefined
         while (true) {
-            val exprRef = interpretExpression(whileStatementNode.condition).ifAbrupt { return it }
-            val exprValue = Operations.getValue(exprRef.value)
-            ifError { return it }
+            val exprRef = interpretExpression(whileStatementNode.condition)
+            val exprValue = Operations.getValue(exprRef)
             if (Operations.toBoolean(exprValue) == JSFalse)
-                return normalCompletion(value)
-            val result = interpretStatement(whileStatementNode.body)
-            if (!loopContinues(result, labelSet))
-                return updateEmpty(result, value)
-            if (result.value != JSEmpty)
-                value = result.value
+                return value
+            val result = try {
+                interpretStatement(whileStatementNode.body)
+            } catch (e: FlowException) {
+                if (e is ThrowException)
+                    throw e
+                if (!loopContinues(e, labelSet))
+                    return value
+                JSEmpty
+            }
+            if (result != JSEmpty)
+                value = result
         }
     }
 
-    private fun interpretForStatement(forStatementNode: ForStatementNode, labelSet: Set<String>): Completion {
+    private fun interpretForStatement(forStatementNode: ForStatementNode, labelSet: Set<String>): JSValue {
         when (forStatementNode.initializer) {
             is ExpressionNode -> {
-                val exprRef = interpretExpression(forStatementNode.initializer).ifAbrupt { return it }
-                Operations.getValue(exprRef.value)
+                val exprRef = interpretExpression(forStatementNode.initializer)
+                Operations.getValue(exprRef)
 
                 return forBodyEvaluation(
                     forStatementNode.condition,
@@ -697,7 +658,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                 )
             }
             is VariableStatementNode -> {
-                interpretVariableStatement(forStatementNode.initializer).ifAbrupt { return it }
+                interpretVariableStatement(forStatementNode.initializer)
 
                 return forBodyEvaluation(
                     forStatementNode.condition,
@@ -720,21 +681,18 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                     }
                 }
                 Agent.runningContext.lexicalEnv = loopEnv
-                val forDcl = interpretLexicalDeclaration(forStatementNode.initializer)
-                if (forDcl.isAbrupt) {
+                return try {
+                    interpretLexicalDeclaration(forStatementNode.initializer)
+                    forBodyEvaluation(
+                        forStatementNode.condition,
+                        forStatementNode.incrementer,
+                        forStatementNode.body,
+                        if (isConst) emptyList() else boundNames,
+                        labelSet,
+                    )
+                } finally {
                     Agent.runningContext.lexicalEnv = oldEnv
-                    return forDcl
                 }
-                val perIterationLets = if (isConst) emptyList() else boundNames
-                val bodyResult = forBodyEvaluation(
-                    forStatementNode.condition,
-                    forStatementNode.incrementer,
-                    forStatementNode.body,
-                    perIterationLets,
-                    labelSet,
-                )
-                Agent.runningContext.lexicalEnv = oldEnv
-                return bodyResult
             }
             else -> TODO()
         }
@@ -746,139 +704,142 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         body: StatementNode,
         perIterationBindings: List<String>,
         labelSet: Set<String>
-    ): Completion {
+    ): JSValue {
         var value: JSValue = JSUndefined
-        createPerIterationEnvironment(perIterationBindings).ifAbrupt { return it }
+        createPerIterationEnvironment(perIterationBindings)
         while (true) {
             if (condition != null) {
-                val testRef = interpretExpression(condition).ifAbrupt { return it }
-                val testValue = Operations.getValue(testRef.value)
-                ifError { return it }
+                val testRef = interpretExpression(condition)
+                val testValue = Operations.getValue(testRef)
                 if (Operations.toBoolean(testValue) == JSFalse)
-                    return normalCompletion(value)
+                    return value
             }
-            val result = interpretStatement(body)
-            if (!loopContinues(result, labelSet))
-                return normalCompletion(value)
-            if (result.value != JSEmpty)
-                value = result.value
-            createPerIterationEnvironment(perIterationBindings).ifAbrupt { return it }
+            val result = try {
+                interpretStatement(body)
+            } catch (e: FlowException) {
+                if (e is ThrowException)
+                    throw e
+                if (!loopContinues(e, labelSet))
+                    return value
+                JSEmpty
+            }
+            if (result != JSEmpty)
+                value = result
+            createPerIterationEnvironment(perIterationBindings)
             if (incrementer != null) {
-                val incRef = interpretExpression(incrementer).ifAbrupt { return it }
-                Operations.getValue(incRef.value)
-                ifError { return it }
+                val incRef = interpretExpression(incrementer)
+                Operations.getValue(incRef)
             }
         }
     }
 
-    private fun createPerIterationEnvironment(perIterationBindings: List<String>): Completion {
+    private fun createPerIterationEnvironment(perIterationBindings: List<String>): JSValue {
         if (perIterationBindings.isEmpty())
-            return normalCompletion()
+            return JSEmpty
 
         val lastIterationEnv = Agent.runningContext.lexicalEnv
         expect(lastIterationEnv != null)
         val outer = lastIterationEnv.outerEnv
         ecmaAssert(outer != null)
         val thisIterationEnv = DeclarativeEnvRecord.create(outer)
-        perIterationBindings.forEach { binding ->
-            thisIterationEnv.createMutableBinding(binding, false)
-            val lastValue = lastIterationEnv.getBindingValue(binding, true)
-            ifError { return it }
-            thisIterationEnv.initializeBinding(binding, lastValue)
-        }
-        Agent.runningContext.lexicalEnv = thisIterationEnv
 
-        return normalCompletion(JSUndefined)
+        try {
+            perIterationBindings.forEach { binding ->
+                thisIterationEnv.createMutableBinding(binding, false)
+                val lastValue = lastIterationEnv.getBindingValue(binding, true)
+                thisIterationEnv.initializeBinding(binding, lastValue)
+            }
+        } finally {
+            Agent.runningContext.lexicalEnv = thisIterationEnv
+        }
+
+        return JSUndefined
     }
 
     @ECMAImpl("13.7.1.2")
-    private fun loopContinues(completion: Completion, labelSet: Set<String>): Boolean {
+    private fun loopContinues(exception: FlowException, labelSet: Set<String>): Boolean {
         return when {
-            completion.isNormal -> true
-            !completion.isContinue -> false
-            completion.target == null -> true
-            completion.target in labelSet -> true
+            exception !is ContinueException -> false
+            exception.label == null -> true
+            exception.label in labelSet -> true
             else -> false
         }
     }
 
-    private fun interpretBreakStatement(breakStatementNode: BreakStatementNode): Completion {
-        return if (breakStatementNode.label == null) {
-            breakCompletion()
+    private fun interpretBreakStatement(breakStatementNode: BreakStatementNode): JSValue {
+        if (breakStatementNode.label == null) {
+            throw BreakException(null)
         } else {
-            breakCompletion(breakStatementNode.label.identifierName)
+            throw BreakException(breakStatementNode.label.identifierName)
         }
     }
 
-    private fun labelledEvaluation(node: StatementNode, labelSet: Set<String>): Completion {
+    private fun labelledEvaluation(node: StatementNode, labelSet: Set<String>): JSValue {
         return when (node) {
             is LabelledStatementNode -> {
-                val result = labelledEvaluation(node.item, labelSet + node.label.identifierName)
-                if (result.isBreak && node.label.identifierName == result.target) {
-                    normalCompletion(result.value)
-                } else result
+                try {
+                    labelledEvaluation(node.item, labelSet + node.label.identifierName)
+                } catch (e: BreakException) {
+                    if (e.label == node.label.identifierName)
+                        JSEmpty
+                    throw e
+                }
             }
             is FunctionDeclarationNode -> interpretFunctionDeclaration(node)
             is BreakableStatement -> {
                 expect(node is IterationStatement)
-                val result = interpretIterationStatement(node, labelSet)
-                if (result.isBreak && result.target == null) {
-                    if (result.value == JSEmpty) {
-                        normalCompletion(JSUndefined)
-                    } else normalCompletion(result.value)
-                } else result
+                try {
+                    interpretIterationStatement(node, labelSet)
+                } catch (e: BreakException) {
+                    if (e.label == null) {
+                        JSUndefined
+                    } else throw e
+                }
             }
             else -> TODO()
         }
     }
 
-    private fun interpretLexicalDeclaration(lexicalDeclarationNode: LexicalDeclarationNode): Completion {
+    private fun interpretLexicalDeclaration(lexicalDeclarationNode: LexicalDeclarationNode): JSValue {
         lexicalDeclarationNode.bindingList.lexicalBindings.forEach {
             if (it.initializer == null) {
                 expect(!lexicalDeclarationNode.isConst)
                 val lhs = Operations.resolveBinding(it.identifier.identifierName)
                 Operations.initializeReferencedBinding(lhs, JSUndefined)
-                ifError { return it }
             } else {
                 val lhs = Operations.resolveBinding(it.identifier.identifierName)
-                val rhs = interpretExpression(it.initializer.node).ifAbrupt { return it }
-                val value = Operations.getValue(rhs.value)
-                ifError { return it }
+                val rhs = interpretExpression(it.initializer.node)
+                val value = Operations.getValue(rhs)
                 Operations.initializeReferencedBinding(lhs, value)
-                ifError { return it }
             }
         }
-        return normalCompletion()
+        return JSEmpty
     }
 
-    private fun interpretFunctionDeclaration(functionDeclarationNode: FunctionDeclarationNode): Completion {
-        return normalCompletion()
+    private fun interpretFunctionDeclaration(functionDeclarationNode: FunctionDeclarationNode): JSValue {
+        return JSEmpty
     }
 
-    private fun interpretReturnStatement(returnStatementNode: ReturnStatementNode): Completion {
+    private fun interpretReturnStatement(returnStatementNode: ReturnStatementNode): JSValue {
         if (returnStatementNode.node == null) {
-            return returnCompletion()
+            throw ReturnException(JSUndefined)
         } else {
-            val exprRef = interpretExpression(returnStatementNode.node).ifAbrupt { return it }
-            val exprValue = Operations.getValue(exprRef.value)
-            ifError { return it }
-            return returnCompletion(exprValue)
+            val exprRef = interpretExpression(returnStatementNode.node)
+            throw ReturnException(Operations.getValue(exprRef))
         }
     }
 
-    private fun interpretThrowStatement(throwStatementNode: ThrowStatementNode): Completion {
-        val exprRef = interpretExpression(throwStatementNode.expr).ifAbrupt { return it }
-        val exprValue = Operations.getValue(exprRef.value)
-        ifError { return it }
-        return throwCompletion(exprValue)
+    private fun interpretThrowStatement(throwStatementNode: ThrowStatementNode): JSValue {
+        val exprRef = interpretExpression(throwStatementNode.expr)
+        throw ThrowException(Operations.getValue(exprRef))
     }
 
-    private fun interpretTryStatement(tryStatementNode: TryStatementNode): Completion {
-        val blockResult = interpretBlock(tryStatementNode.tryBlock)
-        val catchResult = if (blockResult.isThrow) {
-            Agent.runningContext.error = null
+    private fun interpretTryStatement(tryStatementNode: TryStatementNode): JSValue {
+        return try {
+            updateEmpty(JSUndefined) { interpretBlock(tryStatementNode.tryBlock) }
+        } catch (e: ThrowException) {
             if (tryStatementNode.catchNode.catchParameter == null) {
-                interpretBlock(tryStatementNode.catchNode.block)
+                updateEmpty(JSUndefined) { interpretBlock(tryStatementNode.catchNode.block) }
             } else {
                 val oldEnv = Agent.runningContext.lexicalEnv
                 val catchEnv = DeclarativeEnvRecord.create(oldEnv)
@@ -887,34 +848,28 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                     catchEnv.createMutableBinding(name, false)
                 }
                 Agent.runningContext.lexicalEnv = catchEnv
-                val status = bindingInitialization(parameter.identifierName, blockResult.value, catchEnv)
-                if (status.isAbrupt) {
+                try {
+                    bindingInitialization(parameter.identifierName, e.value, catchEnv)
+                    updateEmpty(JSUndefined) { interpretBlock(tryStatementNode.catchNode.block) }
+                } finally {
                     Agent.runningContext.lexicalEnv = oldEnv
-                    status
-                } else {
-                    val catchBlockResult = interpretBlock(tryStatementNode.catchNode.block).ifAbrupt { return it }
-                    Agent.runningContext.lexicalEnv = oldEnv
-                    catchBlockResult
                 }
             }
-        } else blockResult
-        return updateEmpty(catchResult, JSUndefined)
-    }
-
-    private fun bindingInitialization(identifier: String, value: JSValue, env: EnvRecord?): Completion {
-        return if (env == null) {
-            val lhs = Operations.resolveBinding(identifier)
-            ifError { return it }
-            Operations.putValue(lhs, value)
-            ifError { return it }
-            normalCompletion()
-        } else {
-            env.initializeBinding(identifier, value)
-            normalCompletion(JSUndefined)
         }
     }
 
-    private fun interpretExpression(expression: ExpressionNode): Completion {
+    private fun bindingInitialization(identifier: String, value: JSValue, env: EnvRecord?): JSValue {
+        return if (env == null) {
+            val lhs = Operations.resolveBinding(identifier)
+            Operations.putValue(lhs, value)
+            JSEmpty
+        } else {
+            env.initializeBinding(identifier, value)
+            JSUndefined
+        }
+    }
+
+    private fun interpretExpression(expression: ExpressionNode): JSValue {
         return when (expression) {
             ThisNode -> interpretThis()
             is CommaExpressionNode -> interpretCommaExpressionNode(expression)
@@ -950,36 +905,29 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         }
     }
 
-    private fun interpretForBinding(forBindingNode: ForBindingNode): Completion {
-        val result = Operations.resolveBinding(forBindingNode.identifier.identifierName)
-        ifError { return it }
-        return normalCompletion(result)
+    private fun interpretForBinding(forBindingNode: ForBindingNode): JSValue {
+        return Operations.resolveBinding(forBindingNode.identifier.identifierName)
     }
 
-    private fun interpretThis(): Completion {
-        val result = Operations.resolveThisBinding()
-        ifError { return it }
-        return normalCompletion(result)
+    private fun interpretThis(): JSValue {
+        return Operations.resolveThisBinding()
     }
 
-    private fun interpretCommaExpressionNode(commaExpression: CommaExpressionNode): Completion {
-        var result: Completion? = null
+    private fun interpretCommaExpressionNode(commaExpression: CommaExpressionNode): JSValue {
+        var result: JSValue? = null
         commaExpression.expressions.forEach {
-            val exprResult = interpretExpression(it).ifAbrupt { return it }
-            val value = Operations.getValue(exprResult.value)
-            ifError { return it }
-            result = normalCompletion(value)
+            val exprResult = interpretExpression(it)
+            val value = Operations.getValue(exprResult)
+            result = value
         }
         return result!!
     }
 
-    private fun interpretIdentifierReference(identifierReference: IdentifierReferenceNode): Completion {
-        val value = Operations.resolveBinding(identifierReference.identifierName)
-        ifError { return it }
-        return normalCompletion(value)
+    private fun interpretIdentifierReference(identifierReference: IdentifierReferenceNode): JSValue {
+        return Operations.resolveBinding(identifierReference.identifierName)
     }
 
-    private fun interpretFunctionExpression(functionExpressionNode: FunctionExpressionNode): Completion {
+    private fun interpretFunctionExpression(functionExpressionNode: FunctionExpressionNode): JSValue {
         return if (functionExpressionNode.identifier == null) {
             val scope = Agent.runningContext.lexicalEnv!!
             val sourceText = "TODO"
@@ -994,8 +942,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             )
             setFunctionName(closure, "".key())
             Operations.makeConstructor(closure)
-            ifError { return it }
-            normalCompletion(closure)
+            closure
         } else {
             val scope = Agent.runningContext.lexicalEnv!!
             val funcEnv = DeclarativeEnvRecord.create(scope)
@@ -1013,13 +960,12 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             )
             setFunctionName(closure, name.key())
             Operations.makeConstructor(closure)
-            ifError { return it }
             funcEnv.initializeBinding(name, closure)
-            normalCompletion(closure)
+            closure
         }
     }
 
-    private fun interpretArrowFunction(arrowFunctionNode: ArrowFunctionNode): Completion {
+    private fun interpretArrowFunction(arrowFunctionNode: ArrowFunctionNode): JSValue {
         val scope = Agent.runningContext.lexicalEnv!!
         val sourceText = "TODO"
         val parameters = arrowFunctionNode.parameters.let {
@@ -1049,10 +995,10 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             scope,
         )
         setFunctionName(closure, "".key())
-        return normalCompletion(closure)
+        return closure
     }
 
-    private fun interpretLiteral(literalNode: LiteralNode): Completion {
+    private fun interpretLiteral(literalNode: LiteralNode): JSValue {
         val value = when (literalNode) {
             is NullNode -> JSNull
             is BooleanNode -> literalNode.value.toValue()
@@ -1060,368 +1006,281 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             is StringLiteralNode -> literalNode.value.toValue()
             else -> unreachable()
         }
-        ifError { return it }
-        return normalCompletion(value)
+        return value
     }
 
-    private fun interpretNewExpression(newExpressionNode: NewExpressionNode): Completion {
-        val ref = interpretExpression(newExpressionNode.target).ifAbrupt { return it }
-        val constructor = Operations.getValue(ref.value)
-        ifError { return it }
+    private fun interpretNewExpression(newExpressionNode: NewExpressionNode): JSValue {
+        val ref = interpretExpression(newExpressionNode.target)
+        val constructor = Operations.getValue(ref)
         val arguments = if (newExpressionNode.arguments == null) {
             emptyList()
         } else {
-            argumentsListEvaluation(newExpressionNode.arguments) ?: return throwCompletion()
+            argumentsListEvaluation(newExpressionNode.arguments)
         }
-        if (!Operations.isConstructor(constructor)) {
-            throwError<JSTypeErrorObject>("${Operations.toPrintableString(constructor)} is not a constructor")
-            return throwCompletion()
-        }
-        val result = Operations.construct(constructor, arguments)
-        ifError { return it }
-        return normalCompletion(result)
+        if (!Operations.isConstructor(constructor))
+            throwTypeError("${Operations.toPrintableString(constructor)} is not a constructor")
+        return Operations.construct(constructor, arguments)
     }
 
     // Null indicates an error
-    private fun argumentsListEvaluation(argumentsNode: ArgumentsNode): List<JSValue>? {
+    private fun argumentsListEvaluation(argumentsNode: ArgumentsNode): List<JSValue> {
         val argumentEntries = argumentsNode.arguments
         if (argumentEntries.isEmpty())
             return emptyList()
         val arguments = mutableListOf<JSValue>()
         argumentEntries.forEach { entry ->
-            val ref = interpretExpression(entry.expression).ifAbrupt { return null }
-            val value = Operations.getValue(ref.value)
+            val ref = interpretExpression(entry.expression)
+            val value = Operations.getValue(ref)
             if (entry.isSpread) {
-                val record = Operations.getIterator(value).let {
-                    ifError { return null }
-                    it as Operations.IteratorRecord
-                }
+                val record = Operations.getIterator(value)
                 while (true) {
                     val next = Operations.iteratorStep(record)
                     if (next == JSFalse)
                         break
                     val nextArg = Operations.iteratorValue(next)
-                    ifError { return null }
                     arguments.add(nextArg)
                 }
             } else {
-                ifError { return null }
                 arguments.add(value)
             }
         }
         return arguments
     }
 
-    private fun interpretCallExpression(callExpressionNode: CallExpressionNode): Completion {
-        val ref = interpretExpression(callExpressionNode.target).ifAbrupt { return it }
-        val func = Operations.getValue(ref.value)
-        ifError { return it }
-        val args = argumentsListEvaluation(callExpressionNode.arguments) ?: return throwCompletion()
-        val result = Operations.evaluateCall(func, ref.value, args, false)
-        ifError { return it }
-        return normalCompletion(result)
+    private fun interpretCallExpression(callExpressionNode: CallExpressionNode): JSValue {
+        val ref = interpretExpression(callExpressionNode.target)
+        val func = Operations.getValue(ref)
+        val args = argumentsListEvaluation(callExpressionNode.arguments)
+        val result = Operations.evaluateCall(func, ref, args, false)
+        return result
     }
 
-    private fun interpretObjectLiteral(objectLiteralNode: ObjectLiteralNode): Completion {
+    private fun interpretObjectLiteral(objectLiteralNode: ObjectLiteralNode): JSValue {
         val obj = JSObject.create(Agent.runningContext.realm)
         if (objectLiteralNode.list == null)
-            return normalCompletion(obj)
+            return obj
         objectLiteralNode.list.properties.forEach { property ->
             when (property.type) {
                 PropertyDefinitionNode.Type.KeyValue -> {
-                    val propKey = evaluatePropertyName(property.first).ifAbrupt { return it }
-                    val exprValueRef = interpretExpression(property.second!!).ifAbrupt { return it }
-                    val propValue = Operations.getValue(exprValueRef.value)
-                    ifError { return it }
-                    Operations.createDataPropertyOrThrow(obj, propKey.value, propValue)
-                    ifError { return it }
+                    val propKey = evaluatePropertyName(property.first)
+                    val exprValueRef = interpretExpression(property.second!!)
+                    val propValue = Operations.getValue(exprValueRef)
+                    Operations.createDataPropertyOrThrow(obj, propKey, propValue)
                 }
                 PropertyDefinitionNode.Type.Shorthand -> {
                     expect(property.first is IdentifierReferenceNode)
                     val propName = property.first.identifierName
-                    val exprValue = interpretIdentifierReference(property.first).ifAbrupt { return it }
-                    val propValue = Operations.getValue(exprValue.value)
-                    ifError { return it }
+                    val exprValue = interpretIdentifierReference(property.first)
+                    val propValue = Operations.getValue(exprValue)
                     Operations.createDataPropertyOrThrow(obj, propName.toValue(), propValue)
-                    ifError { return it }
                 }
                 PropertyDefinitionNode.Type.Method -> TODO()
                 PropertyDefinitionNode.Type.Spread -> TODO()
             }
         }
-        return normalCompletion(obj)
+        return obj
     }
 
-    private fun evaluatePropertyName(propertyName: ASTNode): Completion {
+    private fun evaluatePropertyName(propertyName: ASTNode): JSValue {
         return if (propertyName is PropertyNameNode) {
             if (propertyName.isComputed) {
-                val exprValue = interpretExpression(propertyName.expr).ifAbrupt { return it }
-                val propName = Operations.getValue(exprValue.value)
-                ifError { return it }
+                val exprValue = interpretExpression(propertyName.expr)
+                val propName = Operations.getValue(exprValue)
                 val key = Operations.toPropertyKey(propName).asValue
-                normalCompletion(key)
+                key
             } else {
                 when (val expr = propertyName.expr) {
                     is IdentifierNode -> expr.identifierName
                     is StringLiteralNode -> expr.value
                     is NumericLiteralNode -> Operations.toString(expr.value.toValue()).string
                     else -> unreachable()
-                }.let {
-                    normalCompletion(it.toValue())
-                }
+                }.toValue()
             }
         } else TODO()
     }
 
-    private fun interpretArrayLiteral(arrayLiteralNode: ArrayLiteralNode): Completion {
+    private fun interpretArrayLiteral(arrayLiteralNode: ArrayLiteralNode): JSValue {
         val array = Operations.arrayCreate(arrayLiteralNode.elements.size)
-        ifError { return it }
         if (arrayLiteralNode.elements.isEmpty())
-            return normalCompletion(array)
+            return array
         arrayLiteralNode.elements.forEachIndexed { index, element ->
             when (element.type) {
                 ArrayElementNode.Type.Normal -> {
-                    val initResult = interpretExpression(element.expression!!).ifAbrupt { return it }
-                    val initValue = Operations.getValue(initResult.value)
-                    ifError { return it }
+                    val initResult = interpretExpression(element.expression!!)
+                    val initValue = Operations.getValue(initResult)
                     Operations.createDataPropertyOrThrow(array, index.toValue(), initValue)
-                    ifError { return it }
                 }
                 ArrayElementNode.Type.Spread -> TODO()
                 ArrayElementNode.Type.Elision -> { }
             }
         }
-        return normalCompletion(array)
+        return array
     }
 
-    private fun interpretMemberExpression(memberExpressionNode: MemberExpressionNode): Completion {
+    private fun interpretMemberExpression(memberExpressionNode: MemberExpressionNode): JSValue {
         return when (memberExpressionNode.type) {
             MemberExpressionNode.Type.Computed -> {
-                val baseReference = interpretExpression(memberExpressionNode.lhs).ifAbrupt { return it }
-                val baseValue = Operations.getValue(baseReference.value)
-                ifError { return it }
+                val baseReference = interpretExpression(memberExpressionNode.lhs)
+                val baseValue = Operations.getValue(baseReference)
                 // TODO: Strict mode
-                val exprRef = interpretExpression(memberExpressionNode.rhs).ifAbrupt { return it }
-                val exprValue = Operations.getValue(exprRef.value)
-                ifError { return it }
+                val exprRef = interpretExpression(memberExpressionNode.rhs)
+                val exprValue = Operations.getValue(exprRef)
                 val result = Operations.evaluatePropertyAccessWithExpressionKey(baseValue, exprValue, false)
-                ifError { return it }
-                normalCompletion(result)
+                result
             }
             MemberExpressionNode.Type.NonComputed -> {
-                val baseReference = interpretExpression(memberExpressionNode.lhs).ifAbrupt { return it }
-                val baseValue = Operations.getValue(baseReference.value)
-                ifError { return it }
+                val baseReference = interpretExpression(memberExpressionNode.lhs)
+                val baseValue = Operations.getValue(baseReference)
                 // TODO: Strict mode
                 val name = (memberExpressionNode.rhs as IdentifierNode).identifierName
                 val result = Operations.evaluatePropertyAccessWithIdentifierKey(baseValue, name, false)
-                ifError { return it }
-                normalCompletion(result)
+                result
             }
             MemberExpressionNode.Type.Tagged -> TODO()
         }
     }
 
-    private fun interpretOptionalExpression(optionalExpressionNode: OptionalExpressionNode): Completion {
+    private fun interpretOptionalExpression(optionalExpressionNode: OptionalExpressionNode): JSValue {
         TODO()
     }
 
-    private fun interpretAssignmentExpression(assignmentExpressionNode: AssignmentExpressionNode): Completion {
+    private fun interpretAssignmentExpression(assignmentExpressionNode: AssignmentExpressionNode): JSValue {
         if (assignmentExpressionNode.lhs.let { it is ObjectLiteralNode && it is ArrayLiteralNode })
             TODO()
 
         if (assignmentExpressionNode.op == AssignmentExpressionNode.Operator.Equals) {
-            val lref = interpretExpression(assignmentExpressionNode.lhs).ifAbrupt { return it }
-            val rref = interpretExpression(assignmentExpressionNode.rhs).ifAbrupt { return it }
-            val rval = Operations.getValue(rref.value)
-            ifError { return it }
-            Operations.putValue(lref.value, rval)
-            ifError { return it }
-            return normalCompletion(rval)
+            val lref = interpretExpression(assignmentExpressionNode.lhs)
+            val rref = interpretExpression(assignmentExpressionNode.rhs)
+            val rval = Operations.getValue(rref)
+            Operations.putValue(lref, rval)
+            return rval
         } else {
-            val lref = interpretExpression(assignmentExpressionNode.lhs).ifAbrupt { return it }
-            val lval = Operations.getValue(lref.value)
-            ifError { return it }
-            val rref = interpretExpression(assignmentExpressionNode.rhs).ifAbrupt { return it }
-            val rval = Operations.getValue(rref.value)
-            ifError { return it }
+            val lref = interpretExpression(assignmentExpressionNode.lhs)
+            val lval = Operations.getValue(lref)
+            val rref = interpretExpression(assignmentExpressionNode.rhs)
+            val rval = Operations.getValue(rref)
             val newValue = Operations.applyStringOrNumericBinaryOperator(lval, rval, assignmentExpressionNode.op.symbol.dropLast(1))
-            ifError { return it }
-            Operations.putValue(lref.value, newValue)
-            ifError { return it }
-            return normalCompletion(newValue)
+            Operations.putValue(lref, newValue)
+            return newValue
         }
     }
 
-    private fun interpretConditionalExpression(conditionalExpressionNode: ConditionalExpressionNode): Completion {
+    private fun interpretConditionalExpression(conditionalExpressionNode: ConditionalExpressionNode): JSValue {
         val lref = interpretExpression(conditionalExpressionNode.predicate)
-        val lval = Operations.getValue(lref.value).let { value ->
-            ifError { return it }
+        val lval = Operations.getValue(lref).let { value ->
             Operations.toBoolean(value)
         }
-        ifError { return it }
-        if (lval == JSTrue) {
-            val trueRef = interpretExpression(conditionalExpressionNode.ifTrue).ifAbrupt { return it }
-            val trueVal = Operations.getValue(trueRef.value)
-            ifError { return it }
-            return normalCompletion(trueVal)
+        return if (lval == JSTrue) {
+            Operations.getValue(interpretExpression(conditionalExpressionNode.ifTrue))
         } else {
-            val falseRef = interpretExpression(conditionalExpressionNode.ifFalse).ifAbrupt { return it }
-            val falseVal = Operations.getValue(falseRef.value)
-            ifError { return it }
-            return normalCompletion(falseVal)
+            Operations.getValue(interpretExpression(conditionalExpressionNode.ifFalse))
         }
     }
 
-    private fun interpretCoalesceExpression(coalesceExpressionNode: CoalesceExpressionNode): Completion {
-        val lref = interpretExpression(coalesceExpressionNode.lhs).ifAbrupt { return it }
-        val lval = Operations.getValue(lref.value)
-        ifError { return it }
+    private fun interpretCoalesceExpression(coalesceExpressionNode: CoalesceExpressionNode): JSValue {
+        val lref = interpretExpression(coalesceExpressionNode.lhs)
+        val lval = Operations.getValue(lref)
         if (lval != JSUndefined && lval != JSNull)
-            return normalCompletion(lval)
-        val rref = interpretExpression(coalesceExpressionNode.rhs).ifAbrupt { return it }
-        val rval = Operations.getValue(rref.value)
-        ifError { return it }
-        return normalCompletion(rval)
+            return lval
+        val rref = interpretExpression(coalesceExpressionNode.rhs)
+        return Operations.getValue(rref)
     }
 
-    private fun interpretLogicalORExpression(logicalORExpressionNode: LogicalORExpressionNode): Completion {
-        val lref = interpretExpression(logicalORExpressionNode.lhs).ifAbrupt { return it }
-        val lval = Operations.getValue(lref.value)
-        ifError { return it }
+    private fun interpretLogicalORExpression(logicalORExpressionNode: LogicalORExpressionNode): JSValue {
+        val lref = interpretExpression(logicalORExpressionNode.lhs)
+        val lval = Operations.getValue(lref)
         val lbool = Operations.toBoolean(lval)
-        ifError { return it }
         return if (lbool == JSTrue) {
-            normalCompletion(lval)
-        } else {
-            val rref = interpretExpression(logicalORExpressionNode.rhs).ifAbrupt { return it }
-            val rval = Operations.getValue(rref.value)
-            ifError { return it }
-            normalCompletion(rval)
-        }
+            lval
+        } else Operations.getValue(interpretExpression(logicalORExpressionNode.rhs))
     }
 
-    private fun interpretLogicalANDExpression(logicalANDExpressionNode: LogicalANDExpressionNode): Completion {
-        val lref = interpretExpression(logicalANDExpressionNode.lhs).ifAbrupt { return it }
-        val lval = Operations.getValue(lref.value)
-        ifError { return it }
+    private fun interpretLogicalANDExpression(logicalANDExpressionNode: LogicalANDExpressionNode): JSValue {
+        val lref = interpretExpression(logicalANDExpressionNode.lhs)
+        val lval = Operations.getValue(lref)
         val lbool = Operations.toBoolean(lval)
-        ifError { return it }
         return if (lbool == JSFalse) {
-            normalCompletion(lval)
-        } else {
-            val rref = interpretExpression(logicalANDExpressionNode.rhs).ifAbrupt { return it }
-            val rval = Operations.getValue(rref.value)
-            ifError { return it }
-            normalCompletion(rval)
-        }
+            lval
+        } else Operations.getValue(interpretExpression(logicalANDExpressionNode.rhs))
     }
 
-    private fun evaluateStringOrNumericBinaryExpression(lhs: ExpressionNode, rhs: ExpressionNode, op: String): Completion {
-        val lref = interpretExpression(lhs).ifAbrupt { return it }
-        val lval = Operations.getValue(lref.value)
-        ifError { return it }
-        val rref = interpretExpression(rhs).ifAbrupt { return it }
-        val rval = Operations.getValue(rref.value)
-        ifError { return it }
-        val result = Operations.applyStringOrNumericBinaryOperator(lval, rval, op)
-        ifError { return it }
-        return normalCompletion(result)
+    private fun evaluateStringOrNumericBinaryExpression(lhs: ExpressionNode, rhs: ExpressionNode, op: String): JSValue {
+        val lref = interpretExpression(lhs)
+        val lval = Operations.getValue(lref)
+        val rref = interpretExpression(rhs)
+        val rval = Operations.getValue(rref)
+        return Operations.applyStringOrNumericBinaryOperator(lval, rval, op)
     }
 
-    private fun interpretBitwiseORExpression(bitwiseORExpressionNode: BitwiseORExpressionNode): Completion {
+    private fun interpretBitwiseORExpression(bitwiseORExpressionNode: BitwiseORExpressionNode): JSValue {
         return evaluateStringOrNumericBinaryExpression(bitwiseORExpressionNode.lhs, bitwiseORExpressionNode.rhs, "|")
     }
 
-    private fun interpretBitwiseXORExpression(bitwiseXORExpressionNode: BitwiseXORExpressionNode): Completion {
+    private fun interpretBitwiseXORExpression(bitwiseXORExpressionNode: BitwiseXORExpressionNode): JSValue {
         return evaluateStringOrNumericBinaryExpression(bitwiseXORExpressionNode.lhs, bitwiseXORExpressionNode.rhs, "^")
     }
 
-    private fun interpretBitwiseANDExpression(bitwiseANDExpressionNode: BitwiseANDExpressionNode): Completion {
+    private fun interpretBitwiseANDExpression(bitwiseANDExpressionNode: BitwiseANDExpressionNode): JSValue {
         return evaluateStringOrNumericBinaryExpression(bitwiseANDExpressionNode.lhs, bitwiseANDExpressionNode.rhs, "&")
     }
 
-    private fun interpretEqualityExpression(equalityExpressionNode: EqualityExpressionNode): Completion {
-        val lref = interpretExpression(equalityExpressionNode.lhs).ifAbrupt { return it }
-        val lval = Operations.getValue(lref.value)
-        ifError { return it }
-        val rref = interpretExpression(equalityExpressionNode.rhs).ifAbrupt { return it }
-        val rval = Operations.getValue(rref.value)
-        ifError { return it }
+    private fun interpretEqualityExpression(equalityExpressionNode: EqualityExpressionNode): JSValue {
+        val lref = interpretExpression(equalityExpressionNode.lhs)
+        val lval = Operations.getValue(lref)
+        val rref = interpretExpression(equalityExpressionNode.rhs)
+        val rval = Operations.getValue(rref)
 
-        val result = when (equalityExpressionNode.op) {
-            EqualityExpressionNode.Operator.StrictEquality -> Operations.strictEqualityComparison(rval, lval).also {
-                ifError { return it }
-            }
+        return when (equalityExpressionNode.op) {
+            EqualityExpressionNode.Operator.StrictEquality -> Operations.strictEqualityComparison(rval, lval)
             EqualityExpressionNode.Operator.StrictInequality -> Operations.strictEqualityComparison(rval, lval).let { value ->
-                ifError { return it }
                 if (value is JSTrue) JSFalse else JSTrue
             }
-            EqualityExpressionNode.Operator.NonstrictEquality -> Operations.abstractEqualityComparison(rval, lval).also {
-                ifError { return it }
-            }
+            EqualityExpressionNode.Operator.NonstrictEquality -> Operations.abstractEqualityComparison(rval, lval)
             EqualityExpressionNode.Operator.NonstrictInequality -> Operations.abstractEqualityComparison(rval, lval).let { value ->
-                ifError { return it }
                 if (value is JSTrue) JSFalse else JSTrue
             }
         }
-
-        return normalCompletion(result)
     }
 
-    private fun interpretRelationalExpression(relationalExpressionNode: RelationalExpressionNode): Completion {
-        val lref = interpretExpression(relationalExpressionNode.lhs).ifAbrupt { return it }
-        val lval = Operations.getValue(lref.value)
-        ifError { return it }
-        val rref = interpretExpression(relationalExpressionNode.rhs).ifAbrupt { return it }
-        val rval = Operations.getValue(rref.value)
-        ifError { return it }
+    private fun interpretRelationalExpression(relationalExpressionNode: RelationalExpressionNode): JSValue {
+        val lref = interpretExpression(relationalExpressionNode.lhs)
+        val lval = Operations.getValue(lref)
+        val rref = interpretExpression(relationalExpressionNode.rhs)
+        val rval = Operations.getValue(rref)
 
-        val result = when (relationalExpressionNode.op) {
+        return when (relationalExpressionNode.op) {
             RelationalExpressionNode.Operator.LessThan -> {
                 Operations.abstractRelationalComparison(lval, rval, true).let { value ->
-                    ifError { return it }
                     if (value == JSUndefined) JSFalse else value
                 }
             }
             RelationalExpressionNode.Operator.GreaterThan -> {
                 Operations.abstractRelationalComparison(rval, lval, false).let { value ->
-                    ifError { return it }
                     if (value == JSUndefined) JSFalse else value
                 }
             }
             RelationalExpressionNode.Operator.LessThanEquals -> {
                 Operations.abstractRelationalComparison(rval, lval, false).let { value ->
-                    ifError { return it }
                     if (value == JSFalse) JSTrue else JSFalse
                 }
             }
             RelationalExpressionNode.Operator.GreaterThanEquals -> {
                 Operations.abstractRelationalComparison(lval, rval, true).let { value ->
-                    ifError { return it }
                     if (value == JSFalse) JSTrue else JSFalse
                 }
             }
             RelationalExpressionNode.Operator.Instanceof -> Operations.instanceofOperator(lval, rval).also {
-                ifError { return it }
             }
             RelationalExpressionNode.Operator.In -> {
-                if (rval !is JSObject) {
-                    throwError<JSTypeErrorObject>("right-hand side of 'in' operator must be an object")
-                    return throwCompletion()
-                }
+                if (rval !is JSObject)
+                    throwTypeError("right-hand side of 'in' operator must be an object")
                 val key = Operations.toPropertyKey(lval)
-                ifError { return it }
-                Operations.hasProperty(rval, key).also {
-                    ifError { return it }
-                }
+                Operations.hasProperty(rval, key)
             }
         }
-
-        return normalCompletion(result)
     }
 
-    private fun interpretShiftExpression(shiftExpressionNode: ShiftExpressionNode): Completion {
+    private fun interpretShiftExpression(shiftExpressionNode: ShiftExpressionNode): JSValue {
         return evaluateStringOrNumericBinaryExpression(
             shiftExpressionNode.lhs,
             shiftExpressionNode.rhs,
@@ -1433,7 +1292,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         )
     }
 
-    private fun interpretAdditiveExpression(additiveExpressionNode: AdditiveExpressionNode): Completion {
+    private fun interpretAdditiveExpression(additiveExpressionNode: AdditiveExpressionNode): JSValue {
         return evaluateStringOrNumericBinaryExpression(
             additiveExpressionNode.lhs,
             additiveExpressionNode.rhs,
@@ -1441,7 +1300,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         )
     }
 
-    private fun interpretMultiplicationExpression(multiplicativeExpressionNode: MultiplicativeExpressionNode): Completion {
+    private fun interpretMultiplicationExpression(multiplicativeExpressionNode: MultiplicativeExpressionNode): JSValue {
         return evaluateStringOrNumericBinaryExpression(
             multiplicativeExpressionNode.lhs,
             multiplicativeExpressionNode.rhs,
@@ -1453,7 +1312,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         )
     }
 
-    private fun interpretExponentiationExpression(exponentiationExpressionNode: ExponentiationExpressionNode): Completion {
+    private fun interpretExponentiationExpression(exponentiationExpressionNode: ExponentiationExpressionNode): JSValue {
         return evaluateStringOrNumericBinaryExpression(
             exponentiationExpressionNode.lhs,
             exponentiationExpressionNode.rhs,
@@ -1461,19 +1320,17 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         )
     }
 
-    private fun interpretUnaryExpression(unaryExpressionNode: UnaryExpressionNode): Completion {
-        val exprRef = interpretExpression(unaryExpressionNode.node).ifAbrupt { return it }
+    private fun interpretUnaryExpression(unaryExpressionNode: UnaryExpressionNode): JSValue {
+        val exprRef = interpretExpression(unaryExpressionNode.node)
 
-        val result = when (unaryExpressionNode.op) {
-            UnaryExpressionNode.Operator.Delete -> Operations.deleteOperator(exprRef.value).also {
-                ifError { return it }
-            }
+        return when (unaryExpressionNode.op) {
+            UnaryExpressionNode.Operator.Delete -> Operations.deleteOperator(exprRef)
             UnaryExpressionNode.Operator.Void -> {
-                val exprValue = Operations.getValue(exprRef.value).also { ifError { return it } }
+                Operations.getValue(exprRef)
                 JSUndefined
             }
             UnaryExpressionNode.Operator.Typeof -> {
-                val exprValue = Operations.getValue(exprRef.value).also { ifError { return it } }
+                val exprValue = Operations.getValue(exprRef)
                 when (exprValue) {
                     is JSUndefined -> "undefined"
                     is JSNull -> "object"
@@ -1488,39 +1345,34 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                 }.toValue()
             }
             UnaryExpressionNode.Operator.Plus -> {
-                val exprValue = Operations.getValue(exprRef.value).also { ifError { return it } }
-                Operations.toNumber(exprValue).also { ifError { return it } }
+                val exprValue = Operations.getValue(exprRef)
+                Operations.toNumber(exprValue)
             }
             UnaryExpressionNode.Operator.Minus -> {
-                val exprValue = Operations.getValue(exprRef.value).also { ifError { return it } }
+                val exprValue = Operations.getValue(exprRef)
                 val oldValue = Operations.toNumeric(exprValue)
-                ifError { return it }
                 if (oldValue is JSBigInt)
                     TODO()
                 Operations.numericUnaryMinus(oldValue)
             }
             UnaryExpressionNode.Operator.BitwiseNot -> {
-                val exprValue = Operations.getValue(exprRef.value).also { ifError { return it } }
+                val exprValue = Operations.getValue(exprRef)
                 val oldValue = Operations.toNumeric(exprValue)
-                ifError { return it }
                 if (oldValue is JSBigInt)
                     TODO()
                 Operations.numericBitwiseNOT(oldValue)
             }
             UnaryExpressionNode.Operator.Not -> {
-                val exprValue = Operations.getValue(exprRef.value).also { ifError { return it } }
+                val exprValue = Operations.getValue(exprRef)
                 val oldValue = Operations.toBoolean(exprValue)
                 if (oldValue == JSFalse) JSTrue else JSFalse
             }
         }
-
-        return normalCompletion(result)
     }
 
-    private fun interpretUpdateExpression(updateExpressionNode: UpdateExpressionNode): Completion {
-        val expr = interpretExpression(updateExpressionNode.target).ifAbrupt { return it }
-        val oldValue = Operations.getValue(expr.value)
-        ifError { return it }
+    private fun interpretUpdateExpression(updateExpressionNode: UpdateExpressionNode): JSValue {
+        val expr = interpretExpression(updateExpressionNode.target)
+        val oldValue = Operations.getValue(expr)
         if (oldValue is JSBigInt)
             TODO()
         val newValue = if (updateExpressionNode.isIncrement) {
@@ -1528,52 +1380,24 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         } else {
             Operations.numericSubtract(oldValue, JSNumber(1.0))
         }
-        ifError { return it }
-        Operations.putValue(expr.value, newValue)
+        Operations.putValue(expr, newValue)
         return if (updateExpressionNode.isPostfix) {
             oldValue
         } else {
             newValue
-        }.let(::normalCompletion)
+        }
     }
 
-    private fun normalCompletion(argument: JSValue = JSEmpty) = Completion(Completion.Type.Normal, argument, null)
-
-    private fun returnCompletion(argument: JSValue = JSUndefined) = Completion(Completion.Type.Return, argument, null)
-
-    private fun breakCompletion(target: String? = null) = Completion(Completion.Type.Break, JSEmpty, target)
-
-    private fun continueCompletion(target: String? = null) = Completion(Completion.Type.Continue, JSEmpty, target)
-
-    private fun throwCompletion(argument: JSValue = Agent.runningContext.error!!) = Completion(Completion.Type.Throw, argument, null)
-
-    private fun updateEmpty(record: Completion, value: JSValue): Completion {
-        if (record.isReturn || record.isThrow)
-            ecmaAssert(record.value != JSEmpty)
-        if (record.value != JSEmpty)
-            return record
-        return Completion(record.type, value, record.target)
-    }
-
-    private inline fun ifError(block: (Completion) -> Unit) {
-        if (Agent.hasError())
-            block(Completion(Completion.Type.Throw, Agent.runningContext.error!!, null))
-    }
-
-    private inline fun <reified T : JSErrorObject> error(message: String): Completion {
-        throwError<T>(message)
-        return Completion(Completion.Type.Throw, Agent.runningContext.error!!, null)
-    }
-
-    private fun syntaxError(message: String): Completion {
-        return error<JSSyntaxErrorObject>(message)
-    }
-
-    private fun typeError(message: String): Completion {
-        return error<JSTypeErrorObject>(message)
-    }
-
-    private fun referenceError(message: String): Completion {
-        return error<JSReferenceErrorObject>(message)
+    private fun updateEmpty(value: JSValue, block: (JSValue) -> JSValue): JSValue {
+        try {
+            val result = block(value)
+            return if (result == JSEmpty) value else result
+        } catch (e: ReturnException) {
+            ecmaAssert(e.value != JSEmpty)
+            throw e
+        } catch (e: ThrowException) {
+            ecmaAssert(e.value != JSEmpty)
+            throw e
+        }
     }
 }

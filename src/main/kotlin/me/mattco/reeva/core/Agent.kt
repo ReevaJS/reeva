@@ -3,8 +3,6 @@ package me.mattco.reeva.core
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.tasks.Microtask
 import me.mattco.reeva.core.tasks.Task
-import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.errors.JSErrorObject
 import me.mattco.reeva.utils.expect
 import java.util.concurrent.ConcurrentLinkedDeque
 
@@ -91,29 +89,6 @@ class Agent private constructor() {
         @JvmStatic
         fun popContext() {
             activeAgent.runningContextStack.removeLast()
-        }
-
-        @JvmStatic
-        inline fun ifError(block: (JSValue) -> Unit) {
-            if (hasError())
-                block(runningContext.error!!)
-        }
-
-        @JvmStatic
-        fun hasError() = runningContext.error != null
-
-        @JvmStatic
-        fun throwError(error: JSValue) {
-            expect(runningContext.error == null)
-            runningContext.error = error
-        }
-
-        @JvmStatic
-        inline fun <reified T : JSErrorObject> throwError(message: String? = null) {
-            ifError { return }
-            val obj = T::class.java.getDeclaredMethod("create", Realm::class.java, String::class.java)
-                .invoke(null, runningContext.realm, message) as T
-            throwError(obj)
         }
     }
 }

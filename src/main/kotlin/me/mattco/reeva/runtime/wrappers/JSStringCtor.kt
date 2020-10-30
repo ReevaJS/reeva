@@ -1,6 +1,5 @@
 package me.mattco.reeva.runtime.wrappers
 
-import me.mattco.reeva.core.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.JSThrows
@@ -27,11 +26,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             return arguments[0].asSymbol.descriptiveString().toValue()
         val s = if (arguments.isEmpty()) {
             "".toValue()
-        } else {
-            Operations.toString(arguments[0]).also {
-                ifError { return INVALID_VALUE }
-            }
-        }
+        } else Operations.toString(arguments[0])
         if (newTarget == JSUndefined)
             return s
         // TODO: GetPrototypeFromConstructor?

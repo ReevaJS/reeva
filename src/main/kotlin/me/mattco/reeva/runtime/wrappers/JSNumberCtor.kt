@@ -1,6 +1,5 @@
 package me.mattco.reeva.runtime.wrappers
 
-import me.mattco.reeva.core.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -64,7 +63,6 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     fun isSafeInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isIntegralNumber(arguments.argument(0)))
             return JSFalse
-        ifError { return INVALID_VALUE }
         return (abs(arguments.argument(0).asDouble) <= Operations.MAX_SAFE_INTEGER).toValue()
     }
 
@@ -95,7 +93,6 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     private fun numberFromArg(argument: JSValue): Double {
         return if (!argument.isUndefined) {
             val prim = Operations.toNumeric(argument)
-            ifError { return 0.0 }
             if (prim.isBigInt)
                 TODO()
             prim.asDouble

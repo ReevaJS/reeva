@@ -1,7 +1,5 @@
 package me.mattco.reeva.runtime.builtins
 
-import me.mattco.reeva.core.Agent.Companion.ifError
-import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -64,7 +62,6 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             repeat(min(10, Operations.toIntegerOrInfinity(space).asInt)) {
                 gap += " "
             }
-            ifError { return INVALID_VALUE }
         } else if (space.isString) {
             val str = space.asString
             gap = if (str.length <= 10) str else str.substring(0, 10)
@@ -78,20 +75,16 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             gap,
             mutableListOf()
         )
-        ifError { return INVALID_VALUE }
 
         return serializeJSONProperty(state, "".key(), wrapper)?.toValue() ?: JSUndefined
     }
 
     private fun serializeJSONProperty(state: SerializeState, key: PropertyKey, holder: JSObject): String? {
         var value = holder.get(key)
-        ifError { return null }
         if (value.isObject || value.isBigInt) {
             val toJSON = Operations.getV(value, "toJSON".toValue())
-            ifError { return null }
             if (Operations.isCallable(toJSON)) {
                 value = Operations.call(toJSON, value, listOf(key.asValue))
-                ifError { return null }
             }
         }
         if (value.isObject) {
@@ -101,7 +94,6 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                 is JSBooleanObject -> value = value.value
                 is JSBigIntObject -> value = value.value
             }
-            ifError { return null }
         }
         if (value.isNull)
             return "null"
@@ -117,10 +109,8 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             }
             return "null"
         }
-        if (value.isBigInt) {
-            throwError<JSTypeErrorObject>("JSON.stringify cannot serialize BigInt values")
-            return null
-        }
+        if (value.isBigInt)
+            throwTypeError("JSON.stringify cannot serialize BigInt values")
         if (value.isObject && !Operations.isCallable(value)) {
             if (Operations.isArray(value))
                 return serializeJSONArray(state, value as JSArrayObject)
@@ -167,10 +157,8 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     }
 
     private fun serializeJSONArray(state: SerializeState, value: JSArrayObject): String {
-        if (value in state.stack) {
-            throwError<JSTypeErrorObject>("JSON.stringify cannot stringify circular objects")
-            return ""
-        }
+        if (value in state.stack)
+            throwTypeError("JSON.stringify cannot stringify circular objects")
 
         state.stack.add(value)
         val stepback = state.indent
@@ -204,10 +192,8 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     }
 
     private fun serializeJSONObject(state: SerializeState, value: JSObject): String {
-        if (value in state.stack) {
-            throwError<JSTypeErrorObject>("JSON.stringify cannot stringify circular objects")
-            return ""
-        }
+        if (value in state.stack)
+            throwTypeError("JSON.stringify cannot stringify circular objects")
 
         state.stack.add(value)
         val stepback = state.indent

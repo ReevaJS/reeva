@@ -1,7 +1,6 @@
 package me.mattco.reeva.runtime.objects
 
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.core.Agent.Companion.ifError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.*
@@ -202,7 +201,6 @@ open class JSObject protected constructor(
                 return false
             // TODO: Handle 9.1.2.1.8.c.i?
             p = (p as JSObject).getPrototype()
-            ifError { return false }
         }
 
         prototype = p
@@ -220,7 +218,6 @@ open class JSObject protected constructor(
         if (hasOwn != null)
             return true
         val parent = getPrototype()
-        ifError { return false }
         if (parent != JSNull)
             return (parent as JSObject).hasProperty(property)
         return false
@@ -276,7 +273,6 @@ open class JSObject protected constructor(
         val desc = getOwnPropertyDescriptor(property)
         if (desc == null) {
             val parent = getPrototype()
-            ifError { return INVALID_VALUE }
             if (parent == JSNull)
                 return JSUndefined
             return (parent as JSObject).get(property, receiver)
@@ -324,9 +320,10 @@ open class JSObject protected constructor(
             return receiver.defineOwnProperty(property, Descriptor(value, Descriptor.defaultAttributes))
         }
         expect(ownDesc.isAccessorDescriptor)
-        val setter = ownDesc.setter ?: return false
+        if (!ownDesc.hasSetter)
+            return false
+        val setter = ownDesc.setter
         Operations.call(setter, receiver, listOf(value))
-        ifError { return false }
         return true
     }
 

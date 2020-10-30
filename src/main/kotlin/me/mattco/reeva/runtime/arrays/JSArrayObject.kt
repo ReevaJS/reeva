@@ -1,7 +1,5 @@
 package me.mattco.reeva.runtime.arrays
 
-import me.mattco.reeva.core.Agent.Companion.ifError
-import me.mattco.reeva.core.Agent.Companion.throwError
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -31,20 +29,17 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
                 return super.defineOwnProperty(property, descriptor)
             val newLenDesc = descriptor.copy()
             val newLenObj = Operations.toUint32(value)
-            ifError { return false }
             val numberLen = Operations.toNumeric(value)
-            ifError { return false }
-            if (!newLenObj.sameValue(numberLen)) {
-                throwError<JSRangeErrorObject>("invalid array length: ${Operations.toPrintableString(value)}")
-                return false
-            }
+            if (!newLenObj.sameValue(numberLen))
+                throwRangeError("invalid array length: ${Operations.toPrintableString(value)}")
+
             val newLen = newLenObj.asInt
             newLenDesc.setActualValue(this, newLenObj)
             val oldLenDesc = getOwnPropertyDescriptor("length")
-            ifError { return false }
             expect(oldLenDesc != null)
             ecmaAssert(oldLenDesc.isDataDescriptor)
             ecmaAssert(!oldLenDesc.isConfigurable)
+
             val oldLen = oldLenDesc.getActualValue(this).asInt
             if (newLen >= oldLen)
                 return super.defineOwnProperty(property, newLenDesc)
@@ -56,8 +51,8 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
                 newLenDesc.setWritable(true)
                 false
             }
+
             val succeeded = super.defineOwnProperty(property, newLenDesc)
-            ifError { return false }
             if (!succeeded)
                 return false
             indexedProperties.indices().filter {
@@ -72,37 +67,33 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
                     return false
                 }
             }
-            if (!newWritable) {
-                val succeeded = super.defineOwnProperty(property, Descriptor(JSUndefined, Descriptor.HAS_WRITABLE))
-                ifError { return false }
-                ecmaAssert(succeeded)
-            }
+
+            if (!newWritable)
+                ecmaAssert(super.defineOwnProperty(property, Descriptor(JSUndefined, Descriptor.HAS_WRITABLE)))
+
             return true
         }
 
         if (property.isInt && property.asInt >= 0 || (property.isString && property.asString.toIntOrNull() != null)) {
             val oldLenDesc = getOwnPropertyDescriptor("length")
-            ifError { return false }
             expect(oldLenDesc != null)
             ecmaAssert(oldLenDesc.isDataDescriptor)
             ecmaAssert(!oldLenDesc.isConfigurable)
+
             val oldLen = oldLenDesc.getActualValue(this).let {
                 if (it is JSString) it.string.toInt() else it.asInt
             }
             ecmaAssert(oldLen >= 0)
+
             val index = Operations.toUint32(property.asValue).asInt
-            ifError { return false }
             if (index >= oldLen && !oldLenDesc.isWritable)
                 return false
-            val succeeded = super.defineOwnProperty(property, descriptor)
-            ifError { return false }
-            if (!succeeded)
+
+            if (!super.defineOwnProperty(property, descriptor))
                 return false
             if (index >= oldLen) {
                 oldLenDesc.setActualValue(this, (index + 1).toValue())
-                val succeeded = super.defineOwnProperty("length".key(), oldLenDesc)
-                ifError { return false }
-                ecmaAssert(succeeded)
+                ecmaAssert(super.defineOwnProperty("length".key(), oldLenDesc))
             }
             return true
         }
