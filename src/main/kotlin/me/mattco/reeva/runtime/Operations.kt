@@ -405,7 +405,18 @@ object Operations {
             JSNull, JSFalse -> JSNumber.ZERO
             JSTrue -> JSNumber(1)
             is JSNumber -> return value
-            is JSString -> TODO()
+            // TODO: spec-compliant string printing
+            is JSString -> if ('.' in value.string) {
+                try {
+                    java.lang.Double.parseDouble(value.string).toValue()
+                } catch (e: NumberFormatException) {
+                    JSNumber.NaN
+                }
+            } else try {
+                Integer.parseInt(value.string).toValue()
+            } catch (e: NumberFormatException) {
+                JSNumber.NaN
+            }
             is JSSymbol, is JSBigInt -> throwTypeError("cannot convert ${value.type} to Number")
             is JSObject -> toPrimitive(value, ToPrimitiveHint.AsNumber)
             else -> unreachable()
