@@ -1579,7 +1579,11 @@ object Operations {
                     } else {
                         ThrowException(argument)
                     }
-                } else call(reaction.handler, JSUndefined, listOf(argument))
+                } else try {
+                    call(reaction.handler, JSUndefined, listOf(argument))
+                } catch (e: ThrowException) {
+                    e
+                }
 
                 if (reaction.capability == null) {
                     ecmaAssert(handlerResult !is ThrowException)
