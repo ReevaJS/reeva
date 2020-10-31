@@ -26,8 +26,9 @@ class JSPromiseAllSettledResolver private constructor(
 
         val obj = create(realm)
         val status = if (isRejector) "rejected" else "fulfilled"
+        val valKey = if (isRejector) "reason" else "value"
         Operations.createDataPropertyOrThrow(obj, "status".toValue(), status.toValue())
-        Operations.createDataPropertyOrThrow(obj, "value".toValue(), arguments.argument(0))
+        Operations.createDataPropertyOrThrow(obj, valKey.toValue(), arguments.argument(0))
         values[index] = obj
         remainingElements.value--
         if (remainingElements.value == 0) {

@@ -1631,6 +1631,19 @@ object Operations {
         return resolve
     }
 
+    @ECMAImpl("26.6.4.7")
+    fun promiseResolve(constructor: JSObject, value: JSValue): JSValue {
+        if (isPromise(value)) {
+            val valueCtor = (value as JSObject).get("constructor")
+            if (valueCtor.sameValue(constructor))
+                return value
+        }
+
+        val capability = newPromiseCapability(constructor)
+        call(capability.resolve!!, JSUndefined, listOf(value))
+        return capability.promise
+    }
+
     @ECMAImpl("26.6.5.4.1")
     fun performPromiseThen(promise: JSPromiseObject, onFulfilled: JSValue, onRejected: JSValue, resultCapability: PromiseCapability?): JSValue {
         val onFulfilledCallback = if (isCallable(onFulfilled)) {

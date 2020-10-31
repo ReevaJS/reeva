@@ -195,17 +195,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
     fun resolve(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
             throwTypeError("Promise.resolve called on incompatible object")
-
-        val argument = arguments.argument(0)
-        if (Operations.isPromise(argument)) {
-            val argCtor = (argument as JSObject).get("constructor")
-            if (argCtor.sameValue(thisValue))
-                return argument
-        }
-
-        val capability = Operations.newPromiseCapability(thisValue)
-        Operations.call(capability.resolve!!, JSUndefined, listOf(argument))
-        return capability.promise
+        return Operations.promiseResolve(thisValue, arguments.argument(0))
     }
 
     private inline fun <T> ifAbruptRejectPromise(
