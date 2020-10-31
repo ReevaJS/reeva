@@ -401,25 +401,42 @@ class ThrowStatementNode(val expr: ExpressionNode) : NodeBase(listOf(expr)), Sta
 
 class TryStatementNode(
     val tryBlock: BlockNode,
-    val catchNode: CatchNode
-) : NodeBase(listOf(tryBlock, catchNode)), StatementNode {
+    val catchNode: CatchNode?,
+    val finallyBlock: BlockNode?,
+) : NodeBase(listOfNotNull(tryBlock, catchNode, finallyBlock)), StatementNode {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
-        return tryBlock.containsDuplicateLabels(labelSet) || catchNode.containsDuplicateLabels(labelSet)
+        if (tryBlock.containsDuplicateLabels(labelSet))
+            return true
+        if (catchNode?.containsDuplicateLabels(labelSet) == true)
+            return true
+        if (finallyBlock?.containsDuplicateLabels(labelSet) == true)
+            return true
+        return false
     }
 
     override fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
         return tryBlock.containsUndefinedBreakTarget(labelSet) ||
-            catchNode.containsUndefinedBreakTarget(labelSet)
+                catchNode?.containsDuplicateLabels(labelSet) == true ||
+                finallyBlock?.containsDuplicateLabels(labelSet) == true
     }
 
     override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
         return tryBlock.containsUndefinedContinueTarget(iterationSet, labelSet) ||
-            catchNode.containsUndefinedContinueTarget(iterationSet, labelSet)
+                catchNode?.containsUndefinedContinueTarget(iterationSet, labelSet) == true ||
+                finallyBlock?.containsUndefinedContinueTarget(iterationSet, labelSet) == true
     }
 
-    override fun varDeclaredNames() = tryBlock.varDeclaredNames() + catchNode.varDeclaredNames()
+    override fun varDeclaredNames(): List<String> {
+        return tryBlock.varDeclaredNames() +
+                (catchNode?.varDeclaredNames() ?: emptyList()) +
+                (finallyBlock?.varDeclaredNames() ?: emptyList())
+    }
 
-    override fun varScopedDeclarations() = tryBlock.varScopedDeclarations() + catchNode.varScopedDeclarations()
+    override fun varScopedDeclarations(): List<NodeBase> {
+        return tryBlock.varScopedDeclarations() +
+                (catchNode?.varScopedDeclarations() ?: emptyList()) +
+                (finallyBlock?.varScopedDeclarations() ?: emptyList())
+    }
 }
 
 class CatchNode(

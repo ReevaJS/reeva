@@ -839,6 +839,9 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         return try {
             updateEmpty(JSUndefined) { interpretBlock(tryStatementNode.tryBlock) }
         } catch (e: ThrowException) {
+            if (tryStatementNode.catchNode == null)
+                throw e
+
             if (tryStatementNode.catchNode.catchParameter == null) {
                 updateEmpty(JSUndefined) { interpretBlock(tryStatementNode.catchNode.block) }
             } else {
@@ -856,6 +859,9 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                     Agent.runningContext.lexicalEnv = oldEnv
                 }
             }
+        } finally {
+            if (tryStatementNode.finallyBlock != null)
+                interpretBlock(tryStatementNode.finallyBlock)
         }
     }
 

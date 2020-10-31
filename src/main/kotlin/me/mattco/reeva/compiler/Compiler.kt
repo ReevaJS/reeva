@@ -434,82 +434,82 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             // errorObj
 
             // catch block
-            val catchNode = tryStatementNode.catchNode
-            if (catchNode.catchParameter == null) {
-                compileBlock(catchNode.block)
-            } else {
-                pushLexicalEnv
-                pushLexicalEnv
-                // errorObj, oldEnv, oldEnv
-                invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
-                // errorObj, oldEnv, catchEnv
-                catchNode.catchParameter.boundNames().forEach { name ->
-                    dup
-                    ldc(name)
-                    ldc(false)
-                    invokevirtual(DeclarativeEnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
-                }
-
-                // errorObj, oldEnv, catchEnv
-                dup_x1
-                // errorObj, catchEnv, oldEnv, catchEnv
-
-                pushRunningContext
-                // errorObj, catchEnv, oldEnv, catchEnv, context
-                swap
-                // errorObj, catchEnv, oldEnv, context, catchEnv
-                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-                // errorObj, catchEnv, oldEnv
-
-                dup2_x1
-                // catchEnv, oldEnv, errorObj, catchEnv, oldEnv
-                pop
-                // catchEnv, oldEnv, errorObj, catchEnv
-                swap
-                // catchEnv, oldEnv, catchEnv, errorObj
-                initializeBoundName(catchNode.catchParameter.identifierName)
-                // catchEnv, oldEnv, catchEnv
-                pop
-                // catchEnv, oldEnv
-
-                // custom checkError with some additional behavior
-                invokestatic(Agent::class, "hasError", Boolean::class)
-                ifStatement(JumpCondition.True) {
-                    pushRunningContext
-                    // catchEnv, oldEnv, context
-                    swap
-                    // catchEnv, context, oldEnv
-                    putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-                    if (needsToPopContext) {
-                        invokestatic(Agent::class, "popContext", void)
-                    }
-                    when (coerceType(methodStates.last().returnType)) {
-                        coerceType(Completion::class) -> {
-                            construct(Completion::class, Completion.Type::class, JSValue::class) {
-                                getstatic(Completion.Type::class, "Return", Completion.Type::class)
-                                pushRunningContext
-                                getfield(ExecutionContext::class, "error", JSErrorObject::class)
-                            }
-                        }
-                        else -> {
-                            pushRunningContext
-                            getfield(ExecutionContext::class, "error", JSErrorObject::class)
-                        }
-                    }
-                    areturn
-                }
-
-                // catchEnv, oldEnv
-                compileBlock(catchNode.block)
-                // catchEnv, oldEnv
-                pushRunningContext
-                // catchEnv, oldEnv, context
-                swap
-                // catchEnv, context, oldEnv
-                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-                // catchEnv
-                pop
-            }
+//            val catchNode = tryStatementNode.catchNode
+//            if (catchNode.catchParameter == null) {
+//                compileBlock(catchNode.block)
+//            } else {
+//                pushLexicalEnv
+//                pushLexicalEnv
+//                // errorObj, oldEnv, oldEnv
+//                invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
+//                // errorObj, oldEnv, catchEnv
+//                catchNode.catchParameter.boundNames().forEach { name ->
+//                    dup
+//                    ldc(name)
+//                    ldc(false)
+//                    invokevirtual(DeclarativeEnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+//                }
+//
+//                // errorObj, oldEnv, catchEnv
+//                dup_x1
+//                // errorObj, catchEnv, oldEnv, catchEnv
+//
+//                pushRunningContext
+//                // errorObj, catchEnv, oldEnv, catchEnv, context
+//                swap
+//                // errorObj, catchEnv, oldEnv, context, catchEnv
+//                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+//                // errorObj, catchEnv, oldEnv
+//
+//                dup2_x1
+//                // catchEnv, oldEnv, errorObj, catchEnv, oldEnv
+//                pop
+//                // catchEnv, oldEnv, errorObj, catchEnv
+//                swap
+//                // catchEnv, oldEnv, catchEnv, errorObj
+//                initializeBoundName(catchNode.catchParameter.identifierName)
+//                // catchEnv, oldEnv, catchEnv
+//                pop
+//                // catchEnv, oldEnv
+//
+//                // custom checkError with some additional behavior
+//                invokestatic(Agent::class, "hasError", Boolean::class)
+//                ifStatement(JumpCondition.True) {
+//                    pushRunningContext
+//                    // catchEnv, oldEnv, context
+//                    swap
+//                    // catchEnv, context, oldEnv
+//                    putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+//                    if (needsToPopContext) {
+//                        invokestatic(Agent::class, "popContext", void)
+//                    }
+//                    when (coerceType(methodStates.last().returnType)) {
+//                        coerceType(Completion::class) -> {
+//                            construct(Completion::class, Completion.Type::class, JSValue::class) {
+//                                getstatic(Completion.Type::class, "Return", Completion.Type::class)
+//                                pushRunningContext
+//                                getfield(ExecutionContext::class, "error", JSErrorObject::class)
+//                            }
+//                        }
+//                        else -> {
+//                            pushRunningContext
+//                            getfield(ExecutionContext::class, "error", JSErrorObject::class)
+//                        }
+//                    }
+//                    areturn
+//                }
+//
+//                // catchEnv, oldEnv
+//                compileBlock(catchNode.block)
+//                // catchEnv, oldEnv
+//                pushRunningContext
+//                // catchEnv, oldEnv, context
+//                swap
+//                // catchEnv, context, oldEnv
+//                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+//                // catchEnv
+//                pop
+//            }
         }
     }
 

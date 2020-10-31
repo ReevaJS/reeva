@@ -554,13 +554,23 @@ class Parser(text: String) {
             return null
         }
 
-        val catchBlock = parseCatch(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
-            expected("catch keyword")
+        val catchBlock = parseCatch(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return))
+
+        val finallyBlock = if (tokenType == TokenType.Finally) {
             consume()
+            parseBlock(suffixes.filter(Sfx.Yield, Sfx.Await, Sfx.Return)) ?: run {
+                expected("block")
+                consume()
+                return null
+            }
+        } else null
+
+        if (catchBlock == null && finallyBlock == null) {
+            expected("'catch' or 'finally' keyword")
             return null
         }
 
-        return TryStatementNode(tryBlock, catchBlock)
+        return TryStatementNode(tryBlock, catchBlock, finallyBlock)
     }
 
     private fun parseCatch(suffixes: Suffixes): CatchNode? {
