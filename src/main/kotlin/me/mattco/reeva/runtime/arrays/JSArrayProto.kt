@@ -297,6 +297,23 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return JSUndefined
     }
 
+    @JSMethod("join", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun join(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        val length = Operations.lengthOfArrayLike(obj)
+        val sep = if (arguments.isEmpty()) "," else Operations.toString(arguments[0]).string
+
+        return buildString {
+            for (i in 0 until length) {
+                if (i > 0)
+                    append(sep)
+                val element = obj.get(i)
+                if (!element.isNullish)
+                    append(Operations.toString(element).string)
+            }
+        }.toValue()
+    }
+
     @JSMethod("keys", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun keys(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
@@ -313,6 +330,15 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         return createArrayIterator(realm, obj, PropertyKind.Value)
+    }
+
+    @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        val func = obj.get("join")
+        if (Operations.isCallable(func))
+            return Operations.call(func, obj)
+        return realm.objectProto.toString(thisValue, arguments)
     }
 
     private fun flattenIntoArray(
