@@ -147,7 +147,7 @@ class Parser(text: String) {
                 break
             }
             discardState()
-            declarations.add(declaration)
+            declarations.add(declaration2)
         }
 
         return VariableDeclarationList(declarations)
