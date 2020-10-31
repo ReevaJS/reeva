@@ -1,5 +1,8 @@
 package me.mattco.reeva.lexer
 
+import me.mattco.reeva.utils.hexValue
+import me.mattco.reeva.utils.isHexDigit
+
 data class Token(
     val type: TokenType,
     val trivia: String,
@@ -88,8 +91,43 @@ data class Token(
                         '\\' -> append('\\')
                         '"' -> append('"')
                         '\'' -> append('\'')
-                        'x' -> TODO()
-                        'u' -> TODO()
+                        'x' -> {
+                            if (i + 2 >= value.length - 1)
+                                TODO()
+
+                            val first = value[++i]
+                            val second = value[++i]
+
+                            if (!first.isHexDigit() || !second.isHexDigit())
+                                TODO()
+
+                            appendCodePoint(first.hexValue() * 16 + second.hexValue())
+                        }
+                        'u' -> {
+                            if (i + 1 >= value.length - 1)
+                                TODO()
+
+                            val firstCh = value[++i]
+                            if (firstCh == '{') {
+                                TODO()
+                            } else {
+                                if (i + 3 >= value.length - 1)
+                                    TODO()
+                                if (!firstCh.isHexDigit())
+                                    TODO()
+
+                                var codePoint = firstCh.hexValue()
+
+                                for (j in 0..2) {
+                                    val ch = value[++i]
+                                    if (!ch.isHexDigit())
+                                        TODO()
+                                    codePoint = (codePoint shl 4) or ch.hexValue()
+                                }
+
+                                appendCodePoint(codePoint)
+                            }
+                        }
                         else -> TODO()
                     }
                 } else {
