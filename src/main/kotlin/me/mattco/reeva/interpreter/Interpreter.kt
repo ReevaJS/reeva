@@ -1009,14 +1009,13 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
     }
 
     private fun interpretLiteral(literalNode: LiteralNode): JSValue {
-        val value = when (literalNode) {
+        return when (literalNode) {
             is NullNode -> JSNull
             is BooleanNode -> literalNode.value.toValue()
             is NumericLiteralNode -> literalNode.value.toValue()
             is StringLiteralNode -> literalNode.value.toValue()
             else -> unreachable()
         }
-        return value
     }
 
     private fun interpretNewExpression(newExpressionNode: NewExpressionNode): JSValue {
@@ -1061,8 +1060,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         val ref = interpretExpression(callExpressionNode.target)
         val func = Operations.getValue(ref)
         val args = argumentsListEvaluation(callExpressionNode.arguments)
-        val result = Operations.evaluateCall(func, ref, args, false)
-        return result
+        return Operations.evaluateCall(func, ref, args, false)
     }
 
     private fun interpretObjectLiteral(objectLiteralNode: ObjectLiteralNode): JSValue {
@@ -1084,11 +1082,85 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                     val propValue = Operations.getValue(exprValue)
                     Operations.createDataPropertyOrThrow(obj, propName.toValue(), propValue)
                 }
-                PropertyDefinitionNode.Type.Method -> TODO()
+                PropertyDefinitionNode.Type.Method -> {
+                    val method = property.first as MethodDefinitionNode
+
+                    when (method.type) {
+                        MethodDefinitionNode.Type.Normal -> {
+                            val (key, closure) = defineMethod(method, obj)
+                            setFunctionName(closure, key)
+                            Operations.definePropertyOrThrow(
+                                obj,
+                                key,
+                                Descriptor(closure, Descriptor.CONFIGURABLE or Descriptor.ENUMERABLE or Descriptor.WRITABLE)
+                            )
+                        }
+                        MethodDefinitionNode.Type.Getter -> {
+                            val propKey = Operations.toPropertyKey(evaluatePropertyName(method.identifier))
+                            val closure = ordinaryFunctionCreate(
+                                realm.functionProto,
+                                "TODO",
+                                method.parameters,
+                                method.body,
+                                JSFunction.ThisMode.NonLexical,
+                                false,
+                                Agent.runningContext.lexicalEnv!!,
+                            )
+                            Operations.makeMethod(closure, obj)
+                            setFunctionName(closure, propKey, "get")
+                            Operations.definePropertyOrThrow(
+                                obj,
+                                propKey,
+                                Descriptor(JSEmpty, Descriptor.CONFIGURABLE or Descriptor.ENUMERABLE, closure)
+                            )
+                        }
+                        MethodDefinitionNode.Type.Setter -> {
+                            val propKey = Operations.toPropertyKey(evaluatePropertyName(method.identifier))
+                            val closure = ordinaryFunctionCreate(
+                                realm.functionProto,
+                                "TODO",
+                                method.parameters,
+                                method.body,
+                                JSFunction.ThisMode.NonLexical,
+                                false,
+                                Agent.runningContext.lexicalEnv!!,
+                            )
+                            Operations.makeMethod(closure, obj)
+                            setFunctionName(closure, propKey, "set")
+                            Operations.definePropertyOrThrow(
+                                obj,
+                                propKey,
+                                Descriptor(JSEmpty, Descriptor.CONFIGURABLE or Descriptor.ENUMERABLE, setter = closure)
+                            )
+                        }
+                        MethodDefinitionNode.Type.Generator -> TODO()
+                        MethodDefinitionNode.Type.Async -> TODO()
+                        MethodDefinitionNode.Type.AsyncGenerator -> TODO()
+                    }
+                }
                 PropertyDefinitionNode.Type.Spread -> TODO()
             }
         }
         return obj
+    }
+
+    data class DefinedMethod(val key: PropertyKey, val closure: JSFunction)
+
+    private fun defineMethod(method: MethodDefinitionNode, obj: JSObject, functionPrototype: JSObject? = null): DefinedMethod {
+        expect(method.type == MethodDefinitionNode.Type.Normal)
+
+        val propKey = evaluatePropertyName(method.identifier)
+        val closure = ordinaryFunctionCreate(
+            functionPrototype ?: realm.functionProto,
+            "TODO",
+            method.parameters,
+            method.body ,
+            JSFunction.ThisMode.NonLexical,
+            false,
+            Agent.runningContext.lexicalEnv!!,
+        )
+        Operations.makeMethod(closure, obj)
+        return DefinedMethod(Operations.toPropertyKey(propKey), closure)
     }
 
     private fun evaluatePropertyName(propertyName: ASTNode): JSValue {

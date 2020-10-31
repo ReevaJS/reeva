@@ -12,7 +12,7 @@ abstract class JSFunction(
     realm: Realm,
     val thisMode: ThisMode,
     var envRecord: EnvRecord? = null,
-    val homeObject: JSValue = JSUndefined,
+    var homeObject: JSValue = JSUndefined,
     val isClassConstructor: Boolean = false,
     val isStrict: Boolean = false,
     prototype: JSObject = realm.functionProto,

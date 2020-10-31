@@ -13,7 +13,6 @@ import me.mattco.reeva.lexer.TokenType
 import me.mattco.reeva.utils.all
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
-import kotlin.properties.Delegates
 
 class Parser(text: String) {
     private val tokens = Lexer(text).toList() + Token(TokenType.Eof, "", "", SourceLocation(-1, -1), SourceLocation(-1, -1))
@@ -1369,9 +1368,53 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseMethodDefinition(suffixes: Suffixes): PropertyDefinitionNode? {
-        // TODO
-        return null
+    private fun parseMethodDefinition(suffixes: Suffixes): MethodDefinitionNode? {
+        saveState()
+        var type = MethodDefinitionNode.Type.Normal
+
+        val name = parsePropertyNameNode(suffixes.filter(Sfx.Yield, Sfx.Await))?.let {
+            if (it.expr is IdentifierNode && it.expr.identifierName in listOf("get", "set")) {
+                val newName = parsePropertyNameNode(suffixes.filter(Sfx.Yield, Sfx.Await))
+                if (newName != null) {
+                    type = if (it.expr.identifierName == "get") {
+                        MethodDefinitionNode.Type.Getter
+                    } else MethodDefinitionNode.Type.Setter
+                    return@let newName
+                }
+            }
+            it
+        }
+
+        if (name == null || tokenType != TokenType.OpenParen) {
+            loadState()
+            return null
+        }
+        consume()
+        discardState()
+
+        val params = parseFormalParameters(suffixes.without(Sfx.Yield, Sfx.Await)) ?: run {
+            expected("parameters")
+            consume()
+            return null
+        }
+
+        consume(TokenType.CloseParen)
+
+        if (type == MethodDefinitionNode.Type.Getter && params.functionParameters.parameters.isNotEmpty()) {
+            syntaxError("expected object literal getter to have zero parameters")
+            return null
+        }
+
+        if (type == MethodDefinitionNode.Type.Setter && params.functionParameters.parameters.size != 1) {
+            syntaxError("expected object literal setter to have one parameter")
+            return null
+        }
+
+        consume(TokenType.OpenCurly)
+        val body = parseFunctionBody(Suffixes())
+        consume(TokenType.CloseCurly)
+
+        return MethodDefinitionNode(name, params, FunctionStatementList(body), type)
     }
 
     private fun parsePropertyNameNode(suffixes: Suffixes): PropertyNameNode? {

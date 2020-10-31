@@ -2,6 +2,7 @@ package me.mattco.reeva.ast.literals
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
+import me.mattco.reeva.ast.statements.StatementListNode
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.utils.unreachable
@@ -78,5 +79,21 @@ class PropertyNameNode(val expr: ExpressionNode, val isComputed: Boolean) : Node
         // This is kinda scuffed
         expr is NumericLiteralNode -> expr.value.toString()
         else -> unreachable()
+    }
+}
+
+class MethodDefinitionNode(
+    val identifier: PropertyNameNode,
+    val parameters: FormalParametersNode,
+    val body: FunctionStatementList,
+    val type: Type
+) : NodeBase(listOfNotNull(identifier, parameters, body)) {
+    enum class Type {
+        Normal,
+        Getter,
+        Setter,
+        Generator,
+        Async,
+        AsyncGenerator,
     }
 }

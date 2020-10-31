@@ -42,10 +42,10 @@ data class Descriptor(
         get() = attributes and HAS_WRITABLE != 0
 
     val hasGetter: Boolean
-        get() = attributes and HAS_GETTER != 0
+        get() = getter != JSEmpty
 
     val hasSetter: Boolean
-        get() = attributes and HAS_SETTER != 0
+        get() = setter != JSEmpty
 
     val isConfigurable: Boolean
         get() = attributes and CONFIGURABLE != 0
@@ -75,14 +75,6 @@ data class Descriptor(
 
     fun setHasWritable() = apply {
         attributes = attributes or HAS_WRITABLE
-    }
-
-    fun setHasGetter() = apply {
-        attributes = attributes or HAS_GETTER
-    }
-
-    fun setHasSetter() = apply {
-        attributes = attributes or HAS_SETTER
     }
 
     fun setConfigurable(configurable: Boolean = true) = apply {
@@ -170,11 +162,9 @@ data class Descriptor(
         const val CONFIGURABLE = 1 shl 0
         const val ENUMERABLE = 1 shl 1
         const val WRITABLE = 1 shl 2
-        const val HAS_GETTER = 1 shl 3
-        const val HAS_SETTER = 1 shl 4
-        const val HAS_CONFIGURABLE = 1 shl 5
-        const val HAS_ENUMERABLE = 1 shl 6
-        const val HAS_WRITABLE = 1 shl 7
+        const val HAS_CONFIGURABLE = 1 shl 3
+        const val HAS_ENUMERABLE = 1 shl 4
+        const val HAS_WRITABLE = 1 shl 5
         const val HAS_BASIC = HAS_CONFIGURABLE or HAS_ENUMERABLE or HAS_WRITABLE
 
         const val defaultAttributes = CONFIGURABLE or ENUMERABLE or WRITABLE or HAS_BASIC

@@ -1127,8 +1127,10 @@ object Operations {
             currentDesc.setActualValue(target, newDesc.getActualValue(target))
         }
 
-        currentDesc.getter = newDesc.getter
-        currentDesc.setter = newDesc.setter
+        if (newDesc.hasGetter)
+            currentDesc.getter = newDesc.getter
+        if (newDesc.hasSetter)
+            currentDesc.setter = newDesc.setter
 
         if (newDesc.hasConfigurable)
             currentDesc.setConfigurable(newDesc.isConfigurable)
@@ -1211,6 +1213,13 @@ object Operations {
         if (writablePrototype)
             attrs = attrs or Descriptor.WRITABLE
         definePropertyOrThrow(function, "prototype".key(), Descriptor(realProto, attrs))
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("9.2.7")
+    fun makeMethod(function: JSFunction, homeObject: JSObject): JSValue {
+        function.homeObject = homeObject
+        return JSUndefined
     }
 
     @JSThrows
