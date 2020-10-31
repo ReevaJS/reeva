@@ -2,6 +2,7 @@ package me.mattco.reeva.interpreter
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
+import me.mattco.reeva.ast.expressions.TemplateLiteralNode
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.core.*
@@ -901,8 +902,17 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             is UpdateExpressionNode -> interpretUpdateExpression(expression)
             is ParenthesizedExpressionNode -> interpretExpression(expression.target)
             is ForBindingNode -> interpretForBinding(expression)
+            is TemplateLiteralNode -> interpretTemplateLiteral(expression)
             else -> unreachable()
         }
+    }
+
+    private fun interpretTemplateLiteral(templateLiteralNode: TemplateLiteralNode): JSValue {
+        return buildString {
+            templateLiteralNode.parts.forEach {
+                append(Operations.toString(Operations.getValue(interpretExpression(it))))
+            }
+        }.toValue()
     }
 
     private fun interpretForBinding(forBindingNode: ForBindingNode): JSValue {

@@ -76,12 +76,12 @@ class Lexer(private val source: String) : Iterable<Token> {
                 tokenType = TokenType.TemplateLiteralStart
                 templateStates.add(TemplateState())
             } else {
-                if (templateStates.last().inExpr) {
+                tokenType = if (templateStates.last().inExpr) {
                     templateStates.add(TemplateState())
-                    tokenType = TokenType.TemplateLiteralStart
+                    TokenType.TemplateLiteralStart
                 } else {
                     templateStates.removeLast()
-                    tokenType = TokenType.TemplateLiteralEnd
+                    TokenType.TemplateLiteralEnd
                 }
             }
         } else if (inTemplate && templateStates.last().let { it.inExpr && it.openBracketCount == 0 } && char == '}') {
@@ -89,20 +89,24 @@ class Lexer(private val source: String) : Iterable<Token> {
             tokenType = TokenType.TemplateLiteralExprEnd
             templateStates.last().inExpr = false
         } else if (inTemplate && !templateStates.last().inExpr) {
-            if (isDone) {
-                tokenType = TokenType.UnterminatedTemplateLiteral
-                templateStates.removeLast()
-            } else if (match('$', '{')) {
-                tokenType = TokenType.TemplateLiteralExprStart
-                consume(2)
-                templateStates.last().inExpr = true
-            } else {
-                while (!match('$', '{') && char != '`' && !isDone) {
-                    if (match('\\', '$') || match('\\', '`'))
-                        consume()
-                    consume()
+            when {
+                isDone -> {
+                    tokenType = TokenType.UnterminatedTemplateLiteral
+                    templateStates.removeLast()
                 }
-                tokenType = TokenType.TemplateLiteralString
+                match('$', '{') -> {
+                    tokenType = TokenType.TemplateLiteralExprStart
+                    consume(2)
+                    templateStates.last().inExpr = true
+                }
+                else -> {
+                    while (!match('$', '{') && char != '`' && !isDone) {
+                        if (match('\\', '$') || match('\\', '`'))
+                            consume()
+                        consume()
+                    }
+                    tokenType = TokenType.TemplateLiteralString
+                }
             }
         } else if (isIdentStart()) {
             do {
@@ -250,7 +254,7 @@ class Lexer(private val source: String) : Iterable<Token> {
         if (templateStates.isNotEmpty() && templateStates.last().inExpr) {
             if (tokenType == TokenType.OpenCurly) {
                 templateStates.last().openBracketCount++
-            } else {
+            } else if (tokenType == TokenType.CloseCurly) {
                 templateStates.last().openBracketCount--
             }
         }

@@ -2,6 +2,7 @@ package me.mattco.reeva.parser
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
+import me.mattco.reeva.ast.expressions.TemplateLiteralNode
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.literals.PropertyNameNode
 import me.mattco.reeva.ast.statements.*
@@ -1204,7 +1205,7 @@ class Parser(text: String) {
             parseAsyncFunctionExpression(newSuffixes) ?:
             parseAsyncGeneratorExpression(newSuffixes) ?:
             parseRegularExpressionLiteral(newSuffixes) ?:
-            parseTemplateLiteral(newSuffixes)
+            parseTemplateLiteral(newSuffixes.without(Sfx.Tagged))
 
         if (result != null)
             return result
@@ -1436,8 +1437,46 @@ class Parser(text: String) {
     }
 
     private fun parseTemplateLiteral(suffixes: Suffixes): PrimaryExpressionNode? {
-        // TODO
-        return null
+        if (tokenType != TokenType.TemplateLiteralStart)
+            return null
+
+        consume()
+
+        val parts = mutableListOf<ExpressionNode>()
+
+        while (tokenType != TokenType.TemplateLiteralEnd) {
+            if (tokenType == TokenType.UnterminatedTemplateLiteral) {
+                consume()
+                expected("template literal terminator")
+                return null
+            }
+
+            when (tokenType) {
+                TokenType.TemplateLiteralString -> parts.add(StringLiteralNode(consume().value))
+                TokenType.TemplateLiteralExprStart -> {
+                    consume()
+                    parts.add(parseExpression(suffixes.filter(Sfx.Yield, Sfx.Await).withIn) ?: run {
+                        expected("expression")
+                        consume()
+                        return null
+                    })
+                    if (tokenType != TokenType.TemplateLiteralExprEnd) {
+                        expected("'}'")
+                        consume()
+                        return null
+                    }
+                    consume()
+                }
+                else -> {
+                    unexpected(tokenType.name)
+                    consume()
+                    return null
+                }
+            }
+        }
+
+        consume(TokenType.TemplateLiteralEnd)
+        return TemplateLiteralNode(parts)
     }
 
     private fun parseCPEAAPL(suffixes: Suffixes): CPEAAPLNode? {

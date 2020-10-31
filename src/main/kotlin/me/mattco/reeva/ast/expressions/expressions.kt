@@ -132,3 +132,5 @@ class YieldExpressionNode(
 }
 
 class ParenthesizedExpressionNode(val target: ExpressionNode) : NodeBase(listOf(target)), PrimaryExpressionNode
+
+class TemplateLiteralNode(val parts: List<ExpressionNode>) : NodeBase(parts), PrimaryExpressionNode
