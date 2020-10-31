@@ -49,7 +49,7 @@ data class Token(
         || type == TokenType.Var
         || type == TokenType.Void
         || type == TokenType.While
-        || type == TokenType.Yield;
+        || type == TokenType.Yield
 
     fun asDouble(): Double {
         if (type != TokenType.NumericLiteral)

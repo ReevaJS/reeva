@@ -792,6 +792,8 @@ class Parser(text: String) {
     }
 
     private fun parseIdentifierName(): IdentifierNode? {
+        if (!token.isIdentifierName)
+            return null
         return IdentifierNode(consume().value)
     }
 
