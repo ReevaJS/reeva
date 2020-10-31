@@ -4,22 +4,20 @@ package me.mattco.reeva.runtime
 
 import me.mattco.reeva.compiler.JSScriptFunction
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.core.ExecutionContext
+import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
+import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.builtins.JSProxyObject
-import me.mattco.reeva.runtime.errors.JSRangeErrorObject
-import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.functions.JSFunction
-import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
+import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.wrappers.JSBooleanObject
 import me.mattco.reeva.runtime.wrappers.JSNumberObject
 import me.mattco.reeva.runtime.wrappers.JSStringObject
@@ -1040,7 +1038,13 @@ object Operations {
     }
 
     @JSThrows
-    fun validateAndApplyPropertyDescriptor(target: JSObject?, property: PropertyKey?, extensible: Boolean, newDesc: Descriptor, currentDesc: Descriptor?): Boolean {
+    fun validateAndApplyPropertyDescriptor(
+        target: JSObject?,
+        property: PropertyKey?,
+        extensible: Boolean,
+        newDesc: Descriptor,
+        currentDesc: Descriptor?
+    ): Boolean {
         if (currentDesc == null) {
             if (!extensible)
                 return false
@@ -1059,18 +1063,20 @@ object Operations {
             if (currentDesc.run { hasConfigurable && !isConfigurable })
                 return false
             if (currentDesc.isDataDescriptor) {
-                target?.internalSet(property!!, Descriptor(
-                    JSUndefined,
-                    currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
-                    newDesc.getter,
-                    newDesc.setter,
-                )
+                target?.internalSet(
+                    property!!, Descriptor(
+                        JSUndefined,
+                        currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
+                        newDesc.getter,
+                        newDesc.setter,
+                    )
                 )
             } else {
-                target?.internalSet(property!!, Descriptor(
-                    newDesc.getActualValue(target),
-                    currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
-                )
+                target?.internalSet(
+                    property!!, Descriptor(
+                        newDesc.getActualValue(target),
+                        currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
+                    )
                 )
             }
         } else if (currentDesc.isDataDescriptor && newDesc.isDataDescriptor) {
@@ -1216,6 +1222,41 @@ object Operations {
             throwTypeError("TODO: message")
         return construct(ctor, listOf(length.toValue()))
     }
+
+    fun utf16SurrogatePairToCodePoint(leading: Int, trailing: Int): Int {
+        return (leading - 0xd800) * 0x400 + (trailing - 0xdc00) + 0x10000
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("10.1.4")
+    fun codePointAt(string: String, position: Int): CodepointRecord {
+        val size = string.length
+        ecmaAssert(position in 0 until size)
+        val first = string[position]
+        if (!first.isHighSurrogate() && !first.isLowSurrogate())
+            return CodepointRecord(first.toInt(), 1, false)
+        if (first.isLowSurrogate() || position + 1 == size)
+            return CodepointRecord(first.toInt(), 1, true)
+        val second = string[position + 1]
+        if (!second.isLowSurrogate())
+            return CodepointRecord(first.toInt(), 1, true)
+        return CodepointRecord(utf16SurrogatePairToCodePoint(first.toInt(), second.toInt()), 2, false)
+    }
+
+    @JSThrows
+    @JvmStatic @ECMAImpl("10.1.5")
+    fun stringToCodePoints(string: String): List<CodepointRecord> {
+        val codepoints = mutableListOf<CodepointRecord>()
+        var position = 0
+        while (position < string.length) {
+            val record = codePointAt(string, position)
+            codepoints.add(record)
+            position += record.codeUnitCount
+        }
+        return codepoints
+    }
+
+    data class CodepointRecord(val codepoint: Int, val codeUnitCount: Int, val isUnpairedSurrogate: Boolean)
 
     @JSThrows
     @JvmStatic @ECMAImpl("12.3.3")
