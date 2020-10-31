@@ -1469,7 +1469,7 @@ object Operations {
 
     @ECMAImpl("26.6.1.3")
     fun createResolvingFunctions(promise: JSPromiseObject): Pair<JSFunction, JSFunction> {
-        val resolvedStatus = ResolvedStatus(false)
+        val resolvedStatus = Wrapper(false)
         val resolve = JSResolveFunction.create(promise, resolvedStatus, promise.realm)
         val reject = JSRejectFunction.create(promise, resolvedStatus, promise.realm)
         return resolve to reject
@@ -1488,11 +1488,11 @@ object Operations {
     }
 
     @ECMAImpl("26.6.1.5")
-    fun newPromiseCapability(ctor: JSFunction): PromiseCapability {
+    fun newPromiseCapability(ctor: JSValue): PromiseCapability {
         if (!isConstructor(ctor))
             throwTypeError("TODO: message")
         val capability = PromiseCapability(JSEmpty, null, null)
-        val executor = JSCapabilitiesExecutor.create(ctor.realm, capability)
+        val executor = JSCapabilitiesExecutor.create((ctor as JSObject).realm, capability)
         val promise = construct(ctor, listOf(executor))
         capability.promise = promise
         return capability
@@ -1533,7 +1533,7 @@ object Operations {
         }
     }
 
-    data class ResolvedStatus(var resolved: Boolean)
+    data class Wrapper<T>(var value: T)
 
     @ECMAImpl("26.6.1.9")
     fun hostPromiseRejectionTracker(promise: JSPromiseObject, operation: String) {
@@ -1598,6 +1598,15 @@ object Operations {
         // TODO: then is always an object?
         val thenRealm = if (then is JSObject) then.realm else Agent.runningContext.realm
         return PromiseReactionJob(job, thenRealm)
+    }
+
+    @ECMAImpl("26.6.4.1.1")
+    fun getPromiseResolve(constructor: JSValue): JSValue {
+        ecmaAssert(isConstructor(constructor))
+        val resolve = (constructor as JSObject).get("resolve")
+        if (!isCallable(resolve))
+            throwTypeError("TODO: message")
+        return resolve
     }
 
     @ECMAImpl("26.6.5.4.1")

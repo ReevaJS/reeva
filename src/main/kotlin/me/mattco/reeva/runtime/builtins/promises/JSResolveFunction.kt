@@ -13,13 +13,13 @@ import me.mattco.reeva.utils.argument
 
 class JSResolveFunction private constructor(
     val promise: JSPromiseObject,
-    var alreadyResolved: Operations.ResolvedStatus,
+    var alreadyResolved: Operations.Wrapper<Boolean>,
     realm: Realm
 ) : JSNativeFunction(realm, "", 1) {
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        if (alreadyResolved.resolved)
+        if (alreadyResolved.value)
             return JSUndefined
-        alreadyResolved.resolved = true
+        alreadyResolved.value = true
 
         val resolution = arguments.argument(0)
         if (resolution.sameValue(promise)) {
@@ -52,7 +52,7 @@ class JSResolveFunction private constructor(
     companion object {
         fun create(
             promise: JSPromiseObject,
-            alreadyResolved: Operations.ResolvedStatus,
+            alreadyResolved: Operations.Wrapper<Boolean>,
             realm: Realm
         ) = JSResolveFunction(promise, alreadyResolved, realm).also { it.init() }
     }
