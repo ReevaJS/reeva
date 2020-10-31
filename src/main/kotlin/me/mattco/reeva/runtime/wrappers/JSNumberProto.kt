@@ -10,7 +10,9 @@ import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.utils.JSArguments
+import me.mattco.reeva.utils.throwRangeError
 import me.mattco.reeva.utils.throwTypeError
+import me.mattco.reeva.utils.toValue
 
 class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JSNumber.ZERO) {
     override fun init() {
@@ -50,7 +52,22 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
     @ECMAImpl("20.1.3.3")
     @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
-        TODO()
+        // TODO: Spec-compliant conversion
+        val x = thisNumberValue(thisValue)
+        val radix = if (arguments.isEmpty()) {
+            10
+        } else Operations.toIntegerOrInfinity(arguments[0]).asInt
+
+        if (radix < 2 || radix > 36)
+            throwRangeError("invalid radix: $radix")
+
+        return if (x.isInt) {
+            x.asInt.toString(radix).toValue()
+        } else {
+            if (radix != 10)
+                TODO("Double -> String conversion with radix != 10")
+            x.asDouble.toString().toValue()
+        }
     }
 
     @JSThrows
