@@ -24,14 +24,15 @@ dependencies {
     implementation 'org.ow2.asm:asm-tree:8.0.1'
     implementation 'org.ow2.asm:asm-commons:8.0.1'
     implementation 'com.github.mattco98:Koffee:3b4b48e9ff'
-    testImplementation 'junit:junit:4.12'
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.7.0"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.7.0"
     testImplementation 'com.charleskorn.kaml:kaml:0.25.0'
     testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
     testImplementation 'org.jetbrains.kotlinx:kotlinx-serialization-runtime-jvm:1.0-M1-1.4.0-rc'
 }
 
 test {
-    useJUnit()
+    useJUnitPlatform()
 }
 
 compileKotlin {
