@@ -6,6 +6,7 @@ import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.JSArguments
 
 abstract class JSFunction(
     realm: Realm,
@@ -22,10 +23,10 @@ abstract class JSFunction(
     var isConstructable: Boolean = false
 
     @JSThrows
-    abstract fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue
+    abstract fun call(thisValue: JSValue, arguments: JSArguments): JSValue
 
     @JSThrows
-    abstract fun construct(arguments: List<JSValue>, newTarget: JSValue): JSValue
+    abstract fun construct(arguments: JSArguments, newTarget: JSValue): JSValue
 
     enum class ThisMode {
         Lexical,

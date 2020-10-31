@@ -38,6 +38,7 @@ open class JSGlobalObject protected constructor(
         set("Function", realm.functionCtor)
         set("Number", realm.numberCtor)
         set("Object", realm.objectCtor)
+        set("Promise", realm.promiseCtor)
         set("Proxy", realm.proxyCtor)
         set("RangeError", realm.rangeErrorCtor)
         set("ReferenceError", realm.referenceErrorCtor)

@@ -6,13 +6,19 @@ import me.mattco.reeva.compiler.JSScriptFunction
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
+import me.mattco.reeva.core.tasks.Microtask
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.builtins.JSProxyObject
+import me.mattco.reeva.runtime.builtins.promises.JSCapabilitiesExecutor
+import me.mattco.reeva.runtime.builtins.promises.JSPromiseObject
+import me.mattco.reeva.runtime.builtins.promises.JSRejectFunction
+import me.mattco.reeva.runtime.builtins.promises.JSResolveFunction
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -882,6 +888,24 @@ object Operations {
         }
     }
 
+    @JvmStatic @ECMAImpl("7.3.22")
+    fun speciesConstructor(obj: JSObject, defaultCtor: JSFunction): JSFunction {
+        val ctor = obj.get("constructor")
+        if (ctor == JSUndefined)
+            return defaultCtor
+        if (ctor !is JSObject)
+            throwTypeError("TODO: message")
+
+        val species = ctor.get(Realm.`@@species`)
+        if (species.isNullish)
+            return defaultCtor
+
+        if (isConstructor(species))
+            return species as JSFunction
+
+        throwTypeError("TODO: message")
+    }
+
     @JSThrows
     @JvmStatic @ECMAImpl("7.3.23")
     fun enumerableOwnPropertyNames(target: JSValue, kind: JSObject.PropertyKind): List<JSValue> {
@@ -1441,6 +1465,191 @@ object Operations {
                 throw e
             }
         }
+    }
+
+    @ECMAImpl("26.6.1.3")
+    fun createResolvingFunctions(promise: JSPromiseObject): Pair<JSFunction, JSFunction> {
+        val resolvedStatus = ResolvedStatus(false)
+        val resolve = JSResolveFunction.create(promise, resolvedStatus, promise.realm)
+        val reject = JSRejectFunction.create(promise, resolvedStatus, promise.realm)
+        return resolve to reject
+    }
+
+    @ECMAImpl("26.6.1.4")
+    fun fulfillPromise(promise: JSPromiseObject, reason: JSValue): JSValue {
+        ecmaAssert(promise.state == PromiseState.Pending)
+        val reactions = promise.fulfillReactions.toList()
+        promise.result = reason
+        promise.fulfillReactions.clear()
+        promise.rejectReactions.clear()
+        promise.state = PromiseState.Fulfilled
+
+        return triggerPromiseReactions(reactions, reason)
+    }
+
+    @ECMAImpl("26.6.1.5")
+    fun newPromiseCapability(ctor: JSFunction): PromiseCapability {
+        if (!isConstructor(ctor))
+            throwTypeError("TODO: message")
+        val capability = PromiseCapability(JSEmpty, null, null)
+        val executor = JSCapabilitiesExecutor.create(ctor.realm, capability)
+        val promise = construct(ctor, listOf(executor))
+        capability.promise = promise
+        return capability
+    }
+
+    @ECMAImpl("26.6.1.7")
+    internal fun rejectPromise(promise: JSPromiseObject, reason: JSValue): JSValue {
+        ecmaAssert(promise.state == PromiseState.Pending)
+        val reactions = promise.rejectReactions.toList()
+        promise.result = reason
+        promise.fulfillReactions.clear()
+        promise.rejectReactions.clear()
+        promise.state = PromiseState.Rejected
+        if (!promise.isHandled) {
+            hostPromiseRejectionTracker(promise, "reject")
+        }
+
+        return triggerPromiseReactions(reactions, reason)
+    }
+
+    @ECMAImpl("26.6.1.8")
+    fun triggerPromiseReactions(reactions: List<PromiseReaction>, argument: JSValue): JSValue {
+        reactions.forEach { reaction ->
+            val job = newPromiseReactionJob(reaction, argument)
+            hostEnqueuePromiseJob(job.job, job.realm)
+        }
+        return JSUndefined
+    }
+
+    data class PromiseReaction(
+        val capability: PromiseCapability?,
+        val type: Type,
+        val handler: JSFunction?,
+    ) {
+        enum class Type {
+            Fulfill,
+            Reject,
+        }
+    }
+
+    data class ResolvedStatus(var resolved: Boolean)
+
+    @ECMAImpl("26.6.1.9")
+    fun hostPromiseRejectionTracker(promise: JSPromiseObject, operation: String) {
+        if (operation == "reject") {
+            val unhandledRejectionTask = object : Microtask() {
+                override fun execute(): JSValue {
+                    // If promise does not have any handlers by the time this microtask is ran, it
+                    // will not have any handlers, and we can print a warning
+                    if (!promise.isHandled)
+                        println("\u001b[31mUnhandled promise rejection: ${toString(promise.result)}\u001B[0m")
+                    return JSEmpty
+                }
+            }
+            Agent.activeAgent.submitMicrotask(unhandledRejectionTask)
+        }
+    }
+
+    @ECMAImpl("26.6.2.1")
+    fun newPromiseReactionJob(reaction: PromiseReaction, argument: JSValue): PromiseReactionJob {
+        val task = object : Microtask() {
+            override fun execute(): JSValue {
+                val handlerResult: Any = if (reaction.handler == null) {
+                    if (reaction.type == PromiseReaction.Type.Fulfill) {
+                        argument
+                    } else {
+                        ThrowException(argument)
+                    }
+                } else call(reaction.handler, JSUndefined, listOf(argument))
+
+                if (reaction.capability == null) {
+                    ecmaAssert(handlerResult !is ThrowException)
+                    return JSEmpty
+                }
+
+                return if (handlerResult is ThrowException) {
+                    call(reaction.capability.reject!!, JSUndefined, listOf(handlerResult.value))
+                } else {
+                    call(reaction.capability.resolve!!, JSUndefined, listOf(handlerResult as JSValue))
+                }
+            }
+        }
+
+        val handlerRealm = if (reaction.handler != null) reaction.handler.realm else null
+        return PromiseReactionJob(task, handlerRealm)
+    }
+
+    data class PromiseReactionJob(val job: Microtask, val realm: Realm?)
+
+    @ECMAImpl("26.6.2.2")
+    fun newPromiseResolveThenableJob(promise: JSPromiseObject, thenable: JSValue, then: JSValue): PromiseReactionJob {
+        val job = object : Microtask() {
+            override fun execute(): JSValue {
+                val (resolveFunction, rejectFunction) = createResolvingFunctions(promise)
+                return try {
+                    call(then, thenable, listOf(resolveFunction, rejectFunction))
+                } catch (e: ThrowException) {
+                    call(rejectFunction, JSUndefined, listOf(e.value))
+                }
+            }
+        }
+
+        // TODO: then is always an object?
+        val thenRealm = if (then is JSObject) then.realm else Agent.runningContext.realm
+        return PromiseReactionJob(job, thenRealm)
+    }
+
+    @ECMAImpl("26.6.5.4.1")
+    fun performPromiseThen(promise: JSPromiseObject, onFulfilled: JSValue, onRejected: JSValue, resultCapability: PromiseCapability?): JSValue {
+        val onFulfilledCallback = if (isCallable(onFulfilled)) {
+            onFulfilled as JSFunction
+        } else null
+        val onRejectedCallback = if (isCallable(onRejected)) {
+            onRejected as JSFunction
+        } else null
+
+        val fulfillReaction = PromiseReaction(resultCapability, PromiseReaction.Type.Fulfill, onFulfilledCallback)
+        val rejectReaction = PromiseReaction(resultCapability, PromiseReaction.Type.Reject, onRejectedCallback)
+
+        when (promise.state) {
+            PromiseState.Pending -> {
+                promise.fulfillReactions.add(fulfillReaction)
+                promise.rejectReactions.add(rejectReaction)
+            }
+            PromiseState.Fulfilled -> {
+                val fulfillJob = newPromiseReactionJob(fulfillReaction, promise.result)
+                hostEnqueuePromiseJob(fulfillJob.job, fulfillJob.realm)
+            }
+            else -> {
+                if (!promise.isHandled)
+                    hostPromiseRejectionTracker(promise, "handle")
+                val rejectJob = newPromiseReactionJob(rejectReaction, promise.result)
+                hostEnqueuePromiseJob(rejectJob.job, rejectJob.realm)
+            }
+        }
+
+        promise.isHandled = true
+
+        return resultCapability?.promise ?: JSUndefined
+    }
+
+    @ECMAImpl("8.4.4")
+    fun hostEnqueuePromiseJob(job: Microtask, realm: Realm?) {
+        // TODO: Use realm?
+        Agent.activeAgent.submitMicrotask(job)
+    }
+
+    data class PromiseCapability(
+        var promise: JSValue,
+        var resolve: JSFunction?,
+        var reject: JSFunction?,
+    )
+
+    enum class PromiseState {
+        Pending,
+        Fulfilled,
+        Rejected,
     }
 
     @JSThrows

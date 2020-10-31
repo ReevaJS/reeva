@@ -46,7 +46,7 @@ class Test262Runner(private var name: String?, private var script: String?, priv
         private val test262Directory = File("./src/test/resources/test262/")
         private val testDirectory = File(test262Directory, "test")
         private val harnessDirectory = File(test262Directory, "harness")
-        private val targetDirectory: File? = File(testDirectory, "built-ins/String")
+        private val targetDirectory: File? = File(testDirectory, "built-ins/Promise")
 //        private val targetDirectory: File? = null
         private lateinit var pretestScript: String
 

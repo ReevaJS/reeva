@@ -6,11 +6,10 @@ import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.arrays.JSArrayCtor
 import me.mattco.reeva.runtime.arrays.JSArrayProto
-import me.mattco.reeva.runtime.builtins.JSMathObject
-import me.mattco.reeva.runtime.builtins.JSONObject
+import me.mattco.reeva.runtime.builtins.*
+import me.mattco.reeva.runtime.builtins.promises.JSPromiseCtor
+import me.mattco.reeva.runtime.builtins.promises.JSPromiseProto
 import me.mattco.reeva.runtime.errors.*
-import me.mattco.reeva.runtime.builtins.JSProxyCtor
-import me.mattco.reeva.runtime.builtins.JSReflectObject
 import me.mattco.reeva.runtime.functions.JSFunctionCtor
 import me.mattco.reeva.runtime.functions.JSFunctionProto
 import me.mattco.reeva.runtime.global.JSConsole
@@ -42,6 +41,7 @@ class Realm {
     lateinit var symbolProto: JSSymbolProto private set
     lateinit var functionProto: JSFunctionProto private set
     lateinit var arrayProto: JSArrayProto private set
+    lateinit var promiseProto: JSPromiseProto private set
     lateinit var iteratorProto: JSIteratorProto private set
     lateinit var arrayIteratorProto: JSArrayIteratorProto private set
     lateinit var objectPropertyIteratorProto: JSObjectPropertyIteratorProto private set
@@ -63,6 +63,7 @@ class Realm {
     lateinit var functionCtor: JSFunctionCtor private set
     lateinit var arrayCtor: JSArrayCtor private set
     lateinit var proxyCtor: JSProxyCtor private set
+    lateinit var promiseCtor: JSPromiseCtor private set
 
     lateinit var errorCtor: JSErrorCtor private set
     lateinit var evalErrorCtor: JSEvalErrorCtor private set
@@ -96,6 +97,7 @@ class Realm {
         functionCtor = JSFunctionCtor.create(this)
         arrayCtor = JSArrayCtor.create(this)
         proxyCtor = JSProxyCtor.create(this)
+        promiseCtor = JSPromiseCtor.create(this)
 
         errorCtor = JSErrorCtor.create(this)
         evalErrorCtor = JSEvalErrorCtor.create(this)
@@ -109,6 +111,7 @@ class Realm {
         booleanProto = JSBooleanProto.create(this)
         stringProto = JSStringProto.create(this)
         arrayProto = JSArrayProto.create(this)
+        promiseProto = JSPromiseProto.create(this)
         iteratorProto = JSIteratorProto.create(this)
         arrayIteratorProto = JSArrayIteratorProto.create(this)
         objectPropertyIteratorProto = JSObjectPropertyIteratorProto.create(this)

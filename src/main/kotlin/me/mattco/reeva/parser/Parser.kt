@@ -792,9 +792,7 @@ class Parser(text: String) {
     }
 
     private fun parseIdentifierName(): IdentifierNode? {
-        return if (tokenType != TokenType.Identifier) {
-            null
-        } else IdentifierNode(consume().value)
+        return IdentifierNode(consume().value)
     }
 
     private fun parseYieldExpression(suffixes: Suffixes): ExpressionNode? {
@@ -850,7 +848,7 @@ class Parser(text: String) {
         }
 
         for (element in elements) {
-            if (!element.isSpread && element.node !is AssignmentExpressionNode && element.node !is IdentifierReferenceNode) {
+            if (!element.isSpread && element.node !is AssignmentExpressionNode && element.node !is CommaExpressionNode && element.node !is IdentifierReferenceNode) {
                 loadState()
                 return null
             }
@@ -858,7 +856,11 @@ class Parser(text: String) {
 
         discardState()
 
-        val parameters = elements.filterNot { it.isSpread }.map {
+        val parameters = elements.flatMap {
+            if (it.node is CommaExpressionNode) {
+                it.node.expressions.map { CPEAPPLPart(it, false) }
+            } else listOf(it)
+        }.filterNot { it.isSpread }.map {
             val (identifier, initializer) = if (it.node is AssignmentExpressionNode) {
                 expect(it.node.lhs is IdentifierReferenceNode)
                 BindingIdentifierNode(it.node.lhs.identifierName) to it.node.rhs
