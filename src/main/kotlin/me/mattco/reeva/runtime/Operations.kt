@@ -1507,6 +1507,15 @@ object Operations {
         return capability
     }
 
+    @ECMAImpl("26.6.1.6")
+    fun isPromise(value: JSValue): Boolean {
+        if (value is JSPromiseObject)
+            return true
+        if (value is JSProxyObject)
+            return isPromise(value.target)
+        return false
+    }
+
     @ECMAImpl("26.6.1.7")
     internal fun rejectPromise(promise: JSPromiseObject, reason: JSValue): JSValue {
         ecmaAssert(promise.state == PromiseState.Pending)

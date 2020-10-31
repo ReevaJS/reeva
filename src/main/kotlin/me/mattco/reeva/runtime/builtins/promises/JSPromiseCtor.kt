@@ -8,6 +8,7 @@ import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
+import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSUndefined
@@ -181,6 +182,30 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             Operations.invoke(nextPromise, "then".toValue(), listOf(resolveElement, resultCapability.reject!!))
             index++
         }
+    }
+
+    @JSMethod("reject", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun reject(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val capability = Operations.newPromiseCapability(thisValue)
+        Operations.call(capability.reject!!, JSUndefined, listOf(arguments.argument(0)))
+        return capability.promise
+    }
+
+    @JSMethod("resolve", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun resolve(thisValue: JSValue, arguments: JSArguments): JSValue {
+        if (thisValue !is JSObject)
+            throwTypeError("Promise.resolve called on incompatible object")
+
+        val argument = arguments.argument(0)
+        if (Operations.isPromise(argument)) {
+            val argCtor = (argument as JSObject).get("constructor")
+            if (argCtor.sameValue(thisValue))
+                return argument
+        }
+
+        val capability = Operations.newPromiseCapability(thisValue)
+        Operations.call(capability.resolve!!, JSUndefined, listOf(argument))
+        return capability.promise
     }
 
     private inline fun <T> ifAbruptRejectPromise(
