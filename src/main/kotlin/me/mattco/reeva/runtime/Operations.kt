@@ -1334,7 +1334,7 @@ object Operations {
             throwTypeError("object of type ${target.type} is not callable")
         if (tailPosition)
             TODO()
-        return call(target as JSFunction, thisValue, arguments.toList())
+        return call(target, thisValue, arguments.toList())
     }
 
     @JSThrows
