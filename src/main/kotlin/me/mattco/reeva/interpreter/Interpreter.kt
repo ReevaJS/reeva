@@ -160,7 +160,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         val calleeContext = Agent.runningContext
         val strict = function.isStrict
         val parameterNames = formals.boundNames()
-        val hasDuplicates = parameterNames.groupBy { it }.size != parameterNames.size
+        val hasDuplicates = parameterNames.distinct().size != parameterNames.size
         val simpleParameterList = formals.isSimpleParameterList()
         val hasParameterExpressions = formals.containsExpression()
         val varNames = body.varDeclaredNames()

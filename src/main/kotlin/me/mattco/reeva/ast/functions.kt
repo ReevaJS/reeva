@@ -174,6 +174,8 @@ class SingleNameBindingNode(
     val identifier: BindingIdentifierNode,
     val initializer: InitializerNode?
 ) : NodeBase(listOfNotNull(identifier, initializer)) {
+    override fun boundNames() = identifier.boundNames()
+
     override fun isSimpleParameterList() = initializer == null
 
     override fun hasInitializer() = initializer != null
