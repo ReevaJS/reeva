@@ -465,8 +465,6 @@ object Operations {
             return JSNumber.ZERO
 
         var int = floor(abs(number.asDouble)).toInt()
-        if (number.asDouble < 0)
-            int *= -1
         return JSNumber(int % MAX_32BIT_INT.toInt())
     }
 
