@@ -5,6 +5,7 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.annotations.JSNativePropertySetter
 import me.mattco.reeva.runtime.errors.JSRangeErrorObject
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -18,6 +19,13 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
     fun getLength(thisValue: JSValue): JSValue {
         expect(thisValue is JSObject)
         return thisValue.indexedProperties.arrayLikeSize.toValue()
+    }
+
+    @JSNativePropertySetter("length", Descriptor.WRITABLE)
+    fun setLength(thisValue: JSValue, newLength: JSValue): JSValue {
+        expect(thisValue is JSObject)
+        thisValue.indexedProperties.setArrayLikeSize(Operations.toLength(newLength).asInt)
+        return JSUndefined
     }
 
     @ECMAImpl("9.4.2.1", "[[DefineOwnProperty]]")
