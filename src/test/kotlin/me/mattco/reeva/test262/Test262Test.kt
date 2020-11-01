@@ -20,6 +20,8 @@ class Test262Test(private val script: String, private val metadata: Test262Metad
         }
 
         val realm = Reeva.makeRealm()
+        realm.initObjects()
+        realm.setGlobalObject(Test262GlobalObject.create(realm))
 
         val pretestResult = Reeva.evaluate("$requiredScript\n\n", realm)
         Assertions.assertTrue(!pretestResult.isError) {

@@ -33,8 +33,8 @@ class Test262Runner {
         val test262Directory = File("./src/test/resources/test262/")
         val testDirectory = File(test262Directory, "test")
         val harnessDirectory = File(test262Directory, "harness")
-//        val targetDirectory: File? = File(testDirectory, "built-ins/Promise")
-        val targetDirectory: File? = null
+        val targetDirectory: File? = File(testDirectory, "built-ins/Proxy")
+//        val targetDirectory: File? = null
         lateinit var pretestScript: String
 
         @BeforeAll
