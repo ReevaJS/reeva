@@ -321,7 +321,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
     }
 
     private fun interpretStatementList(statementListNode: StatementListNode): JSValue {
-        var lastValue: JSValue = JSEmpty
+        var lastValue: JSValue = JSUndefined
         statementListNode.statements.forEach { statement ->
             val result = interpretStatement(statement as StatementNode)
             if (result != JSEmpty)
