@@ -1122,24 +1122,26 @@ object Operations {
             return true
         }
 
-        if (newDesc.isDataDescriptor) {
-            // To distinguish undefined from a non-specified property
-            currentDesc.setActualValue(target, newDesc.getActualValue(target))
+        if (target != null) {
+            if (newDesc.isDataDescriptor) {
+                // To distinguish undefined from a non-specified property
+                currentDesc.setActualValue(target, newDesc.getActualValue(target))
+            }
+
+            if (newDesc.hasGetter)
+                currentDesc.getter = newDesc.getter
+            if (newDesc.hasSetter)
+                currentDesc.setter = newDesc.setter
+
+            if (newDesc.hasConfigurable)
+                currentDesc.setConfigurable(newDesc.isConfigurable)
+            if (newDesc.hasEnumerable)
+                currentDesc.setEnumerable(newDesc.isEnumerable)
+            if (newDesc.hasWritable)
+                currentDesc.setWritable(newDesc.isWritable)
+
+            target.internalSet(property!!, currentDesc)
         }
-
-        if (newDesc.hasGetter)
-            currentDesc.getter = newDesc.getter
-        if (newDesc.hasSetter)
-            currentDesc.setter = newDesc.setter
-
-        if (newDesc.hasConfigurable)
-            currentDesc.setConfigurable(newDesc.isConfigurable)
-        if (newDesc.hasEnumerable)
-            currentDesc.setEnumerable(newDesc.isEnumerable)
-        if (newDesc.hasWritable)
-            currentDesc.setWritable(newDesc.isWritable)
-
-        target?.internalSet(property!!, currentDesc)
 
         return true
     }
