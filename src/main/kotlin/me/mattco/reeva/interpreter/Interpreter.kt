@@ -1418,19 +1418,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                 JSUndefined
             }
             UnaryExpressionNode.Operator.Typeof -> {
-                val exprValue = Operations.getValue(exprRef)
-                when (exprValue) {
-                    is JSUndefined -> "undefined"
-                    is JSNull -> "object"
-                    is JSBoolean -> "boolean"
-                    is JSNumber -> "number"
-                    is JSString -> "string"
-                    is JSSymbol -> "symbol"
-                    is JSBigInt -> "bigint"
-                    is JSFunction -> "function"
-                    is JSObject -> "object"
-                    else -> unreachable()
-                }.toValue()
+                Operations.typeofOperator(Operations.getValue(exprRef))
             }
             UnaryExpressionNode.Operator.Plus -> {
                 val exprValue = Operations.getValue(exprRef)
