@@ -204,11 +204,21 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             }
         }
 
-        if (argumentsObjectNeeded) {
-            // TODO
-        }
+        val parameterBindings = if (argumentsObjectNeeded) {
+            val argsObject = if (strict || !simpleParameterList) {
+                Operations.createUnmappedArgumentsObject(arguments)
+            } else {
+                Operations.createMappedArgumentsObject(function, formals, arguments, env)
+            }
+            if (strict) {
+                env.createImmutableBinding("arguments", false)
+            } else {
+                env.createMutableBinding("arguments", false)
+            }
+            env.initializeBinding("arguments", argsObject)
+            parameterNames + listOf("arguments")
+        } else parameterNames
 
-        val parameterBindings = parameterNames
 
         formals.functionParameters.parameters.forEachIndexed { index, parameter ->
             val lhs = Operations.resolveBinding(parameter.bindingElement.binding.identifier.identifierName)

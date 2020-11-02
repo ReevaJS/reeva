@@ -2,6 +2,7 @@
 
 package me.mattco.reeva.runtime
 
+import me.mattco.reeva.ast.FormalParametersNode
 import me.mattco.reeva.compiler.JSScriptFunction
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ExecutionContext
@@ -14,12 +15,15 @@ import me.mattco.reeva.core.tasks.Microtask
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.arrays.JSArrayObject
+import me.mattco.reeva.runtime.builtins.JSMappedArgumentsObject
 import me.mattco.reeva.runtime.builtins.JSProxyObject
+import me.mattco.reeva.runtime.builtins.JSUnmappedArgumentsObject
 import me.mattco.reeva.runtime.builtins.promises.JSCapabilitiesExecutor
 import me.mattco.reeva.runtime.builtins.promises.JSPromiseObject
 import me.mattco.reeva.runtime.builtins.promises.JSRejectFunction
 import me.mattco.reeva.runtime.builtins.promises.JSResolveFunction
 import me.mattco.reeva.runtime.functions.JSFunction
+import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
@@ -1275,6 +1279,112 @@ object Operations {
         if (!isConstructor(ctor))
             throwTypeError("TODO: message")
         return construct(ctor, listOf(length.toValue()))
+    }
+
+    @ECMAImpl("9.4.4.6")
+    fun createUnmappedArgumentsObject(arguments: JSArguments): JSValue {
+        var realm = Agent.runningContext.realm
+        val obj = JSUnmappedArgumentsObject.create(realm)
+        definePropertyOrThrow(obj, "length".key(), Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE))
+        arguments.forEachIndexed { index, value ->
+            createDataPropertyOrThrow(obj, index.key(), value)
+        }
+        definePropertyOrThrow(
+            obj,
+            Realm.`@@iterator`.key(),
+            Descriptor(realm.arrayProto.get("values"), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        )
+
+        val typeErrorThrow = object : JSNativeFunction(realm, "", 0) {
+            override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
+                throwTypeError("TODO: message")
+            }
+
+            override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
+                throw IllegalStateException("Unexpected construction of %ThrowTypeError%")
+            }
+        }
+        definePropertyOrThrow(
+            obj,
+            "callee".key(),
+            Descriptor(JSEmpty, Descriptor.HAS_CONFIGURABLE or Descriptor.HAS_ENUMERABLE, getter = typeErrorThrow, setter = typeErrorThrow)
+        )
+
+        return obj
+    }
+
+    @ECMAImpl("9.4.4.7")
+    fun createMappedArgumentsObject(
+        function: JSFunction,
+        formals: FormalParametersNode,
+        arguments: JSArguments,
+        env: EnvRecord
+    ): JSMappedArgumentsObject {
+        ecmaAssert(formals.restParameter == null)
+        ecmaAssert(formals.functionParameters.parameters.all { it.bindingElement.binding.initializer == null })
+
+        val realm = Agent.runningContext.realm
+        val obj = JSMappedArgumentsObject.create(realm)
+        val map = JSObject.create(realm)
+        obj.parameterMap = map
+
+        val parameterNames = formals.boundNames()
+        arguments.forEachIndexed { index, arg ->
+            createDataPropertyOrThrow(obj, index.key(), arg)
+        }
+
+        definePropertyOrThrow(obj, "length".key(), Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE))
+
+        val mappedNames = mutableListOf<String>()
+        parameterNames.reversed().forEachIndexed { index, name ->
+            if (name !in mappedNames) {
+                mappedNames.add(name)
+                if (index < arguments.size) {
+                    val getter = makeArgGetter(name, env)
+                    val setter = makeArgSetter(name, env)
+                    map.defineOwnProperty(index.key(), Descriptor(JSEmpty, Descriptor.HAS_ENUMERABLE or Descriptor.CONFIGURABLE, getter, setter))
+                }
+            }
+        }
+
+        definePropertyOrThrow(obj, Realm.`@@iterator`.key(), Descriptor(
+            realm.arrayProto.get("values"),
+            Descriptor.CONFIGURABLE or Descriptor.WRITABLE
+        ))
+        definePropertyOrThrow(obj, "callee".key(), Descriptor(function, Descriptor.CONFIGURABLE or Descriptor.WRITABLE))
+
+        return obj
+    }
+
+    @ECMAImpl("9.4.4.7.1")
+    fun makeArgGetter(name: String, env: EnvRecord): JSValue {
+        return object : JSNativeFunction(Agent.runningContext.realm, name, 0) {
+            override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
+                val function = Agent.runningContext.function
+                expect(function != null)
+                return env.getBindingValue(name, false)
+            }
+
+            override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
+                throw IllegalStateException("Unexpected construction of ArgGetter function")
+            }
+        }
+    }
+
+    @ECMAImpl("9.4.4.7.2")
+    fun makeArgSetter(name: String, env: EnvRecord): JSValue {
+        return object : JSNativeFunction(Agent.runningContext.realm, name, 0) {
+            override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
+                val function = Agent.runningContext.function
+                expect(function != null)
+                env.setMutableBinding(name, arguments.argument(0), false)
+                return JSEmpty
+            }
+
+            override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
+                throw IllegalStateException("Unexpected construction of ArgSetter function")
+            }
+        }
     }
 
     fun utf16SurrogatePairToCodePoint(leading: Int, trailing: Int): Int {

@@ -5,6 +5,8 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.annotations.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject
+import me.mattco.reeva.runtime.builtins.JSMappedArgumentsObject
+import me.mattco.reeva.runtime.builtins.JSUnmappedArgumentsObject
 import me.mattco.reeva.runtime.errors.JSErrorObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.primitives.*
@@ -161,6 +163,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
                     is JSBooleanObject -> "Boolean"
                     is JSNumberObject -> "Number"
                     is JSStringObject -> "String"
+                    is JSUnmappedArgumentsObject, is JSMappedArgumentsObject -> "Arguments"
                     else -> "Object"
                 }
             }
