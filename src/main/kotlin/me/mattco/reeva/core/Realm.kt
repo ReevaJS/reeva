@@ -20,6 +20,7 @@ import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObjectCtor
 import me.mattco.reeva.runtime.objects.JSObjectProto
 import me.mattco.reeva.runtime.iterators.JSObjectPropertyIteratorProto
+import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.wrappers.*
 import java.util.concurrent.ConcurrentHashMap
@@ -148,6 +149,7 @@ class Realm {
         referenceErrorCtor.defineOwnProperty("prototype", referenceErrorProto, 0)
         syntaxErrorCtor.defineOwnProperty("prototype", syntaxErrorProto, 0)
         uriErrorCtor.defineOwnProperty("prototype", uriErrorProto, 0)
+        functionProto.defineOwnProperty("constructor", functionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     data class ScriptRecord(

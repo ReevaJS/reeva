@@ -14,7 +14,7 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
     override fun init() {
         super.init()
 
-        defineOwnProperty("constructor", realm.promiseCtor, 0)
+        defineOwnProperty("constructor", realm.promiseCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty(Realm.`@@toStringTag`, "Promise".toValue(), Descriptor.CONFIGURABLE)
     }
 

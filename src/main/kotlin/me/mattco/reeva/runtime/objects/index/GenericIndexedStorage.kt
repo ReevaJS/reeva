@@ -38,7 +38,7 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
         return sparseElements[index]
     }
 
-    override fun set(index: Int, value: JSValue, attributes: Int) {
+    override fun set(index: Int, descriptor: Descriptor) {
         if (index >= sizeBacker)
             sizeBacker = index + 1
         if (index < SPARSE_ARRAY_THRESHOLD) {
@@ -48,9 +48,9 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
                     packedElements.add(Descriptor(JSEmpty, 0))
                 }
             }
-            packedElements[index] = Descriptor(value, attributes)
+            packedElements[index] = descriptor
         } else {
-            sparseElements[index] = Descriptor(value, attributes)
+            sparseElements[index] = descriptor
         }
     }
 
@@ -70,9 +70,9 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
         }
     }
 
-    override fun insert(index: Int, value: JSValue, attributes: Int) {
+    override fun insert(index: Int, descriptor: Descriptor) {
         if (index >= sizeBacker) {
-            set(index, value, attributes)
+            set(index, descriptor)
             return
         }
 
@@ -88,9 +88,9 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
         }
 
         if (index < SPARSE_ARRAY_THRESHOLD) {
-            packedElements.add(index, Descriptor(value, attributes))
+            packedElements.add(index, descriptor)
         } else {
-            sparseElements[index] = Descriptor(value, attributes)
+            sparseElements[index] = descriptor
         }
     }
 

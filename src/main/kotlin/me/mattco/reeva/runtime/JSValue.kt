@@ -168,6 +168,8 @@ abstract class JSValue : Ref {
         else -> TODO()
     }
 
+    fun ifEmpty(value: JSValue) = if (this == JSEmpty) value else this
+
     fun ifUndefined(value: JSValue) = if (this == JSUndefined) value else this
 
     fun ifNull(value: JSValue) = if (this == JSUndefined) value else this

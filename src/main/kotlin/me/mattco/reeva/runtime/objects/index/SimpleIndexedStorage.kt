@@ -20,8 +20,9 @@ class SimpleIndexedStorage : IndexedStorage {
         Descriptor(elements[index], Descriptor.defaultAttributes)
     } else null
 
-    override fun set(index: Int, value: JSValue, attributes: Int) {
-        expect(attributes == Descriptor.defaultAttributes)
+    override fun set(index: Int, descriptor: Descriptor) {
+        expect(descriptor.attributes == Descriptor.defaultAttributes)
+        expect(!descriptor.hasGetter && !descriptor.hasSetter)
         expect(index < IndexedStorage.SPARSE_ARRAY_THRESHOLD)
 
         if (index >= sizeBacker) {
@@ -31,7 +32,7 @@ class SimpleIndexedStorage : IndexedStorage {
                 elements.add(JSEmpty)
             }
         }
-        elements[index] = value
+        elements[index] = descriptor.getRawValue()
     }
 
     override fun remove(index: Int) {
@@ -39,11 +40,12 @@ class SimpleIndexedStorage : IndexedStorage {
             elements[index] = JSEmpty
     }
 
-    override fun insert(index: Int, value: JSValue, attributes: Int) {
-        expect(attributes == Descriptor.defaultAttributes)
+    override fun insert(index: Int, descriptor: Descriptor) {
+        expect(descriptor.attributes == Descriptor.defaultAttributes)
+        expect(!descriptor.hasGetter && !descriptor.hasSetter)
         expect(index < IndexedStorage.SPARSE_ARRAY_THRESHOLD)
         sizeBacker++
-        elements.add(index, value)
+        elements.add(index, descriptor.getRawValue())
     }
 
     override fun removeFirst(): Descriptor {

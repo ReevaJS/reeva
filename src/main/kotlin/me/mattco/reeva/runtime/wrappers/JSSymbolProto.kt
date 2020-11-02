@@ -16,6 +16,11 @@ import me.mattco.reeva.utils.throwTypeError
 import me.mattco.reeva.utils.toValue
 
 class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
+    override fun init() {
+        super.init()
+        defineOwnProperty("constructor", realm.symbolCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    }
+
     @JSNativePropertyGetter("description", attributes = 0)
     fun getDescription(thisValue: JSValue): JSValue {
         return thisSymbolValue(thisValue).description.toValue()

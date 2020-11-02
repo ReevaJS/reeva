@@ -5,6 +5,8 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
+import me.mattco.reeva.runtime.annotations.JSNativePropertySetter
 import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.iterators.JSArrayIterator
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -30,6 +32,9 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         // value of the Array.prototype.values property.
         // https://tc39.es/ecma262/#sec-array.prototype-@@iterator
         defineOwnProperty(Realm.`@@iterator`, internalGet("values".key())!!.getRawValue())
+
+        // Inherit length getter/setter
+        defineNativeProperty("length".key(), Descriptor.WRITABLE, ::getLength, ::setLength)
     }
 
     @JSMethod("concat", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)

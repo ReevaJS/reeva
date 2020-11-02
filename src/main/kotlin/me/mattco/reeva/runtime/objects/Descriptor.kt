@@ -31,7 +31,6 @@ data class Descriptor(
     val isEmpty: Boolean
         get() = value == JSUndefined && attributes == 0 && !hasGetter && !hasSetter
 
-
     val hasConfigurable: Boolean
         get() = attributes and HAS_CONFIGURABLE != 0
 
@@ -105,7 +104,7 @@ data class Descriptor(
         return when (val v = value) {
             is JSNativeProperty -> v.get(thisValue!!)
             is JSAccessor -> v.callGetter(thisValue!!)
-            else -> v
+            else -> v.ifEmpty(JSUndefined)
         }
     }
 

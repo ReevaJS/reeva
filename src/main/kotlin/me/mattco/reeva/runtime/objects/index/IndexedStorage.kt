@@ -9,10 +9,10 @@ interface IndexedStorage {
 
     fun hasIndex(index: Int): Boolean
     fun get(index: Int): Descriptor?
-    fun set(index: Int, value: JSValue, attributes: Int)
+    fun set(index: Int, descriptor: Descriptor)
     fun remove(index: Int)
 
-    fun insert(index: Int, value: JSValue, attributes: Int)
+    fun insert(index: Int, descriptor: Descriptor)
     fun removeFirst(): Descriptor
     fun removeLast(): Descriptor
 

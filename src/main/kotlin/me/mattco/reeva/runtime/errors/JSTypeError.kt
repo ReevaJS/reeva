@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.errors
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 
 class JSTypeErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.typeErrorProto) {
@@ -14,7 +15,7 @@ class JSTypeErrorObject private constructor(realm: Realm, message: String? = nul
 class JSTypeErrorProto private constructor(realm: Realm) : JSObject(realm, realm.errorProto) {
     override fun init() {
         super.init()
-        defineOwnProperty("constructor", realm.typeErrorCtor)
+        defineOwnProperty("constructor", realm.typeErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     companion object {

@@ -5,6 +5,7 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.JSObject
+import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
@@ -20,8 +21,12 @@ class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject
 
             if (!thisValue.objWasVisited) {
                 obj.ownPropertyKeys().forEach { key ->
-                    if (!key.isSymbol)
+                    if (key.isString)
                         thisValue.remainingKeys.add(key)
+                    if (key.isInt)
+                        thisValue.remainingKeys.add(PropertyKey(key.asInt.toString()))
+                    if (key.isDouble)
+                        thisValue.remainingKeys.add(PropertyKey(key.asDouble.toString()))
                 }
                 thisValue.objWasVisited = true
             }

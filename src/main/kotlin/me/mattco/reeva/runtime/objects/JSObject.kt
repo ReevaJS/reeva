@@ -367,6 +367,13 @@ open class JSObject protected constructor(
     @JSThrows
     internal fun internalGet(property: PropertyKey): Descriptor? {
         val stringOrSymbol = when {
+            property.isString -> {
+                property.asString.toIntOrNull()?.let {
+                    if (it >= 0)
+                        return indexedProperties.getDescriptor(it)
+                }
+                StringOrSymbol(property.asString)
+            }
             property.isInt -> {
                 if (property.asInt >= 0)
                     return indexedProperties.getDescriptor(property.asInt)
@@ -374,7 +381,7 @@ open class JSObject protected constructor(
             }
             property.isDouble -> StringOrSymbol(property.asDouble.toString())
             property.isSymbol -> StringOrSymbol(property.asSymbol)
-            else -> StringOrSymbol(property.asString)
+            else -> unreachable()
         }
 
         return storage[stringOrSymbol]
@@ -385,7 +392,7 @@ open class JSObject protected constructor(
             property.isString -> {
                 property.asString.toIntOrNull()?.let {
                     if (it >= 0) {
-                        indexedProperties.set(this, it, descriptor.getActualValue(this), descriptor.attributes)
+                        indexedProperties.set(this, it, descriptor)
                         return
                     }
                 }
@@ -393,7 +400,7 @@ open class JSObject protected constructor(
             }
             property.isInt -> {
                 if (property.asInt >= 0) {
-                    indexedProperties.set(this, property.asInt, descriptor.getActualValue(this), descriptor.attributes)
+                    indexedProperties.set(this, property.asInt, descriptor)
                     return
                 }
                 StringOrSymbol(property.asInt.toString())

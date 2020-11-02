@@ -30,28 +30,36 @@ class IndexedProperties private constructor(
         return storage.get(index)?.getActualValue(thisValue) ?: return JSUndefined
     }
 
-    fun setDescriptor(index: Int, value: JSValue, attributes: Int) {
-        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD || attributes != Descriptor.defaultAttributes))
+    fun setDescriptor(index: Int, descriptor: Descriptor) {
+        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD ||
+            descriptor.attributes != Descriptor.defaultAttributes ||
+            descriptor.hasGetter || descriptor.hasSetter)
+        ) {
             switchToGenericStorage()
+        }
 
-        storage.set(index, value, attributes)
+        storage.set(index, descriptor)
     }
 
-    fun set(thisValue: JSValue, index: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
-        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD || attributes != Descriptor.defaultAttributes))
+    fun set(thisValue: JSValue, index: Int, descriptor: Descriptor) {
+        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD || descriptor.attributes != Descriptor.defaultAttributes))
             switchToGenericStorage()
 
         if (storage is SimpleIndexedStorage) {
-            storage.set(index, value, attributes)
+            storage.set(index, descriptor)
             return
         }
 
         val existingValue = storage.get(index) ?: run {
-            storage.set(index, value, attributes)
+            storage.set(index, descriptor)
             return
         }
-        existingValue.setActualValue(thisValue, value)
-        existingValue.attributes = attributes
+        existingValue.setActualValue(thisValue, descriptor.getActualValue(thisValue))
+        existingValue.attributes = descriptor.attributes
+    }
+
+    fun set(thisValue: JSValue, index: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
+        set(thisValue, index, Descriptor(value, attributes))
     }
 
     fun remove(index: Int): Boolean {
@@ -62,10 +70,14 @@ class IndexedProperties private constructor(
         return true
     }
 
-    fun insert(index: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
-        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD || attributes != Descriptor.defaultAttributes))
+    fun insert(index: Int, descriptor: Descriptor) {
+        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD || descriptor.attributes != Descriptor.defaultAttributes))
             switchToGenericStorage()
-        storage.insert(index, value, attributes)
+        storage.insert(index, descriptor)
+    }
+
+    fun insert(index: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
+        insert(index, Descriptor(value, attributes))
     }
 
     fun removeFirst(thisValue: JSObject?): Descriptor {
@@ -76,8 +88,8 @@ class IndexedProperties private constructor(
         return storage.removeLast()
     }
 
-    fun add(value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
-        setDescriptor(arrayLikeSize, value, attributes)
+    fun add(descriptor: Descriptor) {
+        setDescriptor(arrayLikeSize, descriptor)
     }
 
     fun addAll(properties: IndexedProperties) {
@@ -85,8 +97,7 @@ class IndexedProperties private constructor(
             switchToGenericStorage()
 
         properties.indices().forEach { index ->
-            val desc = properties.getDescriptor(index)!!
-            setDescriptor(index, desc.getRawValue(), desc.attributes)
+            setDescriptor(index, properties.getDescriptor(index)!!)
         }
     }
 

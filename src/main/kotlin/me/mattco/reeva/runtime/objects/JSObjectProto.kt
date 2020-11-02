@@ -20,7 +20,7 @@ import me.mattco.reeva.utils.toValue
 class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) {
     override fun init() {
         super.init()
-        defineOwnProperty("constructor", realm.objectCtor, 0)
+        defineOwnProperty("constructor", realm.objectCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     @JSThrows
