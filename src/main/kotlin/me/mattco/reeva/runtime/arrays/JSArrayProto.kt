@@ -5,9 +5,6 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
-import me.mattco.reeva.runtime.annotations.JSNativePropertySetter
-import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.iterators.JSArrayIterator
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -15,6 +12,7 @@ import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSTrue
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
+import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 
@@ -121,6 +119,12 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             count -= 1
         }
         return thisObj
+    }
+
+    @JSMethod("entries", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        return createArrayIterator(realm, obj, PropertyKind.KeyValue)
     }
 
     @JSMethod("every", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
@@ -325,10 +329,164 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return createArrayIterator(realm, obj, PropertyKind.Key)
     }
 
-    @JSMethod("entries", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-    fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
+    @JSMethod("lastIndexOf", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun lastIndexOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
-        return createArrayIterator(realm, obj, PropertyKind.KeyValue)
+        val length = Operations.lengthOfArrayLike(obj)
+        if (length == 0)
+            return (-1).toValue()
+
+        val (searchElement, fromIndex) = arguments.takeArgs(0..1)
+        val fromNumber = if (fromIndex == JSUndefined) {
+            length - 1
+        } else Operations.toIntegerOrInfinity(fromIndex).let {
+            if (it.isNegativeInfinity)
+                return (-1).toValue()
+            it.asInt
+        }
+
+        val limit = if (fromNumber >= 0) {
+            min(fromNumber, length - 1)
+        } else length + fromNumber
+
+        obj.indexedProperties.indices().asReversed().filter {
+            it <= limit
+        }.forEach {
+            val value = obj.get(it)
+            if (Operations.strictEqualityComparison(searchElement, value) == JSTrue)
+                return it.toValue()
+        }
+
+        return (-1).toValue()
+    }
+
+    @JSMethod("map", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun map(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        val length = Operations.lengthOfArrayLike(obj)
+        val (callback, thisArg) = arguments.takeArgs(0..1)
+        if (!Operations.isCallable(callback))
+            throwTypeError("first argument given to Array.prototype.map must be callable")
+
+        val array = Operations.arraySpeciesCreate(obj, length)
+        obj.indexedProperties.indices().filter {
+            it < length
+        }.forEach {
+            val value = obj.get(it)
+            val mappedValue = Operations.call(callback, thisArg, listOf(value, it.toValue(), obj))
+            Operations.createDataPropertyOrThrow(array, it.key(), mappedValue)
+        }
+
+        return array
+    }
+
+    @JSMethod("pop", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun pop(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        val length = Operations.lengthOfArrayLike(obj)
+        if (length == 0)
+            return JSUndefined
+
+        val element = obj.get(length - 1)
+        Operations.deletePropertyOrThrow(obj, (length - 1).key())
+        obj.set("length", (length - 1).toValue())
+        return element
+    }
+
+    @JSMethod("push", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun push(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        var length = Operations.lengthOfArrayLike(obj)
+        if (length + arguments.size >= Operations.MAX_SAFE_INTEGER)
+            throwTypeError("cannot increase array length beyond 2 ** 53 - 1")
+        arguments.forEach {
+            Operations.set(obj, length.key(), it, true)
+            length++
+        }
+        Operations.set(obj, "length".key(), length.toValue(), true)
+        return length.toValue()
+    }
+
+    @JSMethod("reduce", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun reduce(thisValue: JSValue, arguments: JSArguments): JSValue {
+        return reduceHelper(thisValue, arguments, false)
+    }
+
+    @JSMethod("reduceRight", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun reduceRight(thisValue: JSValue, arguments: JSArguments): JSValue {
+        return reduceHelper(thisValue, arguments, true)
+    }
+
+    @JSMethod("reverse", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun reverse(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        var length = Operations.lengthOfArrayLike(obj)
+        val middle = floor(length / 2.0)
+        val indices = obj.indexedProperties.indices()
+
+        val lowerIndices = mutableSetOf<Int>()
+        val upperIndices = mutableSetOf<Int>()
+        indices.forEach {
+            if (it < middle) {
+                lowerIndices.add(it)
+            } else {
+                upperIndices.add(it)
+            }
+        }
+
+        val lowerIt = lowerIndices.iterator()
+        while (lowerIt.hasNext()) {
+            val lowerIndex = lowerIt.next()
+            val lowerVal = obj.get(lowerIndex)
+            val upperIndex = length - lowerIndex - 1
+
+            if (upperIndex in upperIndices) {
+                val upperVal = obj.get(upperIndex)
+                Operations.set(obj, upperIndex.key(), lowerVal, true)
+                Operations.set(obj, lowerIndex.key(), upperVal, true)
+                upperIndices.remove(upperIndex)
+            } else {
+                Operations.set(obj, upperIndex.key(), lowerVal, true)
+                Operations.deletePropertyOrThrow(obj, lowerIndex.key())
+            }
+
+            lowerIt.remove()
+        }
+
+        val upperIt = upperIndices.iterator()
+        while (upperIt.hasNext()) {
+            val upperIndex = upperIt.next()
+            val upperVal = obj.get(upperIndex)
+            val lowerIndex = length - upperIndex - 1
+
+            if (lowerIndex in lowerIndices) {
+                val lowerVal = obj.get(lowerIndex)
+                Operations.set(obj, lowerIndex.key(), upperVal, true)
+                Operations.set(obj, upperIndex.key(), lowerVal, true)
+                lowerIndices.remove(lowerIndex)
+            } else {
+                Operations.set(obj, lowerIndex.key(), upperVal, true)
+                Operations.deletePropertyOrThrow(obj, upperIndex.key())
+            }
+
+            upperIt.remove()
+        }
+
+        expect(lowerIndices.isEmpty() && upperIndices.isEmpty())
+
+        return obj
+    }
+
+    @JSMethod("shift", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun shift(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        val length = Operations.lengthOfArrayLike(obj)
+        if (length == 0)
+            return JSUndefined
+
+        val element = obj.indexedProperties.removeFirst(obj)
+        Operations.set(obj, "length".key(), (length - 1).toValue(), true)
+        return element.getActualValue(obj)
     }
 
     @JSMethod("values", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
@@ -389,6 +547,36 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         }
 
         return targetIndex
+    }
+
+    private fun reduceHelper(thisValue: JSValue, arguments: JSArguments, isRight: Boolean): JSValue {
+        val obj = Operations.toObject(thisValue)
+        val length = Operations.lengthOfArrayLike(obj)
+        val (callback, initialValue) = arguments.takeArgs(0..1)
+        if (!Operations.isCallable(callback))
+            throwTypeError("first argument given to Array.prototype.reduceRight must be callable")
+
+        if (length == 0 && arguments.size == 1)
+            throwTypeError("cannot reduce empty array with no initial value")
+
+        val indices = obj.indexedProperties.indices().let {
+            if (isRight) it.reversed() else it
+        }.toMutableList()
+
+        var accumulator = if (arguments.size > 1) {
+            initialValue
+        } else {
+            if (indices.isEmpty())
+                throwTypeError("cannot reduce empty array with no initial value")
+            obj.get(indices.removeFirst())
+        }
+
+        indices.forEach {
+            val value = obj.get(it)
+            accumulator = Operations.call(callback, JSUndefined, listOf(accumulator, value, it.toValue(), obj))
+        }
+
+        return accumulator
     }
 
     companion object {

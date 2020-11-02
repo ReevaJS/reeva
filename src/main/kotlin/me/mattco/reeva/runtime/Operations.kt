@@ -684,6 +684,14 @@ object Operations {
         return obj.get(toPropertyKey(property))
     }
 
+    @JvmStatic @ECMAImpl("7.3.4")
+    fun set(obj: JSObject, property: PropertyKey, value: JSValue, throws: Boolean): Boolean {
+        val success = obj.set(property, value)
+        if (!success && throws)
+            throwTypeError("TODO: message")
+        return success
+    }
+
     @JSThrows
     fun createDataProperty(target: JSValue, property: JSValue, value: JSValue): Boolean {
         return createDataProperty(target, toPropertyKey(property), value)

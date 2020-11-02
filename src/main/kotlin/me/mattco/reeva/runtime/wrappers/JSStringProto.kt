@@ -171,7 +171,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
     @JSMethod("replace", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun replace(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
-        var (searchValue, replaceValue) = arguments.slice(0..1)
+        var (searchValue, replaceValue) = arguments.takeArgs(0..1)
 
         if (!searchValue.isNullish) {
             val replacer = Operations.getMethod(searchValue, Realm.`@@replace`)
@@ -237,7 +237,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
     @JSMethod("split", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun split(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
-        val (separator, limit) = arguments.slice(0..1)
+        val (separator, limit) = arguments.takeArgs(0..1)
 
         if (!separator.isNullish) {
             val splitter = Operations.getMethod(separator, Realm.`@@split`)
