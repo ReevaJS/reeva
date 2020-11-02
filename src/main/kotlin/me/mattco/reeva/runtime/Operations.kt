@@ -1070,7 +1070,22 @@ object Operations {
         if (currentDesc == null) {
             if (!extensible)
                 return false
-            target?.internalSet(property!!, newDesc.copy())
+            if (newDesc.isDataDescriptor || newDesc.isGenericDescriptor) {
+                if (!newDesc.hasConfigurable)
+                    newDesc.setConfigurable(false)
+                if (!newDesc.hasEnumerable)
+                    newDesc.setEnumerable(false)
+                if (!newDesc.hasWritable)
+                    newDesc.setWritable(false)
+                if (newDesc.getRawValue() == JSEmpty)
+                    newDesc.setRawValue(JSUndefined)
+            } else {
+                if (!newDesc.hasEnumerable)
+                    newDesc.setEnumerable(false)
+                if (!newDesc.hasWritable)
+                    newDesc.setWritable(false)
+            }
+            target?.internalSet(property!!, newDesc)
             return true
         }
 
@@ -1121,10 +1136,8 @@ object Operations {
         }
 
         if (target != null) {
-            if (newDesc.isDataDescriptor) {
-                // To distinguish undefined from a non-specified property
+            if (newDesc.isDataDescriptor && newDesc.getRawValue() != JSEmpty)
                 currentDesc.setActualValue(target, newDesc.getActualValue(target))
-            }
 
             if (newDesc.hasGetter)
                 currentDesc.getter = newDesc.getter

@@ -60,9 +60,9 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
                 false
             }
 
-            val succeeded = super.defineOwnProperty(property, newLenDesc)
-            if (!succeeded)
-                return false
+            // The spec specifies that the elements should be deleted _after_ the length property is set, however
+            // unfortunately this is not possible here. If we set the length property, IndexedStorage will return
+            // null for any descriptor whose index is above the length we just set.
             indexedProperties.indices().filter {
                 it >= newLen
             }.forEach {
@@ -75,6 +75,9 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
                     return false
                 }
             }
+            val succeeded = super.defineOwnProperty(property, newLenDesc)
+            if (!succeeded)
+                return false
 
             if (!newWritable)
                 ecmaAssert(super.defineOwnProperty(property, Descriptor(JSUndefined, Descriptor.HAS_WRITABLE)))

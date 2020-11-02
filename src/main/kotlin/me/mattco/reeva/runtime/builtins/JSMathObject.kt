@@ -213,7 +213,7 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
     @JSMethod("pow", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun pow(thisValue: JSValue, arguments: JSArguments): JSValue {
         val base = Operations.toNumber(arguments.argument(0))
-        val exp = Operations.toNumber(arguments.argument(0))
+        val exp = Operations.toNumber(arguments.argument(1))
         return base.asDouble.pow(exp.asDouble).toValue()
     }
 
