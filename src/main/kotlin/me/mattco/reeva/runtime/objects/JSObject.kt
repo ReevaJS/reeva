@@ -476,9 +476,9 @@ open class JSObject protected constructor(
         fun create(realm: Realm, proto: JSValue = realm.objectProto) = JSObject(realm, proto).also { it.init() }
 
         protected fun thisBinding(context: ExecutionContext): JSValue {
-            val env = context.lexicalEnv ?: shouldThrowError()
+            val env = context.lexicalEnv ?: throwTypeError("TODO: message")
             if (!env.hasThisBinding())
-                shouldThrowError()
+                throwTypeError(("TODO: message"))
             if (env is FunctionEnvRecord)
                 return env.getThisBinding()
             if (env is GlobalEnvRecord)

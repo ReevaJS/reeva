@@ -7,10 +7,6 @@ fun unreachable(): Nothing {
     throw IllegalStateException("Encountered unreachable() call")
 }
 
-fun shouldThrowError(errorName: String? = null): Nothing {
-    throw IllegalStateException("FIXME: This should have instead thrown a JS ${errorName ?: "error"}")
-}
-
 @OptIn(ExperimentalContracts::class)
 fun ecmaAssert(condition: Boolean, message: String? = null) {
     contract {

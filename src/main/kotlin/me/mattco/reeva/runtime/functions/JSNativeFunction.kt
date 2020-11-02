@@ -5,7 +5,7 @@ import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.NativeFunctionSignature
-import me.mattco.reeva.utils.shouldThrowError
+import me.mattco.reeva.utils.throwTypeError
 import me.mattco.reeva.utils.toValue
 import java.lang.reflect.InvocationTargetException
 
@@ -31,7 +31,7 @@ abstract class JSNativeFunction protected constructor(
                 }
 
                 override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-                    shouldThrowError()
+                    throwTypeError("$name() is not constructable")
                 }
             }.also { it.init() }
     }

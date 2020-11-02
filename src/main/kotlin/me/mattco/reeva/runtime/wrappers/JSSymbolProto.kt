@@ -11,7 +11,6 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.shouldThrowError
 import me.mattco.reeva.utils.throwTypeError
 import me.mattco.reeva.utils.toValue
 

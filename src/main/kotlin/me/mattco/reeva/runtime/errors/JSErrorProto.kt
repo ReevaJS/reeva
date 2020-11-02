@@ -8,7 +8,7 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.shouldThrowError
+import me.mattco.reeva.utils.throwTypeError
 import me.mattco.reeva.utils.toValue
 
 open class JSErrorProto protected constructor(
@@ -25,7 +25,7 @@ open class JSErrorProto protected constructor(
     @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
-            shouldThrowError("TypeError")
+            throwTypeError("Error.prototype.toString called on incompatible object")
 
         val name = thisValue.get("name").let {
             if (it == JSUndefined) {
