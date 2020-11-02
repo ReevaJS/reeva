@@ -9,6 +9,7 @@ import me.mattco.reeva.runtime.iterators.JSArrayIterator
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSFalse
+import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSTrue
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
@@ -33,6 +34,19 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
         // Inherit length getter/setter
         defineNativeProperty("length".key(), Descriptor.WRITABLE, ::getLength, ::setLength)
+
+        val unscopables = create(realm, JSNull)
+        Operations.createDataPropertyOrThrow(unscopables, "copyWithin".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(unscopables, "entries".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(unscopables, "fill".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(unscopables, "find".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(unscopables, "findIndex".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(unscopables, "flat".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(unscopables, "flatMap".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(unscopables, "includes".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(unscopables, "keys".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(unscopables, "values".key(), JSTrue)
+        defineOwnProperty(Realm.`@@unscopables`, unscopables, Descriptor.CONFIGURABLE)
     }
 
     @JSMethod("concat", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
@@ -489,10 +503,144 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return element.getActualValue(obj)
     }
 
-    @JSMethod("values", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-    fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
+    @JSMethod("slice", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun slice(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
-        return createArrayIterator(realm, obj, PropertyKind.Value)
+        val length = Operations.lengthOfArrayLike(obj)
+        val (start, end) = arguments.takeArgs(0..1)
+
+        val k = Operations.toIntegerOrInfinity(start).let {
+            when {
+                it.isNegativeInfinity -> 0
+                it.asInt < 0 -> max(length + it.asInt, 0)
+                else -> min(it.asInt, length)
+            }
+        }
+
+        val final = (if (end == JSUndefined) length else Operations.toIntegerOrInfinity(end).asInt).let {
+            when {
+                it == Int.MIN_VALUE -> 0
+                it < 0 -> max(length + it, 0)
+                else -> min(it, length)
+            }
+        }
+
+        val count = max(final - k, 0)
+        val array = Operations.arraySpeciesCreate(obj, count)
+        val range = k until final
+
+        obj.indexedProperties.indices().filter {
+            it in range
+        }.forEach {
+            Operations.createDataPropertyOrThrow(array, it.key(), obj.get(it))
+        }
+
+        Operations.set(array as JSObject, "length".key(), (count - 1).toValue(), true)
+
+        return array
+    }
+
+    @JSMethod("some", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun some(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        val length = Operations.lengthOfArrayLike(obj)
+        val (callback, thisArg) = arguments.takeArgs(0..1)
+
+        if (!Operations.isCallable(callback))
+            throwTypeError("first argument given to Array.prototype.some must be callable")
+
+        obj.indexedProperties.indices().forEach {
+            if (it >= length)
+                return@forEach
+
+            val value = obj.get(it)
+            val testResult = Operations.toBoolean(Operations.call(callback, thisArg, listOf(value, it.toValue(), obj)))
+            if (testResult == JSTrue)
+                return JSTrue
+        }
+
+        return JSFalse
+    }
+
+    @JSMethod("splice", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun splice(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        val length = Operations.lengthOfArrayLike(obj)
+        val (start, deleteCount) = arguments.takeArgs(0..1)
+
+        val actualStart = Operations.toIntegerOrInfinity(start).let {
+            when {
+                it.isNegativeInfinity -> 0
+                it.asInt < 0 -> max(length + it.asInt, 0)
+                else -> min(it.asInt, length)
+            }
+        }
+
+        val (insertCount, actualDeleteCount) = when {
+            arguments.isEmpty() -> 0 to 0
+            arguments.size == 1 -> 0 to length - actualStart
+            else -> {
+                val dc = Operations.toIntegerOrInfinity(deleteCount).asInt.coerceIn(0, length - actualStart)
+                arguments.size to dc
+            }
+        }
+
+        if (length + insertCount - actualDeleteCount > Operations.MAX_SAFE_INTEGER)
+            throwTypeError("cannot extend array size past 2 ** 53 - 1")
+
+        val array = Operations.arraySpeciesCreate(obj, actualDeleteCount) as JSObject
+        val objIndices = obj.indexedProperties.indices()
+
+        objIndices.filter {
+            it in actualStart..(actualStart + actualDeleteCount)
+        }.forEach {
+            Operations.createDataPropertyOrThrow(array, (it - actualStart).key(), obj.get(it))
+        }
+
+        Operations.set(array, "length".key(), actualDeleteCount.toValue(), true)
+
+        val itemCount = arguments.size - 2
+        if (itemCount < actualDeleteCount) {
+            var k = actualStart
+            while (k < length - actualDeleteCount) {
+                val from = k + actualDeleteCount
+                val to = k + itemCount
+                if (Operations.hasProperty(obj, from.key()) == JSTrue) {
+                    Operations.set(obj, to.key(), obj.get(from.key()), true)
+                } else {
+                    Operations.deletePropertyOrThrow(obj, to.key())
+                }
+                k++
+            }
+
+            k = length
+            while (k > (length - actualDeleteCount + itemCount)) {
+                Operations.deletePropertyOrThrow(obj, (k - 1).key())
+                k--
+            }
+        } else if (itemCount > actualDeleteCount) {
+            var k = length - actualDeleteCount
+            while (k > actualStart) {
+                val from = k + actualDeleteCount - 1
+                val to = k + itemCount - 1
+                if (Operations.hasProperty(obj, from.key()) == JSTrue) {
+                    Operations.set(obj, to.key(), obj.get(from.key()), true)
+                } else {
+                    Operations.deletePropertyOrThrow(obj, to.key())
+                }
+                k--
+            }
+        }
+
+        if (arguments.size > 2) {
+            arguments.subList(2, arguments.size).forEachIndexed { index, item ->
+                Operations.set(obj, (actualStart + index).key(), item, true)
+
+            }
+        }
+
+        Operations.set(obj, "length".key(), (length - actualDeleteCount + itemCount).toValue(), true)
+        return array
     }
 
     @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
@@ -502,6 +650,29 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         if (Operations.isCallable(func))
             return Operations.call(func, obj)
         return realm.objectProto.toString(thisValue, arguments)
+    }
+
+    @JSMethod("unshift", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun unshift(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        val length = Operations.lengthOfArrayLike(obj)
+        val argCount = arguments.size
+        if (argCount > 0) {
+            if (length + argCount >= Operations.MAX_SAFE_INTEGER)
+                throwTypeError("cannot increase array length past 2 ** 53 - 1")
+            // TODO: Batch this insertion, as it is quite an expensive operation
+            arguments.reversed().forEach {
+                obj.indexedProperties.insert(0, it)
+            }
+        }
+        Operations.set(obj, "length".key(), (length + argCount).toValue(), true)
+        return (length + argCount).toValue()
+    }
+
+    @JSMethod("values", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(thisValue)
+        return createArrayIterator(realm, obj, PropertyKind.Value)
     }
 
     private fun flattenIntoArray(
