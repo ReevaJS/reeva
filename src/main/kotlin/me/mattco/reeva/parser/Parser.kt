@@ -699,8 +699,63 @@ class Parser(text: String) {
     }
 
     private fun parseClassDeclaration(): StatementNode? {
-        // TODO
-        return null
+        if (tokenType != TokenType.Class)
+            return null
+
+        consume()
+
+        val identifier = if (!inDefaultContext) {
+            parseBindingIdentifier() ?: run {
+                expected("identifier")
+                consume()
+                return null
+            }
+        } else null
+
+        // Null indicates an error
+        val tail = parseClassTail() ?: return null
+
+        return ClassDeclarationNode(ClassNode(identifier, tail.heritage, tail.body))
+    }
+
+    private fun parseClassTail(): ClassTailNode? {
+        val heritage = if (tokenType == TokenType.Extends) {
+            consume()
+            parseLeftHandSideExpression() ?: run {
+                expected("expression")
+                consume()
+                return null
+            }
+        } else null
+
+        consume(TokenType.OpenCurly)
+
+        val elements = mutableListOf<ClassElementNode>()
+        while (tokenType != TokenType.CloseCurly) {
+            val element = parseClassElement() ?: break
+            if (element.method == null)
+                continue
+            elements.add(element)
+        }
+
+        consume(TokenType.CloseCurly)
+
+        return ClassTailNode(heritage, ClassElementList(elements))
+    }
+
+    private fun parseClassElement(): ClassElementNode? {
+        if (tokenType == TokenType.Semicolon) {
+            consume()
+            return ClassElementNode(null, null)
+        }
+
+        val isStatic = tokenType == TokenType.Identifier && token.value == "static" && peek(1).type != TokenType.OpenParen
+        if (isStatic)
+            consume()
+
+        val method = parseMethodDefinition()
+
+        return ClassElementNode(method, isStatic)
     }
 
     private fun parseLexicalDeclaration(forceSemi: Boolean = false): StatementNode? {

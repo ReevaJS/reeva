@@ -88,6 +88,18 @@ class MethodDefinitionNode(
     val body: FunctionStatementList,
     val type: Type
 ) : NodeBase(listOfNotNull(identifier, parameters, body)) {
+    override fun computedPropertyContains(nodeName: String) = identifier.computedPropertyContains(nodeName)
+
+    override fun hasDirectSuper(): Boolean {
+        return when (type) {
+            Type.Normal, Type.Setter -> parameters.contains("SuperCallNode") || body.contains("SuperCallNode")
+            Type.Getter -> body.contains("SuperCallNode")
+            Type.Generator, Type.Async, Type.AsyncGenerator -> TODO()
+        }
+    }
+
+    override fun propName() = identifier.propName()
+
     enum class Type {
         Normal,
         Getter,

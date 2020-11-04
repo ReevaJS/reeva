@@ -19,7 +19,6 @@ class JSInterpretedFunction(
     thisMode: ThisMode,
     envRecord: EnvRecord?,
     isStrict: Boolean,
-    isClassConstructor: Boolean,
     homeObject: JSValue,
     prototype: JSObject = realm.functionProto,
     internal val sourceText: String,
@@ -29,7 +28,6 @@ class JSInterpretedFunction(
     thisMode,
     envRecord,
     homeObject,
-    isClassConstructor,
     isStrict,
     prototype
 ) {

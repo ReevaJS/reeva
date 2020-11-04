@@ -13,7 +13,6 @@ abstract class JSFunction(
     val thisMode: ThisMode,
     var envRecord: EnvRecord? = null,
     var homeObject: JSValue = JSUndefined,
-    val isClassConstructor: Boolean = false,
     val isStrict: Boolean = false,
     prototype: JSObject = realm.functionProto,
 ) : JSObject(realm, prototype) {
@@ -21,6 +20,7 @@ abstract class JSFunction(
 
     var isCallable: Boolean = true
     var isConstructable: Boolean = false
+    var isClassConstructor: Boolean = false
 
     @JSThrows
     abstract fun call(thisValue: JSValue, arguments: JSArguments): JSValue

@@ -74,9 +74,9 @@ class StatementListNode(val statements: List<StatementListItemNode>) : NodeBase(
         return statements.flatMap {
             when (it) {
                 is LabelledStatementNode -> it.topLevelVarDeclaredNames()
-                is DeclarationNode -> if (it is LexicalDeclarationNode /* it is ClassDeclarationNode*/) {
-                    emptyList()
-                } else it.boundNames()
+                is DeclarationNode -> if (it is FunctionDeclarationNode) {
+                    it.boundNames()
+                } else emptyList()
                 else -> it.varDeclaredNames()
             }
         }
@@ -86,7 +86,9 @@ class StatementListNode(val statements: List<StatementListItemNode>) : NodeBase(
         return statements.flatMap {
             when (it) {
                 is LabelledStatementNode -> it.topLevelVarScopedDeclarations()
-                is DeclarationNode -> listOf(it.declarationPart())
+                is DeclarationNode -> if (it is FunctionDeclarationNode) {
+                    listOf(it.declarationPart())
+                } else emptyList()
                 else -> it.varScopedDeclarations()
             }
         }

@@ -66,11 +66,25 @@ interface ASTNode {
         return children[0].boundNames()
     }
 
+    fun classElementKind(): ClassElementKind {
+        if (children.size != 1)
+            throw Error("Node ${this::class.java.simpleName} has no implementation for " +
+                "classElementKind, and cannot be delegated")
+        return children[0].classElementKind()
+    }
+
     fun computedPropertyContains(nodeName: String): Boolean {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "computedPropertyContains, and cannot be delegated")
         return children[0].computedPropertyContains(nodeName)
+    }
+
+    fun constructorMethod(): ASTNode? {
+        if (children.size != 1)
+            throw Error("Node ${this::class.java.simpleName} has no implementation for " +
+                "constructorMethod, and cannot be delegated")
+        return children[0].constructorMethod()
     }
 
     fun contains(nodeName: String): Boolean {
@@ -140,6 +154,12 @@ interface ASTNode {
         if (children.size != 1)
             return 0
         return children[0].expectedArgumentCount()
+    }
+
+    fun hasDirectSuper(): Boolean {
+        if (children.size != 1)
+            return false
+        return children[0].hasDirectSuper()
     }
 
     fun hasInitializer(): Boolean {
@@ -279,6 +299,12 @@ interface ASTNode {
         if (children.size != 1)
             return emptyList()
         return children[0].varScopedDeclarations()
+    }
+
+    enum class ClassElementKind {
+        ConstructorMethod,
+        NonConstructorMethod,
+        Empty,
     }
 }
 
