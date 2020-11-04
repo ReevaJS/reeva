@@ -1506,8 +1506,17 @@ class Parser(text: String) {
     }
 
     private fun parseClassExpression(): PrimaryExpressionNode? {
-        // TODO
-        return null
+        if (tokenType != TokenType.Class)
+            return null
+
+        consume()
+
+        val identifier = parseBindingIdentifier()
+
+        // Null indicates an error
+        val tail = parseClassTail() ?: return null
+
+        return ClassExpressionNode(ClassNode(identifier, tail.heritage, tail.body))
     }
 
     private fun parseGeneratorExpression(): PrimaryExpressionNode? {

@@ -1047,7 +1047,18 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             is ParenthesizedExpressionNode -> interpretExpression(expression.target)
             is ForBindingNode -> interpretForBinding(expression)
             is TemplateLiteralNode -> interpretTemplateLiteral(expression)
+            is ClassExpressionNode -> interpretClassExpression(expression)
             else -> unreachable()
+        }
+    }
+
+    private fun interpretClassExpression(classExpressionNode: ClassExpressionNode): JSValue {
+        val name = classExpressionNode.classNode.identifier?.identifierName
+        // TODO: Set [[SourceText]]
+        if (name != null) {
+            return classDefinitionEvaluation(classExpressionNode.classNode, name, name)
+        } else {
+            return classDefinitionEvaluation(classExpressionNode.classNode, null, "")
         }
     }
 
