@@ -753,7 +753,13 @@ class Parser(text: String) {
         if (isStatic)
             consume()
 
-        val method = parseMethodDefinition()
+        val method = parseMethodDefinition() ?: run {
+            if (isStatic) {
+                consume()
+                expected("method definition")
+            }
+            return null
+        }
 
         return ClassElementNode(method, isStatic)
     }

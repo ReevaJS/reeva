@@ -23,6 +23,7 @@ enum class TokenType(val category: Category, val meta: String? = null) {
     ExclamationEquals(Category.Operator, "!="),
     GreaterThan(Category.Operator, ">"),
     GreaterThanEquals(Category.Operator, ">="),
+    Hash(Category.Operator, "#"),
     LessThan(Category.Operator, "<"),
     LessThanEquals(Category.Operator, "<="),
     Minus(Category.Operator, "-"),
