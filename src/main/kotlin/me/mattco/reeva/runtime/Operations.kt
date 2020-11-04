@@ -39,9 +39,9 @@ import kotlin.math.min
 import kotlin.math.pow
 
 object Operations {
-    val MAX_SAFE_INTEGER = 2.0.pow(53) - 1
-    val MAX_32BIT_INT = 2.0.pow(32)
-    val MAX_31BIT_INT = 2.0.pow(31)
+    const val MAX_SAFE_INTEGER: Long = (2L shl 52) - 1L
+    const val MAX_32BIT_INT = 2 shl 31
+    const val MAX_31BIT_INT = 2 shl 30
 
     // Note this common gotcha: In Kotlin this really does accept any
     // value, however it gets translated to Object in Java, which can't
@@ -439,8 +439,8 @@ object Operations {
             return 0.toValue()
         if (number.isInfinite)
             return number
-        return floor(abs(number.asDouble)).let {
-            if (number.asDouble < 0) it * -1 else it
+        return abs(number.asLong).let {
+            if (number.asLong < 0) it * -1 else it
         }.toValue()
     }
 
@@ -543,7 +543,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.1.20")
     fun toLength(value: JSValue): JSValue {
         val len = toIntegerOrInfinity(value)
-        val number = len.asDouble
+        val number = len.asLong
         if (number < 0)
             return 0.toValue()
         return min(number, MAX_SAFE_INTEGER).toValue()
@@ -835,7 +835,11 @@ object Operations {
     @JvmStatic @ECMAImpl("7.3.18")
     fun lengthOfArrayLike(target: JSValue): Int {
         ecmaAssert(target is JSObject)
-        return toLength(target.get("length")).asInt
+        return toLength(target.get("length")).asLong.let {
+            if (it > Int.MAX_VALUE)
+                TODO("Better Long support")
+            it.toInt()
+        }
     }
 
     @JSThrows

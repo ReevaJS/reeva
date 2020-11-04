@@ -71,16 +71,22 @@ abstract class JSValue : Ref {
             return this as JSSymbol
         }
 
-    val asDouble: Double
-        get() {
-            expect(isNumber)
-            return (this as JSNumber).number
-        }
-
     val asInt: Int
         get() {
             expect(isNumber)
             return (this as JSNumber).number.toInt()
+        }
+
+    val asLong: Long
+        get() {
+            expect(isNumber)
+            return (this as JSNumber).number.toLong()
+        }
+
+    val asDouble: Double
+        get() {
+            expect(isNumber)
+            return (this as JSNumber).number
         }
 
     val asAccessor: JSNativeProperty

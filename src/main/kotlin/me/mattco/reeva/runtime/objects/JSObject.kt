@@ -210,6 +210,7 @@ open class JSObject protected constructor(
     @JSThrows fun hasProperty(property: String): Boolean = hasProperty(property.key())
     @JSThrows fun hasProperty(property: JSSymbol) = hasProperty(property.key())
     @JSThrows fun hasProperty(property: Int) = hasProperty(property.key())
+    @JSThrows fun hasProperty(property: Long) = hasProperty(property.toString().key())
 
     @JSThrows
     @ECMAImpl("9.1.7")
@@ -237,6 +238,7 @@ open class JSObject protected constructor(
     @JSThrows fun getOwnPropertyDescriptor(property: String) = getOwnPropertyDescriptor(property.key())
     @JSThrows fun getOwnPropertyDescriptor(property: JSSymbol) = getOwnPropertyDescriptor(property.key())
     @JSThrows fun getOwnPropertyDescriptor(property: Int) = getOwnPropertyDescriptor(property.key())
+    @JSThrows fun getOwnPropertyDescriptor(property: Long) = getOwnPropertyDescriptor(property.toString().key())
 
     @JSThrows
     open fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
@@ -246,6 +248,7 @@ open class JSObject protected constructor(
     @JSThrows fun getOwnProperty(property: String) = getOwnProperty(property.key())
     @JSThrows fun getOwnProperty(property: JSSymbol) = getOwnProperty(property.key())
     @JSThrows fun getOwnProperty(property: Int) = getOwnProperty(property.key())
+    @JSThrows fun getOwnProperty(property: Long) = getOwnProperty(property.toString().key())
 
     @JSThrows
     @ECMAImpl("9.1.5")
@@ -256,6 +259,7 @@ open class JSObject protected constructor(
     @JSThrows fun defineOwnProperty(property: String, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
     @JSThrows fun defineOwnProperty(property: JSSymbol, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
     @JSThrows fun defineOwnProperty(property: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
+    @JSThrows fun defineOwnProperty(property: Long, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.toString().key(), Descriptor(value, attributes))
 
     @JSThrows
     @ECMAImpl("9.1.6")
@@ -266,6 +270,7 @@ open class JSObject protected constructor(
     @JSThrows fun get(property: String, receiver: JSValue = this) = get(property.key(), receiver)
     @JSThrows fun get(property: JSSymbol, receiver: JSValue = this) = get(property.key(), receiver)
     @JSThrows fun get(property: Int, receiver: JSValue = this) = get(property.key(), receiver)
+    @JSThrows fun get(property: Long, receiver: JSValue = this) = get(property.toString().key(), receiver)
 
     @JSThrows
     @JvmOverloads @ECMAImpl("9.1.8")
@@ -285,6 +290,7 @@ open class JSObject protected constructor(
     @JSThrows fun set(property: String, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
     @JSThrows fun set(property: JSSymbol, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
     @JSThrows fun set(property: Int, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
+    @JSThrows fun set(property: Long, value: JSValue, receiver: JSValue = this) = set(property.toString().key(), value, receiver)
 
     @JSThrows
     @JvmOverloads @ECMAImpl("9.1.9")
@@ -330,6 +336,7 @@ open class JSObject protected constructor(
     @JSThrows fun delete(property: String) = delete(property.key())
     @JSThrows fun delete(property: JSSymbol) = delete(property.key())
     @JSThrows fun delete(property: Int) = delete(property.key())
+    @JSThrows fun delete(property: Long) = delete(property.toString().key())
 
     @ECMAImpl("9.1.10")
     open fun delete(property: PropertyKey): Boolean {

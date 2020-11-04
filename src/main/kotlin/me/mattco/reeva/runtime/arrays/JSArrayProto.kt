@@ -581,7 +581,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             arguments.size == 1 -> 0 to length - actualStart
             else -> {
                 val dc = Operations.toIntegerOrInfinity(deleteCount).asInt.coerceIn(0, length - actualStart)
-                arguments.size to dc
+                (arguments.size - 2) to dc
             }
         }
 
