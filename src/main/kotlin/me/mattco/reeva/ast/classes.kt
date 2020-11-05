@@ -46,22 +46,57 @@ class ClassNode(
     val body: ClassElementList
 ) : NodeBase(listOfNotNull(identifier, heritage) + body) {
     override fun constructorMethod() = body.constructorMethod()
+
+    override fun privateBoundIdentifiers() = body.privateBoundIdentifiers()
 }
 
 class ClassElementList(val elements: List<ClassElementNode>) : NodeBase(elements) {
     override fun constructorMethod(): ASTNode? {
         return elements.firstOrNull { it.classElementKind() == ASTNode.ClassElementKind.ConstructorMethod }
     }
+
+    override fun privateBoundIdentifiers(): List<String> {
+        return elements.flatMap(ASTNode::privateBoundIdentifiers)
+    }
 }
 
-class ClassElementNode(val method: MethodDefinitionNode?, val isStatic: Boolean?) : NodeBase(listOfNotNull(method)) {
+class ClassElementNode(
+    val node: ASTNode?,
+    val initializer: InitializerNode?,
+    val isStatic: Boolean,
+    val type: Type,
+) : NodeBase(listOfNotNull(node)) {
+    override fun privateBoundIdentifiers(): List<String> {
+        return when (type) {
+            Type.Field -> if (node is PrivateIdentifierNode) {
+                listOf(node.identifierName)
+            } else emptyList()
+            Type.Method -> emptyList()
+            Type.Empty -> emptyList()
+        }
+    }
+
+    override fun propName(): String? {
+        return when (type) {
+            Type.Method -> null
+            Type.Field -> if (node is PrivateIdentifierNode) {
+                null
+            } else node!!.propName()
+            Type.Empty -> null
+        }
+    }
+
     override fun classElementKind(): ASTNode.ClassElementKind {
-        if (method?.propName() == "constructor")
+        if (type == Type.Method && node?.propName() == "constructor")
             return ASTNode.ClassElementKind.ConstructorMethod
-        if (method == null && isStatic == null)
+        if (type == Type.Empty)
             return ASTNode.ClassElementKind.Empty
         return ASTNode.ClassElementKind.NonConstructorMethod
     }
 
-
+    enum class Type {
+        Method,
+        Field,
+        Empty
+    }
 }

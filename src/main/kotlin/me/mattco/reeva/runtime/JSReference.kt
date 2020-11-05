@@ -10,7 +10,7 @@ open class JSReference(
     @JvmField @ECMAImpl("6.2.4.1", "GetBase")
     val baseValue: Ref,
     @JvmField @ECMAImpl("6.2.4.2", "GetReferencedName")
-    val name: PropertyKey,
+    val name: Any, // PropertyKey | PrivateName
     @JvmField @ECMAImpl("6.2.4.3", "IsStrictReference")
     val isStrict: Boolean,
 ) : JSValue() {
@@ -32,10 +32,16 @@ open class JSReference(
     }
 
     @ECMAImpl("6.2.4.6")
-    val isUnresolvableReference = baseValue == JSUndefined
+    val isUnresolvableReference: Boolean
+        get() = baseValue == JSUndefined
 
     @ECMAImpl("6.2.4.7")
-    val isSuperReference by lazy { this is JSSuperReference }
+    val isSuperReference : Boolean
+        get() = this is JSSuperReference
+
+    @ECMAImpl("3.9", spec = "https://tc39.es/proposal-class-fields")
+    val isPrivateReference: Boolean
+        get() = name is JSObject.PrivateName
 
     @ECMAImpl("6.2.4.10")
     fun getThisValue(): JSValue {

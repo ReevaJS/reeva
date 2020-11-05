@@ -112,10 +112,19 @@ open class JSGlobalObject protected constructor(
 
         val strictEval = strictCaller || scriptNode.isStrict()
         val context = Agent.runningContext
-        var (varEnv, lexEnv) = if (direct) {
-            context.variableEnv!! to DeclarativeEnvRecord.create(context.lexicalEnv)
+
+        var varEnv: EnvRecord
+        val lexEnv: EnvRecord
+        val privateEnv: EnvRecord
+
+        if (direct) {
+            varEnv = context.variableEnv!!
+            lexEnv = DeclarativeEnvRecord.create(context.lexicalEnv)
+            privateEnv = context.privateEnv!!
         } else {
-            evalRealm.globalEnv to DeclarativeEnvRecord.create(evalRealm.globalEnv)
+            varEnv = evalRealm.globalEnv
+            lexEnv = DeclarativeEnvRecord.create(evalRealm.globalEnv)
+            privateEnv = DeclarativeEnvRecord.create(null)
         }
 
         if (strictEval)
@@ -129,7 +138,7 @@ open class JSGlobalObject protected constructor(
         val interpreter = Interpreter(realm, scriptNode)
 
         try {
-            evalDeclarationInstantiation(scriptNode.statementList, varEnv, lexEnv, strictEval, interpreter)
+            evalDeclarationInstantiation(scriptNode.statementList, varEnv, lexEnv, privateEnv, strictEval, interpreter)
             return interpreter.interpret().let { if (it == JSEmpty) JSUndefined else it }
         } finally {
             Agent.popContext()
@@ -140,6 +149,7 @@ open class JSGlobalObject protected constructor(
         body: StatementListNode,
         varEnv: EnvRecord,
         lexEnv: EnvRecord,
+        privateEnv: EnvRecord,
         strictEval: Boolean,
         interpreter: Interpreter,
     ) {
@@ -163,6 +173,18 @@ open class JSGlobalObject protected constructor(
                 thisEnv = thisEnv.outerEnv!!
             }
         }
+        val privateIdentifiers = mutableListOf<String>()
+        var pEnv: EnvRecord? = privateEnv
+        while (pEnv != null) {
+            expect(pEnv is DeclarativeEnvRecord)
+            pEnv.bindings.keys.forEach {
+                if (it !in privateIdentifiers)
+                    privateIdentifiers.add(it)
+            }
+            pEnv = pEnv.outerEnv
+        }
+        if (!body.allPrivateIdentifiersValid(privateIdentifiers))
+            throwSyntaxError("TODO: message")
         val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
         val declaredFunctionNames = mutableListOf<String>()
         varDeclarations.asReversed().forEach { decl ->
@@ -205,7 +227,7 @@ open class JSGlobalObject protected constructor(
         }
         functionsToInitialize.forEach { func ->
             val functionName = func.boundNames()[0]
-            val function = interpreter.instantiateFunctionObject(func, lexEnv)
+            val function = interpreter.instantiateFunctionObject(func, lexEnv, privateEnv)
             if (varEnv is GlobalEnvRecord) {
                 varEnv.createGlobalFunctionBinding(functionName, function, true)
             } else {

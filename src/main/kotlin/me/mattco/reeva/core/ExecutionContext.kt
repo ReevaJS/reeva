@@ -14,4 +14,6 @@ class ExecutionContext(
     var lexicalEnv: EnvRecord? = null
     @JvmField
     var variableEnv: EnvRecord? = null
+    @JvmField
+    var privateEnv: EnvRecord? = null
 }

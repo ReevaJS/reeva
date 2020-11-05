@@ -16,4 +16,8 @@ package me.mattco.reeva.runtime.annotations
 @Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY)
 @Repeatable
-annotation class ECMAImpl(val section: String, val name: String = "")
+annotation class ECMAImpl(
+    val section: String,
+    val name: String = "",
+    val spec: String = "https://tc39.es/ecma262/",
+)

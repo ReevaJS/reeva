@@ -5,6 +5,7 @@ import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
+import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.JSGlobalObject
@@ -22,6 +23,7 @@ class EvaluationTask(private val script: String, private val realm: Realm) : Tas
 
         context.variableEnv = realm.globalEnv
         context.lexicalEnv = realm.globalEnv
+        context.privateEnv = DeclarativeEnvRecord.create(null)
 
         return context
     }

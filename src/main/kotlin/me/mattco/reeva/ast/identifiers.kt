@@ -56,3 +56,15 @@ class LabelIdentifierNode(val identifierName: String) : NodeBase() {
         append(")\n")
     }
 }
+
+class PrivateIdentifierNode(val identifierName: String) : NodeBase(), ExpressionNode {
+    override fun stringValue() = identifierName
+
+    override fun dump(indent: Int) = buildString {
+        appendIndent(indent)
+        appendName()
+        append(" (identifier=")
+        append(identifierName)
+        append(")\n")
+    }
+}

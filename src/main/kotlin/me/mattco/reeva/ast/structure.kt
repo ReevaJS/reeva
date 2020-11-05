@@ -54,6 +54,10 @@ interface ASTNode {
         Invalid
     }
 
+    fun allPrivateIdentifiersValid(names: List<String>): Boolean {
+        return children.all { it.allPrivateIdentifiersValid(names) }
+    }
+
     fun assignmentTargetType(): AssignmentTargetType {
         if (children.size != 1)
             return AssignmentTargetType.Invalid
@@ -238,6 +242,12 @@ interface ASTNode {
         if (children.size != 1)
             return emptyList()
         return children[0].lexicallyScopedDeclarations()
+    }
+
+    fun privateBoundIdentifiers(): List<String> {
+        if (children.size != 1)
+            return emptyList()
+        return children[0].privateBoundIdentifiers()
     }
 
     fun propertyNameList(): List<String> {

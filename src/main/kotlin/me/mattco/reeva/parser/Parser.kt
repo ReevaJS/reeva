@@ -733,7 +733,7 @@ class Parser(text: String) {
         val elements = mutableListOf<ClassElementNode>()
         while (tokenType != TokenType.CloseCurly) {
             val element = parseClassElement() ?: break
-            if (element.method == null)
+            if (element.type == ClassElementNode.Type.Empty)
                 continue
             elements.add(element)
         }
@@ -746,22 +746,36 @@ class Parser(text: String) {
     private fun parseClassElement(): ClassElementNode? {
         if (tokenType == TokenType.Semicolon) {
             consume()
-            return ClassElementNode(null, null)
+            return ClassElementNode(null, null, false, ClassElementNode.Type.Empty)
         }
 
-        val isStatic = tokenType == TokenType.Identifier && token.value == "static" && peek(1).type != TokenType.OpenParen
+        val isStatic = tokenType == TokenType.Identifier && token.value == "static" && peek(1).type.let {
+            it != TokenType.OpenParen && it != TokenType.Equals && it != TokenType.Semicolon
+        }
         if (isStatic)
             consume()
 
         val method = parseMethodDefinition() ?: run {
-            if (isStatic) {
+            val name = parseClassElementName() ?: run {
+                expected("class element")
                 consume()
-                expected("method definition")
+                return null
             }
-            return null
+            val initializer = parseInitializer()
+            return ClassElementNode(name, initializer, isStatic, ClassElementNode.Type.Field)
         }
 
-        return ClassElementNode(method, isStatic)
+        return ClassElementNode(method, null, isStatic, ClassElementNode.Type.Method)
+    }
+
+    private fun parseClassElementName(): ASTNode? {
+        return parsePrivateIdentifier() ?: parsePropertyNameNode()
+    }
+
+    private fun parsePrivateIdentifier(): PrivateIdentifierNode? {
+        return if (tokenType == TokenType.PrivateIdentifier) {
+            PrivateIdentifierNode(consume().value.substring(1))
+        } else null
     }
 
     private fun parseLexicalDeclaration(forceSemi: Boolean = false): StatementNode? {
@@ -1099,7 +1113,7 @@ class Parser(text: String) {
                 }
             } else if (tokenType == TokenType.Period) {
                 consume()
-                val identifier = parseIdentifierName() ?: run {
+                val identifier = parseIdentifierName() ?: parsePrivateIdentifier() ?: run {
                     expected("identifier")
                     consume()
                     return null

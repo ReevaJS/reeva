@@ -108,6 +108,15 @@ class Lexer(private val source: String) : Iterable<Token> {
                     tokenType = TokenType.TemplateLiteralString
                 }
             }
+        } else if (char == '#') {
+            consume()
+            if (!isIdentStart())
+                TODO()
+            do {
+                consume()
+            } while (isIdentMiddle())
+
+            tokenType = TokenType.PrivateIdentifier
         } else if (isIdentStart()) {
             do {
                 consumeIdentChar()

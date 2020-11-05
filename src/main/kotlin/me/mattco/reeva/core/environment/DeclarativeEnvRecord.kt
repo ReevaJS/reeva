@@ -11,7 +11,7 @@ import me.mattco.reeva.utils.throwReferenceError
 import me.mattco.reeva.utils.throwTypeError
 
 open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
-    protected val bindings = mutableMapOf<String, Binding>()
+    internal val bindings = mutableMapOf<String, Binding>()
 
     @ECMAImpl("8.1.1.1.1")
     override fun hasBinding(name: String) = name in bindings

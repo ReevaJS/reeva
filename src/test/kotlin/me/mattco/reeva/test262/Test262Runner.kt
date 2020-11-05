@@ -12,7 +12,7 @@ class Test262Runner {
         return (targetDirectory ?: testDirectory).walkTopDown().onEnter {
             it.name != "intl402" && it.name != "annexB"
         }.filter {
-            !it.isDirectory && !it.name.endsWith("_FIXTURE.js")
+            !it.isDirectory && !it.name.endsWith("_FIXTURE.js") && "S13.2.1_A1_T1.js" !in it.name // the nested function call test
         }.toList().map {
             val name = it.absolutePath.replace(testDirectory.absolutePath, "")
             val contents = it.readText()

@@ -285,7 +285,9 @@ object Operations {
                 expect(base != JSUndefined && base != JSNull)
                 base = toObject(base as JSValue)
             }
-            val value = (base as JSObject).get(reference.name, reference.getThisValue())
+            if (reference.isPrivateReference)
+                return (base as JSObject).privateFieldGet(reference.name as JSObject.PrivateName)
+            val value = (base as JSObject).get(reference.name as PropertyKey, reference.getThisValue())
             if (value is JSNativeProperty)
                 return value.get(base)
             if (value is JSAccessor)
@@ -294,6 +296,7 @@ object Operations {
         }
 
         expect(base is EnvRecord)
+        expect(reference.name is PropertyKey)
         expect(reference.name.isString)
         return base.getBindingValue(reference.name.asString, reference.isStrict)
     }
@@ -307,17 +310,20 @@ object Operations {
         if (reference.isUnresolvableReference) {
             if (reference.isStrict)
                 throwReferenceError("cannot resolve identifier ${reference.name}")
-            Agent.runningContext.realm.globalObject.set(reference.name, value)
+            Agent.runningContext.realm.globalObject.set(reference.name as PropertyKey, value)
         } else if (reference.isPropertyReference) {
             if (reference.hasPrimitiveBase) {
                 ecmaAssert(base != JSUndefined && base != JSNull)
                 base = toObject(base as JSValue)
             }
-            val succeeded = (base as JSObject).set(reference.name, value, reference.getThisValue())
+            if (reference.isPrivateReference)
+                return (base as JSObject).privateFieldSet(reference.name as JSObject.PrivateName, value)
+            val succeeded = (base as JSObject).set(reference.name as PropertyKey, value, reference.getThisValue())
             if (!succeeded && reference.isStrict)
                 throwTypeError("TODO: Error message")
         } else {
             ecmaAssert(base is EnvRecord)
+            expect(reference.name is PropertyKey)
             expect(reference.name.isString)
             base.setMutableBinding(reference.name.asString, value, reference.isStrict)
         }
@@ -329,6 +335,7 @@ object Operations {
         ecmaAssert(!reference.isUnresolvableReference, "Unknown reference with identifier ${reference.name}")
         val base = reference.baseValue
         ecmaAssert(base is EnvRecord)
+        expect(reference.name is PropertyKey)
         expect(reference.name.isString)
         base.initializeBinding(reference.name.asString, value)
     }
@@ -1205,6 +1212,7 @@ object Operations {
         val localEnv = FunctionEnvRecord.create(function, newTarget)
         calleeContext.lexicalEnv = localEnv
         calleeContext.variableEnv = localEnv
+        calleeContext.privateEnv = function.privateEnv
         Agent.pushContext(calleeContext)
         return calleeContext
     }
@@ -1257,6 +1265,24 @@ object Operations {
     fun makeMethod(function: JSFunction, homeObject: JSObject): JSValue {
         function.homeObject = homeObject
         return JSUndefined
+    }
+
+    @ECMAImpl("9.2.8")
+    fun setFunctionName(function: JSFunction, name: PropertyKey, prefix: String? = null): Boolean {
+        ecmaAssert(function.isExtensible())
+        val nameString = when {
+            name.isSymbol -> name.asSymbol.description.let {
+                if (it == null) "" else "[${name.asSymbol.description}]"
+            }
+            name.isInt -> name.asInt.toString()
+            name.isDouble -> name.asDouble.toString()
+            else -> name.asString
+        }.let {
+            if (prefix != null) {
+                "$prefix $it"
+            } else it
+        }
+        return Operations.definePropertyOrThrow(function, "name".toValue(), Descriptor(nameString.toValue(), Descriptor.CONFIGURABLE))
     }
 
     @JSThrows
@@ -1508,6 +1534,7 @@ object Operations {
             if (value.isSuperReference)
                 TODO()
             expect(value.baseValue is JSValue)
+            expect(value.name is PropertyKey)
             val baseObj = toObject(value.baseValue)
             val deleteStatus = baseObj.delete(value.name)
             if (!deleteStatus && value.isStrict)
@@ -1515,6 +1542,7 @@ object Operations {
             deleteStatus.toValue()
         } else {
             ecmaAssert(value.baseValue is EnvRecord)
+            expect(value.name is PropertyKey)
             expect(value.name.isString)
             value.baseValue.deleteBinding(value.name.asString).toValue()
         }

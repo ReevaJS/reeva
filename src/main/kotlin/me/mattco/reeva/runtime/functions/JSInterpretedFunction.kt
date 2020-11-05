@@ -4,20 +4,21 @@ import me.mattco.reeva.core.Agent
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ReturnException
+import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.JSObject
+import me.mattco.reeva.runtime.primitives.JSEmpty
+import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.ecmaAssert
-import me.mattco.reeva.utils.expect
-import me.mattco.reeva.utils.throwTypeError
+import me.mattco.reeva.utils.*
 
 class JSInterpretedFunction(
     realm: Realm,
     thisMode: ThisMode,
     envRecord: EnvRecord?,
+    privateEnvRecord: EnvRecord?,
     isStrict: Boolean,
     homeObject: JSValue,
     prototype: JSObject = realm.functionProto,
@@ -27,6 +28,7 @@ class JSInterpretedFunction(
     realm,
     thisMode,
     envRecord,
+    privateEnvRecord,
     homeObject,
     isStrict,
     prototype
@@ -56,8 +58,15 @@ class JSInterpretedFunction(
 
         val calleeContext = Operations.prepareForOrdinaryCall(this, newTarget)
         ecmaAssert(Agent.runningContext == calleeContext)
-        if (constructorKind == ConstructorKind.Base)
+        if (constructorKind == ConstructorKind.Base) {
             Operations.ordinaryCallBindThis(this, calleeContext, thisArgument!!)
+            try {
+                initializeInstanceFields(thisArgument, this)
+            } catch (e: ThrowException) {
+                Agent.popContext()
+                throw e
+            }
+        }
         val constructorEnv = calleeContext.lexicalEnv
         expect(constructorEnv is FunctionEnvRecord)
         try {
@@ -72,7 +81,7 @@ class JSInterpretedFunction(
         } finally {
             Agent.popContext()
         }
-        return constructorEnv.getThisBinding()
 
+        return constructorEnv.getThisBinding()
     }
 }
