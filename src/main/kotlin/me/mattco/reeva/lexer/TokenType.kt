@@ -121,7 +121,6 @@ enum class TokenType(val category: Category, val meta: String? = null) {
     UnterminatedRegexLiteral(Category.String),
 
     Identifier(Category.Identifier),
-    PrivateIdentifier(Category.Identifier),
 
     Eof(Category.Invalid),
     Invalid(Category.Invalid);

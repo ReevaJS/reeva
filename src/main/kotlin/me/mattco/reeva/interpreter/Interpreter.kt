@@ -94,7 +94,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
 
     //  This is public because it is used by the eval global function
     @ECMAImpl("14.1.22")
-    fun instantiateFunctionObject(functionNode: FunctionDeclarationNode, scope: EnvRecord, privateScope: EnvRecord? = null): JSFunction {
+    fun instantiateFunctionObject(functionNode: FunctionDeclarationNode, scope: EnvRecord): JSFunction {
         val sourceText = "TODO"
         val function = ordinaryFunctionCreate(
             realm.functionProto,
@@ -104,7 +104,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             JSFunction.ThisMode.NonLexical,
             false,
             scope,
-            privateScope,
         )
         if (functionNode.identifier != null)
             Operations.setFunctionName(function, functionNode.identifier.identifierName.key())
@@ -123,7 +122,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         thisMode: JSFunction.ThisMode,
         isStrict: Boolean,
         scope: EnvRecord,
-        privateScope: EnvRecord? = null
     ): JSFunction {
         val function = JSInterpretedFunction(
             Agent.runningContext.realm,
@@ -133,7 +131,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                 else -> JSFunction.ThisMode.Global
             },
             scope,
-            privateScope,
             isStrict,
             JSUndefined,
             prototype,
@@ -308,7 +305,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
 
         functionsToInitialize.forEach { decl ->
             val functionName = decl.boundNames()[0]
-            val function = instantiateFunctionObject(decl, lexEnv, calleeContext.privateEnv)
+            val function = instantiateFunctionObject(decl, lexEnv)
             varEnv.setMutableBinding(functionName, function, false)
         }
     }
@@ -381,12 +378,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         if (classBinding != null)
             classScope.createImmutableBinding(classBinding, true)
 
-        val outerPrivateEnv = Agent.runningContext.privateEnv
-        val classPrivateEnv = DeclarativeEnvRecord.create(outerPrivateEnv)
-        classNode.body.privateBoundIdentifiers().forEach { identifier ->
-            classPrivateEnv.createImmutableBinding(identifier, true)
-        }
-
         val protoParent: JSValue
         val constructorParent: JSObject
 
@@ -444,7 +435,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             }
 
         Agent.runningContext.lexicalEnv = classScope
-        Agent.runningContext.privateEnv = classPrivateEnv
 
         val constructorInfo = defineMethod(constructor, proto, constructorParent)
         val classFunction = constructorInfo.closure
@@ -473,7 +463,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                     instanceFields.add(field)
             } catch (e: ThrowException) {
                 Agent.runningContext.lexicalEnv = env
-                Agent.runningContext.privateEnv = outerPrivateEnv
                 throw e
             }
         }
@@ -483,7 +472,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             classScope.initializeBinding(classBinding, classFunction)
 
         classFunction.fields = instanceFields
-        Agent.runningContext.privateEnv = outerPrivateEnv
 
         return classFunction
     }
@@ -499,16 +487,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                 null
             }
             ClassElementNode.Type.Field -> {
-                var isPrivateReference = false
-
-                val name: Any = when (val n = classElementNode.node) {
-                    is PrivateIdentifierNode -> {
-                        isPrivateReference = true
-                        n.identifierName
-                    }
-                    is PropertyNameNode -> evaluatePropertyName(n)
-                    else -> unreachable()
-                }
+                val name = evaluatePropertyName(classElementNode.node!!)
 
                 val (initializer, isAnonDef) = if (classElementNode.initializer != null) {
                     val lex = Agent.runningContext.lexicalEnv
@@ -523,7 +502,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                         JSFunction.ThisMode.Lexical,
                         false,
                         lex!!,
-                        Agent.runningContext.privateEnv
                     )
                     Operations.makeMethod(initializer, obj)
                     initializer to Operations.isAnonymousFunctionDefinition(classElementNode.initializer)
@@ -531,7 +509,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                     JSEmpty to false
                 }
 
-                JSFunction.FieldRecord(name, initializer, isAnonDef, isPrivateReference)
+                JSFunction.FieldRecord(name, initializer, isAnonDef)
             }
             ClassElementNode.Type.Empty -> null
         }
@@ -554,7 +532,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
     }
 
     private fun blockDeclarationInstantiation(statements: StatementListNode, env: DeclarativeEnvRecord) {
-        val privateEnv = Agent.runningContext.privateEnv
         statements.lexicallyScopedDeclarations().forEach { decl ->
             decl.boundNames().forEach { name ->
                 if (decl.isConstantDeclaration()) {
@@ -565,7 +542,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             }
             if (decl is FunctionDeclarationNode) {
                 val name = decl.boundNames()[0]
-                val function = instantiateFunctionObject(decl, env, privateEnv)
+                val function = instantiateFunctionObject(decl, env)
                 env.initializeBinding(name, function)
             }
         }
@@ -1245,7 +1222,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             JSFunction.ThisMode.Lexical,
             false,
             scope,
-            Agent.runningContext.privateEnv
         )
         Operations.setFunctionName(closure, "".key())
         return closure
@@ -1358,7 +1334,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                     JSFunction.ThisMode.NonLexical,
                     false,
                     Agent.runningContext.lexicalEnv!!,
-                    Agent.runningContext.privateEnv,
                 )
                 Operations.makeMethod(closure, obj)
                 Operations.setFunctionName(closure, propKey, "get")
@@ -1378,7 +1353,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                     JSFunction.ThisMode.NonLexical,
                     false,
                     Agent.runningContext.lexicalEnv!!,
-                    Agent.runningContext.privateEnv,
                 )
                 Operations.makeMethod(closure, obj)
                 Operations.setFunctionName(closure, propKey, "set")
@@ -1408,7 +1382,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             JSFunction.ThisMode.NonLexical,
             false,
             Agent.runningContext.lexicalEnv!!,
-            Agent.runningContext.privateEnv,
         )
         Operations.makeMethod(closure, obj)
         return DefinedMethod(Operations.toPropertyKey(propKey), closure)
@@ -1465,21 +1438,11 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                 val baseReference = interpretExpression(memberExpressionNode.lhs)
                 val baseValue = Operations.getValue(baseReference)
                 // TODO: Strict mode
-                if (memberExpressionNode.rhs is PrivateIdentifierNode) {
-                    val name = memberExpressionNode.rhs.identifierName
-                    makePrivateReference(baseValue, name)
-                } else {
-                    val name = (memberExpressionNode.rhs as IdentifierNode).identifierName
-                    Operations.evaluatePropertyAccessWithIdentifierKey(baseValue, name, false)
-                }
+                val name = (memberExpressionNode.rhs as IdentifierNode).identifierName
+                Operations.evaluatePropertyAccessWithIdentifierKey(baseValue, name, false)
             }
             MemberExpressionNode.Type.Tagged -> TODO()
         }
-    }
-
-    @ECMAImpl("3.9.3", spec = "https://tc39.es/proposal-class-fields/")
-    private fun makePrivateReference(baseValue: JSValue, name: String): JSReference {
-        return JSReference(baseValue, name.key(), isStrict = true, isPrivateReference = true)
     }
 
     private fun interpretOptionalExpression(optionalExpressionNode: OptionalExpressionNode): JSValue {

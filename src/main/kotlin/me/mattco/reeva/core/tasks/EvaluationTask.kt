@@ -23,7 +23,6 @@ class EvaluationTask(private val script: String, private val realm: Realm) : Tas
 
         context.variableEnv = realm.globalEnv
         context.lexicalEnv = realm.globalEnv
-        context.privateEnv = DeclarativeEnvRecord.create(null)
 
         return context
     }

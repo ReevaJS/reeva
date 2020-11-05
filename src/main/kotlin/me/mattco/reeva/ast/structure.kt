@@ -244,12 +244,6 @@ interface ASTNode {
         return children[0].lexicallyScopedDeclarations()
     }
 
-    fun privateBoundIdentifiers(): List<String> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].privateBoundIdentifiers()
-    }
-
     fun propertyNameList(): List<String> {
         if (children.size != 1)
             return emptyList()

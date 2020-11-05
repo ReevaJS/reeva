@@ -19,7 +19,6 @@ open class JSObject protected constructor(
     private var prototype: JSValue = JSNull
 ) : JSValue() {
     private val storage = mutableMapOf<StringOrSymbol, Descriptor>()
-    private val privateStorage = mutableMapOf<String, JSValue>()
     internal val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
 
@@ -354,26 +353,6 @@ open class JSObject protected constructor(
         return indexedProperties.indices().map(::PropertyKey) + storage.keys.map {
             if (it.isString) PropertyKey(it.asString) else PropertyKey(it.asSymbol)
         }
-    }
-
-    @ECMAImpl("3.3", spec = "https://tc39.es/proposal-class-fields")
-    fun privateFieldFind(privateName: String) = privateStorage[privateName]
-
-    @ECMAImpl("3.4", spec = "https://tc39.es/proposal-class-fields")
-    fun privateFieldAdd(privateName: String, value: JSValue) {
-        if (privateFieldFind(privateName) != null)
-            throwTypeError("TODO: message")
-        privateStorage[privateName] = value
-    }
-
-    @ECMAImpl("3.5", spec = "https://tc39.es/proposal-class-fields")
-    fun privateFieldGet(privateName: String) = privateFieldFind(privateName) ?: throwTypeError("TODO: message")
-
-    @ECMAImpl("3.6", spec = "https://tc39.es/proposal-class-fields")
-    fun privateFieldSet(privateName: String, value: JSValue) {
-        if (privateFieldFind(privateName) == null)
-            throwTypeError("TODO: message")
-        privateStorage[privateName] = value
     }
 
     fun defineNativeAccessor(key: PropertyKey, attributes: Int, getter: JSFunction?, setter: JSFunction?) {

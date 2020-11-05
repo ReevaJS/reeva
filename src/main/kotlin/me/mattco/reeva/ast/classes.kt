@@ -1,6 +1,7 @@
 package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.literals.MethodDefinitionNode
+import me.mattco.reeva.ast.literals.PropertyNameNode
 
 class ClassDeclarationNode(val classNode: ClassNode) : NodeBase(listOf(classNode)), DeclarationNode {
     override fun boundNames() = classNode.identifier?.boundNames() ?: listOf("*default")
@@ -46,17 +47,11 @@ class ClassNode(
     val body: ClassElementList
 ) : NodeBase(listOfNotNull(identifier, heritage) + body) {
     override fun constructorMethod() = body.constructorMethod()
-
-    override fun privateBoundIdentifiers() = body.privateBoundIdentifiers()
 }
 
 class ClassElementList(val elements: List<ClassElementNode>) : NodeBase(elements) {
     override fun constructorMethod(): ASTNode? {
         return elements.firstOrNull { it.classElementKind() == ASTNode.ClassElementKind.ConstructorMethod }
-    }
-
-    override fun privateBoundIdentifiers(): List<String> {
-        return elements.flatMap(ASTNode::privateBoundIdentifiers)
     }
 }
 
@@ -66,22 +61,10 @@ class ClassElementNode(
     val isStatic: Boolean,
     val type: Type,
 ) : NodeBase(listOfNotNull(node)) {
-    override fun privateBoundIdentifiers(): List<String> {
-        return when (type) {
-            Type.Field -> if (node is PrivateIdentifierNode) {
-                listOf(node.identifierName)
-            } else emptyList()
-            Type.Method -> emptyList()
-            Type.Empty -> emptyList()
-        }
-    }
-
     override fun propName(): String? {
         return when (type) {
             Type.Method -> null
-            Type.Field -> if (node is PrivateIdentifierNode) {
-                null
-            } else node!!.propName()
+            Type.Field -> node!!.propName()
             Type.Empty -> null
         }
     }

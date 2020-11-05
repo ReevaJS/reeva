@@ -271,7 +271,6 @@ object Operations {
     /**************
      * REFERENCES
      **************/
-
     @JSThrows
     @JvmStatic @ECMAImpl("6.2.4.8")
     fun getValue(reference: JSValue): JSValue {
@@ -285,8 +284,6 @@ object Operations {
                 expect(base != JSUndefined && base != JSNull)
                 base = toObject(base as JSValue)
             }
-            if (reference.isPrivateReference)
-                return (base as JSObject).privateFieldGet(reference.name.asString)
             val value = (base as JSObject).get(reference.name, reference.getThisValue())
             if (value is JSNativeProperty)
                 return value.get(base)
@@ -315,8 +312,6 @@ object Operations {
                 ecmaAssert(base != JSUndefined && base != JSNull)
                 base = toObject(base as JSValue)
             }
-            if (reference.isPrivateReference)
-                return (base as JSObject).privateFieldSet(reference.name.asString, value)
             val succeeded = (base as JSObject).set(reference.name, value, reference.getThisValue())
             if (!succeeded && reference.isStrict)
                 throwTypeError("TODO: Error message")
@@ -1209,7 +1204,6 @@ object Operations {
         val localEnv = FunctionEnvRecord.create(function, newTarget)
         calleeContext.lexicalEnv = localEnv
         calleeContext.variableEnv = localEnv
-        calleeContext.privateEnv = function.privateEnv
         Agent.pushContext(calleeContext)
         return calleeContext
     }

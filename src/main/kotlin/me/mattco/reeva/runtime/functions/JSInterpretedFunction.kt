@@ -18,7 +18,6 @@ class JSInterpretedFunction(
     realm: Realm,
     thisMode: ThisMode,
     envRecord: EnvRecord?,
-    privateEnvRecord: EnvRecord?,
     isStrict: Boolean,
     homeObject: JSValue,
     prototype: JSObject = realm.functionProto,
@@ -28,7 +27,6 @@ class JSInterpretedFunction(
     realm,
     thisMode,
     envRecord,
-    privateEnvRecord,
     homeObject,
     isStrict,
     prototype

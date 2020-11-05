@@ -17,7 +17,6 @@ abstract class JSFunction(
     realm: Realm,
     val thisMode: ThisMode,
     var envRecord: EnvRecord? = null,
-    var privateEnv: EnvRecord? = null,
     var homeObject: JSValue = JSUndefined,
     val isStrict: Boolean = false,
     prototype: JSObject = realm.functionProto,
@@ -49,22 +48,17 @@ abstract class JSFunction(
 
             if (fieldRecord.isAnonymousFunctionDefinition) {
                 if (Operations.hasOwnProperty(initValue, "name".key()) == JSFalse)
-                    Operations.setFunctionName(initValue as JSFunction, Operations.toPropertyKey(fieldRecord.name as JSValue))
+                    Operations.setFunctionName(initValue as JSFunction, Operations.toPropertyKey(fieldRecord.name))
             }
 
-            if (fieldRecord.isPrivateReference) {
-                receiver.privateFieldAdd(fieldRecord.name as String, initValue)
-            } else {
-                Operations.createDataPropertyOrThrow(receiver, fieldRecord.name as JSValue, initValue)
-            }
+            Operations.createDataPropertyOrThrow(receiver, fieldRecord.name, initValue)
         }
     }
 
     data class FieldRecord(
-        val name: Any, // String if isPrivateReference, JSValue otherwise
+        val name: JSValue,
         val initializer: JSValue,
         val isAnonymousFunctionDefinition: Boolean,
-        val isPrivateReference: Boolean,
     )
 
     enum class ThisMode {

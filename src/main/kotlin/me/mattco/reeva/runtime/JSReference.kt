@@ -13,14 +13,7 @@ open class JSReference(
     val name: PropertyKey,
     @JvmField @ECMAImpl("6.2.4.3", "IsStrictReference")
     val isStrict: Boolean,
-    @ECMAImpl("3.9", spec = "https://tc39.es/proposal-class-fields")
-    val isPrivateReference: Boolean = false,
 ) : JSValue() {
-    init {
-        if (isPrivateReference)
-            expect(name.isString)
-    }
-
     @ECMAImpl("6.2.4.4")
     val hasPrimitiveBase = when (baseValue) {
         is JSBigInt,
