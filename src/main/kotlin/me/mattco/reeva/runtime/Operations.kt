@@ -286,8 +286,8 @@ object Operations {
                 base = toObject(base as JSValue)
             }
             if (reference.isPrivateReference)
-                return (base as JSObject).privateFieldGet(reference.name as JSObject.PrivateName)
-            val value = (base as JSObject).get(reference.name as PropertyKey, reference.getThisValue())
+                return (base as JSObject).privateFieldGet(reference.name.asString)
+            val value = (base as JSObject).get(reference.name, reference.getThisValue())
             if (value is JSNativeProperty)
                 return value.get(base)
             if (value is JSAccessor)
@@ -296,7 +296,6 @@ object Operations {
         }
 
         expect(base is EnvRecord)
-        expect(reference.name is PropertyKey)
         expect(reference.name.isString)
         return base.getBindingValue(reference.name.asString, reference.isStrict)
     }
@@ -310,20 +309,19 @@ object Operations {
         if (reference.isUnresolvableReference) {
             if (reference.isStrict)
                 throwReferenceError("cannot resolve identifier ${reference.name}")
-            Agent.runningContext.realm.globalObject.set(reference.name as PropertyKey, value)
+            Agent.runningContext.realm.globalObject.set(reference.name, value)
         } else if (reference.isPropertyReference) {
             if (reference.hasPrimitiveBase) {
                 ecmaAssert(base != JSUndefined && base != JSNull)
                 base = toObject(base as JSValue)
             }
             if (reference.isPrivateReference)
-                return (base as JSObject).privateFieldSet(reference.name as JSObject.PrivateName, value)
-            val succeeded = (base as JSObject).set(reference.name as PropertyKey, value, reference.getThisValue())
+                return (base as JSObject).privateFieldSet(reference.name.asString, value)
+            val succeeded = (base as JSObject).set(reference.name, value, reference.getThisValue())
             if (!succeeded && reference.isStrict)
                 throwTypeError("TODO: Error message")
         } else {
             ecmaAssert(base is EnvRecord)
-            expect(reference.name is PropertyKey)
             expect(reference.name.isString)
             base.setMutableBinding(reference.name.asString, value, reference.isStrict)
         }
@@ -335,7 +333,6 @@ object Operations {
         ecmaAssert(!reference.isUnresolvableReference, "Unknown reference with identifier ${reference.name}")
         val base = reference.baseValue
         ecmaAssert(base is EnvRecord)
-        expect(reference.name is PropertyKey)
         expect(reference.name.isString)
         base.initializeBinding(reference.name.asString, value)
     }

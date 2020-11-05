@@ -10,10 +10,17 @@ open class JSReference(
     @JvmField @ECMAImpl("6.2.4.1", "GetBase")
     val baseValue: Ref,
     @JvmField @ECMAImpl("6.2.4.2", "GetReferencedName")
-    val name: Any, // PropertyKey | PrivateName
+    val name: PropertyKey,
     @JvmField @ECMAImpl("6.2.4.3", "IsStrictReference")
     val isStrict: Boolean,
+    @ECMAImpl("3.9", spec = "https://tc39.es/proposal-class-fields")
+    val isPrivateReference: Boolean = false,
 ) : JSValue() {
+    init {
+        if (isPrivateReference)
+            expect(name.isString)
+    }
+
     @ECMAImpl("6.2.4.4")
     val hasPrimitiveBase = when (baseValue) {
         is JSBigInt,
@@ -38,10 +45,6 @@ open class JSReference(
     @ECMAImpl("6.2.4.7")
     val isSuperReference : Boolean
         get() = this is JSSuperReference
-
-    @ECMAImpl("3.9", spec = "https://tc39.es/proposal-class-fields")
-    val isPrivateReference: Boolean
-        get() = name is JSObject.PrivateName
 
     @ECMAImpl("6.2.4.10")
     fun getThisValue(): JSValue {

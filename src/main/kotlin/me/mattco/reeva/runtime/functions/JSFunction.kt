@@ -49,18 +49,23 @@ abstract class JSFunction(
 
             if (fieldRecord.isAnonymousFunctionDefinition) {
                 if (Operations.hasOwnProperty(initValue, "name".key()) == JSFalse)
-                    Operations.setFunctionName(initValue as JSFunction, Operations.toPropertyKey(fieldRecord.name))
+                    Operations.setFunctionName(initValue as JSFunction, Operations.toPropertyKey(fieldRecord.name as JSValue))
             }
 
-            if (fieldRecord.name is PrivateName) {
-                receiver.privateFieldAdd(fieldRecord.name, initValue)
+            if (fieldRecord.isPrivateReference) {
+                receiver.privateFieldAdd(fieldRecord.name as String, initValue)
             } else {
-                Operations.createDataPropertyOrThrow(receiver, fieldRecord.name, initValue)
+                Operations.createDataPropertyOrThrow(receiver, fieldRecord.name as JSValue, initValue)
             }
         }
     }
 
-    data class FieldRecord(val name: JSValue, val initializer: JSValue, val isAnonymousFunctionDefinition: Boolean)
+    data class FieldRecord(
+        val name: Any, // String if isPrivateReference, JSValue otherwise
+        val initializer: JSValue,
+        val isAnonymousFunctionDefinition: Boolean,
+        val isPrivateReference: Boolean,
+    )
 
     enum class ThisMode {
         Lexical,

@@ -385,8 +385,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         val classPrivateEnv = DeclarativeEnvRecord.create(outerPrivateEnv)
         classNode.body.privateBoundIdentifiers().forEach { identifier ->
             classPrivateEnv.createImmutableBinding(identifier, true)
-            val privateName = JSObject.PrivateName(identifier)
-            classPrivateEnv.initializeBinding(identifier, privateName)
         }
 
         val protoParent: JSValue
@@ -501,8 +499,13 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                 null
             }
             ClassElementNode.Type.Field -> {
-                val name = when (val n = classElementNode.node) {
-                    is PrivateIdentifierNode -> Operations.getValue(Operations.resolveBinding(n.identifierName, Agent.runningContext.privateEnv))
+                var isPrivateReference = false
+
+                val name: Any = when (val n = classElementNode.node) {
+                    is PrivateIdentifierNode -> {
+                        isPrivateReference = true
+                        n.identifierName
+                    }
                     is PropertyNameNode -> evaluatePropertyName(n)
                     else -> unreachable()
                 }
@@ -528,7 +531,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                     JSEmpty to false
                 }
 
-                JSFunction.FieldRecord(name, initializer, isAnonDef)
+                JSFunction.FieldRecord(name, initializer, isAnonDef, isPrivateReference)
             }
             ClassElementNode.Type.Empty -> null
         }
@@ -1476,11 +1479,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
 
     @ECMAImpl("3.9.3", spec = "https://tc39.es/proposal-class-fields/")
     private fun makePrivateReference(baseValue: JSValue, name: String): JSReference {
-
-        val privateNameBinding = Operations.resolveBinding(name, Agent.runningContext.privateEnv)
-        val privateName = Operations.getValue(privateNameBinding)
-        ecmaAssert(privateName is JSObject.PrivateName)
-        return JSReference(baseValue, privateName, true)
+        return JSReference(baseValue, name.key(), isStrict = true, isPrivateReference = true)
     }
 
     private fun interpretOptionalExpression(optionalExpressionNode: OptionalExpressionNode): JSValue {
