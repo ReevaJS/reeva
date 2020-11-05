@@ -1035,8 +1035,17 @@ class Parser(text: String) {
     }
 
     private fun parseSuperCall(): ExpressionNode? {
-        // TODO
-        return null
+        if (tokenType != TokenType.Super)
+            return null
+        if (has(1) && peek(1).type != TokenType.OpenParen)
+            return null
+        consume()
+        val args = parseArguments() ?: run {
+            expected("arguments list")
+            consume()
+            return null
+        }
+        return SuperCallNode(args)
     }
 
     private fun parseImportCall(): ExpressionNode? {
@@ -1150,9 +1159,11 @@ class Parser(text: String) {
     private fun parseSuperProperty(): ExpressionNode? {
         if (tokenType != TokenType.Super)
             return null
+        saveState()
         consume()
         return when (tokenType) {
             TokenType.OpenBracket -> {
+                discardState()
                 consume()
                 val expression = withIn { parseExpression() } ?: run {
                     expected("expression")
@@ -1160,19 +1171,20 @@ class Parser(text: String) {
                     return null
                 }
                 consume(TokenType.CloseBracket)
-                return SuperPropertyNode(expression, true)
+                SuperPropertyNode(expression, true)
             }
             TokenType.Period -> {
+                discardState()
                 consume()
                 val identifier = parseIdentifierName() ?: run {
                     expected("identifier")
                     consume()
                     return null
                 }
-                return SuperPropertyNode(identifier, false)
+                SuperPropertyNode(identifier, false)
             }
             else -> {
-                expected("super property access")
+                loadState()
                 null
             }
         }

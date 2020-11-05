@@ -12,7 +12,7 @@ open class JSReference(
     @JvmField @ECMAImpl("6.2.4.2", "GetReferencedName")
     val name: PropertyKey,
     @JvmField @ECMAImpl("6.2.4.3", "IsStrictReference")
-    val isStrict: Boolean
+    val isStrict: Boolean,
 ) : JSValue() {
     @ECMAImpl("6.2.4.4")
     val hasPrimitiveBase = when (baseValue) {
@@ -51,6 +51,4 @@ class JSSuperReference(
     name: PropertyKey,
     isStrict: Boolean,
     val _thisValue: JSValue
-) : JSReference(baseValue, name, isStrict) {
-
-}
+) : JSReference(baseValue, name, isStrict)

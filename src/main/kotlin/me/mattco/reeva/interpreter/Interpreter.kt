@@ -10,6 +10,7 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
+import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.JSReference
 import me.mattco.reeva.runtime.JSValue
@@ -434,7 +435,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                         StatementListNode(listOf(ExpressionStatementNode(
                             SuperCallNode(ArgumentsNode(ArgumentsListNode(listOf(
                                 ArgumentListEntry(
-                                    BindingIdentifierNode("args"),
+                                    IdentifierReferenceNode("args"),
                                     true
                                 )
                             ))))
@@ -1050,17 +1051,46 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             is ForBindingNode -> interpretForBinding(expression)
             is TemplateLiteralNode -> interpretTemplateLiteral(expression)
             is ClassExpressionNode -> interpretClassExpression(expression)
+            is SuperPropertyNode -> interpretSuperProperty(expression)
+            is SuperCallNode -> interpretSuperCall(expression)
             else -> unreachable()
         }
+    }
+
+    private fun interpretSuperProperty(superPropertyNode: SuperPropertyNode): JSValue {
+        val env = Operations.getThisEnvironment()
+        expect(env is FunctionEnvRecord)
+        val actualThis = env.getThisBinding()
+        val key = if (superPropertyNode.computed) {
+            val propertyNameReference = interpretExpression(superPropertyNode.target)
+            Operations.toPropertyKey(Operations.getValue(propertyNameReference))
+        } else {
+            (superPropertyNode.target as IdentifierNode).identifierName.key()
+        }
+
+        return Operations.makeSuperPropertyReference(actualThis, key, false)
+    }
+
+    private fun interpretSuperCall(superCallNode: SuperCallNode): JSValue {
+        val newTarget = Operations.getNewTarget()
+        ecmaAssert(newTarget is JSObject)
+        val func = Operations.getSuperConstructor()
+        val argsList = argumentsListEvaluation(superCallNode.arguments)
+        if (!Operations.isConstructor(func))
+            throwTypeError("TODO: message")
+        val result = Operations.construct(func, argsList, newTarget)
+        val thisEnv = Operations.getThisEnvironment()
+        expect(thisEnv is FunctionEnvRecord)
+        return thisEnv.bindThisValue(result)
     }
 
     private fun interpretClassExpression(classExpressionNode: ClassExpressionNode): JSValue {
         val name = classExpressionNode.classNode.identifier?.identifierName
         // TODO: Set [[SourceText]]
-        if (name != null) {
-            return classDefinitionEvaluation(classExpressionNode.classNode, name, name)
+        return if (name != null) {
+            classDefinitionEvaluation(classExpressionNode.classNode, name, name)
         } else {
-            return classDefinitionEvaluation(classExpressionNode.classNode, null, "")
+            classDefinitionEvaluation(classExpressionNode.classNode, null, "")
         }
     }
 

@@ -1065,6 +1065,13 @@ object Operations {
         }
     }
 
+    @ECMAImpl("8.3.5")
+    fun getNewTarget(): JSValue {
+        val env = getThisEnvironment()
+        ecmaAssert(env is FunctionEnvRecord)
+        return env.newTarget
+    }
+
     @JvmStatic @ECMAImpl("8.3.6")
     fun getGlobalObject(): JSObject {
         return Agent.runningContext.realm.globalObject
@@ -1223,7 +1230,7 @@ object Operations {
     @JSThrows
     @JvmStatic @ECMAImpl("9.2.5")
     fun makeConstructor(function: JSFunction, writablePrototype: Boolean = true, prototype: JSObject? = null) {
-        ecmaAssert(!function.hasProperty("prototype"))
+        ecmaAssert(hasOwnProperty(function, "prototype".key()) == JSFalse)
         ecmaAssert(!function.isConstructable)
         ecmaAssert(function.isExtensible())
 
@@ -1468,6 +1475,23 @@ object Operations {
         if (tailPosition)
             TODO()
         return call(target, thisValue, arguments.toList())
+    }
+
+    @ECMAImpl("12.3.7.2")
+    fun getSuperConstructor(): JSValue {
+        val env = getThisEnvironment()
+        ecmaAssert(env is FunctionEnvRecord)
+        val activeFunction = env.function
+        return activeFunction.getPrototype()
+    }
+
+    @ECMAImpl("12.3.7.3")
+    fun makeSuperPropertyReference(thisValue: JSValue, key: PropertyKey, isStrict: Boolean): JSReference {
+        val env = getThisEnvironment()
+        ecmaAssert(env.hasSuperBinding())
+        val baseValue = (env as FunctionEnvRecord).getSuperBase()
+        requireObjectCoercible(baseValue)
+        return JSSuperReference(baseValue, key, isStrict, thisValue)
     }
 
     @JSThrows
