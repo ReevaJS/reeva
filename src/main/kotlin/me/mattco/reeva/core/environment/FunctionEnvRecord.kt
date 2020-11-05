@@ -6,6 +6,7 @@ import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.throwReferenceError
 
 class FunctionEnvRecord(
@@ -25,10 +26,10 @@ class FunctionEnvRecord(
     @ECMAImpl("8.1.1.3.1")
     fun bindThisValue(value: JSValue): JSValue {
         if (thisBindingStatus == ThisBindingStatus.Lexical)
-            throw IllegalStateException("Attempt to bind a lexical 'this' value")
+            throwReferenceError("TODO: message")
 
         if (thisBindingStatus == ThisBindingStatus.Initialized)
-            throw IllegalStateException("Attempt to bind an initialized 'this' value")
+            throwReferenceError("TODO: message")
 
         thisValue = value
         thisBindingStatus = ThisBindingStatus.Initialized

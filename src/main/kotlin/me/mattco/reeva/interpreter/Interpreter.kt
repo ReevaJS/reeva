@@ -1081,6 +1081,8 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         val result = Operations.construct(func, argsList, newTarget)
         val thisEnv = Operations.getThisEnvironment()
         expect(thisEnv is FunctionEnvRecord)
+        if (thisEnv.thisBindingStatus == FunctionEnvRecord.ThisBindingStatus.Initialized)
+            throwReferenceError("super() called twice in derived class constructor")
         return thisEnv.bindThisValue(result)
     }
 
