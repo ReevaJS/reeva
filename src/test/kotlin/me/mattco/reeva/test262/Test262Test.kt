@@ -7,10 +7,12 @@ import me.mattco.reeva.runtime.primitives.JSFalse
 import org.junit.jupiter.api.*
 import java.io.File
 
-class Test262Test(private val script: String, private val metadata: Test262Metadata) {
+class Test262Test(private val name: String, private val script: String, private val metadata: Test262Metadata) {
     fun test() {
         Assumptions.assumeTrue(metadata.negative == null)
         Assumptions.assumeTrue(metadata.features?.any { "intl" in it.toLowerCase() } != true)
+
+        println("File: ${Test262Runner.testDirectoryStr}$name")
 
         var requiredScript = Test262Runner.pretestScript
 

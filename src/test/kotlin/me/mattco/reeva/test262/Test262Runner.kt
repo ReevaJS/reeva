@@ -24,7 +24,7 @@ class Test262Runner {
             val metadata = Yaml.default.decodeFromString(Test262Metadata.serializer(), yaml)
 
             DynamicTest.dynamicTest(name) {
-                Test262Test(contents, metadata).test()
+                Test262Test(name, contents, metadata).test()
             }
         }
     }
@@ -32,8 +32,9 @@ class Test262Runner {
     companion object {
         val test262Directory = File("./src/test/resources/test262/")
         val testDirectory = File(test262Directory, "test")
+        val testDirectoryStr = testDirectory.absolutePath
         val harnessDirectory = File(test262Directory, "harness")
-        val targetDirectory: File? = File(testDirectory, "built-ins/Object")
+        val targetDirectory: File? = File(testDirectory, "language/statements/class")
 //        val targetDirectory: File? = null
         lateinit var pretestScript: String
 
