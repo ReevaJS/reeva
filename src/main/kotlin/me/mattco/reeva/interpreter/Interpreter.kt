@@ -419,7 +419,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
 
         val proto = JSObject.create(realm, protoParent)
         val constructor = (classNode.body.constructorMethod() as? ClassElementNode)?.method ?:
-            if (classNode.heritage == null) {
+            if (classNode.heritage != null) {
                 MethodDefinitionNode(
                     PropertyNameNode(IdentifierNode("constructor"), false),
                     FormalParametersNode(
