@@ -2,6 +2,7 @@
 
 package me.mattco.reeva.runtime
 
+import me.mattco.reeva.ast.ASTNode
 import me.mattco.reeva.ast.FormalParametersNode
 import me.mattco.reeva.compiler.JSScriptFunction
 import me.mattco.reeva.core.Agent
@@ -1597,6 +1598,13 @@ object Operations {
             "|" -> numericBitwiseOR(lnum, rnum)
             else -> unreachable()
         }
+    }
+
+    @ECMAImpl("14.1.12")
+    fun isAnonymousFunctionDefinition(node: ASTNode): Boolean {
+        if (!node.isFunctionDefinition())
+            return false
+        return !node.hasName()
     }
 
     @JSThrows

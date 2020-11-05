@@ -628,7 +628,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             ldc(id)
             aconst_null
             operation("resolveBinding", JSReference::class, String::class, EnvRecord::class)
-            if (isAnonymousFunctionDefinition(node)) {
+            if (Operations.isAnonymousFunctionDefinition(node)) {
                 TODO()
             } else {
                 compileInitializer(node.initializer)
@@ -638,13 +638,6 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         } else {
             // Do nothing, this is handled by SS
         }
-    }
-
-    @ECMAImpl("14.1.12")
-    private fun isAnonymousFunctionDefinition(node: ASTNode): Boolean {
-        if (!node.isFunctionDefinition())
-            return false
-        return !node.hasName()
     }
 
     private fun MethodAssembly.compileInitializer(initializerNode: InitializerNode) {
@@ -703,7 +696,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             ldc(it.identifier.identifierName)
             aconst_null
             operation("resolveBinding", JSReference::class, String::class, EnvRecord::class)
-            if (isAnonymousFunctionDefinition(lexicalDeclarationNode)) {
+            if (Operations.isAnonymousFunctionDefinition(lexicalDeclarationNode)) {
                 TODO()
             } else {
                 compileExpression(it.initializer.node)
@@ -779,7 +772,7 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
                 expect(property.first is PropertyNameNode)
                 expect(property.second != null)
                 compilePropertyName(property.first)
-                if (isAnonymousFunctionDefinition(property.second)) {
+                if (Operations.isAnonymousFunctionDefinition(property.second)) {
                     TODO()
                 } else {
                     compileExpression(property.second)

@@ -1421,23 +1421,69 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
     }
 
     private fun interpretAssignmentExpression(assignmentExpressionNode: AssignmentExpressionNode): JSValue {
-        if (assignmentExpressionNode.lhs.let { it is ObjectLiteralNode && it is ArrayLiteralNode })
+        val (lhs, rhs) = assignmentExpressionNode.let { it.lhs to it.rhs }
+
+        if (lhs.let { it is ObjectLiteralNode && it is ArrayLiteralNode })
             TODO()
 
-        return if (assignmentExpressionNode.op == AssignmentExpressionNode.Operator.Equals) {
-            val lref = interpretExpression(assignmentExpressionNode.lhs)
-            val rref = interpretExpression(assignmentExpressionNode.rhs)
-            val rval = Operations.getValue(rref)
-            Operations.putValue(lref, rval)
-            rval
-        } else {
-            val lref = interpretExpression(assignmentExpressionNode.lhs)
-            val lval = Operations.getValue(lref)
-            val rref = interpretExpression(assignmentExpressionNode.rhs)
-            val rval = Operations.getValue(rref)
-            val newValue = Operations.applyStringOrNumericBinaryOperator(lval, rval, assignmentExpressionNode.op.symbol.dropLast(1))
-            Operations.putValue(lref, newValue)
-            newValue
+        return when (assignmentExpressionNode.op) {
+            AssignmentExpressionNode.Operator.Equals -> {
+                val lref = interpretExpression(lhs)
+                val rref = interpretExpression(rhs)
+                val rval = Operations.getValue(rref)
+                Operations.putValue(lref, rval)
+                rval
+            }
+            AssignmentExpressionNode.Operator.And -> {
+                val lref = interpretExpression(lhs)
+                val lval = Operations.getValue(lref)
+                val lbool = Operations.toBoolean(lval)
+                if (lbool == JSFalse)
+                    return lval
+                val rval = if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode) {
+                    TODO()
+                } else {
+                    Operations.getValue(interpretExpression(rhs))
+                }
+                Operations.putValue(lref, rval)
+                rval
+            }
+            AssignmentExpressionNode.Operator.Or -> {
+                val lref = interpretExpression(lhs)
+                val lval = Operations.getValue(lref)
+                val lbool = Operations.toBoolean(lval)
+                if (lbool == JSTrue)
+                    return lval
+                val rval = if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode) {
+                    TODO()
+                } else {
+                    Operations.getValue(interpretExpression(rhs))
+                }
+                Operations.putValue(lref, rval)
+                rval
+            }
+            AssignmentExpressionNode.Operator.Nullish -> {
+                val lref = interpretExpression(lhs)
+                val lval = Operations.getValue(lref)
+                if (lval != JSUndefined && lval != JSNull)
+                    return lval
+                val rval = if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode) {
+                    TODO()
+                } else {
+                    Operations.getValue(interpretExpression(rhs))
+                }
+                Operations.putValue(lref, rval)
+                rval
+            }
+            else -> {
+                val lref = interpretExpression(lhs)
+                val lval = Operations.getValue(lref)
+                val rref = interpretExpression(rhs)
+                val rval = Operations.getValue(rref)
+                val newValue = Operations.applyStringOrNumericBinaryOperator(lval, rval, assignmentExpressionNode.op.symbol.dropLast(1))
+                Operations.putValue(lref, newValue)
+                newValue
+            }
         }
     }
 
