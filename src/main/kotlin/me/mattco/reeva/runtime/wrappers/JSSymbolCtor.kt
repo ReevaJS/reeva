@@ -60,13 +60,15 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @JSThrows
-    override fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
-        val description = Operations.toString(arguments.getOrElse(0) { JSUndefined }).string
+    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val description = arguments.argument(0).let {
+            if (it == JSUndefined) null else Operations.toString(it).string
+        }
         return JSSymbol(description)
     }
 
     @JSThrows
-    override fun construct(arguments: List<JSValue>, newTarget: JSValue): JSValue {
+    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
         throwTypeError("Symbol objects cannot be constructed")
     }
 

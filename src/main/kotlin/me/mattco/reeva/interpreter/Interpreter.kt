@@ -313,7 +313,9 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
     private fun setFunctionName(function: JSFunction, name: PropertyKey, prefix: String? = null): Boolean {
         ecmaAssert(function.isExtensible())
         val nameString = when {
-            name.isSymbol -> "[${name.asSymbol.description}]"
+            name.isSymbol -> name.asSymbol.description.let {
+                if (it == null) "" else "[${name.asSymbol.description}]"
+            }
             name.isInt -> name.asInt.toString()
             name.isDouble -> name.asDouble.toString()
             else -> name.asString

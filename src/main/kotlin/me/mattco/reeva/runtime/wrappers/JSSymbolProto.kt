@@ -10,6 +10,7 @@ import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSSymbol
+import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.throwTypeError
 import me.mattco.reeva.utils.toValue
@@ -22,7 +23,7 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
     @JSNativePropertyGetter("description", attributes = 0)
     fun getDescription(thisValue: JSValue): JSValue {
-        return thisSymbolValue(thisValue).description.toValue()
+        return thisSymbolValue(thisValue).description?.toValue() ?: JSUndefined
     }
 
     @JSNativePropertyGetter("@@toStringTag", Descriptor.CONFIGURABLE)
