@@ -110,7 +110,7 @@ class Lexer(private val source: String) : Iterable<Token> {
             }
         } else if (isIdentStart()) {
             do {
-                consume()
+                consumeIdentChar()
             } while (isIdentMiddle())
 
             val value = source.substring(valueStartCursor, cursor)
@@ -270,7 +270,17 @@ class Lexer(private val source: String) : Iterable<Token> {
         return lastToken
     }
 
-    private fun isIdentStart() = char.isLetter() || char == '_' || char == '$'
+    private fun isIdentStart() = char.isLetter() || char == '_' || char == '$' || matchUnicodeEscape()
+
+    private fun matchUnicodeEscape() = has(6) && match('\\', 'u') && source.substring(cursor + 2, cursor + 6).all {
+        it.isHexDigit()
+    }
+
+    private fun consumeIdentChar() {
+        if (matchUnicodeEscape())
+            consume(5)
+        consume()
+    }
 
     private fun isIdentMiddle() = isIdentStart() || char.isDigit()
 
@@ -284,6 +294,8 @@ class Lexer(private val source: String) : Iterable<Token> {
 
         return source[cursor + n]
     }
+
+    private fun has(n: Int): Boolean = cursor + n < source.length
 
     private fun match(vararg ch: Char) = ch.allIndexed { i, char ->
         cursor + i < source.length && source[cursor + i] == char

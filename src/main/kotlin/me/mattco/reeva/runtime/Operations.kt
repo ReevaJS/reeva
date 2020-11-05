@@ -40,8 +40,8 @@ import kotlin.math.pow
 
 object Operations {
     const val MAX_SAFE_INTEGER: Long = (2L shl 52) - 1L
-    const val MAX_32BIT_INT = 2 shl 31
-    const val MAX_31BIT_INT = 2 shl 30
+    const val MAX_32BIT_INT = 2L shl 31
+    const val MAX_31BIT_INT = 2L shl 30
 
     // Note this common gotcha: In Kotlin this really does accept any
     // value, however it gets translated to Object in Java, which can't

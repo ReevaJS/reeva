@@ -51,9 +51,9 @@ data class Token(
         || type == TokenType.While
         || type == TokenType.Yield
 
-    fun asDouble(): Double {
+    fun doubleValue(): Double {
         if (type != TokenType.NumericLiteral)
-            throw IllegalStateException("asDouble called on non-NumericLiteral")
+            throw IllegalStateException("doubleValue called on non-NumericLiteral")
 
         if (value[0] == '0' && value.length >= 2) {
             if (value[1] == 'x' || value[1] == 'X')
@@ -70,15 +70,30 @@ data class Token(
         return value.toDouble()
     }
 
-    fun asString(): String {
+    fun booleanValue(): Boolean {
+        if (type != TokenType.BooleanLiteral)
+            throw IllegalStateException("booleanValue called on non-BooleanLiteral")
+        return value == "true"
+    }
+
+    fun stringValue(): String {
         // TODO: Template literal support
         if (type != TokenType.StringLiteral)
-            throw IllegalStateException("asString called on non-StringLiteral")
+            throw IllegalStateException("stringValue called on non-StringLiteral")
+        return if (type == TokenType.TemplateLiteralString)
+            parseContent(0, value.length)
+        else parseContent(1, value.length - 1)
+    }
 
+    fun identifierValue(): String {
+        return parseContent(0, value.length)
+    }
+
+    private fun parseContent(start: Int, end: Int): String {
         return StringBuilder().apply {
-            var i = 1
-            while (i < value.length - 1) {
-                if (value[i] == '\\' && i + 2 < value.length) {
+            var i = start
+            while (i < end) {
+                if (value[i] == '\\' && i + 1 < end) {
                     i++
                     when (value[i]) {
                         'n' -> append('\n')
@@ -136,11 +151,5 @@ data class Token(
                 i++
             }
         }.toString()
-    }
-
-    fun asBoolean(): Boolean {
-        if (type != TokenType.BooleanLiteral)
-            throw IllegalStateException("asBoolean called on non-BooleanLiteral")
-        return value == "true"
     }
 }

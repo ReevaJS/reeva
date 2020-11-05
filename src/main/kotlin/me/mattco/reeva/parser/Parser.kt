@@ -779,6 +779,7 @@ class Parser(text: String) {
         val list = parseBindingList() ?: run {
             expected("identifier")
             consume()
+            discardState()
             return null
         }
 
@@ -846,14 +847,22 @@ class Parser(text: String) {
         return when {
             tokenType != TokenType.Identifier -> null
             isReserved(token.value) -> null
-            else -> IdentifierNode(consume().value)
+            else -> {
+                val name = consume().identifierValue()
+                if (isReserved(name)) {
+                    syntaxError("'$name' is not a valid identifier")
+                    consume()
+                    return null
+                }
+                IdentifierNode(name)
+            }
         }
     }
 
     private fun parseIdentifierName(): IdentifierNode? {
         if (!token.isIdentifierName)
             return null
-        return IdentifierNode(consume().value)
+        return IdentifierNode(consume().identifierValue())
     }
 
     private fun parseYieldExpression(): ExpressionNode? {
@@ -1302,13 +1311,13 @@ class Parser(text: String) {
 
     private fun parseNumericLiteral(): LiteralNode? {
         return if (tokenType == TokenType.NumericLiteral) {
-            NumericLiteralNode(consume().asDouble())
+            NumericLiteralNode(consume().doubleValue())
         } else null
     }
 
     private fun parseStringLiteral(): LiteralNode? {
         return if (tokenType == TokenType.StringLiteral) {
-            StringLiteralNode(consume().asString())
+            StringLiteralNode(consume().stringValue())
         } else null
     }
 
@@ -1555,7 +1564,7 @@ class Parser(text: String) {
             }
 
             when (tokenType) {
-                TokenType.TemplateLiteralString -> parts.add(StringLiteralNode(consume().value))
+                TokenType.TemplateLiteralString -> parts.add(StringLiteralNode(consume().stringValue()))
                 TokenType.TemplateLiteralExprStart -> {
                     consume()
                     parts.add(withIn { parseExpression() } ?: run {
