@@ -1069,12 +1069,10 @@ class Parser(text: String) {
             if (tokenType == TokenType.New) {
                 consume()
                 val expr = parseMemberExpression() ?: run {
-                    discardState()
                     expected("expression")
                     return null
                 }
                 val args = parseArguments() ?: run {
-                    discardState()
                     expected("parenthesized arguments")
                     return null
                 }
