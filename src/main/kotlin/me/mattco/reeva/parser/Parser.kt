@@ -1072,10 +1072,7 @@ class Parser(text: String) {
                     expected("expression")
                     return null
                 }
-                val args = parseArguments() ?: run {
-                    expected("parenthesized arguments")
-                    return null
-                }
+                val args = parseArguments()
                 // Spec deviation: MemberExpression does not have any alternatives
                 // that involve arguments or new, as it makes the AST tree way more
                 // confusing
