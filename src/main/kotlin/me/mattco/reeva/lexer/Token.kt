@@ -67,7 +67,7 @@ data class Token(
                 return value.substring(1).toLong(8).toDouble()
             }
         }
-        return value.toDouble()
+        return value.filterNot { it == '_' }.toDouble()
     }
 
     fun booleanValue(): Boolean {

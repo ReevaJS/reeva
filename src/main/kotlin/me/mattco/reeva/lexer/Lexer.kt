@@ -156,7 +156,7 @@ class Lexer(private val source: String) : Iterable<Token> {
                     }
                 }
             } else {
-                while (char.isDigit())
+                while (char.isDigit() || char == '_')
                     consume()
                 if (char == 'n') {
                     consume()
@@ -164,7 +164,7 @@ class Lexer(private val source: String) : Iterable<Token> {
                 } else {
                     if (char == '.') {
                         consume()
-                        while (char.isDigit())
+                        while (char.isDigit() || char == '_')
                             consume()
                     }
                     if (char == 'e' || char == 'E')
