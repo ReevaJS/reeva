@@ -11,6 +11,7 @@ class Test262Test(private val name: String, private val script: String, private 
     fun test() {
         Assumptions.assumeTrue(metadata.negative == null)
         Assumptions.assumeTrue(metadata.features?.any { "intl" in it.toLowerCase() } != true)
+        Assumptions.assumeTrue(metadata.features?.any { it in excludedFeatures } != true)
 
         println("File: ${Test262Runner.testDirectoryStr}$name")
 
@@ -72,5 +73,18 @@ class Test262Test(private val name: String, private val script: String, private 
                 "Expected \$DONE to be called with falsy value, received ${Operations.toString(doneFunction.result)}"
             }
         }
+    }
+
+    companion object {
+        private val excludedFeatures = listOf(
+            "generators",
+            "async-functions",
+            "async-iteration",
+            "destructuring-binding",
+            "class-static-methods-private",
+            "class-methods-private",
+            "class-static-fields-private",
+            "class-fields-private",
+        )
     }
 }
