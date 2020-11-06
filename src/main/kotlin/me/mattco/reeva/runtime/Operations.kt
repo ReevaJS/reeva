@@ -468,8 +468,8 @@ object Operations {
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
 
-        var int = floor(abs(number.asDouble)).toInt()
-        return JSNumber(int % MAX_32BIT_INT.toInt())
+        var int = floor(abs(number.asDouble)).toLong()
+        return JSNumber(int % MAX_32BIT_INT)
     }
 
     @JSThrows
