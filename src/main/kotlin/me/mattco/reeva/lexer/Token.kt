@@ -146,7 +146,7 @@ data class Token(
                                 }
 
                             } else {
-                                if (i + 3 >= value.length - 1)
+                                if (i + 3 > value.lastIndex)
                                     TODO()
                                 if (!firstCh.isHexDigit())
                                     TODO()
