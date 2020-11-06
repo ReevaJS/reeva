@@ -455,9 +455,9 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         }.forEach { element ->
             try {
                 val field = if (element.isStatic) {
-                    classElementEvaluation(element, classFunction, false)
+                    classElementEvaluation(element, classFunction, false, element.isStatic)
                 } else {
-                    classElementEvaluation(element, proto, false)
+                    classElementEvaluation(element, proto, false, element.isStatic)
                 }
                 if (field != null)
                     instanceFields.add(field)
@@ -479,7 +479,8 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
     private fun classElementEvaluation(
         classElementNode: ClassElementNode,
         obj: JSObject,
-        enumerable: Boolean
+        enumerable: Boolean,
+        isStatic: Boolean,
     ): JSFunction.FieldRecord? {
         return when (classElementNode.type) {
             ClassElementNode.Type.Method -> {
@@ -489,27 +490,37 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             ClassElementNode.Type.Field -> {
                 val name = evaluatePropertyName(classElementNode.node!!)
 
-                val (initializer, isAnonDef) = if (classElementNode.initializer != null) {
-                    val lex = Agent.runningContext.lexicalEnv
-                    val formalParameterList = FormalParametersNode(FormalParameterListNode(emptyList()), null)
-                    val initializer = ordinaryFunctionCreate(
-                        realm.functionProto,
-                        "TODO",
-                        formalParameterList,
-                        FunctionStatementList(StatementListNode(listOf(
-                            ReturnStatementNode(classElementNode.initializer.node)
-                        ))),
-                        JSFunction.ThisMode.Lexical,
-                        false,
-                        lex!!,
-                    )
-                    Operations.makeMethod(initializer, obj)
-                    initializer to Operations.isAnonymousFunctionDefinition(classElementNode.initializer)
+                if (isStatic) {
+                    if (classElementNode.initializer == null) {
+                        Operations.createDataPropertyOrThrow(obj, name, JSUndefined)
+                    } else {
+                        val value = interpretExpression(classElementNode.initializer.node)
+                        Operations.createDataPropertyOrThrow(obj, name, Operations.getValue(value))
+                    }
+                    null
                 } else {
-                    JSEmpty to false
-                }
+                    val (initializer, isAnonDef) = if (classElementNode.initializer != null) {
+                        val lex = Agent.runningContext.lexicalEnv
+                        val formalParameterList = FormalParametersNode(FormalParameterListNode(emptyList()), null)
+                        val initializer = ordinaryFunctionCreate(
+                            realm.functionProto,
+                            "TODO",
+                            formalParameterList,
+                            FunctionStatementList(StatementListNode(listOf(
+                                ReturnStatementNode(classElementNode.initializer.node)
+                            ))),
+                            JSFunction.ThisMode.Lexical,
+                            false,
+                            lex!!,
+                        )
+                        Operations.makeMethod(initializer, obj)
+                        initializer to Operations.isAnonymousFunctionDefinition(classElementNode.initializer)
+                    } else {
+                        JSEmpty to false
+                    }
 
-                JSFunction.FieldRecord(name, initializer, isAnonDef)
+                    JSFunction.FieldRecord(name, initializer, isAnonDef)
+                }
             }
             ClassElementNode.Type.Empty -> null
         }
