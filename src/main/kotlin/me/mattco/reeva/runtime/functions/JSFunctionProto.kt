@@ -6,13 +6,27 @@ import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
+import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
+import me.mattco.reeva.utils.key
 import me.mattco.reeva.utils.throwTypeError
 
 class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
+    override fun init() {
+        super.init()
+
+        val thrower = JSNativeFunction.fromLambda(realm, "", 0) { _, _ ->
+            throwTypeError("cannot access \"caller\" or \"arguments\" properties on functions")
+        }
+
+        val desc = Descriptor(JSEmpty, Descriptor.CONFIGURABLE, thrower, thrower)
+        defineOwnProperty("caller".key(), desc)
+        defineOwnProperty("arguments".key(), desc)
+    }
+
     @JSMethod("call", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isCallable(thisValue))
