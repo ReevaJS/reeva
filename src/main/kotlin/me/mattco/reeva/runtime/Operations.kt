@@ -23,6 +23,7 @@ import me.mattco.reeva.runtime.builtins.promises.JSCapabilitiesExecutor
 import me.mattco.reeva.runtime.builtins.promises.JSPromiseObject
 import me.mattco.reeva.runtime.builtins.promises.JSRejectFunction
 import me.mattco.reeva.runtime.builtins.promises.JSResolveFunction
+import me.mattco.reeva.runtime.functions.JSBoundFunction
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -1273,7 +1274,13 @@ object Operations {
                 "$prefix $it"
             } else it
         }
-        return Operations.definePropertyOrThrow(function, "name".toValue(), Descriptor(nameString.toValue(), Descriptor.CONFIGURABLE))
+        return definePropertyOrThrow(function, "name".toValue(), Descriptor(nameString.toValue(), Descriptor.CONFIGURABLE))
+    }
+
+    @ECMAImpl("9.4.1.3")
+    fun boundFunctionCreate(targetFunction: JSFunction, boundThis: JSValue, boundArgs: JSArguments): JSFunction {
+        val proto = targetFunction.getPrototype()
+        return JSBoundFunction.create(Agent.runningContext.realm, targetFunction, boundThis, boundArgs, proto)
     }
 
     @JSThrows
