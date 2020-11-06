@@ -16,7 +16,7 @@ class SimpleIndexedStorage : IndexedStorage {
 
     override fun hasIndex(index: Int) = index < sizeBacker && elements[index] != JSEmpty
 
-    override fun get(index: Int) = if (index < elements.size) {
+    override fun get(index: Int) = if (hasIndex(index)) {
         Descriptor(elements[index], Descriptor.defaultAttributes)
     } else null
 

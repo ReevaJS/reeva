@@ -34,6 +34,24 @@ abstract class JSFunction(
     @JSThrows
     abstract fun construct(arguments: JSArguments, newTarget: JSValue): JSValue
 
+    data class FieldRecord(
+        val name: JSValue,
+        val initializer: JSValue,
+        val isAnonymousFunctionDefinition: Boolean,
+    )
+
+    enum class ThisMode {
+        Lexical,
+        NonLexical,
+        Strict,
+        Global
+    }
+
+    enum class ConstructorKind {
+        Base,
+        Derived,
+    }
+
     companion object {
         fun initializeInstanceFields(obj: JSObject, ctor: JSFunction) {
             ctor.fields.forEach {
@@ -53,23 +71,5 @@ abstract class JSFunction(
 
             Operations.createDataPropertyOrThrow(receiver, fieldRecord.name, initValue)
         }
-    }
-
-    data class FieldRecord(
-        val name: JSValue,
-        val initializer: JSValue,
-        val isAnonymousFunctionDefinition: Boolean,
-    )
-
-    enum class ThisMode {
-        Lexical,
-        NonLexical,
-        Strict,
-        Global
-    }
-
-    enum class ConstructorKind {
-        Base,
-        Derived,
     }
 }

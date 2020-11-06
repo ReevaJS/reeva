@@ -375,7 +375,7 @@ open class JSObject protected constructor(
     internal fun internalGet(property: PropertyKey): Descriptor? {
         val stringOrSymbol = when {
             property.isString -> {
-                property.asString.toIntOrNull()?.let {
+                property.asString.toIntOrNull()?.also {
                     if (it >= 0)
                         return indexedProperties.getDescriptor(it)
                 }
@@ -397,7 +397,7 @@ open class JSObject protected constructor(
     internal fun internalSet(property: PropertyKey, descriptor: Descriptor) {
         val stringOrSymbol = when {
             property.isString -> {
-                property.asString.toIntOrNull()?.let {
+                property.asString.toIntOrNull()?.also {
                     if (it >= 0) {
                         indexedProperties.set(this, it, descriptor)
                         return
@@ -422,6 +422,13 @@ open class JSObject protected constructor(
 
     internal fun internalDelete(property: PropertyKey): Boolean {
         val stringOrSymbol = when {
+            property.isString -> {
+                property.asString.toIntOrNull()?.also {
+                    if (it >= 0)
+                        return indexedProperties.remove(it)
+                }
+                StringOrSymbol(property.asString)
+            }
             property.isInt -> {
                 if (property.asInt >= 0)
                     return indexedProperties.remove(property.asInt)
@@ -429,7 +436,7 @@ open class JSObject protected constructor(
             }
             property.isDouble -> StringOrSymbol(property.asDouble.toString())
             property.isSymbol -> StringOrSymbol(property.asSymbol)
-            else -> StringOrSymbol(property.asString)
+            else -> unreachable()
         }
 
         storage.remove(stringOrSymbol)
