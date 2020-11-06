@@ -67,175 +67,174 @@ open class JSGlobalObject protected constructor(
     }
 
     fun eval(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return performEval(arguments.argument(0), strictCaller = false, direct = false)
-    }
-
-    @JSThrows @ECMAImpl("18.2.1.1")
-    private fun performEval(argument: JSValue, strictCaller: Boolean, direct: Boolean): JSValue {
-        if (!direct)
-            ecmaAssert(!strictCaller)
-
-        if (argument !is JSString)
-            return argument
-
-        val evalRealm = Agent.runningContext.realm
-        var inFunction = false
-        var inMethod = false
-        var inDerivedConstructor = false
-
-        if (direct) {
-            val thisEnv = Operations.getThisEnvironment()
-            if (thisEnv is FunctionEnvRecord) {
-                val function = thisEnv.function
-                inFunction = true
-                inMethod = thisEnv.hasSuperBinding()
-                if (function.constructorKind == JSFunction.ConstructorKind.Derived)
-                    inDerivedConstructor = true
-            }
-        }
-
-        val parser = Parser(argument.string)
-        val scriptNode = parser.parseScript()
-
-        if (parser.syntaxErrors.isNotEmpty())
-            throwSyntaxError(parser.syntaxErrors.first().message)
-
-        val body = scriptNode.statementList
-        if (!inFunction && body.contains("NewTargetNode"))
-            throwSyntaxError("new.target accessed outside of a function")
-
-        if (!inMethod && body.contains("SuperPropertyNode"))
-            throwSyntaxError("super property accessed outside of a method")
-
-        if (!inDerivedConstructor && body.contains("SuperCallNode"))
-            throwSyntaxError("super call outside of a constructor")
-
-        val strictEval = strictCaller || scriptNode.isStrict()
-        val context = Agent.runningContext
-
-        var varEnv: EnvRecord
-        val lexEnv: EnvRecord
-
-        if (direct) {
-            varEnv = context.variableEnv!!
-            lexEnv = DeclarativeEnvRecord.create(context.lexicalEnv)
-        } else {
-            varEnv = evalRealm.globalEnv
-            lexEnv = DeclarativeEnvRecord.create(evalRealm.globalEnv)
-        }
-
-        if (strictEval)
-            varEnv = lexEnv
-
-        val evalContext = ExecutionContext(evalRealm, null)
-        evalContext.variableEnv = varEnv
-        evalContext.lexicalEnv = lexEnv
-        Agent.pushContext(evalContext)
-
-        val interpreter = Interpreter(realm, scriptNode)
-
-        try {
-            evalDeclarationInstantiation(scriptNode.statementList, varEnv, lexEnv, strictEval, interpreter)
-            return interpreter.interpret().let { if (it == JSEmpty) JSUndefined else it }
-        } finally {
-            Agent.popContext()
-        }
-    }
-
-    private fun evalDeclarationInstantiation(
-        body: StatementListNode,
-        varEnv: EnvRecord,
-        lexEnv: EnvRecord,
-        strictEval: Boolean,
-        interpreter: Interpreter,
-    ) {
-        val varNames = body.varDeclaredNames()
-        val varDeclarations = body.varScopedDeclarations()
-        if (!strictEval) {
-            if (varEnv is GlobalEnvRecord) {
-                varNames.forEach { name ->
-                    if (varEnv.hasLexicalDeclaration(name))
-                        throwSyntaxError("TODO: message")
-                }
-            }
-            var thisEnv = lexEnv
-            while (thisEnv != varEnv) {
-                if (thisEnv !is ObjectEnvRecord) {
-                    varNames.forEach { name ->
-                        if (thisEnv.hasBinding(name))
-                            throwSyntaxError("TODO: message")
-                    }
-                }
-                thisEnv = thisEnv.outerEnv!!
-            }
-        }
-        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
-        val declaredFunctionNames = mutableListOf<String>()
-        varDeclarations.asReversed().forEach { decl ->
-            if (decl is VariableDeclarationNode || decl is ForBindingNode || decl is BindingIdentifierNode)
-                return@forEach
-            val functionName = decl.boundNames()[0]
-            if (functionName !in declaredFunctionNames) {
-                if (varEnv is GlobalEnvRecord) {
-                    if (!varEnv.canDeclareGlobalFunction(functionName))
-                        throwTypeError("TODO: message")
-                    declaredFunctionNames.add(functionName)
-                    functionsToInitialize.add(0, decl as FunctionDeclarationNode)
-                }
-            }
-        }
-
-        val declaredVarNames = mutableListOf<String>()
-        varDeclarations.forEach { decl ->
-            if (decl !is VariableDeclarationNode && decl !is ForBindingNode && decl !is BindingIdentifierNode)
-                return@forEach
-            decl.boundNames().forEach { name ->
-                if (name !in declaredFunctionNames) {
-                    if (varEnv is GlobalEnvRecord) {
-                        if (!varEnv.canDeclareGlobalVar(name))
-                            throwTypeError("TODO: message")
-                    }
-                    if (name !in declaredVarNames)
-                        declaredVarNames.add(name)
-                }
-            }
-        }
-        body.lexicallyScopedDeclarations().forEach { decl ->
-            decl.boundNames().forEach { name ->
-                if (decl.isConstantDeclaration()) {
-                    lexEnv.createImmutableBinding(name, true)
-                } else {
-                    lexEnv.createMutableBinding(name, false)
-                }
-            }
-        }
-        functionsToInitialize.forEach { func ->
-            val functionName = func.boundNames()[0]
-            val function = interpreter.instantiateFunctionObject(func, lexEnv)
-            if (varEnv is GlobalEnvRecord) {
-                varEnv.createGlobalFunctionBinding(functionName, function, true)
-            } else {
-                if (!varEnv.hasBinding(functionName)) {
-                    varEnv.createMutableBinding(functionName, true)
-                    // TODO: Validate above step
-                    varEnv.initializeBinding(functionName, function)
-                } else {
-                    varEnv.setMutableBinding(functionName, function, false)
-                }
-            }
-        }
-        declaredVarNames.forEach { name ->
-            if (varEnv is GlobalEnvRecord) {
-                varEnv.createGlobalVarBinding(name, true)
-            } else if (!varEnv.hasBinding(name)) {
-                varEnv.createMutableBinding(name, true)
-                // TODO: Validate above step
-                varEnv.initializeBinding(name, JSUndefined)
-            }
-        }
+        return performEval(arguments.argument(0), Agent.runningContext.realm, strictCaller = false, direct = false)
     }
 
     companion object {
+        @JSThrows @ECMAImpl("18.2.1.1")
+        fun performEval(argument: JSValue, callerRealm: Realm, strictCaller: Boolean, direct: Boolean): JSValue {
+            if (!direct)
+                ecmaAssert(!strictCaller)
+
+            if (argument !is JSString)
+                return argument
+
+            val evalRealm = Agent.runningContext.realm
+            var inFunction = false
+            var inMethod = false
+            var inDerivedConstructor = false
+
+            if (direct) {
+                val thisEnv = Operations.getThisEnvironment()
+                if (thisEnv is FunctionEnvRecord) {
+                    val function = thisEnv.function
+                    inFunction = true
+                    inMethod = thisEnv.hasSuperBinding()
+                    if (function.constructorKind == JSFunction.ConstructorKind.Derived)
+                        inDerivedConstructor = true
+                }
+            }
+
+            val parser = Parser(argument.string)
+            val scriptNode = parser.parseScript()
+
+            if (parser.syntaxErrors.isNotEmpty())
+                throwSyntaxError(parser.syntaxErrors.first().message)
+
+            val body = scriptNode.statementList
+            if (!inFunction && body.contains("NewTargetNode"))
+                throwSyntaxError("new.target accessed outside of a function")
+
+            if (!inMethod && body.contains("SuperPropertyNode"))
+                throwSyntaxError("super property accessed outside of a method")
+
+            if (!inDerivedConstructor && body.contains("SuperCallNode"))
+                throwSyntaxError("super call outside of a constructor")
+
+            val strictEval = strictCaller || scriptNode.isStrict()
+            val context = Agent.runningContext
+
+            var varEnv: EnvRecord
+            val lexEnv: EnvRecord
+
+            if (direct) {
+                varEnv = context.variableEnv!!
+                lexEnv = DeclarativeEnvRecord.create(context.lexicalEnv)
+            } else {
+                varEnv = evalRealm.globalEnv
+                lexEnv = DeclarativeEnvRecord.create(evalRealm.globalEnv)
+            }
+
+            if (strictEval)
+                varEnv = lexEnv
+
+            val evalContext = ExecutionContext(evalRealm, null)
+            evalContext.variableEnv = varEnv
+            evalContext.lexicalEnv = lexEnv
+            Agent.pushContext(evalContext)
+
+            val interpreter = Interpreter(callerRealm, scriptNode)
+
+            try {
+                evalDeclarationInstantiation(scriptNode.statementList, varEnv, lexEnv, strictEval, interpreter)
+                return interpreter.interpret().let { if (it == JSEmpty) JSUndefined else it }
+            } finally {
+                Agent.popContext()
+            }
+        }
+
+        private fun evalDeclarationInstantiation(
+            body: StatementListNode,
+            varEnv: EnvRecord,
+            lexEnv: EnvRecord,
+            strictEval: Boolean,
+            interpreter: Interpreter,
+        ) {
+            val varNames = body.varDeclaredNames()
+            val varDeclarations = body.varScopedDeclarations()
+            if (!strictEval) {
+                if (varEnv is GlobalEnvRecord) {
+                    varNames.forEach { name ->
+                        if (varEnv.hasLexicalDeclaration(name))
+                            throwSyntaxError("TODO: message")
+                    }
+                }
+                var thisEnv = lexEnv
+                while (thisEnv != varEnv) {
+                    if (thisEnv !is ObjectEnvRecord) {
+                        varNames.forEach { name ->
+                            if (thisEnv.hasBinding(name))
+                                throwSyntaxError("TODO: message")
+                        }
+                    }
+                    thisEnv = thisEnv.outerEnv!!
+                }
+            }
+            val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
+            val declaredFunctionNames = mutableListOf<String>()
+            varDeclarations.asReversed().forEach { decl ->
+                if (decl is VariableDeclarationNode || decl is ForBindingNode || decl is BindingIdentifierNode)
+                    return@forEach
+                val functionName = decl.boundNames()[0]
+                if (functionName !in declaredFunctionNames) {
+                    if (varEnv is GlobalEnvRecord) {
+                        if (!varEnv.canDeclareGlobalFunction(functionName))
+                            throwTypeError("TODO: message")
+                        declaredFunctionNames.add(functionName)
+                        functionsToInitialize.add(0, decl as FunctionDeclarationNode)
+                    }
+                }
+            }
+
+            val declaredVarNames = mutableListOf<String>()
+            varDeclarations.forEach { decl ->
+                if (decl !is VariableDeclarationNode && decl !is ForBindingNode && decl !is BindingIdentifierNode)
+                    return@forEach
+                decl.boundNames().forEach { name ->
+                    if (name !in declaredFunctionNames) {
+                        if (varEnv is GlobalEnvRecord) {
+                            if (!varEnv.canDeclareGlobalVar(name))
+                                throwTypeError("TODO: message")
+                        }
+                        if (name !in declaredVarNames)
+                            declaredVarNames.add(name)
+                    }
+                }
+            }
+            body.lexicallyScopedDeclarations().forEach { decl ->
+                decl.boundNames().forEach { name ->
+                    if (decl.isConstantDeclaration()) {
+                        lexEnv.createImmutableBinding(name, true)
+                    } else {
+                        lexEnv.createMutableBinding(name, false)
+                    }
+                }
+            }
+            functionsToInitialize.forEach { func ->
+                val functionName = func.boundNames()[0]
+                val function = interpreter.instantiateFunctionObject(func, lexEnv)
+                if (varEnv is GlobalEnvRecord) {
+                    varEnv.createGlobalFunctionBinding(functionName, function, true)
+                } else {
+                    if (!varEnv.hasBinding(functionName)) {
+                        varEnv.createMutableBinding(functionName, true)
+                        // TODO: Validate above step
+                        varEnv.initializeBinding(functionName, function)
+                    } else {
+                        varEnv.setMutableBinding(functionName, function, false)
+                    }
+                }
+            }
+            declaredVarNames.forEach { name ->
+                if (varEnv is GlobalEnvRecord) {
+                    varEnv.createGlobalVarBinding(name, true)
+                } else if (!varEnv.hasBinding(name)) {
+                    varEnv.createMutableBinding(name, true)
+                    // TODO: Validate above step
+                    varEnv.initializeBinding(name, JSUndefined)
+                }
+            }
+        }
         fun create(realm: Realm) = JSGlobalObject(realm).also { it.init() }
     }
 }

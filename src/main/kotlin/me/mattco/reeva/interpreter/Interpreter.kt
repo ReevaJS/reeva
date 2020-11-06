@@ -12,6 +12,7 @@ import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
+import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.JSReference
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSFunction
@@ -1299,6 +1300,16 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         val ref = interpretExpression(callExpressionNode.target)
         val func = Operations.getValue(ref)
         val args = argumentsListEvaluation(callExpressionNode.arguments)
+        // TODO: Why is this handled here in the spec? And can I not do this
+        if (ref is JSReference && !ref.isPropertyReference && ref.name.isString && ref.name.asString == "eval") {
+            if (func.sameValue(realm.globalObject.get("eval"))) {
+                if (args.isEmpty())
+                    return JSUndefined
+                val evalArg = args[0]
+                // TODO: strict mode
+                return JSGlobalObject.performEval(evalArg, Agent.runningContext.realm, strictCaller = false, direct = true)
+            }
+        }
         return Operations.evaluateCall(func, ref, args, false)
     }
 
