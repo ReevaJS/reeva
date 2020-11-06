@@ -29,6 +29,8 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
     @Throws(ThrowException::class)
     fun interpret(): JSValue {
         val globalEnv = realm.globalEnv
+        if (scriptOrModule.statementList.hasUseStrictDirective())
+            globalEnv.isStrict = true
         globalDeclarationInstantiation(scriptOrModule, globalEnv)
         return interpretScript(scriptOrModule)
     }
@@ -103,7 +105,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             functionNode.parameters,
             functionNode.body,
             JSFunction.ThisMode.NonLexical,
-            false,
             scope,
         )
         if (functionNode.identifier != null)
@@ -121,18 +122,19 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         parameterList: FormalParametersNode,
         body: FunctionStatementList,
         thisMode: JSFunction.ThisMode,
-        isStrict: Boolean,
         scope: EnvRecord,
     ): JSFunction {
+        val strict = body.statementList?.hasUseStrictDirective() == true
+
         val function = JSInterpretedFunction(
             Agent.runningContext.realm,
             when {
                 thisMode == JSFunction.ThisMode.Lexical -> JSFunction.ThisMode.Lexical
-                isStrict -> JSFunction.ThisMode.Strict
+                strict -> JSFunction.ThisMode.Strict
                 else -> JSFunction.ThisMode.Global
             },
             scope,
-            isStrict,
+            strict,
             JSUndefined,
             prototype,
             sourceText,
@@ -515,7 +517,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                                 ReturnStatementNode(classElementNode.initializer.node)
                             ))),
                             JSFunction.ThisMode.Lexical,
-                            false,
                             lex!!,
                         )
                         Operations.makeMethod(initializer, obj)
@@ -1113,7 +1114,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             (superPropertyNode.target as IdentifierNode).identifierName.key()
         }
 
-        return Operations.makeSuperPropertyReference(actualThis, key, false)
+        return Operations.makeSuperPropertyReference(actualThis, key, Operations.isStrict())
     }
 
     private fun interpretSuperCall(superCallNode: SuperCallNode): JSValue {
@@ -1187,7 +1188,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                 functionExpressionNode.parameters,
                 functionExpressionNode.body,
                 JSFunction.ThisMode.NonLexical,
-                false,
                 scope,
             )
             Operations.setFunctionName(closure, "".key())
@@ -1205,7 +1205,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                 functionExpressionNode.parameters,
                 functionExpressionNode.body,
                 JSFunction.ThisMode.NonLexical,
-                false,
                 funcEnv,
             )
             Operations.setFunctionName(closure, name.key())
@@ -1241,7 +1240,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             parameters,
             body,
             JSFunction.ThisMode.Lexical,
-            false,
             scope,
         )
         Operations.setFunctionName(closure, "".key())
@@ -1306,8 +1304,12 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                 if (args.isEmpty())
                     return JSUndefined
                 val evalArg = args[0]
-                // TODO: strict mode
-                return JSGlobalObject.performEval(evalArg, Agent.runningContext.realm, strictCaller = false, direct = true)
+                return JSGlobalObject.performEval(
+                    evalArg,
+                    Agent.runningContext.realm,
+                    strictCaller = Operations.isStrict(),
+                    direct = true
+                )
             }
         }
         return Operations.evaluateCall(func, ref, args, false)
@@ -1363,7 +1365,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                     methodDefinitionNode.parameters,
                     methodDefinitionNode.body,
                     JSFunction.ThisMode.NonLexical,
-                    false,
                     Agent.runningContext.lexicalEnv!!,
                 )
                 Operations.makeMethod(closure, obj)
@@ -1382,7 +1383,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                     methodDefinitionNode.parameters,
                     methodDefinitionNode.body,
                     JSFunction.ThisMode.NonLexical,
-                    false,
                     Agent.runningContext.lexicalEnv!!,
                 )
                 Operations.makeMethod(closure, obj)
@@ -1411,7 +1411,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             method.parameters,
             method.body ,
             JSFunction.ThisMode.NonLexical,
-            false,
             Agent.runningContext.lexicalEnv!!,
         )
         Operations.makeMethod(closure, obj)
@@ -1462,15 +1461,14 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                 // TODO: Strict mode
                 val exprRef = interpretExpression(memberExpressionNode.rhs)
                 val exprValue = Operations.getValue(exprRef)
-                val result = Operations.evaluatePropertyAccessWithExpressionKey(baseValue, exprValue, false)
-                result
+                Operations.evaluatePropertyAccessWithExpressionKey(baseValue, exprValue, Operations.isStrict())
             }
             MemberExpressionNode.Type.NonComputed -> {
                 val baseReference = interpretExpression(memberExpressionNode.lhs)
                 val baseValue = Operations.getValue(baseReference)
                 // TODO: Strict mode
                 val name = (memberExpressionNode.rhs as IdentifierNode).identifierName
-                Operations.evaluatePropertyAccessWithIdentifierKey(baseValue, name, false)
+                Operations.evaluatePropertyAccessWithIdentifierKey(baseValue, name, Operations.isStrict())
             }
             MemberExpressionNode.Type.Tagged -> TODO()
         }

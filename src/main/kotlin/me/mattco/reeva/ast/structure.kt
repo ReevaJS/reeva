@@ -220,12 +220,6 @@ interface ASTNode {
         return children[0].isSimpleParameterList()
     }
 
-    fun isStrict(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].isStrict()
-    }
-
     fun isValidRegularExpressionLiteral(): Boolean {
         if (children.size != 1)
             return false

@@ -59,6 +59,9 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("undefined", JSUndefined, 0)
         defineNativeFunction("id".key(), 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::id)
         defineNativeFunction("eval".key(), 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::eval)
+
+        // Debug method
+        defineNativeFunction("isStrict".key(), 0, 0) { _, _ -> Operations.isStrict().toValue() }
     }
 
     fun id(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -111,7 +114,7 @@ open class JSGlobalObject protected constructor(
             if (!inDerivedConstructor && body.contains("SuperCallNode"))
                 throwSyntaxError("super call outside of a constructor")
 
-            val strictEval = strictCaller || scriptNode.isStrict()
+            val strictEval = strictCaller || scriptNode.statementList.hasUseStrictDirective()
             val context = Agent.runningContext
 
             var varEnv: EnvRecord

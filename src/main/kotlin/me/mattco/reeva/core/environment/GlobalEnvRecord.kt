@@ -17,6 +17,7 @@ class GlobalEnvRecord(
 ) : EnvRecord(outerEnv) {
     private val objectRecord = ObjectEnvRecord(globalThis, false, this)
     private val varNames = mutableListOf<String>()
+    internal var isStrict = false
 
     @ECMAImpl("8.1.1.4.1")
     override fun hasBinding(name: String): Boolean {

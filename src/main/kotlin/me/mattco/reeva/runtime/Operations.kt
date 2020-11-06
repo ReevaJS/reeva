@@ -68,6 +68,19 @@ object Operations {
         return value == JSUndefined || value == JSNull
     }
 
+    fun isStrict(): Boolean {
+        // TODO: Do we need to check variableEnv here as well?
+        var env: EnvRecord? = Agent.runningContext.lexicalEnv
+        while (env != null) {
+            when {
+                env is FunctionEnvRecord && env.function.isStrict -> return true
+                env is GlobalEnvRecord && env.isStrict -> return true
+            }
+            env = env.outerEnv
+        }
+        return false
+    }
+
     @JvmStatic @ECMAImpl("6.1.6.1.1")
     fun numericUnaryMinus(value: JSValue): JSValue {
         expect(value is JSNumber)
@@ -273,7 +286,7 @@ object Operations {
      * REFERENCES
      **************/
     @JSThrows
-    @JvmStatic @ECMAImpl("6.2.4.8")
+    @JvmStatic @ECMAImpl("6.2.4.5")
     fun getValue(reference: JSValue): JSValue {
         if (reference !is JSReference)
             return reference
@@ -299,7 +312,7 @@ object Operations {
     }
 
     @JSThrows
-    @JvmStatic @ECMAImpl("6.2.4.9")
+    @JvmStatic @ECMAImpl("6.2.4.6")
     fun putValue(reference: JSValue, value: JSValue) {
         if (reference !is JSReference)
             throwReferenceError("cannot assign value to ${toPrintableString(value)}")
@@ -1041,7 +1054,7 @@ object Operations {
     fun resolveBinding(name: String, env: EnvRecord? = null): JSReference {
         val actualEnv = env ?: Agent.runningContext.lexicalEnv!!
         // TODO: Strict mode checking
-        return getIdentifierReference(actualEnv, name, false)
+        return getIdentifierReference(actualEnv, name, isStrict())
     }
 
     @JvmStatic @ECMAImpl("8.3.3")

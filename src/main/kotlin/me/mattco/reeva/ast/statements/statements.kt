@@ -2,6 +2,7 @@ package me.mattco.reeva.ast.statements
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
+import me.mattco.reeva.ast.literals.StringLiteralNode
 
 class BlockStatementNode(val block: BlockNode) : NodeBase(listOf(block)), StatementNode
 
@@ -100,6 +101,12 @@ class StatementListNode(val statements: List<StatementListItemNode>) : NodeBase(
 
     override fun varScopedDeclarations(): List<NodeBase> {
         return statements.flatMap(StatementListItemNode::varScopedDeclarations)
+    }
+
+    fun hasUseStrictDirective(): Boolean {
+        return statements.isNotEmpty() && statements[0].let {
+            it is ExpressionStatementNode && it.node is StringLiteralNode && it.node.value == "use strict"
+        }
     }
 }
 
