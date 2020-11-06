@@ -124,7 +124,27 @@ data class Token(
 
                             val firstCh = value[++i]
                             if (firstCh == '{') {
-                                TODO()
+                                var codePoint = 0
+                                i++
+
+                                val lastIndex = i + 5
+                                while (i <= lastIndex) {
+                                    if (i > value.lastIndex)
+                                        TODO()
+                                    val ch = value[i]
+                                    if (ch == '}') {
+                                        if (value[i - 1] == '}')
+                                            TODO()
+                                        appendCodePoint(codePoint)
+                                        break
+                                    }
+                                    codePoint = (codePoint shl 4) or ch.hexValue()
+                                    i++
+
+                                    if (i < lastIndex)
+                                        appendCodePoint(codePoint)
+                                }
+
                             } else {
                                 if (i + 3 >= value.length - 1)
                                     TODO()

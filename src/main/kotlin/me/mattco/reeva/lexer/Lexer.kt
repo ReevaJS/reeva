@@ -270,16 +270,36 @@ class Lexer(private val source: String) : Iterable<Token> {
         return lastToken
     }
 
-    private fun isIdentStart() = char.isLetter() || char == '_' || char == '$' || matchUnicodeEscape()
-
-    private fun matchUnicodeEscape() = has(6) && match('\\', 'u') && source.substring(cursor + 2, cursor + 6).all {
-        it.isHexDigit()
-    }
+    private fun isIdentStart() = char.isLetter() || char == '_' || char == '$' || match('\\', 'u')
 
     private fun consumeIdentChar() {
-        if (matchUnicodeEscape())
-            consume(5)
-        consume()
+        if (match('\\', 'u')) {
+            consume(2)
+            if (match('{')) {
+                consume()
+                for (i in 0 until 5) {
+                    if (!has(1))
+                        TODO()
+                    if (char == '}') {
+                        if (i == 0)
+                            TODO()
+                        consume()
+                        return
+                    }
+                    if (!char.isHexDigit())
+                        TODO()
+                    consume()
+                }
+            } else {
+                for (i in 0 until 4) {
+                    if (!char.isHexDigit())
+                        TODO()
+                    consume()
+                }
+            }
+        } else {
+            consume()
+        }
     }
 
     private fun isIdentMiddle() = isIdentStart() || char.isDigit()
