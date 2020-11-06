@@ -564,8 +564,10 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             if (decl.initializer == null)
                 return@forEach
             val lhs = Operations.resolveBinding(decl.identifier.identifierName)
-            val rhsResult = interpretExpression(decl.initializer.node)
-            val rhs = Operations.getValue(rhsResult)
+            val rhs = Operations.getValue(interpretExpression(decl.initializer.node)).also {
+                if (Operations.isAnonymousFunctionDefinition(decl.initializer.node))
+                    Operations.setFunctionName(it as JSFunction, decl.identifier.identifierName.key())
+            }
             Operations.putValue(lhs, rhs)
         }
         return JSUndefined
@@ -978,14 +980,17 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
     }
 
     private fun interpretLexicalDeclaration(lexicalDeclarationNode: LexicalDeclarationNode): JSValue {
-        lexicalDeclarationNode.bindingList.lexicalBindings.forEach {
-            if (it.initializer == null) {
+        lexicalDeclarationNode.bindingList.lexicalBindings.forEach { binding ->
+            if (binding.initializer == null) {
                 expect(!lexicalDeclarationNode.isConst)
-                val lhs = Operations.resolveBinding(it.identifier.identifierName)
+                val lhs = Operations.resolveBinding(binding.identifier.identifierName)
                 Operations.initializeReferencedBinding(lhs, JSUndefined)
             } else {
-                val lhs = Operations.resolveBinding(it.identifier.identifierName)
-                val rhs = interpretExpression(it.initializer.node)
+                val lhs = Operations.resolveBinding(binding.identifier.identifierName)
+                val rhs = interpretExpression(binding.initializer.node).also {
+                    if (Operations.isAnonymousFunctionDefinition(binding.initializer.node))
+                        Operations.setFunctionName(it as JSFunction, binding.identifier.identifierName.key())
+                }
                 val value = Operations.getValue(rhs)
                 Operations.initializeReferencedBinding(lhs, value)
             }
@@ -1469,8 +1474,10 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         return when (assignmentExpressionNode.op) {
             AssignmentExpressionNode.Operator.Equals -> {
                 val lref = interpretExpression(lhs)
-                val rref = interpretExpression(rhs)
-                val rval = Operations.getValue(rref)
+                val rval = Operations.getValue(interpretExpression(rhs)).also {
+                    if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode)
+                        Operations.setFunctionName(it as JSFunction, lhs.identifierName.key())
+                }
                 Operations.putValue(lref, rval)
                 rval
             }

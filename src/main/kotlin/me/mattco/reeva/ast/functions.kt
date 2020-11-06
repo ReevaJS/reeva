@@ -213,6 +213,8 @@ class ArrowFunctionNode(
 
     override fun hasName() = false
 
+    override fun isFunctionDefinition() = true
+
     override fun isSimpleParameterList(): Boolean {
         if (parameters is BindingIdentifierNode)
             return true
