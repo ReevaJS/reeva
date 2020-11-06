@@ -142,10 +142,14 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             } else JSUndefined
         }
 
+        val indexOfLastNormal = parameterList.functionParameters.parameters.indexOfLast {
+            it.bindingElement.binding.initializer == null
+        }
+
         Operations.definePropertyOrThrow(
             function,
             "length".toValue(),
-            Descriptor(parameterList.functionParameters.parameters.size.toValue(), Descriptor.CONFIGURABLE)
+            Descriptor((indexOfLastNormal + 1).toValue(), Descriptor.CONFIGURABLE)
         )
 
         return function
