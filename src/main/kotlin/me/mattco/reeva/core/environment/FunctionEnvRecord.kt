@@ -8,6 +8,7 @@ import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.throwReferenceError
+import me.mattco.reeva.utils.throwTypeError
 
 class FunctionEnvRecord(
     val function: JSFunction,
@@ -48,8 +49,11 @@ class FunctionEnvRecord(
         if (!hasThisBinding())
             throwReferenceError("current context has no 'this' binding")
 
-        if (thisBindingStatus == ThisBindingStatus.Uninitialized)
+        if (thisBindingStatus == ThisBindingStatus.Uninitialized) {
+            if (hasSuperBinding())
+                throwReferenceError("Must call 'super' constructor in derived class before using 'this'")
             TODO("Throw ReferenceError")
+        }
 
         return thisValue
     }
