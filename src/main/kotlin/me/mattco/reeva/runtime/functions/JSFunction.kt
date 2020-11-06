@@ -18,7 +18,7 @@ abstract class JSFunction(
     val thisMode: ThisMode,
     var envRecord: EnvRecord? = null,
     var homeObject: JSValue = JSUndefined,
-    val isStrict: Boolean = false,
+    var isStrict: Boolean = false,
     prototype: JSValue = realm.functionProto,
 ) : JSObject(realm, prototype) {
     var constructorKind = ConstructorKind.Base

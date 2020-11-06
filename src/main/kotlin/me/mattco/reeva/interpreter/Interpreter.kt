@@ -445,6 +445,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
 
         val constructorInfo = defineMethod(constructor, proto, constructorParent)
         val classFunction = constructorInfo.closure
+        classFunction.isStrict = true
         Operations.setFunctionName(classFunction, className.key())
         Operations.makeConstructor(classFunction, false, proto)
         if (classNode.heritage != null)
@@ -491,7 +492,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
     ): JSFunction.FieldRecord? {
         return when (classElementNode.type) {
             ClassElementNode.Type.Method -> {
-                propertyDefinitionEvaluation(classElementNode.node!! as MethodDefinitionNode, obj, enumerable)
+                propertyDefinitionEvaluation(classElementNode.node!! as MethodDefinitionNode, obj, enumerable, isStrict = true)
                 null
             }
             ClassElementNode.Type.Field -> {
@@ -519,6 +520,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
                             JSFunction.ThisMode.Lexical,
                             lex!!,
                         )
+                        initializer.isStrict = true
                         Operations.makeMethod(initializer, obj)
                         initializer to Operations.isAnonymousFunctionDefinition(classElementNode.initializer)
                     } else {
@@ -1344,12 +1346,19 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         return obj
     }
 
-    private fun propertyDefinitionEvaluation(methodDefinitionNode: MethodDefinitionNode, obj: JSObject, enumerable: Boolean) {
+    private fun propertyDefinitionEvaluation(
+        methodDefinitionNode: MethodDefinitionNode,
+        obj: JSObject,
+        enumerable: Boolean,
+        isStrict: Boolean = Operations.isStrict(),
+    ) {
         val enumAttr = if (enumerable) Descriptor.ENUMERABLE else 0
 
         when (methodDefinitionNode.type) {
             MethodDefinitionNode.Type.Normal -> {
                 val (key, closure) = defineMethod(methodDefinitionNode, obj)
+                if (isStrict)
+                    closure.isStrict = true
                 Operations.setFunctionName(closure, key)
                 Operations.definePropertyOrThrow(
                     obj,
