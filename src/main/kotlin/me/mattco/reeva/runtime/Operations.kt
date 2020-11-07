@@ -12,6 +12,7 @@ import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
+import me.mattco.reeva.core.environment.ModuleEnvRecord
 import me.mattco.reeva.core.tasks.Microtask
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows
@@ -1074,7 +1075,7 @@ object Operations {
         return when (val env = getThisEnvironment()) {
             is FunctionEnvRecord -> env.getThisBinding()
             is GlobalEnvRecord -> env.getThisBinding()
-            // is ModuleEnvRecord -> env.getThisBinding()
+             is ModuleEnvRecord -> env.getThisBinding()
             else -> unreachable()
         }
     }
@@ -1434,6 +1435,13 @@ object Operations {
                 throw IllegalStateException("Unexpected construction of ArgSetter function")
             }
         }
+    }
+
+    @ECMAImpl("9.4.7.2")
+    fun setImmutablePrototype(obj: JSObject, proto: JSValue): Boolean {
+        ecmaAssert(proto is JSObject || proto == JSNull)
+        val current = obj.getPrototype()
+        return proto.sameValue(current)
     }
 
     fun utf16SurrogatePairToCodePoint(leading: Int, trailing: Int): Int {

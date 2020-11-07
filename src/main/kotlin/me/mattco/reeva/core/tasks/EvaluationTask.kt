@@ -1,6 +1,7 @@
 package me.mattco.reeva.core.tasks
 
 import me.mattco.reeva.Reeva
+import me.mattco.reeva.ast.ScriptOrModule
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
@@ -12,7 +13,11 @@ import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.errors.JSSyntaxErrorObject
 
-class EvaluationTask(private val script: String, private val realm: Realm) : Task<Reeva.Result>() {
+class EvaluationTask(
+    private val script: String,
+    private val realm: Realm,
+    private val isModule: Boolean,
+) : Task<Reeva.Result>() {
     override fun makeContext(): ExecutionContext {
         val context = ExecutionContext(realm, null)
 
@@ -28,8 +33,8 @@ class EvaluationTask(private val script: String, private val realm: Realm) : Tas
     }
 
     override fun execute(): Reeva.Result {
-        val parser = Parser(script)
-        val scriptNode = parser.parseScript()
+        val parser = Parser(script, realm)
+        val scriptOrModule = ScriptOrModule(if (isModule) parser.parseModule() else parser.parseScript())
         if (parser.syntaxErrors.isNotEmpty()) {
             val error = parser.syntaxErrors.first()
             return Reeva.Result(
@@ -38,8 +43,10 @@ class EvaluationTask(private val script: String, private val realm: Realm) : Tas
             )
         }
 
+        println(scriptOrModule.dump())
+
         return try {
-            Reeva.Result(Interpreter(realm, scriptNode).interpret(), false)
+            Reeva.Result(Interpreter(realm, scriptOrModule).interpret(), false)
         } catch (e: ThrowException) {
             Reeva.Result(e.value, true)
         }

@@ -12,6 +12,8 @@ import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
+import me.mattco.reeva.core.modules.ExportEntryRecord
+import me.mattco.reeva.core.modules.SourceTextModuleRecord
 import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.JSReference
 import me.mattco.reeva.runtime.JSValue
@@ -25,14 +27,85 @@ import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.utils.*
 import kotlin.jvm.Throws
 
-class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNode) {
+class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOrModule) {
+    private val script: ScriptNode
+        get() = scriptOrModule.asScript
+
+    private val module: ModuleNode
+        get() = scriptOrModule.asModule
+
     @Throws(ThrowException::class)
     fun interpret(): JSValue {
         val globalEnv = realm.globalEnv
-        if (scriptOrModule.statementList.hasUseStrictDirective())
+        if (scriptOrModule.isStrict)
             globalEnv.isStrict = true
-        globalDeclarationInstantiation(scriptOrModule, globalEnv)
-        return interpretScript(scriptOrModule)
+        return if (scriptOrModule.isModule) {
+            return interpretModule()
+        } else interpretScript()
+    }
+
+    @Throws(ThrowException::class)
+    fun interpretScript(): JSValue {
+        globalDeclarationInstantiation(script, realm.globalEnv)
+        return interpretStatementList(script.statementList)
+    }
+
+    @Throws(ThrowException::class)
+    fun interpretModule(): JSValue {
+        val record = setupModule()
+        record.link()
+        return record.evaluate(this)
+    }
+
+    @ECMAImpl("15.2.1.17.1")
+    internal fun setupModule(): SourceTextModuleRecord {
+        val globalEnv = realm.globalEnv
+        if (scriptOrModule.isStrict)
+            globalEnv.isStrict = true
+        val requestedModules = module.moduleRequests()
+        val importEntries = module.importEntries()
+        val importedBoundNames = importEntries.map { it.localName }
+        val indirectExportEntries = mutableListOf<ExportEntryRecord>()
+        val localExportEntries = mutableListOf<ExportEntryRecord>()
+        val starExportEntries = mutableListOf<ExportEntryRecord>()
+
+        module.exportEntries().forEach { ee ->
+            if (ee.moduleRequest == null) {
+                if (ee.localName !in importedBoundNames) {
+                    localExportEntries.add(ee)
+                } else {
+                    val importEntry = importEntries.first { it.localName == ee.localName }
+                    if (importEntry.importName == "*") {
+                        localExportEntries.add(ee)
+                    } else {
+                        indirectExportEntries.add(ExportEntryRecord(
+                            importEntry.moduleRequest,
+                            ee.exportName,
+                            importEntry.importName,
+                            null
+                        ))
+                    }
+                }
+            } else if (ee.importName == "*" && ee.exportName == null) {
+                starExportEntries.add(ee)
+            } else {
+                indirectExportEntries.add(ee)
+            }
+        }
+
+        return SourceTextModuleRecord(
+            realm,
+            null,
+            null,
+            requestedModules,
+            module,
+            null,
+            null,
+            importEntries,
+            localExportEntries,
+            indirectExportEntries,
+            starExportEntries
+        )
     }
 
     private fun globalDeclarationInstantiation(body: ScriptNode, env: GlobalEnvRecord) {
@@ -317,11 +390,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
         }
     }
 
-    private fun interpretScript(scriptNode: ScriptNode): JSValue {
-        return interpretStatementList(scriptNode.statementList)
-    }
-
-    private fun interpretStatementList(statementListNode: StatementListNode): JSValue {
+    fun interpretStatementList(statementListNode: StatementListNode): JSValue {
         var lastValue: JSValue = JSUndefined
         statementListNode.statements.forEach { statement ->
             val result = interpretStatement(statement as StatementNode)
@@ -348,7 +417,39 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptNo
             is ThrowStatementNode -> interpretThrowStatement(statement)
             is TryStatementNode -> interpretTryStatement(statement)
             is BreakStatementNode -> interpretBreakStatement(statement)
+            is ImportDeclarationNode -> interpretImportDeclaration(statement)
+            is ExportDeclarationNode -> interpretExportDeclaration(statement)
             else -> TODO()
+        }
+    }
+
+    private fun interpretImportDeclaration(importDeclarationNode: ImportDeclarationNode): JSValue {
+        return JSEmpty
+    }
+
+    private fun interpretExportDeclaration(exportDeclaration: ExportDeclarationNode): JSValue {
+        return when (exportDeclaration) {
+            is FromExport -> JSEmpty
+            is NamedExports -> JSEmpty
+            is VariableExport -> interpretVariableStatement(exportDeclaration.variableStatement)
+            is DeclarationExport -> interpretStatement(exportDeclaration.declaration)
+            is DefaultFunctionExport -> interpretFunctionDeclaration(exportDeclaration.declaration)
+            is DefaultClassExport -> {
+                val value = bindingClassDeclarationEvaluation(exportDeclaration.classNode)
+                val className = exportDeclaration.classNode.boundNames()[0]
+                if (className == "*default*")
+                    initializeBoundName("*default*", value, Agent.runningContext.lexicalEnv)
+                JSEmpty
+            }
+            is DefaultExpressionExport -> {
+                val value = Operations.getValue(interpretExpression(exportDeclaration.expression)).also {
+                    if (Operations.isAnonymousFunctionDefinition(exportDeclaration.expression))
+                        Operations.setFunctionName(it as JSFunction, "default".key())
+                }
+                initializeBoundName("*default*", value, Agent.runningContext.lexicalEnv)
+                JSEmpty
+            }
+            else -> unreachable()
         }
     }
 

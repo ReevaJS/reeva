@@ -4,6 +4,7 @@ import me.mattco.reeva.ast.ScriptNode
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
+import me.mattco.reeva.core.modules.ModuleResolver
 import me.mattco.reeva.runtime.arrays.JSArrayCtor
 import me.mattco.reeva.runtime.arrays.JSArrayProto
 import me.mattco.reeva.runtime.builtins.*
@@ -26,7 +27,14 @@ import me.mattco.reeva.runtime.wrappers.*
 import java.util.concurrent.ConcurrentHashMap
 
 @Suppress("ObjectPropertyName")
-class Realm {
+class Realm(moduleResolver: ModuleResolver? = null) {
+    var moduleResolver: ModuleResolver? = null
+        set(value) {
+            if (value != null)
+                value.realm = this
+            field = value
+        }
+
     internal val isGloballyInitialized: Boolean
         get() = ::globalObject.isInitialized && ::globalEnv.isInitialized
 
@@ -78,6 +86,10 @@ class Realm {
     lateinit var reflectObj: JSReflectObject private set
     lateinit var jsonObj: JSONObject private set
     lateinit var consoleObj: JSConsole private set
+
+    init {
+        this.moduleResolver = moduleResolver
+    }
 
     fun setGlobalObject(obj: JSObject) {
         globalObject = obj
@@ -160,6 +172,8 @@ class Realm {
     )
 
     internal companion object {
+        val EMPTY_REALM = Realm()
+
         val globalSymbolRegistry = ConcurrentHashMap<String, JSSymbol>()
 
         // To get access to the symbol via their name without reflection

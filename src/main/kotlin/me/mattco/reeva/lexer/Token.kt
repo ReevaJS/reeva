@@ -77,9 +77,6 @@ data class Token(
     }
 
     fun stringValue(): String {
-        // TODO: Template literal support
-        if (type != TokenType.StringLiteral)
-            throw IllegalStateException("stringValue called on non-StringLiteral")
         return if (type == TokenType.TemplateLiteralString)
             parseContent(0, value.length)
         else parseContent(1, value.length - 1)

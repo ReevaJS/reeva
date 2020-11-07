@@ -27,7 +27,7 @@ fun main() {
         }
     }
 
-    val result = Reeva.evaluate(indexFile.readText(), realm)
+    val result = Reeva.evaluateModule(indexFile, realm)
 
     Reeva.with(realm) {
         if (result.isError) {

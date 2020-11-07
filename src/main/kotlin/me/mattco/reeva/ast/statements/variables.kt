@@ -1,11 +1,11 @@
 package me.mattco.reeva.ast.statements
 
-import me.mattco.reeva.ast.NodeBase
-import me.mattco.reeva.ast.BindingIdentifierNode
-import me.mattco.reeva.ast.InitializerNode
-import me.mattco.reeva.ast.StatementNode
+import me.mattco.reeva.ast.*
 
-class LexicalDeclarationNode(val isConst: Boolean, val bindingList: BindingListNode) : NodeBase(listOf(bindingList)), StatementNode {
+class LexicalDeclarationNode(
+    val isConst: Boolean,
+    val bindingList: BindingListNode
+) : NodeBase(listOf(bindingList)), DeclarationNode {
     override fun boundNames() = bindingList.boundNames()
 
     override fun containsDuplicateLabels(labelSet: Set<String>) = false
@@ -13,6 +13,8 @@ class LexicalDeclarationNode(val isConst: Boolean, val bindingList: BindingListN
     override fun containsUndefinedBreakTarget(labelSet: Set<String>) = false
 
     override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>) = false
+
+    override fun declarationPart() = this
 
     override fun isConstantDeclaration() = isConst
 

@@ -40,7 +40,7 @@ class FunctionDeclarationNode(
     val parameters: FormalParametersNode,
     val body: FunctionStatementList,
 ) : NodeBase(listOfNotNull(identifier, parameters, body)), DeclarationNode {
-    override fun boundNames() = listOf(identifier?.identifierName ?: "*default")
+    override fun boundNames() = listOf(identifier?.identifierName ?: "*default*")
 
     override fun contains(nodeName: String) = false
 

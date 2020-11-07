@@ -14,7 +14,7 @@ package me.mattco.reeva.runtime.annotations
  * may share the same section tag.
  */
 @Retention(AnnotationRetention.SOURCE)
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY)
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY, AnnotationTarget.CLASS, AnnotationTarget.VALUE_PARAMETER)
 @Repeatable
 annotation class ECMAImpl(
     val section: String,

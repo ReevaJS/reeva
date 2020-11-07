@@ -41,7 +41,7 @@ abstract class EnvRecord(@JvmField var outerEnv: EnvRecord?) : Ref {
     @ECMAImpl("WithBaseObject")
     abstract fun withBaseObject(): JSValue
 
-    data class Binding(
+    open class Binding(
         val immutable: Boolean,
         val deletable: Boolean = false,
         var value: JSValue = JSUndefined,

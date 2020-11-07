@@ -4,7 +4,7 @@ import me.mattco.reeva.ast.literals.MethodDefinitionNode
 import me.mattco.reeva.ast.literals.PropertyNameNode
 
 class ClassDeclarationNode(val classNode: ClassNode) : NodeBase(listOf(classNode)), DeclarationNode {
-    override fun boundNames() = classNode.identifier?.boundNames() ?: listOf("*default")
+    override fun boundNames() = classNode.identifier?.boundNames() ?: listOf("*default*")
 
     override fun declarationPart() = this
 

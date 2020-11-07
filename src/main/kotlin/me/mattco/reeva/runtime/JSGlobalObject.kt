@@ -2,6 +2,7 @@ package me.mattco.reeva.runtime
 
 import me.mattco.reeva.ast.BindingIdentifierNode
 import me.mattco.reeva.ast.FunctionDeclarationNode
+import me.mattco.reeva.ast.ScriptOrModule
 import me.mattco.reeva.ast.statements.ForBindingNode
 import me.mattco.reeva.ast.statements.StatementListNode
 import me.mattco.reeva.ast.statements.VariableDeclarationNode
@@ -98,7 +99,7 @@ open class JSGlobalObject protected constructor(
                 }
             }
 
-            val parser = Parser(argument.string)
+            val parser = Parser(argument.string, evalRealm)
             val scriptNode = parser.parseScript()
 
             if (parser.syntaxErrors.isNotEmpty())
@@ -136,11 +137,11 @@ open class JSGlobalObject protected constructor(
             evalContext.lexicalEnv = lexEnv
             Agent.pushContext(evalContext)
 
-            val interpreter = Interpreter(callerRealm, scriptNode)
+            val interpreter = Interpreter(callerRealm, ScriptOrModule(scriptNode))
 
             try {
                 evalDeclarationInstantiation(scriptNode.statementList, varEnv, lexEnv, strictEval, interpreter)
-                return interpreter.interpret().let { if (it == JSEmpty) JSUndefined else it }
+                return interpreter.interpretScript().let { if (it == JSEmpty) JSUndefined else it }
             } finally {
                 Agent.popContext()
             }

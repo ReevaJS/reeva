@@ -6,6 +6,7 @@ import me.mattco.reeva.ast.expressions.TemplateLiteralNode
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.literals.PropertyNameNode
 import me.mattco.reeva.ast.statements.*
+import me.mattco.reeva.core.Realm
 import me.mattco.reeva.lexer.Lexer
 import me.mattco.reeva.lexer.SourceLocation
 import me.mattco.reeva.lexer.Token
@@ -14,7 +15,7 @@ import me.mattco.reeva.utils.all
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 
-class Parser(text: String) {
+class Parser(text: String, private val realm: Realm) {
     private val tokens = Lexer(text).toList() + Token(TokenType.Eof, "", "", SourceLocation(-1, -1), SourceLocation(-1, -1))
 
     val syntaxErrors = mutableListOf<SyntaxError>()
@@ -50,15 +51,43 @@ class Parser(text: String) {
         val statementList = parseStatementList() ?: StatementListNode(emptyList())
         if (!isDone)
             unexpected("token ${token.value}")
-        if (stateStack.size != 1) {
+        if (stateStack.size != 1)
             throw IllegalStateException("parseScript ended with ${stateStack.size - 1} extra states on the stack")
-        }
         return ScriptNode(statementList)
     }
 
-    fun parseModule() {
+    fun parseModule(): ModuleNode {
         goalSymbol = GoalSymbol.Module
-        TODO()
+
+        val body = mutableListOf<StatementListItemNode>()
+        while (true) {
+            val import = parseImportDeclaration()
+            if (import != null) {
+                body.add(import)
+                continue
+            }
+
+            val export = parseExportDeclaration()
+            if (export != null) {
+                body.add(export)
+                continue
+            }
+
+            val statement = parseStatementListItem()
+            if (statement != null) {
+                body.add(statement)
+                continue
+            }
+
+            break
+        }
+
+        if (!isDone)
+            unexpected("token ${token.value}")
+        if (stateStack.size != 1)
+            throw IllegalStateException("parseModule ended with ${stateStack.size - 1} extra states on the stack")
+
+        return ModuleNode(body)
     }
 
     private fun parseStatementList(): StatementListNode? {
@@ -596,20 +625,20 @@ class Parser(text: String) {
         return DebuggerNode
     }
 
-    private fun parseDeclaration(): StatementNode? {
+    private fun parseDeclaration(): DeclarationNode? {
         return parseHoistableDeclaration() ?:
             parseClassDeclaration() ?:
             withIn { parseLexicalDeclaration() }
     }
 
-    private fun parseHoistableDeclaration(): StatementNode? {
+    private fun parseHoistableDeclaration(): DeclarationNode? {
         return parseFunctionDeclaration() ?:
             parseGeneratorDeclaration() ?:
             parseAsyncFunctionDeclaration() ?:
             parseAsyncGeneratorDeclaration()
     }
 
-    private fun parseFunctionDeclaration(): StatementNode? {
+    private fun parseFunctionDeclaration(): FunctionDeclarationNode? {
         if (tokenType != TokenType.Function)
             return null
 
@@ -683,22 +712,22 @@ class Parser(text: String) {
         return withReturn { parseStatementList() }
     }
 
-    private fun parseGeneratorDeclaration(): StatementNode? {
+    private fun parseGeneratorDeclaration(): DeclarationNode? {
         // TODO
         return null
     }
 
-    private fun parseAsyncFunctionDeclaration(): StatementNode? {
+    private fun parseAsyncFunctionDeclaration(): DeclarationNode? {
         // TODO
         return null
     }
 
-    private fun parseAsyncGeneratorDeclaration(): StatementNode? {
+    private fun parseAsyncGeneratorDeclaration(): DeclarationNode? {
         // TODO
         return null
     }
 
-    private fun parseClassDeclaration(): StatementNode? {
+    private fun parseClassDeclaration(): ClassDeclarationNode? {
         if (tokenType != TokenType.Class)
             return null
 
@@ -768,7 +797,266 @@ class Parser(text: String) {
         return ClassElementNode(method, null, isStatic, ClassElementNode.Type.Method)
     }
 
-    private fun parseLexicalDeclaration(forceSemi: Boolean = false): StatementNode? {
+    private fun parseImportDeclaration(): ImportDeclarationNode? {
+        if (tokenType != TokenType.Import)
+            return null
+        consume()
+
+        val clause = parseImportClause()
+        if (clause != null) {
+            if (tokenType != TokenType.Identifier || token.value != "from") {
+                expected("'from'")
+                consume()
+                return null
+            }
+            consume()
+            val fromClause = parseStringLiteral() ?: run {
+                expected("string literal")
+                consume()
+                return null
+            }
+            automaticSemicolonInsertion()
+            return ImportDeclarationNode(clause, fromClause)
+        }
+
+        val moduleSpecifier = parseStringLiteral() ?: run {
+            expected("string literal")
+            consume()
+            return null
+        }
+
+        return ImportDeclarationNode(moduleSpecifier, null)
+    }
+
+    private fun parseImportClause(): ImportClause? {
+        val imports = mutableListOf<Import>()
+
+        fun parseOtherImportTypes(): Boolean {
+            val namespaceImport = parseNameSpaceImport()
+            if (namespaceImport != null) {
+                imports.add(namespaceImport)
+            } else {
+                val namedImports = parseNamedImports()
+                if (namedImports == null) {
+                    expected("namespace import or named imports")
+                    consume()
+                    return false
+                }
+                imports.addAll(namedImports)
+            }
+            return true
+        }
+
+        val defaultBinding = parseBindingIdentifier()
+
+        if (defaultBinding != null) {
+            imports.add(Import(null, defaultBinding.identifierName, Import.Type.Default))
+
+            if (tokenType == TokenType.Comma) {
+                consume()
+                if (!parseOtherImportTypes())
+                    return null
+            }
+        } else if (!parseOtherImportTypes()) return null
+
+        return ImportClause(imports)
+    }
+
+    private fun parseNameSpaceImport(): Import? {
+        if (tokenType != TokenType.Asterisk)
+            return null
+
+        consume()
+        if (tokenType != TokenType.Identifier && token.value != "as") {
+            expected("'as'")
+            consume()
+            return null
+        }
+        consume()
+        val binding = parseBindingIdentifier() ?: run {
+            expected("identifier")
+            consume()
+            return null
+        }
+
+        return Import(null, binding.identifierName, Import.Type.Namespace)
+    }
+
+    private fun parseNamedImports(): List<Import>? {
+        if (tokenType != TokenType.OpenCurly)
+            return null
+        consume()
+
+        val imports = mutableListOf<Import>()
+
+        while (tokenType != TokenType.CloseCurly) {
+            val import = parseImportSpecifier()
+
+            if (import != null)
+                imports.add(import)
+
+            if (import != null && tokenType == TokenType.Comma) {
+                consume()
+            } else break
+        }
+
+        consume(TokenType.CloseCurly)
+
+        return imports
+    }
+
+    private fun parseImportSpecifier(): Import? {
+        val binding =
+            parseBindingIdentifier()?.identifierName ?:
+            parseIdentifierName()?.identifierName ?:
+            return null
+
+        if (tokenType == TokenType.Identifier && token.value == "as") {
+            consume()
+            val targetName = parseBindingIdentifier() ?: run {
+                expected("identifier")
+                consume()
+                return null
+            }
+
+            return Import(binding, targetName.identifierName, Import.Type.NormalAliased)
+        } else {
+            if (isReserved(binding)) {
+                expected("non-keyword identifier")
+                consume()
+                return null
+            }
+
+            return Import(binding, null, Import.Type.Normal)
+        }
+    }
+
+    private fun parseExportDeclaration(): ExportDeclarationNode? {
+        if (tokenType != TokenType.Export)
+            return null
+        consume()
+
+        return when (tokenType) {
+            TokenType.Default -> {
+                consume()
+
+                if (tokenType == TokenType.Class) {
+                    return parseClassDeclaration()?.let(::DefaultClassExport) ?: run {
+                        expected("class declaration")
+                        consume()
+                        return null
+                    }
+                }
+
+                if (tokenType == TokenType.Function) {
+                    return parseFunctionDeclaration()?.let(::DefaultFunctionExport) ?: run {
+                        expected("function declaration")
+                        consume()
+                        return null
+                    }
+                }
+
+                parseAssignmentExpression()?.let(::DefaultExpressionExport) ?: run {
+                    expected("expression")
+                    consume()
+                    return null
+                }
+            }
+            TokenType.Asterisk -> {
+                consume()
+
+                if (tokenType == TokenType.Identifier && token.value == "as") {
+                    consume()
+                    val name = parseIdentifierName() ?: run {
+                        expected("identifier")
+                        consume()
+                        return null
+                    }
+
+                    FromExport(parseFromClause() ?: return null, name, FromExport.Type.NamedWildcard).also {
+                        automaticSemicolonInsertion()
+                    }
+                } else FromExport(parseFromClause() ?: return null, null, FromExport.Type.Wildcard).also {
+                    automaticSemicolonInsertion()
+                }
+            }
+            TokenType.Var -> {
+                val statement = parseVariableStatement() ?: run {
+                    expected("variable declaration")
+                    consume()
+                    return null
+                }
+                VariableExport(statement)
+            }
+            TokenType.OpenCurly -> {
+                val namedExports = parseNamedExports() ?: return null
+
+                if (tokenType == TokenType.Identifier && token.value == "from") {
+                    FromExport(parseFromClause() ?: return null, namedExports, FromExport.Type.NamedList)
+                } else namedExports.also {
+                    automaticSemicolonInsertion()
+                }
+            }
+            else -> {
+                return parseDeclaration()?.let { DeclarationExport(it) } ?: run {
+                    expected("valid export statement")
+                    consume()
+                    null
+                }
+            }
+        }
+    }
+
+    fun parseFromClause(): StringLiteralNode? {
+        if (tokenType != TokenType.Identifier || token.value != "from") {
+            expected("'from' clause")
+            consume()
+            return null
+        }
+
+        consume()
+        return parseStringLiteral() ?: run {
+            expected("string literal")
+            consume()
+            return null
+        }
+    }
+
+    private fun parseNamedExports(): NamedExports? {
+        consume(TokenType.OpenCurly)
+        val exports = mutableListOf<NamedExports.Export>()
+
+        while (tokenType != TokenType.CloseCurly) {
+            val localName = parseIdentifierName() ?: run {
+                expected("identifier name")
+                consume()
+                return null
+            }
+
+            if (tokenType == TokenType.Identifier && token.value == "as") {
+                consume()
+                val targetName = parseIdentifierName() ?: run {
+                    expected("identifier name")
+                    consume()
+                    return null
+                }
+
+                exports.add(NamedExports.Export(localName.identifierName, targetName.identifierName))
+            } else {
+                exports.add(NamedExports.Export(localName.identifierName, null))
+            }
+
+            if (tokenType != TokenType.Comma)
+                break
+            consume()
+        }
+
+        consume(TokenType.CloseCurly)
+
+        return NamedExports(exports)
+    }
+
+    private fun parseLexicalDeclaration(forceSemi: Boolean = false): DeclarationNode? {
         if (!matchAny(TokenType.Let, TokenType.Const))
             return null
 
@@ -1303,14 +1591,14 @@ class Parser(text: String) {
             parseStringLiteral()
     }
 
-    private fun parseNullLiteral(): LiteralNode? {
+    private fun parseNullLiteral(): NullNode? {
         return if (tokenType == TokenType.NullLiteral) {
             consume()
             NullNode
         } else null
     }
 
-    private fun parseBooleanLiteral(): LiteralNode? {
+    private fun parseBooleanLiteral(): BooleanNode? {
         return when (tokenType) {
             TokenType.True -> TrueNode
             TokenType.False -> FalseNode
@@ -1320,13 +1608,13 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseNumericLiteral(): LiteralNode? {
+    private fun parseNumericLiteral(): NumericLiteralNode? {
         return if (tokenType == TokenType.NumericLiteral) {
             NumericLiteralNode(consume().doubleValue())
         } else null
     }
 
-    private fun parseStringLiteral(): LiteralNode? {
+    private fun parseStringLiteral(): StringLiteralNode? {
         return if (tokenType == TokenType.StringLiteral) {
             StringLiteralNode(consume().stringValue())
         } else null

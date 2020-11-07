@@ -1,6 +1,10 @@
 package me.mattco.reeva.ast
 
+import me.mattco.reeva.core.modules.ExportEntryRecord
+import me.mattco.reeva.core.modules.ImportEntryRecord
+import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.newline
+import me.mattco.reeva.utils.unreachable
 
 open class NodeBase(override val children: List<ASTNode> = emptyList()) : ASTNode {
     override val name: String by lazy { this::class.java.simpleName }
@@ -160,6 +164,24 @@ interface ASTNode {
         return children[0].expectedArgumentCount()
     }
 
+    fun exportEntries(): List<ExportEntryRecord> {
+        if (children.size != 1)
+            return emptyList()
+        return children[0].exportEntries()
+    }
+
+    fun exportedBindings(): List<String> {
+        if (children.size != 1)
+            return emptyList()
+        return children[0].exportedBindings()
+    }
+
+    fun exportedNames(): List<String> {
+        if (children.size != 1)
+            return emptyList()
+        return children[0].exportedNames()
+    }
+
     fun hasDirectSuper(): Boolean {
         if (children.size != 1)
             return false
@@ -176,6 +198,12 @@ interface ASTNode {
         if (children.size != 1)
             return false
         return children[0].hasName()
+    }
+
+    fun importEntries(): List<ImportEntryRecord> {
+        if (children.size != 1)
+            return emptyList()
+        return children[0].importEntries()
     }
 
     fun isComputedPropertyKey(): Boolean {
@@ -236,6 +264,12 @@ interface ASTNode {
         if (children.size != 1)
             return emptyList()
         return children[0].lexicallyScopedDeclarations()
+    }
+
+    fun moduleRequests(): List<String> {
+        if (children.size != 1)
+            return emptyList()
+        return children[0].moduleRequests()
     }
 
     fun propertyNameList(): List<String> {
@@ -303,6 +337,33 @@ interface ASTNode {
         ConstructorMethod,
         NonConstructorMethod,
         Empty,
+    }
+}
+
+class ScriptOrModule(private val value: Any) {
+    init {
+        expect(value is ScriptNode || value is ModuleNode)
+    }
+
+    val isScript: Boolean
+        get() = value is ScriptNode
+
+    val isModule: Boolean
+        get() = value is ModuleNode
+
+    val asScript: ScriptNode
+        get() = value as ScriptNode
+
+    val asModule: ModuleNode
+        get() = value as ModuleNode
+
+    val isStrict: Boolean
+        get() = isModule || asScript.statementList.hasUseStrictDirective()
+
+    fun dump() = when {
+        isScript -> asScript.dump(0)
+        isModule -> asModule.dump(0)
+        else -> unreachable()
     }
 }
 
