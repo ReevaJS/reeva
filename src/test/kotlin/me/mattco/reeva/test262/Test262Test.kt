@@ -2,12 +2,18 @@ package me.mattco.reeva.test262
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.core.modules.ModuleResolver
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.primitives.JSFalse
 import org.junit.jupiter.api.*
 import java.io.File
 
-class Test262Test(private val name: String, private val script: String, private val metadata: Test262Metadata) {
+class Test262Test(
+    private val name: String,
+    private val file: File,
+    private val script: String,
+    private val metadata: Test262Metadata
+) {
     fun test() {
         Assumptions.assumeTrue(metadata.negative == null)
         Assumptions.assumeTrue(metadata.features?.any { "intl" in it.toLowerCase() } != true)
@@ -26,6 +32,11 @@ class Test262Test(private val name: String, private val script: String, private 
         realm.initObjects()
         realm.setGlobalObject(Test262GlobalObject.create(realm))
 
+        val isModule = metadata.flags != null && Flag.Module in metadata.flags
+
+        if (isModule)
+            realm.moduleResolver = ModuleResolver(ModuleResolver.DefaultPathResolver(file.parentFile, null))
+
         val pretestResult = Reeva.evaluate("$requiredScript\n\n", realm)
         Assertions.assertTrue(!pretestResult.isError) {
             Reeva.with(realm) {
@@ -34,14 +45,18 @@ class Test262Test(private val name: String, private val script: String, private 
         }
 
         if (metadata.flags != null && Flag.Async in metadata.flags) {
-            runAsyncTest(realm)
+            runAsyncTest(realm, isModule)
         } else {
-            runSyncTest(realm)
+            runSyncTest(realm, isModule)
         }
     }
 
-    private fun runSyncTest(realm: Realm) {
-        val testResult = Reeva.evaluate(script, realm)
+    private fun runSyncTest(realm: Realm, isModule: Boolean) {
+        val testResult = if (isModule) {
+            Reeva.evaluateModule(script, realm)
+        } else {
+            Reeva.evaluate(script, realm)
+        }
         Assertions.assertTrue(!testResult.isError) {
             Reeva.with(realm) {
                 Operations.toString(testResult.value).string
@@ -49,11 +64,15 @@ class Test262Test(private val name: String, private val script: String, private 
         }
     }
 
-    private fun runAsyncTest(realm: Realm) {
+    private fun runAsyncTest(realm: Realm, isModule: Boolean) {
         val doneFunction = JSAsyncDoneFunction.create(realm)
         realm.globalObject.set("\$DONE", doneFunction)
 
-        val testResult = Reeva.evaluate(script, realm)
+        val testResult = if (isModule) {
+            Reeva.evaluateModule(script, realm)
+        } else {
+            Reeva.evaluate(script, realm)
+        }
         Assertions.assertTrue(!testResult.isError) {
             Reeva.with(realm) {
                 Operations.toString(testResult.value).string

@@ -13,9 +13,9 @@ class Test262Runner {
             it.name != "intl402" && it.name != "annexB"
         }.filter {
             !it.isDirectory && !it.name.endsWith("_FIXTURE.js") && "S13.2.1_A1_T1.js" !in it.name // the nested function call test
-        }.toList().map {
-            val name = it.absolutePath.replace(testDirectory.absolutePath, "")
-            val contents = it.readText()
+        }.toList().map { file ->
+            val name = file.absolutePath.replace(testDirectory.absolutePath, "")
+            val contents = file.readText()
 
             val yamlStart = contents.indexOf("/*---")
             val yamlEnd = contents.indexOf("---*/")
@@ -24,7 +24,7 @@ class Test262Runner {
             val metadata = Yaml.default.decodeFromString(Test262Metadata.serializer(), yaml)
 
             DynamicTest.dynamicTest(name) {
-                Test262Test(name, contents, metadata).test()
+                Test262Test(name, file, contents, metadata).test()
             }
         }
     }
@@ -34,7 +34,7 @@ class Test262Runner {
         val testDirectory = File(test262Directory, "test")
         val testDirectoryStr = testDirectory.absolutePath
         val harnessDirectory = File(test262Directory, "harness")
-        val targetDirectory: File? = File(testDirectory, "language/statements/class")
+        val targetDirectory: File? = File(testDirectory, "language/module-code")
 //        val targetDirectory: File? = null
         lateinit var pretestScript: String
 
