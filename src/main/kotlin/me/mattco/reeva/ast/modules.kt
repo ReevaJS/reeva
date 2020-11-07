@@ -7,6 +7,7 @@ import me.mattco.reeva.core.modules.ExportEntryRecord
 import me.mattco.reeva.core.modules.ImportEntryRecord
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.newline
+import me.mattco.reeva.utils.unreachable
 
 class ModuleNode(val body: List<StatementListItemNode>) : NodeBase(body) {
     override fun containsDuplicateLabels(labelSet: Set<String>) = body.any { it.containsDuplicateLabels(labelSet) }
@@ -55,7 +56,9 @@ class ImportDeclarationNode(
             return emptyList()
 
         expect(first is ImportClause)
-        return first.imports.map { it.makeImportEntry(fromClause.value) }
+        return first.imports.filter {
+            it.type != Import.Type.OnlyFile
+        }.map { it.makeImportEntry(fromClause.value) }
     }
 
     override fun moduleRequests(): List<String> {
@@ -86,6 +89,7 @@ class Import(
             Type.NormalAliased -> expect(importName != null && localName != null)
             Type.Default -> expect(importName == null && localName != null)
             Type.Namespace -> expect(importName == null && localName != null)
+            Type.OnlyFile -> expect(importName == null && localName == null)
         }
     }
 
@@ -93,7 +97,7 @@ class Import(
         return when (type) {
             Type.Normal -> listOf(importName!!)
             Type.NormalAliased -> listOf(localName!!)
-            Type.Default, Type.Namespace -> emptyList()
+            Type.Default, Type.Namespace, Type.OnlyFile -> emptyList()
         }
     }
 
@@ -103,6 +107,7 @@ class Import(
             Type.NormalAliased -> ImportEntryRecord(module, importName!!, localName!!)
             Type.Default -> ImportEntryRecord(module, "default", localName!!)
             Type.Namespace -> ImportEntryRecord(module, "*", localName!!)
+            Type.OnlyFile -> unreachable()
         }
     }
 
@@ -131,6 +136,7 @@ class Import(
         NormalAliased,
         Default,
         Namespace,
+        OnlyFile,
     }
 }
 

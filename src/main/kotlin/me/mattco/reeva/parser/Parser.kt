@@ -802,6 +802,15 @@ class Parser(text: String, private val realm: Realm) {
             return null
         consume()
 
+        if (tokenType == TokenType.StringLiteral) {
+            return ImportDeclarationNode(
+                ImportClause(listOf(Import(null, null, Import.Type.OnlyFile))),
+                parseStringLiteral()
+            ).also {
+                automaticSemicolonInsertion()
+            }
+        }
+
         val clause = parseImportClause()
         if (clause != null) {
             if (tokenType != TokenType.Identifier || token.value != "from") {
