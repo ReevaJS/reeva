@@ -163,6 +163,8 @@ class FromExport(
 
     override fun isConstantDeclaration() = false
 
+    override fun lexicallyDeclaredNames() = boundNames()
+
     override fun lexicallyScopedDeclarations() = emptyList<NodeBase>()
 
     override fun dump(indent: Int) = buildString {
@@ -194,6 +196,8 @@ class NamedExports(val exports: List<Export>) : NodeBase(listOf()), ExportDeclar
 
     override fun isConstantDeclaration() = false
 
+    override fun lexicallyDeclaredNames() = boundNames()
+
     override fun lexicallyScopedDeclarations() = emptyList<NodeBase>()
 
     override fun dump(indent: Int) = buildString {
@@ -224,7 +228,13 @@ class VariableExport(val variableStatement: VariableStatementNode) : NodeBase(li
         ExportEntryRecord(null, it, null, it)
     }
 
+    override fun lexicallyDeclaredNames() = emptyList<String>()
+
     override fun lexicallyScopedDeclarations() = emptyList<NodeBase>()
+
+    override fun varDeclaredNames() = variableStatement.varDeclaredNames()
+
+    override fun varScopedDeclarations() = variableStatement.varScopedDeclarations()
 }
 
 class DeclarationExport(val declaration: DeclarationNode) : NodeBase(listOf(declaration)), ExportDeclarationNode {
@@ -237,6 +247,8 @@ class DeclarationExport(val declaration: DeclarationNode) : NodeBase(listOf(decl
     override fun exportEntries() = declaration.boundNames().map {
         ExportEntryRecord(null, it, null, it)
     }
+
+    override fun lexicallyDeclaredNames() = boundNames()
 
     override fun lexicallyScopedDeclarations() = listOf(declaration.declarationPart())
 }
@@ -259,6 +271,8 @@ class DefaultFunctionExport(val declaration: FunctionDeclarationNode) : NodeBase
         expect(it.size == 1)
     }
 
+    override fun lexicallyDeclaredNames() = boundNames()
+
     override fun lexicallyScopedDeclarations() = listOf(declaration)
 }
 
@@ -280,6 +294,8 @@ class DefaultClassExport(val classNode: ClassDeclarationNode) : NodeBase(listOf(
         expect(it.size == 1)
     }
 
+    override fun lexicallyDeclaredNames() = boundNames()
+
     override fun lexicallyScopedDeclarations() = listOf(classNode)
 }
 
@@ -294,5 +310,7 @@ class DefaultExpressionExport(val expression: ExpressionNode) : NodeBase(listOf(
 
     override fun isConstantDeclaration() = false
 
-    override fun lexicallyScopedDeclarations() = listOf(expression as NodeBase)
+    override fun lexicallyDeclaredNames() = boundNames()
+
+    override fun lexicallyScopedDeclarations() = listOf(this as NodeBase)
 }

@@ -113,6 +113,7 @@ class SourceTextModuleRecord(
         return starResolution
     }
 
+    @ECMAImpl("15.2.1.17.4")
     override fun initializeEnvironment() {
         indirectExportEntries.forEach { e ->
             val resolution = resolveExport(e.exportName!!)
