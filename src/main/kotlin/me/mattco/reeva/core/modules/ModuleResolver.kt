@@ -1,5 +1,6 @@
 package me.mattco.reeva.core.modules
 
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.ScriptOrModule
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.interpreter.Interpreter
@@ -91,9 +92,10 @@ class ModuleResolver(val pathResolver: PathResolver) {
         val file = pathResolver.resolve(specifier) ?: TODO()
         return cachedModules.getOrPut(file.absolutePath) {
             val module = Parser(file.readText(), realm).parseModule()
-            println("==== module ${file.absolutePath} ====")
-            println(module.dump(0))
-            println("==============================")
+            if (Reeva.PRINT_PARSE_NODES) {
+                println("==== module ${file.absolutePath} ====")
+                println(module.dump(1))
+            }
             Interpreter(realm, ScriptOrModule(module)).setupModule()
         }
     }

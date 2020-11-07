@@ -167,6 +167,8 @@ class FromExport(
 
     override fun lexicallyScopedDeclarations() = emptyList<NodeBase>()
 
+    override fun moduleRequests() = listOf(fromClause.value)
+
     override fun dump(indent: Int) = buildString {
         dumpSelf(indent)
         appendIndent(indent + 1)

@@ -360,9 +360,9 @@ class ScriptOrModule(private val value: Any) {
     val isStrict: Boolean
         get() = isModule || asScript.statementList.hasUseStrictDirective()
 
-    fun dump() = when {
-        isScript -> asScript.dump(0)
-        isModule -> asModule.dump(0)
+    fun dump(n: Int = 0) = when {
+        isScript -> asScript.dump(n)
+        isModule -> asModule.dump(n)
         else -> unreachable()
     }
 }

@@ -9,6 +9,8 @@ import me.mattco.reeva.runtime.JSValue
 import java.io.File
 
 object Reeva {
+    val PRINT_PARSE_NODES = System.getProperty("reeva.debugParseNodes")?.toBoolean() ?: false
+
     // Used to ensure names of various things are unique
     @Volatile
     @JvmStatic

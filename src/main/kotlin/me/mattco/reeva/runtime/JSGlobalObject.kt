@@ -1,5 +1,6 @@
 package me.mattco.reeva.runtime
 
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.BindingIdentifierNode
 import me.mattco.reeva.ast.FunctionDeclarationNode
 import me.mattco.reeva.ast.ScriptOrModule
@@ -101,6 +102,11 @@ open class JSGlobalObject protected constructor(
 
             val parser = Parser(argument.string, evalRealm)
             val scriptNode = parser.parseScript()
+
+            if (Reeva.PRINT_PARSE_NODES) {
+                println("==== eval script ====")
+                println(scriptNode.dump(1))
+            }
 
             if (parser.syntaxErrors.isNotEmpty())
                 throwSyntaxError(parser.syntaxErrors.first().message)

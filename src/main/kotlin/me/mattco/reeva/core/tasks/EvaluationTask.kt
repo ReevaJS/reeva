@@ -43,7 +43,10 @@ class EvaluationTask(
             )
         }
 
-        println(scriptOrModule.dump())
+        if (Reeva.PRINT_PARSE_NODES) {
+            println("==== top level script ====")
+            println(scriptOrModule.dump(1))
+        }
 
         return try {
             Reeva.Result(Interpreter(realm, scriptOrModule).interpret(), false)
