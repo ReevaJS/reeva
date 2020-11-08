@@ -33,7 +33,7 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         var length = JSNumber.ZERO
 
-        if (Operations.hasOwnProperty(thisValue, "length".key()) == JSTrue) {
+        if (Operations.hasOwnProperty(thisValue, "length".key())) {
             val targetLen = thisValue.get("length")
             if (targetLen is JSNumber) {
                 if (targetLen.isPositiveInfinity) {

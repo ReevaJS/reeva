@@ -105,7 +105,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     fun hasOwnProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = Operations.toPropertyKey(arguments.argument(0))
         val o = Operations.toObject(thisValue)
-        return Operations.hasOwnProperty(o, key)
+        return Operations.hasOwnProperty(o, key).toValue()
     }
 
     @JSThrows

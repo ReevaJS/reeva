@@ -62,7 +62,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             } else {
                 val isSpreadable = item.get(Realm.`@@isConcatSpreadable`)
                 if (isSpreadable != JSUndefined) {
-                    Operations.toBoolean(isSpreadable) == JSTrue
+                    Operations.toBoolean(isSpreadable)
                 } else Operations.isArray(item)
             }
             if (isConcatSpreadable) {
@@ -158,7 +158,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             val value = thisObj.get(index)
             val testResult = Operations.call(callback, thisArg, listOf(value, index.toValue(), thisObj))
             val testBoolean = Operations.toBoolean(testResult)
-            if (testBoolean == JSFalse)
+            if (!testBoolean)
                 return JSFalse
         }
 
@@ -217,7 +217,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             val value = thisObj.get(index)
             val callbackResult = Operations.call(callback, thisArg, listOf(value, index.toValue(), thisObj))
             val booleanResult = Operations.toBoolean(callbackResult)
-            if (booleanResult == JSTrue) {
+            if (booleanResult) {
                 if (!Operations.createDataPropertyOrThrow(array, toIndex.key(), value))
                     return INVALID_VALUE
                 toIndex++
@@ -243,7 +243,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             val value = thisObj.get(index)
             val testResult = Operations.call(predicate, thisArg, listOf(value, index.toValue(), thisObj))
             val booleanResult = Operations.toBoolean(testResult)
-            if (booleanResult == JSTrue)
+            if (booleanResult)
                 return value
         }
 
@@ -266,7 +266,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             val value = thisObj.get(index)
             val testResult = Operations.call(predicate, thisArg, listOf(value, index.toValue(), thisObj))
             val booleanResult = Operations.toBoolean(testResult)
-            if (booleanResult == JSTrue)
+            if (booleanResult)
                 return index.toValue()
         }
 
@@ -555,7 +555,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
             val value = obj.get(it)
             val testResult = Operations.toBoolean(Operations.call(callback, thisArg, listOf(value, it.toValue(), obj)))
-            if (testResult == JSTrue)
+            if (testResult)
                 return JSTrue
         }
 
@@ -605,7 +605,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             while (k < length - actualDeleteCount) {
                 val from = k + actualDeleteCount
                 val to = k + itemCount
-                if (Operations.hasProperty(obj, from.key()) == JSTrue) {
+                if (Operations.hasProperty(obj, from.key())) {
                     Operations.set(obj, to.key(), obj.get(from.key()), true)
                 } else {
                     Operations.deletePropertyOrThrow(obj, to.key())
@@ -623,7 +623,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             while (k > actualStart) {
                 val from = k + actualDeleteCount - 1
                 val to = k + itemCount - 1
-                if (Operations.hasProperty(obj, from.key()) == JSTrue) {
+                if (Operations.hasProperty(obj, from.key())) {
                     Operations.set(obj, to.key(), obj.get(from.key()), true)
                 } else {
                     Operations.deletePropertyOrThrow(obj, to.key())

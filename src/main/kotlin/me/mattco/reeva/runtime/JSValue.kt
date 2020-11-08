@@ -107,15 +107,6 @@ abstract class JSValue : Ref {
             return this as JSArrayObject
         }
 
-    val toString: String
-        get() = Operations.toString(this).string
-
-    val toInt32: Int
-        get() = Operations.toInt32(this).asInt
-
-    val toBoolean: Boolean
-        get() = Operations.toBoolean(this).asBoolean
-
     @ECMAImpl("7.2.10")
     fun sameValue(other: JSValue): Boolean {
         if (type != other.type)
@@ -151,29 +142,6 @@ abstract class JSValue : Ref {
         }
     }
 
-    @ECMAImpl("7.1.2")
-    fun toBoolean() = when (type) {
-        Type.Empty -> unreachable()
-        Type.Undefined, Type.Null -> false
-        Type.Boolean -> asBoolean
-        Type.String -> asString.isNotEmpty()
-        Type.Number -> !(isPositiveZero || isNegativeZero || isNaN)
-        Type.Object -> true
-        else -> TODO()
-    }
-
-    @ECMAImpl("7.1.14")
-    fun toNumber() = when (type) {
-        Type.Empty -> unreachable()
-        Type.Undefined -> Double.NaN
-        Type.Null -> 0.0
-        Type.Boolean -> if (asBoolean) 1.0 else 0.0
-        Type.String -> TODO()
-        Type.Number -> asDouble
-        Type.Object -> TODO()
-        else -> TODO()
-    }
-
     fun ifEmpty(value: JSValue) = if (this == JSEmpty) value else this
 
     fun ifUndefined(value: JSValue) = if (this == JSUndefined) value else this
@@ -192,8 +160,8 @@ abstract class JSValue : Ref {
         BigInt("BigInt"),
         Symbol("Symbol"),
         Object("Object"),
-        NativeProperty("NativeProperty (you shouldn't see this)"),
-        Accessor("Accessor (you shouldn't see this)");
+        NativeProperty("NativeProperty"),
+        Accessor("Accessor");
 
         override fun toString() = typeName
     }

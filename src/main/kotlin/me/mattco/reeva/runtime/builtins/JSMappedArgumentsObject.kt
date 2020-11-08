@@ -17,14 +17,14 @@ class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm
 
     override fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
         val desc = super.getOwnPropertyDescriptor(property) ?: return null
-        if (Operations.hasOwnProperty(parameterMap, property) == JSTrue) {
+        if (Operations.hasOwnProperty(parameterMap, property)) {
             desc.setRawValue(parameterMap.get(property))
         }
         return desc
     }
 
     override fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
-        val isMapped = Operations.hasOwnProperty(parameterMap, property) == JSTrue
+        val isMapped = Operations.hasOwnProperty(parameterMap, property)
         var newDescriptor = descriptor
 
         if (isMapped && descriptor.isDataDescriptor) {
@@ -54,7 +54,7 @@ class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm
     }
 
     override fun get(property: PropertyKey, receiver: JSValue): JSValue {
-        if (Operations.hasOwnProperty(parameterMap, property) == JSFalse)
+        if (!Operations.hasOwnProperty(parameterMap, property))
             return super.get(property, receiver)
         return parameterMap.get(property, parameterMap)
     }
@@ -62,7 +62,7 @@ class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm
     override fun set(property: PropertyKey, value: JSValue, receiver: JSValue): Boolean {
         val isMapped = if (!this.sameValue(receiver)) {
             false
-        } else Operations.hasOwnProperty(parameterMap, property) == JSTrue
+        } else Operations.hasOwnProperty(parameterMap, property)
 
         if (isMapped) {
             val status = parameterMap.set(property, value)
@@ -73,7 +73,7 @@ class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm
     }
 
     override fun delete(property: PropertyKey): Boolean {
-        val isMapped = Operations.hasOwnProperty(parameterMap, property) == JSTrue
+        val isMapped = Operations.hasOwnProperty(parameterMap, property)
         val result = super.delete(property)
         if (result && isMapped)
             parameterMap.delete(property)

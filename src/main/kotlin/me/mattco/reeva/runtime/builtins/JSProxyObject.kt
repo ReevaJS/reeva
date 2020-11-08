@@ -65,7 +65,7 @@ class JSProxyObject private constructor(
             return target.setPrototype(newPrototype)
         }
         val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, newPrototype)))
-        if (booleanTrapResult == JSFalse)
+        if (!booleanTrapResult)
             return false
         if (target.isExtensible())
             return true
@@ -81,9 +81,9 @@ class JSProxyObject private constructor(
             return target.isExtensible()
         }
         val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target)))
-        if ((booleanTrapResult == JSTrue) != target.isExtensible())
+        if (booleanTrapResult != target.isExtensible())
             throwTypeError("Proxy's [[IsExtensible]] trap did not return the same value as its target's [[IsExtensible]] method")
-        return booleanTrapResult == JSTrue
+        return booleanTrapResult
     }
 
     override fun preventExtensions(): Boolean {
@@ -92,9 +92,9 @@ class JSProxyObject private constructor(
             return target.preventExtensions()
         }
         val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target)))
-        if (booleanTrapResult == JSTrue && target.isExtensible())
+        if (booleanTrapResult && target.isExtensible())
             throwTypeError("Proxy's [[PreventExtensions]] returned true, but the target is extensible")
-        return booleanTrapResult == JSTrue
+        return booleanTrapResult
     }
 
     override fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
@@ -137,7 +137,7 @@ class JSProxyObject private constructor(
 
         val descObj = descriptor.toObject(realm, target)
         val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, property.asValue, descObj)))
-        if (booleanTrapResult == JSFalse)
+        if (!booleanTrapResult)
             return false
         val targetDesc = target.getOwnPropertyDescriptor(property)
         val isExtensible = target.isExtensible()
@@ -164,7 +164,7 @@ class JSProxyObject private constructor(
             return target.hasProperty(property)
         }
         val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, property.asValue)))
-        if (booleanTrapResult == JSFalse) {
+        if (!booleanTrapResult) {
             val targetDesc = target.getOwnPropertyDescriptor(property)
             if (targetDesc != null) {
                 if (!targetDesc.isConfigurable)
@@ -173,7 +173,7 @@ class JSProxyObject private constructor(
                     throwTypeError("Proxy's [[Has]] trap reported existing property \"$property\" of non-extensible target as non-existent")
             }
         }
-        return booleanTrapResult == JSTrue
+        return booleanTrapResult
     }
 
     override fun get(property: PropertyKey, receiver: JSValue): JSValue {
@@ -198,7 +198,7 @@ class JSProxyObject private constructor(
             return target.set(property, value, receiver)
         }
         val trapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, property.asValue, receiver)))
-        if (trapResult == JSFalse)
+        if (!trapResult)
             return false
         val targetDesc = target.getOwnPropertyDescriptor(property)
         if (targetDesc != null && !targetDesc.isConfigurable) {
@@ -216,7 +216,7 @@ class JSProxyObject private constructor(
             return target.delete(property)
         }
         val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, property.asValue)))
-        if (booleanTrapResult == JSFalse)
+        if (!booleanTrapResult)
             return false
         val targetDesc = target.getOwnPropertyDescriptor(property) ?: return true
         if (!targetDesc.isConfigurable)

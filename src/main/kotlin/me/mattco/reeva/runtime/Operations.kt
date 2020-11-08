@@ -398,16 +398,16 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("7.1.2")
-    fun toBoolean(value: JSValue): JSBoolean = when (value.type) {
+    fun toBoolean(value: JSValue): Boolean = when (value.type) {
         JSValue.Type.Empty -> unreachable()
-        JSValue.Type.Undefined -> JSFalse
-        JSValue.Type.Null -> JSFalse
-        JSValue.Type.Boolean -> value as JSBoolean
-        JSValue.Type.String -> value.asString.isNotEmpty().toValue()
-        JSValue.Type.Number -> (!value.isZero && !value.isNaN).toValue()
+        JSValue.Type.Undefined -> false
+        JSValue.Type.Null -> false
+        JSValue.Type.Boolean -> value == JSTrue
+        JSValue.Type.String -> value.asString.isNotEmpty()
+        JSValue.Type.Number -> !value.isZero && !value.isNaN
         JSValue.Type.BigInt -> TODO()
-        JSValue.Type.Symbol -> JSTrue
-        JSValue.Type.Object -> JSTrue
+        JSValue.Type.Symbol -> true
+        JSValue.Type.Object -> true
         else -> unreachable()
     }
 
@@ -772,17 +772,17 @@ object Operations {
 
     @JSThrows
     @JvmStatic @ECMAImpl("7.3.11")
-    fun hasProperty(value: JSValue, property: PropertyKey): JSValue {
+    fun hasProperty(value: JSValue, property: PropertyKey): Boolean {
         ecmaAssert(value is JSObject)
-        return value.hasProperty(property).toValue()
+        return value.hasProperty(property)
     }
 
     @JSThrows
     @JvmStatic @ECMAImpl("7.3.12")
-    fun hasOwnProperty(value: JSValue, property: PropertyKey): JSValue {
+    fun hasOwnProperty(value: JSValue, property: PropertyKey): Boolean {
         ecmaAssert(value is JSObject)
         val desc = value.getOwnProperty(property)
-        return (desc != JSUndefined).toValue()
+        return desc != JSUndefined
     }
 
     @JSThrows
@@ -997,7 +997,7 @@ object Operations {
 
     @JSThrows
     @JvmStatic @ECMAImpl("7.4.3")
-    fun iteratorComplete(result: JSValue): JSBoolean {
+    fun iteratorComplete(result: JSValue): Boolean {
         ecmaAssert(result is JSObject)
         return toBoolean(result.get("done"))
     }
@@ -1013,8 +1013,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.4.5")
     fun iteratorStep(record: IteratorRecord): JSValue {
         val result = iteratorNext(record)
-        val done = iteratorComplete(result)
-        if (done == JSTrue)
+        if (iteratorComplete(result))
             return JSFalse
         return result
     }
@@ -1245,7 +1244,7 @@ object Operations {
     @JSThrows
     @JvmStatic @ECMAImpl("9.2.5")
     fun makeConstructor(function: JSFunction, writablePrototype: Boolean = true, prototype: JSObject? = null) {
-        ecmaAssert(hasOwnProperty(function, "prototype".key()) == JSFalse)
+        ecmaAssert(!hasOwnProperty(function, "prototype".key()))
         ecmaAssert(!function.isConstructable)
         ecmaAssert(function.isExtensible())
 
@@ -1444,7 +1443,7 @@ object Operations {
         return proto.sameValue(current)
     }
 
-    fun utf16SurrogatePairToCodePoint(leading: Int, trailing: Int): Int {
+    private fun utf16SurrogatePairToCodePoint(leading: Int, trailing: Int): Int {
         return (leading - 0xd800) * 0x400 + (trailing - 0xdc00) + 0x10000
     }
 
@@ -1553,7 +1552,6 @@ object Operations {
             if (value.isSuperReference)
                 TODO()
             expect(value.baseValue is JSValue)
-            expect(value.name is PropertyKey)
             val baseObj = toObject(value.baseValue)
             val deleteStatus = baseObj.delete(value.name)
             if (!deleteStatus && value.isStrict)
@@ -1561,7 +1559,6 @@ object Operations {
             deleteStatus.toValue()
         } else {
             ecmaAssert(value.baseValue is EnvRecord)
-            expect(value.name is PropertyKey)
             expect(value.name.isString)
             value.baseValue.deleteBinding(value.name.asString).toValue()
         }
@@ -1599,7 +1596,7 @@ object Operations {
         val instOfHandler = getMethod(target, Realm.`@@hasInstance`)
         if (instOfHandler !is JSUndefined) {
             val temp = call(instOfHandler, ctor, listOf(target))
-            return toBoolean(temp)
+            return toBoolean(temp).toValue()
         }
 
         if (!isCallable(ctor))
@@ -1649,9 +1646,7 @@ object Operations {
 
     @ECMAImpl("14.1.12")
     fun isAnonymousFunctionDefinition(node: ASTNode): Boolean {
-        if (!node.isFunctionDefinition())
-            return false
-        return !node.hasName()
+        return node.isFunctionDefinition() && !node.hasName()
     }
 
     @JSThrows

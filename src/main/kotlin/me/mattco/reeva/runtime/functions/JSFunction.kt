@@ -65,7 +65,7 @@ abstract class JSFunction(
             } else JSUndefined
 
             if (fieldRecord.isAnonymousFunctionDefinition) {
-                if (Operations.hasOwnProperty(initValue, "name".key()) == JSFalse)
+                if (!Operations.hasOwnProperty(initValue, "name".key()))
                     Operations.setFunctionName(initValue as JSFunction, Operations.toPropertyKey(fieldRecord.name))
             }
 

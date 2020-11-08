@@ -88,7 +88,7 @@ class Test262Test(
         }
 
         Reeva.with(realm) {
-            Assertions.assertTrue(Operations.toBoolean(doneFunction.result) == JSFalse) {
+            Assertions.assertTrue(!Operations.toBoolean(doneFunction.result)) {
                 "Expected \$DONE to be called with falsy value, received ${Operations.toString(doneFunction.result)}"
             }
         }

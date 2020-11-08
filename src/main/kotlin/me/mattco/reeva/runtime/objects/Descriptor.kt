@@ -177,17 +177,17 @@ data class Descriptor(
             val descriptor = Descriptor(JSEmpty, 0)
             if (obj.hasProperty("enumerable")) {
                 descriptor.setHasEnumerable()
-                descriptor.setEnumerable(Operations.toBoolean(obj.get("enumerable")) == JSTrue)
+                descriptor.setEnumerable(Operations.toBoolean(obj.get("enumerable")))
             }
 
             if (obj.hasProperty("configurable")) {
                 descriptor.setHasConfigurable()
-                descriptor.setConfigurable(Operations.toBoolean(obj.get("configurable")) == JSTrue)
+                descriptor.setConfigurable(Operations.toBoolean(obj.get("configurable")))
             }
 
             if (obj.hasProperty("writable")) {
                 descriptor.setHasWritable()
-                descriptor.setWritable(Operations.toBoolean(obj.get("writable")) == JSTrue)
+                descriptor.setWritable(Operations.toBoolean(obj.get("writable")))
             }
 
             if (obj.hasProperty("value")) {

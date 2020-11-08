@@ -690,7 +690,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         val exprRef = interpretExpression(ifStatement.condition)
         val exprValue = Operations.toBoolean(Operations.getValue(exprRef))
         return when {
-            exprValue.value -> updateEmpty(JSUndefined) { interpretStatement(ifStatement.trueBlock) }
+            exprValue -> updateEmpty(JSUndefined) { interpretStatement(ifStatement.trueBlock) }
             ifStatement.falseBlock != null -> updateEmpty(JSUndefined) { interpretStatement(ifStatement.falseBlock) }
             else -> JSUndefined
         }
@@ -810,8 +810,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             if (nextResult !is JSObject)
                 throwTypeError("TODO: message")
 
-            val done = Operations.iteratorComplete(nextResult)
-            if (done == JSTrue)
+            if (Operations.iteratorComplete(nextResult))
                 return value
 
             val nextValue = Operations.iteratorValue(nextResult)
@@ -905,7 +904,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 value = result
             val exprRef = interpretExpression(doWhileStatementNode.condition)
             val exprValue = Operations.getValue(exprRef)
-            if (Operations.toBoolean(exprValue) == JSFalse)
+            if (!Operations.toBoolean(exprValue))
                 return value
         }
     }
@@ -915,7 +914,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         while (true) {
             val exprRef = interpretExpression(whileStatementNode.condition)
             val exprValue = Operations.getValue(exprRef)
-            if (Operations.toBoolean(exprValue) == JSFalse)
+            if (!Operations.toBoolean(exprValue))
                 return value
             val result = try {
                 interpretStatement(whileStatementNode.body)
@@ -999,7 +998,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             if (condition != null) {
                 val testRef = interpretExpression(condition)
                 val testValue = Operations.getValue(testRef)
-                if (Operations.toBoolean(testValue) == JSFalse)
+                if (!Operations.toBoolean(testValue))
                     return value
             }
             val result = try {
@@ -1608,7 +1607,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 val lref = interpretExpression(lhs)
                 val lval = Operations.getValue(lref)
                 val lbool = Operations.toBoolean(lval)
-                if (lbool == JSFalse)
+                if (!lbool)
                     return lval
                 val rval = if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode) {
                     TODO()
@@ -1622,7 +1621,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 val lref = interpretExpression(lhs)
                 val lval = Operations.getValue(lref)
                 val lbool = Operations.toBoolean(lval)
-                if (lbool == JSTrue)
+                if (lbool)
                     return lval
                 val rval = if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode) {
                     TODO()
@@ -1662,7 +1661,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         val lval = Operations.getValue(lref).let { value ->
             Operations.toBoolean(value)
         }
-        return if (lval == JSTrue) {
+        return if (lval) {
             Operations.getValue(interpretExpression(conditionalExpressionNode.ifTrue))
         } else {
             Operations.getValue(interpretExpression(conditionalExpressionNode.ifFalse))
@@ -1682,7 +1681,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         val lref = interpretExpression(logicalORExpressionNode.lhs)
         val lval = Operations.getValue(lref)
         val lbool = Operations.toBoolean(lval)
-        return if (lbool == JSTrue) {
+        return if (lbool) {
             lval
         } else Operations.getValue(interpretExpression(logicalORExpressionNode.rhs))
     }
@@ -1691,7 +1690,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         val lref = interpretExpression(logicalANDExpressionNode.lhs)
         val lval = Operations.getValue(lref)
         val lbool = Operations.toBoolean(lval)
-        return if (lbool == JSFalse) {
+        return if (!lbool) {
             lval
         } else Operations.getValue(interpretExpression(logicalANDExpressionNode.rhs))
     }
@@ -1767,7 +1766,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 if (rval !is JSObject)
                     throwTypeError("right-hand side of 'in' operator must be an object")
                 val key = Operations.toPropertyKey(lval)
-                Operations.hasProperty(rval, key)
+                Operations.hasProperty(rval, key).toValue()
             }
         }
     }
@@ -1845,7 +1844,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             UnaryExpressionNode.Operator.Not -> {
                 val exprValue = Operations.getValue(exprRef)
                 val oldValue = Operations.toBoolean(exprValue)
-                if (oldValue == JSFalse) JSTrue else JSFalse
+                if (!oldValue) JSTrue else JSFalse
             }
         }
     }
