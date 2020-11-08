@@ -1133,45 +1133,47 @@ object Operations {
                 return false
         }
 
-        if (currentDesc.isDataDescriptor != newDesc.isDataDescriptor) {
-            if (currentDesc.run { hasConfigurable && !isConfigurable })
-                return false
-            if (currentDesc.isDataDescriptor) {
-                target?.internalSet(
-                    property!!,
-                    Descriptor(
-                        JSUndefined,
-                        currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
-                        newDesc.getter,
-                        newDesc.setter,
-                    )
-                )
-            } else {
-                target?.internalSet(
-                    property!!,
-                    Descriptor(
-                        newDesc.getActualValue(target),
-                        currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
-                    )
-                )
-            }
-        } else if (currentDesc.isDataDescriptor && newDesc.isDataDescriptor) {
-            if (currentDesc.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {
-                if (newDesc.isWritable)
+        if (!newDesc.isGenericDescriptor) {
+            if (currentDesc.isDataDescriptor != newDesc.isDataDescriptor) {
+                if (currentDesc.run { hasConfigurable && !isConfigurable })
                     return false
-                if (!newDesc.getActualValue(target).sameValue(currentDesc.getActualValue(target)))
+                if (currentDesc.isDataDescriptor) {
+                    target?.internalSet(
+                        property!!,
+                        Descriptor(
+                            JSUndefined,
+                            currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
+                            newDesc.getter,
+                            newDesc.setter,
+                        )
+                    )
+                } else {
+                    target?.internalSet(
+                        property!!,
+                        Descriptor(
+                            newDesc.getActualValue(target),
+                            currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
+                        )
+                    )
+                }
+            } else if (currentDesc.isDataDescriptor && newDesc.isDataDescriptor) {
+                if (currentDesc.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {
+                    if (newDesc.isWritable)
+                        return false
+                    if (!newDesc.getActualValue(target).sameValue(currentDesc.getActualValue(target)))
+                        return false
+                }
+            } else if (currentDesc.run { hasConfigurable && !isConfigurable }) {
+                val currentSetter = currentDesc.setter
+                val newSetter = newDesc.setter
+                if (newDesc.hasSetter && (!currentDesc.hasSetter || !newSetter.sameValue(currentSetter)))
                     return false
+                val currentGetter = currentDesc.setter
+                val newGetter = newDesc.setter
+                if (newDesc.hasGetter && (!currentDesc.hasGetter || !newGetter.sameValue(currentGetter)))
+                    return false
+                return true
             }
-        } else if (currentDesc.run { hasConfigurable && !isConfigurable }) {
-            val currentSetter = currentDesc.setter
-            val newSetter = newDesc.setter
-            if (newDesc.hasSetter && (!currentDesc.hasSetter || !newSetter.sameValue(currentSetter)))
-                return false
-            val currentGetter = currentDesc.setter
-            val newGetter = newDesc.setter
-            if (newDesc.hasGetter && (!currentDesc.hasGetter || !newGetter.sameValue(currentGetter)))
-                return false
-            return true
         }
 
         if (target != null) {
