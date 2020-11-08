@@ -399,7 +399,7 @@ open class JSObject protected constructor(
             property.isString -> {
                 property.asString.toIntOrNull()?.also {
                     if (it >= 0) {
-                        indexedProperties.set(this, it, descriptor)
+                        indexedProperties.setDescriptor(it, descriptor)
                         return
                     }
                 }
@@ -407,7 +407,7 @@ open class JSObject protected constructor(
             }
             property.isInt -> {
                 if (property.asInt >= 0) {
-                    indexedProperties.set(this, property.asInt, descriptor)
+                    indexedProperties.setDescriptor(property.asInt, descriptor)
                     return
                 }
                 StringOrSymbol(property.asInt.toString())
