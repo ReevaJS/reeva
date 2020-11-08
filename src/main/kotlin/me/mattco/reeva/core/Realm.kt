@@ -15,13 +15,10 @@ import me.mattco.reeva.runtime.functions.JSFunctionCtor
 import me.mattco.reeva.runtime.functions.JSFunctionProto
 import me.mattco.reeva.runtime.global.JSConsole
 import me.mattco.reeva.runtime.global.JSConsoleProto
-import me.mattco.reeva.runtime.iterators.JSArrayIteratorProto
-import me.mattco.reeva.runtime.iterators.JSIteratorProto
+import me.mattco.reeva.runtime.iterators.*
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObjectCtor
 import me.mattco.reeva.runtime.objects.JSObjectProto
-import me.mattco.reeva.runtime.iterators.JSObjectPropertyIteratorProto
-import me.mattco.reeva.runtime.iterators.JSSetIteratorProto
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.wrappers.*
@@ -52,10 +49,12 @@ class Realm(moduleResolver: ModuleResolver? = null) {
     lateinit var functionProto: JSFunctionProto private set
     lateinit var arrayProto: JSArrayProto private set
     lateinit var setProto: JSSetProto private set
+    lateinit var mapProto: JSMapProto private set
     lateinit var promiseProto: JSPromiseProto private set
     lateinit var iteratorProto: JSIteratorProto private set
     lateinit var arrayIteratorProto: JSArrayIteratorProto private set
     lateinit var setIteratorProto: JSSetIteratorProto private set
+    lateinit var mapIteratorProto: JSMapIteratorProto private set
     lateinit var objectPropertyIteratorProto: JSObjectPropertyIteratorProto private set
     lateinit var consoleProto: JSConsoleProto private set
 
@@ -75,6 +74,7 @@ class Realm(moduleResolver: ModuleResolver? = null) {
     lateinit var functionCtor: JSFunctionCtor private set
     lateinit var arrayCtor: JSArrayCtor private set
     lateinit var setCtor: JSSetCtor private set
+    lateinit var mapCtor: JSMapCtor private set
     lateinit var proxyCtor: JSProxyCtor private set
     lateinit var promiseCtor: JSPromiseCtor private set
 
@@ -114,6 +114,7 @@ class Realm(moduleResolver: ModuleResolver? = null) {
         functionCtor = JSFunctionCtor.create(this)
         arrayCtor = JSArrayCtor.create(this)
         setCtor = JSSetCtor.create(this)
+        mapCtor = JSMapCtor.create(this)
         proxyCtor = JSProxyCtor.create(this)
         promiseCtor = JSPromiseCtor.create(this)
 
@@ -130,10 +131,12 @@ class Realm(moduleResolver: ModuleResolver? = null) {
         stringProto = JSStringProto.create(this)
         arrayProto = JSArrayProto.create(this)
         setProto = JSSetProto.create(this)
+        mapProto = JSMapProto.create(this)
         promiseProto = JSPromiseProto.create(this)
         iteratorProto = JSIteratorProto.create(this)
         arrayIteratorProto = JSArrayIteratorProto.create(this)
         setIteratorProto = JSSetIteratorProto.create(this)
+        mapIteratorProto = JSMapIteratorProto.create(this)
         objectPropertyIteratorProto = JSObjectPropertyIteratorProto.create(this)
         consoleProto = JSConsoleProto.create(this)
         mathObj = JSMathObject.create(this)
@@ -162,6 +165,7 @@ class Realm(moduleResolver: ModuleResolver? = null) {
         symbolCtor.defineOwnProperty("prototype", symbolProto, 0)
         arrayCtor.defineOwnProperty("prototype", arrayProto, 0)
         setCtor.defineOwnProperty("prototype", setProto, 0)
+        mapCtor.defineOwnProperty("prototype", mapProto, 0)
         errorCtor.defineOwnProperty("prototype", errorProto, 0)
         evalErrorCtor.defineOwnProperty("prototype", evalErrorProto, 0)
         typeErrorCtor.defineOwnProperty("prototype", typeErrorProto, 0)

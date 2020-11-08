@@ -1138,7 +1138,8 @@ object Operations {
                 return false
             if (currentDesc.isDataDescriptor) {
                 target?.internalSet(
-                    property!!, Descriptor(
+                    property!!,
+                    Descriptor(
                         JSUndefined,
                         currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
                         newDesc.getter,
@@ -1147,7 +1148,8 @@ object Operations {
                 )
             } else {
                 target?.internalSet(
-                    property!!, Descriptor(
+                    property!!,
+                    Descriptor(
                         newDesc.getActualValue(target),
                         currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
                     )
@@ -1651,7 +1653,12 @@ object Operations {
 
     @JSThrows
     @JvmStatic @ECMAImpl("23.1.1.2")
-    fun addEntriesFromIterable(target: JSObject, iterable: JSValue, adder: JSFunction): JSObject {
+    fun addEntriesFromIterable(target: JSObject, iterable: JSValue, adderValue: JSValue): JSObject {
+        if (!isCallable(adderValue))
+            throwTypeError("TODO: message (addEntriesFromIterable)")
+
+        val adder = adderValue as JSFunction
+
         // TODO: This whole method is super scuffed
         ecmaAssert(iterable != JSUndefined && iterable != JSNull)
         val record = getIterator(iterable) as? IteratorRecord ?: return JSObject.INVALID_OBJECT

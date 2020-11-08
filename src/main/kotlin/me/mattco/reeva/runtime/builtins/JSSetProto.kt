@@ -62,9 +62,9 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
             set.insertionOrder.remove(value)
         } else {
             val index = set.insertionOrder.indexOf(value)
-            if (index != -1) {
-                set.insertionOrder[index] = JSEmpty
-            }
+            if (index == -1)
+                return false.toValue()
+            set.insertionOrder[index] = JSEmpty
         }
         return set.setData.remove(value).toValue()
     }
