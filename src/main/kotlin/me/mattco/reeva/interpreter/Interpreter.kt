@@ -844,7 +844,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
 
             val result = try {
                 interpretStatement(statement)
-            } catch (e: FlowException) {
+            } catch (e: AbruptCompletion) {
                 if (e is ThrowException) {
                     if (iterationKind != IterationKind.Enumerate)
                         Operations.iteratorClose(iteratorRecord, value)
@@ -894,7 +894,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         while (true) {
             val result = try {
                 interpretStatement(doWhileStatementNode.body)
-            } catch (e: FlowException) {
+            } catch (e: AbruptCompletion) {
                 if (e is ThrowException)
                     throw e
                 if (!loopContinues(e, labelSet))
@@ -919,7 +919,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 return value
             val result = try {
                 interpretStatement(whileStatementNode.body)
-            } catch (e: FlowException) {
+            } catch (e: AbruptCompletion) {
                 if (e is ThrowException)
                     throw e
                 if (!loopContinues(e, labelSet))
@@ -1004,7 +1004,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             }
             val result = try {
                 interpretStatement(body)
-            } catch (e: FlowException) {
+            } catch (e: AbruptCompletion) {
                 if (e is ThrowException)
                     throw e
                 if (!loopContinues(e, labelSet))
@@ -1045,7 +1045,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
     }
 
     @ECMAImpl("13.7.1.2")
-    private fun loopContinues(exception: FlowException, labelSet: Set<String>): Boolean {
+    private fun loopContinues(exception: AbruptCompletion, labelSet: Set<String>): Boolean {
         return when {
             exception !is ContinueException -> false
             exception.label == null -> true
