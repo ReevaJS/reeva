@@ -122,7 +122,10 @@ abstract class JSValue : Ref {
     fun sameValueZero(other: JSValue): Boolean {
         if (type != other.type)
             return false
-        // TODO: Number vs BigInt
+        if (type == Type.Number)
+            return Operations.numericSameValueZero(this, other).value
+        if (type == Type.BigInt)
+            TODO()
         return sameValueNonNumeric(other)
     }
 
@@ -149,6 +152,28 @@ abstract class JSValue : Ref {
     fun ifNull(value: JSValue) = if (this == JSUndefined) value else this
 
     fun ifNullish(value: JSValue) = if (this == JSUndefined || this == JSNull) value else this
+
+    override fun equals(other: Any?): Boolean {
+        if (other === this)
+            return true
+        return other is JSValue && sameValueZero(other)
+    }
+
+    override fun hashCode(): Int {
+        return when (type) {
+            Type.Empty -> -658902345
+            Type.Undefined -> 29358739
+            Type.Null -> 843562348
+            Type.Boolean -> asBoolean.hashCode()
+            Type.String -> asString.hashCode()
+            Type.Number -> {
+                if (isNegativeZero)
+                    return 0.0.hashCode()
+                return asDouble.hashCode()
+            }
+            else -> System.identityHashCode(this)
+        }
+    }
 
     enum class Type(val typeName: kotlin.String) {
         Empty("<empty>"),
