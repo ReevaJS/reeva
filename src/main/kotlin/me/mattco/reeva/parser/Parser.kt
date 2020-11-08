@@ -2338,73 +2338,73 @@ class Parser(text: String, private val realm: Realm) {
         syntaxError("Unexpected $unexpected")
     }
 
-    fun <T> withYield(block: () -> T): T {
+    private inline fun <T> withYield(block: () -> T): T {
         val prev = inYieldContext
         inYieldContext = true
         return block().also { inYieldContext = prev }
     }
 
-    fun <T> withAwait(block: () -> T): T {
+    private inline fun <T> withAwait(block: () -> T): T {
         val prev = inAwaitContext
         inAwaitContext = true
         return block().also { inAwaitContext = prev }
     }
 
-    fun <T> withReturn(block: () -> T): T {
+    private inline fun <T> withReturn(block: () -> T): T {
         val prev = inReturnContext
         inReturnContext = true
         return block().also { inReturnContext = prev }
     }
 
-    fun <T> withIn(block: () -> T): T {
+    private inline fun <T> withIn(block: () -> T): T {
         val prev = inInContext
         inInContext = true
         return block().also { inInContext = prev }
     }
 
-    fun <T> withDefault(block: () -> T): T {
+    private inline fun <T> withDefault(block: () -> T): T {
         val prev = inDefaultContext
         inDefaultContext = true
         return block().also { inDefaultContext = prev }
     }
 
-    fun <T> withTagged(block: () -> T): T {
+    private inline fun <T> withTagged(block: () -> T): T {
         val prev = inTaggedContext
         inTaggedContext = true
         return block().also { inTaggedContext = prev }
     }
 
-    fun <T> withoutYield(block: () -> T): T {
+    private inline fun <T> withoutYield(block: () -> T): T {
         val prev = inYieldContext
         inYieldContext = false
         return block().also { inYieldContext = prev }
     }
 
-    fun <T> withoutAwait(block: () -> T): T {
+    private inline fun <T> withoutAwait(block: () -> T): T {
         val prev = inAwaitContext
         inAwaitContext = false
         return block().also { inAwaitContext = prev }
     }
 
-    fun <T> withoutReturn(block: () -> T): T {
+    private inline fun <T> withoutReturn(block: () -> T): T {
         val prev = inReturnContext
         inReturnContext = false
         return block().also { inReturnContext = prev }
     }
 
-    fun <T> withoutIn(block: () -> T): T {
+    private inline fun <T> withoutIn(block: () -> T): T {
         val prev = inInContext
         inInContext = false
         return block().also { inInContext = prev }
     }
 
-    fun <T> withoutDefault(block: () -> T): T {
+    private inline fun <T> withoutDefault(block: () -> T): T {
         val prev = inDefaultContext
         inDefaultContext = false
         return block().also { inDefaultContext = prev }
     }
 
-    fun <T> withoutTagged(block: () -> T): T {
+    private inline fun <T> withoutTagged(block: () -> T): T {
         val prev = inTaggedContext
         inTaggedContext = false
         return block().also { inTaggedContext = prev }
