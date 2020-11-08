@@ -466,12 +466,12 @@ object Operations {
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
 
-        var int = floor(abs(number.asDouble)).toInt()
+        var int = floor(abs(number.asDouble)).toLong()
         if (number.asDouble < 0)
-            int *= -1
+            int *= -1L
 
-        val int32bit = int % MAX_32BIT_INT.toInt()
-        if (int32bit >= MAX_31BIT_INT.toInt())
+        val int32bit = int % MAX_32BIT_INT
+        if (int32bit >= MAX_31BIT_INT)
             return JSNumber(int32bit - MAX_32BIT_INT)
         return JSNumber(int32bit)
     }
