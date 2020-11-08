@@ -6,6 +6,8 @@ import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.JSArguments
+import me.mattco.reeva.utils.argument
 import me.mattco.reeva.utils.toValue
 
 class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "String", 1) {
@@ -14,19 +16,18 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @JSThrows
-    override fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
-        return if (arguments.isEmpty()) {
-            "".toValue()
-        } else Operations.toString(arguments[0])
+    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
+        return construct(arguments, JSUndefined)
     }
 
     @JSThrows
-    override fun construct(arguments: List<JSValue>, newTarget: JSValue): JSValue {
-        if (newTarget == JSUndefined && arguments[0].isSymbol)
-            return arguments[0].asSymbol.descriptiveString().toValue()
+    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
+        val argument = arguments.argument(0)
+        if (newTarget == JSUndefined && argument.isSymbol)
+            return argument.asSymbol.descriptiveString().toValue()
         val s = if (arguments.isEmpty()) {
             "".toValue()
-        } else Operations.toString(arguments[0])
+        } else Operations.toString(argument)
         if (newTarget == JSUndefined)
             return s
         // TODO: GetPrototypeFromConstructor?
