@@ -33,13 +33,29 @@ class BlockNode(val statements: StatementListNode?) : NodeBase(listOfNotNull(sta
 
     override fun topLevelLexicallyScopedDeclarations() = emptyList<NodeBase>()
 
-    override fun topLevelVarDeclaredNames() = emptyList<String>()
+    override fun topLevelVarDeclaredNames() = statements?.statements?.flatMap {
+        if (it is LabelledStatementNode) {
+            it.topLevelVarDeclaredNames()
+        } else it.varDeclaredNames()
+    } ?: emptyList()
 
-    override fun topLevelVarScopedDeclarations() = emptyList<NodeBase>()
+    override fun topLevelVarScopedDeclarations() = statements?.statements?.flatMap {
+        if (it is LabelledStatementNode) {
+            it.topLevelVarScopedDeclarations()
+        } else it.varScopedDeclarations()
+    } ?: emptyList()
 
-    override fun varDeclaredNames() = emptyList<String>()
+    override fun varDeclaredNames() = statements?.statements?.filter {
+        it !is DeclarationNode
+    }?.flatMap {
+        it.varDeclaredNames()
+    } ?: emptyList()
 
-    override fun varScopedDeclarations() = emptyList<NodeBase>()
+    override fun varScopedDeclarations() = statements?.statements?.filter {
+        it !is DeclarationNode
+    }?.flatMap {
+        it.varScopedDeclarations()
+    } ?: emptyList()
 }
 
 class StatementListNode(val statements: List<StatementListItemNode>) : NodeBase(statements), StatementNode {
