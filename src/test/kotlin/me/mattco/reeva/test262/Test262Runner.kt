@@ -13,7 +13,7 @@ class Test262Runner {
             it.name != "intl402" && it.name != "annexB"
         }.filter {
             !it.isDirectory && !it.name.endsWith("_FIXTURE.js") && "S13.2.1_A1_T1.js" !in it.name // the nested function call test
-        }.toList().map { file ->
+        }.toList().sortedBy { it.absolutePath }.map { file ->
             val name = file.absolutePath.replace(testDirectory.absolutePath, "")
             val contents = file.readText()
 
