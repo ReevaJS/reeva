@@ -36,6 +36,9 @@ import me.mattco.reeva.runtime.wrappers.JSNumberObject
 import me.mattco.reeva.runtime.wrappers.JSStringObject
 import me.mattco.reeva.runtime.wrappers.JSSymbolObject
 import me.mattco.reeva.utils.*
+import java.time.*
+import java.time.format.TextStyle
+import java.util.*
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.min
@@ -45,6 +48,10 @@ object Operations {
     const val MAX_SAFE_INTEGER: Long = (2L shl 52) - 1L
     const val MAX_32BIT_INT = 2L shl 31
     const val MAX_31BIT_INT = 2L shl 30
+
+    val defaultZone = ZoneId.systemDefault()
+    val defaultZoneOffset = defaultZone.rules.getOffset(Instant.now())
+    val defaultLocale = Locale.getDefault()
 
     // Note this common gotcha: In Kotlin this really does accept any
     // value, however it gets translated to Object in Java, which can't
@@ -498,7 +505,7 @@ object Operations {
             JSFalse -> "false"
             // TODO: Make sure to follow all of JS's number conversion rules here
             is JSNumber -> if (value.isInt) {
-                value.number.toInt().toString()
+                value.number.toLong().toString()
             } else value.number.toString()
             is JSSymbol -> throwTypeError("cannot convert Symbol to string")
             is JSObject -> toString(toPrimitive(value, ToPrimitiveHint.AsString)).string
@@ -1651,6 +1658,97 @@ object Operations {
     @ECMAImpl("14.1.12")
     fun isAnonymousFunctionDefinition(node: ASTNode): Boolean {
         return node.isFunctionDefinition() && !node.hasName()
+    }
+
+    @ECMAImpl("20.4.1.11")
+    fun makeTime(hour: JSValue, min: JSValue, sec: JSValue, ms: JSValue): JSValue {
+        if (!hour.isFinite || !min.isFinite || !sec.isFinite || !ms.isFinite)
+            return JSNumber.NaN
+
+        val h = toIntegerOrInfinity(hour).asInt
+        val m = toIntegerOrInfinity(min).asInt
+        val s = toIntegerOrInfinity(sec).asInt
+        val milli = toIntegerOrInfinity(ms).asInt
+
+        val lt = LocalTime.of(h, m, s, milli * 1_000_000)
+
+        return (lt.second * 1000 + lt.nano / 1_000_000).toValue()
+    }
+
+    @ECMAImpl("20.4.1.12")
+    fun makeDay(year: JSValue, month: JSValue, day: JSValue): JSValue {
+        if (!year.isFinite || !month.isFinite || !day.isFinite)
+            return JSNumber.NaN
+
+        val y = toIntegerOrInfinity(year).asInt
+        val m = toIntegerOrInfinity(month).asInt
+        val d = toIntegerOrInfinity(day).asInt
+
+        return makeDay(y, m, d).toValue()
+    }
+
+    @ECMAImpl("20.4.1.12")
+    fun makeDay(year: Int, month: Int, day: Int): Long {
+        // TODO: Out of range check
+        return LocalDate.of(year, month, day).toEpochDay()
+    }
+
+    @ECMAImpl("20.4.1.13")
+    fun makeDate(day: JSValue, time: JSValue): JSValue {
+        if (!day.isFinite || !time.isFinite)
+            return JSNumber.NaN
+
+        return makeDate(day.asLong, time.asLong).toValue()
+    }
+
+    @ECMAImpl("20.4.1.13")
+    fun makeDate(day: Long, time: Long): Long {
+        return day * 86400000L + time
+    }
+
+    @ECMAImpl("20.4.1.14")
+    fun timeClip(zdt: ZonedDateTime): ZonedDateTime? {
+        return if (abs(zdt.toInstant().toEpochMilli()) > 8.64e15) null else zdt
+    }
+
+    @ECMAImpl("20.4.4.41.2")
+    fun timeString(zdt: ZonedDateTime): String {
+        val hour = "%02d".format(zdt.hour)
+        val minute = "%02d".format(zdt.minute)
+        val second = "%02d".format(zdt.second)
+        return "$hour:$minute:$second GMT"
+    }
+
+    @ECMAImpl("20.4.4.41.2")
+    fun dateString(zdt: ZonedDateTime): String {
+        val weekday = zdt.dayOfWeek.getDisplayName(TextStyle.SHORT, defaultLocale)
+        val month = zdt.month.getDisplayName(TextStyle.SHORT, defaultLocale)
+        val day = "%02d".format(zdt.dayOfMonth)
+        val year = zdt.year
+        val yearSign = if (year >= 0) "" else "-"
+        val paddedYear = "%04d".format(abs(year))
+        return "$weekday $month $day $yearSign$paddedYear"
+    }
+
+    @ECMAImpl("20.4.4.41.2")
+    fun timeZoneString(zdt: ZonedDateTime): String {
+        // TODO: Check if this is the correct range, i.e., negative or positive around UTC
+        val offsetSeconds = zdt.offset.totalSeconds
+        val offsetMinutes = "%02d".format((abs(offsetSeconds / 60) % 60))
+        val offsetHours = "%02d".format(abs(offsetSeconds / (60 * 60) % 24))
+        val offsetSign = if (offsetSeconds < 0) "-" else "+"
+
+        return "$offsetSign$offsetHours$offsetMinutes (${defaultZone.getDisplayName(TextStyle.FULL, defaultLocale)})"
+    }
+
+    @ECMAImpl("20.4.4.41.4")
+    fun toDateString(tv: ZonedDateTime): String {
+        return buildString {
+            append(dateString(tv))
+            append(" ")
+            append(timeString(tv))
+            append(timeZoneString(tv))
+        }
     }
 
     @JSThrows

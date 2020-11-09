@@ -36,6 +36,7 @@ open class JSGlobalObject protected constructor(
         val attrs = Descriptor.CONFIGURABLE or Descriptor.WRITABLE
         defineOwnProperty("Array", realm.arrayCtor, attrs)
         defineOwnProperty("Boolean", realm.booleanCtor, attrs)
+        defineOwnProperty("Date", realm.dateCtor, attrs)
         defineOwnProperty("Error", realm.errorCtor, attrs)
         defineOwnProperty("EvalError", realm.evalErrorCtor, attrs)
         defineOwnProperty("Function", realm.functionCtor, attrs)

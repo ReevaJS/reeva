@@ -51,6 +51,7 @@ class Realm(moduleResolver: ModuleResolver? = null) {
     lateinit var setProto: JSSetProto private set
     lateinit var mapProto: JSMapProto private set
     lateinit var promiseProto: JSPromiseProto private set
+    lateinit var dateProto: JSDateProto private set
     lateinit var iteratorProto: JSIteratorProto private set
     lateinit var arrayIteratorProto: JSArrayIteratorProto private set
     lateinit var setIteratorProto: JSSetIteratorProto private set
@@ -77,6 +78,7 @@ class Realm(moduleResolver: ModuleResolver? = null) {
     lateinit var mapCtor: JSMapCtor private set
     lateinit var proxyCtor: JSProxyCtor private set
     lateinit var promiseCtor: JSPromiseCtor private set
+    lateinit var dateCtor: JSDateCtor private set
 
     lateinit var errorCtor: JSErrorCtor private set
     lateinit var evalErrorCtor: JSEvalErrorCtor private set
@@ -117,6 +119,7 @@ class Realm(moduleResolver: ModuleResolver? = null) {
         mapCtor = JSMapCtor.create(this)
         proxyCtor = JSProxyCtor.create(this)
         promiseCtor = JSPromiseCtor.create(this)
+        dateCtor = JSDateCtor.create(this)
 
         errorCtor = JSErrorCtor.create(this)
         evalErrorCtor = JSEvalErrorCtor.create(this)
@@ -133,6 +136,7 @@ class Realm(moduleResolver: ModuleResolver? = null) {
         setProto = JSSetProto.create(this)
         mapProto = JSMapProto.create(this)
         promiseProto = JSPromiseProto.create(this)
+        dateProto = JSDateProto.create(this)
         iteratorProto = JSIteratorProto.create(this)
         arrayIteratorProto = JSArrayIteratorProto.create(this)
         setIteratorProto = JSSetIteratorProto.create(this)
@@ -166,6 +170,7 @@ class Realm(moduleResolver: ModuleResolver? = null) {
         arrayCtor.defineOwnProperty("prototype", arrayProto, 0)
         setCtor.defineOwnProperty("prototype", setProto, 0)
         mapCtor.defineOwnProperty("prototype", mapProto, 0)
+        dateCtor.defineOwnProperty("prototype", dateProto, 0)
         errorCtor.defineOwnProperty("prototype", errorProto, 0)
         evalErrorCtor.defineOwnProperty("prototype", evalErrorProto, 0)
         typeErrorCtor.defineOwnProperty("prototype", typeErrorProto, 0)

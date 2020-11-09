@@ -5,6 +5,7 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.annotations.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject
+import me.mattco.reeva.runtime.builtins.JSDateObject
 import me.mattco.reeva.runtime.builtins.JSMappedArgumentsObject
 import me.mattco.reeva.runtime.builtins.JSUnmappedArgumentsObject
 import me.mattco.reeva.runtime.errors.JSErrorObject
@@ -158,6 +159,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
             } else {
                 when (obj) {
                     is JSArrayObject -> "Array"
+                    is JSDateObject -> "Date"
                     is JSFunction -> "Function"
                     is JSErrorObject -> "Error"
                     is JSBooleanObject -> "Boolean"
