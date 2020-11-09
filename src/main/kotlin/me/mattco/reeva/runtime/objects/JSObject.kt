@@ -453,12 +453,13 @@ open class JSObject protected constructor(
         val isString = value is String
         val isSymbol = value is JSSymbol
 
-        val asString by lazy { value as String }
-        val asSymbol by lazy { value as JSSymbol }
+        val asString: String
+            get() = value as String
+        val asSymbol: JSSymbol
+            get() = value as JSSymbol
 
-        val asValue by lazy {
-            if (isString) JSString(asString) else asSymbol
-        }
+        val asValue: JSValue
+            get() = if (isString) JSString(asString) else asSymbol
 
         constructor(value: String) : this(value as Any)
         constructor(value: JSString) : this(value.string)

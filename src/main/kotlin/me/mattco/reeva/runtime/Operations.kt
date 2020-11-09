@@ -359,7 +359,8 @@ object Operations {
         AsString("string"),
         AsNumber("number");
 
-        val value by lazy { JSString(_text) }
+        val value: JSString
+            get() = JSString(_text)
     }
 
     @JSThrows

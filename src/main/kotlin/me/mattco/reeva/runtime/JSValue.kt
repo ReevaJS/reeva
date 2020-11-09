@@ -13,8 +13,8 @@ import me.mattco.reeva.utils.unreachable
 import kotlin.math.floor
 
 abstract class JSValue : Ref {
-    val type by lazy {
-        when (this) {
+    val type: Type
+        get() = when (this) {
             is JSEmpty -> Type.Empty
             is JSUndefined -> Type.Undefined
             is JSNull -> Type.Null
@@ -27,31 +27,30 @@ abstract class JSValue : Ref {
             is JSObject -> Type.Object
             else -> throw IllegalStateException("Unknown object type")
         }
-    }
 
-    val isEmpty by lazy { type == Type.Empty }
-    val isUndefined by lazy { type == Type.Undefined }
-    val isNull by lazy { type == Type.Null }
-    val isBoolean by lazy { type == Type.Boolean }
-    val isNumber by lazy { type == Type.Number }
-    val isBigInt by lazy { type == Type.BigInt }
-    val isString by lazy { type == Type.String }
-    val isSymbol by lazy { type == Type.Symbol }
-    val isObject by lazy { type == Type.Object }
-    val isAccessor by lazy { type == Type.Accessor }
-    val isFunction by lazy { this is JSFunction }
-    val isArray by lazy { this is JSArrayObject }
+    val isEmpty: Boolean get() = type == Type.Empty
+    val isUndefined: Boolean get() = type == Type.Undefined
+    val isNull: Boolean get() = type == Type.Null
+    val isBoolean: Boolean get() = type == Type.Boolean
+    val isNumber: Boolean get() = type == Type.Number
+    val isBigInt: Boolean get() = type == Type.BigInt
+    val isString: Boolean get() = type == Type.String
+    val isSymbol: Boolean get() = type == Type.Symbol
+    val isObject: Boolean get() = type == Type.Object
+    val isAccessor: Boolean get() = type == Type.Accessor
+    val isFunction: Boolean get() = this is JSFunction
+    val isArray: Boolean get() = this is JSArrayObject
 
-    val isNullish by lazy { this == JSNull || this == JSUndefined }
-    val isInt by lazy { isNumber && !isInfinite && floor(asDouble) == asDouble }
-    val isNaN by lazy { isNumber && asDouble.isNaN() }
-    val isFinite by lazy { isNumber && asDouble.isFinite()}
-    val isInfinite by lazy { isNumber && asDouble.isInfinite() }
-    val isPositiveInfinity by lazy { isNumber && asDouble == Double.POSITIVE_INFINITY }
-    val isNegativeInfinity by lazy { isNumber && asDouble == Double.NEGATIVE_INFINITY }
-    val isZero by lazy { isNumber && asDouble == 0.0 }
-    val isPositiveZero by lazy { isNumber && 1.0 / asDouble == Double.POSITIVE_INFINITY }
-    val isNegativeZero by lazy { isNumber && 1.0 / asDouble == Double.NEGATIVE_INFINITY }
+    val isNullish: Boolean get() = this == JSNull || this == JSUndefined
+    val isInt: Boolean get() = isNumber && !isInfinite && floor(asDouble) == asDouble
+    val isNaN: Boolean get() = isNumber && asDouble.isNaN()
+    val isFinite: Boolean get() = isNumber && asDouble.isFinite()
+    val isInfinite: Boolean get() = isNumber && asDouble.isInfinite()
+    val isPositiveInfinity: Boolean get() = isNumber && asDouble == Double.POSITIVE_INFINITY
+    val isNegativeInfinity: Boolean get() = isNumber && asDouble == Double.NEGATIVE_INFINITY
+    val isZero: Boolean get() = isNumber && asDouble == 0.0
+    val isPositiveZero: Boolean get() = isNumber && 1.0 / asDouble == Double.POSITIVE_INFINITY
+    val isNegativeZero: Boolean get() = isNumber && 1.0 / asDouble == Double.NEGATIVE_INFINITY
 
     val asBoolean: Boolean
         get() {

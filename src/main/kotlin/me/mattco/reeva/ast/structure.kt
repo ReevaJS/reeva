@@ -7,7 +7,8 @@ import me.mattco.reeva.utils.newline
 import me.mattco.reeva.utils.unreachable
 
 open class NodeBase(override val children: List<ASTNode> = emptyList()) : ASTNode {
-    override val name: String by lazy { this::class.java.simpleName }
+    override val name: String
+        get() = this::class.java.simpleName
 }
 
 interface ASTNode {
