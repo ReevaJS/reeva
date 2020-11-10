@@ -33,7 +33,7 @@ class JSInterpretedFunction(
 ) {
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (isClassConstructor)
-            throwTypeError("TODO: message")
+            Errors.Class.CtorRequiresNew.throwTypeError()
         val calleeContext = Operations.prepareForOrdinaryCall(this, JSUndefined)
         ecmaAssert(Agent.runningContext == calleeContext)
         Operations.ordinaryCallBindThis(this, calleeContext, thisValue)
@@ -75,7 +75,7 @@ class JSInterpretedFunction(
             if (constructorKind == ConstructorKind.Base)
                 return thisArgument!!
             if (e.value != JSUndefined)
-                throwTypeError("TODO: message")
+                Errors.Class.ReturnObjectFromDerivedCtor.throwTypeError()
         } finally {
             Agent.popContext()
         }

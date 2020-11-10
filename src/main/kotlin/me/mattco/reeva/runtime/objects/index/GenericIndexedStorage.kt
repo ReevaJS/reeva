@@ -26,7 +26,7 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
 
     override fun hasIndex(index: Int): Boolean {
         if (index < SPARSE_ARRAY_THRESHOLD)
-            return index < packedElements.size && packedElements[index].getRawValue() !is JSEmpty
+            return index < packedElements.size && packedElements[index].getRawValue() != JSEmpty
         return index in sparseElements
     }
 

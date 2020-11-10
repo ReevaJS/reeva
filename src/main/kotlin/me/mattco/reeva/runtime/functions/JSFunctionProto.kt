@@ -15,7 +15,7 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
         super.init()
 
         val thrower = JSNativeFunction.fromLambda(realm, "", 0) { _, _ ->
-            throwTypeError("cannot access \"caller\" or \"arguments\" properties on functions")
+            Errors.Function.CallerArgumentsAccess.throwTypeError()
         }
 
         val desc = Descriptor(JSEmpty, Descriptor.CONFIGURABLE, thrower, thrower)
@@ -26,7 +26,7 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
     @JSMethod("bind", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun bind(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isCallable(thisValue))
-            throwTypeError("cannot bind a non-callable object")
+            Errors.Function.BindNonFunction.throwTypeError()
 
         val args = if (arguments.size > 1) arguments.takeArgs(1 until arguments.size) else emptyList()
         val function = Operations.boundFunctionCreate(thisValue as JSFunction, arguments.argument(0), args)
@@ -61,14 +61,14 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
     @JSMethod("call", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isCallable(thisValue))
-            throwTypeError("TODO: message")
+            Errors.Function.NonCallable("call").throwTypeError()
         return Operations.call(thisValue, arguments.argument(0), arguments.subList(1, arguments.size))
     }
 
     @JSMethod("apply", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun apply(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isCallable(thisValue))
-            throwTypeError("TODO: message")
+            Errors.Function.NonCallable("apply").throwTypeError()
         val array = arguments.argument(1)
         if (array == JSUndefined || array == JSNull)
             return Operations.call(thisValue, arguments.argument(0))

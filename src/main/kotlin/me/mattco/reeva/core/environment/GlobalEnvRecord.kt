@@ -7,8 +7,8 @@ import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.key
-import me.mattco.reeva.utils.throwTypeError
 
 class GlobalEnvRecord(
     val declarativeRecord: DeclarativeEnvRecord,
@@ -27,8 +27,8 @@ class GlobalEnvRecord(
     @ECMAImpl("8.1.1.4.2")
     override fun createMutableBinding(name: String, canBeDeleted: Boolean) {
         if (declarativeRecord.hasBinding(name)) {
-            // TODO: This appears to be a syntax error in spidermonkey
-            throwTypeError("redeclaration of lexical variable $name")
+            // TODO: This should fail as an early error
+            Errors.TODO("GlobalEnvRecord createMutableBinding").throwTypeError()
         } else {
             declarativeRecord.createMutableBinding(name, canBeDeleted)
         }
@@ -37,7 +37,7 @@ class GlobalEnvRecord(
     @ECMAImpl("8.1.1.4.3")
     override fun createImmutableBinding(name: String, throwOnRepeatInitialization: Boolean) {
         if (declarativeRecord.hasBinding(name)) {
-            throwTypeError("TODO")
+            Errors.TODO("GlobalEnvRecord createImmutableBinding").throwTypeError()
         } else {
             declarativeRecord.createImmutableBinding(name, throwOnRepeatInitialization)
         }
@@ -154,7 +154,7 @@ class GlobalEnvRecord(
         }
         // TODO: Why do we define _and_ set here?
         if (!globalObject.defineOwnProperty(name.key(), newDesc))
-            throwTypeError("TODO")
+            Errors.TODO("createGlobalFunctionBinding").throwTypeError()
         globalObject.set(name, function)
         varNames.add(name)
     }

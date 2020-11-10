@@ -17,7 +17,7 @@ import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.module.JSModuleNamespaceObject
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.throwSyntaxError
+import me.mattco.reeva.utils.Errors
 
 class SourceTextModuleRecord(
     realm: Realm,
@@ -118,7 +118,7 @@ class SourceTextModuleRecord(
         indirectExportEntries.forEach { e ->
             val resolution = resolveExport(e.exportName!!)
             if (resolution == null || resolution == ResolvedBindingRecord.AMBIGUOUS)
-                throwSyntaxError("TODO: message (SourceTextModuleRecord initializeEnvironment)")
+                Errors.TODO("SourceTextModuleRecord initializeEnvironment 1").throwSyntaxError()
         }
 
         // TODO: "Assert: All named exports from module are resolvable."
@@ -134,7 +134,7 @@ class SourceTextModuleRecord(
             }else {
                 val resolution = importedModule.resolveExport(ie.importName)
                 if (resolution == null || resolution == ResolvedBindingRecord.AMBIGUOUS)
-                    throwSyntaxError("TODO: message (SourceTextModuleRecord initializeEnvironment)")
+                    Errors.TODO("SourceTextModuleRecord initializeEnvironment 2").throwSyntaxError()
                 if (resolution.bindingName == "*namespace*") {
                     val namespace = ModuleResolver.getModuleNamespace(resolution.module)
                     env.createImmutableBinding(ie.localName, true)

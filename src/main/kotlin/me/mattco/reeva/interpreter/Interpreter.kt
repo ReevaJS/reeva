@@ -113,13 +113,13 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         val varNames = body.varDeclaredNames()
         lexNames.forEach {
             if (env.hasVarDeclaration(it))
-                throwSyntaxError("TODO: message")
+                Errors.TODO("globalDeclarationInstantiation 1").throwSyntaxError()
             if (env.hasLexicalDeclaration(it))
-                throwSyntaxError("TODO: message")
+                Errors.TODO("globalDeclarationInstantiation 2").throwSyntaxError()
         }
         varNames.forEach {
             if (env.hasLexicalDeclaration(it))
-                throwSyntaxError("TODO: message")
+                Errors.TODO("globalDeclarationInstantiation 3").throwSyntaxError()
         }
         val varDeclarations = body.varScopedDeclarations()
         val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
@@ -129,7 +129,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 val functionName = it.boundNames()[0]
                 if (functionName !in declaredFunctionNames) {
                     if (!env.canDeclareGlobalFunction(functionName))
-                        throwTypeError("TODO: message")
+                        Errors.TODO("globalDeclarationInstantiation 4").throwTypeError()
                     declaredFunctionNames.add(functionName)
                     functionsToInitialize.add(0, it as FunctionDeclarationNode)
                 }
@@ -142,7 +142,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             it.boundNames().forEach { name ->
                 if (name !in declaredFunctionNames) {
                     if (!env.canDeclareGlobalVar(name))
-                        throwTypeError("TODO: message")
+                        Errors.TODO("globalDeclarationInstantiation 5").throwTypeError()
                     if (name !in declaredVarNames)
                         declaredVarNames.add(name)
                 }
@@ -501,11 +501,11 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 protoParent = JSNull
                 constructorParent = realm.functionProto
             } else if (!Operations.isConstructor(superclass)) {
-                throwTypeError("class extends target must be a constructor or null")
+                Errors.Class.BadExtends.throwTypeError()
             } else {
                 protoParent = (superclass as JSObject).get("prototype")
                 if (protoParent !is JSObject && protoParent != JSNull)
-                    throwTypeError("class parent must be a prototype which is an object or null")
+                    Errors.Class.BadExtendsProto.throwTypeError()
                 constructorParent = superclass
             }
         }
@@ -808,7 +808,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         while (true) {
             val nextResult = Operations.call(iteratorRecord.nextMethod, iteratorRecord.iterator)
             if (nextResult !is JSObject)
-                throwTypeError("TODO: message")
+                Errors.TODO("forInOfBodyEvaluation").throwTypeError()
 
             if (Operations.iteratorComplete(nextResult))
                 return value
@@ -1225,13 +1225,13 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         val func = Operations.getSuperConstructor()
         val argsList = argumentsListEvaluation(superCallNode.arguments)
         if (!Operations.isConstructor(func))
-            throwTypeError("TODO: message")
+            Errors.Class.BadSuperFunc.throwTypeError()
 
         val result = Operations.construct(func, argsList, newTarget)
         val thisEnv = Operations.getThisEnvironment()
         expect(thisEnv is FunctionEnvRecord)
         if (thisEnv.thisBindingStatus == FunctionEnvRecord.ThisBindingStatus.Initialized)
-            throwReferenceError("super() called twice in derived class constructor")
+            Errors.Class.DuplicateSuperCall.throwReferenceError()
 
         thisEnv.bindThisValue(result)
 
@@ -1367,7 +1367,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             argumentsListEvaluation(newExpressionNode.arguments)
         }
         if (!Operations.isConstructor(constructor))
-            throwTypeError("${Operations.toPrintableString(constructor)} is not a constructor")
+            Errors.NotACtor(Operations.toPrintableString(constructor)).throwTypeError()
         return Operations.construct(constructor, arguments)
     }
 
@@ -1764,7 +1764,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             }
             RelationalExpressionNode.Operator.In -> {
                 if (rval !is JSObject)
-                    throwTypeError("right-hand side of 'in' operator must be an object")
+                    Errors.InBadRHS.throwTypeError()
                 val key = Operations.toPropertyKey(lval)
                 Operations.hasProperty(rval, key).toValue()
             }

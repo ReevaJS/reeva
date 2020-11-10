@@ -110,7 +110,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             return "null"
         }
         if (value.isBigInt)
-            throwTypeError("JSON.stringify cannot serialize BigInt values")
+            Errors.JSON.StringifyBigInt.throwTypeError()
         if (value.isObject && !Operations.isCallable(value)) {
             if (Operations.isArray(value))
                 return serializeJSONArray(state, value as JSArrayObject)
@@ -158,7 +158,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
 
     private fun serializeJSONArray(state: SerializeState, value: JSArrayObject): String {
         if (value in state.stack)
-            throwTypeError("JSON.stringify cannot stringify circular objects")
+            Errors.JSON.StringifyCircular.throwTypeError()
 
         state.stack.add(value)
         val stepback = state.indent
@@ -193,7 +193,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
 
     private fun serializeJSONObject(state: SerializeState, value: JSObject): String {
         if (value in state.stack)
-            throwTypeError("JSON.stringify cannot stringify circular objects")
+            Errors.JSON.StringifyCircular.throwTypeError()
 
         state.stack.add(value)
         val stepback = state.indent

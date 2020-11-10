@@ -6,8 +6,7 @@ import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.throwReferenceError
-import me.mattco.reeva.utils.throwTypeError
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.unreachable
 
 class ObjectEnvRecord(
@@ -29,7 +28,7 @@ class ObjectEnvRecord(
     override fun createMutableBinding(name: String, canBeDeleted: Boolean) {
         val attrs = Descriptor.ENUMERABLE or Descriptor.WRITABLE or if (canBeDeleted) Descriptor.CONFIGURABLE else 0
         if (!boundObject.defineOwnProperty(name, JSUndefined, attrs))
-            throwTypeError("TODO")
+            Errors.TODO("ObjectEnvRecord createMutableBinding").throwTypeError()
     }
 
     @ECMAImpl("8.1.1.2.3")
@@ -47,9 +46,9 @@ class ObjectEnvRecord(
     @ECMAImpl("8.1.1.2.5")
     override fun setMutableBinding(name: String, value: JSValue, throwOnFailure: Boolean) {
         if (!boundObject.hasProperty(name) && throwOnFailure)
-            throwReferenceError("TODO")
+            Errors.TODO("ObjectEnvRecord setMutableBinding 1").throwReferenceError()
         if (!boundObject.set(name, value) && throwOnFailure)
-            throwTypeError("TODO")
+            Errors.TODO("ObjectEnvRecord setMutableBinding 2").throwTypeError()
     }
 
     @JSThrows
@@ -57,7 +56,7 @@ class ObjectEnvRecord(
     override fun getBindingValue(name: String, throwOnNotFound: Boolean): JSValue {
         if (!boundObject.hasProperty(name)) {
             if (throwOnNotFound)
-                throwReferenceError("TODO")
+                Errors.TODO("ObjectEnvRecord getBindingValue").throwReferenceError()
             return JSUndefined
         }
         return boundObject.get(name)

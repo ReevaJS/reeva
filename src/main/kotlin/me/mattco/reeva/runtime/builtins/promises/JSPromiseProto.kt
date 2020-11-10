@@ -26,7 +26,7 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
     @JSMethod("finally", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun finally(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
-            throwTypeError("Promise.prototype.finally called on incompatible value")
+            Errors.IncompatibleMethodCall("Promise.prototype.finally").throwTypeError()
 
         val onFinally = arguments.argument(0)
         val ctor = Operations.speciesConstructor(thisValue, realm.promiseCtor)
@@ -42,7 +42,7 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
     @JSMethod("then", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun then(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSPromiseObject)
-            throwTypeError("Promise.prototype.then calls on an incompatible value")
+            Errors.IncompatibleMethodCall("Promise.prototype.then").throwTypeError()
 
         val ctor = Operations.speciesConstructor(thisValue, realm.promiseCtor)
         val resultCapability = Operations.newPromiseCapability(ctor)

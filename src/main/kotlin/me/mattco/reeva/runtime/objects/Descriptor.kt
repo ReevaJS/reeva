@@ -7,7 +7,7 @@ import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.utils.throwTypeError
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.toValue
 
 data class Descriptor(
@@ -172,7 +172,7 @@ data class Descriptor(
         @ECMAImpl("6.2.5.5", "ToPropertyDescriptor")
         fun fromObject(obj: JSValue): Descriptor {
             if (obj !is JSObject)
-                throwTypeError("TODO: message")
+                Errors.TODO("fromObject").throwTypeError()
 
             val descriptor = Descriptor(JSEmpty, 0)
             if (obj.hasProperty("enumerable")) {
@@ -197,20 +197,20 @@ data class Descriptor(
             if (obj.hasProperty("get")) {
                 val getter = obj.get("get")
                 if (!Operations.isCallable(getter) && getter != JSUndefined)
-                    throwTypeError("descriptor's 'get' property must be undefined or callable")
+                    Errors.DescriptorGetType.throwTypeError()
                 descriptor.getter = getter
             }
 
             if (obj.hasProperty("set")) {
                 val setter = obj.get("set")
                 if (!Operations.isCallable(setter) && setter != JSUndefined)
-                    throwTypeError("descriptor's 'set' property must be undefined or callable")
+                    Errors.DescriptorSetType.throwTypeError()
                 descriptor.setter = setter
             }
 
             if (descriptor.hasGetter || descriptor.hasSetter) {
                 if (descriptor.value != JSEmpty || descriptor.hasWritable)
-                    throwTypeError("descriptor cannot specify 'get' or 'set' property with a 'value' or 'writable' property")
+                    Errors.DescriptorPropType.throwTypeError()
             }
 
             return descriptor

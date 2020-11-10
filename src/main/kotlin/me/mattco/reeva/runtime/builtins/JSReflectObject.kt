@@ -22,7 +22,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         val (target, thisArg, argumentsList) = arguments.takeArgs(0..2)
 
         if (!Operations.isCallable(target))
-            throwTypeError("TODO: message")
+            Errors.NotCallable(Operations.toPrintableString(target)).throwTypeError()
 
         val args = Operations.createListFromArrayLike(argumentsList)
         return Operations.call(target, thisArg, args)
@@ -35,11 +35,11 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
             target
         } else arguments.argument(2).also {
             if (!Operations.isConstructor(it))
-                throwTypeError("TODO: message")
+                Errors.NotACtor(Operations.toPrintableString(it)).throwTypeError()
         }
 
         if (!Operations.isCallable(target))
-            throwTypeError("TODO: message")
+            Errors.NotCallable(Operations.toPrintableString(target)).throwTypeError()
 
         val args = Operations.createListFromArrayLike(argumentsList)
         return Operations.construct(target, args, newTarget)
@@ -49,7 +49,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
     fun defineProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, propertyKey, attributes) = arguments.takeArgs(0..2)
         if (target !is JSObject)
-            throwTypeError("TODO: message")
+            Errors.Reflect.FirstArgNotCallable("defineProperty").throwTypeError()
         val key = Operations.toPropertyKey(propertyKey)
         val desc = Descriptor.fromObject(attributes)
         return target.defineOwnProperty(key, desc).toValue()
@@ -59,7 +59,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
     fun deleteProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject)
-            throwTypeError("TODO: message")
+            Errors.Reflect.FirstArgNotCallable("deleteProperty").throwTypeError()
         val key = Operations.toPropertyKey(propertyKey)
         return target.delete(key).toValue()
     }
@@ -68,7 +68,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
     fun get(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, propertyKey, receiver) = arguments.takeArgs(0..2)
         if (target !is JSObject)
-            throwTypeError("TODO: message")
+            Errors.Reflect.FirstArgNotCallable("get").throwTypeError()
         val key = Operations.toPropertyKey(propertyKey)
         return target.get(key, receiver.ifUndefined(target))
     }
@@ -77,7 +77,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
     fun getOwnPropertyDescriptor(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject)
-            throwTypeError("TODO: message")
+            Errors.Reflect.FirstArgNotCallable("getOwnPropertyDescriptor").throwTypeError()
         val key = Operations.toPropertyKey(propertyKey)
         return target.getOwnPropertyDescriptor(key)?.toObject(realm, JSUndefined) ?: JSUndefined
     }
@@ -86,7 +86,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
     fun getPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
-            throwTypeError("TODO: message")
+            Errors.Reflect.FirstArgNotCallable("getPrototypeOf").throwTypeError()
         return target.getPrototype()
     }
 
@@ -94,7 +94,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
     fun has(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject)
-            throwTypeError("TODO: message")
+            Errors.Reflect.FirstArgNotCallable("has").throwTypeError()
         val key = Operations.toPropertyKey(propertyKey)
         return target.hasProperty(key).toValue()
     }
@@ -103,7 +103,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
     fun isExtensible(thisValue: JSValue, arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
-            throwTypeError("TODO: message")
+            Errors.Reflect.FirstArgNotCallable("isExtensible").throwTypeError()
         return target.isExtensible().toValue()
     }
 
@@ -111,7 +111,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
     fun ownKeys(thisValue: JSValue, arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
-            throwTypeError("TODO: message")
+            Errors.Reflect.FirstArgNotCallable("ownKeys").throwTypeError()
         val keys = target.ownPropertyKeys()
         return Operations.createArrayFromList(keys.map { it.asValue })
     }
@@ -120,7 +120,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
     fun preventExtensions(thisValue: JSValue, arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
-            throwTypeError("TODO: message")
+            Errors.Reflect.FirstArgNotCallable("preventExtensions").throwTypeError()
         return target.preventExtensions().toValue()
     }
 
@@ -128,7 +128,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
     fun set(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, propertyKey, value, receiver) = arguments.takeArgs(0..3)
         if (target !is JSObject)
-            throwTypeError("TODO: message")
+            Errors.Reflect.FirstArgNotCallable("set").throwTypeError()
         val key = Operations.toPropertyKey(propertyKey)
         return target.set(key, value, receiver.ifUndefined(target)).toValue()
     }
@@ -137,9 +137,9 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
     fun setPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, proto) = arguments.takeArgs(0..1)
         if (target !is JSObject)
-            throwTypeError("TODO: message")
-        if (proto !is JSObject && proto !is JSNull)
-            throwTypeError("object prototype must be an object or null")
+            Errors.Reflect.FirstArgNotCallable("setPrototypeOf").throwTypeError()
+        if (proto !is JSObject && proto != JSNull)
+            Errors.Reflect.BadProto.throwTypeError()
         return target.setPrototype(proto).toValue()
     }
 

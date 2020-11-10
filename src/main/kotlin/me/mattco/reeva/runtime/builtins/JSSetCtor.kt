@@ -11,9 +11,9 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
-import me.mattco.reeva.utils.throwTypeError
 
 class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set", 0) {
     init {
@@ -26,7 +26,7 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
     }
 
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        throwTypeError("Set must be called with the 'new' operator")
+        Errors.CtorCallWithoutNew("Set").throwTypeError()
     }
 
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
@@ -39,7 +39,7 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
 
         val adder = set.get("add")
         if (!Operations.isCallable(adder))
-            throwTypeError("Set constructor expected this value to have a callable 'add' property")
+            Errors.Set.ThisMissingAdd.throwTypeError()
 
         val iteratorRecord = Operations.getIterator(iterator)
         while (true) {

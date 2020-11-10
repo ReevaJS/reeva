@@ -8,8 +8,8 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.throwTypeError
 import me.mattco.reeva.utils.toValue
 
 class JSSetIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
@@ -22,7 +22,7 @@ class JSSetIteratorProto private constructor(realm: Realm) : JSObject(realm, rea
     @JSMethod("next", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun next(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSSetIterator)
-            throwTypeError("%SetIterator%.prototype.next invoked on incompatible object")
+            Errors.IncompatibleMethodCall("%MapIteratorPrototype%.next").throwTypeError()
 
         val set = thisValue.iteratedSet ?: return Operations.createIterResultObject(JSUndefined, true)
 

@@ -8,10 +8,10 @@ import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
 import me.mattco.reeva.utils.key
-import me.mattco.reeva.utils.throwTypeError
 
 class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Proxy", 2) {
     init {
@@ -19,7 +19,7 @@ class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "P
     }
 
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        throwTypeError("Proxy must be called with the 'new' keyword")
+        Errors.CtorCallWithoutNew("Proxy").throwTypeError()
     }
 
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
@@ -47,9 +47,9 @@ class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "P
 
         private fun proxyCreate(realm: Realm, target: JSValue, handler: JSValue): JSObject {
             if (target !is JSObject)
-                throwTypeError("the first argument to the Proxy constructor must be an object")
+                Errors.Proxy.CtorFirstArgType.throwTypeError()
             if (handler !is JSObject)
-                throwTypeError("the second argument to the Proxy constructor must be an object")
+                Errors.Proxy.CtorSecondArgType.throwTypeError()
             return JSProxyObject.create(realm, target, handler)
         }
     }

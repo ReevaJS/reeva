@@ -3,12 +3,9 @@ package me.mattco.reeva.core.environment
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.errors.JSReferenceErrorObject
-import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.ecmaAssert
-import me.mattco.reeva.utils.throwReferenceError
-import me.mattco.reeva.utils.throwTypeError
 
 open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
     internal val bindings = mutableMapOf<String, Binding>()
@@ -55,7 +52,7 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
     override fun setMutableBinding(name: String, value: JSValue, throwOnFailure: Boolean) {
         if (!hasBinding(name)) {
             if (throwOnFailure)
-                throwReferenceError("variable $name not found")
+                Errors.StrictModeMutableSet(name).throwReferenceError()
             createMutableBinding(name, canBeDeleted = true)
             initializeBinding(name, value)
             return
@@ -68,12 +65,12 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
             shouldThrow = true
 
         if (!binding.initialized)
-            throwReferenceError("variable $name has not been initialized")
+            Errors.AssignmentBeforeInitialization(name).throwReferenceError()
 
         if (!binding.immutable) {
             binding.value = value
         } else if (shouldThrow) {
-            throwTypeError("cannot set value of $name; it is constant")
+            Errors.AssignmentToConstant(name).throwTypeError()
         }
     }
 
@@ -84,7 +81,7 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
 
         val binding = bindings[name]!!
         if (!binding.initialized)
-            throwReferenceError("variable $name has not been initialized")
+            Errors.AssignmentBeforeInitialization(name).throwReferenceError()
         return binding.value
     }
 

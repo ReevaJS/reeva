@@ -124,7 +124,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             if (thisObj.hasProperty(from)) {
                 val fromVal = thisObj.get(from)
                 if (!thisObj.set(to, fromVal))
-                    throwTypeError("TODO: message")
+                    Errors.Array.CopyWithinFailedSet(from, to).throwTypeError()
             } else if (!Operations.deletePropertyOrThrow(thisObj, to.key())) {
                 return INVALID_VALUE
             }
@@ -146,7 +146,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val (callback, thisArg) = arguments.takeArgs(0..1)
 
         if (!Operations.isCallable(callback))
-            throwTypeError("the first argument to Array.prototype.every must be callable")
+            Errors.Array.CallableFirstArg("every").throwTypeError()
 
         val thisObj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(thisObj)
@@ -205,7 +205,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
         val (callback, thisArg) = arguments.takeArgs(0..2)
         if (!Operations.isCallable(callback))
-            throwTypeError("the first argument to Array.prototype.filter must be callable")
+            Errors.Array.CallableFirstArg("filter").throwTypeError()
 
         val array = Operations.arraySpeciesCreate(thisObj, 0)
         var toIndex = 0
@@ -234,7 +234,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val (predicate, thisArg) = arguments.takeArgs(0..1)
 
         if (!Operations.isCallable(predicate))
-            throwTypeError("the first argument to Array.prototype.find must be callable")
+            Errors.Array.CallableFirstArg("find").throwTypeError()
 
         for (index in thisObj.indexedProperties.indices()) {
             if (index >= length)
@@ -257,7 +257,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val (predicate, thisArg) = arguments.takeArgs(0..1)
 
         if (!Operations.isCallable(predicate))
-            throwTypeError("the first argument to Array.prototype.find must be callable")
+            Errors.Array.CallableFirstArg("findIndex").throwTypeError()
 
         for (index in thisObj.indexedProperties.indices()) {
             if (index >= length)
@@ -293,7 +293,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
         val (mapperFunction, thisArg) = arguments.takeArgs(0..1)
         if (!Operations.isCallable(mapperFunction))
-            throwTypeError("the first argument to Array.prototype.flatMap must be callable")
+            Errors.Array.CallableFirstArg("flatMap").throwTypeError()
 
         val array = Operations.arraySpeciesCreate(thisObj, 0)
         flattenIntoArray(array, thisObj, sourceLength, 0, 1, mapperFunction, thisArg)
@@ -307,7 +307,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
         val callbackFn = arguments.argument(0)
         if (!Operations.isCallable(callbackFn))
-            throwTypeError("the first argument to Array.prototype.forEach must be callable")
+            Errors.Array.CallableFirstArg("forEach").throwTypeError()
 
         for (index in obj.indexedProperties.indices()) {
             if (index >= length)
@@ -380,7 +380,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val length = Operations.lengthOfArrayLike(obj)
         val (callback, thisArg) = arguments.takeArgs(0..1)
         if (!Operations.isCallable(callback))
-            throwTypeError("first argument given to Array.prototype.map must be callable")
+            Errors.Array.CallableFirstArg("map").throwTypeError()
 
         val array = Operations.arraySpeciesCreate(obj, length)
         obj.indexedProperties.indices().filter {
@@ -412,7 +412,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val obj = Operations.toObject(thisValue)
         var length = Operations.lengthOfArrayLike(obj)
         if (length + arguments.size >= Operations.MAX_SAFE_INTEGER)
-            throwTypeError("cannot increase array length beyond 2 ** 53 - 1")
+            Errors.Array.GrowToInvalidLength.throwTypeError()
         arguments.forEach {
             Operations.set(obj, length.key(), it, true)
             length++
@@ -547,7 +547,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val (callback, thisArg) = arguments.takeArgs(0..1)
 
         if (!Operations.isCallable(callback))
-            throwTypeError("first argument given to Array.prototype.some must be callable")
+            Errors.Array.CallableFirstArg("some").throwTypeError()
 
         obj.indexedProperties.indices().forEach {
             if (it >= length)
@@ -586,7 +586,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         }
 
         if (length + insertCount - actualDeleteCount > Operations.MAX_SAFE_INTEGER)
-            throwTypeError("cannot extend array size past 2 ** 53 - 1")
+            Errors.Array.GrowToInvalidLength.throwTypeError()
 
         val array = Operations.arraySpeciesCreate(obj, actualDeleteCount) as JSObject
         val objIndices = obj.indexedProperties.indices()
@@ -659,7 +659,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val argCount = arguments.size
         if (argCount > 0) {
             if (length + argCount >= Operations.MAX_SAFE_INTEGER)
-                throwTypeError("cannot increase array length past 2 ** 53 - 1")
+                Errors.Array.GrowToInvalidLength.throwTypeError()
             // TODO: Batch this insertion, as it is quite an expensive operation
             arguments.reversed().forEach {
                 obj.indexedProperties.insert(0, it)
@@ -709,7 +709,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                     targetIndex = flattenIntoArray(target, element, elementLength, targetIndex, newDepth)
                 } else {
                     if (targetIndex >= Operations.MAX_SAFE_INTEGER)
-                        throwTypeError("TODO: message")
+                        Errors.TODO("flattenIntoArray").throwTypeError()
                     Operations.createDataPropertyOrThrow(target, targetIndex.key(), element)
                     targetIndex++
                 }
@@ -725,10 +725,10 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val length = Operations.lengthOfArrayLike(obj)
         val (callback, initialValue) = arguments.takeArgs(0..1)
         if (!Operations.isCallable(callback))
-            throwTypeError("first argument given to Array.prototype.reduceRight must be callable")
+            Errors.Array.CallableFirstArg("reduceRight").throwTypeError()
 
         if (length == 0 && arguments.size == 1)
-            throwTypeError("cannot reduce empty array with no initial value")
+            Errors.Array.ReduceEmptyArray.throwTypeError()
 
         val indices = obj.indexedProperties.indices().let {
             if (isRight) it.reversed() else it
@@ -738,7 +738,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             initialValue
         } else {
             if (indices.isEmpty())
-                throwTypeError("cannot reduce empty array with no initial value")
+                Errors.Array.ReduceEmptyArray.throwTypeError()
             obj.get(indices.removeFirst())
         }
 

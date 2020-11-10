@@ -82,7 +82,7 @@ class JSModuleNamespaceObject(
             return ModuleResolver.getModuleNamespace(binding.module)
 
         if (binding.module.environment == null)
-            throwReferenceError("TODO: message (JSModuleNamespaceObject [[Get]])")
+            Errors.TODO("JSModuleNamespaceObject [[Get]]").throwReferenceError()
 
         return binding.module.environment!!.getBindingValue(binding.bindingName, true)
     }

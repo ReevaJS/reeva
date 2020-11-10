@@ -7,8 +7,8 @@ import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.throwTypeError
 import me.mattco.reeva.utils.toValue
 
 class JSArrayIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
@@ -20,7 +20,7 @@ class JSArrayIteratorProto private constructor(realm: Realm) : JSObject(realm, r
     @JSMethod("next", 0)
     fun next(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSArrayIterator)
-            throwTypeError("message: TODO")
+            Errors.IncompatibleMethodCall("%ArrayIteratorPrototype%.next").throwTypeError()
 
         val array = thisValue.iteratedArrayLike ?: return Operations.createIterResultObject(JSUndefined, true)
         val index = thisValue.arrayLikeNextIndex

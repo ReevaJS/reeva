@@ -58,12 +58,12 @@ object Operations {
     // accept primitives.
     @JvmStatic
     fun wrapInValue(value: Any?): JSValue = when (value) {
-        null -> throw Error("Ambiguous use of null in Operations.wrapInValue")
+        null -> throw IllegalArgumentException("Ambiguous use of null in Operations.wrapInValue")
         is Double -> JSNumber(value)
         is Number -> JSNumber(value.toDouble())
         is String -> JSString(value)
         is Boolean -> if (value) JSTrue else JSFalse
-        else -> throw Error("Cannot wrap type ${value::class.java.simpleName}")
+        else -> throw IllegalArgumentException("Cannot wrap type ${value::class.java.simpleName}")
     }
 
     @JvmStatic
@@ -299,7 +299,7 @@ object Operations {
         if (reference !is JSReference)
             return reference
         if (reference.isUnresolvableReference)
-            throwReferenceError("unknown reference '${reference.name}'")
+            Errors.UnknownReference(reference.name).throwReferenceError()
         var base = reference.baseValue
         if (reference.isPropertyReference) {
             if (reference.hasPrimitiveBase) {
@@ -323,11 +323,11 @@ object Operations {
     @JvmStatic @ECMAImpl("6.2.4.6")
     fun putValue(reference: JSValue, value: JSValue) {
         if (reference !is JSReference)
-            throwReferenceError("cannot assign value to ${toPrintableString(value)}")
+            Errors.InvalidLHSAssignment(toPrintableString(value)).throwReferenceError()
         var base = reference.baseValue
         if (reference.isUnresolvableReference) {
             if (reference.isStrict)
-                throwReferenceError("cannot resolve identifier ${reference.name}")
+                Errors.UnresolvableReference(reference.name).throwReferenceError()
             Agent.runningContext.realm.globalObject.set(reference.name, value)
         } else if (reference.isPropertyReference) {
             if (reference.hasPrimitiveBase) {
@@ -336,7 +336,7 @@ object Operations {
             }
             val succeeded = (base as JSObject).set(reference.name, value, reference.getThisValue())
             if (!succeeded && reference.isStrict)
-                throwTypeError("TODO: Error message")
+                Errors.StrictModeFailedSet(reference.name, toPrintableString(base)).throwTypeError()
         } else {
             ecmaAssert(base is EnvRecord)
             expect(reference.name.isString)
@@ -402,7 +402,7 @@ object Operations {
                     return result
             }
         }
-        throwTypeError("cannot convert ${toPrintableString(value)} to primitive value")
+        Errors.FailedToPrimitive(toPrintableString(value)).throwTypeError()
     }
 
     @JvmStatic @ECMAImpl("7.1.2")
@@ -448,7 +448,7 @@ object Operations {
             } catch (e: NumberFormatException) {
                 JSNumber.NaN
             }
-            is JSSymbol, is JSBigInt -> throwTypeError("cannot convert ${value.type} to Number")
+            is JSSymbol, is JSBigInt -> Errors.FailedToNumber(value.type).throwTypeError()
             is JSObject -> toPrimitive(value, ToPrimitiveHint.AsNumber)
             else -> unreachable()
         }
@@ -508,7 +508,7 @@ object Operations {
             is JSNumber -> if (value.isInt) {
                 value.number.toLong().toString()
             } else value.number.toString()
-            is JSSymbol -> throwTypeError("cannot convert Symbol to string")
+            is JSSymbol -> Errors.FailedSymbolToString.throwTypeError()
             is JSObject -> toString(toPrimitive(value, ToPrimitiveHint.AsString)).string
             else -> unreachable()
         }.let(::JSString)
@@ -541,7 +541,7 @@ object Operations {
     fun toObject(value: JSValue): JSObject {
         return when (value) {
             is JSObject -> value
-            is JSUndefined, JSNull -> throwTypeError("cannot convert ${value.type} to Object")
+            is JSUndefined, JSNull -> Errors.FailedToObject(value.type).throwTypeError()
             is JSBoolean -> JSBooleanObject.create(Agent.runningContext.realm, value)
             is JSNumber -> JSNumberObject.create(Agent.runningContext.realm, value)
             is JSString -> JSStringObject.create(Agent.runningContext.realm, value)
@@ -576,7 +576,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.2.1")
     fun requireObjectCoercible(value: JSValue): JSValue {
         if (value is JSUndefined || value is JSNull)
-            throwTypeError("cannot convert ${value.type} to Object")
+            Errors.FailedToObject(value.type).throwTypeError()
         return value
     }
 
@@ -715,7 +715,7 @@ object Operations {
     fun set(obj: JSObject, property: PropertyKey, value: JSValue, throws: Boolean): Boolean {
         val success = obj.set(property, value)
         if (!success && throws)
-            throwTypeError("TODO: message")
+            Errors.StrictModeFailedSet(property, toPrintableString(obj)).throwTypeError()
         return success
     }
 
@@ -740,7 +740,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.3.7")
     fun createDataPropertyOrThrow(target: JSValue, property: PropertyKey, value: JSValue): Boolean {
         if (!createDataProperty(target, property, value))
-            throwTypeError("unable to create property \"$property\" on object ${toPrintableString(target)}")
+            Errors.StrictModeFailedSet(property, toPrintableString(target)).throwTypeError()
         return true
     }
 
@@ -754,7 +754,7 @@ object Operations {
     fun definePropertyOrThrow(target: JSValue, property: PropertyKey, descriptor: Descriptor): Boolean {
         ecmaAssert(target is JSObject)
         if (!target.defineOwnProperty(property, descriptor))
-            throwTypeError("unable to define property \"$property\" on object ${toPrintableString(target)}")
+            Errors.StrictModeFailedSet(property, toPrintableString(target)).throwTypeError()
         return true
     }
 
@@ -763,7 +763,7 @@ object Operations {
     fun deletePropertyOrThrow(target: JSValue, property: PropertyKey): Boolean {
         ecmaAssert(target is JSObject)
         if (!target.delete(property))
-            throwTypeError("unable to delete property \"$property\" on object ${toPrintableString(target)}")
+            Errors.StrictModeFailedDelete(property, toPrintableString(target)).throwTypeError()
         return true
     }
 
@@ -774,7 +774,7 @@ object Operations {
         if (func is JSUndefined || func is JSNull)
             return JSUndefined
         if (!isCallable(func))
-            throwTypeError("cannot call value ${toPrintableString(func)}")
+            Errors.FailedCall(toPrintableString(func)).throwTypeError()
         return func
     }
 
@@ -797,7 +797,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.3.13")
     fun call(function: JSValue, thisValue: JSValue, arguments: List<JSValue> = emptyList()): JSValue {
         if (!isCallable(function))
-            throwTypeError("cannot call value ${toPrintableString(function)}")
+            Errors.FailedCall(toPrintableString(function)).throwTypeError()
         if (function is JSProxyObject)
             return function.call(thisValue, arguments)
         return (function as JSFunction).call(thisValue, arguments)
@@ -868,6 +868,9 @@ object Operations {
     @JSThrows
     @JvmStatic @ECMAImpl("7.3.19")
     fun createListFromArrayLike(obj: JSValue, types: List<JSValue.Type>? = null): List<JSValue> {
+        if (obj !is JSObject)
+            Errors.FailedToObject(obj.type).throwTypeError()
+
         val elementTypes = types ?: listOf(
             JSValue.Type.Undefined,
             JSValue.Type.Null,
@@ -879,16 +882,13 @@ object Operations {
             JSValue.Type.Object,
         )
 
-        if (obj !is JSObject)
-            throwTypeError("TODO: message")
-
         val length = lengthOfArrayLike(obj)
         val list = mutableListOf<JSValue>()
 
         for (i in 0 until length) {
             val next = obj.get(i)
             if (next.type !in elementTypes)
-                throwTypeError("TODO: message")
+                Errors.TODO("createListFromArray").throwTypeError()
             list.add(next)
         }
 
@@ -913,7 +913,7 @@ object Operations {
 
         val ctorProto = ctor.get("prototype")
         if (ctorProto !is JSObject)
-            throwTypeError("TODO: message")
+            Errors.InstanceOfBadRHS.throwTypeError()
 
         var obj = target
         while (true) {
@@ -931,7 +931,7 @@ object Operations {
         if (ctor == JSUndefined)
             return defaultCtor
         if (ctor !is JSObject)
-            throwTypeError("TODO: message")
+            Errors.BadCtor(toPrintableString(obj)).throwTypeError()
 
         val species = ctor.get(Realm.`@@species`)
         if (species.isNullish)
@@ -940,7 +940,7 @@ object Operations {
         if (isConstructor(species))
             return species as JSFunction
 
-        throwTypeError("TODO: message")
+        Errors.SpeciesNotCtor.throwTypeError()
     }
 
     @JSThrows
@@ -980,10 +980,10 @@ object Operations {
             TODO()
         val method = _method ?: getMethod(obj, Realm.`@@iterator`)
         if (method == JSUndefined)
-            throwTypeError("${toPrintableString(obj)} is not iterable")
+            Errors.NotIterable(toPrintableString(obj)).throwTypeError()
         val iterator = call(method, obj)
         if (iterator !is JSObject)
-            throwTypeError("iterator must be an object")
+            Errors.NonObjectIterator.throwTypeError()
         val nextMethod = getV(iterator, "next".toValue())
         return IteratorRecord(iterator, nextMethod, false)
     }
@@ -999,7 +999,7 @@ object Operations {
             call(record.nextMethod, record.iterator, listOf(value))
         }
         if (result !is JSObject)
-            throwTypeError("iterator result must be an object")
+            Errors.NonObjectIteratorReturn.throwTypeError()
         return result
     }
 
@@ -1308,11 +1308,12 @@ object Operations {
         return JSBoundFunction.create(Agent.runningContext.realm, targetFunction, boundThis, boundArgs, proto)
     }
 
+    // TODO: This length should be a Long
     @JSThrows
     @JvmStatic @JvmOverloads @ECMAImpl("9.4.2.2")
     fun arrayCreate(length: Int, proto: JSObject? = Agent.runningContext.realm.arrayProto): JSObject {
         if (length >= MAX_32BIT_INT - 1)
-            throwRangeError("array length $length is too large")
+            Errors.InvalidArrayLength(length).throwRangeError()
         val array = JSArrayObject.create(Agent.runningContext.realm, proto)
         array.indexedProperties.setArrayLikeSize(length)
         return array
@@ -1338,7 +1339,7 @@ object Operations {
         if (ctor == JSUndefined)
             return arrayCreate(length)
         if (!isConstructor(ctor))
-            throwTypeError("TODO: message")
+            Errors.SpeciesNotCtor.throwTypeError()
         return construct(ctor, listOf(length.toValue()))
     }
 
@@ -1358,7 +1359,7 @@ object Operations {
 
         val typeErrorThrow = object : JSNativeFunction(realm, "", 0) {
             override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-                throwTypeError("TODO: message")
+                Errors.CalleePropertyAccess.throwTypeError()
             }
 
             override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
@@ -1511,7 +1512,7 @@ object Operations {
     fun evaluateNew(target: JSValue, arguments: Array<JSValue>): JSValue {
         val constructor = getValue(target)
         if (!isConstructor(constructor))
-            throwTypeError("cannot construct value ${toPrintableString(target)}")
+            Errors.NotACtor(toPrintableString(target)).throwTypeError()
         return construct(constructor, arguments.toList())
     }
 
@@ -1528,7 +1529,7 @@ object Operations {
         } else JSUndefined
 
         if (!isCallable(target))
-            throwTypeError("object of type ${target.type} is not callable")
+            Errors.NotCallable(toPrintableString(target)).throwTypeError()
         if (tailPosition)
             TODO()
         return call(target, thisValue, arguments.toList())
@@ -1603,16 +1604,16 @@ object Operations {
     @JvmStatic @ECMAImpl("12.10.4")
     fun instanceofOperator(target: JSValue, ctor: JSValue): JSValue {
         if (ctor !is JSObject)
-            throwTypeError("right-hand side of 'instanceof' operator must be an object")
+            Errors.InstanceOfBadRHS.throwTypeError()
 
         val instOfHandler = getMethod(target, Realm.`@@hasInstance`)
-        if (instOfHandler !is JSUndefined) {
+        if (instOfHandler != JSUndefined) {
             val temp = call(instOfHandler, ctor, listOf(target))
             return toBoolean(temp).toValue()
         }
 
         if (!isCallable(ctor))
-            throwTypeError("right-hand side of 'instanceof' operator must be callable")
+            Errors.InstanceOfBadRHS.throwTypeError()
 
         return ordinaryHasInstance(ctor as JSFunction, target)
     }
@@ -1634,7 +1635,7 @@ object Operations {
         val lnum = toNumeric(lhs)
         val rnum = toNumeric(rhs)
         if (lnum.type != rnum.type)
-            throwTypeError("cannot apply operator $op to type ${lnum.type} and ${rnum.type}")
+            Errors.BadOperator(op, lnum.type, rnum.type).throwTypeError()
 
         if (lnum.type == JSValue.Type.BigInt)
             TODO()
@@ -1756,7 +1757,7 @@ object Operations {
     @JvmStatic @ECMAImpl("23.1.1.2")
     fun addEntriesFromIterable(target: JSObject, iterable: JSValue, adderValue: JSValue): JSObject {
         if (!isCallable(adderValue))
-            throwTypeError("TODO: message (addEntriesFromIterable)")
+            Errors.TODO("addEntriesFromIterable 1").throwTypeError()
 
         val adder = adderValue as JSFunction
 
@@ -1770,7 +1771,7 @@ object Operations {
             val nextItem = iteratorValue(next)
             if (nextItem !is JSObject) {
                 iteratorClose(record, JSEmpty)
-                throwTypeError("TODO: message")
+                Errors.TODO("addEntriesFromIterable 2").throwTypeError()
             }
             val key = try {
                 nextItem.get(0)
@@ -1816,7 +1817,7 @@ object Operations {
     @ECMAImpl("26.6.1.5")
     fun newPromiseCapability(ctor: JSValue): PromiseCapability {
         if (!isConstructor(ctor))
-            throwTypeError("TODO: message")
+            Errors.TODO("newPromiseCapability").throwTypeError()
         val capability = PromiseCapability(JSEmpty, null, null)
         val executor = JSCapabilitiesExecutor.create((ctor as JSObject).realm, capability)
         val promise = construct(ctor, listOf(executor))
@@ -1944,7 +1945,7 @@ object Operations {
         ecmaAssert(isConstructor(constructor))
         val resolve = (constructor as JSObject).get("resolve")
         if (!isCallable(resolve))
-            throwTypeError("TODO: message")
+            Errors.TODO("getPromiseResolve").throwTypeError()
         return resolve
     }
 

@@ -9,8 +9,8 @@ import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSBoolean
 import me.mattco.reeva.runtime.primitives.JSFalse
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.throwTypeError
 import me.mattco.reeva.utils.toValue
 
 class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, JSFalse) {
@@ -28,7 +28,7 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
     @ECMAImpl("19.3.3.2")
     @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val b = thisBooleanValue(thisValue)
+        val b = thisBooleanValue(thisValue, "toString")
         return if (b.value) "true".toValue() else "false".toValue()
     }
 
@@ -36,18 +36,18 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
     @ECMAImpl("19.3.3.2")
     @JSMethod("valueOf", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisBooleanValue(thisValue)
+        return thisBooleanValue(thisValue, "valueOf")
     }
 
     companion object {
         fun create(realm: Realm) = JSBooleanProto(realm).also { it.init() }
 
-        private fun thisBooleanValue(value: JSValue): JSBoolean {
+        private fun thisBooleanValue(value: JSValue, methodName: String): JSBoolean {
             if (value.isBoolean)
                 return value as JSBoolean
             if (value is JSBooleanObject)
                 return value.value
-            throwTypeError("Boolean method called on incompatible object ${Operations.toPrintableString(value)}")
+            Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError()
         }
     }
 }

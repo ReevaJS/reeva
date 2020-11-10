@@ -14,6 +14,7 @@ import me.mattco.reeva.runtime.primitives.JSTrue
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
+@Suppress("UNUSED_PARAMETER")
 class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ObjectConstructor", 1) {
     init {
         isConstructable = true
@@ -47,7 +48,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
                 if (desc != null && desc.isEnumerable) {
                     val value = from.get(key)
                     if (!target.set(key, value))
-                        throwTypeError("TODO: message")
+                        Errors.Object.AssignFailedSet(key).throwTypeError()
                 }
             }
         }
@@ -59,7 +60,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     fun create(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = arguments.argument(0)
         if (obj !is JSObject && obj != JSNull)
-            throwTypeError("TODO: message")
+            Errors.Object.CreateBadArgType.throwTypeError()
         val newObj = create(Agent.runningContext.realm, obj)
         if (arguments.size > 1) {
             objectDefineProperties(newObj, arguments.argument(1))
@@ -71,7 +72,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     fun defineProperties(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = arguments.argument(0)
         if (obj !is JSObject)
-            throwTypeError("Object.defineProperties expects an object as its first argument")
+            Errors.Object.DefinePropertiesBadArgType.throwTypeError()
         return objectDefineProperties(obj, arguments.argument(1))
     }
 
@@ -79,7 +80,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     fun defineProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = arguments.argument(0)
         if (obj !is JSObject)
-            throwTypeError("Object.defineProperty expects an object as its first argument")
+            Errors.Object.DefinePropertyBadArgType.throwTypeError()
         val key = Operations.toPropertyKey(arguments.argument(1))
         val desc = Descriptor.fromObject(arguments.argument(2))
         Operations.definePropertyOrThrow(obj, key.asValue, desc)
@@ -98,8 +99,10 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val obj = arguments.argument(0)
         if (obj !is JSObject)
             return obj
-        if (!Operations.setIntegrityLevel(obj, Operations.IntegrityLevel.Frozen))
-            throwTypeError("TODO: message")
+        if (!Operations.setIntegrityLevel(obj, Operations.IntegrityLevel.Frozen)) {
+            // TODO: spidermonkey throws this error in the Proxy preventExtensions handler
+            Errors.TODO("Object.freeze").throwTypeError()
+        }
         return obj
     }
 
@@ -108,11 +111,11 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val iterable = arguments.argument(0)
         Operations.requireObjectCoercible(iterable)
         val obj = JSObject.create(realm)
-        val adder = fromLambda(realm, "", 0) { thisValue, arguments ->
-            val key = arguments.argument(0)
-            val value = arguments.argument(1)
-            ecmaAssert(thisValue is JSObject)
-            Operations.createDataPropertyOrThrow(thisValue, key, value)
+        val adder = fromLambda(realm, "", 0) { tv, args ->
+            val key = args.argument(0)
+            val value = args.argument(1)
+            ecmaAssert(tv is JSObject)
+            Operations.createDataPropertyOrThrow(tv, key, value)
             return@fromLambda JSUndefined
         }
         return Operations.addEntriesFromIterable(obj, iterable, adder)
@@ -186,7 +189,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     @JSMethod("keys", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun keys(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(arguments.argument(0))
-        val nameList = Operations.enumerableOwnPropertyNames(obj, JSObject.PropertyKind.Key)
+        val nameList = Operations.enumerableOwnPropertyNames(obj, PropertyKind.Key)
         return Operations.createArrayFromList(nameList)
     }
 
@@ -195,8 +198,10 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val obj = arguments.argument(0)
         if (obj !is JSObject)
             return obj
-        if (!obj.preventExtensions())
-            throwTypeError("TODO: message")
+        if (!obj.preventExtensions()) {
+            // TODO: spidermonkey throws this error in the Proxy preventExtensions handler
+            Errors.TODO("Object.preventExtensions").throwTypeError()
+        }
         return obj
     }
 
@@ -205,8 +210,10 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val obj = arguments.argument(0)
         if (obj !is JSObject)
             return obj
-        if (!Operations.setIntegrityLevel(obj, Operations.IntegrityLevel.Sealed))
-            throwTypeError("TODO: message")
+        if (!Operations.setIntegrityLevel(obj, Operations.IntegrityLevel.Sealed)) {
+            // TODO: spidermonkey throws this error in the Proxy preventExtensions handler
+            Errors.TODO("Object.seal").throwTypeError()
+        }
         return obj
     }
 
@@ -215,12 +222,12 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val obj = arguments.argument(0)
         Operations.requireObjectCoercible(obj)
         val proto = arguments.argument(1)
-        if (proto !is JSObject && proto !is JSNull)
-            throwTypeError("the second argument to Object.setPrototypeOf must be an object or null")
+        if (proto !is JSObject && proto != JSNull)
+            Errors.Object.SetPrototypeOfBadArgType.throwTypeError()
         if (obj !is JSObject)
             return obj
         if (!obj.setPrototype(proto))
-            throwTypeError("unable to set prototype of object")
+            Errors.TODO("Object.setPrototypeOf").throwTypeError()
         return obj
     }
 

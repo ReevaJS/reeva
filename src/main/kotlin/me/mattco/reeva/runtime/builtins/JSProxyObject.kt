@@ -30,7 +30,7 @@ class JSProxyObject private constructor(
 
     private fun checkRevoked(trapName: String) {
         if (isRevoked)
-            throwTypeError("Attempt to use revoked Proxy's [[$trapName]] trap")
+            Errors.Proxy.Revoked(trapName).throwTypeError()
     }
 
     private inline fun getTrapOr(name: String, block: () -> Unit): JSValue {
@@ -47,14 +47,14 @@ class JSProxyObject private constructor(
             return target.getPrototype()
         }
         val handlerProto = Operations.call(trap, handler, listOf(target))
-        if (handlerProto !is JSObject && handlerProto !is JSNull)
-            throwTypeError("Proxy's [[GetPrototypeOf]] did not return an object or null")
+        if (handlerProto !is JSObject && handlerProto != JSNull)
+            Errors.Proxy.GetPrototypeOf.ReturnObjectOrNull.throwTypeError()
         if (target.isExtensible())
             return handlerProto
 
         val targetProto = target.getPrototype()
         if (!handlerProto.sameValue(targetProto))
-            throwTypeError("Proxy's [[GetPrototypeOf]] trap did not return its non-extensible target's prototype")
+            Errors.Proxy.GetPrototypeOf.NonExtensibleReturn.throwTypeError()
         return handlerProto
     }
 
@@ -71,7 +71,7 @@ class JSProxyObject private constructor(
             return true
         val targetProto = target.getPrototype()
         if (!newPrototype.sameValue(targetProto))
-            throwTypeError("Proxy's [[SetPrototypeOf]] was not the same value as its non-extensible target's prototype")
+            Errors.Proxy.SetPrototypeOf.NonExtensibleReturn.throwTypeError()
         return true
     }
 
@@ -82,7 +82,7 @@ class JSProxyObject private constructor(
         }
         val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target)))
         if (booleanTrapResult != target.isExtensible())
-            throwTypeError("Proxy's [[IsExtensible]] trap did not return the same value as its target's [[IsExtensible]] method")
+            Errors.Proxy.IsExtensible.DifferentReturn.throwTypeError()
         return booleanTrapResult
     }
 
@@ -93,7 +93,7 @@ class JSProxyObject private constructor(
         }
         val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target)))
         if (booleanTrapResult && target.isExtensible())
-            throwTypeError("Proxy's [[PreventExtensions]] returned true, but the target is extensible")
+            Errors.Proxy.PreventExtensions.ExtensibleReturn.throwTypeError()
         return booleanTrapResult
     }
 
@@ -103,28 +103,28 @@ class JSProxyObject private constructor(
             return target.getOwnPropertyDescriptor(property)
         }
         val trapResultObj = Operations.call(trap, handler, listOf(target, property.asValue))
-        if (trapResultObj !is JSObject && trapResultObj !is JSUndefined)
-            throwTypeError("Proxy's [[GetOwnProperty]] trap did not return an object or undefined")
+        if (trapResultObj !is JSObject && trapResultObj != JSUndefined)
+            Errors.Proxy.GetOwnPropertyDesc.ReturnObjectOrUndefined.throwTypeError()
         val targetDesc = target.getOwnPropertyDescriptor(property)
         if (trapResultObj == JSUndefined) {
             if (targetDesc == null)
                 return null
             if (!targetDesc.isConfigurable)
-                throwTypeError("Proxy's [[GetOwnProperty]] trap reported an existing non-configurable property \"$property\" as non-existent")
+                Errors.Proxy.GetOwnPropertyDesc.ExistingNonConf(property).throwTypeError()
             if (!target.isExtensible())
-                throwTypeError("Proxy's [[GetOwnProperty]] trap reported non-extensible target's own-property \"$property\" as non-existent")
+                Errors.Proxy.GetOwnPropertyDesc.NonExtensibleOwnProp(property).throwTypeError()
             return null
         }
         val resultDesc = Descriptor.fromObject(trapResultObj).complete()
         if (!Operations.isCompatiblePropertyDescriptor(target.isExtensible(), resultDesc, targetDesc))
-            throwTypeError("Proxy's [[GetOwnProperty]] trap reported non-existent property \"$property\" as existent on non-extensible target")
+            Errors.Proxy.GetOwnPropertyDesc.NonExistentNonExtensible(property).throwTypeError()
         if (!resultDesc.isConfigurable) {
             if (targetDesc == null)
-                throwTypeError("Proxy's [[GetOwnProperty]] trap reported non-existent property \"$property\" as non-configurable")
+                Errors.Proxy.GetOwnPropertyDesc.NonExistentNonConf(property).throwTypeError()
             if (targetDesc.isConfigurable)
-                throwTypeError("Proxy's [[GetOwnProperty]] trap reported configurable property \"$property\" as non-configurable")
+                Errors.Proxy.GetOwnPropertyDesc.ConfAsNonConf(property).throwTypeError()
             if (resultDesc.hasWritable && !resultDesc.isWritable && targetDesc.isWritable)
-                throwTypeError("Proxy's [[GetOwnProperty]] trap reported writable property \"$property\" as non-configurable and non-writable")
+                Errors.Proxy.GetOwnPropertyDesc.WritableAsNonWritable(property).throwTypeError()
         }
         return resultDesc
     }
@@ -144,16 +144,16 @@ class JSProxyObject private constructor(
         val settingConfigFalse = descriptor.hasConfigurable && !descriptor.isConfigurable
         if (targetDesc == null) {
             if (!isExtensible)
-                throwTypeError("Proxy's [[DefineProperty]] trap added property \"$property\" to non-extensible target")
+                Errors.Proxy.DefineOwnProperty.AddToNonExtensible(property).throwTypeError()
             if (settingConfigFalse)
-                throwTypeError("Proxy's [[DefineProperty]] trap added previously non-existent property \"$property\" to target as non-configurable")
+                Errors.Proxy.DefineOwnProperty.AddNonConf(property).throwTypeError()
         } else {
             if (!Operations.isCompatiblePropertyDescriptor(isExtensible, descriptor, targetDesc))
-                throwTypeError("Proxy's [[DefineProperty]] trap added property \"$property\" to the target with an incompatible descriptor to the existing property")
+                Errors.Proxy.DefineOwnProperty.IncompatibleDesc(property).throwTypeError()
             if (settingConfigFalse && targetDesc.isConfigurable)
-                throwTypeError("Proxy's [[DefineProperty]] trap overwrote existing configurable property \"$property\" to be non-configurable")
+                Errors.Proxy.DefineOwnProperty.ChangeConf(property).throwTypeError()
             if (targetDesc.isDataDescriptor && !targetDesc.isConfigurable && targetDesc.isWritable && descriptor.hasWritable && !descriptor.isWritable)
-                throwTypeError("Proxy's [[DefineProperty]] trap added a writable property \"$property\" in place of an existing non-configurable, writable property")
+                Errors.Proxy.DefineOwnProperty.ChangeWritable(property).throwTypeError()
         }
         return true
     }
@@ -168,9 +168,9 @@ class JSProxyObject private constructor(
             val targetDesc = target.getOwnPropertyDescriptor(property)
             if (targetDesc != null) {
                 if (!targetDesc.isConfigurable)
-                    throwTypeError("Proxy's [[Has]] trap reported existing non-configurable property \"$property\" as non-existent")
+                    Errors.Proxy.HasProperty.ExistingNonConf(property).throwTypeError()
                 if (!target.isExtensible())
-                    throwTypeError("Proxy's [[Has]] trap reported existing property \"$property\" of non-extensible target as non-existent")
+                    Errors.Proxy.HasProperty.ExistingNonExtensible(property).throwTypeError()
             }
         }
         return booleanTrapResult
@@ -185,9 +185,9 @@ class JSProxyObject private constructor(
         val targetDesc = target.getOwnPropertyDescriptor(property)
         if (targetDesc != null && !targetDesc.isConfigurable) {
             if (targetDesc.isDataDescriptor && !targetDesc.isWritable && !trapResult.sameValue(targetDesc.getRawValue()))
-                throwTypeError("Proxy's [[Get]] trap reported a different value from the existing non-configurable, non-writable own property \"$property\"")
+                Errors.Proxy.Get.DifferentValue(property).throwTypeError()
             if (targetDesc.isAccessorDescriptor && !targetDesc.hasGetter && trapResult != JSUndefined)
-                throwTypeError("Proxy's [[Get]] trap reported a non-undefined value for existing non-configurable accessor property \"$property\" with an undefined getter")
+                Errors.Proxy.Get.NonConfAccessor(property).throwTypeError()
         }
         return trapResult
     }
@@ -203,9 +203,9 @@ class JSProxyObject private constructor(
         val targetDesc = target.getOwnPropertyDescriptor(property)
         if (targetDesc != null && !targetDesc.isConfigurable) {
             if (targetDesc.isDataDescriptor && !targetDesc.isWritable && !value.sameValue(targetDesc.getRawValue()))
-                throwTypeError("Proxy's [[Set]] trap changed the value of the non-configurable, non-writable own property \"$property\"")
+                Errors.Proxy.Set.NonConfNonWritable(property).throwTypeError()
             if (targetDesc.isAccessorDescriptor && !targetDesc.hasSetter)
-                throwTypeError("Proxy's [[Set]] trap changed the value of the non-configurable accessor property \"$property\" with an undefined setter")
+                Errors.Proxy.Set.NonConfAccessor(property).throwTypeError()
         }
         return true
     }
@@ -220,9 +220,9 @@ class JSProxyObject private constructor(
             return false
         val targetDesc = target.getOwnPropertyDescriptor(property) ?: return true
         if (!targetDesc.isConfigurable)
-            throwTypeError("Proxy's [[Delete]] trap deleted non-configurable property \"$property\" from its target")
+            Errors.Proxy.Delete.NonConf(property).throwTypeError()
         if (!target.isExtensible())
-            throwTypeError("Proxy's [[Delete]] trap delete existing property \"$property\" from its non-extensible target")
+            Errors.Proxy.Delete.NonExtensible(property).throwTypeError()
         return true
     }
 
@@ -240,7 +240,7 @@ class JSProxyObject private constructor(
             PropertyKey.from(it)!!
         }
         if (trapResult.distinct().size != trapResult.size)
-            throwTypeError("Proxy's [[OwnKeys]] trap reported duplicate property keys")
+            Errors.Proxy.OwnPropertyKeys.DuplicateKeys.throwTypeError()
         val isExtensible = target.isExtensible()
         val targetKeys = target.ownPropertyKeys()
         val targetConfigurableKeys = mutableListOf<PropertyKey>()
@@ -257,18 +257,18 @@ class JSProxyObject private constructor(
         val uncheckedResultKeys = trapResult.toMutableList()
         targetNonconfigurableKeys.forEach { key ->
             if (key !in uncheckedResultKeys)
-                throwTypeError("Proxy's [[OwnKeys]] trap failed to report non-configurable property \"$key\"")
+                Errors.Proxy.OwnPropertyKeys.NonConf(key).throwTypeError()
             uncheckedResultKeys.remove(key)
         }
         if (isExtensible)
             return trapResult
         targetConfigurableKeys.forEach { key ->
             if (key !in uncheckedResultKeys)
-                throwTypeError("Proxy's [[OwnKeys]] trap failed to report property \"$key\" of non-extensible target")
+                Errors.Proxy.OwnPropertyKeys.NonExtensibleMissingKey(key).throwTypeError()
             uncheckedResultKeys.remove(key)
         }
         if (uncheckedResultKeys.isNotEmpty())
-            throwTypeError("Proxy's [[OwnKeys]] reported extra property keys for its non-extensible target")
+            Errors.Proxy.OwnPropertyKeys.NonExtensibleExtraProp.throwTypeError()
         return trapResult
     }
 
@@ -291,7 +291,7 @@ class JSProxyObject private constructor(
         val argArray = Operations.createArrayFromList(arguments)
         val newObj = Operations.call(trap, handler, listOf(target, argArray, newTarget))
         if (newObj !is JSObject)
-            throwTypeError("Proxy's [[Construct]] trap returned a non-object value")
+            Errors.Proxy.Construct.NonObject.throwTypeError()
         return newObj
     }
 

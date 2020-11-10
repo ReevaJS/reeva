@@ -36,14 +36,14 @@ open class JSObject protected constructor(
         }
 
     init {
-        if (prototype !is JSObject && prototype !is JSNull)
+        if (prototype !is JSObject && prototype != JSNull)
             throw IllegalArgumentException("Invalid prototype provided to JSObject constructor")
     }
 
     // To facilitate classes which must set their prototypes in the init()
     // call instead of the class constructor
     protected fun internalSetPrototype(prototype: JSValue) {
-        if (prototype !is JSObject && prototype !is JSNull)
+        if (prototype !is JSObject && prototype != JSNull)
             throw IllegalArgumentException("Invalid prototype provided to internalSetPrototype")
         this.prototype = prototype
     }
@@ -489,16 +489,5 @@ open class JSObject protected constructor(
         @JvmStatic
         @JvmOverloads
         fun create(realm: Realm, proto: JSValue = realm.objectProto) = JSObject(realm, proto).also { it.init() }
-
-        protected fun thisBinding(context: ExecutionContext): JSValue {
-            val env = context.lexicalEnv ?: throwTypeError("TODO: message")
-            if (!env.hasThisBinding())
-                throwTypeError(("TODO: message"))
-            if (env is FunctionEnvRecord)
-                return env.getThisBinding()
-            if (env is GlobalEnvRecord)
-                return env.getThisBinding()
-            unreachable()
-        }
     }
 }

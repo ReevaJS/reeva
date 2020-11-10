@@ -6,12 +6,11 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.annotations.JSNativeAccessorGetter
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
-import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
-import me.mattco.reeva.utils.throwTypeError
 
 class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map", 0) {
     init {
@@ -24,7 +23,7 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
     }
 
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        throwTypeError("Map constructor cannot be called without 'new'")
+        Errors.CtorCallWithoutNew("Map").throwTypeError()
     }
 
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {

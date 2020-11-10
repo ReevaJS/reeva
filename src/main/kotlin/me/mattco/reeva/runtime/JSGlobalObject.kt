@@ -113,17 +113,17 @@ open class JSGlobalObject protected constructor(
             }
 
             if (parser.syntaxErrors.isNotEmpty())
-                throwSyntaxError(parser.syntaxErrors.first().message)
+                Error(parser.syntaxErrors.first().message).throwSyntaxError()
 
             val body = scriptNode.statementList
             if (!inFunction && body.contains("NewTargetNode"))
-                throwSyntaxError("new.target accessed outside of a function")
+                Errors.NewTargetOutsideFunc.throwSyntaxError()
 
             if (!inMethod && body.contains("SuperPropertyNode"))
-                throwSyntaxError("super property accessed outside of a method")
+                Errors.SuperOutsideMethod.throwSyntaxError()
 
             if (!inDerivedConstructor && body.contains("SuperCallNode"))
-                throwSyntaxError("super call outside of a constructor")
+                Errors.SuperCallOutsideCtor.throwSyntaxError()
 
             val strictEval = strictCaller || scriptNode.statementList.hasUseStrictDirective()
             val context = Agent.runningContext
@@ -170,7 +170,7 @@ open class JSGlobalObject protected constructor(
                 if (varEnv is GlobalEnvRecord) {
                     varNames.forEach { name ->
                         if (varEnv.hasLexicalDeclaration(name))
-                            throwSyntaxError("TODO: message")
+                            Errors.TODO("evalDeclarationInstantiation 1").throwSyntaxError()
                     }
                 }
                 var thisEnv = lexEnv
@@ -178,7 +178,7 @@ open class JSGlobalObject protected constructor(
                     if (thisEnv !is ObjectEnvRecord) {
                         varNames.forEach { name ->
                             if (thisEnv.hasBinding(name))
-                                throwSyntaxError("TODO: message")
+                                Errors.TODO("evalDeclarationInstantiation 2").throwSyntaxError()
                         }
                     }
                     thisEnv = thisEnv.outerEnv!!
@@ -193,7 +193,7 @@ open class JSGlobalObject protected constructor(
                 if (functionName !in declaredFunctionNames) {
                     if (varEnv is GlobalEnvRecord) {
                         if (!varEnv.canDeclareGlobalFunction(functionName))
-                            throwTypeError("TODO: message")
+                            Errors.TODO("evalDeclarationInstantiation 3").throwTypeError()
                         declaredFunctionNames.add(functionName)
                         functionsToInitialize.add(0, decl as FunctionDeclarationNode)
                     }
@@ -208,7 +208,7 @@ open class JSGlobalObject protected constructor(
                     if (name !in declaredFunctionNames) {
                         if (varEnv is GlobalEnvRecord) {
                             if (!varEnv.canDeclareGlobalVar(name))
-                                throwTypeError("TODO: message")
+                                Errors.TODO("evalDeclarationInstantiation 4").throwTypeError()
                         }
                         if (name !in declaredVarNames)
                             declaredVarNames.add(name)

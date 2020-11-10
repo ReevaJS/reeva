@@ -28,13 +28,13 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
     @JSNativeAccessorGetter("size", Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun getSize(thisValue: JSValue): JSValue {
-        val set = thisSetObject(thisValue)
+        val set = thisSetObject(thisValue, "getSize")
         return set.setData.size.toValue()
     }
 
     @JSMethod("add", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun add(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val set = thisSetObject(thisValue)
+        val set = thisSetObject(thisValue, "add")
         set.setData.add(arguments.argument(0))
         set.insertionOrder.add(arguments.argument(0))
         return set
@@ -42,7 +42,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
     @JSMethod("clear", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun clear(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val set = thisSetObject(thisValue)
+        val set = thisSetObject(thisValue, "clear")
         set.setData.clear()
         if (set.iterationCount == 0) {
             set.insertionOrder.clear()
@@ -56,7 +56,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
     @JSMethod("delete", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun delete(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val set = thisSetObject(thisValue)
+        val set = thisSetObject(thisValue, "delete")
         val value = arguments.argument(0)
         if (set.iterationCount == 0) {
             set.insertionOrder.remove(value)
@@ -71,16 +71,16 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
     @JSMethod("entries", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val set = thisSetObject(thisValue)
+        val set = thisSetObject(thisValue, "entries")
         return JSSetIterator.create(realm, set, PropertyKind.KeyValue)
     }
 
     @JSMethod("forEach", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun forEach(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val set = thisSetObject(thisValue)
+        val set = thisSetObject(thisValue, "forEach")
         val (callback, thisArg) = arguments.takeArgs(0..1)
         if (!Operations.isCallable(callback))
-            throwTypeError("the first argument to Set.prototype.forEach must be callable")
+            Errors.Set.FirstArgNotCallable("forEach").throwTypeError()
 
         set.iterationCount++
 
@@ -100,22 +100,22 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
     @JSMethod("has", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun has(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val set = thisSetObject(thisValue)
+        val set = thisSetObject(thisValue, "has")
         return (arguments.argument(0) in set.setData).toValue()
     }
 
     @JSMethod("values", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val set = thisSetObject(thisValue)
+        val set = thisSetObject(thisValue, "values")
         return JSSetIterator.create(realm, set, PropertyKind.Value)
     }
 
     companion object {
         fun create(realm: Realm) = JSSetProto(realm).also { it.init() }
 
-        private fun thisSetObject(thisValue: JSValue): JSSetObject {
+        private fun thisSetObject(thisValue: JSValue, method: String): JSSetObject {
             if (thisValue !is JSSetObject)
-                throwTypeError("Set method called on incompatible object")
+                Errors.IncompatibleMethodCall("Set.prototype.$method").throwTypeError()
             return thisValue
         }
     }

@@ -164,7 +164,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         val string = Operations.toString(obj).string
         val count = Operations.toIntegerOrInfinity(arguments.argument(0)).asInt
         if (count < 0 || count == Int.MAX_VALUE)
-            throwRangeError("TODO: message")
+            Errors.TODO("String.prototype.repeat").throwRangeError()
         return string.repeat(count).toValue()
     }
 
@@ -348,7 +348,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
     @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisStringValue(thisValue)
+        return thisStringValue(thisValue, "toString")
     }
 
     @JSMethod("toUpperCase", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
@@ -383,7 +383,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
     @JSMethod("valueOf", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisStringValue(thisValue)
+        return thisStringValue(thisValue, "valueOf")
     }
 
     private fun stringPad(obj: JSValue, maxLength: JSValue, fillString: JSValue, isStart: Boolean): String {
@@ -532,12 +532,12 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
     companion object {
         fun create(realm: Realm) = JSStringProto(realm).also { it.init() }
 
-        private fun thisStringValue(thisValue: JSValue): JSString {
+        private fun thisStringValue(thisValue: JSValue, methodName: String): JSString {
             if (thisValue is JSString)
                 return thisValue
             if (thisValue is JSStringObject)
                 return thisValue.string
-            throwTypeError("TODO: message")
+            Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError()
         }
     }
 }

@@ -4,8 +4,8 @@ import me.mattco.reeva.core.modules.ModuleRecord
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.ecmaAssert
-import me.mattco.reeva.utils.throwReferenceError
 import me.mattco.reeva.utils.unreachable
 
 class ModuleEnvRecord(
@@ -21,7 +21,7 @@ class ModuleEnvRecord(
             return binding.targetModuleRecord.environment!!.getBindingValue(binding.targetName, throwOnNotFound = true)
 
         if (!binding.initialized)
-            throwReferenceError("TODO: message (ModuleEnvRecord getBindingValue)")
+            Errors.TODO("ModuleEnvRecord getBindingValue").throwReferenceError()
 
         return binding.value
     }

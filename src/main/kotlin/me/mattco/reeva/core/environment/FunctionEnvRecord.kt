@@ -6,9 +6,7 @@ import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.expect
-import me.mattco.reeva.utils.throwReferenceError
-import me.mattco.reeva.utils.throwTypeError
+import me.mattco.reeva.utils.Errors
 
 class FunctionEnvRecord(
     val function: JSFunction,
@@ -27,10 +25,10 @@ class FunctionEnvRecord(
     @ECMAImpl("8.1.1.3.1")
     fun bindThisValue(value: JSValue): JSValue {
         if (thisBindingStatus == ThisBindingStatus.Lexical)
-            throwReferenceError("TODO: message")
+            Errors.TODO("FunctionEnvRecord bindThisValue 1").throwReferenceError()
 
         if (thisBindingStatus == ThisBindingStatus.Initialized)
-            throwReferenceError("TODO: message")
+            Errors.TODO("FunctionEnvRecord bindThisValue 2").throwReferenceError()
 
         thisValue = value
         thisBindingStatus = ThisBindingStatus.Initialized
@@ -47,11 +45,11 @@ class FunctionEnvRecord(
     @ECMAImpl("8.1.1.3.4")
     fun getThisBinding(): JSValue {
         if (!hasThisBinding())
-            throwReferenceError("current context has no 'this' binding")
+            Errors.NoThisBinding.throwReferenceError()
 
         if (thisBindingStatus == ThisBindingStatus.Uninitialized) {
             if (hasSuperBinding())
-                throwReferenceError("Must call 'super' constructor in derived class before using 'this'")
+                Errors.Class.DerivedSuper.throwReferenceError()
             TODO("Throw ReferenceError")
         }
 

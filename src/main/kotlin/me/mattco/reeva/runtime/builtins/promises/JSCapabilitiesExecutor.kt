@@ -6,9 +6,9 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
-import me.mattco.reeva.utils.throwTypeError
 
 class JSCapabilitiesExecutor private constructor(
     realm: Realm,
@@ -16,19 +16,19 @@ class JSCapabilitiesExecutor private constructor(
 ) : JSNativeFunction(realm, "", 2) {
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (capability.resolve != null)
-            throwTypeError("TODO: message")
+            Errors.TODO("JSCapabilitiesExecutor 1").throwTypeError()
         if (capability.reject != null)
-            throwTypeError("TODO: message")
+            Errors.TODO("JSCapabilitiesExecutor 2").throwTypeError()
 
         arguments.argument(0).also {
             if (!Operations.isCallable(it))
-                throwTypeError("TODO: message")
+                Errors.TODO("JSCapabilitiesExecutor 3").throwTypeError()
             capability.resolve = it as JSFunction
         }
 
         arguments.argument(1).also {
             if (!Operations.isCallable(it))
-                throwTypeError("TODO: message")
+                Errors.TODO("JSCapabilitiesExecutor 4").throwTypeError()
             capability.reject = it as JSFunction
         }
 

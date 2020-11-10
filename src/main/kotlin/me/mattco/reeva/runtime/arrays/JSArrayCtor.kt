@@ -37,7 +37,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                     // TODO: The spec says "if intLen is not the same value as len...", does that refer to the
                     // operation SameValue? Or is it different?
                     if (!intLen.sameValue(lengthArg))
-                        throwRangeError("invalid array length: ${Operations.toPrintableString(lengthArg)}")
+                        Errors.InvalidArrayLength(Operations.toPrintableString(lengthArg)).throwRangeError()
                     intLen.asInt
                 } else {
                     array.set(0, lengthArg)

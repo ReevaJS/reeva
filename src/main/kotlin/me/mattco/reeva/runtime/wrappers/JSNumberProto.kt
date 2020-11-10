@@ -6,12 +6,10 @@ import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSNumber
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.throwRangeError
-import me.mattco.reeva.utils.throwTypeError
 import me.mattco.reeva.utils.toValue
 
 class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JSNumber.ZERO) {
@@ -53,13 +51,13 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
     @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         // TODO: Spec-compliant conversion
-        val x = thisNumberValue(thisValue)
+        val x = thisNumberValue(thisValue, "toString")
         val radix = if (arguments.isEmpty()) {
             10
         } else Operations.toIntegerOrInfinity(arguments[0]).asInt
 
         if (radix < 2 || radix > 36)
-            throwRangeError("invalid radix: $radix")
+            Errors.Number.InvalidRadix(radix).throwRangeError()
 
         return if (x.isInt) {
             x.asInt.toString(radix).toValue()
@@ -74,7 +72,7 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
     @ECMAImpl("20.1.3.3")
     @JSMethod("valueOf", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisNumberValue(thisValue)
+        return thisNumberValue(thisValue, "valueOf")
     }
 
     companion object {
@@ -82,12 +80,12 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
 
         @JSThrows
         @ECMAImpl("20.1.3")
-        private fun thisNumberValue(value: JSValue): JSNumber {
+        private fun thisNumberValue(value: JSValue, methodName: String): JSNumber {
             if (value.isNumber)
                 return value as JSNumber
             if (value is JSNumberObject)
                 return value.number
-            throwTypeError("Number method called on incompatible object ${Operations.toPrintableString(value)}")
+            Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError()
         }
     }
 }

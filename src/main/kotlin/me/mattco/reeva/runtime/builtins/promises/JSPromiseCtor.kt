@@ -20,13 +20,13 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
     }
 
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        throwTypeError("the Promise constructor must be called with the 'new' keyword")
+        Errors.CtorCallWithoutNew("Promise").throwTypeError()
     }
 
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
         val executor = arguments.argument(0)
         if (!Operations.isCallable(executor))
-            throwTypeError("TODO: message")
+            Errors.Promise.CtorFirstArgCallable.throwTypeError()
 
         val promise = JSPromiseObject.create(Operations.PromiseState.Pending, JSEmpty, realm)
         val (resolveFunction, rejectFunction) = Operations.createResolvingFunctions(promise)
@@ -194,7 +194,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
     @JSMethod("resolve", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun resolve(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
-            throwTypeError("Promise.resolve called on incompatible object")
+            Errors.IncompatibleMethodCall("Promise.resolve").throwTypeError()
         return Operations.promiseResolve(thisValue, arguments.argument(0))
     }
 

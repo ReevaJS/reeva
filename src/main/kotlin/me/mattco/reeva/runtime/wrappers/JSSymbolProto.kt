@@ -11,8 +11,8 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.throwTypeError
 import me.mattco.reeva.utils.toValue
 
 class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
@@ -23,7 +23,7 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
     @JSNativePropertyGetter("description", attributes = 0)
     fun getDescription(thisValue: JSValue): JSValue {
-        return thisSymbolValue(thisValue).description?.toValue() ?: JSUndefined
+        return thisSymbolValue(thisValue, "description").description?.toValue() ?: JSUndefined
     }
 
     @JSNativePropertyGetter("@@toStringTag", Descriptor.CONFIGURABLE)
@@ -31,20 +31,20 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
     @JSThrows
     @JSMethod("toString", 0)
-    fun toString_(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisSymbolValue(thisValue).descriptiveString().toValue()
+    fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
+        return thisSymbolValue(thisValue, "toString").descriptiveString().toValue()
     }
 
     @JSThrows
     @JSMethod("toValue", 0)
     fun toValue(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisSymbolValue(thisValue)
+        return thisSymbolValue(thisValue, "toValue")
     }
 
     @JSThrows
     @JSMethod("@@toPrimitive", 1)
     fun `@@toPrimitive`(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisSymbolValue(thisValue)
+        return thisSymbolValue(thisValue, "@@toPrimitive")
     }
 
     companion object {
@@ -52,12 +52,12 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         @JSThrows
         @ECMAImpl("19.4.3")
-        private fun thisSymbolValue(value: JSValue): JSSymbol {
+        private fun thisSymbolValue(value: JSValue, methodName: String): JSSymbol {
             if (value.isSymbol)
                 return value.asSymbol
             if (value is JSSymbolObject)
                 return value.symbol
-            throwTypeError("Symbol prototype method called on incompatible object ${Operations.toPrintableString(value)}")
+            Errors.IncompatibleMethodCall("Symbol.prototype.$methodName").throwTypeError()
         }
     }
 }

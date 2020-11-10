@@ -14,9 +14,9 @@ import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.wrappers.JSBooleanObject
 import me.mattco.reeva.runtime.wrappers.JSNumberObject
 import me.mattco.reeva.runtime.wrappers.JSStringObject
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
-import me.mattco.reeva.utils.throwTypeError
 import me.mattco.reeva.utils.toValue
 
 class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) {
@@ -35,10 +35,10 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     @JSNativeAccessorSetter("__proto__", Descriptor.CONFIGURABLE)
     fun setProto(thisValue: JSValue, proto: JSValue): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
-        if (proto !is JSObject && proto !is JSNull)
-            throwTypeError("value of __proto__ must be an object or null")
+        if (proto !is JSObject && proto != JSNull)
+            Errors.Object.ProtoValue.throwTypeError()
         if (obj is JSObject && !obj.setPrototype(proto))
-            throwTypeError("TODO: message")
+            Errors.TODO("set Object.prototype.__proto__").throwTypeError()
         return JSUndefined
     }
 
@@ -48,7 +48,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         val obj = Operations.toObject(thisValue)
         val getter = arguments.argument(1)
         if (!Operations.isCallable(getter))
-            throwTypeError("getter supplied to __defineGetter__ must be callable")
+            Errors.Object.DefineGetterBadArgType.throwTypeError()
         val desc = Descriptor(JSEmpty, Descriptor.ENUMERABLE or Descriptor.CONFIGURABLE, getter)
         val key = Operations.toPropertyKey(arguments.argument(0))
         Operations.definePropertyOrThrow(obj, key, desc)
@@ -61,7 +61,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         val obj = Operations.toObject(thisValue)
         val setter = arguments.argument(1)
         if (!Operations.isCallable(setter))
-            throwTypeError("setter supplied to __defineSetter__ must be callable")
+            Errors.Object.DefineSetterBadArgType.throwTypeError()
         val desc = Descriptor(JSEmpty, Descriptor.ENUMERABLE or Descriptor.CONFIGURABLE, setter = setter)
         val key = Operations.toPropertyKey(arguments.argument(0))
         Operations.definePropertyOrThrow(obj, key, desc)

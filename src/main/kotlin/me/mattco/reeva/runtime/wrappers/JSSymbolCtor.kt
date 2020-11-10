@@ -51,7 +51,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     fun keyFor(thisValue: JSValue, arguments: JSArguments): JSValue {
         val sym = arguments.argument(0)
         if (!sym.isSymbol)
-            throwTypeError("Symbol.keyFor expects a symbol for it's first argument")
+            Errors.Symbol.KeyForBadArg.throwTypeError()
         for ((globalKey, globalSymbol) in Realm.globalSymbolRegistry) {
             if (sym == globalSymbol)
                 return globalKey.toValue()
@@ -69,7 +69,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
     @JSThrows
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-        throwTypeError("Symbol objects cannot be constructed")
+        Errors.NotACtor("Symbol").throwTypeError()
     }
 
     companion object {

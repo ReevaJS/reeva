@@ -39,7 +39,7 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
             val newLenObj = Operations.toUint32(value)
             val numberLen = Operations.toNumeric(value)
             if (!newLenObj.sameValue(numberLen))
-                throwRangeError("invalid array length: ${Operations.toPrintableString(value)}")
+                Errors.InvalidArrayLength(Operations.toPrintableString(value)).throwRangeError()
 
             val newLen = newLenObj.asInt
             newLenDesc.setActualValue(this, newLenObj)
