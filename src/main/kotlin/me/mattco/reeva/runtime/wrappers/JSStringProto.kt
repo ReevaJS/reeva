@@ -23,12 +23,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         defineOwnProperty("constructor", realm.stringCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
-    @JSNativePropertyGetter("length", attributes = 0)
-    fun getLength(thisValue: JSValue): JSValue {
-        expect(thisValue is JSStringObject)
-        return thisValue.string.string.length.toValue()
-    }
-
     @JSMethod("charAt", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun charAt(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)

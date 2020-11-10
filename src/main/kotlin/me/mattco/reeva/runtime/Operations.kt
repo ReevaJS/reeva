@@ -506,8 +506,8 @@ object Operations {
             JSFalse -> "false"
             // TODO: Make sure to follow all of JS's number conversion rules here
             is JSNumber -> if (value.isInt) {
-                value.number.toLong().toString()
-            } else value.number.toString()
+                value.number.toLong().toString().replace('E', 'e')
+            } else value.number.toString().replace('E', 'e')
             is JSSymbol -> Errors.FailedSymbolToString.throwTypeError()
             is JSObject -> toString(toPrimitive(value, ToPrimitiveHint.AsString)).string
             else -> unreachable()

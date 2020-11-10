@@ -43,6 +43,7 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("Map", realm.mapCtor, attrs)
         defineOwnProperty("Number", realm.numberCtor, attrs)
         defineOwnProperty("Object", realm.objectCtor, attrs)
+        defineOwnProperty("Packages", realm.packageObj, attrs)
         defineOwnProperty("Promise", realm.promiseCtor, attrs)
         defineOwnProperty("Proxy", realm.proxyCtor, attrs)
         defineOwnProperty("RangeError", realm.rangeErrorCtor, attrs)

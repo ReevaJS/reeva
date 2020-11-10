@@ -16,6 +16,10 @@ import me.mattco.reeva.runtime.functions.JSFunctionProto
 import me.mattco.reeva.runtime.global.JSConsole
 import me.mattco.reeva.runtime.global.JSConsoleProto
 import me.mattco.reeva.runtime.iterators.*
+import me.mattco.reeva.runtime.jvmcompat.JSClassProto
+import me.mattco.reeva.runtime.jvmcompat.JSPackageObject
+import me.mattco.reeva.runtime.jvmcompat.JSPackageProto
+import me.mattco.reeva.runtime.jvmcompat.JVMValueMapper
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObjectCtor
 import me.mattco.reeva.runtime.objects.JSObjectProto
@@ -93,6 +97,10 @@ class Realm(moduleResolver: ModuleResolver? = null) {
     lateinit var jsonObj: JSONObject private set
     lateinit var consoleObj: JSConsole private set
 
+    lateinit var packageProto: JSPackageProto private set
+    lateinit var classProto: JSClassProto private set
+    lateinit var packageObj: JSPackageObject private set
+
     init {
         this.moduleResolver = moduleResolver
     }
@@ -156,7 +164,11 @@ class Realm(moduleResolver: ModuleResolver? = null) {
         syntaxErrorProto = JSSyntaxErrorProto.create(this)
         uriErrorProto = JSURIErrorProto.create(this)
 
-        // Must be created after wellknown symbols
+        packageProto = JSPackageProto.create(this)
+        classProto = JSClassProto.create(this)
+        packageObj = JSPackageObject.create(this)
+
+        // Must be created after well-known symbols
         symbolCtor = JSSymbolCtor.create(this)
         symbolProto = JSSymbolProto.create(this)
 

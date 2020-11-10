@@ -106,6 +106,31 @@ object Errors {
         object StringifyCircular : Error("JSON.stringify cannot serialize circular objects")
     }
 
+    object JVMClass {
+        object InvalidCall : Error("JVM class object must be called with \"new\"")
+        class NoPublicCtors(fullName: String) : Error("JVM class $fullName has no public constructors")
+        class NoValidCtor(className: String, providedTypes: List<String>) : Error("no constructor found for " +
+            "class $className with types: ${providedTypes.joinToString()}")
+        class AmbiguousCtors(className: String, providedTypes: List<String>) : Error("more than one applicable constructor " +
+            "found for class $className with types: ${providedTypes.joinToString()}")
+        class IncompatibleFieldGet(className: String, fieldName: String) : Error("invalid access of JVM field $fieldName " +
+            "on object which is not an instance of the JVM class $className")
+        class IncompatibleFieldSet(className: String, fieldName: String) : Error("invalid set of JVM field $fieldName " +
+            "on object which is not an instance of the JVM class $className")
+        class IncompatibleMethodCall(className: String, methodName: String) : Error("invalid call of JVM method $methodName " +
+            "on object which is not an instance of the JVM class $className")
+        class InvalidFieldSet(className: String, fieldName: String, expectedType: String, receivedType: String) :
+            Error("invalid set of JVM field $fieldName on class $className. Expected type: $expectedType, received type: $receivedType")
+    }
+
+    object JVMPackage {
+        object InvalidSymbolAccess : Error("Package object properties cannot be symbols")
+        object InvalidNumberAccess : Error("Package object properties cannot be numbers")
+        object InvalidDelete : Error("cannot delete properties on Package objects")
+        object InvalidSet : Error("cannot set properties on Package objects")
+        object InvalidPreventExtensions : Error("cannot prevent extensions on the Package object")
+    }
+
     object Map {
         class CallableFirstArg(methodName: String) : Error("the first argument to Map.prototype.$methodName must be callable")
     }
