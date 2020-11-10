@@ -27,6 +27,8 @@ import me.mattco.reeva.runtime.builtins.promises.JSResolveFunction
 import me.mattco.reeva.runtime.functions.JSBoundFunction
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
+import me.mattco.reeva.runtime.jvmcompat.JSClassInstanceObject
+import me.mattco.reeva.runtime.jvmcompat.JSClassObject
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
@@ -910,6 +912,12 @@ object Operations {
         // TODO: [[BoundTargetFunction]] slot check
         if (target !is JSObject)
             return JSFalse
+
+        if (ctor is JSClassObject) {
+            if (target !is JSClassInstanceObject)
+                return JSFalse
+            return ctor.clazz.isInstance(target.obj).toValue()
+        }
 
         val ctorProto = ctor.get("prototype")
         if (ctorProto !is JSObject)
