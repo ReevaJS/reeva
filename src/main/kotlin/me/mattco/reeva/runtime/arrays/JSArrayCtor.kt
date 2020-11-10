@@ -4,7 +4,6 @@ import me.mattco.reeva.core.Agent
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSUndefined
@@ -19,7 +18,6 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         return construct(arguments, JSUndefined)
     }
 
-    @JSThrows
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
         val newTargetReal = if (newTarget is JSUndefined) {
             Agent.runningContext.function ?: JSUndefined

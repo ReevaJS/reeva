@@ -19,7 +19,6 @@ import me.mattco.reeva.core.Agent
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
@@ -1957,9 +1956,9 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
     private fun MethodAssembly.operation(name: String, returnType: TypeLike, vararg parameterTypes: TypeLike) {
         val method = Operations::class.java.declaredMethods.first { it.name == name }
         invokestatic(Operations::class, name, returnType, *parameterTypes)
-        if (method.getDeclaredAnnotation(JSThrows::class.java) != null) {
-            checkError
-        }
+//        if (method.getDeclaredAnnotation(JSThrows::class.java) != null) {
+//            checkError
+//        }
     }
 
     companion object {

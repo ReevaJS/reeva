@@ -5,7 +5,6 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSFalse
@@ -20,7 +19,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         isConstructable = true
     }
 
-    @JSThrows
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         return construct(arguments, JSUndefined)
     }

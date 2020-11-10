@@ -1,7 +1,6 @@
 package me.mattco.reeva.core.environment
 
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Ref
 import me.mattco.reeva.runtime.primitives.JSUndefined
@@ -10,22 +9,18 @@ abstract class EnvRecord(@JvmField var outerEnv: EnvRecord?) : Ref {
     @ECMAImpl("HasBinding")
     abstract fun hasBinding(name: String): Boolean
 
-    @JSThrows
     @ECMAImpl("CreateMutableBinding")
     abstract fun createMutableBinding(name: String, canBeDeleted: Boolean)
 
     @ECMAImpl("CreateImmutableBinding")
     abstract fun createImmutableBinding(name: String, throwOnRepeatInitialization: Boolean)
 
-    @JSThrows
     @ECMAImpl("InitializeBinding")
     abstract fun initializeBinding(name: String, value: JSValue)
 
-    @JSThrows
     @ECMAImpl("SetMutableBinding")
     abstract fun setMutableBinding(name: String, value: JSValue, throwOnFailure: Boolean)
 
-    @JSThrows
     @ECMAImpl("GetBindingValue")
     abstract fun getBindingValue(name: String, throwOnNotFound: Boolean): JSValue
 

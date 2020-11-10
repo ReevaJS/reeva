@@ -3,7 +3,6 @@ package me.mattco.reeva.core.environment
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSFunction
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
@@ -41,7 +40,6 @@ class FunctionEnvRecord(
     @ECMAImpl("8.1.1.3.3")
     override fun hasSuperBinding() = hasThisBinding() && function.homeObject.isObject
 
-    @JSThrows
     @ECMAImpl("8.1.1.3.4")
     fun getThisBinding(): JSValue {
         if (!hasThisBinding())

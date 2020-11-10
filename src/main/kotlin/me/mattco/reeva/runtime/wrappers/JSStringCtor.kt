@@ -2,7 +2,6 @@ package me.mattco.reeva.runtime.wrappers
 
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSUndefined
@@ -15,12 +14,10 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         isConstructable = true
     }
 
-    @JSThrows
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         return construct(arguments, JSUndefined)
     }
 
-    @JSThrows
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
         val argument = arguments.argument(0)
         if (newTarget == JSUndefined && argument.isSymbol)

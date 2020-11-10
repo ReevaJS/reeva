@@ -5,7 +5,6 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.errors.JSTypeErrorObject
@@ -34,7 +33,6 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         TODO()
     }
 
-    @JSThrows
     @ECMAImpl("24.5.2")
     @JSMethod("stringify", 3, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun stringify(thisValue: JSValue, arguments: JSArguments): JSValue {

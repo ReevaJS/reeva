@@ -1,7 +1,6 @@
 package me.mattco.reeva.core.environment
 
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -23,7 +22,6 @@ class ObjectEnvRecord(
         TODO()
     }
 
-    @JSThrows
     @ECMAImpl("8.1.1.2.2")
     override fun createMutableBinding(name: String, canBeDeleted: Boolean) {
         val attrs = Descriptor.ENUMERABLE or Descriptor.WRITABLE or if (canBeDeleted) Descriptor.CONFIGURABLE else 0
@@ -36,13 +34,11 @@ class ObjectEnvRecord(
         unreachable()
     }
 
-    @JSThrows
     @ECMAImpl("8.1.1.2.4")
     override fun initializeBinding(name: String, value: JSValue) {
         setMutableBinding(name, value, false)
     }
 
-    @JSThrows
     @ECMAImpl("8.1.1.2.5")
     override fun setMutableBinding(name: String, value: JSValue, throwOnFailure: Boolean) {
         if (!boundObject.hasProperty(name) && throwOnFailure)
@@ -51,7 +47,6 @@ class ObjectEnvRecord(
             Errors.TODO("ObjectEnvRecord setMutableBinding 2").throwTypeError()
     }
 
-    @JSThrows
     @ECMAImpl("8.1.1.2.6")
     override fun getBindingValue(name: String, throwOnNotFound: Boolean): JSValue {
         if (!boundObject.hasProperty(name)) {

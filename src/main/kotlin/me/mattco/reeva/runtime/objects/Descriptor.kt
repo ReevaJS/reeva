@@ -3,7 +3,6 @@ package me.mattco.reeva.runtime.objects
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.primitives.*
@@ -168,7 +167,6 @@ data class Descriptor(
 
         const val defaultAttributes = CONFIGURABLE or ENUMERABLE or WRITABLE or HAS_BASIC
 
-        @JSThrows
         @ECMAImpl("6.2.5.5", "ToPropertyDescriptor")
         fun fromObject(obj: JSValue): Descriptor {
             if (obj !is JSObject)

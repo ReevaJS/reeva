@@ -12,7 +12,6 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.interpreter.Completion
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.environment.*
 import me.mattco.reeva.parser.Parser
@@ -81,7 +80,7 @@ open class JSGlobalObject protected constructor(
     }
 
     companion object {
-        @JSThrows @ECMAImpl("18.2.1.1")
+        @ECMAImpl("18.2.1.1")
         fun performEval(argument: JSValue, callerRealm: Realm, strictCaller: Boolean, direct: Boolean): JSValue {
             if (!direct)
                 ecmaAssert(!strictCaller)

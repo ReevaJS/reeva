@@ -1,7 +1,6 @@
 package me.mattco.reeva.core.environment
 
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -43,7 +42,6 @@ class GlobalEnvRecord(
         }
     }
 
-    @JSThrows
     @ECMAImpl("8.1.1.4.4")
     override fun initializeBinding(name: String, value: JSValue) {
         if (declarativeRecord.hasBinding(name)) {
@@ -51,7 +49,6 @@ class GlobalEnvRecord(
         } else objectRecord.initializeBinding(name, value)
     }
 
-    @JSThrows
     @ECMAImpl("8.1.1.4.5")
     override fun setMutableBinding(name: String, value: JSValue, throwOnFailure: Boolean) {
         if (declarativeRecord.hasBinding(name)) {
@@ -59,7 +56,6 @@ class GlobalEnvRecord(
         } else objectRecord.setMutableBinding(name, value, throwOnFailure)
     }
 
-    @JSThrows
     @ECMAImpl("8.1.1.4.6")
     override fun getBindingValue(name: String, throwOnNotFound: Boolean): JSValue {
         return if (declarativeRecord.hasBinding(name)) {
@@ -107,7 +103,6 @@ class GlobalEnvRecord(
     }
 
     // TODO: Can the global object be a proxy? If not, this method can't throw
-    @JSThrows
     @ECMAImpl("8.1.1.4.15")
     fun canDeclareGlobalVar(name: String): Boolean {
         val globalObject = objectRecord.boundObject
@@ -128,7 +123,6 @@ class GlobalEnvRecord(
         return false
     }
 
-    @JSThrows
     @ECMAImpl("8.1.1.4.17")
     fun createGlobalVarBinding(name: String, canBeDeleted: Boolean) {
         val globalObject = objectRecord.boundObject

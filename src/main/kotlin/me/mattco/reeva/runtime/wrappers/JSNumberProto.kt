@@ -4,7 +4,6 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSNumber
@@ -68,7 +67,6 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
         }
     }
 
-    @JSThrows
     @ECMAImpl("20.1.3.3")
     @JSMethod("valueOf", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -78,7 +76,6 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
     companion object {
         fun create(realm: Realm) = JSNumberProto(realm).also { it.init() }
 
-        @JSThrows
         @ECMAImpl("20.1.3")
         private fun thisNumberValue(value: JSValue, methodName: String): JSNumber {
             if (value.isNumber)

@@ -4,7 +4,6 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -44,7 +43,6 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return JSTrue
     }
 
-    @JSThrows
     @ECMAImpl("20.1.2.3")
     @JSMethod("isInteger", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun isInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -57,7 +55,6 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return arguments.argument(0).isNaN.toValue()
     }
 
-    @JSThrows
     @ECMAImpl("20.1.2.5")
     @JSMethod("isSafeInteger", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun isSafeInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -78,18 +75,15 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         TODO()
     }
 
-    @JSThrows
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         return numberFromArg(arguments.argument(0)).toValue()
     }
 
-    @JSThrows
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
         // TODO: Handle newTarget?
         return JSNumberObject.create(realm, numberFromArg(arguments.argument(0)).toValue())
     }
 
-    @JSThrows
     private fun numberFromArg(argument: JSValue): Double {
         return if (!argument.isUndefined) {
             val prim = Operations.toNumeric(argument)

@@ -1,7 +1,6 @@
 package me.mattco.reeva.runtime.functions
 
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.JSValue
@@ -28,10 +27,8 @@ abstract class JSFunction(
     var isClassConstructor: Boolean = false
     var fields: List<FieldRecord> = listOf()
 
-    @JSThrows
     abstract fun call(thisValue: JSValue, arguments: JSArguments): JSValue
 
-    @JSThrows
     abstract fun construct(arguments: JSArguments, newTarget: JSValue): JSValue
 
     data class FieldRecord(

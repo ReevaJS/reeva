@@ -1,7 +1,6 @@
 package me.mattco.reeva.core.environment
 
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
@@ -47,7 +46,6 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
         binding.initialized = true
     }
 
-    @JSThrows
     @ECMAImpl("8.1.1.1.5")
     override fun setMutableBinding(name: String, value: JSValue, throwOnFailure: Boolean) {
         if (!hasBinding(name)) {
@@ -74,7 +72,6 @@ open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
         }
     }
 
-    @JSThrows
     @ECMAImpl("8.1.1.1.6")
     override fun getBindingValue(name: String, throwOnNotFound: Boolean): JSValue {
         ecmaAssert(hasBinding(name))

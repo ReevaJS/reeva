@@ -100,7 +100,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         }
     }
 
-    @JSThrows
     @ECMAImpl("19.1.3.2")
     @JSMethod("hasOwnProperty", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun hasOwnProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -109,7 +108,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         return Operations.hasOwnProperty(o, key).toValue()
     }
 
-    @JSThrows
     @ECMAImpl("19.1.3.3")
     @JSMethod("isPrototypeOf", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun isPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -126,7 +124,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         }
     }
 
-    @JSThrows
     @ECMAImpl("19.1.3.4")
     @JSMethod("propertyIsEnumerable", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun propertyIsEnumerable(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -136,7 +133,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         return desc.isEnumerable.toValue()
     }
 
-    @JSThrows
     @ECMAImpl("19.1.3.5")
     @JSMethod("toLocaleString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toLocaleString(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -175,7 +171,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         return "[object $tag]".toValue()
     }
 
-    @JSThrows
     @JSMethod("valueOf", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         return Operations.toObject(thisValue)

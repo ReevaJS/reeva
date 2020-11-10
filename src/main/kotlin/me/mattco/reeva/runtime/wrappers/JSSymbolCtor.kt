@@ -3,7 +3,6 @@ package me.mattco.reeva.runtime.wrappers
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.JSMethod
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -46,7 +45,6 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return newSymbol
     }
 
-    @JSThrows
     @JSMethod("keyFor", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun keyFor(thisValue: JSValue, arguments: JSArguments): JSValue {
         val sym = arguments.argument(0)
@@ -59,7 +57,6 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return JSUndefined
     }
 
-    @JSThrows
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         val description = arguments.argument(0).let {
             if (it == JSUndefined) null else Operations.toString(it).string
@@ -67,7 +64,6 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return JSSymbol(description)
     }
 
-    @JSThrows
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
         Errors.NotACtor("Symbol").throwTypeError()
     }

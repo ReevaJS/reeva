@@ -1,10 +1,8 @@
 package me.mattco.reeva.runtime.wrappers
 
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
-import me.mattco.reeva.runtime.annotations.JSThrows
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSBoolean
@@ -24,7 +22,6 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
         defineOwnProperty("constructor", realm.booleanCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
-    @JSThrows
     @ECMAImpl("19.3.3.2")
     @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -32,7 +29,6 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
         return if (b.value) "true".toValue() else "false".toValue()
     }
 
-    @JSThrows
     @ECMAImpl("19.3.3.2")
     @JSMethod("valueOf", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
