@@ -10,7 +10,7 @@ import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
 class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSNativeFunction(realm, clazz.name, 0) {
-    private val clazzProto by lazy { makeClassProto(clazz) }
+    private val clazzProto = classProtoCache.getOrPut(clazz) { makeClassProto(clazz) }
     private val className = clazz.name.replace('/', '.').replace("L", "").replace(";", "")
 
     init {
@@ -77,6 +77,8 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
     private fun makeClassProto(clazz: Class<*>): JSObject {
         val obj = create(realm)
 
+        obj.defineOwnProperty("constructor", this, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+
         clazz.declaredFields.forEach { field ->
             val getter = { thisValue: JSValue ->
                 if (thisValue !is JSClassInstanceObject)
@@ -140,6 +142,8 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
     }
 
     companion object {
+        private val classProtoCache = mutableMapOf<Class<*>, JSObject>()
+
         fun create(realm: Realm, clazz: Class<*>) = JSClassObject(realm, clazz).also { it.init() }
     }
 }
