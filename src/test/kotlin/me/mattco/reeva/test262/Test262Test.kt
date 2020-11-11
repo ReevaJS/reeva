@@ -99,7 +99,6 @@ class Test262Test(
             "generators",
             "async-functions",
             "async-iteration",
-            "destructuring-binding",
             "class-static-methods-private",
             "class-methods-private",
             "class-static-fields-private",

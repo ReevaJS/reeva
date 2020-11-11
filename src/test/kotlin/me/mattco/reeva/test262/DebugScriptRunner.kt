@@ -8,6 +8,8 @@ import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.Operations
 import java.io.File
+import kotlin.system.measureNanoTime
+import kotlin.system.measureTimeMillis
 
 val outDirectory = File("./demo/out/")
 val indexFile = File("./demo/index.js")
@@ -20,11 +22,8 @@ fun main() {
     val test262Result = Reeva.evaluate(test262HarnessFile.readText(), realm)
 
     Reeva.with(realm) {
-        if (test262Result.isError) {
+        if (test262Result.isError)
             println("\u001b[31m[test262] ${Operations.toString(test262Result.value).string}\u001B[0m")
-        } else if (!test262Result.value.isUndefined) {
-            println(Operations.toString(test262Result.value).string)
-        }
     }
 
     val result = Reeva.evaluateModule(indexFile, realm)
@@ -33,7 +32,7 @@ fun main() {
         if (result.isError) {
             println("\u001b[31m${Operations.toString(result.value).string}\u001B[0m")
         } else if (!result.value.isUndefined) {
-            println(Operations.toString(result.value).string)
+            println(Operations.toPrintableString(result.value))
         }
     }
 

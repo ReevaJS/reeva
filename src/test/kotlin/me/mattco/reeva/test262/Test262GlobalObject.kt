@@ -4,16 +4,12 @@ import me.mattco.reeva.Reeva
 import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
+import me.mattco.reeva.utils.Error
 import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
-import me.mattco.reeva.utils.throwTypeError
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.concurrent.thread
 
 class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(realm) {
     override fun init() {
@@ -45,11 +41,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
 
         @JSMethod("gc", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         fun gc(thisValue: JSValue, arguments: JSArguments): JSValue {
-            throwTypeError("Unable to force JVM garbage collections")
-        }
-
-        override fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
-            return super.getOwnPropertyDescriptor(property)
+            Error("unable to force JVM garbage collection").throwTypeError()
         }
     }
 
