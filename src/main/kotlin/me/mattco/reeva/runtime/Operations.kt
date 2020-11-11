@@ -274,7 +274,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("6.1.6.1.20")
-    fun numericToString(value: JSValue): JSValue {
+    fun numericToString(value: JSValue): JSString {
         expect(value is JSNumber)
         if (value.isNaN)
             return "NaN".toValue()

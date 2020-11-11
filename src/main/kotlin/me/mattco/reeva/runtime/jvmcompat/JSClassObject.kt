@@ -2,12 +2,14 @@ package me.mattco.reeva.runtime.jvmcompat
 
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
+import java.lang.reflect.Modifier
 
 class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSNativeFunction(realm, clazz.name, 0) {
     private val clazzProto = classProtoCache.getOrPut(clazz) { makeClassProto(clazz) }
@@ -22,36 +24,25 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
     }
 
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-        var ctors = clazz.constructors.toList()
+        val ctors = clazz.constructors.toList()
 
         if (ctors.isEmpty())
             Errors.JVMClass.NoPublicCtors(className)
 
-        val mappedArgs = arguments.map(JVMValueMapper::jsToJVM)
+        val matchingCtors = JVMValueMapper.findMatchingSignature(ctors, arguments)
 
-        // TODO: Deal with primitive number coercion
-        // Right now, jsToJVM only converts JSNumber to Double,
-        // and obviously that makes it impossible to call methods
-        // that take non-double numeric arguments
+        if (matchingCtors.isEmpty())
+            Errors.JVMClass.NoValidCtor(className, arguments.map { Operations.toString(it).string })
+        if (matchingCtors.size > 1)
+            Errors.JVMClass.AmbiguousCtors(className, arguments.map { Operations.toString(it).string })
 
-        for (i in arguments.indices) {
-            // TODO: Handle Kotlin non-null args?
-            val argument = mappedArgs[i] ?: continue
-
-            ctors = ctors.filter { it.parameterTypes[i] == argument::class.java }
-
-            // TODO: Print valid ctors?
-            if (ctors.isEmpty())
-                Errors.JVMClass.NoValidCtor(className, mappedArgs.map(::printableClassName))
-        }
-
-        if (ctors.size > 1)
-            Errors.JVMClass.AmbiguousCtors(className, mappedArgs.map(::printableClassName))
+        val targetCtor = matchingCtors[0]
+        val mappedArguments = JVMValueMapper.coerceArgumentsToSignature(targetCtor, arguments).toTypedArray()
 
         return JSClassInstanceObject.create(
             realm,
             clazzProto,
-            ctors[0].newInstance(*mappedArgs.toTypedArray())
+            targetCtor.newInstance(*mappedArguments)
         )
     }
 
@@ -60,51 +51,51 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
         return "Class(${clazz.name})".toValue()
     }
 
-    private fun printableClassName(value: Any?) = when (value) {
-        null -> "null"
-        is Byte -> "byte"
-        is Short -> "short"
-        is Int -> "int"
-        is Float -> "float"
-        is Double -> "double"
-        is Long -> "long"
-        is String -> "String"
-        is JSValue -> "JSValue"
-        is JSObject -> "JSObject"
-        else -> value::class.java.name
-    }
-
     private fun makeClassProto(clazz: Class<*>): JSObject {
         val obj = create(realm)
 
         obj.defineOwnProperty("constructor", this, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
 
-        clazz.declaredFields.forEach { field ->
-            val getter = { thisValue: JSValue ->
-                if (thisValue !is JSClassInstanceObject)
-                    Errors.JVMClass.IncompatibleFieldSet(className, field.name).throwTypeError()
+        clazz.fields.forEach { field ->
+            val isStatic = Modifier.isStatic(field.modifiers)
 
-                val instance = thisValue.obj
-                if (!clazz.isInstance(instance))
-                    Errors.JVMClass.IncompatibleFieldSet(className, field.name).throwTypeError()
+            val getter = { thisValue: JSValue ->
+                val instance = if (isStatic) {
+                    if (thisValue != this)
+                        Errors.JVMClass.IncompatibleStaticFieldGet(className, field.name).throwTypeError()
+
+                    null
+                } else {
+                    if (thisValue !is JSClassInstanceObject)
+                        Errors.JVMClass.IncompatibleFieldGet(className, field.name).throwTypeError()
+
+                    val instance = thisValue.obj
+                    if (!clazz.isInstance(instance))
+                        Errors.JVMClass.IncompatibleFieldGet(className, field.name).throwTypeError()
+                    instance
+                }
 
                 JVMValueMapper.jvmToJS(realm, field.get(instance))
             }
 
             val setter: NativeSetterSignature = { thisValue: JSValue, value: JSValue ->
-                if (thisValue !is JSClassInstanceObject)
-                    Errors.JVMClass.IncompatibleFieldSet(className, field.name).throwTypeError()
+                val instance = if (isStatic) {
+                    if (thisValue != this)
+                        Errors.JVMClass.IncompatibleStaticFieldSet(className, field.name).throwTypeError()
 
-                val instance = thisValue.obj
-                if (!clazz.isInstance(instance))
-                    Errors.JVMClass.IncompatibleFieldSet(className, field.name).throwTypeError()
+                    null
+                } else {
+                    if (thisValue !is JSClassInstanceObject)
+                        Errors.JVMClass.IncompatibleFieldSet(className, field.name).throwTypeError()
 
-                val jvmValue = JVMValueMapper.jsToJVM(value)
-                when {
-                    jvmValue == null -> field.set(instance, null)
-                    field.type != jvmValue::class.java -> field.set(instance, jvmValue)
-                    else -> Errors.JVMClass.InvalidFieldSet(className, field.name, field.type.name, jvmValue::class.java.name)
+                    val instance = thisValue.obj
+                    if (!clazz.isInstance(instance))
+                        Errors.JVMClass.IncompatibleFieldSet(className, field.name).throwTypeError()
+                    instance
                 }
+
+                val jvmValue = JVMValueMapper.coerceValueToType(value, field.type)
+                field.set(instance, jvmValue)
 
                 JSUndefined
             }
@@ -112,26 +103,47 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
             obj.defineNativeProperty(field.name.key(), Descriptor.defaultAttributes, getter, setter)
         }
 
-        if (clazz.declaredMethods.map { it.name }.distinct().size != clazz.declaredMethods.size) {
-            TODO("handle overloaded methods")
-        }
+        clazz.methods.groupBy { it.name to Modifier.isStatic(it.modifiers) }.forEach { (key, availableMethods) ->
+            val (name, isStatic) = key
 
-        clazz.declaredMethods.forEach { method ->
             val nativeMethod: NativeFunctionSignature = { thisValue, arguments ->
-                // TODO: Argument validation
-                if (thisValue !is JSClassInstanceObject)
-                    Errors.JVMClass.IncompatibleMethodCall(className, method.name).throwTypeError()
+                val instance = if (isStatic) {
+                    if (thisValue != this)
+                        Errors.JVMClass.IncompatibleStaticMethodCall(className, name).throwTypeError()
 
-                val instance = thisValue.obj
-                if (!clazz.isInstance(instance))
-                    Errors.JVMClass.IncompatibleMethodCall(className, method.name).throwTypeError()
+                    null
+                } else {
+                    if (thisValue !is JSClassInstanceObject)
+                        Errors.JVMClass.IncompatibleMethodCall(className, name).throwTypeError()
 
-                val mappedArgs = arguments.map(JVMValueMapper::jsToJVM)
-                val result = method.invoke(instance, *mappedArgs.toTypedArray())
+                    val instance = thisValue.obj
+                    if (!clazz.isInstance(instance))
+                        Errors.JVMClass.IncompatibleMethodCall(className, name).throwTypeError()
+
+                    instance
+                }
+
+                val matchingMethods = JVMValueMapper.findMatchingSignature(availableMethods, arguments)
+
+                if (matchingMethods.isEmpty())
+                    Errors.JVMClass.NoValidMethod(className, arguments.map { Operations.toString(it).string })
+                if (matchingMethods.size > 1)
+                    Errors.JVMClass.AmbiguousMethods(className, arguments.map { Operations.toString(it).string })
+
+                val targetMethod = matchingMethods[0]
+                val mappedArguments = JVMValueMapper.coerceArgumentsToSignature(targetMethod, arguments).toTypedArray()
+
+                val result = targetMethod.invoke(instance, *mappedArguments)
                 JVMValueMapper.jvmToJS(realm, result)
             }
 
-            obj.defineNativeFunction(method.name.key(), method.parameterCount, Descriptor.defaultAttributes, nativeMethod)
+            val receiver = if (isStatic) this else obj
+            receiver.defineNativeFunction(
+                name.key(),
+                availableMethods.minOf { it.parameterCount },
+                Descriptor.defaultAttributes,
+                nativeMethod
+            )
         }
 
         clazz.declaredClasses.forEach { innerClazz ->
