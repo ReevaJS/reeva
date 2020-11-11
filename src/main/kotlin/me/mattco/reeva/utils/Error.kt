@@ -113,14 +113,28 @@ object Errors {
             "class $className with types: ${providedTypes.joinToString()}")
         class AmbiguousCtors(className: String, providedTypes: List<String>) : Error("more than one applicable constructor " +
             "found for class $className with types: ${providedTypes.joinToString()}")
+        class NoValidMethod(className: String, providedTypes: List<String>) : Error("no constructor found for " +
+            "class $className with types: ${providedTypes.joinToString()}")
+        class AmbiguousMethods(className: String, providedTypes: List<String>) : Error("more than one applicable constructor " +
+            "found for class $className with types: ${providedTypes.joinToString()}")
         class IncompatibleFieldGet(className: String, fieldName: String) : Error("invalid access of JVM field $fieldName " +
             "on object which is not an instance of the JVM class $className")
+        class IncompatibleStaticFieldGet(className: String, fieldName: String) : Error("invalid access of static JVM field $fieldName " +
+            "on object which is not the JVM class $className")
         class IncompatibleFieldSet(className: String, fieldName: String) : Error("invalid set of JVM field $fieldName " +
             "on object which is not an instance of the JVM class $className")
+        class IncompatibleStaticFieldSet(className: String, fieldName: String) : Error("invalid set of static JVM field $fieldName " +
+            "on object which is not the JVM class $className")
         class IncompatibleMethodCall(className: String, methodName: String) : Error("invalid call of JVM method $methodName " +
             "on object which is not an instance of the JVM class $className")
+        class IncompatibleStaticMethodCall(className: String, methodName: String) : Error("invalid call of static JVM method $methodName " +
+            "on object which is not the JVM class $className")
         class InvalidFieldSet(className: String, fieldName: String, expectedType: String, receivedType: String) :
             Error("invalid set of JVM field $fieldName on class $className. Expected type: $expectedType, received type: $receivedType")
+    }
+
+    object JVMCompat {
+        class InconvertibleType(value: JSValue, type: java.lang.Class<*>) : Error("$value isn't convertible to type $type")
     }
 
     object JVMPackage {
