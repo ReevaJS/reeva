@@ -18,7 +18,7 @@ import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.JSReference
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSFunction
-import me.mattco.reeva.runtime.functions.JSInterpretedFunction
+import me.mattco.reeva.runtime.functions.JSRuntimeFunction
 import me.mattco.reeva.runtime.iterators.JSObjectPropertyIterator
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -199,23 +199,25 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
     ): JSFunction {
         val strict = body.statementList?.hasUseStrictDirective() == true
 
-        val function = JSInterpretedFunction(
+        val function = object : JSRuntimeFunction(
             Agent.runningContext.realm,
             when {
-                thisMode == JSFunction.ThisMode.Lexical -> JSFunction.ThisMode.Lexical
-                strict -> JSFunction.ThisMode.Strict
-                else -> JSFunction.ThisMode.Global
+                thisMode == ThisMode.Lexical -> ThisMode.Lexical
+                strict -> ThisMode.Strict
+                else -> ThisMode.Global
             },
             scope,
             strict,
             JSUndefined,
             prototype,
             sourceText,
-        ) { function, arguments ->
-            functionDeclarationInstantiation(function, parameterList, arguments, body)
-            if (body.statementList != null) {
-                interpretStatementList(body.statementList)
-            } else JSUndefined
+        ) {
+            override fun evalBody(arguments: JSArguments): JSValue {
+                functionDeclarationInstantiation(this, parameterList, arguments, body)
+                return if (body.statementList != null) {
+                    interpretStatementList(body.statementList)
+                } else JSUndefined
+            }
         }
 
         val indexOfLastNormal = parameterList.functionParameters.parameters.indexOfLast {
@@ -232,7 +234,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
     }
 
     private fun functionDeclarationInstantiation(
-        function: JSInterpretedFunction,
+        function: JSRuntimeFunction,
         formals: FormalParametersNode,
         arguments: JSArguments,
         body: FunctionStatementList,

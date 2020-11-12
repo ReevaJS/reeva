@@ -9,12 +9,14 @@ import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.JSObject
-import me.mattco.reeva.runtime.primitives.JSEmpty
-import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
-class JSInterpretedFunction(
+/**
+ * A function declared in a JS script context. Created by
+ * the interpreter or compiler.
+ */
+abstract class JSRuntimeFunction(
     realm: Realm,
     thisMode: ThisMode,
     envRecord: EnvRecord?,
@@ -22,7 +24,6 @@ class JSInterpretedFunction(
     homeObject: JSValue,
     prototype: JSObject = realm.functionProto,
     internal val sourceText: String,
-    private val evalBody: (JSInterpretedFunction, JSArguments) -> JSValue,
 ) : JSFunction(
     realm,
     thisMode,
@@ -31,6 +32,8 @@ class JSInterpretedFunction(
     isStrict,
     prototype
 ) {
+    abstract fun evalBody(arguments: JSArguments): JSValue
+
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (isClassConstructor)
             Errors.Class.CtorRequiresNew.throwTypeError()
@@ -38,7 +41,7 @@ class JSInterpretedFunction(
         ecmaAssert(Agent.runningContext == calleeContext)
         Operations.ordinaryCallBindThis(this, calleeContext, thisValue)
         try {
-            evalBody(this, arguments)
+            evalBody(arguments)
         } catch (e: ReturnException) {
             return e.value
         } finally {
@@ -68,7 +71,7 @@ class JSInterpretedFunction(
         val constructorEnv = calleeContext.lexicalEnv
         expect(constructorEnv is FunctionEnvRecord)
         try {
-            evalBody(this, arguments)
+            evalBody(arguments)
         } catch (e: ReturnException) {
             if (e.value is JSObject)
                 return e.value
