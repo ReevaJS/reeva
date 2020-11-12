@@ -47,7 +47,7 @@ class Compiler {
         val continueLabel: LabelLike?
     )
 
-    private val className = "TopLevelScript\$${Reeva.nextId()}"
+    private val className = "me/mattco/reeva/generated/TopLevelScript\$${Reeva.nextId()}"
 
     fun compileScript(script: ScriptNode): ByteArray {
         val classNode = assembleClass(public, className, superName = "me/mattco/reeva/compiler/TopLevelScript") {
@@ -191,13 +191,13 @@ class Compiler {
             instantiateFunctionObject(func)
             ldc(functionName)
             swap
-            ldc(0)
+            ldc(false)
             invokevirtual(GlobalEnvRecord::class, "createGlobalFunctionBinding", void, String::class, JSFunction::class, Boolean::class)
         }
         declaredVarNames.forEach {
             dup
             ldc(it)
-            ldc(0)
+            ldc(false)
             invokevirtual(GlobalEnvRecord::class, "createGlobalVarBinding", void, String::class, Boolean::class)
         }
 
@@ -290,136 +290,19 @@ class Compiler {
         // oldEnv, context, blockEnv
         putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
         // oldEnv
+        val oldEnv = astore()
 
-        stackHeight++
+        tryCatchBuilder {
+            tryBlock {
+                compileStatementList(node.statements)
+            }
 
-        val protectedStart = makeLabel()
-        val protectedEnd = makeLabel()
-        val finallyStart = makeLabel()
-        val finallyEnd = makeLabel()
-        val tryCatchEnd = makeLabel()
-
-        placeLabel(protectedStart)
-        verifyConsistentStackHeight {
-            compileStatementList(node.statements)
+            finallyBlock {
+                loadContext()
+                load(oldEnv)
+                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+            }
         }
-        placeLabel(protectedEnd)
-
-        loadContext()
-        swap
-        // context, oldEnv
-        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-        goto(tryCatchEnd)
-
-        placeLabel(finallyStart)
-        swap
-        loadContext()
-        swap
-        // exception, context, oldEnv
-        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-        athrow
-        placeLabel(finallyEnd)
-
-        placeLabel(tryCatchEnd)
-
-        tryCatchBlocks.add(TryCatchBlockNode(
-            protectedStart,
-            protectedEnd,
-            finallyStart,
-            null,
-        ))
-
-//        placeLabel(protectedStart)
-//        getstatic(System::class, "out", PrintStream::class)
-//        ldc("in try")
-//        invokevirtual(PrintStream::class, "println", void, String::class)
-//        placeLabel(protectedEnd)
-//
-//        getstatic(System::class, "out", PrintStream::class)
-//        ldc("in finally")
-//        invokevirtual(PrintStream::class, "println", void, String::class)
-//        goto(tryCatchEnd)
-//
-//        placeLabel(finallyStart)
-//        getstatic(System::class, "out", PrintStream::class)
-//        ldc("in finally")
-//        invokevirtual(PrintStream::class, "println", void, String::class)
-//        athrow
-//        placeLabel(finallyEnd)
-//
-//        placeLabel(tryCatchEnd)
-//
-//        tryCatchBlocks.add(TryCatchBlockNode(
-//            protectedStart,
-//            protectedEnd,
-//            finallyStart,
-//            null,
-//        ))
-
-
-
-
-
-
-
-//        placeLabel(protectedStart)
-//        /* try block start */
-//        compileStatementList(node.statements)
-//        /* try block end */
-//        /* finally block start */
-//        load(oldEnv)
-//        loadContext()
-//        // oldEnv, context
-//        swap
-//        // context, oldEnv
-//        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-//        // <empty>
-//        /* finally block end */
-//        placeLabel(protectedEnd)
-//        goto(tryCatchEnd)
-//        /* finally-with-exception block start */
-//        placeLabel(finallyStart)
-//        // exception
-//        loadContext()
-//        load(oldEnv)
-//        // exception, context, oldEnv
-//        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-//        // exception
-//        athrow
-//        placeLabel(finallyEnd)
-//
-//        /* finally-with-exception block end */
-//        placeLabel(tryCatchEnd)
-//
-//        tryCatchBlocks.add(TryCatchBlockNode(
-//            protectedStart,
-//            protectedEnd,
-//            finallyStart,
-//            null,
-//        ))
-//        tryCatchBlocks.add(TryCatchBlockNode(
-//            finallyStart,
-//            finallyEnd,
-//            finallyStart,
-//            null,
-//        ))
-
-//        tryCatchBuilder {
-//            tryBlock {
-//                compileStatementList(node.statements)
-//            }
-//
-//            finallyBlock {
-//                loadContext()
-//                // oldEnv, context
-//                swap
-//                // context, oldEnv
-//                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-//                // <empty>
-//            }
-//        }
-
-        stackHeight--
     }
 
     private fun MethodAssembly.compileVariableStatement(node: VariableStatementNode) {
@@ -571,12 +454,11 @@ class Compiler {
                 }
 
                 storeLexicalEnv()
-                // oldEnv
+                val oldEnv = astore()
 
                 tryCatchBuilder {
                     tryBlock {
                         compileLexicalDeclaration(node.initializer)
-                        // oldEnv
                         forBodyEvaluation(
                             node.condition,
                             node.incrementer,
@@ -584,16 +466,13 @@ class Compiler {
                             if (isConst) emptyList() else boundNames,
                             label,
                         )
-                        // oldEnv
                     }
 
                     finallyBlock {
-                        // oldEnv
+                        load(oldEnv)
                         storeLexicalEnv()
                     }
                 }
-
-                pop
             }
         }
     }
@@ -656,9 +535,9 @@ class Compiler {
         tryCatchBuilder {
             tryBlock {
                 perIterationBindings.forEach {
-                    ldc(it)
-                    ldc(0)
                     load(thisIterationEnv)
+                    ldc(it)
+                    ldc(false)
                     // string, false, env
                     invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
 
@@ -666,9 +545,9 @@ class Compiler {
                     ldc(it)
                     // thisIterationEnv, string
 
-                    ldc(it)
-                    ldc(1)
                     load(lastIterationEnv)
+                    ldc(it)
+                    ldc(true)
                     // thisIterationEnv, string, binding, true, env
                     invokevirtual(EnvRecord::class, "getBindingValue", JSValue::class, String::class, Boolean::class)
                     // thisIterationEnv, string, value
@@ -726,6 +605,7 @@ class Compiler {
             getValue
         }
         athrow
+        stackHeight--
     }
 
     private fun MethodAssembly.compileTryStatement(node: TryStatementNode) {
@@ -735,7 +615,8 @@ class Compiler {
             }
 
             if (node.catchNode != null) {
-                catchBlock(ThrowException::class) {
+                catchBlock<ThrowException> {
+                    val ex = astore()
                     if (node.catchNode.catchParameter == null) {
                         compileBlock(node.catchNode.block)
                     } else {
@@ -747,7 +628,7 @@ class Compiler {
                         parameter.boundNames().forEach { name ->
                             dup
                             ldc(name)
-                            ldc(0)
+                            ldc(false)
                             invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
                         }
 
@@ -759,7 +640,8 @@ class Compiler {
                             tryBlock {
                                 loadLexicalEnv()
                                 ldc(parameter.identifierName)
-                                TODO("How do I get the parameter of a catch block?")
+                                load(ex)
+                                invokevirtual(ThrowException::class, "getValue", JSValue::class)
                                 invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
                                 compileBlock(node.catchNode.block)
                             }
@@ -905,7 +787,7 @@ class Compiler {
             dup
             // funcEnv, funcEnv
             ldc(node.identifier.identifierName)
-            ldc(0)
+            ldc(false)
             // funcEnv, funcEnv, string, boolean
             invokevirtual(EnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
             // funcEnv
@@ -1094,7 +976,7 @@ class Compiler {
         getValue
         swap
         argumentsListEvaluation(node.arguments)
-        ldc(0)
+        ldc(false)
         operation("evaluateCall", JSValue::class, JSValue::class, JSValue::class, List::class, Boolean::class)
         stackHeight--
 
@@ -1161,11 +1043,11 @@ class Compiler {
 //
 //            elseBlock {
 //                load(args)
-//                ldc(0)
+//                ldc(false
 //                invokevirtual(List::class, "get", JSValue::class, Int::class)
 //                loadRealm()
 //                operation("isStrict", Boolean::class)
-//                ldc(1)
+//                ldc(true)
 //                invokestatic(JSGlobalObject::class, "performEval", JSValue::class, JSValue::class, Realm::class, Boolean::class, Boolean::class)
 //
 //                goto(pastEnd)
@@ -1176,7 +1058,7 @@ class Compiler {
 //        load(func)
 //        load(ref)
 //        load(args)
-//        ldc(0)
+//        ldc(false
 //        operation("evaluateCall", JSValue::class, JSValue::class, JSValue::class, List::class, Boolean::class)
 //
 //        placeLabel(pastEnd)
@@ -1585,7 +1467,7 @@ class Compiler {
 
         when (node.op) {
             RelationalExpressionNode.Operator.LessThan -> {
-                ldc(1)
+                ldc(true)
                 operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
                 dup
                 loadUndefined()
@@ -1596,7 +1478,7 @@ class Compiler {
             }
             RelationalExpressionNode.Operator.GreaterThan -> {
                 swap
-                ldc(0)
+                ldc(false)
                 operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
                 dup
                 loadUndefined()
@@ -1607,12 +1489,12 @@ class Compiler {
             }
             RelationalExpressionNode.Operator.LessThanEquals -> {
                 swap
-                ldc(0)
+                ldc(false)
                 operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
                 invertBoolean()
             }
             RelationalExpressionNode.Operator.GreaterThanEquals -> {
-                ldc(1)
+                ldc(true)
                 operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
                 invertBoolean()
             }
@@ -1876,10 +1758,10 @@ class Compiler {
         verifyConsistentStackHeight {
             builder.tryBlock()
         }
+        placeLabel(mainEnd)
         verifyConsistentStackHeight {
             finallyBlock?.invoke()
         }
-        placeLabel(mainEnd)
         goto(tryCatchFinallyEnd)
 
         builder.catchBlocks.forEach {
@@ -1890,11 +1772,11 @@ class Compiler {
             verifyConsistentStackHeight {
                 it.second()
             }
+            placeLabel(catchEnd)
             verifyConsistentStackHeight {
                 finallyBlock?.invoke()
             }
             goto(tryCatchFinallyEnd)
-            placeLabel(catchEnd)
 
             tryCatchBlocks.add(TryCatchBlockNode(
                 mainStart,
@@ -1919,26 +1801,15 @@ class Compiler {
                 mainStart,
                 mainEnd,
                 lastFinallyBlock,
-                "java.lang.Throwable",
+                null,
             ))
 
             val exception = astore()
-            pop
             verifyConsistentStackHeight {
                 finallyBlock!!()
             }
             load(exception)
             athrow
-
-            val lastFinallyEnd = makeLabel()
-            placeLabel(lastFinallyEnd)
-
-            tryCatchBlocks.add(TryCatchBlockNode(
-                lastFinallyBlock,
-                lastFinallyEnd,
-                lastFinallyBlock,
-                null,
-            ))
         }
 
         placeLabel(tryCatchFinallyEnd)
@@ -1960,8 +1831,8 @@ class Compiler {
             tryBlock = block
         }
 
-        fun catchBlock(type: TypeLike, block: () -> Unit) {
-            catchBlocks.add(type to block)
+        inline fun <reified T> catchBlock(noinline block: () -> Unit) {
+            catchBlocks.add(T::class to block)
         }
 
         fun finallyBlock(block: () -> Unit) {
