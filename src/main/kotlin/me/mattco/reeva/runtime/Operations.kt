@@ -925,7 +925,8 @@ object Operations {
         return properties
     }
 
-    @JvmStatic @ECMAImpl("7.4.1")
+    @JvmStatic @JvmOverloads
+    @ECMAImpl("7.4.1")
     fun getIterator(obj: JSValue, hint: IteratorHint? = IteratorHint.Sync, _method: JSFunction? = null): IteratorRecord {
         if (hint == IteratorHint.Async)
             TODO()
@@ -1192,7 +1193,8 @@ object Operations {
         return localEnv.bindThisValue(thisValue)
     }
 
-    @JvmStatic @ECMAImpl("9.2.5")
+    @JvmStatic @JvmOverloads
+    @ECMAImpl("9.2.5")
     fun makeConstructor(function: JSFunction, writablePrototype: Boolean = true, prototype: JSObject? = null) {
         ecmaAssert(!hasOwnProperty(function, "prototype".key()))
         ecmaAssert(!function.isConstructable)

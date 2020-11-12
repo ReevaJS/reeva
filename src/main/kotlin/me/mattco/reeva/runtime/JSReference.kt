@@ -15,21 +15,23 @@ open class JSReference(
     val isStrict: Boolean,
 ) : JSValue() {
     @ECMAImpl("6.2.4.4")
-    val hasPrimitiveBase = when (baseValue) {
-        is JSBigInt,
-        is JSSymbol,
-        is JSBoolean,
-        is JSString,
-        is JSNumber -> true
-        else -> false
-    }
+    val hasPrimitiveBase: Boolean
+        get() = when (baseValue) {
+            is JSBigInt,
+            is JSSymbol,
+            is JSBoolean,
+            is JSString,
+            is JSNumber -> true
+            else -> false
+        }
 
     @ECMAImpl("6.2.4.5")
-    val isPropertyReference = when {
-        baseValue is JSObject -> true
-        hasPrimitiveBase -> true
-        else -> false
-    }
+    val isPropertyReference: Boolean
+        get() = when {
+            baseValue is JSObject -> true
+            hasPrimitiveBase -> true
+            else -> false
+        }
 
     @ECMAImpl("6.2.4.6")
     val isUnresolvableReference: Boolean

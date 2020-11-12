@@ -1,16 +1,13 @@
 package me.mattco.reeva.core.tasks
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.ast.ScriptOrModule
-import me.mattco.reeva.core.Agent
+import me.mattco.reeva.ast.ScriptOrModuleNode
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
-import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.JSGlobalObject
-import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.errors.JSSyntaxErrorObject
 
 class EvaluationTask(
@@ -34,7 +31,7 @@ class EvaluationTask(
 
     override fun execute(): Reeva.Result {
         val parser = Parser(script, realm)
-        val scriptOrModule = ScriptOrModule(if (isModule) parser.parseModule() else parser.parseScript())
+        val scriptOrModule = ScriptOrModuleNode(if (isModule) parser.parseModule() else parser.parseScript())
         if (parser.syntaxErrors.isNotEmpty()) {
             val error = parser.syntaxErrors.first()
             return Reeva.Result(

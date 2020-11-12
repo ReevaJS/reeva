@@ -3,19 +3,17 @@ package me.mattco.reeva.runtime
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.BindingIdentifierNode
 import me.mattco.reeva.ast.FunctionDeclarationNode
-import me.mattco.reeva.ast.ScriptOrModule
+import me.mattco.reeva.ast.ScriptOrModuleNode
 import me.mattco.reeva.ast.statements.ForBindingNode
 import me.mattco.reeva.ast.statements.StatementListNode
 import me.mattco.reeva.ast.statements.VariableDeclarationNode
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.interpreter.Completion
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.environment.*
 import me.mattco.reeva.parser.Parser
-import me.mattco.reeva.runtime.errors.JSSyntaxErrorObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -147,7 +145,7 @@ open class JSGlobalObject protected constructor(
             evalContext.lexicalEnv = lexEnv
             Agent.pushContext(evalContext)
 
-            val interpreter = Interpreter(callerRealm, ScriptOrModule(scriptNode))
+            val interpreter = Interpreter(callerRealm, ScriptOrModuleNode(scriptNode))
 
             try {
                 evalDeclarationInstantiation(scriptNode.statementList, varEnv, lexEnv, strictEval, interpreter)

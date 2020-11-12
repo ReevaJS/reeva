@@ -14,7 +14,9 @@ object Reeva {
     // Used to ensure names of various things are unique
     @Volatile
     @JvmStatic
-    internal var objectCount = 0
+    private var uniqueId = 0
+
+    internal fun nextId() = uniqueId++
 
     @JvmStatic
     fun setup() {

@@ -4,106 +4,109 @@ import codes.som.anthony.koffee.MethodAssembly
 import codes.som.anthony.koffee.assembleClass
 import codes.som.anthony.koffee.insns.jvm.*
 import codes.som.anthony.koffee.insns.sugar.*
+import codes.som.anthony.koffee.labels.LabelLike
+import codes.som.anthony.koffee.labels.coerceLabel
 import codes.som.anthony.koffee.modifiers.public
 import codes.som.anthony.koffee.types.TypeLike
-import codes.som.anthony.koffee.types.coerceType
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
-import me.mattco.reeva.ast.LiteralNode
+import me.mattco.reeva.ast.expressions.TemplateLiteralNode
 import me.mattco.reeva.ast.literals.*
-import me.mattco.reeva.ast.literals.PropertyNameNode
 import me.mattco.reeva.ast.statements.*
-import me.mattco.reeva.interpreter.Completion
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.core.ExecutionContext
+import me.mattco.reeva.core.Realm
+import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
+import me.mattco.reeva.interpreter.Interpreter
+import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.JSReference
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.errors.JSErrorObject
-import me.mattco.reeva.runtime.errors.JSTypeErrorObject
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.functions.JSFunction
-import me.mattco.reeva.runtime.primitives.*
+import me.mattco.reeva.runtime.functions.JSFunctionProto
+import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
-import me.mattco.reeva.utils.ecmaAssert
-import me.mattco.reeva.utils.expect
-import me.mattco.reeva.utils.unreachable
-import org.objectweb.asm.Opcodes
-import org.objectweb.asm.Type
-import org.objectweb.asm.tree.ClassNode
-import org.objectweb.asm.tree.MethodNode
-import java.lang.IllegalArgumentException
+import me.mattco.reeva.runtime.primitives.*
+import me.mattco.reeva.utils.*
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.tree.TryCatchBlockNode
+import java.io.PrintStream
 
-class Compiler(private val scriptNode: ScriptNode, fileName: String) {
-    private val sanitizedFileName = fileName.replace(Regex("[^\\w]"), "_")
-    private val dependencies = mutableListOf<ClassNode>()
-    private var needsToPopContext = false
-    private val extraMethods = mutableListOf<MethodNode>()
+class Compiler {
+    protected var stackHeight = 0
+    private val labelNodes = mutableListOf<LabelNode>()
 
-    private val methodStates = mutableListOf<MethodState>()
-    data class MethodState(
-        val className: String,
-        val methodName: String,
-        val returnType: TypeLike,
-        val isTopLevel: Boolean = false,
+    data class LabelNode(
+        val stackHeight: Int,
+        val labelName: String,
+        val breakLabel: LabelLike?,
+        val continueLabel: LabelLike?
     )
 
-    fun compile(): CompilationResult {
-        val className = "TopLevel_${sanitizedFileName}_$classCounter"
+    private val className = "TopLevelScript\$${Reeva.nextId()}"
 
-        val mainClass = assembleClass(public, className, superName = "me/mattco/reeva/compiler/TopLevelScript") {
-            method(public, "<init>", void) {
-                aload_0
-                invokespecial(TopLevelScript::class, "<init>", void)
-                _return
-            }
-
-            method(public, "run", JSValue::class, ExecutionContext::class) {
-                methodStates.add(MethodState(className, "run", JSValue::class, true))
-                compileScript(scriptNode)
-                pushUndefined
+    fun compileScript(script: ScriptNode): ByteArray {
+        val classNode = assembleClass(public, className, superName = "me/mattco/reeva/compiler/TopLevelScript") {
+            method(public, "run", JSValue::class) {
+                globalDeclarationInstantiation(script)
+                compileStatementList(script.statementList)
+                loadUndefined()
                 areturn
-                methodStates.removeLast()
-            }
-
-            extraMethods.forEach {
-                methodStates.add(MethodState(className, it.name, Type.getReturnType(it.desc)))
-                node.methods.add(it)
-                methodStates.removeLast()
             }
         }
 
-        if (methodStates.isNotEmpty()) {
-            throw IllegalStateException("methodStates is not empty!")
-        }
-
-        return CompilationResult(mainClass, dependencies)
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
+        classNode.accept(writer)
+        return writer.toByteArray()
     }
 
-    data class CompilationResult(val mainClass: ClassNode, val dependencies: List<ClassNode>)
+    fun compileModule(module: ModuleNode): ByteArray {
+        val classNode = assembleClass(public, className, superName = "me/mattco/reeva/compiler/TopLevelScript") {
+            method(public, "run", JSValue::class) {
+                TODO()
+//                compileStatementList(script.asScript.statementList)
+            }
+        }
 
-    @ECMAImpl("15.1.11", "GlobalDeclarationInstantiation")
-    private fun MethodAssembly.compileScript(script: ScriptNode) {
-        aload_1
-        getfield(ExecutionContext::class, "realm", Realm::class)
-        getfield(Realm::class, "globalEnv", GlobalEnvRecord::class)
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
+        classNode.accept(writer)
+        return writer.toByteArray()
+    }
 
-        val lexNames = script.lexicallyDeclaredNames()
-        val varNames = script.varDeclaredNames()
+    private fun MethodAssembly.globalDeclarationInstantiation(node: ScriptNode) {
+        loadRealm()
+        invokevirtual(Realm::class, "getGlobalEnv", GlobalEnvRecord::class)
+
+        val lexNames = node.lexicallyDeclaredNames()
+        val varNames = node.varDeclaredNames()
+        // TODO: Won't this eventually be handled by static semantics or early errors?
         lexNames.forEach {
-            listOf("hasVarDeclaration", "hasLexicalDeclaration", "hasRestrictedGlobalProperty").forEach { method ->
-                dup
-                ldc(it)
-                invokevirtual(GlobalEnvRecord::class, method, Boolean::class, String::class)
-                ifStatement(JumpCondition.True) {
-                    shouldThrow("SyntaxError")
+            dup
+            ldc(it)
+            invokevirtual(GlobalEnvRecord::class, "hasVarDeclaration", Boolean::class, String::class)
+            ifStatement(JumpCondition.True) {
+                construct(Errors.TODO::class, "String::class") {
+                    ldc("globalDeclarationInstantiation 1")
                 }
+                invokevirtual(Error::class, "throwSyntaxError", void)
+                loadUndefined()
+                areturn
+            }
+            dup
+            ldc(it)
+            invokevirtual(GlobalEnvRecord::class, "hasLexicalDeclaration", Boolean::class, String::class)
+            ifStatement(JumpCondition.True) {
+                construct(Errors.TODO::class, "String::class") {
+                    ldc("globalDeclarationInstantiation 2")
+                }
+                invokevirtual(Error::class, "throwSyntaxError", void)
+                loadUndefined()
+                areturn
             }
         }
         varNames.forEach {
@@ -111,103 +114,106 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
             ldc(it)
             invokevirtual(GlobalEnvRecord::class, "hasLexicalDeclaration", Boolean::class, String::class)
             ifStatement(JumpCondition.True) {
-                shouldThrow("SyntaxError")
+                construct(Errors.TODO::class, "String::class") {
+                    ldc("globalDeclarationInstantiation 3")
+                }
+                invokevirtual(Error::class, "throwSyntaxError", void)
+                loadUndefined()
+                areturn
             }
         }
-
-        val varDeclarations = script.varScopedDeclarations()
+        val varDeclarations = node.varScopedDeclarations()
         val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
         val declaredFunctionNames = mutableListOf<String>()
         varDeclarations.asReversed().forEach {
-            if (it is VariableDeclarationNode || it is ForBindingNode || it is BindingIdentifierNode)
-                return@forEach
-            ecmaAssert(it is FunctionDeclarationNode)
-            val boundNames = it.boundNames()
-            expect(boundNames.size == 1)
-            val functionName = boundNames[0]
-            if (functionName !in declaredFunctionNames) {
-                dup
-                ldc(functionName)
-                invokevirtual(GlobalEnvRecord::class, "canDeclareGlobalFunction", Boolean::class, String::class)
-                ifStatement(JumpCondition.False) {
-                    shouldThrow("TypeError")
-                }
-                declaredFunctionNames.add(functionName)
-                functionsToInitialize.add(0, it)
-            }
-        }
-        var declaredVarNames = mutableListOf<String>()
-        varDeclarations.forEach { decl ->
-            if (decl is VariableDeclarationNode || decl is ForBindingNode || decl is BindingIdentifierNode) {
-                decl.boundNames().forEach { name ->
-                    if (name !in declaredFunctionNames) {
-                        dup
-                        ldc(name)
-                        invokevirtual(GlobalEnvRecord::class, "canDeclareGlobalVar", Boolean::class, String::class)
-                        ifStatement(JumpCondition.False) {
-                            shouldThrow("TypeError")
+            if (it !is VariableDeclarationNode && it !is ForBindingNode && it !is BindingIdentifierNode) {
+                val functionName = it.boundNames()[0]
+                if (functionName !in declaredFunctionNames) {
+                    dup
+                    ldc(functionName)
+                    invokevirtual(GlobalEnvRecord::class, "canDeclareGlobalFunction", Boolean::class, String::class)
+                    ifStatement(JumpCondition.True) {
+                        construct(Errors.TODO::class, "String::class") {
+                            ldc("globalDeclarationInstantiation 4")
                         }
-                        if (name !in declaredVarNames)
-                            declaredVarNames.add(name)
+                        invokevirtual(Error::class, "throwSyntaxError", void)
+                        loadUndefined()
+                        areturn
                     }
+                    declaredFunctionNames.add(functionName)
+                    functionsToInitialize.add(0, it as FunctionDeclarationNode)
                 }
             }
         }
-        val lexDeclarations = script.lexicallyScopedDeclarations()
+        val declaredVarNames = mutableListOf<String>()
+        varDeclarations.forEach {
+            if (it !is VariableDeclarationNode && it !is ForBindingNode && it !is BindingIdentifierNode)
+                return@forEach
+            it.boundNames().forEach { name ->
+                if (name !in declaredFunctionNames) {
+                    dup
+                    ldc(name)
+                    invokevirtual(GlobalEnvRecord::class, "canDeclareGlobalVar", Boolean::class, String::class)
+                    ifStatement(JumpCondition.True) {
+                        construct(Errors.TODO::class, "String::class") {
+                            ldc("globalDeclarationInstantiation 4")
+                        }
+                        invokevirtual(Error::class, "throwSyntaxError", void)
+                        loadUndefined()
+                        areturn
+                    }
+                    if (name !in declaredVarNames)
+                        declaredVarNames.add(name)
+                }
+            }
+        }
+        val lexDeclarations = node.lexicallyScopedDeclarations()
         lexDeclarations.forEach { decl ->
             decl.boundNames().forEach { name ->
                 dup
                 ldc(name)
-                if (decl.isConstantDeclaration()) {
-                    ldc(true)
-                    invokevirtual(GlobalEnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
-                } else {
-                    ldc(false)
-                    invokevirtual(GlobalEnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
-                }
+                val isConstant = decl.isConstantDeclaration()
+                ldc(isConstant)
+                invokevirtual(
+                    EnvRecord::class,
+                    if (isConstant) "createImmutableBinding" else "createMutableBinding",
+                    void,
+                    String::class,
+                    Boolean::class
+                )
             }
         }
         functionsToInitialize.forEach { func ->
-            val compiledFunc = instantiateFunctionObject(func)
-            dependencies.add(compiledFunc)
-
-            // env
+            val functionName = func.boundNames()[0]
             dup
             dup
-            // env, env, env
-            new(compiledFunc.name)
-            // env, env, env, func
-            dup_x1
-            // env, env, func, env, func
+            instantiateFunctionObject(func)
+            ldc(functionName)
             swap
-            // env, env, func, func, env
-            pushRealm
-            // env, env, func, func, env, realm
-            swap
-            // env, env, func, func, realm, env
-            invokespecial(compiledFunc.name, "<init>", void, Realm::class, EnvRecord::class)
-            // env, env, func
-
-            ldc(func.identifier?.identifierName ?: "default")
-            // env, env, func, string
-            swap
-            // env, env, string, func
-            ldc(false)
-            // env, env, string, func, boolean
+            ldc(0)
             invokevirtual(GlobalEnvRecord::class, "createGlobalFunctionBinding", void, String::class, JSFunction::class, Boolean::class)
         }
         declaredVarNames.forEach {
             dup
             ldc(it)
-            ldc(false)
+            ldc(0)
             invokevirtual(GlobalEnvRecord::class, "createGlobalVarBinding", void, String::class, Boolean::class)
         }
 
-        compileStatementList(script.statementList)
+        pop
     }
 
-    private fun MethodAssembly.compileStatementList(statementList: StatementListNode) {
-        statementList.statements.forEach {
+    private fun MethodAssembly.instantiateFunctionObject(functionNode: FunctionDeclarationNode) {
+        TODO()
+    }
+
+    private fun MethodAssembly.ordinaryFunctionCreate(sourceText: String, parameterList: FormalParametersNode, body: FunctionStatementList, thisMode: JSFunction.ThisMode) {
+        TODO()
+    }
+
+    private fun MethodAssembly.compileStatementList(statementListNode: StatementListNode) {
+        // TODO: store last value
+        statementListNode.statements.forEach {
             compileStatement(it as StatementNode)
         }
     }
@@ -216,1753 +222,1777 @@ class Compiler(private val scriptNode: ScriptNode, fileName: String) {
         when (statement) {
             is BlockStatementNode -> compileBlockStatement(statement)
             is VariableStatementNode -> compileVariableStatement(statement)
-            is EmptyStatementNode -> {
-            }
+            is EmptyStatementNode -> JSEmpty
             is ExpressionStatementNode -> compileExpressionStatement(statement)
             is IfStatementNode -> compileIfStatement(statement)
-            is BreakableStatement -> compileBreakableStatement(statement)
+//            is BreakableStatement -> compileBreakableStatement(statement)
+            is IterationStatement -> compileIterationStatement(statement, null)
             is LabelledStatementNode -> compileLabelledStatement(statement)
             is LexicalDeclarationNode -> compileLexicalDeclaration(statement)
             is FunctionDeclarationNode -> compileFunctionDeclaration(statement)
+            is ClassDeclarationNode -> compileClassDeclaration(statement)
             is ReturnStatementNode -> compileReturnStatement(statement)
             is ThrowStatementNode -> compileThrowStatement(statement)
-            is TryStatementNode -> compileTryStatementNode(statement)
-            is ForStatementNode -> compileForStatementNode(statement)
+            is TryStatementNode -> compileTryStatement(statement)
             is BreakStatementNode -> compileBreakStatement(statement)
+            is ImportDeclarationNode -> compileImportDeclaration(statement)
+            is ExportDeclarationNode -> compileExportDeclaration(statement)
             else -> TODO()
         }
     }
 
-    private fun MethodAssembly.compileBreakStatement(breakStatementNode: BreakStatementNode) {
-        if (breakStatementNode.label != null)
-            TODO()
-
-        construct(Completion::class, Completion.Type::class, JSValue::class) {
-            getstatic(Completion.Type::class, "Break", Completion.Type::class)
-            pushUndefined
-        }
-        areturn
+    private fun MethodAssembly.compileBlockStatement(node: BlockStatementNode) {
+        compileBlock(node.block)
     }
 
-    private fun MethodAssembly.compileForStatementNode(forStatementNode: ForStatementNode) {
-        val initializer = forStatementNode.initializer
-        val condition = forStatementNode.condition
-        val incrementer = forStatementNode.incrementer
-        val body = forStatementNode.body
-        var perIterationBindings = listOf<String>()
-
-        fun createPerIterationEnvironment() {
-            if (perIterationBindings.isEmpty())
-                return
-
-            pushLexicalEnv
-            // lastIterationEnv
-            dup
-            // lastIterationEnv, lastIterationEnv
-            getfield(EnvRecord::class, "outerEnv", EnvRecord::class)
-            // ecmaAssert(the last result is not null)
-
-            invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
-            // lastIterationEnv, thisIterationEnv
-
-            perIterationBindings.forEach { binding ->
-                // lastIterationEnv, thisIterationEnv
-                dup
-                // lastIterationEnv, thisIterationEnv, thisIterationEnv
-                ldc(binding)
-                ldc(false)
-                invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
-
-                // lastIterationEnv, thisIterationEnv
-                swap
-                // thisIterationEnv, lastIterationEnv
-                dup2
-                // thisIterationEnv, lastIterationEnv, thisIterationEnv, lastIterationEnv
-                ldc(binding)
-                ldc(true)
-                // thisIterationEnv, lastIterationEnv, thisIterationEnv, lastIterationEnv, binding, true
-                invokevirtual(EnvRecord::class, "getBindingValue", JSValue::class, String::class, Boolean::class)
-                // thisIterationEnv, lastIterationEnv, thisIterationEnv, lastValue
-                ldc(binding)
-                // thisIterationEnv, lastIterationEnv, thisIterationEnv, lastValue, binding
-                swap
-                // thisIterationEnv, lastIterationEnv, thisIterationEnv, binding, lastValue
-                invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
-                // thisIterationEnv, lastIterationEnv
-                swap
-                // lastIterationEnv, thisIterationEnv
-            }
-
-            // lastIterationEnv, thisIterationEnv
-            pushRunningContext
-            // lastIterationEnv, thisIterationEnv, context
-            swap
-            // lastIterationEnv, context, thisIterationEnv
-            putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-            // lastIterationEnv
-            pop
-        }
-
-        val name = "for_block_${Reeva.objectCount++}"
-        addExtraMethodToCurrentClass(name) {
-            compileStatement(body)
-            createPerIterationEnvironment()
-        }
-
-        when (initializer) {
-            is ExpressionNode -> compileExpression(initializer)
-            is VariableStatementNode -> compileVariableStatement(initializer)
-            is LexicalDeclarationNode -> {
-                pushLexicalEnv
-                // oldEnv
-                dup
-                // oldEnv, oldEnv
-                invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
-                // oldEnv, loopEnv
-
-                val isConst = initializer.isConstantDeclaration()
-                val boundNames = initializer.boundNames()
-                boundNames.forEach { name ->
-                    dup
-                    ldc(name)
-                    if (isConst) {
-                        ldc(true)
-                        invokevirtual(EnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
-                    } else {
-                        ldc(false)
-                        invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
-                    }
-                }
-
-                // oldEnv, loopEnv
-                pushRunningContext
-                // oldEnv, loopEnv, context
-                swap
-                // oldEnv, context, loopEnv
-                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-                // oldEnv
-
-                compileLexicalDeclaration(initializer)
-
-                if (!isConst)
-                    perIterationBindings = boundNames
-            }
-            else -> unreachable()
-        }
-
-        createPerIterationEnvironment()
-
-        val start = L[Reeva.objectCount++]
-        val end = L[Reeva.objectCount++]
-
-        +start
-
-        if (condition != null) {
-            compileExpression(condition)
-            operation("getValue", JSValue::class, JSValue::class)
-            operation("toBoolean", JSBoolean::class, JSValue::class)
-            pushFalse
-            jump(JumpCondition.RefEqual, end)
-        }
-
-        invokeExtraMethod(name)
-        // TODO: Check label
-        getfield(Completion::class, "type", Completion.Type::class)
+    private fun MethodAssembly.compileBlock(node: BlockNode) {
+        if (node.statements == null)
+            return
+        loadLexicalEnv()
         dup
-        // type, type
-        getstatic(Completion.Type::class, "Return", Completion.Type::class)
-        // type, type, Type.Return
-        ifStatement(JumpCondition.RefEqual) {
-            // type
-            pop
-            goto(end)
-        }
-        // type
-        getstatic(Completion.Type::class, "Break", Completion.Type::class)
-        ifStatement(JumpCondition.RefEqual) {
-            goto(end)
-        }
+        createDeclarativeEnvRecord()
+        // oldEnv, blockEnv
 
-        if (incrementer != null) {
-            compileExpression(incrementer)
-            operation("getValue", JSValue::class, JSValue::class)
-            pop
-        }
-
-        goto(start)
-        +end
-
-        if (initializer is LexicalDeclarationNode) {
-            // oldEnv
-            pushRunningContext
-            swap
-            // context, oldEnv
-            putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-        }
-    }
-
-    private fun MethodAssembly.compileTryStatementNode(tryStatementNode: TryStatementNode) {
-        /**
-         * When we enter a try block, we want to "intercept" all returns from the function
-         * and investigate whether or not they are because an error was thrown (i.e. a call
-         * to checkError), or if they are an actual return statement. The easiest way to do
-         * this is to make a new function to enclose any return statement. The contents of
-         * the try-block become their own function. Note that the catch block is still
-         * evaluated in the current function, as there is no need to intercept return
-         * statements inside of it
-         */
-
-        val name = "try_block_${Reeva.objectCount++}"
-        addExtraMethodToCurrentClass(name) {
-            compileBlock(tryStatementNode.tryBlock)
-        }
-
-        invokeExtraMethod(name)
-
-        invokestatic(Agent::class, "hasError", Boolean::class)
-        ifStatement(JumpCondition.True) {
-            pushRunningContext
-            dup
-            getfield(ExecutionContext::class, "error", JSErrorObject::class)
-            // context, errorObj
-            swap
-            // errorObj, context
-            aconst_null
-            // errorObj, context, null
-            putfield(ExecutionContext::class, "error", JSErrorObject::class)
-            // errorObj
-
-            // catch block
-//            val catchNode = tryStatementNode.catchNode
-//            if (catchNode.catchParameter == null) {
-//                compileBlock(catchNode.block)
-//            } else {
-//                pushLexicalEnv
-//                pushLexicalEnv
-//                // errorObj, oldEnv, oldEnv
-//                invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
-//                // errorObj, oldEnv, catchEnv
-//                catchNode.catchParameter.boundNames().forEach { name ->
-//                    dup
-//                    ldc(name)
-//                    ldc(false)
-//                    invokevirtual(DeclarativeEnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
-//                }
-//
-//                // errorObj, oldEnv, catchEnv
-//                dup_x1
-//                // errorObj, catchEnv, oldEnv, catchEnv
-//
-//                pushRunningContext
-//                // errorObj, catchEnv, oldEnv, catchEnv, context
-//                swap
-//                // errorObj, catchEnv, oldEnv, context, catchEnv
-//                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-//                // errorObj, catchEnv, oldEnv
-//
-//                dup2_x1
-//                // catchEnv, oldEnv, errorObj, catchEnv, oldEnv
-//                pop
-//                // catchEnv, oldEnv, errorObj, catchEnv
-//                swap
-//                // catchEnv, oldEnv, catchEnv, errorObj
-//                initializeBoundName(catchNode.catchParameter.identifierName)
-//                // catchEnv, oldEnv, catchEnv
-//                pop
-//                // catchEnv, oldEnv
-//
-//                // custom checkError with some additional behavior
-//                invokestatic(Agent::class, "hasError", Boolean::class)
-//                ifStatement(JumpCondition.True) {
-//                    pushRunningContext
-//                    // catchEnv, oldEnv, context
-//                    swap
-//                    // catchEnv, context, oldEnv
-//                    putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-//                    if (needsToPopContext) {
-//                        invokestatic(Agent::class, "popContext", void)
-//                    }
-//                    when (coerceType(methodStates.last().returnType)) {
-//                        coerceType(Completion::class) -> {
-//                            construct(Completion::class, Completion.Type::class, JSValue::class) {
-//                                getstatic(Completion.Type::class, "Return", Completion.Type::class)
-//                                pushRunningContext
-//                                getfield(ExecutionContext::class, "error", JSErrorObject::class)
-//                            }
-//                        }
-//                        else -> {
-//                            pushRunningContext
-//                            getfield(ExecutionContext::class, "error", JSErrorObject::class)
-//                        }
-//                    }
-//                    areturn
-//                }
-//
-//                // catchEnv, oldEnv
-//                compileBlock(catchNode.block)
-//                // catchEnv, oldEnv
-//                pushRunningContext
-//                // catchEnv, oldEnv, context
-//                swap
-//                // catchEnv, context, oldEnv
-//                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-//                // catchEnv
-//                pop
-//            }
-        }
-    }
-
-    private fun MethodAssembly.compileThrowStatement(throwStatementNode: ThrowStatementNode) {
-        compileExpression(throwStatementNode.expr)
-        // expr
-        operation("getValue", JSValue::class, JSValue::class)
-        // value
-//        dup
-        // value, value
-        pushRunningContext
-        // value, value, context
-        swap
-        // value, context, value
-        // TODO: Allow throwing arbitrary values
-        checkcast<JSErrorObject>()
-        // value, context, JSErrorObject
-        putfield(ExecutionContext::class, "error", JSErrorObject::class)
-        // value
-        checkError
-    }
-
-    private fun MethodAssembly.compileReturnStatement(returnStatementNode: ReturnStatementNode) {
-        getstatic(Completion.Type::class, "Return", Completion.Type::class)
-        if (returnStatementNode.node == null) {
-            pushUndefined
-        } else {
-            compileExpression(returnStatementNode.node)
-        }
-
-        // Type, expr
-        new<Completion>()
-        // Type, expr, record
-        dup_x2
-        // record, Type, expr, record
-        dup_x2
-        // record, record, Type, expr, record
-        pop
-        // record, record, Type, expr
-        invokespecial(Completion::class, "<init>", void, Completion.Type::class, JSValue::class)
-
-        areturn
-    }
-
-    private fun MethodAssembly.compileFunctionDeclaration(functionDeclarationNode: FunctionDeclarationNode) {
-        // TODO
-    }
-
-    private fun MethodAssembly.compileBlock(block: BlockNode) {
-        // TODO: Scopes
-        if (block.statements != null) {
-            pushLexicalEnv
-            pushLexicalEnv
-            invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
-            // oldEnv, blockEnv
-            compileBlockDeclarationInstantiation(block.statements)
-            // oldEnv, blockEnv
-            pushRunningContext
-            // oldEnv, blockEnv, context
-            // oldEnv, context, blockEnv
-            swap
-            putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-            compileStatementList(block.statements)
-            pushRunningContext
-            swap
-            putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-        }
-    }
-
-    private fun MethodAssembly.compileBlockDeclarationInstantiation(node: StatementListNode) {
-        node.lexicallyScopedDeclarations().forEach { decl ->
+        // BlockDeclarationInstantiation start
+        node.statements.lexicallyScopedDeclarations().forEach { decl ->
             decl.boundNames().forEach { name ->
                 dup
                 ldc(name)
-                if (decl.isConstantDeclaration()) {
-                    ldc(true)
-                    invokevirtual(EnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
-                } else {
-                    ldc(false)
-                    invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
-                }
+                // oldEnv, blockEnv, blockEnv, name
+                val isConstant = decl.isConstantDeclaration()
+                ldc(isConstant)
+                // oldEnv, blockEnv, blockEnv, name, boolean
+                invokevirtual(
+                    EnvRecord::class,
+                    if (isConstant) "createImmutableBinding" else "createMutableBinding",
+                    void,
+                    String::class,
+                    Boolean::class
+                )
+                // oldEnv, blockEnv
             }
             if (decl is FunctionDeclarationNode) {
-                val compiledFunc = instantiateFunctionObject(decl)
-                dependencies.add(compiledFunc)
-
                 dup
-                val boundNames = decl.boundNames()
-                expect(boundNames.size == 1)
-                ldc(boundNames[0])
-                construct(compiledFunc.name, Realm::class) {
-                    pushRealm
-                }
+                dup
+                instantiateFunctionObject(decl)
+                ldc(decl.boundNames()[0])
+                swap
                 invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
             }
         }
-    }
+        // BlockDeclarationInstantiation end
 
-    private fun MethodAssembly.compileBlockStatement(blockStatement: BlockStatementNode) {
-        compileBlock(blockStatement.block)
-    }
+        // oldEnv, blockEnv
+        loadContext()
+        // oldEnv, blockEnv, context
+        swap
+        // oldEnv, context, blockEnv
+        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+        // oldEnv
 
-    private fun MethodAssembly.compileVariableStatement(variableStatement: VariableStatementNode) {
-        compileVariableDeclarationList(variableStatement.declarations)
-    }
+        stackHeight++
 
-    private fun MethodAssembly.compileVariableDeclarationList(list: VariableDeclarationList) {
-        list.declarations.forEach {
-            compileVariableDeclarationNode(it)
+        val protectedStart = makeLabel()
+        val protectedEnd = makeLabel()
+        val finallyStart = makeLabel()
+        val finallyEnd = makeLabel()
+        val tryCatchEnd = makeLabel()
+
+        placeLabel(protectedStart)
+        verifyConsistentStackHeight {
+            compileStatementList(node.statements)
         }
+        placeLabel(protectedEnd)
+
+        loadContext()
+        swap
+        // context, oldEnv
+        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+        goto(tryCatchEnd)
+
+        placeLabel(finallyStart)
+        swap
+        loadContext()
+        swap
+        // exception, context, oldEnv
+        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+        athrow
+        placeLabel(finallyEnd)
+
+        placeLabel(tryCatchEnd)
+
+        tryCatchBlocks.add(TryCatchBlockNode(
+            protectedStart,
+            protectedEnd,
+            finallyStart,
+            null,
+        ))
+
+//        placeLabel(protectedStart)
+//        getstatic(System::class, "out", PrintStream::class)
+//        ldc("in try")
+//        invokevirtual(PrintStream::class, "println", void, String::class)
+//        placeLabel(protectedEnd)
+//
+//        getstatic(System::class, "out", PrintStream::class)
+//        ldc("in finally")
+//        invokevirtual(PrintStream::class, "println", void, String::class)
+//        goto(tryCatchEnd)
+//
+//        placeLabel(finallyStart)
+//        getstatic(System::class, "out", PrintStream::class)
+//        ldc("in finally")
+//        invokevirtual(PrintStream::class, "println", void, String::class)
+//        athrow
+//        placeLabel(finallyEnd)
+//
+//        placeLabel(tryCatchEnd)
+//
+//        tryCatchBlocks.add(TryCatchBlockNode(
+//            protectedStart,
+//            protectedEnd,
+//            finallyStart,
+//            null,
+//        ))
+
+
+
+
+
+
+
+//        placeLabel(protectedStart)
+//        /* try block start */
+//        compileStatementList(node.statements)
+//        /* try block end */
+//        /* finally block start */
+//        load(oldEnv)
+//        loadContext()
+//        // oldEnv, context
+//        swap
+//        // context, oldEnv
+//        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+//        // <empty>
+//        /* finally block end */
+//        placeLabel(protectedEnd)
+//        goto(tryCatchEnd)
+//        /* finally-with-exception block start */
+//        placeLabel(finallyStart)
+//        // exception
+//        loadContext()
+//        load(oldEnv)
+//        // exception, context, oldEnv
+//        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+//        // exception
+//        athrow
+//        placeLabel(finallyEnd)
+//
+//        /* finally-with-exception block end */
+//        placeLabel(tryCatchEnd)
+//
+//        tryCatchBlocks.add(TryCatchBlockNode(
+//            protectedStart,
+//            protectedEnd,
+//            finallyStart,
+//            null,
+//        ))
+//        tryCatchBlocks.add(TryCatchBlockNode(
+//            finallyStart,
+//            finallyEnd,
+//            finallyStart,
+//            null,
+//        ))
+
+//        tryCatchBuilder {
+//            tryBlock {
+//                compileStatementList(node.statements)
+//            }
+//
+//            finallyBlock {
+//                loadContext()
+//                // oldEnv, context
+//                swap
+//                // context, oldEnv
+//                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+//                // <empty>
+//            }
+//        }
+
+        stackHeight--
     }
 
-    private fun MethodAssembly.compileVariableDeclarationNode(node: VariableDeclarationNode) {
-        if (node.initializer != null) {
-            val id = node.identifier.identifierName
-            ldc(id)
-            aconst_null
-            operation("resolveBinding", JSReference::class, String::class, EnvRecord::class)
-            if (Operations.isAnonymousFunctionDefinition(node)) {
-                TODO()
-            } else {
-                compileInitializer(node.initializer)
-                operation("getValue", JSValue::class, JSValue::class)
+    private fun MethodAssembly.compileVariableStatement(node: VariableStatementNode) {
+        node.declarations.declarations.forEach { decl ->
+            if (decl.initializer == null)
+                return@forEach
+            ldc(decl.identifier.identifierName)
+            operation("resolveBinding", JSValue::class, String::class)
+            stackHeight++
+            compileExpression(decl.initializer.node)
+            getValue
+            // lhs, rhs
+            if (Operations.isAnonymousFunctionDefinition(decl.initializer.node)) {
+                dup
+                construct(PropertyKey::class, String::class) {
+                    ldc(decl.identifier.identifierName)
+                }
+                operation("setFunctionName", void, JSValue::class, PropertyKey::class)
             }
             operation("putValue", void, JSValue::class, JSValue::class)
-        } else {
-            // Do nothing, this is handled by SS
+            stackHeight -= 2
         }
     }
 
-    private fun MethodAssembly.compileInitializer(initializerNode: InitializerNode) {
-        compileExpression(initializerNode.node)
+    private fun MethodAssembly.compileExpressionStatement(node: ExpressionStatementNode) {
+        compileExpression(node.node)
+        getValue
+        pop
+        stackHeight--
     }
 
-    private fun MethodAssembly.compileEmptyStatement(emptyStatement: EmptyStatementNode) {}
+    private fun MethodAssembly.compileIfStatement(node: IfStatementNode) {
+        compileExpression(node.condition)
+        getValue
+        toBoolean
+        stackHeight--
 
-    private fun MethodAssembly.compileIfStatement(ifStatement: IfStatementNode) {
-        compileExpression(ifStatement.condition)
-        operation("getValue", JSValue::class, JSValue::class)
-        operation("toBoolean", JSBoolean::class, JSValue::class)
-        pushTrue
-        if (ifStatement.falseBlock == null) {
-            ifStatement(JumpCondition.RefEqual) {
-                compileStatement(ifStatement.trueBlock)
-            }
-        } else {
-            ifElseStatement(JumpCondition.RefEqual) {
+        if (node.falseBlock != null) {
+            ifElseStatement(JumpCondition.True) {
                 ifBlock {
-                    compileStatement(ifStatement.trueBlock)
+                    compileStatement(node.trueBlock)
                 }
 
                 elseBlock {
-                    compileStatement(ifStatement.falseBlock)
+                    compileStatement(node.falseBlock)
                 }
+            }
+        } else {
+            ifStatement(JumpCondition.True) {
+                compileStatement(node.trueBlock)
             }
         }
     }
 
-    private fun MethodAssembly.compileBreakableStatement(breakableStatement: BreakableStatement) {
-        TODO()
+//    fun MethodAssembly.compileBreakableStatement(node: BreakableStatement) {
+//        labelledEvaluation(node, emptySet())
+//    }
+
+    private fun MethodAssembly.compileIterationStatement(node: IterationStatement, label: String?) {
+        when (node) {
+            is DoWhileStatementNode -> compileDoWhileStatement(node, label)
+            is WhileStatementNode -> compileWhileStatement(node, label)
+            is ForStatementNode -> compileForStatement(node, label)
+//            is ForInNode -> compileForInNode(node, label)
+//            is ForOfNode -> compileForOfNode(node, label)
+        }
     }
 
-    private fun MethodAssembly.compileDoWhileStatement(doWhileStatement: DoWhileStatementNode) {
-        TODO()
+    private fun MethodAssembly.compileDoWhileStatement(node: DoWhileStatementNode, label: String?) {
+        val start = makeLabel()
+        val end = makeLabel()
+        if (label != null)
+            labelNodes.add(LabelNode(stackHeight, label, end, start))
+
+        placeLabel(start)
+        compileStatement(node.body)
+        compileExpression(node.condition)
+        getValue
+        toBoolean
+        stackHeight--
+        ifStatement(JumpCondition.False) {
+            goto(start)
+        }
+
+        placeLabel(end)
     }
 
-    private fun MethodAssembly.compileWhileStatement(whileStatement: WhileStatementNode) {
-        TODO()
+    private fun MethodAssembly.compileWhileStatement(node: WhileStatementNode, label: String?) {
+        val start = makeLabel()
+        val end = makeLabel()
+        if (label != null)
+            labelNodes.add(LabelNode(stackHeight, label, end, start))
+
+        placeLabel(start)
+        compileExpression(node.condition)
+        stackHeight--
+        ifStatement(JumpCondition.True) {
+            compileStatement(node.body)
+            goto(start)
+        }
+
+        placeLabel(end)
     }
 
-    private fun MethodAssembly.compileLabelledStatement(labelledStatement: LabelledStatementNode) {
-        TODO()
+    private fun MethodAssembly.compileForStatement(node: ForStatementNode, label: String?) {
+        when (node.initializer) {
+            is ExpressionNode -> {
+                compileExpression(node.initializer)
+                getValue
+                pop
+                stackHeight--
+
+                forBodyEvaluation(
+                    node.condition,
+                    node.incrementer,
+                    node.body,
+                    emptyList(),
+                    label,
+                )
+            }
+            is VariableStatementNode -> {
+                compileVariableStatement(node.initializer)
+
+                forBodyEvaluation(
+                    node.condition,
+                    node.incrementer,
+                    node.body,
+                    emptyList(),
+                    label,
+                )
+            }
+            is LexicalDeclarationNode -> {
+                val isConst = node.initializer.isConstantDeclaration()
+                val boundNames = node.initializer.boundNames()
+
+                loadLexicalEnv()
+                dup
+                // oldEnv, oldEnv
+                createDeclarativeEnvRecord()
+                // oldEnv, loopEnv
+
+                boundNames.forEach {
+                    dup
+                    ldc(it)
+                    ldc(isConst)
+                    // oldEnv, loopEnv, loopEnv, string, boolean
+                    invokevirtual(EnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
+                    // oldEnv, loopEnv
+                }
+
+                storeLexicalEnv()
+                // oldEnv
+
+                tryCatchBuilder {
+                    tryBlock {
+                        compileLexicalDeclaration(node.initializer)
+                        // oldEnv
+                        forBodyEvaluation(
+                            node.condition,
+                            node.incrementer,
+                            node.body,
+                            if (isConst) emptyList() else boundNames,
+                            label,
+                        )
+                        // oldEnv
+                    }
+
+                    finallyBlock {
+                        // oldEnv
+                        storeLexicalEnv()
+                    }
+                }
+
+                pop
+            }
+        }
     }
 
-    private fun MethodAssembly.compileHoistableDeclaration(hoistableDeclarationNode: HoistableDeclarationNode) {
-        TODO()
+    private fun MethodAssembly.forBodyEvaluation(
+        condition: ExpressionNode?,
+        incrementer: ExpressionNode?,
+        body: StatementNode,
+        perIterationBindings: List<String>,
+        label: String?,
+    ) {
+        val start = makeLabel()
+        val end = makeLabel()
+        if (label != null)
+            labelNodes.add(LabelNode(stackHeight, label, end, start))
+
+        createPerIterationEnvironment(perIterationBindings)
+        placeLabel(start)
+
+        if (condition != null) {
+            compileExpression(condition)
+            getValue
+            toBoolean
+            stackHeight--
+            ifStatement(JumpCondition.False) {
+                goto(end)
+            }
+        }
+
+        compileStatement(body)
+        createPerIterationEnvironment(perIterationBindings)
+
+        if (incrementer != null) {
+            compileExpression(incrementer)
+            getValue
+            pop
+            stackHeight--
+        }
+
+        goto(start)
+
+        placeLabel(end)
     }
 
-    @ECMAImpl(section = "13.3.1.4")
-    private fun MethodAssembly.compileLexicalDeclaration(lexicalDeclarationNode: LexicalDeclarationNode) {
-        lexicalDeclarationNode.bindingList.lexicalBindings.forEach {
-            expect(it.initializer != null)
+    private fun MethodAssembly.createPerIterationEnvironment(perIterationBindings: List<String>) {
+        if (perIterationBindings.isEmpty())
+            return
 
-            ldc(it.identifier.identifierName)
-            aconst_null
-            operation("resolveBinding", JSReference::class, String::class, EnvRecord::class)
-            if (Operations.isAnonymousFunctionDefinition(lexicalDeclarationNode)) {
-                TODO()
+        loadLexicalEnv()
+        dup
+        // lastIterationEnv, lastIterationEnv
+        getfield(EnvRecord::class, "outerEnv", EnvRecord::class)
+        // lastIterationEnv, outer
+        createDeclarativeEnvRecord()
+        // lastIterationEnv, thisIterationEnv
+
+        val thisIterationEnv = astore()
+        val lastIterationEnv = astore()
+
+        tryCatchBuilder {
+            tryBlock {
+                perIterationBindings.forEach {
+                    ldc(it)
+                    ldc(0)
+                    load(thisIterationEnv)
+                    // string, false, env
+                    invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+
+                    load(thisIterationEnv)
+                    ldc(it)
+                    // thisIterationEnv, string
+
+                    ldc(it)
+                    ldc(1)
+                    load(lastIterationEnv)
+                    // thisIterationEnv, string, binding, true, env
+                    invokevirtual(EnvRecord::class, "getBindingValue", JSValue::class, String::class, Boolean::class)
+                    // thisIterationEnv, string, value
+
+                    invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
+                }
+            }
+
+            finallyBlock {
+                load(thisIterationEnv)
+                storeLexicalEnv()
+            }
+        }
+    }
+
+    private fun MethodAssembly.compileLexicalDeclaration(node: LexicalDeclarationNode) {
+        node.bindingList.lexicalBindings.forEach { binding ->
+            ldc(binding.identifier.identifierName)
+            operation("resolveBinding", JSValue::class, String::class)
+            stackHeight++
+            if (binding.initializer == null) {
+                expect(!node.isConst)
+                loadUndefined()
             } else {
-                compileExpression(it.initializer.node)
-                operation("getValue", JSValue::class, JSValue::class)
+                compileExpression(binding.initializer.node)
+                stackHeight--
+                if (Operations.isAnonymousFunctionDefinition(binding.initializer.node)) {
+                    dup
+                    checkcast<JSFunction>()
+                    ldc(binding.identifier.identifierName)
+                    operation("setFunctionName", void, JSFunction::class, String::class)
+                }
+                getValue
             }
             operation("initializeReferencedBinding", void, JSReference::class, JSValue::class)
+            stackHeight--
         }
     }
 
-    private fun MethodAssembly.compileBindingList(bindingList: BindingListNode) {
+    private fun MethodAssembly.compileFunctionDeclaration(node: StatementNode) {
+        // nop
+    }
+
+    private fun MethodAssembly.compileClassDeclaration(node: StatementNode) {
         TODO()
     }
 
-    private fun MethodAssembly.compileLexicalBinding(lexicalBindingNode: LexicalBindingNode) {
+    private fun MethodAssembly.compileReturnStatement(node: StatementNode) {
         TODO()
     }
 
-    private fun MethodAssembly.compileExpressionStatement(expressionStatementNode: ExpressionStatementNode) {
-        compileExpression(expressionStatementNode.node)
-        operation("getValue", JSValue::class, JSValue::class)
-        pop
+    private fun MethodAssembly.compileThrowStatement(node: ThrowStatementNode) {
+        construct(ThrowException::class, JSValue::class) {
+            compileExpression(node.expr)
+            getValue
+        }
+        athrow
     }
 
-    private fun MethodAssembly.compileExpression(expressionNode: ExpressionNode) {
-        when (expressionNode) {
+    private fun MethodAssembly.compileTryStatement(node: TryStatementNode) {
+        tryCatchBuilder {
+            tryBlock {
+                compileBlock(node.tryBlock)
+            }
+
+            if (node.catchNode != null) {
+                catchBlock(ThrowException::class) {
+                    if (node.catchNode.catchParameter == null) {
+                        compileBlock(node.catchNode.block)
+                    } else {
+                        loadLexicalEnv()
+                        dup
+                        createDeclarativeEnvRecord()
+
+                        val parameter = node.catchNode.catchParameter
+                        parameter.boundNames().forEach { name ->
+                            dup
+                            ldc(name)
+                            ldc(0)
+                            invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+                        }
+
+                        loadContext()
+                        swap
+                        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+
+                        tryCatchBuilder {
+                            tryBlock {
+                                loadLexicalEnv()
+                                ldc(parameter.identifierName)
+                                TODO("How do I get the parameter of a catch block?")
+                                invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
+                                compileBlock(node.catchNode.block)
+                            }
+
+                            finallyBlock {
+                                loadContext()
+                                swap
+                                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (node.finallyBlock != null)
+                compileBlock(node.finallyBlock)
+        }
+    }
+
+    private fun MethodAssembly.compileBreakStatement(node: BreakStatementNode) {
+        var labelNode = labelNodes.removeLast()
+        if (node.label != null) {
+            while (labelNode.labelName != node.label.identifierName)
+                labelNode = labelNodes.removeLast()
+            expect(labelNode.breakLabel != null)
+        } else {
+            while (labelNode.breakLabel == null)
+                labelNode = labelNodes.removeLast()
+        }
+
+        repeat(stackHeight - labelNode.stackHeight) {
+            pop
+            stackHeight--
+        }
+
+        goto(labelNode.breakLabel!!)
+    }
+
+    private fun MethodAssembly.compileLabelledStatement(node: LabelledStatementNode) {
+        val label = node.label.identifierName
+        when (node.item) {
+            is DoWhileStatementNode -> compileDoWhileStatement(node.item, label)
+            is WhileStatementNode -> compileWhileStatement(node.item, label)
+            is ForStatementNode -> compileForStatement(node.item, label)
+            else -> compileStatement(node.item)
+        }
+    }
+
+    private fun MethodAssembly.compileImportDeclaration(node: StatementNode) {
+        TODO()
+    }
+
+    private fun MethodAssembly.compileExportDeclaration(node: StatementNode) {
+        TODO()
+    }
+
+    private fun MethodAssembly.compileExpression(node: ExpressionNode) {
+        when (node) {
             ThisNode -> compileThis()
-            is CommaExpressionNode -> compileCommaExpressionNode(expressionNode)
-            is IdentifierReferenceNode -> compileIdentifierReference(expressionNode)
-            is LiteralNode -> compileLiteral(expressionNode)
-            is NewExpressionNode -> compileNewExpression(expressionNode)
-            is CallExpressionNode -> compileCallExpression(expressionNode)
-            is ObjectLiteralNode -> compileObjectLiteral(expressionNode)
-            is ArrayLiteralNode -> compileArrayLiteral(expressionNode)
-            is MemberExpressionNode -> compileMemberExpression(expressionNode)
-            is OptionalExpressionNode -> compileOptionalExpression(expressionNode)
-            is AssignmentExpressionNode -> compileAssignmentExpression(expressionNode)
-            is ConditionalExpressionNode -> compileConditionalExpression(expressionNode)
-            is CoalesceExpressionNode -> compileCoalesceExpression(expressionNode)
-            is LogicalORExpressionNode -> compileLogicalORExpression(expressionNode)
-            is LogicalANDExpressionNode -> compileLogicalANDExpression(expressionNode)
-            is BitwiseORExpressionNode -> compileBitwiseORExpression(expressionNode)
-            is BitwiseXORExpressionNode -> compileBitwiseXORExpression(expressionNode)
-            is BitwiseANDExpressionNode -> compileBitwiseANDExpression(expressionNode)
-            is EqualityExpressionNode -> compileEqualityExpression(expressionNode)
-            is RelationalExpressionNode -> compileRelationalExpression(expressionNode)
-            is ShiftExpressionNode -> compileShiftExpression(expressionNode)
-            is AdditiveExpressionNode -> compileAdditiveExpression(expressionNode)
-            is MultiplicativeExpressionNode -> compileMultiplicationExpression(expressionNode)
-            is ExponentiationExpressionNode -> compileExponentiationExpression(expressionNode)
-            is UnaryExpressionNode -> compileUnaryExpression(expressionNode)
-            is UpdateExpressionNode -> compileUpdateExpression(expressionNode)
+            is CommaExpressionNode -> compileCommaExpressionNode(node)
+            is IdentifierReferenceNode -> compileIdentifierReference(node)
+            is FunctionExpressionNode -> compileFunctionExpression(node)
+            is ArrowFunctionNode -> compileArrowFunction(node)
+            is LiteralNode -> compileLiteral(node)
+            is NewExpressionNode -> compileNewExpression(node)
+            is CallExpressionNode -> compileCallExpression(node)
+            is ObjectLiteralNode -> compileObjectLiteral(node)
+            is ArrayLiteralNode -> compileArrayLiteral(node)
+            is MemberExpressionNode -> compileMemberExpression(node)
+            is OptionalExpressionNode -> compileOptionalExpression(node)
+            is AssignmentExpressionNode -> compileAssignmentExpression(node)
+            is ConditionalExpressionNode -> compileConditionalExpression(node)
+            is CoalesceExpressionNode -> compileCoalesceExpression(node)
+            is LogicalORExpressionNode -> compileLogicalORExpression(node)
+            is LogicalANDExpressionNode -> compileLogicalANDExpression(node)
+            is BitwiseORExpressionNode -> compileBitwiseORExpression(node)
+            is BitwiseXORExpressionNode -> compileBitwiseXORExpression(node)
+            is BitwiseANDExpressionNode -> compileBitwiseANDExpression(node)
+            is EqualityExpressionNode -> compileEqualityExpression(node)
+            is RelationalExpressionNode -> compileRelationalExpression(node)
+            is ShiftExpressionNode -> compileShiftExpression(node)
+            is AdditiveExpressionNode -> compileAdditiveExpression(node)
+            is MultiplicativeExpressionNode -> compileMultiplicationExpression(node)
+            is ExponentiationExpressionNode -> compileExponentiationExpression(node)
+            is UnaryExpressionNode -> compileUnaryExpression(node)
+            is UpdateExpressionNode -> compileUpdateExpression(node)
+            is ParenthesizedExpressionNode -> compileExpression(node.target)
+            is ForBindingNode -> compileForBinding(node)
+            is TemplateLiteralNode -> compileTemplateLiteral(node)
+            is ClassExpressionNode -> compileClassExpression(node)
+            is SuperPropertyNode -> compileSuperProperty(node)
+            is SuperCallNode -> compileSuperCall(node)
             else -> unreachable()
         }
     }
 
-    private fun MethodAssembly.compileObjectLiteral(objectLiteralNode: ObjectLiteralNode) {
-        pushRealm
+    private fun MethodAssembly.compileThis() {
+        operation("resolveThisBinding", JSValue::class)
+        stackHeight++
+    }
+
+    private fun MethodAssembly.compileCommaExpressionNode(node: CommaExpressionNode) {
+        node.expressions.forEachIndexed { index, expression ->
+            compileExpression(expression)
+            if (index != node.expressions.lastIndex) {
+                pop
+                stackHeight--
+            }
+        }
+    }
+
+    private fun MethodAssembly.compileIdentifierReference(node: IdentifierReferenceNode) {
+        ldc(node.identifierName)
+        operation("resolveBinding", JSValue::class, String::class)
+        stackHeight++
+    }
+
+    private fun MethodAssembly.compileFunctionExpression(node: FunctionExpressionNode) {
+        if (node.identifier == null) {
+            loadRealm()
+            getfield(Realm::class, "functionProto", JSFunctionProto::class)
+            loadLexicalEnv()
+            val sourceText = "TODO"
+
+            ordinaryFunctionCreate(
+                sourceText,
+                node.parameters,
+                node.body,
+                JSFunction.ThisMode.NonLexical,
+            )
+
+            dup
+            construct(PropertyKey::class, String::class) {
+                ldc("")
+            }
+            operation("setFunctionName", JSFunction::class, PropertyKey::class)
+
+            dup
+            operation("makeConstructor", void, JSFunction::class)
+        } else {
+            loadLexicalEnv()
+            createDeclarativeEnvRecord()
+            dup
+            // funcEnv, funcEnv
+            ldc(node.identifier.identifierName)
+            ldc(0)
+            // funcEnv, funcEnv, string, boolean
+            invokevirtual(EnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
+            // funcEnv
+
+            dup
+            // funcEnv, funcEnv
+
+            loadRealm()
+            getfield(Realm::class, "functionProto", JSFunctionProto::class)
+            val sourceText = "TODO"
+            // funcEnv, funcEnv, proto
+
+            ordinaryFunctionCreate(
+                sourceText,
+                node.parameters,
+                node.body,
+                JSFunction.ThisMode.NonLexical,
+            )
+
+            // funcEnv, closure
+
+            dup
+            construct(PropertyKey::class, String::class) {
+                ldc(node.name)
+            }
+            operation("setFunctionName", JSFunction::class, PropertyKey::class)
+
+            // funcEnv, closure
+
+            dup
+            operation("makeConstructor", void, JSFunction::class)
+
+            // funcEnv, closure
+            dup_x1
+            // closure, funcEnv, closure
+            ldc(node.identifier.identifierName)
+            swap
+
+            // closure, funcEnv, name, closure
+            invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSFunction::class)
+        }
+
+        stackHeight++
+    }
+
+    private fun MethodAssembly.compileArrowFunction(node: ArrowFunctionNode) {
+        loadLexicalEnv()
+        val sourceText = "TODO"
+        val parameters = node.parameters.let {
+            if (it is BindingIdentifierNode) {
+                FormalParametersNode(
+                    FormalParameterListNode(
+                        listOf(FormalParameterNode(BindingElementNode(SingleNameBindingNode(it, null))))
+                    ),
+                    null
+                )
+            } else it as FormalParametersNode
+        }
+        val body = node.body.let {
+            if (it is ExpressionNode) {
+                FunctionStatementList(StatementListNode(listOf(
+                    ReturnStatementNode(it)
+                )))
+            } else it as FunctionStatementList
+        }
+
+        loadRealm()
+        getfield(Realm::class, "functionProto", JSFunctionProto::class)
+
+        ordinaryFunctionCreate(
+            sourceText,
+            parameters,
+            body,
+            JSFunction.ThisMode.Lexical,
+        )
+
+        dup
+        construct(PropertyKey::class, String::class) {
+            ldc(node.name)
+        }
+        operation("setFunctionName", void, JSFunction::class, PropertyKey::class)
+
+        stackHeight++
+    }
+
+    private fun MethodAssembly.compileLiteral(node: LiteralNode) {
+        when (node) {
+            is NullNode -> loadNull()
+            is BooleanNode -> (if (node.value) JSTrue::class else JSFalse::class).let {
+                getstatic(it, "INSTANCE", it)
+            }
+            is NumericLiteralNode -> construct(JSNumber::class, Double::class) {
+                ldc(node.value)
+            }
+            is StringLiteralNode -> construct(JSString::class, String::class) {
+                ldc(node.value)
+            }
+            else -> unreachable()
+        }
+        stackHeight++
+    }
+
+    private fun MethodAssembly.compileNewExpression(node: NewExpressionNode) {
+        compileExpression(node.target)
+        getValue
+        dup
+        operation("isConstructor", Boolean::class, JSValue::class)
+        ifStatement(JumpCondition.False) {
+            construct(Errors.NotACtor::class, String::class) {
+                operation("toPrintableString", String::class, JSValue::class)
+            }
+            invokevirtual(Errors::class, "throwTypeError", void)
+            loadUndefined()
+            areturn
+        }
+        if (node.arguments == null) {
+            construct(ArrayList::class)
+        } else {
+            argumentsListEvaluation(node.arguments)
+        }
+        operation("construct", JSValue::class, JSValue::class, List::class)
+        stackHeight++
+    }
+
+    private fun MethodAssembly.argumentsListEvaluation(node: ArgumentsNode) {
+        construct(ArrayList::class)
+        stackHeight++
+
+        val entries = node.arguments
+        if (entries.isEmpty())
+            return
+
+        entries.forEach {
+            dup
+
+            if (it.isSpread) {
+                // list
+
+                compileExpression(it.expression)
+                getValue
+                // list, value
+                operation("getIterator", Operations.IteratorRecord::class, JSValue::class)
+                // list, record
+
+                val whileStart = makeLabel()
+                val whileEnd = makeLabel()
+
+                placeLabel(whileStart)
+
+                // list, record
+                operation("iteratorStep", JSValue::class, Operations.IteratorRecord::class)
+                // list, next
+                dup
+                // list, next, next
+                loadFalse()
+                // list, next, next, false
+                ifElseStatement(JumpCondition.RefEqual) {
+                    ifBlock {
+                        // list, next
+                        pop2
+                        goto(whileEnd)
+                    }
+
+                    elseBlock {
+                        // list, next
+                        operation("iteratorValue", JSValue::class, JSValue::class)
+                        // list, nextArg
+                        invokevirtual(List::class, "add", void, Object::class)
+                    }
+                }
+
+                placeLabel(whileEnd)
+            } else {
+                compileExpression(it.expression)
+                getValue
+                invokevirtual(List::class, "add", void, Object::class)
+                stackHeight--
+            }
+        }
+
+    }
+
+    private fun MethodAssembly.compileCallExpression(node: CallExpressionNode) {
+        compileExpression(node.target)
+        dup
+        getValue
+        swap
+        argumentsListEvaluation(node.arguments)
+        ldc(0)
+        operation("evaluateCall", JSValue::class, JSValue::class, JSValue::class, List::class, Boolean::class)
+        stackHeight--
+
+        // TODO: The following code checks for a direct eval invocation, but we should
+        // be able to do that statically
+//        compileExpression(node.target)
+//        dup
+//        val ref = astore()
+//        getValue
+//        val func = astore()
+//        argumentsListEvaluation(node.arguments)
+//        val args = astore()
+//
+//        val end = makeLabel()
+//
+//        load(ref)
+//        instanceof<JSReference>()
+//        ifStatement(JumpCondition.False) {
+//            goto(end)
+//        }
+//
+//        load(ref)
+//        checkcast<JSReference>()
+//        invokevirtual(JSReference::class, "isPropertyReference", Boolean::class)
+//        ifStatement(JumpCondition.True) {
+//            goto(end)
+//        }
+//
+//        load(ref)
+//        checkcast<JSReference>()
+//        getfield(JSReference::class, "name", PropertyKey::class)
+//        dup
+//        invokevirtual(PropertyKey::class, "isString", Boolean::class)
+//        ifStatement(JumpCondition.False) {
+//            goto(end)
+//        }
+//
+//
+//        invokevirtual(PropertyKey::class, "getAsString", String::class)
+//        ldc("eval")
+//        ifStatement(JumpCondition.Equal) {
+//            goto(end)
+//        }
+//
+//        load(func)
+//        loadRealm()
+//        invokevirtual(Realm::class, "getGlobalObject", JSObject::class)
+//        ldc("eval")
+//        invokevirtual(JSObject::class, "get", JSValue::class, String::class)
+//        invokevirtual(JSValue::class, "sameValue", Boolean::class, JSValue::class)
+//        ifStatement(JumpCondition.False) {
+//            goto(end)
+//        }
+//
+//        val pastEnd = makeLabel()
+//
+//        load(args)
+//        invokevirtual(List::class, "isEmpty", Boolean::class)
+//        ifElseStatement(JumpCondition.True) {
+//            ifBlock {
+//                loadUndefined()
+//                goto(pastEnd)
+//            }
+//
+//            elseBlock {
+//                load(args)
+//                ldc(0)
+//                invokevirtual(List::class, "get", JSValue::class, Int::class)
+//                loadRealm()
+//                operation("isStrict", Boolean::class)
+//                ldc(1)
+//                invokestatic(JSGlobalObject::class, "performEval", JSValue::class, JSValue::class, Realm::class, Boolean::class, Boolean::class)
+//
+//                goto(pastEnd)
+//            }
+//        }
+//
+//        placeLabel(end)
+//        load(func)
+//        load(ref)
+//        load(args)
+//        ldc(0)
+//        operation("evaluateCall", JSValue::class, JSValue::class, JSValue::class, List::class, Boolean::class)
+//
+//        placeLabel(pastEnd)
+//
+//        stackHeight++
+    }
+
+    private fun MethodAssembly.compileObjectLiteral(node: ObjectLiteralNode) {
+        loadRealm()
         invokestatic(JSObject::class, "create", JSObject::class, Realm::class)
 
-        if (objectLiteralNode.list != null) {
-            objectLiteralNode.list.properties.forEach { property ->
-                dup
-                compilePropertyDefinition(property, true)
-            }
-        }
-    }
+        stackHeight++
 
-    @ECMAImpl(section = "12.2.6.8")
-    @ECMAImpl(section = "14.3.8")
-    private fun MethodAssembly.compilePropertyDefinition(property: PropertyDefinitionNode, enumerable: Boolean) {
-        when (property.type) {
-            PropertyDefinitionNode.Type.KeyValue -> {
-                expect(property.first is PropertyNameNode)
-                expect(property.second != null)
-                compilePropertyName(property.first)
-                if (Operations.isAnonymousFunctionDefinition(property.second)) {
-                    TODO()
-                } else {
-                    compileExpression(property.second)
-                    operation("getValue", JSValue::class, JSValue::class)
+        if (node.list == null)
+            return
+
+        node.list.properties.forEach { property ->
+            dup
+            when (property.type) {
+                PropertyDefinitionNode.Type.KeyValue -> {
+                    evaluatePropertyName(property.first)
+                    compileExpression(property.second!!)
+                    getValue
+                    operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
+                    pop
+                    stackHeight--
                 }
-                ecmaAssert(enumerable)
-                operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
-                pop
+                PropertyDefinitionNode.Type.Shorthand -> {
+                    expect(property.first is IdentifierReferenceNode)
+                    construct(JSString::class, String::class) {
+                        ldc(property.first.identifierName)
+                    }
+                    compileIdentifierReference(property.first)
+                    getValue
+                    operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
+                    pop
+                    stackHeight--
+                }
+                PropertyDefinitionNode.Type.Method -> {
+                    val method = property.first as MethodDefinitionNode
+
+                    propertyDefinitionEvaluation(method, true)
+                }
+                PropertyDefinitionNode.Type.Spread -> TODO()
             }
-            PropertyDefinitionNode.Type.Shorthand -> {
-                expect(property.first is IdentifierReferenceNode)
-                ldc(property.first.identifierName)
-                wrapObjectInValue
-                compileExpression(property.first)
-                operation("getValue", JSValue::class, JSValue::class)
-                expect(enumerable)
-                operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
-                pop
-            }
-            PropertyDefinitionNode.Type.Method -> TODO()
-            PropertyDefinitionNode.Type.Spread -> TODO()
         }
     }
 
-    private fun MethodAssembly.compilePropertyName(propertyNameNode: PropertyNameNode) {
-        val expr = propertyNameNode.expr
+    // Takes obj (JSObject) and isStrict (Boolean) on the stack. Does not push a result
+    private fun MethodAssembly.propertyDefinitionEvaluation(
+        methodDefinitionNode: MethodDefinitionNode,
+        enumerable: Boolean,
+    ) {
+        // obj, isStrict
+        val enumAttr = if (enumerable) Descriptor.ENUMERABLE else 0
 
-        when {
-            propertyNameNode.isComputed -> compileExpression(expr)
-            expr is IdentifierNode -> {
-                ldc(expr.identifierName)
-                wrapObjectInValue
+        when (methodDefinitionNode.type) {
+            MethodDefinitionNode.Type.Normal -> {
+                defineMethod(methodDefinitionNode)
+                // obj, isStrict, DefinedMethod
+                swap
+                ifStatement(JumpCondition.True) {
+                    // obj, DefinedMethod
+                    dup
+                    getfield(Interpreter.DefinedMethod::class, "getClosure", JSFunction::class)
+                    invokevirtual(JSFunction::class, "setIsStrict", void, Boolean::class)
+                }
+                // obj, DefinedMethod
+                dup
+                getfield(Interpreter.DefinedMethod::class, "getClosure", JSFunction::class)
+                // obj, DefinedMethod, closure
+                swap
+                // obj, closure, DefinedMethod
+                dup_x1
+                // obj, DefinedMethod, closure, DefinedMethod
+                getfield(Interpreter.DefinedMethod::class, "getKey", PropertyKey::class)
+                // obj, DefinedMethod, closure, PropertyKey
+                operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class)
+                pop
+                // obj, DefinedMethod
+                dup
+                // obj, DefinedMethod, DefinedMethod
+                getfield(Interpreter.DefinedMethod::class, "getKey", PropertyKey::class)
+                // obj, DefinedMethod, key
+                swap
+                // obj, key, DefinedMethod
+                getfield(Interpreter.DefinedMethod::class, "getClosure", JSFunction::class)
+                // obj, key, closure
+
+                new<Descriptor>()
+                // obj, key, closure, Descriptor
+                dup_x1
+                // obj, key, Descriptor, closure, Descriptor
+                swap
+                // obj, key, Descriptor, Descriptor, closure
+                ldc(Descriptor.CONFIGURABLE or enumAttr or Descriptor.WRITABLE)
+                // obj, key, Descriptor, Descriptor, closure, attrs
+                invokespecial(Descriptor::class, "<init>", void, JSValue::class, Int::class)
+                // obj, key, Descriptor
+                operation("definePropertyOrThrow", Boolean::class, JSValue::class, PropertyKey::class, Descriptor::class)
+                pop
             }
-            expr is StringLiteralNode -> {
-                ldc(expr.value)
-                wrapDoubleInValue
-            }
-            expr is NumericLiteralNode -> {
-                ldc(expr.value)
-                wrapDoubleInValue
-            }
-            else -> unreachable()
+            MethodDefinitionNode.Type.Getter -> TODO()
+            MethodDefinitionNode.Type.Setter -> TODO()
+            MethodDefinitionNode.Type.Generator -> TODO()
+            MethodDefinitionNode.Type.Async -> TODO()
+            MethodDefinitionNode.Type.AsyncGenerator -> TODO()
         }
     }
 
-    private fun MethodAssembly.compileArrayLiteral(arrayLiteralNode: ArrayLiteralNode) {
-        ldc(arrayLiteralNode.elements.size)
-        operation("arrayCreate", JSObject::class, Int::class)
-        arrayLiteralNode.elements.forEachIndexed { index, element ->
+    // Takes obj (JSObject) and functionPrototype (JSObject) on the stack, pushes DefinedMethod
+    private fun MethodAssembly.defineMethod(method: MethodDefinitionNode) {
+        expect(method.type == MethodDefinitionNode.Type.Normal)
+
+        loadLexicalEnv()
+        ordinaryFunctionCreate(
+            "TODO",
+            method.parameters,
+            method.body,
+            JSFunction.ThisMode.NonLexical,
+        )
+        // obj, closure
+        dup_x1
+        // closure, obj, functionPrototype
+        operation("makeMethod", JSValue::class, JSFunction::class, JSObject::class)
+        pop
+
+        // closure
+        new<Interpreter.DefinedMethod>()
+        // closure, DefinedMethod
+        dup_x1
+        swap
+        // DefinedMethod, DefinedMethod, closure
+
+        evaluatePropertyName(method.identifier)
+        swap
+
+        // DefinedMethod, DefinedMethod, key, closure
+        invokespecial(Interpreter.DefinedMethod::class, "<init>", void, PropertyKey::class, JSFunction::class)
+        // DefinedMethod
+
+        stackHeight -= 2
+    }
+
+    private fun MethodAssembly.evaluatePropertyName(node: ASTNode) {
+        if (node is PropertyNameNode) {
+            if (node.isComputed) {
+                compileExpression(node.expr)
+                getValue
+                operation("toPropertyKey", PropertyKey::class, JSValue::class)
+                invokevirtual(PropertyKey::class, "getAsValue", JSValue::class)
+            } else when (val expr = node.expr) {
+                is IdentifierNode -> construct(JSString::class, String::class) {
+                    ldc(expr.identifierName)
+                }
+                is StringLiteralNode, is NumericLiteralNode -> compileExpression(expr)
+                else -> unreachable()
+            }
+        } else TODO()
+    }
+
+    private fun MethodAssembly.compileArrayLiteral(node: ArrayLiteralNode) {
+        ldc(node.elements.size)
+        operation("arrayCreate", JSObject::class)
+        stackHeight++
+        if (node.elements.isEmpty())
+            return
+
+        node.elements.forEachIndexed { index, element ->
             dup
             construct(JSNumber::class, Int::class) {
                 ldc(index)
             }
-            if (element.expression == null) {
-                // TODO: Spec doesn't specify this step, is it alright to do this?
-                pushEmpty
-            } else {
-                compileExpression(element.expression)
-                operation("getValue", JSValue::class, JSValue::class)
-            }
-            operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
-            pop
-        }
-    }
-
-    private fun MethodAssembly.compileCommaExpressionNode(commaExpressionNode: CommaExpressionNode) {
-        commaExpressionNode.expressions.forEachIndexed { index, node ->
-            compileExpression(node)
-            if (index != commaExpressionNode.expressions.lastIndex)
-                pop
-        }
-    }
-
-    private fun MethodAssembly.compileBindingIdentifier(bindingIdentifierNode: BindingIdentifierNode) {
-        TODO()
-    }
-
-    private fun MethodAssembly.compileLabelIdentifier(labelIdentifierNode: LabelIdentifierNode) {
-        TODO()
-    }
-
-    private fun MethodAssembly.compileIdentifier(identifierNode: IdentifierNode) {
-        TODO()
-    }
-
-    private fun MethodAssembly.compileParenthesizedExpression(parenthesizedExpressionNode: ParenthesizedExpressionNode) {
-        compileExpression(parenthesizedExpressionNode.target)
-    }
-
-    private fun MethodAssembly.compileLiteral(literalNode: LiteralNode) {
-        when (literalNode) {
-            is NullNode -> pushNull
-            is TrueNode -> pushTrue
-            is FalseNode -> pushFalse
-            is StringLiteralNode -> {
-                construct(JSString::class, String::class) {
-                    ldc(literalNode.value)
+            when (element.type) {
+                ArrayElementNode.Type.Normal -> {
+                    compileExpression(element.expression!!)
+                    getValue
+                    operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
+                    pop
+                    stackHeight--
                 }
+                ArrayElementNode.Type.Spread -> TODO()
+                ArrayElementNode.Type.Elision -> { }
             }
-            is NumericLiteralNode -> {
-                construct(JSNumber::class, Double::class) {
-                    ldc(literalNode.value)
-                }
-            }
-            else -> unreachable()
         }
     }
 
-    @ECMAImpl(section = "12.3.2.1")
-    private fun MethodAssembly.compileMemberExpression(memberExpressionNode: MemberExpressionNode) {
-        compileExpression(memberExpressionNode.lhs)
-        operation("getValue", JSValue::class, JSValue::class)
-        // TODO: Strict mode
-        ldc(false)
-        when (memberExpressionNode.type) {
-            MemberExpressionNode.Type.NonComputed -> {
-                expect(memberExpressionNode.rhs is IdentifierNode)
-                ldc(memberExpressionNode.rhs.identifierName)
-                swap
-                operation(
-                    "evaluatePropertyAccessWithIdentifierKey",
-                    JSValue::class,
-                    JSValue::class,
-                    String::class,
-                    Boolean::class
-                )
-            }
+    private fun MethodAssembly.compileMemberExpression(node: MemberExpressionNode) {
+        when (node.type) {
             MemberExpressionNode.Type.Computed -> {
-                compileExpression(memberExpressionNode.rhs)
-                swap
-                operation(
-                    "evaluatePropertyAccessWithExpressionKey",
-                    JSValue::class,
-                    JSValue::class,
-                    JSValue::class,
-                    Boolean::class
-                )
+                compileExpression(node.lhs)
+                getValue
+                // TODO: Strict mode
+                compileExpression(node.rhs)
+                getValue
+                operation("isStrict", Boolean::class)
+                operation("evaluatePropertyAccessWithExpressionKey", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
+                stackHeight--
             }
-            else -> TODO()
-        }
-
-    }
-
-    private fun MethodAssembly.compileSuperProperty(superPropertyNode: SuperPropertyNode) {
-        TODO()
-    }
-
-    private fun MethodAssembly.compileMetaProperty(metaPropertyNode: MetaPropertyNode) {
-        TODO()
-    }
-
-    private fun MethodAssembly.compileNewTarget() {
-        operation("getNewTarget", JSValue::class)
-    }
-
-    private fun MethodAssembly.compileImportMeta() {
-        TODO()
-    }
-
-    private fun MethodAssembly.compileNewExpression(newExpressionNode: NewExpressionNode) {
-        compileExpression(newExpressionNode.target)
-        val arguments = newExpressionNode.arguments
-        if (arguments == null) {
-            iconst_0
-            anewarray<JSValue>()
-        } else {
-            compileArguments(arguments)
-        }
-        operation("evaluateNew", JSValue::class, JSValue::class, Array<JSValue>::class)
-    }
-
-    private fun MethodAssembly.compileCallExpression(callExpressionNode: CallExpressionNode) {
-        compileExpression(callExpressionNode.target)
-        dup
-        operation("getValue", JSValue::class, JSValue::class)
-        swap
-        compileArguments(callExpressionNode.arguments)
-        // TODO: Tail calls
-        ldc(false)
-        operation("evaluateCall", JSValue::class, JSValue::class, JSValue::class, List::class, Boolean::class)
-    }
-
-    private fun MethodAssembly.compileArguments(argumentsNode: ArgumentsNode) {
-        val arguments = argumentsNode.arguments
-        construct(java.util.ArrayList::class)
-        arguments.forEachIndexed { index, argument ->
-            if (argument.isSpread)
-                TODO()
-            dup
-            compileExpression(argument.expression)
-            operation("getValue", JSValue::class, JSValue::class)
-            invokevirtual(ArrayList::class, "add", Boolean::class, Object::class)
-            pop
+            MemberExpressionNode.Type.NonComputed -> {
+                compileExpression(node.lhs)
+                getValue
+                // TODO: Strict mode
+                ldc((node.rhs as IdentifierNode).identifierName)
+                operation("isStrict", Boolean::class)
+                operation("evaluatePropertyAccessWithIdentifierKey", JSValue::class, JSValue::class, String::class, Boolean::class)
+            }
+            MemberExpressionNode.Type.Tagged -> TODO()
         }
     }
 
-    private fun MethodAssembly.compileOptionalExpression(optionalExpressionNode: OptionalExpressionNode) {
+    private fun MethodAssembly.compileOptionalExpression(node: ExpressionNode) {
         TODO()
     }
 
-    private fun MethodAssembly.compileSuperCall(superCallNode: SuperCallNode) {
-        TODO()
-    }
+    private fun MethodAssembly.compileAssignmentExpression(node: AssignmentExpressionNode) {
+        val (lhs, rhs) = node.let { it.lhs to it.rhs }
 
-    private fun MethodAssembly.compileImportCall(importCallNode: ImportCallNode) {
-        TODO()
-    }
+        if (lhs.let { it is ObjectLiteralNode && it is ArrayLiteralNode })
+            TODO()
 
-    private fun MethodAssembly.compileUpdateExpression(updateExpressionNode: UpdateExpressionNode) {
-        compileExpression(updateExpressionNode.target)
-        // lhs
-        dup
-        // lhs, lhs
-        operation("getValue", JSValue::class, JSValue::class)
-        operation("toNumeric", JSValue::class, JSValue::class)
-        // lhs, oldValue
-
-        // TODO: Don't do this, it throws a Java exception
-        dup
-        operation("checkNotBigInt", void, JSValue::class)
-
-        // lhs, oldValue
-        dup_x1
-        // oldValue, lhs, oldValue
-        construct(JSNumber::class, Double::class) {
-            ldc(1.0)
-        }
-        // oldValue, lhs, oldValue, 1.0
-        if (updateExpressionNode.isIncrement) {
-            operation("numericAdd", JSValue::class, JSValue::class, JSValue::class)
-        } else {
-            operation("numericSubtract", JSValue::class, JSValue::class, JSValue::class)
-        }
-        // oldValue, lhs, newValue
-        if (updateExpressionNode.isPostfix) {
-            operation("putValue", void, JSValue::class, JSValue::class)
-            // oldValue
-        } else {
-            dup_x1
-            // oldValue, newValue, lhs, newValue
-            operation("putValue", void, JSValue::class, JSValue::class)
-            // oldValue, newValue
-            swap
-            // newValue, oldValue
-            pop
-            // newValue
-        }
-    }
-
-    private fun MethodAssembly.compileUnaryExpression(unaryExpressionNode: UnaryExpressionNode) {
-        compileExpression(unaryExpressionNode.node)
-        when (unaryExpressionNode.op) {
-            UnaryExpressionNode.Operator.Delete -> {
-                operation("deleteOperator", JSValue::class, JSValue::class)
-            }
-            UnaryExpressionNode.Operator.Void -> {
-                operation("getValue", JSValue::class, JSValue::class)
-                pop
-                pushUndefined
-            }
-            UnaryExpressionNode.Operator.Typeof -> {
-                operation("typeofOperator", JSValue::class, JSValue::class)
-            }
-            UnaryExpressionNode.Operator.Plus -> {
-                operation("getValue", JSValue::class, JSValue::class)
-                operation("toNumber", JSValue::class, JSValue::class)
-            }
-            UnaryExpressionNode.Operator.Minus -> {
-                operation("getValue", JSValue::class, JSValue::class)
-                operation("toNumeric", JSValue::class, JSValue::class)
-                dup
-                // TODO
-                operation("checkNotBigInt", void, JSValue::class)
-                operation("numericUnaryMinus", JSValue::class, JSValue::class)
-            }
-            UnaryExpressionNode.Operator.BitwiseNot -> {
-                operation("getValue", JSValue::class, JSValue::class)
-                operation("toNumeric", JSValue::class, JSValue::class)
-                dup
-                // TODO
-                operation("checkNotBigInt", void, JSValue::class)
-                operation("numericBitwiseNOT", JSValue::class, JSValue::class)
-            }
-            UnaryExpressionNode.Operator.Not -> {
-                operation("getValue", JSValue::class, JSValue::class)
-                operation("toBoolean", JSValue::class, JSValue::class)
-                pushTrue
-                ifElseStatement(JumpCondition.RefEqual) {
-                    ifBlock {
-                        pushFalse
+        when (node.op) {
+            AssignmentExpressionNode.Operator.Equals -> {
+                compileExpression(lhs)
+                getValue
+                if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode) {
+                    dup
+                    checkcast<JSFunction>()
+                    construct(PropertyKey::class, String::class) {
+                        ldc(lhs.identifierName)
                     }
-
-                    elseBlock {
-                        pushTrue
-                    }
+                    operation("setFunctionName", void, JSFunction::class, PropertyKey::class)
+                }
+                dup_x1
+                operation("putValue", void, JSValue::class, JSValue::class)
+            }
+            AssignmentExpressionNode.Operator.And -> {
+                compileExpression(lhs)
+                dup
+                getValue
+                operation("toBoolean", Boolean::class, JSValue::class)
+                ifStatement(JumpCondition.True) {
+                    if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode)
+                        TODO()
+                    compileExpression(rhs)
+                    dup_x1
+                    operation("putValue", void, JSValue::class, JSValue::class)
+                    stackHeight--
                 }
             }
-        }
-    }
-
-    private fun MethodAssembly.compileExponentiationExpression(exponentiationExpressionNode: ExponentiationExpressionNode) {
-        evaluateStringOrNumericBinaryExpression(
-            exponentiationExpressionNode.lhs,
-            exponentiationExpressionNode.rhs,
-            "**"
-        )
-    }
-
-    private fun MethodAssembly.compileMultiplicationExpression(multiplicativeExpressionNode: MultiplicativeExpressionNode) {
-        evaluateStringOrNumericBinaryExpression(
-            multiplicativeExpressionNode.lhs,
-            multiplicativeExpressionNode.rhs,
-            multiplicativeExpressionNode.op.symbol
-        )
-    }
-
-    private fun MethodAssembly.compileAdditiveExpression(additiveExpressionNode: AdditiveExpressionNode) {
-        evaluateStringOrNumericBinaryExpression(
-            additiveExpressionNode.lhs,
-            additiveExpressionNode.rhs,
-            if (additiveExpressionNode.isSubtraction) "-" else "+"
-        )
-    }
-
-    private fun MethodAssembly.compileShiftExpression(shiftExpressionNode: ShiftExpressionNode) {
-        evaluateStringOrNumericBinaryExpression(
-            shiftExpressionNode.lhs,
-            shiftExpressionNode.rhs,
-            shiftExpressionNode.op.symbol
-        )
-    }
-
-    private fun MethodAssembly.compileBitwiseANDExpression(bitwiseANDExpressionNode: BitwiseANDExpressionNode) {
-        evaluateStringOrNumericBinaryExpression(
-            bitwiseANDExpressionNode.lhs,
-            bitwiseANDExpressionNode.rhs,
-            "&"
-        )
-    }
-
-    private fun MethodAssembly.compileBitwiseXORExpression(bitwiseXORExpressionNode: BitwiseXORExpressionNode) {
-        evaluateStringOrNumericBinaryExpression(
-            bitwiseXORExpressionNode.lhs,
-            bitwiseXORExpressionNode.rhs,
-            "^"
-        )
-    }
-
-    private fun MethodAssembly.compileBitwiseORExpression(bitwiseORExpressionNode: BitwiseORExpressionNode) {
-        evaluateStringOrNumericBinaryExpression(
-            bitwiseORExpressionNode.lhs,
-            bitwiseORExpressionNode.rhs,
-            "|"
-        )
-    }
-
-    private fun MethodAssembly.compileRelationalExpression(relationalExpressionNode: RelationalExpressionNode) {
-        compileExpression(relationalExpressionNode.lhs)
-        operation("getValue", JSValue::class, JSValue::class)
-        // lval
-        compileExpression(relationalExpressionNode.rhs)
-        operation("getValue", JSValue::class, JSValue::class)
-        // lval, rval
-
-        when (relationalExpressionNode.op) {
-            RelationalExpressionNode.Operator.LessThan -> {
-                ldc(true)
-                operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
+            AssignmentExpressionNode.Operator.Or -> {
+                compileExpression(lhs)
                 dup
-                pushUndefined
-                // r, r, undefined
-                ifStatement(JumpCondition.RefEqual) {
-                    // r
-                    pop
-                    pushFalse
-                }
-            }
-            RelationalExpressionNode.Operator.GreaterThan -> {
-                swap
-                ldc(false)
-                operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
-                dup
-                pushUndefined
-                // r, r, undefined
-                ifStatement(JumpCondition.RefEqual) {
-                    // r
-                    pop
-                    pushFalse
-                }
-            }
-            RelationalExpressionNode.Operator.LessThanEquals -> {
-                swap
-                ldc(false)
-                operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
-                dup
-                pushFalse
-                // r, r, false
-                ifStatement(JumpCondition.RefEqual) {
-                    // r
-                    pop
-                    pushTrue
-                }
-            }
-            RelationalExpressionNode.Operator.GreaterThanEquals -> {
-                ldc(true)
-                operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
-                dup
-                pushFalse
-                // r, r, false
-                ifStatement(JumpCondition.RefEqual) {
-                    // r
-                    pop
-                    pushTrue
-                }
-            }
-            RelationalExpressionNode.Operator.Instanceof -> {
-                operation("instanceofOperator", JSValue::class, JSValue::class, JSValue::class)
-            }
-            RelationalExpressionNode.Operator.In -> {
-                // lval, rval
-                dup
-                // lval, rval, rval
-                instanceof<JSObject>()
-                // lval, rval, boolean
+                getValue
+                operation("toBoolean", Boolean::class, JSValue::class)
                 ifStatement(JumpCondition.False) {
-                    pushRealm
-                    ldc("right-hand side of 'in' operator must be an object")
-                    invokestatic(JSTypeErrorObject::class, "create", JSTypeErrorObject::class, Realm::class, String::class)
-                    invokestatic(Agent::class, "throwError", void, JSErrorObject::class)
-                    returnFromFunction
+                    if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode)
+                        TODO()
+                    compileExpression(rhs)
+                    dup_x1
+                    operation("putValue", void, JSValue::class, JSValue::class)
+                    stackHeight--
                 }
-                // lval, rval
-                operation("toPropertyKey", PropertyKey::class, JSValue::class)
-                // lval, key
-                invokevirtual(JSObject::class, "hasProperty", Boolean::class, PropertyKey::class)
-                wrapBooleanInValue
             }
-        }
-    }
-
-    private fun MethodAssembly.compileEqualityExpression(equalityExpressionNode: EqualityExpressionNode) {
-        compileExpression(equalityExpressionNode.lhs)
-        operation("getValue", JSValue::class, JSValue::class)
-        compileExpression(equalityExpressionNode.rhs)
-        operation("getValue", JSValue::class, JSValue::class)
-        when (equalityExpressionNode.op) {
-            EqualityExpressionNode.Operator.StrictEquality, EqualityExpressionNode.Operator.StrictInequality -> {
-                operation("strictEqualityComparison", JSValue::class, JSValue::class, JSValue::class)
+            AssignmentExpressionNode.Operator.Nullish -> {
+                compileExpression(lhs)
+                dup
+                getValue
+                invokevirtual(JSValue::class, "isNullish", Boolean::class)
+                ifStatement(JumpCondition.True) {
+                    if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode)
+                        TODO()
+                    compileExpression(rhs)
+                    dup_x1
+                    operation("putValue", void, JSValue::class, JSValue::class)
+                    stackHeight--
+                }
             }
             else -> {
-                operation("abstractEqualityComparison", JSValue::class, JSValue::class, JSValue::class)
+                compileExpression(lhs)
+                getValue
+                compileExpression(rhs)
+                getValue
+                ldc(node.op.symbol.dropLast(1))
+                operation("applyStringOrNumericBinaryOperator", JSValue::class, JSValue::class, JSValue::class, String::class)
+                dup_x1
+                operation("putValue", void, JSValue::class, JSValue::class)
+                stackHeight--
             }
         }
-        when (equalityExpressionNode.op) {
-            EqualityExpressionNode.Operator.NonstrictEquality, EqualityExpressionNode.Operator.NonstrictInequality -> {
-                dup
-                pushTrue
-                ifStatement(JumpCondition.RefEqual) {
-                    pop
-                    pushFalse
-                }
+    }
+
+    private fun MethodAssembly.compileConditionalExpression(node: ConditionalExpressionNode) {
+        compileExpression(node.predicate)
+        getValue
+        toBoolean
+        stackHeight--
+        ifElseStatement(JumpCondition.True) {
+            ifBlock {
+                compileExpression(node.ifTrue)
             }
-            else -> {}
+
+            elseBlock {
+                compileExpression(node.ifFalse)
+            }
         }
+        getValue
     }
 
-    private fun MethodAssembly.compileLogicalANDExpression(logicalANDExpressionNode: LogicalANDExpressionNode) {
-        compileExpression(logicalANDExpressionNode.lhs)
-        operation("getValue", JSValue::class, JSValue::class)
+    private fun MethodAssembly.compileCoalesceExpression(node: CoalesceExpressionNode) {
+        compileExpression(node.lhs)
+        getValue
         dup
-        // lval, lval
-        operation("toBoolean", JSValue::class, JSValue::class)
-        // lval, lbool
-        pushTrue
-        ifStatement(JumpCondition.RefEqual) {
-            // lval
+        invokevirtual(JSValue::class, "isNullish", Boolean::class)
+        ifStatement(JumpCondition.False) {
             pop
-            compileExpression(logicalANDExpressionNode.rhs)
-            operation("getValue", JSValue::class, JSValue::class)
+            stackHeight--
+            compileExpression(node.rhs)
+            getValue
         }
     }
 
-    private fun MethodAssembly.compileLogicalORExpression(logicalORExpressionNode: LogicalORExpressionNode) {
-        compileExpression(logicalORExpressionNode.lhs)
-        operation("getValue", JSValue::class, JSValue::class)
+    private fun MethodAssembly.compileLogicalORExpression(node: LogicalORExpressionNode) {
+        compileExpression(node.lhs)
+        getValue
         dup
-        // lval, lval
-        operation("toBoolean", JSBoolean::class, JSValue::class)
-        // lval, lbool
-        pushFalse
-        ifStatement(JumpCondition.RefEqual) {
-            // lval
+        toBoolean
+        ifStatement(JumpCondition.False) {
             pop
-            compileExpression(logicalORExpressionNode.rhs)
-            operation("getValue", JSValue::class, JSValue::class)
+            compileExpression(node.rhs)
+            getValue
+            stackHeight--
         }
     }
 
-    private fun MethodAssembly.compileCoalesceExpression(coalesceExpressionNode: CoalesceExpressionNode) {
-        compileExpression(coalesceExpressionNode.lhs)
-        operation("getValue", JSValue::class, JSValue::class)
+    private fun MethodAssembly.compileLogicalANDExpression(node: LogicalANDExpressionNode) {
+        compileExpression(node.lhs)
+        getValue
         dup
-        // lval, lval
-        operation("isNullish", Boolean::class, JSValue::class)
-        // lval, bool
+        toBoolean
         ifStatement(JumpCondition.True) {
-            // lval
             pop
-            compileExpression(coalesceExpressionNode.rhs)
-            operation("getValue", JSValue::class, JSValue::class)
-        }
-    }
-
-    private fun MethodAssembly.compileConditionalExpression(conditionalExpressionNode: ConditionalExpressionNode) {
-        TODO()
-    }
-
-    @ECMAImpl(section = "12.15.4")
-    private fun MethodAssembly.compileAssignmentExpression(assignmentExpressionNode: AssignmentExpressionNode) {
-        expect(assignmentExpressionNode.lhs is LeftHandSideExpressionNode)
-
-        if (assignmentExpressionNode.lhs is ObjectLiteralNode || assignmentExpressionNode.lhs is ArrayLiteralNode)
-            TODO()
-
-        compileExpression(assignmentExpressionNode.lhs)
-
-        if (assignmentExpressionNode.op == AssignmentExpressionNode.Operator.Equals) {
-            compileExpression(assignmentExpressionNode.rhs)
-            operation("getValue", JSValue::class, JSValue::class)
-            dup_x1
-            operation("putValue", void, JSValue::class, JSValue::class)
-        } else {
-            TODO()
+            compileExpression(node.rhs)
+            getValue
+            stackHeight--
         }
     }
 
     private fun MethodAssembly.evaluateStringOrNumericBinaryExpression(lhs: ExpressionNode, rhs: ExpressionNode, op: String) {
         compileExpression(lhs)
-        operation("getValue", JSValue::class, JSValue::class)
+        getValue
         compileExpression(rhs)
-        operation("getValue", JSValue::class, JSValue::class)
+        getValue
         ldc(op)
+        stackHeight--
         operation("applyStringOrNumericBinaryOperator", JSValue::class, JSValue::class, JSValue::class, String::class)
     }
 
-    /**
-     * Stack arguments:
-     *   None
-     *
-     * Stack result (+1):
-     *   1. JSValue
-     */
-    private fun MethodAssembly.compileIdentifierReference(identifierReferenceNode: IdentifierReferenceNode) {
-        ldc(identifierReferenceNode.identifierName)
-        aconst_null
-        operation("resolveBinding", JSReference::class, String::class, EnvRecord::class)
+    private fun MethodAssembly.compileBitwiseORExpression(node: BitwiseORExpressionNode) {
+        evaluateStringOrNumericBinaryExpression(node.lhs, node.rhs, "|")
     }
 
-    /*
-     * SCRIPT FUNCTION COMPILATION
-     */
-    @ECMAImpl("14.1.22")
-    private fun instantiateFunctionObject(function: FunctionDeclarationNode): ClassNode {
-        val functionName = function.identifier?.identifierName ?: "default"
-        val parameters = function.parameters
+    private fun MethodAssembly.compileBitwiseXORExpression(node: BitwiseXORExpressionNode) {
+        evaluateStringOrNumericBinaryExpression(node.lhs, node.rhs, "^")
+    }
 
-        val functionClassName = "Function_${functionName}_${sanitizedFileName}_${Reeva.objectCount++}"
-        val previousExtraMethodCount = extraMethods.size
+    private fun MethodAssembly.compileBitwiseANDExpression(node: BitwiseANDExpressionNode) {
+        evaluateStringOrNumericBinaryExpression(node.lhs, node.rhs, "&")
+    }
 
-        return assembleClass(
-            public,
-            functionClassName,
-            superName = "me/mattco/reeva/compiler/JSScriptFunction"
-        ) {
-            method(public, "<init>", void, Realm::class, EnvRecord::class) {
-                aload_0
-                aload_1
-                getstatic(JSFunction.ThisMode::class, "NonLexical", JSFunction.ThisMode::class)
-                // TODO: Strict mode
-                ldc(false)
-                aload_2
-                invokespecial(JSScriptFunction::class, "<init>", void, Realm::class, JSFunction.ThisMode::class, Boolean::class, EnvRecord::class)
-                _return
-            }
+    private fun MethodAssembly.compileEqualityExpression(node: EqualityExpressionNode) {
+        compileExpression(node.lhs)
+        getValue
+        compileExpression(node.rhs)
+        getValue
+        stackHeight--
 
-            method(public, "name", String::class) {
-                ldc(functionName)
-                areturn
-            }
-
-            method(public, "getSourceText", String::class) {
-                // TODO
-                ldc("")
-                areturn
-            }
-
-            method(public, "isClassConstructor", Boolean::class) {
-                ldc(false)
-                ireturn
-            }
-
-            method(public, "getHomeObject", JSValue::class) {
-                // TODO
-                pushUndefined
-                areturn
-            }
-
-            method(public, "getParameterNames", Array<String>::class) {
-                if (parameters.restParameter == null) {
-                    val actualParams = parameters.functionParameters.parameters
-                    ldc(actualParams.size)
-                    anewarray<String>()
-                    actualParams.forEachIndexed { index, param ->
-                        dup
-                        ldc(index)
-                        ldc(param.bindingElement.binding.identifier.identifierName)
-                        aastore
-                    }
-                } else {
-                    TODO()
-                }
-                areturn
-            }
-
-            method(public, "getParamHasDefaultValue", Boolean::class, Int::class) {
-                if (parameters.restParameter == null) {
-                    parameters.functionParameters.parameters.forEachIndexed { index, param ->
-                        iload_1
-                        ldc(index)
-                        ifStatement(JumpCondition.Equal) {
-                            ldc(param.bindingElement.binding.initializer != null)
-                            ireturn
-                        }
-                    }
-                    construct(IllegalArgumentException::class, String::class) {
-                        ldc("Invalid index given to getParamHasDefaultValue")
-                    }
-                    athrow
-                } else {
-                    TODO()
-                }
-            }
-
-            method(public, "getDefaultParameterValue", JSValue::class, Int::class) {
-                if (parameters.restParameter == null) {
-                    parameters.functionParameters.parameters.forEachIndexed { index, param ->
-                        val binding = param.bindingElement.binding
-
-                        iload_1
-                        ldc(index)
-                        ifStatement(JumpCondition.Equal) {
-                            if (binding.initializer == null) {
-                                pushUndefined
-                            } else {
-                                compileExpression(binding.initializer.node)
-                            }
-                            areturn
-                        }
-                    }
-                    construct(IllegalArgumentException::class, String::class) {
-                        ldc("Invalid index given to getDefaultParameterValue")
-                    }
-                    athrow
-                } else {
-                    TODO()
-                }
-            }
-
-            method(public, "call", JSValue::class, JSValue::class, List::class) {
-                methodStates.add(MethodState(functionClassName, "call", JSValue::class))
-                val oldNeedsToPop = needsToPopContext
-                needsToPopContext = true
-
-                // setup
-                aload_0
-                pushUndefined
-                operation("prepareForOrdinaryCall", ExecutionContext::class, JSScriptFunction::class, JSValue::class)
-                aload_0
+        when (node.op) {
+            EqualityExpressionNode.Operator.StrictEquality -> {
                 swap
-                aload_1
-                operation("ordinaryCallBindThis", JSValue::class, JSScriptFunction::class, ExecutionContext::class, JSValue::class)
-                pop
-
-                functionDeclarationInstantiation(function, JSFunction.ThisMode.NonLexical)
-
-                // execution
-                aload_0
-                aload_1
-                aload_2
-                invokevirtual(functionClassName, "execute", Completion::class, JSValue::class, List::class)
-
-                // Clean up execution context
-                invokestatic(Agent::class, "popContext", void)
-
-                // return the value from "execute"
-                getfield(Completion::class, "value", JSValue::class)
-                areturn
-
-                needsToPopContext = oldNeedsToPop
-                methodStates.removeLast()
+                operation("strictEqualityCompariso", JSValue::class, JSValue::class, JSValue::class)
             }
-
-            method(public, "construct", JSValue::class, List::class, JSValue::class) {
-                methodStates.add(MethodState(functionClassName, "construct", JSValue::class))
-                val oldNeedsToPop = needsToPopContext
-                needsToPopContext = true
-
-                // TODO
-                pushUndefined
-                areturn
-
-                needsToPopContext = oldNeedsToPop
-                methodStates.removeLast()
+            EqualityExpressionNode.Operator.StrictInequality -> {
+                swap
+                operation("strictEqualityComparison", JSValue::class, JSValue::class, JSValue::class)
+                invertBoolean()
             }
-
-            method(public, "execute", Completion::class, JSValue::class, List::class) {
-                methodStates.add(MethodState(functionClassName, "execute", Completion::class))
-                // actual body
-                if (function.body.statementList != null)
-                    compileStatementList(function.body.statementList)
-
-                // In case the method doesn't have a return statement inside of itself
-                construct(Completion::class, Completion.Type::class, JSValue::class) {
-                    getstatic(Completion.Type::class, "Return", Completion.Type::class)
-                    pushUndefined
-                }
-                areturn
-                methodStates.removeLast()
+            EqualityExpressionNode.Operator.NonstrictEquality -> {
+                swap
+                operation("abstractEqualityComparison", JSValue::class, JSValue::class, JSValue::class)
             }
-
-            extraMethods.subList(previousExtraMethodCount, extraMethods.size).forEach {
-                methodStates.add(MethodState(functionClassName, it.name, Type.getReturnType(it.desc)))
-                node.methods.add(it)
-                methodStates.removeLast()
-            }
-
-            repeat(extraMethods.size - previousExtraMethodCount) {
-                extraMethods.removeLast()
+            EqualityExpressionNode.Operator.NonstrictInequality -> {
+                swap
+                operation("abstractEqualityComparison", JSValue::class, JSValue::class, JSValue::class)
+                invertBoolean()
             }
         }
     }
 
-    @ECMAImpl("9.2.10")
-    private fun MethodAssembly.functionDeclarationInstantiation(function: FunctionDeclarationNode, thisMode: JSFunction.ThisMode) {
-        val parameters = function.parameters
-        val body = function.body
-        val parameterNames = parameters.boundNames()
-        val hasDuplicates = parameterNames.groupBy { it }.size != parameterNames.size
-        val simpleParameterList = parameters.isSimpleParameterList()
-        val hasParameterExpressions = parameters.containsExpression()
-        val varNames = body.varDeclaredNames()
-        val varDeclarations = body.varScopedDeclarations()
-        val lexicalNames = body.lexicallyDeclaredNames()
+    private fun MethodAssembly.compileRelationalExpression(node: RelationalExpressionNode) {
+        compileExpression(node.lhs)
+        getValue
+        compileExpression(node.rhs)
+        getValue
+        stackHeight--
 
-        val functionNames = mutableListOf<String>()
-        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
-
-        body.varScopedDeclarations().asReversed().forEach { decl ->
-            if (decl is FunctionDeclarationNode) {
-                val boundNames = decl.boundNames()
-                expect(boundNames.size == 1)
-                val declName = boundNames[0]
-                if (declName !in functionNames) {
-                    functionNames.add(0, declName)
-                    functionsToInitialize.add(decl)
+        when (node.op) {
+            RelationalExpressionNode.Operator.LessThan -> {
+                ldc(1)
+                operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
+                dup
+                loadUndefined()
+                ifStatement(JumpCondition.RefEqual) {
+                    pop
+                    loadFalse()
                 }
             }
-        }
-
-        var argumentsObjectNeeded = when {
-            thisMode == JSFunction.ThisMode.Lexical -> false
-            "arguments" in parameterNames -> false
-            !hasParameterExpressions && ("arguments" in functionNames || "arguments" in lexicalNames) -> false
-            else -> true
-        }
-
-        pushRunningContext
-        getfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-
-        // TODO: Strict check
-        if (!hasParameterExpressions) {
-            astore(3)
-        } else {
-            invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
-            dup
-            astore(3)
-            putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-        }
-
-        parameterNames.forEach { name ->
-            aload(3)
-            ldc(name)
-            invokevirtual(EnvRecord::class, "hasBinding", Boolean::class, String::class)
-            ifStatement(JumpCondition.False) {
-                aload(3)
-                ldc(name)
-                ldc(false)
-                invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
-                if (hasDuplicates) {
-                    aload(3)
-                    ldc(name)
-                    pushUndefined
-                    invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
+            RelationalExpressionNode.Operator.GreaterThan -> {
+                swap
+                ldc(0)
+                operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
+                dup
+                loadUndefined()
+                ifStatement(JumpCondition.RefEqual) {
+                    pop
+                    loadFalse()
                 }
             }
-        }
-
-        // This will be dependent on the argumentsObjectNeeded flag
-        val parameterBindings = parameterNames
-
-        if (argumentsObjectNeeded) {
-            // TODO
-        }
-
-        aload_0
-        aload_2
-        if (hasDuplicates) {
-            aconst_null
-        } else {
-            aload(3)
-        }
-        operation("applyFunctionArguments", void, JSScriptFunction::class, List::class, EnvRecord::class)
-
-        val varEnv = 4
-
-        if (!hasParameterExpressions) {
-            val instantiatedVarNames = parameterBindings.toMutableList()
-            varNames.forEach { name ->
-                if (name !in instantiatedVarNames) {
-                    instantiatedVarNames.add(name)
-                    aload(3)
-                    ldc(name)
-                    ldc(false)
-                    invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+            RelationalExpressionNode.Operator.LessThanEquals -> {
+                swap
+                ldc(0)
+                operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
+                invertBoolean()
+            }
+            RelationalExpressionNode.Operator.GreaterThanEquals -> {
+                ldc(1)
+                operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
+                invertBoolean()
+            }
+            RelationalExpressionNode.Operator.Instanceof ->
+                operation("instanceofOperator", JSValue::class, JSValue::class, JSValue::class)
+            RelationalExpressionNode.Operator.In -> {
+                dup
+                instanceof<JSObject>()
+                ifStatement(JumpCondition.False) {
+                    pop
+                    loadKObject<Errors.InBadRHS>()
+                    invokevirtual(Error::class, "throwTypeError", void)
+                    loadUndefined()
+                    areturn
                 }
-            }
-            aload(3)
-            astore(varEnv)
-        } else {
-            aload(3)
-            invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
-            astore(varEnv)
-            pushRunningContext
-            aload(varEnv)
-            putfield(ExecutionContext::class, "variableEnv", EnvRecord::class)
-
-            val instantiatedVarNames = parameterBindings.toMutableList()
-            varNames.forEach { name ->
-                if (name !in instantiatedVarNames) {
-                    instantiatedVarNames.add(name)
-                    aload(varEnv)
-                    ldc(name)
-                    ldc(false)
-                    invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
-
-                    aload(varEnv)
-                    ldc(name)
-
-                    if (name !in parameterBindings || name in functionNames) {
-                        pushUndefined
-                    } else {
-                        aload(3)
-                        ldc(name)
-                        ldc(false)
-                        invokevirtual(EnvRecord::class, "getBindingValue", JSValue::class, String::class, Boolean::class)
-                    }
-
-                    invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
-                }
-            }
-        }
-
-        // TODO: if (isStrict)
-        var lexEnv: Int
-        if (true) {
-            lexEnv = 5
-            aload(varEnv)
-            invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
-            astore(lexEnv)
-        } else {
-            lexEnv = varEnv
-        }
-
-        pushRunningContext
-        aload(lexEnv)
-        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-
-        val lexDeclarations = body.lexicallyScopedDeclarations()
-        lexDeclarations.forEach { decl ->
-            decl.boundNames().forEach { name ->
-                aload(lexEnv)
-                ldc(name)
-                if (decl.isConstantDeclaration()) {
-                    ldc(true)
-                    invokevirtual(EnvRecord::class, "createImmutableBinding", void, String::class, Boolean::class)
-                } else {
-                    ldc(false)
-                    invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
-                }
-            }
-        }
-
-        functionsToInitialize.forEach { func ->
-            val compiledFunc = instantiateFunctionObject(func)
-            dependencies.add(compiledFunc)
-
-            val boundNames = func.boundNames()
-            expect(boundNames.size == 1)
-            val funcName = boundNames[0]
-
-            aload(varEnv)
-            ldc(funcName)
-            construct(compiledFunc.name, Realm::class, EnvRecord::class) {
-                pushRealm
-                aload(lexEnv)
-            }
-            ldc(false)
-            invokevirtual(EnvRecord::class, "setMutableBinding", void, String::class, JSValue::class, Boolean::class)
-        }
-    }
-
-    /**
-     * Stack arguments:
-     *   None
-     *
-     * Stack result (+1):
-     *   JSValue
-     */
-    private fun MethodAssembly.compileThis() {
-        operation("resolveThisBinding", JSObject::class)
-    }
-
-    // Stack args:
-    //    1. env (EnvRecord)
-    //    2. value (JSValue)
-    private fun MethodAssembly.initializeBoundName(name: String) {
-        // env, value
-        swap
-        // value, env
-        dup
-        // value, env, env
-        ifElseStatement(JumpCondition.NonNull) {
-            ifBlock {
-                // value, env
+                swap
+                operation("toPropertyKey", PropertyKey::class, JSValue::class)
+                operation("hasProperty", Boolean::class, JSValue::class, PropertyKey::class)
+                new<JSBoolean>()
                 dup_x1
-                // env, value, env
                 swap
-                // env, env, value
-                ldc(name)
-                // env, env, value, string
-                swap
-                // env, env, string, value
-                invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
-                // env
+                invokespecial(JSBoolean::class, "<init>", Boolean::class)
+            }
+        }
+    }
+
+    private fun MethodAssembly.compileShiftExpression(node: ShiftExpressionNode) {
+        evaluateStringOrNumericBinaryExpression(
+            node.lhs,
+            node.rhs,
+            when (node.op) {
+                ShiftExpressionNode.Operator.ShiftLeft -> "<<"
+                ShiftExpressionNode.Operator.ShiftRight -> ">>"
+                ShiftExpressionNode.Operator.UnsignedShiftRight -> ">>>"
+            },
+        )
+    }
+
+    private fun MethodAssembly.compileAdditiveExpression(node: AdditiveExpressionNode) {
+        evaluateStringOrNumericBinaryExpression(
+            node.lhs,
+            node.rhs,
+            if (node.isSubtraction) "-" else "+",
+        )
+    }
+
+    private fun MethodAssembly.compileMultiplicationExpression(node: MultiplicativeExpressionNode) {
+        evaluateStringOrNumericBinaryExpression(
+            node.lhs,
+            node.rhs,
+            when (node.op) {
+                MultiplicativeExpressionNode.Operator.Multiply -> "*"
+                MultiplicativeExpressionNode.Operator.Divide -> "/"
+                MultiplicativeExpressionNode.Operator.Modulo -> "%"
+            },
+        )
+    }
+
+    private fun MethodAssembly.compileExponentiationExpression(node: ExponentiationExpressionNode) {
+        evaluateStringOrNumericBinaryExpression(
+            node.lhs,
+            node.rhs,
+            "**",
+        )
+    }
+
+    private fun MethodAssembly.compileUnaryExpression(node: UnaryExpressionNode) {
+        compileExpression(node.node)
+
+        when (node.op) {
+            UnaryExpressionNode.Operator.Delete -> operation("deleteOperator", JSValue::class, JSValue::class)
+            UnaryExpressionNode.Operator.Void -> {
+                getValue
+                loadUndefined()
+            }
+            UnaryExpressionNode.Operator.Typeof -> {
+                getValue
+                operation("typeofOperator", JSValue::class, JSValue::class)
+            }
+            UnaryExpressionNode.Operator.Plus -> {
+                getValue
+                operation("toNumber", JSValue::class, JSValue::class)
+            }
+            UnaryExpressionNode.Operator.Minus -> {
+                getValue
+                operation("toNumeric", JSValue::class, JSValue::class)
+                dup
+                instanceof<JSBigInt>()
+                ifStatement(JumpCondition.True) {
+                    pop
+                    construct(Errors.TODO::class, String::class) {
+                        ldc("compileUnaryExpression, -BigInt")
+                    }
+                    invokevirtual(Error::class, "throwTypeError", void)
+                    loadUndefined()
+                    areturn
+                }
+                operation("numericUnaryMinus", JSValue::class, JSValue::class)
+            }
+            UnaryExpressionNode.Operator.BitwiseNot -> {
+                getValue
+                operation("toNumeric", JSValue::class, JSValue::class)
+                dup
+                instanceof<JSBigInt>()
+                ifStatement(JumpCondition.True) {
+                    pop
+                    construct(Errors.TODO::class, String::class) {
+                        ldc("compileUnaryExpression, -BigInt")
+                    }
+                    invokevirtual(Error::class, "throwTypeError", void)
+                    loadUndefined()
+                    areturn
+                }
+                operation("numericBitwiseNOT", JSValue::class, JSValue::class)
+            }
+            UnaryExpressionNode.Operator.Not -> {
+                getValue
+                toBoolean
+                invertBoolean()
+            }
+        }
+    }
+
+    private fun MethodAssembly.compileUpdateExpression(node: UpdateExpressionNode) {
+        compileExpression(node.target)
+        dup
+        // expr, expr
+        getValue
+        dup
+        // expr, oldValue, oldValue
+        instanceof<JSBigInt>()
+        // expr, oldValue, boolean
+        ifStatement(JumpCondition.True) {
+            // expr, oldValue
+            pop2
+            construct(Errors.TODO::class, String::class) {
+                ldc("compileUpdateExpression, BigInt")
+            }
+            invokevirtual(Error::class, "throwTypeError", void)
+            loadUndefined()
+            areturn
+        }
+        // expr, oldValue
+        dup_x1
+        // oldValue, expr, oldValue
+        construct(JSNumber::class, Double::class) {
+            ldc(1.0)
+        }
+        // oldValue, expr, oldValue, 1.0
+        if (node.isIncrement) {
+            operation("numericAdd", JSValue::class, JSValue::class, JSValue::class)
+        } else {
+            operation("numericSubtract", JSValue::class, JSValue::class, JSValue::class)
+        }
+        // oldValue, expr, newValue
+        dup_x1
+        // oldValue, newValue, expr, newValue
+        operation("putValue", void, JSValue::class, JSValue::class)
+        // oldValue, newValue
+        if (!node.isPostfix)
+            swap
+        pop
+    }
+
+    private fun MethodAssembly.compileForBinding(node: ExpressionNode) {
+        TODO()
+    }
+
+    private fun MethodAssembly.compileTemplateLiteral(node: ExpressionNode) {
+        TODO()
+    }
+
+    private fun MethodAssembly.compileClassExpression(node: ExpressionNode) {
+        TODO()
+    }
+
+    private fun MethodAssembly.compileSuperProperty(node: ExpressionNode) {
+        TODO()
+    }
+
+    private fun MethodAssembly.compileSuperCall(node: ExpressionNode) {
+        TODO()
+    }
+
+    private inline fun <reified T> MethodAssembly.loadKObject() {
+        getstatic(T::class, "INSTANCE", T::class)
+    }
+
+    private fun MethodAssembly.loadUndefined() = loadKObject<JSUndefined>()
+
+    private fun MethodAssembly.loadNull() = loadKObject<JSNull>()
+
+    private fun MethodAssembly.loadTrue() = loadKObject<JSTrue>()
+
+    private fun MethodAssembly.loadFalse() = loadKObject<JSFalse>()
+
+    private fun MethodAssembly.invertBoolean() {
+        loadTrue()
+        ifElseStatement(JumpCondition.RefEqual) {
+            ifBlock {
+                loadFalse()
             }
 
             elseBlock {
-                // value, env
-                dup_x1
-                // env, value, env
-                ldc(name)
-                // env, value, env, string
-                swap
-                // env, value, string, env
-                operation("resolveBinding", JSReference::class, String::class, EnvRecord::class)
-                // env, value, ref
-                swap
-                // env, ref, value
-                operation("putValue", void, JSValue::class, JSValue::class)
-                // env
+                loadTrue()
             }
         }
     }
-
-    private fun addExtraMethodToCurrentClass(
-        name: String,
-        routine: MethodAssembly.() -> Unit
-    ) {
-        methodStates.add(MethodState(methodStates.last().className, name, Completion::class, false))
-        val descriptor = Type.getMethodDescriptor(coerceType(Completion::class), coerceType(JSValue::class), coerceType(List::class))
-
-        val methodNode = MethodNode(Opcodes.ASM7, public.access, name, descriptor, null, null)
-        val methodAssembly = MethodAssembly(methodNode)
-
-        methodAssembly.apply {
-            routine(this)
-            construct(Completion::class, Completion.Type::class, JSValue::class) {
-                getstatic(Completion.Type::class, "Return", Completion.Type::class)
-                pushUndefined
-            }
-            areturn
-        }
-
-        extraMethods.add(methodNode)
-        methodStates.removeLast()
-    }
-
-    private fun MethodAssembly.invokeExtraMethod(name: String) {
-        aload_0
-        if (methodStates.last().isTopLevel) {
-            pushUndefined
-            construct(ArrayList::class)
-        } else {
-            aload_1
-            aload_2
-        }
-        invokevirtual(methodStates.last().className, name, Completion::class, JSValue::class, List::class)
-    }
-
-    private fun MethodAssembly.shouldThrow(errorName: String) {
-        construct(java.lang.IllegalStateException::class, String::class) {
-            ldc("FIXME: This should have instead thrown a JS $errorName")
-        }
-        athrow
-    }
-
-    private val MethodAssembly.pushRunningContext: Unit
-        get() {
-            invokestatic(Agent::class, "getRunningContext", ExecutionContext::class)
-        }
-
-    private val MethodAssembly.pushAgent: Unit
-        get() {
-            pushRunningContext
-            getfield(ExecutionContext::class, "agent", Agent::class)
-        }
-
-    private val MethodAssembly.pushRealm: Unit
-        get() {
-            pushRunningContext
-            getfield(ExecutionContext::class, "realm", Realm::class)
-        }
-
-    private val MethodAssembly.pushFunction: Unit
-        get() {
-            pushRunningContext
-            getfield(ExecutionContext::class, "function", JSFunction::class)
-        }
-
-    private val MethodAssembly.pushLexicalEnv: Unit
-        get() {
-            pushRunningContext
-            getfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
-        }
-
-    private val MethodAssembly.pushVariableEnv: Unit
-        get() {
-            pushRunningContext
-            getfield(ExecutionContext::class, "variableEnv", EnvRecord::class)
-        }
-
-    private val MethodAssembly.pushEmpty: Unit
-        get() {
-            getstatic(JSEmpty::class, "INSTANCE", JSEmpty::class)
-        }
-
-    private val MethodAssembly.pushUndefined: Unit
-        get() {
-            getstatic(JSUndefined::class, "INSTANCE", JSUndefined::class)
-        }
-
-    private val MethodAssembly.pushNull: Unit
-        get() {
-            getstatic(JSNull::class, "INSTANCE", JSNull::class)
-        }
-
-    private val MethodAssembly.pushTrue: Unit
-        get() {
-            getstatic(JSTrue::class, "INSTANCE", JSTrue::class)
-        }
-
-    private val MethodAssembly.pushFalse: Unit
-        get() {
-            getstatic(JSFalse::class, "INSTANCE", JSFalse::class)
-        }
-
-    private fun MethodAssembly.isUndefined() {
-        pushUndefined
-        acmp
-    }
-
-    private fun MethodAssembly.isNull() {
-        pushNull
-        acmp
-    }
-
-    private fun MethodAssembly.isTrue() {
-        pushTrue
-        acmp
-    }
-
-    private fun MethodAssembly.isFalse() {
-        pushFalse
-        acmp
-    }
-
-    private val MethodAssembly.acmp: Unit
-        get() {
-            ifElseStatement(JumpCondition.RefEqual) {
-                ifBlock { iconst_1 }
-                elseBlock { iconst_0 }
-            }
-        }
-
-    private val MethodAssembly.sameValue: Unit
-        get() = invokevirtual(JSValue::class, "sameValue", Boolean::class, JSValue::class)
-
-    private val MethodAssembly.sameValueZero: Unit
-        get() = invokevirtual(JSValue::class, "sameValueZero", Boolean::class, JSValue::class)
-
-    private val MethodAssembly.sameValueNonNumeric: Unit
-        get() = invokevirtual(JSValue::class, "sameValueNonNumeric", Boolean::class, JSValue::class)
-
-    private val MethodAssembly.toBoolean: Unit
-        get() = invokevirtual(JSValue::class, "toBoolean", Boolean::class)
-
-    private val MethodAssembly.toNumber: Unit
-        get() = invokevirtual(JSValue::class, "toNumber", Double::class)
-
-    private val MethodAssembly.toObject: Unit
-        get() = invokevirtual(JSValue::class, "toObject", JSObject::class)
-
-    private val MethodAssembly.wrapObjectInValue: Unit
-        get() {
-            operation("wrapInValue", JSValue::class, Any::class)
-        }
-
-    private val MethodAssembly.wrapIntInValue: Unit
-        get() {
-            new<JSNumber>()
-            dup_x1
-            swap
-            invokespecial(JSNumber::class, "<init>", void, Int::class)
-        }
-
-    private val MethodAssembly.wrapDoubleInValue: Unit
-        get() {
-            new<JSNumber>()
-            dup_x2
-            dup_x2
-            pop
-            invokespecial(JSNumber::class, "<init>", void, Double::class)
-        }
-
-    private val MethodAssembly.wrapBooleanInValue: Unit
-        get() {
-            new<JSBoolean>()
-            dup_x1
-            swap
-            invokespecial(JSBoolean::class, "<init>", void, Boolean::class)
-        }
-
-    private val MethodAssembly.returnFromFunction: Unit
-        get() {
-            if (needsToPopContext) {
-                invokestatic(Agent::class, "popContext", void)
-            }
-            when (coerceType(methodStates.last().returnType)) {
-                coerceType(Completion::class) -> {
-                    construct(Completion::class, Completion.Type::class, JSValue::class) {
-                        getstatic(Completion.Type::class, "Return", Completion.Type::class)
-                        pushRunningContext
-                        getfield(ExecutionContext::class, "error", JSErrorObject::class)
-                    }
-                }
-                else -> {
-                    pushRunningContext
-                    getfield(ExecutionContext::class, "error", JSErrorObject::class)
-                }
-            }
-            areturn
-        }
-
-    private val MethodAssembly.checkError: Unit
-        get() {
-            invokestatic(Agent::class, "hasError", Boolean::class)
-            ifStatement(JumpCondition.True) {
-                returnFromFunction
-            }
-        }
 
     private fun MethodAssembly.operation(name: String, returnType: TypeLike, vararg parameterTypes: TypeLike) {
-        val method = Operations::class.java.declaredMethods.first { it.name == name }
         invokestatic(Operations::class, name, returnType, *parameterTypes)
-//        if (method.getDeclaredAnnotation(JSThrows::class.java) != null) {
-//            checkError
-//        }
     }
 
-    companion object {
-        private var classCounter = 0
-            get() = field++
+    val MethodAssembly.getValue: Unit
+        get() = operation("getValue", JSValue::class, JSValue::class)
+
+    val MethodAssembly.toBoolean: Unit
+        get() = operation("toBoolean", Boolean::class, JSValue::class)
+
+    private fun MethodAssembly.createDeclarativeEnvRecord() {
+        invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
     }
+
+    private fun MethodAssembly.loadContext() {
+        getstatic(Agent::class, "runningContext", ExecutionContext::class)
+    }
+
+    private fun MethodAssembly.loadRealm() {
+        loadContext()
+        getfield(ExecutionContext::class, "realm", Realm::class)
+    }
+
+    private fun MethodAssembly.loadVariableEnv() {
+        loadContext()
+        getfield(ExecutionContext::class, "variableEnv", EnvRecord::class)
+    }
+
+    private fun MethodAssembly.loadLexicalEnv() {
+        loadContext()
+        getfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+    }
+
+    private fun MethodAssembly.storeLexicalEnv() {
+        loadContext()
+        swap
+        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+    }
+
+    private fun MethodAssembly.tryCatchBuilder(block: TryCatchBuilder.() -> Unit) {
+        val builder = TryCatchBuilder().apply(block)
+        expect(builder.catchBlocks.isNotEmpty() || builder.finallyBlock != null)
+
+        val finallyBlock = builder.finallyBlock
+
+        val mainStart = makeLabel()
+        val mainEnd = makeLabel()
+        val lastFinallyBlock = if (finallyBlock != null) makeLabel() else null
+        val tryCatchFinallyEnd = makeLabel()
+
+        placeLabel(mainStart)
+        verifyConsistentStackHeight {
+            builder.tryBlock()
+        }
+        verifyConsistentStackHeight {
+            finallyBlock?.invoke()
+        }
+        placeLabel(mainEnd)
+        goto(tryCatchFinallyEnd)
+
+        builder.catchBlocks.forEach {
+            val catchStart = makeLabel()
+            val catchEnd = makeLabel()
+
+            placeLabel(catchStart)
+            verifyConsistentStackHeight {
+                it.second()
+            }
+            verifyConsistentStackHeight {
+                finallyBlock?.invoke()
+            }
+            goto(tryCatchFinallyEnd)
+            placeLabel(catchEnd)
+
+            tryCatchBlocks.add(TryCatchBlockNode(
+                mainStart,
+                mainEnd,
+                catchStart,
+                coerceType(it.first).internalName,
+            ))
+
+            if (lastFinallyBlock != null) {
+                tryCatchBlocks.add(TryCatchBlockNode(
+                    catchStart,
+                    catchEnd,
+                    lastFinallyBlock,
+                    null
+                ))
+            }
+        }
+
+        if (lastFinallyBlock != null) {
+            placeLabel(lastFinallyBlock)
+            tryCatchBlocks.add(TryCatchBlockNode(
+                mainStart,
+                mainEnd,
+                lastFinallyBlock,
+                "java.lang.Throwable",
+            ))
+
+            val exception = astore()
+            pop
+            verifyConsistentStackHeight {
+                finallyBlock!!()
+            }
+            load(exception)
+            athrow
+
+            val lastFinallyEnd = makeLabel()
+            placeLabel(lastFinallyEnd)
+
+            tryCatchBlocks.add(TryCatchBlockNode(
+                lastFinallyBlock,
+                lastFinallyEnd,
+                lastFinallyBlock,
+                null,
+            ))
+        }
+
+        placeLabel(tryCatchFinallyEnd)
+    }
+
+    private fun verifyConsistentStackHeight(block: () -> Unit) {
+        val initialStackHeight = stackHeight
+        block()
+        if (initialStackHeight != stackHeight)
+            throw IllegalStateException("verifyConsistentStackHeight failed. Initial: $initialStackHeight, final: $stackHeight")
+    }
+
+    private class TryCatchBuilder {
+        lateinit var tryBlock: (() -> Unit)
+        val catchBlocks = mutableListOf<Pair<TypeLike, () -> Unit>>()
+        var finallyBlock: (() -> Unit)? = null
+
+        fun tryBlock(block: () -> Unit) {
+            tryBlock = block
+        }
+
+        fun catchBlock(type: TypeLike, block: () -> Unit) {
+            catchBlocks.add(type to block)
+        }
+
+        fun finallyBlock(block: () -> Unit) {
+            finallyBlock = block
+        }
+    }
+
+    // helper JVM bytecodes
+    // a, b, c -> a, c
+    private val MethodAssembly.pop_x1: Unit
+        get() {
+            swap
+            pop
+        }
+
+    // a, b, c -> c, b, a
+    private val MethodAssembly.swap_x1: Unit
+        get() {
+            dup_x2
+            pop
+            swap
+        }
+
+    private val MethodAssembly.pop3: Unit
+        get() {
+            pop2
+            pop
+        }
+
+    private val MethodAssembly.pop4: Unit
+        get() {
+            pop2
+            pop2
+        }
 }

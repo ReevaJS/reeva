@@ -3,7 +3,7 @@ package me.mattco.reeva.core.modules
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.FunctionDeclarationNode
 import me.mattco.reeva.ast.ModuleNode
-import me.mattco.reeva.ast.ScriptOrModule
+import me.mattco.reeva.ast.ScriptOrModuleNode
 import me.mattco.reeva.ast.statements.StatementListNode
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ExecutionContext
@@ -163,7 +163,7 @@ class SourceTextModuleRecord(
             }
         }
 
-        val interpreter = Interpreter(realm, ScriptOrModule(scriptCode))
+        val interpreter = Interpreter(realm, ScriptOrModuleNode(scriptCode))
 
         scriptCode.lexicallyScopedDeclarations().forEach { decl ->
             decl.boundNames().forEach { name ->

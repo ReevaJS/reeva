@@ -9,7 +9,7 @@ import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.toValue
 
-data class Descriptor(
+data class Descriptor @JvmOverloads constructor(
     private var value: JSValue,
     var attributes: Int,
     var getter: JSValue = JSEmpty,

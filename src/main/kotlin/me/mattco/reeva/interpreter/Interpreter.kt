@@ -27,7 +27,7 @@ import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.utils.*
 import kotlin.jvm.Throws
 
-class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOrModule) {
+class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOrModuleNode) {
     private val script: ScriptNode
         get() = scriptOrModule.asScript
 
@@ -108,9 +108,9 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         )
     }
 
-    private fun globalDeclarationInstantiation(body: ScriptNode, env: GlobalEnvRecord) {
-        val lexNames = body.lexicallyDeclaredNames()
-        val varNames = body.varDeclaredNames()
+    private fun globalDeclarationInstantiation(node: ScriptNode, env: GlobalEnvRecord) {
+        val lexNames = node.lexicallyDeclaredNames()
+        val varNames = node.varDeclaredNames()
         lexNames.forEach {
             if (env.hasVarDeclaration(it))
                 Errors.TODO("globalDeclarationInstantiation 1").throwSyntaxError()
@@ -121,7 +121,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             if (env.hasLexicalDeclaration(it))
                 Errors.TODO("globalDeclarationInstantiation 3").throwSyntaxError()
         }
-        val varDeclarations = body.varScopedDeclarations()
+        val varDeclarations = node.varScopedDeclarations()
         val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
         val declaredFunctionNames = mutableListOf<String>()
         varDeclarations.asReversed().forEach {
@@ -148,7 +148,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 }
             }
         }
-        val lexDeclarations = body.lexicallyScopedDeclarations()
+        val lexDeclarations = node.lexicallyScopedDeclarations()
         lexDeclarations.forEach { decl ->
             decl.boundNames().forEach { name ->
                 if (decl.isConstantDeclaration()) {
@@ -189,7 +189,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
     }
 
     @ECMAImpl("9.2.3")
-    private fun ordinaryFunctionCreate(
+    fun ordinaryFunctionCreate(
         prototype: JSObject,
         sourceText: String,
         parameterList: FormalParametersNode,
@@ -1371,7 +1371,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         return Operations.construct(constructor, arguments)
     }
 
-    // Null indicates an error
     private fun argumentsListEvaluation(argumentsNode: ArgumentsNode): List<JSValue> {
         val argumentEntries = argumentsNode.arguments
         if (argumentEntries.isEmpty())
@@ -1518,7 +1517,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             functionPrototype ?: realm.functionProto,
             "TODO",
             method.parameters,
-            method.body ,
+            method.body,
             JSFunction.ThisMode.NonLexical,
             Agent.runningContext.lexicalEnv!!,
         )
@@ -1531,13 +1530,12 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             if (propertyName.isComputed) {
                 val exprValue = interpretExpression(propertyName.expr)
                 val propName = Operations.getValue(exprValue)
-                val key = Operations.toPropertyKey(propName).asValue
-                key
+                Operations.toPropertyKey(propName).asValue
             } else {
                 when (val expr = propertyName.expr) {
                     is IdentifierNode -> expr.identifierName
                     is StringLiteralNode -> expr.value
-                    is NumericLiteralNode -> Operations.toString(expr.value.toValue()).string
+                    is NumericLiteralNode -> return Operations.toString(expr.value.toValue())
                     else -> unreachable()
                 }.toValue()
             }
@@ -1634,7 +1632,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             AssignmentExpressionNode.Operator.Nullish -> {
                 val lref = interpretExpression(lhs)
                 val lval = Operations.getValue(lref)
-                if (lval != JSUndefined && lval != JSNull)
+                if (!lval.isNullish)
                     return lval
                 val rval = if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode) {
                     TODO()
@@ -1671,7 +1669,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
     private fun interpretCoalesceExpression(coalesceExpressionNode: CoalesceExpressionNode): JSValue {
         val lref = interpretExpression(coalesceExpressionNode.lhs)
         val lval = Operations.getValue(lref)
-        if (lval != JSUndefined && lval != JSNull)
+        if (!lval.isNull)
             return lval
         val rref = interpretExpression(coalesceExpressionNode.rhs)
         return Operations.getValue(rref)
@@ -1760,8 +1758,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                     if (value == JSFalse) JSTrue else JSFalse
                 }
             }
-            RelationalExpressionNode.Operator.Instanceof -> Operations.instanceofOperator(lval, rval).also {
-            }
+            RelationalExpressionNode.Operator.Instanceof -> Operations.instanceofOperator(lval, rval)
             RelationalExpressionNode.Operator.In -> {
                 if (rval !is JSObject)
                     Errors.InBadRHS.throwTypeError()

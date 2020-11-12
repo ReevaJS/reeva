@@ -1,7 +1,7 @@
 package me.mattco.reeva.core.modules
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.ast.ScriptOrModule
+import me.mattco.reeva.ast.ScriptOrModuleNode
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.parser.Parser
@@ -96,7 +96,7 @@ class ModuleResolver(val pathResolver: PathResolver) {
                 println("==== module ${file.absolutePath} ====")
                 println(module.dump(1))
             }
-            Interpreter(realm, ScriptOrModule(module)).setupModule()
+            Interpreter(realm, ScriptOrModuleNode(module)).setupModule()
         }
     }
 

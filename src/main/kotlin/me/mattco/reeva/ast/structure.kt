@@ -341,7 +341,7 @@ interface ASTNode {
     }
 }
 
-class ScriptOrModule(private val value: Any) {
+class ScriptOrModuleNode(private val value: Any) {
     init {
         expect(value is ScriptNode || value is ModuleNode)
     }
