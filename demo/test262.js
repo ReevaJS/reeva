@@ -392,3 +392,63 @@ function verifyNotConfigurable(obj, name) {
         $ERROR("Expected obj[" + String(name) + "] NOT to be configurable, but was.");
     }
 }
+
+
+function compareArray(a, b) {
+    if (b.length !== a.length) {
+        return false;
+    }
+
+    for (var i = 0; i < a.length; i++) {
+        if (!compareArray.isSameValue(b[i], a[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+compareArray.isSameValue = function(a, b) {
+    if (a === 0 && b === 0) return 1 / a === 1 / b;
+    if (a !== a && b !== b) return true;
+
+    return a === b;
+};
+
+compareArray.format = function(array) {
+    return `[${array.map(String).join(', ')}]`;
+};
+
+assert.compareArray = function(actual, expected, message = '') {
+    assert(actual != null, `First argument shouldn't be nullish. ${message}`);
+    assert(expected != null, `Second argument shouldn't be nullish. ${message}`);
+    var format = compareArray.format;
+    assert(
+        compareArray(actual, expected),
+        `Expected ${format(actual)} and ${format(expected)} to have the same contents. ${message}`
+    );
+};
+
+
+var date_1899_end = -2208988800001;
+var date_1900_start = -2208988800000;
+var date_1969_end = -1;
+var date_1970_start = 0;
+var date_1999_end = 946684799999;
+var date_2000_start = 946684800000;
+var date_2099_end = 4102444799999;
+var date_2100_start = 4102444800000;
+
+var start_of_time = -8.64e15;
+var end_of_time = 8.64e15;
+
+function  assertRelativeDateMs(date, expectedMs) {
+    var actualMs = date.valueOf();
+    var localOffset = date.getTimezoneOffset() * 60000;
+
+    if (actualMs - localOffset !== expectedMs) {
+        $ERROR(
+            'Expected ' + date + ' to be ' + expectedMs +
+            ' milliseconds from the Unix epoch, got ' + (actualMs - localOffset)
+        );
+    }
+}
