@@ -5,7 +5,6 @@ import codes.som.anthony.koffee.assembleClass
 import codes.som.anthony.koffee.insns.jvm.*
 import codes.som.anthony.koffee.insns.sugar.*
 import codes.som.anthony.koffee.labels.LabelLike
-import codes.som.anthony.koffee.labels.coerceLabel
 import codes.som.anthony.koffee.modifiers.public
 import codes.som.anthony.koffee.types.TypeLike
 import me.mattco.reeva.Reeva
@@ -53,6 +52,7 @@ class Compiler {
     fun compileScript(script: ScriptNode): ByteArray {
         val classNode = assembleClass(public, className, superName = "me/mattco/reeva/compiler/TopLevelScript") {
             method(public, "run", JSValue::class) {
+                currentLocalIndex++
                 globalDeclarationInstantiation(script)
                 compileStatementList(script.statementList)
                 loadUndefined()
@@ -68,6 +68,7 @@ class Compiler {
     fun compileModule(module: ModuleNode): ByteArray {
         val classNode = assembleClass(public, className, superName = "me/mattco/reeva/compiler/TopLevelScript") {
             method(public, "run", JSValue::class) {
+                currentLocalIndex++
                 TODO()
 //                compileStatementList(script.asScript.statementList)
             }
