@@ -51,31 +51,35 @@ class EvaluationTask(
         }
 
         return try {
-            val (primary, dependencies) = if (scriptOrModule.isScript) {
-                Compiler().compileScript(scriptOrModule.asScript)
-            } else {
-                Compiler().compileModule(scriptOrModule.asModule)
-            }
-            val ccl = Agent.activeAgent.compilerClassLoader
-
-            ccl.addClass(primary.name, primary.bytes)
-            if (Reeva.EMIT_CLASS_FILES) {
-                FileOutputStream(File(Reeva.CLASS_FILE_DIRECTORY, "${primary.name}.class")).use {
-                    it.write(primary.bytes)
+            if (Reeva.USE_COMPILER) {
+                val (primary, dependencies) = if (scriptOrModule.isScript) {
+                    Compiler().compileScript(scriptOrModule.asScript)
+                } else {
+                    Compiler().compileModule(scriptOrModule.asModule)
                 }
-            }
+                val ccl = Agent.activeAgent.compilerClassLoader
 
-            dependencies.forEach { dependency ->
-                ccl.addClass(dependency.name, dependency.bytes)
+                ccl.addClass(primary.name, primary.bytes)
                 if (Reeva.EMIT_CLASS_FILES) {
-                    FileOutputStream(File(Reeva.CLASS_FILE_DIRECTORY, "${dependency.name}.class")).use {
-                        it.write(dependency.bytes)
+                    FileOutputStream(File(Reeva.CLASS_FILE_DIRECTORY, "${primary.name}.class")).use {
+                        it.write(primary.bytes)
                     }
                 }
-            }
 
-            val script = ccl.loadClass(primary.name).newInstance() as TopLevelScript
-            Reeva.Result(script.run(), false)
+                dependencies.forEach { dependency ->
+                    ccl.addClass(dependency.name, dependency.bytes)
+                    if (Reeva.EMIT_CLASS_FILES) {
+                        FileOutputStream(File(Reeva.CLASS_FILE_DIRECTORY, "${dependency.name}.class")).use {
+                            it.write(dependency.bytes)
+                        }
+                    }
+                }
+
+                val script = ccl.loadClass(primary.name).newInstance() as TopLevelScript
+                Reeva.Result(script.run(), false)
+            } else {
+                Reeva.Result(Interpreter(realm, scriptOrModule).interpret(), false)
+            }
         } catch (e: ThrowException) {
             Reeva.Result(e.value, true)
         }
