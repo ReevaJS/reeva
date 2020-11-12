@@ -1002,7 +1002,8 @@ object Operations {
         TODO()
     }
 
-    @JvmStatic @ECMAImpl("8.3.2")
+    @JvmStatic @JvmOverloads
+    @ECMAImpl("8.3.2")
     fun resolveBinding(name: String, env: EnvRecord? = null): JSReference {
         val actualEnv = env ?: Agent.runningContext.lexicalEnv!!
         // TODO: Strict mode checking

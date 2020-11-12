@@ -1,6 +1,6 @@
 package me.mattco.reeva.core
 
-import me.mattco.reeva.Reeva
+import me.mattco.reeva.compiler.ReevaClassLoader
 import me.mattco.reeva.core.tasks.Microtask
 import me.mattco.reeva.core.tasks.Task
 import me.mattco.reeva.utils.expect
@@ -14,8 +14,7 @@ class Agent private constructor() {
     private val microTasks = ConcurrentLinkedDeque<Microtask>()
     private val runningContextStack = ConcurrentLinkedDeque<ExecutionContext>()
 
-    val runningContext: ExecutionContext
-        get() = runningContextStack.last
+    internal val compilerClassLoader = ReevaClassLoader()
 
     init {
         activeAgentList.add(this)
@@ -77,8 +76,9 @@ class Agent private constructor() {
         val activeAgent: Agent
             get() = activeAgents.get()
 
+        @JvmStatic
         val runningContext: ExecutionContext
-            get() = activeAgent.runningContext
+            get() = activeAgent.runningContextStack.last
 
 
         @JvmStatic

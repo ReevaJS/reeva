@@ -6,6 +6,7 @@ import codes.som.anthony.koffee.insns.jvm.*
 import codes.som.anthony.koffee.insns.sugar.*
 import codes.som.anthony.koffee.labels.LabelLike
 import codes.som.anthony.koffee.modifiers.public
+import codes.som.anthony.koffee.sugar.ClassAssemblyExtension.init
 import codes.som.anthony.koffee.types.TypeLike
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.*
@@ -21,7 +22,6 @@ import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.interpreter.Interpreter
-import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.JSReference
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
@@ -34,11 +34,11 @@ import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.*
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.tree.TryCatchBlockNode
-import java.io.PrintStream
 
 class Compiler {
-    protected var stackHeight = 0
+    private var stackHeight = 0
     private val labelNodes = mutableListOf<LabelNode>()
+    private val dependencies = mutableListOf<NamedByteArray>()
 
     data class LabelNode(
         val stackHeight: Int,
@@ -47,10 +47,34 @@ class Compiler {
         val continueLabel: LabelLike?
     )
 
-    private val className = "me/mattco/reeva/generated/TopLevelScript\$${Reeva.nextId()}"
+    data class CompilationResult(
+        val primary: NamedByteArray,
+        val dependencies: List<NamedByteArray>,
+    )
 
-    fun compileScript(script: ScriptNode): ByteArray {
+    data class NamedByteArray(val name: String, val bytes: ByteArray) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other)
+                return true
+            return other is NamedByteArray && name == other.name && bytes.contentEquals(other.bytes)
+        }
+
+        override fun hashCode(): Int {
+            var result = name.hashCode()
+            result = 31 * result + bytes.contentHashCode()
+            return result
+        }
+    }
+
+    fun compileScript(script: ScriptNode): CompilationResult {
+        dependencies.clear()
+
+        val className = "TopLevelScript\$${Reeva.nextId()}"
         val classNode = assembleClass(public, className, superName = "me/mattco/reeva/compiler/TopLevelScript") {
+            init(public, superClass = "me/mattco/reeva/compiler/TopLevelScript") {
+                _return
+            }
+
             method(public, "run", JSValue::class) {
                 currentLocalIndex++
                 globalDeclarationInstantiation(script)
@@ -62,21 +86,33 @@ class Compiler {
 
         val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
         classNode.accept(writer)
-        return writer.toByteArray()
+        return CompilationResult(
+            NamedByteArray(className, writer.toByteArray()),
+            dependencies
+        )
     }
 
-    fun compileModule(module: ModuleNode): ByteArray {
+    fun compileModule(module: ModuleNode): CompilationResult {
+        dependencies.clear()
+
+        val className = "TopLevelModule\$${Reeva.nextId()}"
         val classNode = assembleClass(public, className, superName = "me/mattco/reeva/compiler/TopLevelScript") {
+            init(public, superClass = "me/mattco/reeva/compiler/TopLevelScript") {
+                _return
+            }
+
             method(public, "run", JSValue::class) {
                 currentLocalIndex++
                 TODO()
-//                compileStatementList(script.asScript.statementList)
             }
         }
 
         val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
         classNode.accept(writer)
-        return writer.toByteArray()
+        return CompilationResult(
+            NamedByteArray(className, writer.toByteArray()),
+            dependencies
+        )
     }
 
     private fun MethodAssembly.globalDeclarationInstantiation(node: ScriptNode) {
@@ -310,7 +346,7 @@ class Compiler {
             if (decl.initializer == null)
                 return@forEach
             ldc(decl.identifier.identifierName)
-            operation("resolveBinding", JSValue::class, String::class)
+            operation("resolveBinding", JSReference::class, String::class)
             stackHeight++
             compileExpression(decl.initializer.node)
             getValue
@@ -566,7 +602,7 @@ class Compiler {
     private fun MethodAssembly.compileLexicalDeclaration(node: LexicalDeclarationNode) {
         node.bindingList.lexicalBindings.forEach { binding ->
             ldc(binding.identifier.identifierName)
-            operation("resolveBinding", JSValue::class, String::class)
+            operation("resolveBinding", JSReference::class, String::class)
             stackHeight++
             if (binding.initializer == null) {
                 expect(!node.isConst)
@@ -755,7 +791,7 @@ class Compiler {
 
     private fun MethodAssembly.compileIdentifierReference(node: IdentifierReferenceNode) {
         ldc(node.identifierName)
-        operation("resolveBinding", JSValue::class, String::class)
+        operation("resolveBinding", JSReference::class, String::class)
         stackHeight++
     }
 
@@ -955,7 +991,8 @@ class Compiler {
                         // list, next
                         operation("iteratorValue", JSValue::class, JSValue::class)
                         // list, nextArg
-                        invokevirtual(List::class, "add", void, Object::class)
+                        invokeinterface(List::class, "add", Boolean::class, Object::class)
+                        pop
                     }
                 }
 
@@ -963,7 +1000,8 @@ class Compiler {
             } else {
                 compileExpression(it.expression)
                 getValue
-                invokevirtual(List::class, "add", void, Object::class)
+                invokeinterface(List::class, "add", Boolean::class, Object::class)
+                pop
                 stackHeight--
             }
         }
@@ -1719,7 +1757,7 @@ class Compiler {
     }
 
     private fun MethodAssembly.loadContext() {
-        getstatic(Agent::class, "runningContext", ExecutionContext::class)
+        invokestatic(Agent::class, "getRunningContext", ExecutionContext::class)
     }
 
     private fun MethodAssembly.loadRealm() {

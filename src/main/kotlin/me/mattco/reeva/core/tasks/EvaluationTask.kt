@@ -2,6 +2,9 @@ package me.mattco.reeva.core.tasks
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.ScriptOrModuleNode
+import me.mattco.reeva.compiler.Compiler
+import me.mattco.reeva.compiler.TopLevelScript
+import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
@@ -9,6 +12,8 @@ import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.errors.JSSyntaxErrorObject
+import java.io.File
+import java.io.FileOutputStream
 
 class EvaluationTask(
     private val script: String,
@@ -46,7 +51,31 @@ class EvaluationTask(
         }
 
         return try {
-            Reeva.Result(Interpreter(realm, scriptOrModule).interpret(), false)
+            val (primary, dependencies) = if (scriptOrModule.isScript) {
+                Compiler().compileScript(scriptOrModule.asScript)
+            } else {
+                Compiler().compileModule(scriptOrModule.asModule)
+            }
+            val ccl = Agent.activeAgent.compilerClassLoader
+
+            ccl.addClass(primary.name, primary.bytes)
+            if (Reeva.EMIT_CLASS_FILES) {
+                FileOutputStream(File(Reeva.CLASS_FILE_DIRECTORY, "${primary.name}.class")).use {
+                    it.write(primary.bytes)
+                }
+            }
+
+            dependencies.forEach { dependency ->
+                ccl.addClass(dependency.name, dependency.bytes)
+                if (Reeva.EMIT_CLASS_FILES) {
+                    FileOutputStream(File(Reeva.CLASS_FILE_DIRECTORY, "${dependency.name}.class")).use {
+                        it.write(dependency.bytes)
+                    }
+                }
+            }
+
+            val script = ccl.loadClass(primary.name).newInstance() as TopLevelScript
+            Reeva.Result(script.run(), false)
         } catch (e: ThrowException) {
             Reeva.Result(e.value, true)
         }

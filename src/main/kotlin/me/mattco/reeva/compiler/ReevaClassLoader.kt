@@ -2,7 +2,7 @@ package me.mattco.reeva.compiler
 
 import me.mattco.reeva.utils.expect
 
-class ByteClassLoader : ClassLoader() {
+class ReevaClassLoader : ClassLoader() {
     private val classes = mutableMapOf<String, ByteArray>()
 
     fun addClass(className: String, bytes: ByteArray) {

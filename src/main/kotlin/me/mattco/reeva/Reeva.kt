@@ -10,6 +10,8 @@ import java.io.File
 
 object Reeva {
     val PRINT_PARSE_NODES = System.getProperty("reeva.debugParseNodes")?.toBoolean() ?: false
+    val EMIT_CLASS_FILES = true
+    val CLASS_FILE_DIRECTORY = File("./demo/out/")
 
     // Used to ensure names of various things are unique
     @Volatile
