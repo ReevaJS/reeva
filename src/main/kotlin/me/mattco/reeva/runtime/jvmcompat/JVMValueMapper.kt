@@ -242,9 +242,7 @@ object JVMValueMapper {
                 weights.sum()
         }
 
-        val minWeight = weightedExecutables.keys.minOrNull() ?: return emptyList()
-        if (minWeight == CONVERSION_FAILURE)
-            return emptyList()
+        val minWeight = weightedExecutables.keys.filter { it != CONVERSION_FAILURE }.minOrNull() ?: return emptyList()
         return weightedExecutables.getValue(minWeight)
     }
 
