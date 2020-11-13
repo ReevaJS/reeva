@@ -44,7 +44,7 @@ class Compiler {
 
     data class LabelNode(
         val stackHeight: Int,
-        val labelName: String,
+        val labelName: String?,
         val breakLabel: LabelLike?,
         val continueLabel: LabelLike?
     )
@@ -820,8 +820,7 @@ class Compiler {
     private fun MethodAssembly.compileDoWhileStatement(node: DoWhileStatementNode, label: String?) {
         val start = makeLabel()
         val end = makeLabel()
-        if (label != null)
-            labelNodes.add(LabelNode(stackHeight, label, end, start))
+        labelNodes.add(LabelNode(stackHeight, label, end, start))
 
         placeLabel(start)
         compileStatement(node.body)
@@ -839,8 +838,7 @@ class Compiler {
     private fun MethodAssembly.compileWhileStatement(node: WhileStatementNode, label: String?) {
         val start = makeLabel()
         val end = makeLabel()
-        if (label != null)
-            labelNodes.add(LabelNode(stackHeight, label, end, start))
+        labelNodes.add(LabelNode(stackHeight, label, end, start))
 
         placeLabel(start)
         compileExpression(node.condition)
@@ -932,8 +930,7 @@ class Compiler {
     ) {
         val start = makeLabel()
         val end = makeLabel()
-        if (label != null)
-            labelNodes.add(LabelNode(stackHeight, label, end, start))
+        labelNodes.add(LabelNode(stackHeight, label, end, start))
 
         createPerIterationEnvironment(perIterationBindings)
         placeLabel(start)
@@ -1496,7 +1493,7 @@ class Compiler {
                 labelNode = labelNodes.removeLast()
             expect(labelNode.breakLabel != null)
         } else {
-            while (labelNode.breakLabel == null)
+            while (labelNode.labelName != null && labelNode.breakLabel == null)
                 labelNode = labelNodes.removeLast()
         }
 
