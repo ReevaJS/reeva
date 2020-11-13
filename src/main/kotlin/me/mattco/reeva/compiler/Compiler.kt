@@ -2074,6 +2074,7 @@ class Compiler {
         when (node.op) {
             AssignmentExpressionNode.Operator.Equals -> {
                 compileExpression(lhs)
+                compileExpression(rhs)
                 getValue
                 if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode) {
                     dup
@@ -2131,6 +2132,7 @@ class Compiler {
             }
             else -> {
                 compileExpression(lhs)
+                dup
                 getValue
                 compileExpression(rhs)
                 getValue

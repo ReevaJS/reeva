@@ -1647,8 +1647,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             else -> {
                 val lref = interpretExpression(lhs)
                 val lval = Operations.getValue(lref)
-                val rref = interpretExpression(rhs)
-                val rval = Operations.getValue(rref)
+                val rval = Operations.getValue(interpretExpression(rhs))
                 val newValue = Operations.applyStringOrNumericBinaryOperator(lval, rval, assignmentExpressionNode.op.symbol.dropLast(1))
                 Operations.putValue(lref, newValue)
                 newValue
