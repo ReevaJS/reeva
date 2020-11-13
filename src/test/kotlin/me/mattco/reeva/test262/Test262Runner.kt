@@ -34,13 +34,15 @@ class Test262Runner {
         val testDirectory = File(test262Directory, "test")
         val testDirectoryStr = testDirectory.absolutePath
         val harnessDirectory = File(test262Directory, "harness")
-        val targetDirectory: File? = File(testDirectory, "built-ins/String")
+        val targetDirectory: File? = File(testDirectory, "built-ins/Boolean")
 //        val targetDirectory: File? = null
         lateinit var pretestScript: String
 
         @BeforeAll
         @JvmStatic
         fun setup() {
+            Reeva.EMIT_CLASS_FILES = false
+
             if (!test262Directory.exists())
                 throw IllegalStateException("The test262 repo must be cloned into src/test/resources/test262/")
 
