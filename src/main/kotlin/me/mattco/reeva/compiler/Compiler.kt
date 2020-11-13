@@ -193,7 +193,7 @@ class Compiler {
                     dup
                     ldc(name)
                     invokevirtual(GlobalEnvRecord::class, "canDeclareGlobalVar", Boolean::class, String::class)
-                    ifStatement(JumpCondition.True) {
+                    ifStatement(JumpCondition.False) {
                         construct(Errors.TODO::class, String::class) {
                             ldc("globalDeclarationInstantiation 4")
                         }
