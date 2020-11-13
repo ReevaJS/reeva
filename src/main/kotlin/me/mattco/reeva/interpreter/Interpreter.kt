@@ -209,8 +209,8 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             scope,
             strict,
             JSUndefined,
-            prototype,
             sourceText,
+            prototype,
         ) {
             override fun evalBody(arguments: JSArguments): JSValue {
                 functionDeclarationInstantiation(this, parameterList, arguments, body)

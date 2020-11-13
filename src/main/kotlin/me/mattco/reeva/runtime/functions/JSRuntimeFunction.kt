@@ -16,14 +16,14 @@ import me.mattco.reeva.utils.*
  * A function declared in a JS script context. Created by
  * the interpreter or compiler.
  */
-abstract class JSRuntimeFunction(
+abstract class JSRuntimeFunction @JvmOverloads constructor(
     realm: Realm,
     thisMode: ThisMode,
     envRecord: EnvRecord?,
     isStrict: Boolean,
     homeObject: JSValue,
-    prototype: JSObject = realm.functionProto,
     internal val sourceText: String,
+    prototype: JSObject = realm.functionProto,
 ) : JSFunction(
     realm,
     thisMode,

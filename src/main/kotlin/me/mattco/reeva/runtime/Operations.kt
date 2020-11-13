@@ -1224,7 +1224,8 @@ object Operations {
         return JSUndefined
     }
 
-    @JvmStatic @ECMAImpl("9.2.8")
+    @JvmStatic @JvmOverloads
+    @ECMAImpl("9.2.8")
     fun setFunctionName(function: JSFunction, name: PropertyKey, prefix: String? = null): Boolean {
         ecmaAssert(function.isExtensible())
         val nameString = when {

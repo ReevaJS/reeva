@@ -10,8 +10,10 @@ class ReevaClassLoader : ClassLoader() {
     }
 
     override fun findClass(name: String?): Class<*> {
-        expect(name in classes)
-        val bytes = classes[name]!!
-        return defineClass(name, bytes, 0, bytes.size)
+        if (name in classes) {
+            val bytes = classes[name]!!
+            return defineClass(name, bytes, 0, bytes.size)
+        }
+        return super.findClass(name)
     }
 }
