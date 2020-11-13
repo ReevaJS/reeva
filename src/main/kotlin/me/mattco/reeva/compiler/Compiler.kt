@@ -252,7 +252,7 @@ class Compiler {
             functionNode.parameters,
             functionNode.body,
             JSFunction.ThisMode.NonLexical,
-            functionNode.identifier?.identifierName ?: "<anonymous>",
+            functionNode.identifier?.identifierName ?: "_Anonymous",
         )
 
         if (functionNode.identifier != null) {
@@ -274,7 +274,7 @@ class Compiler {
         parameters: FormalParametersNode,
         body: FunctionStatementList,
         thisMode: JSFunction.ThisMode,
-        name: String = "<anonymous>",
+        name: String = "_Anonymous",
     ) {
         val functionName = "Function_${name}_${Reeva.nextId()}"
         val isStrict = body.statementList?.hasUseStrictDirective() == true
@@ -378,8 +378,6 @@ class Compiler {
         // we currently do not do that
 //        val func = astore()
         pop
-
-        invokevirtual(JSFunction::class, "isStrict", Boolean::class)
 
         val parameterNames = parameters.boundNames()
         val hasDuplicates = parameterNames.distinct().size != parameterNames.size
@@ -1278,8 +1276,7 @@ class Compiler {
     private fun MethodAssembly.classElementEvaluation(element: ClassElementNode, enumerable: Boolean, isStatic: Boolean) {
         when (element.type) {
             ClassElementNode.Type.Method -> {
-                ldc(true)
-                propertyDefinitionEvaluation(element.node!! as MethodDefinitionNode, enumerable)
+                propertyDefinitionEvaluation(element.node!! as MethodDefinitionNode, enumerable, true)
                 aconst_null
             }
             ClassElementNode.Type.Field -> {
@@ -1888,54 +1885,54 @@ class Compiler {
                     stackHeight--
                 }
                 PropertyDefinitionNode.Type.Method -> {
-                    val method = property.first as MethodDefinitionNode
-
-                    propertyDefinitionEvaluation(method, true)
+                    propertyDefinitionEvaluation(property.first as MethodDefinitionNode, enumerable = true, isStrict = true)
                 }
                 PropertyDefinitionNode.Type.Spread -> TODO()
             }
         }
     }
 
-    // Takes obj (JSObject) and isStrict (Boolean) on the stack. Does not push a result
+    // Takes obj (JSObject) on the stack. Does not push a result
     private fun MethodAssembly.propertyDefinitionEvaluation(
         methodDefinitionNode: MethodDefinitionNode,
         enumerable: Boolean,
+        isStrict: Boolean,
     ) {
-        // obj, isStrict
+        // obj
         val enumAttr = if (enumerable) Descriptor.ENUMERABLE else 0
 
         when (methodDefinitionNode.type) {
             MethodDefinitionNode.Type.Normal -> {
+                dup
+                dup
                 defineMethod(methodDefinitionNode)
-                // obj, isStrict, DefinedMethod
-                swap
-                ifStatement(JumpCondition.True) {
-                    // obj, DefinedMethod
+                // obj, DefinedMethod
+                if (isStrict) {
                     dup
-                    getfield(Interpreter.DefinedMethod::class, "getClosure", JSFunction::class)
-                    invokevirtual(JSFunction::class, "setIsStrict", void, Boolean::class)
+                    invokevirtual(Interpreter.DefinedMethod::class, "getClosure", JSFunction::class)
+                    ldc(true)
+                    invokevirtual(JSFunction::class, "setStrict", void, Boolean::class)
                 }
                 // obj, DefinedMethod
                 dup
-                getfield(Interpreter.DefinedMethod::class, "getClosure", JSFunction::class)
+                invokevirtual(Interpreter.DefinedMethod::class, "getClosure", JSFunction::class)
                 // obj, DefinedMethod, closure
                 swap
                 // obj, closure, DefinedMethod
                 dup_x1
                 // obj, DefinedMethod, closure, DefinedMethod
-                getfield(Interpreter.DefinedMethod::class, "getKey", PropertyKey::class)
+                invokevirtual(Interpreter.DefinedMethod::class, "getKey", PropertyKey::class)
                 // obj, DefinedMethod, closure, PropertyKey
                 operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class)
                 pop
                 // obj, DefinedMethod
                 dup
                 // obj, DefinedMethod, DefinedMethod
-                getfield(Interpreter.DefinedMethod::class, "getKey", PropertyKey::class)
+                invokevirtual(Interpreter.DefinedMethod::class, "getKey", PropertyKey::class)
                 // obj, DefinedMethod, key
                 swap
                 // obj, key, DefinedMethod
-                getfield(Interpreter.DefinedMethod::class, "getClosure", JSFunction::class)
+                invokevirtual(Interpreter.DefinedMethod::class, "getClosure", JSFunction::class)
                 // obj, key, closure
 
                 new<Descriptor>()
@@ -1950,6 +1947,7 @@ class Compiler {
                 // obj, key, Descriptor
                 operation("definePropertyOrThrow", Boolean::class, JSValue::class, PropertyKey::class, Descriptor::class)
                 pop
+
             }
             MethodDefinitionNode.Type.Getter -> TODO()
             MethodDefinitionNode.Type.Setter -> TODO()
@@ -1964,6 +1962,7 @@ class Compiler {
         expect(method.type == MethodDefinitionNode.Type.Normal)
 
         loadLexicalEnv()
+        swap
         ordinaryFunctionCreate(
             "TODO",
             method.parameters,
@@ -1972,7 +1971,8 @@ class Compiler {
         )
         // obj, closure
         dup_x1
-        // closure, obj, functionPrototype
+        // closure, obj, closure
+        swap
         operation("makeMethod", JSValue::class, JSFunction::class, JSObject::class)
         pop
 
@@ -1984,6 +1984,7 @@ class Compiler {
         // DefinedMethod, DefinedMethod, closure
 
         evaluatePropertyName(method.identifier)
+        operation("toPropertyKey", PropertyKey::class, JSValue::class)
         swap
 
         // DefinedMethod, DefinedMethod, key, closure

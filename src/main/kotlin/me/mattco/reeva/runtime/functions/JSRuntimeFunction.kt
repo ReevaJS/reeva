@@ -40,14 +40,13 @@ abstract class JSRuntimeFunction @JvmOverloads constructor(
         val calleeContext = Operations.prepareForOrdinaryCall(this, JSUndefined)
         ecmaAssert(Agent.runningContext == calleeContext)
         Operations.ordinaryCallBindThis(this, calleeContext, thisValue)
-        try {
+        return try {
             evalBody(arguments)
         } catch (e: ReturnException) {
-            return e.value
+            e.value
         } finally {
             Agent.popContext()
         }
-        return JSUndefined
     }
 
     override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
