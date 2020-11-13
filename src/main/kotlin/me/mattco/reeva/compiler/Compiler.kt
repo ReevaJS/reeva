@@ -2209,7 +2209,7 @@ class Compiler {
                 compileExpression(lhs)
                 dup
                 getValue
-                operation("toBoolean", Boolean::class, JSValue::class)
+                toBoolean
                 ifStatement(JumpCondition.True) {
                     if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode)
                         TODO()
@@ -2223,7 +2223,7 @@ class Compiler {
                 compileExpression(lhs)
                 dup
                 getValue
-                operation("toBoolean", Boolean::class, JSValue::class)
+                toBoolean
                 ifStatement(JumpCondition.False) {
                     if (Operations.isAnonymousFunctionDefinition(rhs) && lhs is IdentifierReferenceNode)
                         TODO()
@@ -2355,7 +2355,7 @@ class Compiler {
             EqualityExpressionNode.Operator.StrictInequality -> {
                 swap
                 operation("strictEqualityComparison", JSValue::class, JSValue::class, JSValue::class)
-                invertBoolean()
+                invertJSBoolean()
             }
             EqualityExpressionNode.Operator.NonstrictEquality -> {
                 swap
@@ -2364,7 +2364,7 @@ class Compiler {
             EqualityExpressionNode.Operator.NonstrictInequality -> {
                 swap
                 operation("abstractEqualityComparison", JSValue::class, JSValue::class, JSValue::class)
-                invertBoolean()
+                invertJSBoolean()
             }
         }
     }
@@ -2402,12 +2402,12 @@ class Compiler {
                 swap
                 ldc(false)
                 operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
-                invertBoolean()
+                invertJSBoolean()
             }
             RelationalExpressionNode.Operator.GreaterThanEquals -> {
                 ldc(true)
                 operation("abstractRelationalComparison", JSValue::class, JSValue::class, JSValue::class, Boolean::class)
-                invertBoolean()
+                invertJSBoolean()
             }
             RelationalExpressionNode.Operator.Instanceof ->
                 operation("instanceofOperator", JSValue::class, JSValue::class, JSValue::class)
@@ -2524,7 +2524,15 @@ class Compiler {
             UnaryExpressionNode.Operator.Not -> {
                 getValue
                 toBoolean
-                invertBoolean()
+                ifElseStatement(JumpCondition.True) {
+                    ifBlock {
+                        loadFalse()
+                    }
+
+                    elseBlock {
+                        loadTrue()
+                    }
+                }
             }
         }
     }
@@ -2621,7 +2629,7 @@ class Compiler {
 
     private fun MethodAssembly.loadFalse() = loadKObject<JSFalse>()
 
-    private fun MethodAssembly.invertBoolean() {
+    private fun MethodAssembly.invertJSBoolean() {
         loadTrue()
         ifElseStatement(JumpCondition.RefEqual) {
             ifBlock {
