@@ -466,16 +466,16 @@ class Compiler {
         parameters.functionParameters.parameters.forEachIndexed { index, parameter ->
             ldc(parameter.bindingElement.binding.identifier.identifierName)
             // string
-            operation("resolveBinding", JSValue::class, String::class)
+            operation("resolveBinding", JSReference::class, String::class)
             // lhs
-            ldc(index)
-            // lhs, index
             load(arguments)
-            // lhs, index, args
             invokeinterface(List::class, "size", Int::class)
-            isub
+            if (index != 0) {
+                ldc(index)
+                isub
+            }
             // lhs, num
-            ifElseStatement(JumpCondition.GreaterThan) {
+            ifElseStatement(JumpCondition.GreaterThanOrEqual) {
                 ifBlock {
                     // lhs
                     loadUndefined()
@@ -489,7 +489,7 @@ class Compiler {
                     ldc(index)
                     // lhs, args, index
                     invokeinterface(List::class, "get", Any::class, Int::class)
-                    checkcast<JSObject>()
+                    checkcast<JSValue>()
                     // lhs, value
                 }
             }
@@ -522,7 +522,7 @@ class Compiler {
             if (hasDuplicates) {
                 operation("putValue", void, JSValue::class, JSValue::class)
             } else {
-                operation("initializeReferencedBinding", void, JSValue::class, JSValue::class)
+                operation("initializeReferencedBinding", void, JSReference::class, JSValue::class)
             }
         }
 
@@ -530,7 +530,7 @@ class Compiler {
             val startingIndex = parameters.functionParameters.parameters.size
             ldc(parameters.restParameter.element.identifier.identifierName)
             // name
-            operation("resolveBinding", JSValue::class, String::class)
+            operation("resolveBinding", JSReference::class, String::class)
             // binding
             load(arguments)
             invokeinterface(List::class, "size", Int::class)
@@ -603,7 +603,7 @@ class Compiler {
                     // binding, arr, key, args, incr
                     invokeinterface(List::class, "get", Any::class, Int::class)
                     // binding, arr, key, value
-                    checkcast<JSObject>()
+                    checkcast<JSValue>()
                     // binding, arr, key, value
 
                     operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
@@ -625,7 +625,7 @@ class Compiler {
             if (hasDuplicates) {
                 operation("putValue", void, JSValue::class, JSValue::class)
             } else {
-                operation("initializeReferencedBinding", void, JSValue::class, JSValue::class)
+                operation("initializeReferencedBinding", void, JSReference::class, JSValue::class)
             }
         }
 
@@ -1463,7 +1463,7 @@ class Compiler {
                 swap
                 pop
                 ldc(name)
-                operation("resolveBinding", JSValue::class, String::class)
+                operation("resolveBinding", JSReference::class, String::class)
                 swap
                 // binding, value
                 operation("putValue", void, JSValue::class, JSValue::class)
