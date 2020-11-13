@@ -2455,8 +2455,21 @@ class Compiler {
         TODO()
     }
 
-    private fun MethodAssembly.compileTemplateLiteral(node: ExpressionNode) {
-        TODO()
+    private fun MethodAssembly.compileTemplateLiteral(node: TemplateLiteralNode) {
+        construct(JSString::class, String::class) {
+            buildStringHelper {
+                node.parts.forEach {
+                    append {
+                        compileExpression(it)
+                        getValue
+                        operation("toString", JSString::class, JSValue::class)
+                        invokevirtual(JSString::class, "getString", String::class)
+                        stackHeight--
+                    }
+                }
+            }
+        }
+        stackHeight++
     }
 
     private fun MethodAssembly.compileClassExpression(node: ExpressionNode) {
@@ -2635,6 +2648,24 @@ class Compiler {
 
         fun finallyBlock(block: () -> Unit) {
             finallyBlock = block
+        }
+    }
+
+    private fun MethodAssembly.buildStringHelper(block: BuildStringHelper.() -> Unit) {
+        val helper = BuildStringHelper().apply(block)
+        construct(StringBuilder::class)
+        helper.parts.forEach {
+            it.second()
+            invokevirtual(StringBuilder::class, "append", StringBuilder::class, it.first)
+        }
+        invokevirtual(StringBuilder::class, "toString", String::class)
+    }
+
+    class BuildStringHelper {
+        val parts = mutableListOf<Pair<TypeLike, () -> Unit>>()
+
+        fun append(type: TypeLike = String::class, block: () -> Unit) {
+            parts.add(type to block)
         }
     }
 

@@ -1255,7 +1255,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
     private fun interpretTemplateLiteral(templateLiteralNode: TemplateLiteralNode): JSValue {
         return buildString {
             templateLiteralNode.parts.forEach {
-                append(Operations.toString(Operations.getValue(interpretExpression(it))))
+                append(Operations.toString(Operations.getValue(interpretExpression(it))).string)
             }
         }.toValue()
     }
