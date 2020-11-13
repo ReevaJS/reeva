@@ -1505,10 +1505,11 @@ class Compiler {
 
             if (node.catchNode != null) {
                 catchBlock<ThrowException> {
-                    val ex = astore()
                     if (node.catchNode.catchParameter == null) {
+                        pop
                         compileBlock(node.catchNode.block)
                     } else {
+                        val ex = astore()
                         loadLexicalEnv()
                         dup
                         createDeclarativeEnvRecord()
@@ -1521,9 +1522,9 @@ class Compiler {
                             invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
                         }
 
-                        loadContext()
-                        swap
-                        putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+                        // oldEnv, catchEnv
+                        storeLexicalEnv()
+                        val oldEnv = astore()
 
                         tryCatchBuilder {
                             tryBlock {
@@ -1536,9 +1537,8 @@ class Compiler {
                             }
 
                             finallyBlock {
-                                loadContext()
-                                swap
-                                putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
+                                load(oldEnv)
+                                storeLexicalEnv()
                             }
                         }
                     }
