@@ -1682,10 +1682,12 @@ class Compiler {
         dup
         operation("isConstructor", Boolean::class, JSValue::class)
         ifStatement(JumpCondition.False) {
-            construct(Errors.NotACtor::class, String::class) {
-                operation("toPrintableString", String::class, JSValue::class)
-            }
-            invokevirtual(Errors::class, "throwTypeError", Nothing::class)
+            new<Errors.NotACtor>()
+            dup_x1
+            swap
+            operation("toPrintableString", String::class, JSValue::class)
+            invokespecial(Errors.NotACtor::class, "<init>", void, String::class)
+            invokevirtual(Error::class, "throwTypeError", Nothing::class)
             loadUndefined()
             areturn
         }
