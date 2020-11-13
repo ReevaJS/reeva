@@ -465,40 +465,63 @@ class Compiler {
 
         parameters.functionParameters.parameters.forEachIndexed { index, parameter ->
             ldc(parameter.bindingElement.binding.identifier.identifierName)
+            // string
             operation("resolveBinding", JSValue::class, String::class)
+            // lhs
             ldc(index)
+            // lhs, index
             load(arguments)
+            // lhs, index, args
             invokeinterface(List::class, "size", Int::class)
+            isub
+            // lhs, num
             ifElseStatement(JumpCondition.GreaterThan) {
                 ifBlock {
+                    // lhs
                     loadUndefined()
+                    // lhs, value
                 }
 
                 elseBlock {
+                    // lhs
                     load(arguments)
+                    // lhs, args
                     ldc(index)
-                    invokeinterface(List::class, "get", Any::class)
+                    // lhs, args, index
+                    invokeinterface(List::class, "get", Any::class, Int::class)
+                    checkcast<JSObject>()
+                    // lhs, value
                 }
             }
 
+            // lhs, value
             val value = astore()
+            // lhs
 
             if (parameter.bindingElement.binding.initializer != null) {
+                // lhs
                 load(value)
+                // lhs, value
                 loadUndefined()
+                // lhs, value, undefined
                 ifStatement(JumpCondition.RefEqual) {
+                    // lhs
                     compileExpression(parameter.bindingElement.binding.initializer.node)
+                    // lhs, expr
                     stackHeight--
                     getValue
                     astore(value.index)
+                    // lhs
                 }
             }
 
+            // lhs
+            load(value)
+            // lhs, value
+
             if (hasDuplicates) {
-                load(value)
                 operation("putValue", void, JSValue::class, JSValue::class)
             } else {
-                load(value)
                 operation("initializeReferencedBinding", void, JSValue::class, JSValue::class)
             }
         }
@@ -506,57 +529,96 @@ class Compiler {
         if (parameters.restParameter != null) {
             val startingIndex = parameters.functionParameters.parameters.size
             ldc(parameters.restParameter.element.identifier.identifierName)
+            // name
             operation("resolveBinding", JSValue::class, String::class)
+            // binding
             load(arguments)
             invokeinterface(List::class, "size", Int::class)
+            // binding, size
             dup
-            ldc(startingIndex)
+            // binding, size, size
+            if (startingIndex > 0) {
+                ldc(startingIndex)
+                // binding, size, size, startingIndex
+                isub
+            }
+            // binding, size, number
             ifElseStatement(JumpCondition.GreaterThanOrEqual) {
                 ifBlock {
+                    // binding, size
                     pop
+                    // binding
                     ldc(0)
-                    operation("arrayCreate", JSValue::class)
+                    // binding, 0
+                    operation("arrayCreate", JSObject::class, Int::class)
+                    // binding, arr
                 }
 
                 elseBlock {
-                    ldc(startingIndex)
-                    isub
-                    operation("arrayCreate", JSValue::class, Int::class)
+                    // binding, size
+                    if (startingIndex != 0) {
+                        ldc(startingIndex)
+                        // binding, size, index
+                        isub
+                    }
+                    // binding, length
+                    operation("arrayCreate", JSObject::class, Int::class)
+                    // binding, arr
                     val arr = astore()
+                    // binding
 
                     val loopStart = makeLabel()
                     val loopEnd = makeLabel()
 
                     ldc(startingIndex)
+                    val incr = istore()
+
+                    // binding
 
                     placeLabel(loopStart)
 
-                    dup
-                    ldc(arguments)
+                    load(incr)
+                    load(arguments)
+                    // binding, incr, args
                     invokeinterface(List::class, "size", Int::class)
+                    // binding, incr, size
+                    isub
+                    // binding, value
                     ifStatement(JumpCondition.GreaterThanOrEqual) {
-                        pop
+                        // binding
                         goto(loopEnd)
                     }
 
+                    // binding
                     load(arr)
+                    // binding, arr
+                    construct(JSNumber::class, Int::class) {
+                        load(incr)
+                    }
+                    // binding, arr, key
 
-                    dup
-                    new<JSNumber>()
-                    dup_x1
-                    swap
-                    invokespecial(JSNumber::class, "<init>", Int::class)
+                    load(arguments)
+                    // binding, arr, key, args
+                    load(incr)
+                    // binding, arr, key, args, incr
+                    invokeinterface(List::class, "get", Any::class, Int::class)
+                    // binding, arr, key, value
+                    checkcast<JSObject>()
+                    // binding, arr, key, value
 
                     operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
+                    // binding, boolean
+                    pop
+                    // binding
 
-                    ldc(1)
-                    iadd
+                    iinc(incr.index)
 
                     goto(loopStart)
 
                     placeLabel(loopEnd)
 
                     load(arr)
+                    // binding, arr
                 }
             }
 
@@ -1020,8 +1082,10 @@ class Compiler {
                 if (Operations.isAnonymousFunctionDefinition(binding.initializer.node)) {
                     dup
                     checkcast<JSFunction>()
-                    ldc(binding.identifier.identifierName)
-                    operation("setFunctionName", Boolean::class, JSFunction::class, String::class)
+                    construct(PropertyKey::class, String::class) {
+                        ldc(binding.identifier.identifierName)
+                    }
+                    operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class)
                     pop
                 }
                 getValue
@@ -1587,9 +1651,9 @@ class Compiler {
 
     private fun MethodAssembly.compileFunctionExpression(node: FunctionExpressionNode) {
         if (node.identifier == null) {
-            loadRealm()
-            getfield(Realm::class, "functionProto", JSFunctionProto::class)
             loadLexicalEnv()
+            loadRealm()
+            invokevirtual(Realm::class, "getFunctionProto", JSFunctionProto::class)
             val sourceText = "TODO"
             stackHeight += 2
 
@@ -1604,7 +1668,8 @@ class Compiler {
             construct(PropertyKey::class, String::class) {
                 ldc("")
             }
-            operation("setFunctionName", JSFunction::class, PropertyKey::class)
+            operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class)
+            pop
 
             dup
             operation("makeConstructor", void, JSFunction::class)
@@ -1623,7 +1688,7 @@ class Compiler {
             // funcEnv, funcEnv
 
             loadRealm()
-            getfield(Realm::class, "functionProto", JSFunctionProto::class)
+            invokevirtual(Realm::class, "getFunctionProto", JSFunctionProto::class)
             val sourceText = "TODO"
             // funcEnv, funcEnv, proto
             stackHeight += 2
@@ -1641,7 +1706,8 @@ class Compiler {
             construct(PropertyKey::class, String::class) {
                 ldc(node.name)
             }
-            operation("setFunctionName", JSFunction::class, PropertyKey::class)
+            operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class)
+            pop
 
             // funcEnv, closure
 
@@ -1681,7 +1747,7 @@ class Compiler {
         }
 
         loadRealm()
-        getfield(Realm::class, "functionProto", JSFunctionProto::class)
+        invokevirtual(Realm::class, "getFunctionProto", JSFunctionProto::class)
         stackHeight += 2
 
         ordinaryFunctionCreate(
@@ -1789,6 +1855,7 @@ class Compiler {
                 }
 
                 placeLabel(whileEnd)
+                stackHeight--
             } else {
                 compileExpression(it.expression)
                 getValue
