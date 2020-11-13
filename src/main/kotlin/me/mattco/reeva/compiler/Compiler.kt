@@ -266,6 +266,8 @@ class Compiler {
 
         dup
         operation("makeConstructor", void, JSFunction::class)
+
+        stackHeight++
     }
 
     // Consumes an EnvRecord and a JSObject (the prototype) from the stack, pushes a JSFunction
@@ -285,6 +287,7 @@ class Compiler {
         }
 
         val prevLocalIndex = currentLocalIndex
+        val prevStackHeight = stackHeight
 
         val functionClassNode = assembleClass(
             public,
@@ -324,16 +327,19 @@ class Compiler {
                 currentLocalIndex = 2
                 aload_0
                 aload_1
+                stackHeight = 2
                 functionDeclarationInstantiation(parameters, body, funcThisMode, isStrict)
                 body.statementList?.also {
                     compileStatementList(it)
                 }
                 loadUndefined()
+                expect(stackHeight == 0)
                 areturn
             }
         }
 
         currentLocalIndex = prevLocalIndex
+        stackHeight = prevStackHeight
 
         val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
         functionClassNode.accept(writer)
@@ -361,6 +367,8 @@ class Compiler {
         }
         operation("definePropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, Descriptor::class)
         pop
+
+        stackHeight--
     }
 
     // Consumes JSFunction and List<JSValue> from the stack
@@ -371,7 +379,6 @@ class Compiler {
         isStrict: Boolean,
     ) {
         val arguments = astore()
-
         dup
 
         // We will need the function to create a mapped arguments object, but
@@ -643,7 +650,10 @@ class Compiler {
             instantiateFunctionObject(decl)
             ldc(false)
             invokevirtual(EnvRecord::class, "setMutableBinding", void, String::class, JSValue::class, Boolean::class)
+            stackHeight--
         }
+
+        stackHeight -= 2
     }
 
     private fun MethodAssembly.compileStatementList(statementListNode: StatementListNode) {
@@ -713,6 +723,7 @@ class Compiler {
                 ldc(decl.boundNames()[0])
                 swap
                 invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
+                stackHeight--
             }
         }
         // BlockDeclarationInstantiation end
@@ -1030,6 +1041,7 @@ class Compiler {
     private fun MethodAssembly.compileClassDeclaration(node: ClassDeclarationNode) {
         bindingClassDeclarationEvaluation(node)
         pop
+        stackHeight--
     }
 
     private fun MethodAssembly.bindingClassDeclarationEvaluation(classDeclarationNode: ClassDeclarationNode) {
@@ -1041,6 +1053,8 @@ class Compiler {
             classDefinitionEvaluation(node, className, className)
             dup
             loadLexicalEnv()
+            swap
+            stackHeight += 2
             initializeBoundName(className)
         }
     }
@@ -1064,6 +1078,7 @@ class Compiler {
             loadRealm()
             dup
             invokevirtual(Realm::class, "getObjectProto", JSObjectProto::class)
+            swap
             invokevirtual(Realm::class, "getFunctionProto", JSFunctionProto::class)
         } else {
             load(classScope)
@@ -1132,8 +1147,9 @@ class Compiler {
         swap
         // ctorParent, realm, protoParent
 
-        invokestatic(JSObject::class, "create", JSObject::class, Realm::class, JSObject::class)
+        invokestatic(JSObject::class, "create", JSObject::class, Realm::class, JSValue::class)
         val proto = astore()
+        // ctorParent
 
         val constructor = (node.body.constructorMethod() as? ClassElementNode)?.node as? MethodDefinitionNode ?:
         if (node.heritage != null) {
@@ -1166,19 +1182,27 @@ class Compiler {
             )
         }
 
+        // ctorParent
+
         load(classScope)
         storeLexicalEnv()
 
+        // ctorParent
+        load(proto)
+        swap
+        // proto, ctorParent
+
+        stackHeight += 2
         defineMethod(constructor)
 
         // DefinedMethod
         invokevirtual(Interpreter.DefinedMethod::class, "getClosure", JSFunction::class)
 
-        // closure
+        // classFunction
         dup
         val classFunction = astore()
 
-        // closure
+        // classFunction
         dup
         ldc(true)
         invokevirtual(JSFunction::class, "setStrict", void, Boolean::class)
@@ -1205,22 +1229,33 @@ class Compiler {
         ldc(true)
         invokevirtual(JSFunction::class, "setClassConstructor", void, Boolean::class)
 
+        // classFunction
         new<Descriptor>()
+        // classFunction, descriptor
         dup_x1
+        // descriptor, classFunction, descriptor
         swap
+        // descriptor, descriptor, classFunction
         ldc(Descriptor.WRITABLE or Descriptor.CONFIGURABLE)
+        // descriptor, descriptor, classFunction, attrs
         invokespecial(Descriptor::class, "<init>", void, JSValue::class, Int::class)
+        // descriptor
 
         load(proto)
+        // descriptor, proto
         swap
+        // proto, descriptor
         construct(PropertyKey::class, String::class) {
             ldc("constructor")
         }
+        // proto, descriptor, key
         swap
+        // proto, key, descriptor
         invokevirtual(JSObject::class, "defineOwnProperty", Boolean::class, PropertyKey::class, Descriptor::class)
         pop
 
         construct(ArrayList::class)
+        stackHeight++
 
         node.body.elements.filter {
             it.node != constructor
@@ -1234,6 +1269,7 @@ class Compiler {
                     } else {
                         load(proto)
                     }
+                    stackHeight++
                     classElementEvaluation(element, false, element.isStatic)
                     dup
                     ifElseStatement(JumpCondition.NonNull) {
@@ -1243,9 +1279,10 @@ class Compiler {
                         }
 
                         elseBlock {
-                            pop
+                            pop2
                         }
                     }
+                    stackHeight--
                 }
 
                 catchBlock<ThrowException> {
@@ -1262,12 +1299,13 @@ class Compiler {
             load(classScope)
             ldc(classBinding)
             load(classFunction)
-            invokevirtual(EnvRecord::class, "initializeBinding", String::class, JSFunction::class)
+            invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
         }
 
         load(classFunction)
         swap
         invokevirtual(JSFunction::class, "setFields", void, List::class)
+        stackHeight--
 
         load(classFunction)
     }
@@ -1278,6 +1316,7 @@ class Compiler {
             ClassElementNode.Type.Method -> {
                 propertyDefinitionEvaluation(element.node!! as MethodDefinitionNode, enumerable, true)
                 aconst_null
+                stackHeight++
             }
             ClassElementNode.Type.Field -> {
                 evaluatePropertyName(element.node!!)
@@ -1295,6 +1334,7 @@ class Compiler {
                         getValue
                         operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
                         // <empty>
+                        stackHeight--
                     }
                     aconst_null
                 } else {
@@ -1311,6 +1351,7 @@ class Compiler {
                         invokevirtual(Realm::class, "getFunctionProto", JSFunctionProto::class)
                         val formalParameterList = FormalParametersNode(FormalParameterListNode(emptyList()), null)
                         // FieldRecord, name, env, funcProto
+                        stackHeight++
                         ordinaryFunctionCreate(
                             "TODO",
                             formalParameterList,
@@ -1346,35 +1387,40 @@ class Compiler {
                     invokespecial(JSFunction.FieldRecord::class, "<init>", void, JSValue::class, JSValue::class, Boolean::class)
                 }
             }
-            ClassElementNode.Type.Empty -> aconst_null
+            ClassElementNode.Type.Empty -> {
+                aconst_null
+                stackHeight++
+            }
         }
     }
 
     // Consumes an env and JSValue from the stack
     private fun MethodAssembly.initializeBoundName(name: String) {
-        swap
         dup
         ifElseStatement(JumpCondition.Null) {
             ifBlock {
+                swap
                 pop
                 ldc(name)
                 operation("resolveBinding", JSValue::class, String::class)
                 swap
+                // binding, value
                 operation("putValue", void, JSValue::class, JSValue::class)
             }
 
             elseBlock {
-                swap
                 ldc(name)
                 swap
                 invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
             }
         }
+        stackHeight -= 2
     }
 
     private fun MethodAssembly.compileReturnStatement(node: ReturnStatementNode) {
         if (node.node != null) {
             compileExpression(node.node)
+            stackHeight--
         } else {
             loadUndefined()
         }
@@ -1528,6 +1574,7 @@ class Compiler {
     private fun MethodAssembly.compileCommaExpressionNode(node: CommaExpressionNode) {
         node.expressions.forEachIndexed { index, expression ->
             compileExpression(expression)
+            getValue
             if (index != node.expressions.lastIndex) {
                 pop
                 stackHeight--
@@ -1547,6 +1594,7 @@ class Compiler {
             getfield(Realm::class, "functionProto", JSFunctionProto::class)
             loadLexicalEnv()
             val sourceText = "TODO"
+            stackHeight += 2
 
             ordinaryFunctionCreate(
                 sourceText,
@@ -1581,6 +1629,7 @@ class Compiler {
             getfield(Realm::class, "functionProto", JSFunctionProto::class)
             val sourceText = "TODO"
             // funcEnv, funcEnv, proto
+            stackHeight += 2
 
             ordinaryFunctionCreate(
                 sourceText,
@@ -1609,10 +1658,8 @@ class Compiler {
             swap
 
             // closure, funcEnv, name, closure
-            invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSFunction::class)
+            invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
         }
-
-        stackHeight++
     }
 
     private fun MethodAssembly.compileArrowFunction(node: ArrowFunctionNode) {
@@ -1638,6 +1685,7 @@ class Compiler {
 
         loadRealm()
         getfield(Realm::class, "functionProto", JSFunctionProto::class)
+        stackHeight += 2
 
         ordinaryFunctionCreate(
             sourceText,
@@ -1652,8 +1700,6 @@ class Compiler {
         }
         operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class)
         pop
-
-        stackHeight++
     }
 
     private fun MethodAssembly.compileLiteral(node: LiteralNode) {
@@ -1694,7 +1740,7 @@ class Compiler {
             argumentsListEvaluation(node.arguments)
         }
         operation("construct", JSValue::class, JSValue::class, List::class)
-        stackHeight++
+        stackHeight--
     }
 
     private fun MethodAssembly.argumentsListEvaluation(node: ArgumentsNode) {
@@ -1864,6 +1910,7 @@ class Compiler {
 
         node.list.properties.forEach { property ->
             dup
+            stackHeight++
             when (property.type) {
                 PropertyDefinitionNode.Type.KeyValue -> {
                     evaluatePropertyName(property.first)
@@ -1882,7 +1929,6 @@ class Compiler {
                     getValue
                     operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
                     pop
-                    stackHeight--
                 }
                 PropertyDefinitionNode.Type.Method -> {
                     propertyDefinitionEvaluation(property.first as MethodDefinitionNode, enumerable = true, isStrict = true)
@@ -1905,6 +1951,7 @@ class Compiler {
             MethodDefinitionNode.Type.Normal -> {
                 dup
                 dup
+                stackHeight += 2
                 defineMethod(methodDefinitionNode)
                 // obj, DefinedMethod
                 if (isStrict) {
@@ -1946,6 +1993,7 @@ class Compiler {
                 invokespecial(Descriptor::class, "<init>", void, JSValue::class, Int::class)
                 // obj, key, Descriptor
                 operation("definePropertyOrThrow", Boolean::class, JSValue::class, PropertyKey::class, Descriptor::class)
+                stackHeight--
                 pop
 
             }
@@ -1955,6 +2003,8 @@ class Compiler {
             MethodDefinitionNode.Type.Async -> TODO()
             MethodDefinitionNode.Type.AsyncGenerator -> TODO()
         }
+
+        stackHeight--
     }
 
     // Takes obj (JSObject) and functionPrototype (JSObject) on the stack, pushes DefinedMethod
@@ -1989,9 +2039,8 @@ class Compiler {
 
         // DefinedMethod, DefinedMethod, key, closure
         invokespecial(Interpreter.DefinedMethod::class, "<init>", void, PropertyKey::class, JSFunction::class)
+        stackHeight--
         // DefinedMethod
-
-        stackHeight -= 2
     }
 
     private fun MethodAssembly.evaluatePropertyName(node: ASTNode) {
@@ -2002,8 +2051,11 @@ class Compiler {
                 operation("toPropertyKey", PropertyKey::class, JSValue::class)
                 invokevirtual(PropertyKey::class, "getAsValue", JSValue::class)
             } else when (val expr = node.expr) {
-                is IdentifierNode -> construct(JSString::class, String::class) {
-                    ldc(expr.identifierName)
+                is IdentifierNode -> {
+                    construct(JSString::class, String::class) {
+                        ldc(expr.identifierName)
+                    }
+                    stackHeight++
                 }
                 is StringLiteralNode, is NumericLiteralNode -> compileExpression(expr)
                 else -> unreachable()
@@ -2087,6 +2139,7 @@ class Compiler {
                 }
                 dup_x1
                 operation("putValue", void, JSValue::class, JSValue::class)
+                stackHeight--
             }
             AssignmentExpressionNode.Operator.And -> {
                 compileExpression(lhs)
@@ -2182,9 +2235,9 @@ class Compiler {
         toBoolean
         ifStatement(JumpCondition.False) {
             pop
+            stackHeight--
             compileExpression(node.rhs)
             getValue
-            stackHeight--
         }
     }
 
@@ -2195,9 +2248,9 @@ class Compiler {
         toBoolean
         ifStatement(JumpCondition.True) {
             pop
+            stackHeight--
             compileExpression(node.rhs)
             getValue
-            stackHeight--
         }
     }
 
@@ -2207,8 +2260,8 @@ class Compiler {
         compileExpression(rhs)
         getValue
         ldc(op)
-        stackHeight--
         operation("applyStringOrNumericBinaryOperator", JSValue::class, JSValue::class, JSValue::class, String::class)
+        stackHeight--
     }
 
     private fun MethodAssembly.compileBitwiseORExpression(node: BitwiseORExpressionNode) {
@@ -2233,7 +2286,7 @@ class Compiler {
         when (node.op) {
             EqualityExpressionNode.Operator.StrictEquality -> {
                 swap
-                operation("strictEqualityCompariso", JSValue::class, JSValue::class, JSValue::class)
+                operation("strictEqualityComparison", JSValue::class, JSValue::class, JSValue::class)
             }
             EqualityExpressionNode.Operator.StrictInequality -> {
                 swap
@@ -2474,8 +2527,14 @@ class Compiler {
         stackHeight++
     }
 
-    private fun MethodAssembly.compileClassExpression(node: ExpressionNode) {
-        TODO()
+    private fun MethodAssembly.compileClassExpression(node: ClassExpressionNode) {
+        val name = node.classNode.identifier?.identifierName
+        // TODO: Set [[SourceText]]
+        if (name != null) {
+            classDefinitionEvaluation(node.classNode, name, name)
+        } else {
+            classDefinitionEvaluation(node.classNode, null, "")
+        }
     }
 
     private fun MethodAssembly.compileSuperProperty(node: ExpressionNode) {
