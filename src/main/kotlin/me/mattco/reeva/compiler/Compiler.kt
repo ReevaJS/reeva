@@ -321,7 +321,8 @@ class Compiler {
                     construct(PropertyKey::class, String::class) {
                         ldc(functionName)
                     }
-                    operation("setFunctionName", void, JSFunction::class, PropertyKey::class)
+                    operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class)
+                    pop
                 }
 
                 if (isConstructor) {
@@ -359,6 +360,9 @@ class Compiler {
         dup_x2
         pop
         invokespecial(className, "<init>", void, EnvRecord::class, JSObject::class)
+
+        dup
+        invokevirtual(JSObject::class, "init", void)
 
         stackHeight--
     }
