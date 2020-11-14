@@ -2760,6 +2760,7 @@ class Compiler {
             UnaryExpressionNode.Operator.Delete -> operation("deleteOperator", JSValue::class, JSValue::class)
             UnaryExpressionNode.Operator.Void -> {
                 getValue
+                pop
                 loadUndefined()
             }
             UnaryExpressionNode.Operator.Typeof -> {
