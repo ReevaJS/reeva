@@ -759,13 +759,17 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         )
     }
 
-    private fun forInOfHeadEvaluation(uninitializedBoundNames: List<String>, expr: ExpressionNode, iterationKind: IterationKind): Operations.IteratorRecord {
+    private fun forInOfHeadEvaluation(
+        uninitializedBoundNames: List<String>,
+        expr: ExpressionNode,
+        iterationKind: IterationKind
+    ): Operations.IteratorRecord {
         if (iterationKind == IterationKind.AsyncIterate)
             TODO()
 
         val oldEnv = Agent.runningContext.lexicalEnv
         if (uninitializedBoundNames.isNotEmpty()) {
-            ecmaAssert(uninitializedBoundNames.groupBy { it }.size == uninitializedBoundNames.size)
+            ecmaAssert(uninitializedBoundNames.distinct().size == uninitializedBoundNames.size)
             val newEnv = DeclarativeEnvRecord.create(oldEnv)
             uninitializedBoundNames.forEach { name ->
                 newEnv.createMutableBinding(name, false)
@@ -778,7 +782,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         val exprValue = Operations.getValue(exprRef)
 
         return if (iterationKind == IterationKind.Enumerate) {
-            if (exprValue == JSUndefined || exprValue == JSEmpty)
+            if (exprValue == JSUndefined || exprValue == JSNull)
                 throw BreakException(null)
             val obj = Operations.toObject(exprValue)
             val iterator = JSObjectPropertyIterator.create(Agent.runningContext.realm, obj)
@@ -816,7 +820,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 return value
 
             val nextValue = Operations.iteratorValue(nextResult)
-
 
             try {
                 val lhsRef = if (lhsKind != LHSKind.LexicalBinding) {

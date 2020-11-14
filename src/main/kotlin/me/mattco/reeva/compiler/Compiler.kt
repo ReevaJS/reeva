@@ -14,10 +14,7 @@ import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.expressions.TemplateLiteralNode
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
-import me.mattco.reeva.core.Agent
-import me.mattco.reeva.core.ExecutionContext
-import me.mattco.reeva.core.Realm
-import me.mattco.reeva.core.ThrowException
+import me.mattco.reeva.core.*
 import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
@@ -28,6 +25,7 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSFunctionProto
 import me.mattco.reeva.runtime.functions.JSRuntimeFunction
+import me.mattco.reeva.runtime.iterators.JSObjectPropertyIterator
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObjectProto
@@ -379,7 +377,6 @@ class Compiler {
         isStrict: Boolean,
     ) {
         val arguments = astore()
-        dup
 
         // We will need the function to create a mapped arguments object, but
         // we currently do not do that
@@ -874,8 +871,314 @@ class Compiler {
             is DoWhileStatementNode -> compileDoWhileStatement(node, label)
             is WhileStatementNode -> compileWhileStatement(node, label)
             is ForStatementNode -> compileForStatement(node, label)
-//            is ForInNode -> compileForInNode(node, label)
-//            is ForOfNode -> compileForOfNode(node, label)
+            is ForInNode -> compileForInStatement(node, label)
+            is ForOfNode -> compileForOfStatement(node, label)
+            else -> unreachable()
+        }
+    }
+
+    private fun MethodAssembly.compileForInStatement(node: ForInNode, label: String?) {
+        forInOfHeadEvaluation(
+            if (node.decl is ForDeclarationNode) {
+                node.decl.boundNames()
+            } else emptyList(),
+            node.expression,
+            Interpreter.IterationKind.Enumerate,
+        )
+
+        dup
+        ifElseStatement(JumpCondition.NonNull) {
+            ifBlock {
+                forInOfBodyEvaluation(
+                    node.decl,
+                    node.body,
+                    Interpreter.IterationKind.Enumerate,
+                    when (node.decl) {
+                        is VariableDeclarationNode -> Interpreter.LHSKind.VarBinding
+                        is ForDeclarationNode -> Interpreter.LHSKind.LexicalBinding
+                        else -> Interpreter.LHSKind.Assignment
+                    },
+                    label = label,
+                )
+            }
+
+            elseBlock {
+                pop
+            }
+        }
+
+        stackHeight--
+    }
+
+    private fun MethodAssembly.compileForOfStatement(node: ForOfNode, label: String?) {
+        forInOfHeadEvaluation(
+            if (node.decl is ForDeclarationNode) {
+                node.decl.boundNames()
+            } else emptyList(),
+            node.expression,
+            Interpreter.IterationKind.Iterate
+        )
+
+        forInOfBodyEvaluation(
+            node.decl,
+            node.body,
+            Interpreter.IterationKind.Iterate,
+            when (node.decl) {
+                is VariableDeclarationNode -> Interpreter.LHSKind.VarBinding
+                is ForDeclarationNode -> Interpreter.LHSKind.LexicalBinding
+                else -> Interpreter.LHSKind.Assignment
+            },
+            label = label,
+        )
+
+        stackHeight--
+    }
+
+    private fun MethodAssembly.forInOfHeadEvaluation(
+        uninitializedBoundNames: List<String>,
+        expr: ExpressionNode,
+        iterationKind: Interpreter.IterationKind,
+    ) {
+        if (iterationKind == Interpreter.IterationKind.AsyncIterate)
+            TODO()
+
+        if (uninitializedBoundNames.isNotEmpty()) {
+            loadLexicalEnv()
+            dup
+            // oldEnv, oldEnv
+            ecmaAssert(uninitializedBoundNames.distinct().size == uninitializedBoundNames.size)
+            createDeclarativeEnvRecord()
+            // oldEnv, newEnv
+            uninitializedBoundNames.forEach { name ->
+                dup
+                // oldEnv, newEnv, newEnv
+                ldc(name)
+                ldc(false)
+                invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
+                // oldEnv, newEnv
+            }
+            // oldEnv, newEnv
+            storeLexicalEnv()
+            // oldEnv
+        }
+
+        // oldEnv (if uninitializeBoundNames.isNotEmpty())
+        // <empty> (if uninitializeBoundNames.isEmpty())
+        compileExpression(expr)
+        if (uninitializedBoundNames.isNotEmpty()) {
+            // oldEnv, exprRef
+            swap
+            // exprRef, oldEnv
+            storeLexicalEnv()
+            // exprRef
+        }
+
+        // exprRef
+        getValue
+
+        // expr
+        if (iterationKind == Interpreter.IterationKind.Enumerate) {
+            dup
+            // expr, expr
+            invokevirtual(JSValue::class, "isNullish", Boolean::class)
+            // expr, boolean
+            ifElseStatement(JumpCondition.True) {
+                ifBlock {
+                    // expr
+                    pop
+                    aconst_null
+                }
+
+                elseBlock {
+                    // expr
+                    new<Operations.IteratorRecord>()
+                    dup_x1
+                    // record, expr, record
+                    swap
+                    // record, record, expr
+                    operation("toObject", JSObject::class, JSValue::class)
+                    // record, record, exprObj
+                    loadRealm()
+                    // record, record, exprObj, realm
+                    swap
+                    // record, record, realm, exprObj
+                    invokestatic(
+                        JSObjectPropertyIterator::class,
+                        "create",
+                        JSObjectPropertyIterator::class,
+                        Realm::class,
+                        JSObject::class
+                    )
+                    // record, record, iter
+                    dup
+                    // record, record, iter, iter
+                    construct(JSString::class, String::class) {
+                        ldc("next")
+                    }
+                    // record, record, iter, iter, "next"
+                    operation("getV", JSValue::class, JSValue::class, JSValue::class)
+                    // record, record, iter, value
+                    ldc(false)
+                    // record, record, iter, value, boolean
+                    invokespecial(Operations.IteratorRecord::class, "<init>", void, JSObject::class, JSValue::class, Boolean::class)
+                    // record
+                }
+            }
+        } else {
+            // expr
+            getstatic(Operations.IteratorHint::class, "Sync", Operations.IteratorHint::class)
+            // expr, Sync
+            operation("getIterator", Operations.IteratorRecord::class, JSValue::class, Operations.IteratorHint::class)
+            // record
+        }
+    }
+
+    // Consumes an IteratorRecord from the stack
+    private fun MethodAssembly.forInOfBodyEvaluation(
+        lhs: ASTNode,
+        statement: StatementNode,
+        iterationKind: Interpreter.IterationKind,
+        lhsKind: Interpreter.LHSKind,
+        label: String?,
+        iteratorKind: Operations.IteratorHint? = Operations.IteratorHint.Sync
+    ) {
+        if (iterationKind == Interpreter.IterationKind.AsyncIterate)
+            TODO()
+        if (iteratorKind == Operations.IteratorHint.Async)
+            TODO()
+        if (lhs.isDestructuring())
+            TODO()
+
+        // record
+        val record = astore()
+        loadLexicalEnv()
+        val oldEnv = astore()
+
+        val start = makeLabel()
+        val end = makeLabel()
+        labelNodes.add(LabelNode(stackHeight, label, end, start))
+
+        placeLabel(start)
+
+        load(record)
+        invokevirtual(Operations.IteratorRecord::class, "getNextMethod", JSValue::class)
+        load(record)
+        invokevirtual(Operations.IteratorRecord::class, "getIterator", JSObject::class)
+        operation("call", JSValue::class, JSValue::class, JSValue::class)
+        // nextResult
+
+        dup
+        // nextResult, nextResult
+        instanceof<JSObject>()
+        // nextResult, boolean
+        ifStatement(JumpCondition.False) {
+            // nextResult
+            construct(Errors.TODO::class, String::class) {
+                ldc("forInOfBodyEvaluation")
+            }
+            invokevirtual(Error::class, "throwTypeError", Nothing::class)
+            pop
+            loadUndefined()
+            areturn
+        }
+
+        // nextResult
+        dup
+        // nextResult, nextResult
+        operation("iteratorComplete", Boolean::class, JSValue::class)
+        // nextResult, boolean
+        ifStatement(JumpCondition.True) {
+            // nextResult
+            pop
+            goto(end)
+        }
+
+        // nextResult
+        operation("iteratorValue", JSValue::class, JSValue::class)
+        // nextValue
+
+        tryCatchBuilder {
+            tryBlock {
+                // nextValue
+                if (lhsKind != Interpreter.LHSKind.LexicalBinding) {
+                    compileExpression(lhs as ExpressionNode)
+                    // nextValue, lhsRef
+                } else {
+                    ecmaAssert(lhs is ForDeclarationNode)
+                    // nextValue
+                    load(oldEnv)
+                    // nextValue, oldEnv
+                    createDeclarativeEnvRecord()
+                    // nextValue, iterationEnv
+                    bindingInstantiation(lhs)
+                    // nextValue, iterationEnv
+                    storeLexicalEnv()
+                    val boundNames = lhs.boundNames()
+                    expect(boundNames.size == 1)
+                    ldc(boundNames[0])
+                    // nextValue, name
+                    operation("resolveBinding", JSReference::class, String::class)
+                    // nextValue, lhsRef
+                }
+
+                if (lhsKind == Interpreter.LHSKind.LexicalBinding) {
+                    checkcast<JSReference>()
+                    swap
+                    // lhsRef, nextValue
+                    operation("initializeReferencedBinding", void, JSReference::class, JSValue::class)
+                } else {
+                    // lhsRef, nextValue
+                    swap
+                    operation("putValue", void, JSValue::class, JSValue::class)
+                }
+            }
+
+            catchBlock<Throwable> {
+                load(oldEnv)
+                storeLexicalEnv()
+                if (iterationKind != Interpreter.IterationKind.Enumerate) {
+                    load(record)
+                    loadUndefined()
+                    operation("iteratorClose", JSValue::class, Operations.IteratorRecord::class, JSValue::class)
+                    pop
+                }
+                athrow
+            }
+        }
+
+        tryCatchBuilder {
+            tryBlock {
+                compileStatement(statement)
+            }
+
+            catchBlock<ThrowException> {
+                if (iterationKind != Interpreter.IterationKind.Enumerate) {
+                    load(record)
+                    loadUndefined()
+                    operation("iteratorClose", JSValue::class, Operations.IteratorRecord::class, JSValue::class)
+                    pop
+                }
+                athrow
+            }
+
+            finallyBlock {
+                load(oldEnv)
+                storeLexicalEnv()
+            }
+        }
+
+        goto(start)
+
+        placeLabel(end)
+    }
+
+    private fun MethodAssembly.bindingInstantiation(node: ForDeclarationNode) {
+        node.binding.boundNames().forEach { name ->
+            dup
+            ldc(name)
+            ldc(node.isConst)
+            val opName = if (node.isConst) "createImmutableBinding" else "createMutableBinding"
+            invokevirtual(EnvRecord::class, opName, void, String::class, Boolean::class)
         }
     }
 
@@ -2129,7 +2432,7 @@ class Compiler {
 
     private fun MethodAssembly.compileArrayLiteral(node: ArrayLiteralNode) {
         ldc(node.elements.size)
-        operation("arrayCreate", JSObject::class)
+        operation("arrayCreate", JSObject::class, Int::class)
         stackHeight++
         if (node.elements.isEmpty())
             return
@@ -2276,6 +2579,7 @@ class Compiler {
                 compileExpression(node.ifFalse)
             }
         }
+        stackHeight--
         getValue
     }
 
@@ -2578,8 +2882,9 @@ class Compiler {
         pop
     }
 
-    private fun MethodAssembly.compileForBinding(node: ExpressionNode) {
-        TODO()
+    private fun MethodAssembly.compileForBinding(node: ForBindingNode) {
+        ldc(node.identifier.identifierName)
+        operation("resolveBinding", JSReference::class, String::class)
     }
 
     private fun MethodAssembly.compileTemplateLiteral(node: TemplateLiteralNode) {

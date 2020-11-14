@@ -13,6 +13,7 @@ class JSObjectPropertyIterator private constructor(
     var remainingKeys: MutableList<PropertyKey>,
 ) : JSObject(realm, realm.objectPropertyIteratorProto) {
     companion object {
+        @JvmStatic @JvmOverloads
         fun create(
             realm: Realm,
             obj: JSObject,

@@ -758,7 +758,8 @@ object Operations {
         return desc != JSUndefined
     }
 
-    @JvmStatic @ECMAImpl("7.3.13")
+    @JvmStatic @JvmOverloads
+    @ECMAImpl("7.3.13")
     fun call(function: JSValue, thisValue: JSValue, arguments: List<JSValue> = emptyList()): JSValue {
         if (!isCallable(function))
             Errors.FailedCall(toPrintableString(function)).throwTypeError()
