@@ -121,89 +121,77 @@ class Compiler {
 
         val lexNames = node.lexicallyDeclaredNames()
         val varNames = node.varDeclaredNames()
-        // TODO: Won't this eventually be handled by static semantics or early errors?
-        lexNames.forEach {
-            dup
-            ldc(it)
-            invokevirtual(GlobalEnvRecord::class, "hasVarDeclaration", Boolean::class, String::class)
-            ifStatement(JumpCondition.True) {
-                construct(Errors.TODO::class, String::class) {
-                    ldc("globalDeclarationInstantiation 1")
-                }
-                invokevirtual(Error::class, "throwSyntaxError", Nothing::class)
-                loadUndefined()
-                areturn
-            }
-            dup
-            ldc(it)
-            invokevirtual(GlobalEnvRecord::class, "hasLexicalDeclaration", Boolean::class, String::class)
-            ifStatement(JumpCondition.True) {
-                construct(Errors.TODO::class, String::class) {
-                    ldc("globalDeclarationInstantiation 2")
-                }
-                invokevirtual(Error::class, "throwSyntaxError", Nothing::class)
-                loadUndefined()
-                areturn
-            }
-        }
-        varNames.forEach {
-            dup
-            ldc(it)
-            invokevirtual(GlobalEnvRecord::class, "hasLexicalDeclaration", Boolean::class, String::class)
-            ifStatement(JumpCondition.True) {
-                construct(Errors.TODO::class, String::class) {
-                    ldc("globalDeclarationInstantiation 3")
-                }
-                invokevirtual(Error::class, "throwSyntaxError", void)
-                loadUndefined()
-                areturn
-            }
-        }
         val varDeclarations = node.varScopedDeclarations()
         val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
         val declaredFunctionNames = mutableListOf<String>()
+        val declaredVarNames = mutableListOf<String>()
+
+        // TODO: Won't this eventually be handled by static semantics or early errors?
+        dup
+        ldc(varNames.size)
+        anewarray<String>()
+        varNames.forEachIndexed { index, name ->
+            dup
+            ldc(index)
+            ldc(name)
+            aastore
+        }
+        ldc(lexNames.size)
+        anewarray<String>()
+        lexNames.forEachIndexed { index, name ->
+            dup
+            ldc(index)
+            ldc(name)
+            aastore
+        }
+
         varDeclarations.asReversed().forEach {
             if (it !is VariableDeclarationNode && it !is ForBindingNode && it !is BindingIdentifierNode) {
                 val functionName = it.boundNames()[0]
                 if (functionName !in declaredFunctionNames) {
-                    dup
-                    ldc(functionName)
-                    invokevirtual(GlobalEnvRecord::class, "canDeclareGlobalFunction", Boolean::class, String::class)
-                    ifStatement(JumpCondition.False) {
-                        construct(Errors.TODO::class, String::class) {
-                            ldc("globalDeclarationInstantiation 4")
-                        }
-                        invokevirtual(Error::class, "throwSyntaxError", Nothing::class)
-                        loadUndefined()
-                        areturn
-                    }
                     declaredFunctionNames.add(functionName)
                     functionsToInitialize.add(0, it as FunctionDeclarationNode)
                 }
             }
         }
-        val declaredVarNames = mutableListOf<String>()
+        ldc(declaredFunctionNames.size)
+        anewarray<String>()
+        declaredFunctionNames.forEachIndexed { index, name ->
+            dup
+            ldc(index)
+            ldc(name)
+            aastore
+        }
+
         varDeclarations.forEach {
             if (it !is VariableDeclarationNode && it !is ForBindingNode && it !is BindingIdentifierNode)
                 return@forEach
             it.boundNames().forEach { name ->
                 if (name !in declaredFunctionNames) {
-                    dup
-                    ldc(name)
-                    invokevirtual(GlobalEnvRecord::class, "canDeclareGlobalVar", Boolean::class, String::class)
-                    ifStatement(JumpCondition.False) {
-                        construct(Errors.TODO::class, String::class) {
-                            ldc("globalDeclarationInstantiation 4")
-                        }
-                        invokevirtual(Error::class, "throwSyntaxError", Nothing::class)
-                        loadUndefined()
-                        areturn
-                    }
                     if (name !in declaredVarNames)
                         declaredVarNames.add(name)
                 }
             }
         }
+        ldc(declaredVarNames.size)
+        anewarray<String>()
+        declaredVarNames.forEachIndexed { index, name ->
+            dup
+            ldc(index)
+            ldc(name)
+            aastore
+        }
+
+        runtime(
+            "verifyValidGlobalDeclarations",
+            void,
+            GlobalEnvRecord::class,
+            Array<String>::class,
+            Array<String>::class,
+            Array<String>::class,
+            Array<String>::class,
+        )
+
         val lexDeclarations = node.lexicallyScopedDeclarations()
         lexDeclarations.forEach { decl ->
             decl.boundNames().forEach { name ->
@@ -3115,6 +3103,10 @@ class Compiler {
         fun append(type: TypeLike = String::class, block: () -> Unit) {
             parts.add(type to block)
         }
+    }
+
+    private fun MethodAssembly.runtime(name: String, returnType: TypeLike, vararg paramTypes: TypeLike) {
+        invokestatic(CompilerRuntime::class, name, returnType, *paramTypes)
     }
 
     // helper JVM bytecodes
