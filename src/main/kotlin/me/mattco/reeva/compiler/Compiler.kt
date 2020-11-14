@@ -238,20 +238,9 @@ class Compiler {
             functionNode.parameters,
             functionNode.body,
             JSFunction.ThisMode.NonLexical,
-            functionNode.identifier?.identifierName ?: "_Anonymous",
+            functionNode.identifier?.identifierName,
+            isConstructor = true,
         )
-
-        if (functionNode.identifier != null) {
-            dup
-            construct(PropertyKey::class, String::class) {
-                ldc(functionNode.identifier.identifierName)
-            }
-            operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class)
-            pop
-        }
-
-        dup
-        operation("makeConstructor", void, JSFunction::class)
 
         stackHeight++
     }
@@ -262,9 +251,10 @@ class Compiler {
         parameters: FormalParametersNode,
         body: FunctionStatementList,
         thisMode: JSFunction.ThisMode,
-        name: String = "_Anonymous",
+        functionName: String?,
+        isConstructor: Boolean,
     ) {
-        val functionName = "Function_${name}_${Reeva.nextId()}"
+        val className = "Function_${functionName ?: "_Anonymous"}_${Reeva.nextId()}"
         val isStrict = body.statementList?.hasUseStrictDirective() == true
         val funcThisMode = when {
             thisMode == JSFunction.ThisMode.Lexical -> JSFunction.ThisMode.Lexical
@@ -272,12 +262,16 @@ class Compiler {
             else -> JSFunction.ThisMode.Global
         }
 
+        val indexOfLastNormal = parameters.functionParameters.parameters.indexOfLast {
+            it.bindingElement.binding.initializer == null
+        }
+
         val prevLocalIndex = currentLocalIndex
         val prevStackHeight = stackHeight
 
         val functionClassNode = assembleClass(
             public,
-            functionName,
+            className,
             superName = "me/mattco/reeva/runtime/functions/JSRuntimeFunction"
         ) {
             method(public, "<init>", void, EnvRecord::class, JSObject::class) {
@@ -309,6 +303,35 @@ class Compiler {
                 _return
             }
 
+            method(public, "init", void) {
+                aload_0
+                construct(PropertyKey::class, String::class) {
+                    ldc("length")
+                }
+                construct(Descriptor::class, JSValue::class, Int::class) {
+                    construct(JSNumber::class, Int::class) {
+                        ldc(indexOfLastNormal + 1)
+                    }
+                    ldc(Descriptor.CONFIGURABLE)
+                }
+                operation("definePropertyOrThrow", Boolean::class, JSValue::class, PropertyKey::class, Descriptor::class)
+                pop
+                if (functionName != null) {
+                    aload_0
+                    construct(PropertyKey::class, String::class) {
+                        ldc(functionName)
+                    }
+                    operation("setFunctionName", void, JSFunction::class, PropertyKey::class)
+                }
+
+                if (isConstructor) {
+                    aload_0
+                    operation("makeConstructor", void, JSFunction::class)
+                }
+
+                _return
+            }
+
             method(public, "evalBody", JSValue::class, List::class) {
                 currentLocalIndex = 2
                 aload_0
@@ -329,30 +352,13 @@ class Compiler {
 
         val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
         functionClassNode.accept(writer)
-        dependencies.add(NamedByteArray(functionName, writer.toByteArray()))
+        dependencies.add(NamedByteArray(className, writer.toByteArray()))
 
-        new(functionName)
+        new(className)
         dup_x2
         dup_x2
         pop
-        invokespecial(functionName, "<init>", void, EnvRecord::class, JSObject::class)
-
-        val indexOfLastNormal = parameters.functionParameters.parameters.indexOfLast {
-            it.bindingElement.binding.initializer == null
-        }
-
-        dup
-        construct(JSString::class, String::class) {
-            ldc("length")
-        }
-        construct(Descriptor::class, JSValue::class, Int::class) {
-            construct(JSNumber::class, Int::class) {
-                ldc(indexOfLastNormal + 1)
-            }
-            ldc(Descriptor.CONFIGURABLE)
-        }
-        operation("definePropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, Descriptor::class)
-        pop
+        invokespecial(className, "<init>", void, EnvRecord::class, JSObject::class)
 
         stackHeight--
     }
@@ -1711,6 +1717,8 @@ class Compiler {
                                 ReturnStatementNode(element.initializer.node)
                             ))),
                             JSFunction.ThisMode.Lexical,
+                            null,
+                            isConstructor = false,
                         )
                         // FieldRecord, name, initializer
                         dup
@@ -1953,17 +1961,9 @@ class Compiler {
                 node.parameters,
                 node.body,
                 JSFunction.ThisMode.NonLexical,
+                "",
+                isConstructor = true,
             )
-
-            dup
-            construct(PropertyKey::class, String::class) {
-                ldc("")
-            }
-            operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class)
-            pop
-
-            dup
-            operation("makeConstructor", void, JSFunction::class)
         } else {
             loadLexicalEnv()
             createDeclarativeEnvRecord()
@@ -1989,21 +1989,9 @@ class Compiler {
                 node.parameters,
                 node.body,
                 JSFunction.ThisMode.NonLexical,
+                node.name,
+                isConstructor = true
             )
-
-            // funcEnv, closure
-
-            dup
-            construct(PropertyKey::class, String::class) {
-                ldc(node.name)
-            }
-            operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class)
-            pop
-
-            // funcEnv, closure
-
-            dup
-            operation("makeConstructor", void, JSFunction::class)
 
             // funcEnv, closure
             dup_x1
@@ -2046,14 +2034,9 @@ class Compiler {
             parameters,
             body,
             JSFunction.ThisMode.Lexical,
+            node.name,
+            isConstructor = false
         )
-
-        dup
-        construct(PropertyKey::class, String::class) {
-            ldc(node.name)
-        }
-        operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class)
-        pop
     }
 
     private fun MethodAssembly.compileLiteral(node: LiteralNode) {
@@ -2373,6 +2356,8 @@ class Compiler {
             method.parameters,
             method.body,
             JSFunction.ThisMode.NonLexical,
+            null,
+            isConstructor = false
         )
         // obj, closure
         dup_x1
