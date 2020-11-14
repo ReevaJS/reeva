@@ -669,10 +669,10 @@ class Compiler {
                     dup
                     ldc(name)
                     ldc(false)
-                    operation("createMutableBinding", void, String::class, Boolean::class)
+                    invokevirtual(EnvRecord::class, "createMutableBinding", void, String::class, Boolean::class)
                     ldc(name)
                     loadUndefined()
-                    operation("initializeBinding", void, String::class, JSValue::class)
+                    invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
                 }
             }
         }
@@ -726,7 +726,7 @@ class Compiler {
         when (statement) {
             is BlockStatementNode -> compileBlockStatement(statement)
             is VariableStatementNode -> compileVariableStatement(statement)
-            is EmptyStatementNode -> JSEmpty
+            is EmptyStatementNode -> {}
             is ExpressionStatementNode -> compileExpressionStatement(statement)
             is IfStatementNode -> compileIfStatement(statement)
 //            is BreakableStatement -> compileBreakableStatement(statement)
