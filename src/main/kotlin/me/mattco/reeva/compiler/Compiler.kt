@@ -538,7 +538,7 @@ class Compiler {
                 isub
             }
             // binding, size, number
-            ifElseStatement(JumpCondition.GreaterThanOrEqual) {
+            ifElseStatement(JumpCondition.LessThanOrEqual) {
                 ifBlock {
                     // binding, size
                     pop
@@ -707,7 +707,6 @@ class Compiler {
             instantiateFunctionObject(decl)
             ldc(false)
             invokevirtual(EnvRecord::class, "setMutableBinding", void, String::class, JSValue::class, Boolean::class)
-            stackHeight--
         }
 
         stackHeight -= 2
@@ -819,10 +818,11 @@ class Compiler {
             // lhs, rhs
             if (Operations.isAnonymousFunctionDefinition(decl.initializer.node)) {
                 dup
+                checkcast<JSFunction>()
                 construct(PropertyKey::class, String::class) {
                     ldc(decl.identifier.identifierName)
                 }
-                operation("setFunctionName", Boolean::class, JSValue::class, PropertyKey::class)
+                operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class)
                 pop
             }
             operation("putValue", void, JSValue::class, JSValue::class)
@@ -1094,10 +1094,13 @@ class Compiler {
         // nextResult
         operation("iteratorValue", JSValue::class, JSValue::class)
         // nextValue
+        val nextValue = astore()
 
         tryCatchBuilder {
             tryBlock {
+                load(nextValue)
                 // nextValue
+                stackHeight++
                 if (lhsKind != Interpreter.LHSKind.LexicalBinding) {
                     compileExpression(lhs as ExpressionNode)
                     // nextValue, lhsRef
@@ -1129,6 +1132,7 @@ class Compiler {
                     swap
                     operation("putValue", void, JSValue::class, JSValue::class)
                 }
+                stackHeight -= 2
             }
 
             catchBlock<Throwable> {
@@ -1784,6 +1788,7 @@ class Compiler {
     private fun MethodAssembly.compileReturnStatement(node: ReturnStatementNode) {
         if (node.node != null) {
             compileExpression(node.node)
+            getValue
             stackHeight--
         } else {
             loadUndefined()
@@ -1848,8 +1853,11 @@ class Compiler {
                 }
             }
 
-            if (node.finallyBlock != null)
-                compileBlock(node.finallyBlock)
+            if (node.finallyBlock != null) {
+                finallyBlock {
+                    compileBlock(node.finallyBlock)
+                }
+            }
         }
     }
 
@@ -2338,10 +2346,73 @@ class Compiler {
                 operation("definePropertyOrThrow", Boolean::class, JSValue::class, PropertyKey::class, Descriptor::class)
                 stackHeight--
                 pop
-
             }
-            MethodDefinitionNode.Type.Getter -> TODO()
-            MethodDefinitionNode.Type.Setter -> TODO()
+            MethodDefinitionNode.Type.Getter, MethodDefinitionNode.Type.Setter -> {
+                val isGetter = methodDefinitionNode.type == MethodDefinitionNode.Type.Getter
+
+                loadLexicalEnv()
+                loadRealm()
+                invokevirtual(Realm::class, "getFunctionProto", JSFunctionProto::class)
+                stackHeight++
+                ordinaryFunctionCreate(
+                    "TODO",
+                    methodDefinitionNode.parameters,
+                    methodDefinitionNode.body,
+                    JSFunction.ThisMode.NonLexical,
+                    null,
+                    isConstructor = false,
+                )
+                // obj, func
+                dup
+                // obj, func, func
+                evaluatePropertyName(methodDefinitionNode.identifier)
+                // obj, func, func, keyValue
+                stackHeight--
+                operation("toPropertyKey", PropertyKey::class, JSValue::class)
+                // obj, func, func, key
+                dup
+                val propKey = astore()
+                ldc(if (isGetter) "get" else "set")
+                // obj, func, func, key, "get"
+                operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class, String::class)
+                // obj, func, boolean
+                pop
+                // obj, func
+                dup2
+                // obj, func, obj, func
+                swap
+                // obj, func, func, obj
+                operation("makeMethod", JSValue::class, JSFunction::class, JSObject::class)
+                // obj, func, value
+                pop
+                // obj, func
+                load(propKey)
+                swap
+                new<Descriptor>()
+                // obj, func, desc
+                dup_x1
+                // obj, desc, func, desc
+                swap
+                // obj, desc, desc, func
+                loadEmpty()
+                // obj, desc, desc, func, empty
+                swap
+                // obj, desc, desc, empty, func
+                ldc(Descriptor.CONFIGURABLE or enumAttr)
+                // obj, desc, desc, empty, func, attrs
+                swap
+                // obj, desc, desc, empty, attrs, func
+                if (isGetter) {
+                    invokespecial(Descriptor::class, "<init>", void, JSValue::class, Int::class, JSValue::class)
+                } else {
+                    loadEmpty()
+                    swap
+                    invokespecial(Descriptor::class, "<init>", void, JSValue::class, Int::class, JSValue::class, JSValue::class)
+                }
+                // obj, desc
+                operation("definePropertyOrThrow", Boolean::class, JSValue::class, PropertyKey::class, Descriptor::class)
+                pop
+            }
             MethodDefinitionNode.Type.Generator -> TODO()
             MethodDefinitionNode.Type.Async -> TODO()
             MethodDefinitionNode.Type.AsyncGenerator -> TODO()
@@ -2709,7 +2780,7 @@ class Compiler {
                 new<JSBoolean>()
                 dup_x1
                 swap
-                invokespecial(JSBoolean::class, "<init>", Boolean::class)
+                invokespecial(JSBoolean::class, "<init>", void, Boolean::class)
             }
         }
     }
@@ -2864,6 +2935,7 @@ class Compiler {
     private fun MethodAssembly.compileForBinding(node: ForBindingNode) {
         ldc(node.identifier.identifierName)
         operation("resolveBinding", JSReference::class, String::class)
+        stackHeight++
     }
 
     private fun MethodAssembly.compileTemplateLiteral(node: TemplateLiteralNode) {
@@ -2904,6 +2976,8 @@ class Compiler {
     private inline fun <reified T> MethodAssembly.loadKObject() {
         getstatic(T::class, "INSTANCE", T::class)
     }
+
+    private fun MethodAssembly.loadEmpty() = loadKObject<JSEmpty>()
 
     private fun MethodAssembly.loadUndefined() = loadKObject<JSUndefined>()
 
