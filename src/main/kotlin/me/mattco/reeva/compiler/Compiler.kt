@@ -470,7 +470,7 @@ class Compiler {
                 isub
             }
             // lhs, num
-            ifElseStatement(JumpCondition.GreaterThanOrEqual) {
+            ifElseStatement(JumpCondition.LessThanOrEqual) {
                 ifBlock {
                     // lhs
                     loadUndefined()
@@ -2252,7 +2252,6 @@ class Compiler {
 
         node.list.properties.forEach { property ->
             dup
-            stackHeight++
             when (property.type) {
                 PropertyDefinitionNode.Type.KeyValue -> {
                     evaluatePropertyName(property.first)
@@ -2260,7 +2259,7 @@ class Compiler {
                     getValue
                     operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
                     pop
-                    stackHeight--
+                    stackHeight -= 2
                 }
                 PropertyDefinitionNode.Type.Shorthand -> {
                     expect(property.first is IdentifierReferenceNode)
@@ -2271,8 +2270,10 @@ class Compiler {
                     getValue
                     operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
                     pop
+                    stackHeight--
                 }
                 PropertyDefinitionNode.Type.Method -> {
+                    stackHeight++
                     propertyDefinitionEvaluation(property.first as MethodDefinitionNode, enumerable = true, isStrict = true)
                 }
                 PropertyDefinitionNode.Type.Spread -> TODO()
