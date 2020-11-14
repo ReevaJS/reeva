@@ -3004,9 +3004,19 @@ class Compiler {
         val tryCatchFinallyEnd = makeLabel()
 
         placeLabel(mainStart)
+        val prevInsnCount = instructions.size()
         verifyConsistentStackHeight {
             builder.tryBlock()
         }
+
+        // TODO: Optimize AST tree so this check isn't necessary.
+        // Might not be able to be done completely in the AST tree, as some statements
+        // with empty blocks may have side effects, for example:
+        //     "for (let i = 0; i < myFunctionWithSideEffects(); i++) {}"
+        // But those checks can be done in the respective statement compilation methods
+        if (instructions.size() == prevInsnCount)
+            return
+
         placeLabel(mainEnd)
         verifyConsistentStackHeight {
             finallyBlock?.invoke()
