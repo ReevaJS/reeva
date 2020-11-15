@@ -1414,13 +1414,14 @@ class Compiler {
         val node = classDeclarationNode.classNode
         if (node.identifier == null) {
             classDefinitionEvaluation(node, null, "default")
+            stackHeight++
         } else {
             val className = node.identifier.identifierName
             classDefinitionEvaluation(node, className, className)
             dup
             loadLexicalEnv()
             swap
-            stackHeight += 2
+            stackHeight += 3
             initializeBoundName(className)
         }
     }
