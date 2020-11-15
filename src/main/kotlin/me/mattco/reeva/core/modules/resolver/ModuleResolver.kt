@@ -23,7 +23,8 @@ abstract class ModuleResolver {
     companion object {
         @ECMAImpl("15.2.1.21")
         fun getModuleNamespace(module: ModuleRecord): JSModuleNamespaceObject {
-            expect(module !is JVMPackageModuleRecord)
+            if (module is JVMPackageModuleRecord)
+                TODO()
             if (module is CyclicModuleRecord)
                 ecmaAssert(module.status != CyclicModuleRecord.Status.Unlinked)
 
@@ -37,7 +38,9 @@ abstract class ModuleResolver {
                     unambiguousNames.add(name)
             }
 
-            return JSModuleNamespaceObject.create(module.realm, module, unambiguousNames)
+            return JSModuleNamespaceObject.create(module.realm, module, unambiguousNames).also {
+                module.namespace = it
+            }
         }
     }
 }

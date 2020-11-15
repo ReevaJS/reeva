@@ -12,16 +12,22 @@ import kotlin.math.min
 
 abstract class CyclicModuleRecord(
     realm: Realm,
-    environment: EnvRecord?,
     namespace: JSModuleNamespaceObject?,
+    var environment: EnvRecord?,
     val requestedModules: List<String>,
-) : ModuleRecord(realm, environment, namespace) {
+) : ModuleRecord(realm, namespace) {
     var status = Status.Unlinked
     var evaluationError: Throwable? = null
     var dfsIndex = -1
     var dfsAncestorIndex = -1
 
     protected abstract fun initializeEnvironment()
+
+    abstract fun executeModule(interpreter: Interpreter): JSValue
+
+    override fun resolveBinding(importName: String): JSValue {
+        return environment!!.getBindingValue(importName, throwOnNotFound = true)
+    }
 
     override fun link() {
         ecmaAssert(status != Status.Linking && status != Status.Evaluating)
@@ -42,8 +48,6 @@ abstract class CyclicModuleRecord(
             throw e
         }
     }
-
-    abstract fun executeModule(interpreter: Interpreter): JSValue
 
     override fun evaluate(interpreter: Interpreter): JSValue {
         ecmaAssert(status == Status.Linked || status == Status.Evaluated)

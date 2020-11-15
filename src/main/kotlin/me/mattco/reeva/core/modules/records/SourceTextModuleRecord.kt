@@ -26,8 +26,8 @@ import me.mattco.reeva.utils.expect
 
 class SourceTextModuleRecord(
     realm: Realm,
-    environment: EnvRecord?,
     namespace: JSModuleNamespaceObject?,
+    environment: EnvRecord?,
     requestedModules: List<String>,
     val scriptCode: ModuleNode,
     var context: ExecutionContext?,
@@ -36,7 +36,7 @@ class SourceTextModuleRecord(
     val localExportEntries: List<ExportEntryRecord>,
     val indirectExportEntries: List<ExportEntryRecord>,
     val starExportEntries: List<ExportEntryRecord>,
-) : CyclicModuleRecord(realm, environment, namespace, requestedModules) {
+) : CyclicModuleRecord(realm, namespace, environment, requestedModules) {
     @ECMAImpl("15.2.1.17.2")
     override fun getExportedNames(exportStarSet: MutableSet<ModuleRecord>): List<String> {
         if (this in exportStarSet) {
@@ -137,7 +137,7 @@ class SourceTextModuleRecord(
                 val namespace = ModuleResolver.getModuleNamespace(importedModule)
                 env.createImmutableBinding(ie.localName, true)
                 env.initializeBinding(ie.localName, namespace)
-            }else {
+            } else {
                 val resolution = importedModule.resolveExport(ie.importName)
                 if (resolution == null || resolution == ResolvedBindingRecord.AMBIGUOUS)
                     Errors.TODO("SourceTextModuleRecord initializeEnvironment 2").throwSyntaxError()

@@ -14,7 +14,7 @@ object Reeva {
     var EMIT_CLASS_FILES = true
         internal set
     val CLASS_FILE_DIRECTORY = File("./demo/out/")
-    const val USE_COMPILER = true
+    const val USE_COMPILER = false
 
     // Used to ensure names of various things are unique
     @Volatile

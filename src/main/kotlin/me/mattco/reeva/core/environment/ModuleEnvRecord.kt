@@ -18,7 +18,7 @@ class ModuleEnvRecord(
         val binding = bindings[name]!!
 
         if (binding is IndirectBinding)
-            return binding.targetModuleRecord.environment!!.getBindingValue(binding.targetName, throwOnNotFound = true)
+            return binding.targetModuleRecord.resolveBinding(binding.targetName)
 
         if (!binding.initialized)
             Errors.TODO("ModuleEnvRecord getBindingValue").throwReferenceError()

@@ -135,6 +135,7 @@ object Errors {
 
     object JVMCompat {
         class InconvertibleType(value: JSValue, type: java.lang.Class<*>) : Error("$value isn't convertible to type $type")
+        class BadImportFromPackage(className: String, packageName: String) : Error("JVM class $className not found in package $packageName")
     }
 
     object JVMPackage {

@@ -11,7 +11,6 @@ import me.mattco.reeva.runtime.module.JSModuleNamespaceObject
 @ECMAImpl("15.2.1.15")
 abstract class ModuleRecord(
     val realm: Realm,
-    var environment: EnvRecord?,
     var namespace: JSModuleNamespaceObject?,
 ) {
     private var linked = false
@@ -20,6 +19,8 @@ abstract class ModuleRecord(
     abstract fun getExportedNames(exportStarSet: MutableSet<ModuleRecord> = mutableSetOf()): List<String>
 
     abstract fun resolveExport(exportName: String, resolveSet: MutableList<ResolvedBindingRecord> = mutableListOf()): ResolvedBindingRecord?
+
+    abstract fun resolveBinding(importName: String): JSValue
 
     abstract fun link()
 

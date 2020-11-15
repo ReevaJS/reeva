@@ -81,10 +81,7 @@ class JSModuleNamespaceObject(
         if (binding.bindingName == "*namespace*")
             return ModuleResolver.getModuleNamespace(binding.module)
 
-        if (binding.module.environment == null)
-            Errors.TODO("JSModuleNamespaceObject [[Get]]").throwReferenceError()
-
-        return binding.module.environment!!.getBindingValue(binding.bindingName, true)
+        return binding.module.resolveBinding(binding.bindingName)
     }
 
     override fun set(property: PropertyKey, value: JSValue, receiver: JSValue) = false
@@ -107,10 +104,7 @@ class JSModuleNamespaceObject(
         ): JSModuleNamespaceObject {
             ecmaAssert(module.namespace == null)
 
-            return JSModuleNamespaceObject(realm, module, exports.sorted()).also {
-                it.init()
-                module.namespace = it
-            }
+            return JSModuleNamespaceObject(realm, module, exports.sorted()).also { it.init() }
         }
     }
 }
