@@ -17,7 +17,7 @@ import me.mattco.reeva.core.tasks.Task
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.module.JSModuleNamespaceObject
+import me.mattco.reeva.jvmcompat.JVMPackageModuleRecord
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors

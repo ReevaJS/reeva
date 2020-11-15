@@ -3,8 +3,8 @@ package me.mattco.reeva.test262
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.arrays.JSArrayObject
-import me.mattco.reeva.runtime.jvmcompat.JSClassObject
-import me.mattco.reeva.runtime.jvmcompat.JVMValueMapper
+import me.mattco.reeva.jvmcompat.JSClassObject
+import me.mattco.reeva.jvmcompat.JVMValueMapper
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.toValue
 import org.junit.jupiter.api.AfterAll

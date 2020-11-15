@@ -16,9 +16,9 @@ import me.mattco.reeva.runtime.functions.JSFunctionProto
 import me.mattco.reeva.runtime.global.JSConsole
 import me.mattco.reeva.runtime.global.JSConsoleProto
 import me.mattco.reeva.runtime.iterators.*
-import me.mattco.reeva.runtime.jvmcompat.JSClassProto
-import me.mattco.reeva.runtime.jvmcompat.JSPackageObject
-import me.mattco.reeva.runtime.jvmcompat.JSPackageProto
+import me.mattco.reeva.jvmcompat.JSClassProto
+import me.mattco.reeva.jvmcompat.JSPackageObject
+import me.mattco.reeva.jvmcompat.JSPackageProto
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObjectCtor
 import me.mattco.reeva.runtime.objects.JSObjectProto

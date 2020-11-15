@@ -3,7 +3,7 @@ package me.mattco.reeva.core.modules.resolver
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.ScriptOrModuleNode
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.core.modules.records.JVMPackageModuleRecord
+import me.mattco.reeva.jvmcompat.JVMPackageModuleRecord
 import me.mattco.reeva.core.modules.records.ModuleRecord
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.parser.Parser

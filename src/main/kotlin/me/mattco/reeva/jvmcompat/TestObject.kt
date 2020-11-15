@@ -1,4 +1,4 @@
-package me.mattco.reeva.runtime.jvmcompat
+package me.mattco.reeva.jvmcompat
 
 class TestObject {
     @JvmField

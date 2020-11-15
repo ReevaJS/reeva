@@ -1,10 +1,9 @@
-package me.mattco.reeva.runtime.jvmcompat
+package me.mattco.reeva.jvmcompat
 
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
-import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
 
 class JSPackageObject private constructor(

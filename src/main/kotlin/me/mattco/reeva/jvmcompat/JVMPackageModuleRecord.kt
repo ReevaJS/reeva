@@ -1,18 +1,13 @@
-package me.mattco.reeva.core.modules.records
+package me.mattco.reeva.jvmcompat
 
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.core.environment.EnvRecord
-import me.mattco.reeva.core.environment.ModuleEnvRecord
 import me.mattco.reeva.core.modules.ResolvedBindingRecord
+import me.mattco.reeva.core.modules.records.ModuleRecord
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.jvmcompat.JSClassObject
-import me.mattco.reeva.runtime.jvmcompat.JSPackageObject
-import me.mattco.reeva.runtime.module.JSModuleNamespaceObject
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
-import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.unreachable
 
 class JVMPackageModuleRecord(realm: Realm, private val packageName: String) : ModuleRecord(realm) {

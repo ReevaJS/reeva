@@ -26,8 +26,8 @@ import me.mattco.reeva.runtime.builtins.promises.JSResolveFunction
 import me.mattco.reeva.runtime.functions.JSBoundFunction
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
-import me.mattco.reeva.runtime.jvmcompat.JSClassInstanceObject
-import me.mattco.reeva.runtime.jvmcompat.JSClassObject
+import me.mattco.reeva.jvmcompat.JSClassInstanceObject
+import me.mattco.reeva.jvmcompat.JSClassObject
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey

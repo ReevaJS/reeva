@@ -1,4 +1,4 @@
-package me.mattco.reeva.runtime.jvmcompat
+package me.mattco.reeva.jvmcompat
 
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.objects.JSObject
