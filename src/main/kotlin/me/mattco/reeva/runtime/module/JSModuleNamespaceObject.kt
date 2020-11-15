@@ -13,7 +13,7 @@ import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
-class JSModuleNamespaceObject(
+open class JSModuleNamespaceObject(
     realm: Realm,
     private val module: ModuleRecord,
     private val exports: List<String>
