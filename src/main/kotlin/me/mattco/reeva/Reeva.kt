@@ -3,7 +3,8 @@ package me.mattco.reeva
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.core.modules.ModuleResolver
+import me.mattco.reeva.core.modules.resolver.DefaultModuleResolver
+import me.mattco.reeva.core.modules.resolver.ModuleResolver
 import me.mattco.reeva.core.tasks.EvaluationTask
 import me.mattco.reeva.runtime.JSValue
 import java.io.File
@@ -44,7 +45,7 @@ object Reeva {
     @JvmOverloads
     fun evaluateModule(module: File, realm: Realm = makeRealm()): Result {
         if (realm.moduleResolver == null)
-            realm.moduleResolver = ModuleResolver(ModuleResolver.DefaultPathResolver(module.parentFile, null))
+            realm.moduleResolver = DefaultModuleResolver(realm, module.parentFile)
 
         return getAgent().runTask(EvaluationTask(module.readText(), realm, true))
     }

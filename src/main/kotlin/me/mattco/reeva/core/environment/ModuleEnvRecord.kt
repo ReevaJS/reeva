@@ -1,6 +1,6 @@
 package me.mattco.reeva.core.environment
 
-import me.mattco.reeva.core.modules.ModuleRecord
+import me.mattco.reeva.core.modules.records.ModuleRecord
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.primitives.JSUndefined

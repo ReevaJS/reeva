@@ -1,8 +1,8 @@
 package me.mattco.reeva.runtime.module
 
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.core.modules.ModuleRecord
-import me.mattco.reeva.core.modules.ModuleResolver
+import me.mattco.reeva.core.modules.records.ModuleRecord
+import me.mattco.reeva.core.modules.resolver.ModuleResolver
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.objects.Descriptor

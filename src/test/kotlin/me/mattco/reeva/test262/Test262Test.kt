@@ -2,9 +2,9 @@ package me.mattco.reeva.test262
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.core.modules.ModuleResolver
+import me.mattco.reeva.core.modules.resolver.DefaultModuleResolver
+import me.mattco.reeva.core.modules.resolver.ModuleResolver
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.primitives.JSFalse
 import org.junit.jupiter.api.*
 import java.io.File
 
@@ -35,7 +35,7 @@ class Test262Test(
         val isModule = metadata.flags != null && Flag.Module in metadata.flags
 
         if (isModule)
-            realm.moduleResolver = ModuleResolver(ModuleResolver.DefaultPathResolver(file.parentFile, null))
+            realm.moduleResolver = DefaultModuleResolver(realm, file.parentFile)
 
         val pretestResult = Reeva.evaluate("$requiredScript\n\n", realm)
         Assertions.assertTrue(!pretestResult.isError) {

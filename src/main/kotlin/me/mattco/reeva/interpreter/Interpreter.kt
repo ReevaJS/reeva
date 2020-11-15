@@ -13,7 +13,7 @@ import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.core.modules.ExportEntryRecord
-import me.mattco.reeva.core.modules.SourceTextModuleRecord
+import me.mattco.reeva.core.modules.records.SourceTextModuleRecord
 import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.JSReference
 import me.mattco.reeva.runtime.JSValue

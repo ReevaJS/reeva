@@ -1,4 +1,4 @@
-package me.mattco.reeva.core.modules
+package me.mattco.reeva.core.modules.records
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.FunctionDeclarationNode
@@ -10,6 +10,10 @@ import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.ModuleEnvRecord
+import me.mattco.reeva.core.modules.ExportEntryRecord
+import me.mattco.reeva.core.modules.ImportEntryRecord
+import me.mattco.reeva.core.modules.ResolvedBindingRecord
+import me.mattco.reeva.core.modules.resolver.ModuleResolver
 import me.mattco.reeva.core.tasks.Task
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.JSValue
@@ -18,6 +22,7 @@ import me.mattco.reeva.runtime.module.JSModuleNamespaceObject
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.expect
 
 class SourceTextModuleRecord(
     realm: Realm,
@@ -53,6 +58,7 @@ class SourceTextModuleRecord(
 
         starExportEntries.forEach { e ->
             val requestedModule = realm.moduleResolver!!.hostResolveImportedModule(this, e.moduleRequest!!)
+            expect(requestedModule !is JVMPackageModuleRecord)
             requestedModule.getExportedNames(exportStarSet).forEach { name ->
                 if (name != "default" && name !in exportedNames)
                     exportedNames.add(name)

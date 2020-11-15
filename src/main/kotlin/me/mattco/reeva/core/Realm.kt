@@ -4,7 +4,7 @@ import me.mattco.reeva.ast.ScriptNode
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
-import me.mattco.reeva.core.modules.ModuleResolver
+import me.mattco.reeva.core.modules.resolver.ModuleResolver
 import me.mattco.reeva.runtime.arrays.JSArrayCtor
 import me.mattco.reeva.runtime.arrays.JSArrayProto
 import me.mattco.reeva.runtime.builtins.*
@@ -19,7 +19,6 @@ import me.mattco.reeva.runtime.iterators.*
 import me.mattco.reeva.runtime.jvmcompat.JSClassProto
 import me.mattco.reeva.runtime.jvmcompat.JSPackageObject
 import me.mattco.reeva.runtime.jvmcompat.JSPackageProto
-import me.mattco.reeva.runtime.jvmcompat.JVMValueMapper
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObjectCtor
 import me.mattco.reeva.runtime.objects.JSObjectProto
@@ -29,14 +28,7 @@ import me.mattco.reeva.runtime.wrappers.*
 import java.util.concurrent.ConcurrentHashMap
 
 @Suppress("ObjectPropertyName")
-class Realm(moduleResolver: ModuleResolver? = null) {
-    var moduleResolver: ModuleResolver? = null
-        set(value) {
-            if (value != null)
-                value.realm = this
-            field = value
-        }
-
+class Realm(var moduleResolver: ModuleResolver? = null) {
     internal val isGloballyInitialized: Boolean
         get() = ::globalObject.isInitialized && ::globalEnv.isInitialized
 
@@ -100,10 +92,6 @@ class Realm(moduleResolver: ModuleResolver? = null) {
     lateinit var packageProto: JSPackageProto private set
     lateinit var classProto: JSClassProto private set
     lateinit var packageObj: JSPackageObject private set
-
-    init {
-        this.moduleResolver = moduleResolver
-    }
 
     fun setGlobalObject(obj: JSObject) {
         globalObject = obj

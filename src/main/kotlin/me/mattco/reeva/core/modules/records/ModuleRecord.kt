@@ -1,7 +1,8 @@
-package me.mattco.reeva.core.modules
+package me.mattco.reeva.core.modules.records
 
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.environment.EnvRecord
+import me.mattco.reeva.core.modules.ResolvedBindingRecord
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.annotations.ECMAImpl

@@ -1,6 +1,7 @@
 package me.mattco.reeva.core.modules
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.core.modules.records.ModuleRecord
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.utils.unreachable

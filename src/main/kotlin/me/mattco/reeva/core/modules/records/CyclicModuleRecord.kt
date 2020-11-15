@@ -1,4 +1,4 @@
-package me.mattco.reeva.core.modules
+package me.mattco.reeva.core.modules.records
 
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
