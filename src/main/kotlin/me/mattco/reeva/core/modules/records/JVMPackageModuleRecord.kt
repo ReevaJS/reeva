@@ -9,17 +9,19 @@ import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.jvmcompat.JSClassObject
 import me.mattco.reeva.runtime.jvmcompat.JSPackageObject
 import me.mattco.reeva.runtime.module.JSModuleNamespaceObject
+import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.unreachable
 
-class JVMPackageModuleRecord(
-    realm: Realm,
-    namespace: JSModuleNamespaceObject?,
-    private val packageName: String,
-) : ModuleRecord(realm, namespace) {
+class JVMPackageModuleRecord(realm: Realm, private val packageName: String) : ModuleRecord(realm) {
     private val packageObj = JSPackageObject.create(realm, packageName)
+
+    override fun makeNamespaceObject(): JSObject {
+        TODO("Not yet implemented")
+    }
+
     override fun getExportedNames(exportStarSet: MutableSet<ModuleRecord>): List<String> {
         unreachable()
     }

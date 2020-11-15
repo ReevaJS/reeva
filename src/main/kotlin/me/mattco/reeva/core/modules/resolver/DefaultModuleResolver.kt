@@ -51,6 +51,6 @@ class DefaultModuleResolver(
     }
 
     private fun resolveJVMModule(packageName: String): ModuleRecord {
-        return JVMPackageModuleRecord(realm, null, packageName)
+        return JVMPackageModuleRecord(realm, packageName)
     }
 }

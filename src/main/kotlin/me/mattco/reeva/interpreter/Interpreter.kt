@@ -96,7 +96,6 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         return SourceTextModuleRecord(
             realm,
             null,
-            null,
             requestedModules,
             module,
             null,

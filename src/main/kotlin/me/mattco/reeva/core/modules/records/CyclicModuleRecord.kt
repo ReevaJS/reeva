@@ -5,21 +5,36 @@ import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.module.JSModuleNamespaceObject
+import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.utils.ecmaAssert
 import kotlin.math.min
 
 abstract class CyclicModuleRecord(
     realm: Realm,
-    namespace: JSModuleNamespaceObject?,
     var environment: EnvRecord?,
     val requestedModules: List<String>,
-) : ModuleRecord(realm, namespace) {
+) : ModuleRecord(realm) {
     var status = Status.Unlinked
     var evaluationError: Throwable? = null
     var dfsIndex = -1
     var dfsAncestorIndex = -1
+
+    @ECMAImpl("15.2.1.21")
+    override fun makeNamespaceObject(): JSObject {
+        ecmaAssert(status != Status.Unlinked)
+
+        val unambiguousNames = mutableListOf<String>()
+        getExportedNames(mutableSetOf()).forEach { name ->
+            val resolution = resolveExport(name)
+            if (resolution != null)
+                unambiguousNames.add(name)
+        }
+
+        return JSModuleNamespaceObject.create(realm, this, unambiguousNames)
+    }
 
     protected abstract fun initializeEnvironment()
 

@@ -13,7 +13,6 @@ import me.mattco.reeva.core.environment.ModuleEnvRecord
 import me.mattco.reeva.core.modules.ExportEntryRecord
 import me.mattco.reeva.core.modules.ImportEntryRecord
 import me.mattco.reeva.core.modules.ResolvedBindingRecord
-import me.mattco.reeva.core.modules.resolver.ModuleResolver
 import me.mattco.reeva.core.tasks.Task
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.JSValue
@@ -26,7 +25,6 @@ import me.mattco.reeva.utils.expect
 
 class SourceTextModuleRecord(
     realm: Realm,
-    namespace: JSModuleNamespaceObject?,
     environment: EnvRecord?,
     requestedModules: List<String>,
     val scriptCode: ModuleNode,
@@ -36,7 +34,7 @@ class SourceTextModuleRecord(
     val localExportEntries: List<ExportEntryRecord>,
     val indirectExportEntries: List<ExportEntryRecord>,
     val starExportEntries: List<ExportEntryRecord>,
-) : CyclicModuleRecord(realm, namespace, environment, requestedModules) {
+) : CyclicModuleRecord(realm, environment, requestedModules) {
     @ECMAImpl("15.2.1.17.2")
     override fun getExportedNames(exportStarSet: MutableSet<ModuleRecord>): List<String> {
         if (this in exportStarSet) {
@@ -134,17 +132,15 @@ class SourceTextModuleRecord(
         importEntries.forEach { ie ->
             val importedModule = realm.moduleResolver!!.hostResolveImportedModule(this, ie.moduleRequest)
             if (ie.importName == "*") {
-                val namespace = ModuleResolver.getModuleNamespace(importedModule)
                 env.createImmutableBinding(ie.localName, true)
-                env.initializeBinding(ie.localName, namespace)
+                env.initializeBinding(ie.localName, importedModule.namespaceObject)
             } else {
                 val resolution = importedModule.resolveExport(ie.importName)
                 if (resolution == null || resolution == ResolvedBindingRecord.AMBIGUOUS)
                     Errors.TODO("SourceTextModuleRecord initializeEnvironment 2").throwSyntaxError()
                 if (resolution.bindingName == "*namespace*") {
-                    val namespace = ModuleResolver.getModuleNamespace(resolution.module)
                     env.createImmutableBinding(ie.localName, true)
-                    env.initializeBinding(ie.localName, namespace)
+                    env.initializeBinding(ie.localName, resolution.module.namespaceObject)
                 } else {
                     env.createImportBinding(ie.localName, resolution.module, resolution.bindingName)
                 }

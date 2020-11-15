@@ -79,7 +79,7 @@ class JSModuleNamespaceObject(
         val binding = module.resolveExport(property.asString)
         ecmaAssert(binding != null)
         if (binding.bindingName == "*namespace*")
-            return ModuleResolver.getModuleNamespace(binding.module)
+            return binding.module.namespaceObject
 
         return binding.module.resolveBinding(binding.bindingName)
     }
@@ -101,10 +101,6 @@ class JSModuleNamespaceObject(
             realm: Realm,
             module: ModuleRecord,
             exports: List<String>
-        ): JSModuleNamespaceObject {
-            ecmaAssert(module.namespace == null)
-
-            return JSModuleNamespaceObject(realm, module, exports.sorted()).also { it.init() }
-        }
+        ) = JSModuleNamespaceObject(realm, module, exports.sorted()).also { it.init() }
     }
 }
