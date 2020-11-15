@@ -1625,13 +1625,11 @@ class Compiler {
         pop
 
         construct(ArrayList::class)
-        stackHeight++
+        val instanceFields = astore()
 
         node.body.elements.filter {
             it.node != constructor
         }.forEach { element ->
-            dup
-            // instanceFields, instanceFields
             tryCatchBuilder {
                 tryBlock {
                     if (element.isStatic) {
@@ -1644,12 +1642,14 @@ class Compiler {
                     dup
                     ifElseStatement(JumpCondition.NonNull) {
                         ifBlock {
-                            invokeinterface(List::class, "add", Boolean::class, Object::class)
+                            load(instanceFields)
+                            swap
+                            invokeinterface(List::class, "add", Boolean::class, Any::class)
                             pop
                         }
 
                         elseBlock {
-                            pop2
+                            pop
                         }
                     }
                     stackHeight--
@@ -1673,14 +1673,14 @@ class Compiler {
         }
 
         load(classFunction)
-        swap
+        load(instanceFields)
         invokevirtual(JSFunction::class, "setFields", void, List::class)
         stackHeight--
 
         load(classFunction)
     }
 
-    // Consumes a JSObject from the stack
+    // Consumes a JSObject from the stack, pushes a FieldRecord or null
     private fun MethodAssembly.classElementEvaluation(element: ClassElementNode, enumerable: Boolean, isStatic: Boolean) {
         when (element.type) {
             ClassElementNode.Type.Method -> {
@@ -1698,13 +1698,14 @@ class Compiler {
                         // obj, name, undefined
                         // <empty>
                         operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
+                        stackHeight--
                     } else {
                         compileExpression(element.initializer.node)
                         // obj, name, expr
                         getValue
                         operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
                         // <empty>
-                        stackHeight--
+                        stackHeight -= 2
                     }
                     aconst_null
                 } else {
@@ -1715,6 +1716,7 @@ class Compiler {
                     if (element.initializer != null) {
                         val obj = astore()
                         new<JSFunction.FieldRecord>()
+                        dup_x1
                         swap
                         loadLexicalEnv()
                         loadRealm()
@@ -1750,6 +1752,7 @@ class Compiler {
                     } else {
                         pop
                         new<JSFunction.FieldRecord>()
+                        dup_x1
                         swap
                         loadKObject<JSEmpty>()
                         ldc(false)
@@ -1757,6 +1760,7 @@ class Compiler {
                     }
 
                     invokespecial(JSFunction.FieldRecord::class, "<init>", void, JSValue::class, JSValue::class, Boolean::class)
+                    stackHeight--
                 }
             }
             ClassElementNode.Type.Empty -> {
