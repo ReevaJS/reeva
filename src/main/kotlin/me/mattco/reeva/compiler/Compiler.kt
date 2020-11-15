@@ -280,9 +280,7 @@ class Compiler {
                 currentLocalIndex = 3
                 aload_0
                 loadRealm()
-
-                getstatic(JSFunction.ThisMode::class, funcThisMode.name, JSFunction.ThisMode::class)
-
+                loadEnumMember<JSFunction.ThisMode>(funcThisMode.name)
                 aload_1
                 ldc(isStrict)
                 loadUndefined()
@@ -1026,7 +1024,7 @@ class Compiler {
             }
         } else {
             // expr
-            getstatic(Operations.IteratorHint::class, "Sync", Operations.IteratorHint::class)
+            loadEnumMember<Operations.IteratorHint>("Sync")
             // expr, Sync
             operation("getIterator", Operations.IteratorRecord::class, JSValue::class, Operations.IteratorHint::class)
             // record
@@ -1593,7 +1591,7 @@ class Compiler {
 
         if (node.heritage != null) {
             dup
-            getstatic(JSFunction.ConstructorKind::class, "Derived", JSFunction.ConstructorKind::class)
+            loadEnumMember<JSFunction.ConstructorKind>("Derived")
             invokevirtual(JSFunction::class, "setConstructorKind", void, JSFunction.ConstructorKind::class)
         }
 
@@ -3015,7 +3013,7 @@ class Compiler {
         // result, thisEnv, thisEnv
         invokevirtual(FunctionEnvRecord::class, "getThisBindingStatus", FunctionEnvRecord.ThisBindingStatus::class)
         // result, thisEnv, bindingStatus
-        getstatic(FunctionEnvRecord.ThisBindingStatus::class, "Initialized", FunctionEnvRecord.ThisBindingStatus::class)
+        loadEnumMember<FunctionEnvRecord.ThisBindingStatus>("Initialized")
         // result, thisEnv, bindingStatus, bindingStatus
         ifStatement(JumpCondition.RefEqual) {
             loadKObject<Errors.Class.DuplicateSuperCall>()
@@ -3042,6 +3040,10 @@ class Compiler {
         swap
         // result, function
         invokestatic(JSFunction::class, "initializeInstanceFields", void, JSObject::class, JSFunction::class)
+    }
+
+    private inline fun <reified T> MethodAssembly.loadEnumMember(name: String) {
+        getstatic(T::class, name, T::class)
     }
 
     private inline fun <reified T> MethodAssembly.loadKObject() {
