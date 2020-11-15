@@ -70,7 +70,9 @@ class ClassElementNode(
     }
 
     override fun classElementKind(): ASTNode.ClassElementKind {
-        if (type == Type.Method && node?.propName() == "constructor")
+        if (type == Type.Method && !isStatic && node?.propName() == "constructor" &&
+            (node as MethodDefinitionNode).type == MethodDefinitionNode.Type.Normal
+        )
             return ASTNode.ClassElementKind.ConstructorMethod
         if (type == Type.Empty)
             return ASTNode.ClassElementKind.Empty
