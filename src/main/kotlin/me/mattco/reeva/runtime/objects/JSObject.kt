@@ -249,20 +249,20 @@ open class JSObject protected constructor(
         return getOwnPropertyDescriptor(property)?.toObject(realm, this) ?: JSUndefined
     }
 
-    fun defineOwnProperty(property: String, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
-    fun defineOwnProperty(property: JSSymbol, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
-    fun defineOwnProperty(property: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
-    fun defineOwnProperty(property: Long, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.toString().key(), Descriptor(value, attributes))
+    @JvmOverloads fun defineOwnProperty(property: String, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
+    @JvmOverloads fun defineOwnProperty(property: JSSymbol, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
+    @JvmOverloads fun defineOwnProperty(property: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
+    @JvmOverloads fun defineOwnProperty(property: Long, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.toString().key(), Descriptor(value, attributes))
 
     @ECMAImpl("9.1.6")
     open fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
         return Operations.validateAndApplyPropertyDescriptor(this, property, isExtensible(), descriptor, getOwnPropertyDescriptor(property))
     }
 
-    fun get(property: String, receiver: JSValue = this) = get(property.key(), receiver)
-    fun get(property: JSSymbol, receiver: JSValue = this) = get(property.key(), receiver)
-    fun get(property: Int, receiver: JSValue = this) = get(property.key(), receiver)
-    fun get(property: Long, receiver: JSValue = this) = get(property.toString().key(), receiver)
+    @JvmOverloads fun get(property: String, receiver: JSValue = this) = get(property.key(), receiver)
+    @JvmOverloads fun get(property: JSSymbol, receiver: JSValue = this) = get(property.key(), receiver)
+    @JvmOverloads fun get(property: Int, receiver: JSValue = this) = get(property.key(), receiver)
+    @JvmOverloads fun get(property: Long, receiver: JSValue = this) = get(property.toString().key(), receiver)
 
     @JvmOverloads @ECMAImpl("9.1.8")
     open fun get(property: PropertyKey, receiver: JSValue = this): JSValue {
@@ -278,10 +278,10 @@ open class JSObject protected constructor(
         return desc.getActualValue(receiver)
     }
 
-    fun set(property: String, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
-    fun set(property: JSSymbol, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
-    fun set(property: Int, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
-    fun set(property: Long, value: JSValue, receiver: JSValue = this) = set(property.toString().key(), value, receiver)
+    @JvmOverloads fun set(property: String, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
+    @JvmOverloads fun set(property: JSSymbol, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
+    @JvmOverloads fun set(property: Int, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
+    @JvmOverloads fun set(property: Long, value: JSValue, receiver: JSValue = this) = set(property.toString().key(), value, receiver)
 
     @JvmOverloads @ECMAImpl("9.1.9")
     open fun set(property: PropertyKey, value: JSValue, receiver: JSValue = this): Boolean {

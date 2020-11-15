@@ -17,6 +17,7 @@ import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.core.*
 import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
+import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.JSReference
@@ -34,6 +35,7 @@ import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.*
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.tree.TryCatchBlockNode
+import kotlin.Error
 
 class Compiler {
     private var stackHeight = 0
@@ -1074,7 +1076,7 @@ class Compiler {
             construct(Errors.TODO::class, String::class) {
                 ldc("forInOfBodyEvaluation")
             }
-            invokevirtual(Error::class, "throwTypeError", Nothing::class)
+            invokevirtual(Errors.TODO::class, "throwTypeError", Nothing::class)
             pop
             loadUndefined()
             areturn
@@ -1195,7 +1197,7 @@ class Compiler {
         getValue
         toBoolean
         stackHeight--
-        ifStatement(JumpCondition.False) {
+        ifStatement(JumpCondition.True) {
             goto(start)
         }
 
@@ -1485,12 +1487,14 @@ class Compiler {
 
                             dup
                             loadNull()
-                            ifStatement(JumpCondition.RefNotEqual) {
+                            ifStatement(JumpCondition.RefEqual) {
                                 goto(end)
                             }
 
                             loadKObject<Errors.Class.BadExtendsProto>()
-                            invokevirtual(Error::class, "throwTypeError", Nothing::class)
+                            invokevirtual(Errors.Class.BadExtendsProto::class, "throwTypeError", Nothing::class)
+                            loadUndefined()
+                            areturn
 
                             placeLabel(end)
 
@@ -1499,7 +1503,9 @@ class Compiler {
 
                         elseBlock {
                             loadKObject<Errors.Class.BadExtends>()
-                            invokevirtual(Error::class, "throwTypeError", Nothing::class)
+                            invokevirtual(Errors.Class.BadExtends::class, "throwTypeError", Nothing::class)
+                            loadUndefined()
+                            areturn
                         }
                     }
                 }
@@ -1587,7 +1593,7 @@ class Compiler {
 
         if (node.heritage != null) {
             dup
-            getfield(JSFunction.ConstructorKind::class, "Derived", JSFunction.ConstructorKind::class)
+            getstatic(JSFunction.ConstructorKind::class, "Derived", JSFunction.ConstructorKind::class)
             invokevirtual(JSFunction::class, "setConstructorKind", void, JSFunction.ConstructorKind::class)
         }
 
@@ -2079,7 +2085,7 @@ class Compiler {
             swap
             operation("toPrintableString", String::class, JSValue::class)
             invokespecial(Errors.NotACtor::class, "<init>", void, String::class)
-            invokevirtual(Error::class, "throwTypeError", Nothing::class)
+            invokevirtual(Errors.NotACtor::class, "throwTypeError", Nothing::class)
             loadUndefined()
             areturn
         }
@@ -2427,6 +2433,8 @@ class Compiler {
 
         loadLexicalEnv()
         swap
+        // obj, env, functionProto
+        checkcast<JSObject>()
         ordinaryFunctionCreate(
             "TODO",
             method.parameters,
@@ -2439,6 +2447,7 @@ class Compiler {
         dup_x1
         // closure, obj, closure
         swap
+        // closure, closure, obj
         operation("makeMethod", JSValue::class, JSFunction::class, JSObject::class)
         pop
 
@@ -2770,7 +2779,7 @@ class Compiler {
                 ifStatement(JumpCondition.False) {
                     pop
                     loadKObject<Errors.InBadRHS>()
-                    invokevirtual(Error::class, "throwTypeError", Nothing::class)
+                    invokevirtual(Errors.InBadRHS::class, "throwTypeError", Nothing::class)
                     loadUndefined()
                     areturn
                 }
@@ -2853,7 +2862,7 @@ class Compiler {
                     construct(Errors.TODO::class, String::class) {
                         ldc("compileUnaryExpression, -BigInt")
                     }
-                    invokevirtual(Error::class, "throwTypeError", Nothing::class)
+                    invokevirtual(Errors.TODO::class, "throwTypeError", Nothing::class)
                     loadUndefined()
                     areturn
                 }
@@ -2869,7 +2878,7 @@ class Compiler {
                     construct(Errors.TODO::class, String::class) {
                         ldc("compileUnaryExpression, -BigInt")
                     }
-                    invokevirtual(Error::class, "throwTypeError", Nothing::class)
+                    invokevirtual(Errors.TODO::class, "throwTypeError", Nothing::class)
                     loadUndefined()
                     areturn
                 }
@@ -2906,7 +2915,7 @@ class Compiler {
             construct(Errors.TODO::class, String::class) {
                 ldc("compileUpdateExpression, BigInt")
             }
-            invokevirtual(Error::class, "throwTypeError", Nothing::class)
+            invokevirtual(Errors.TODO::class, "throwTypeError", Nothing::class)
             loadUndefined()
             areturn
         }
@@ -2965,12 +2974,74 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileSuperProperty(node: ExpressionNode) {
-        TODO()
+    private fun MethodAssembly.compileSuperProperty(node: SuperPropertyNode) {
+        operation("getThisEnvironment", EnvRecord::class)
+        checkcast<FunctionEnvRecord>()
+        invokevirtual(FunctionEnvRecord::class, "getThisBinding", JSValue::class)
+        if (node.computed) {
+            compileExpression(node.target)
+            getValue
+            operation("toPropertyKey", PropertyKey::class, JSValue::class)
+        } else {
+            construct(PropertyKey::class, String::class) {
+                ldc((node.target as IdentifierNode).identifierName)
+            }
+            stackHeight++
+        }
+        operation("isStrict", Boolean::class)
+        operation("makeSuperPropertyReference", JSReference::class, JSValue::class, PropertyKey::class, Boolean::class)
     }
 
-    private fun MethodAssembly.compileSuperCall(node: ExpressionNode) {
-        TODO()
+    private fun MethodAssembly.compileSuperCall(node: SuperCallNode) {
+        operation("getSuperConstructor", JSValue::class)
+        dup
+        operation("isConstructor", Boolean::class, JSValue::class)
+        ifStatement(JumpCondition.False) {
+            loadKObject<Errors.Class.BadSuperFunc>()
+            invokevirtual(Errors.Class.BadSuperFunc::class, "throwTypeError", Nothing::class)
+            loadUndefined()
+            areturn
+        }
+        argumentsListEvaluation(node.arguments)
+        operation("getNewTarget", JSValue::class)
+        checkcast<JSObject>()
+        operation("construct", JSValue::class, JSValue::class, List::class, JSValue::class)
+        // result
+
+        operation("getThisEnvironment", EnvRecord::class)
+        checkcast<FunctionEnvRecord>()
+        // result, thisEnv
+        dup
+        // result, thisEnv, thisEnv
+        invokevirtual(FunctionEnvRecord::class, "getThisBindingStatus", FunctionEnvRecord.ThisBindingStatus::class)
+        // result, thisEnv, bindingStatus
+        getstatic(FunctionEnvRecord.ThisBindingStatus::class, "Initialized", FunctionEnvRecord.ThisBindingStatus::class)
+        // result, thisEnv, bindingStatus, bindingStatus
+        ifStatement(JumpCondition.RefEqual) {
+            loadKObject<Errors.Class.DuplicateSuperCall>()
+            invokevirtual(Errors.Class.DuplicateSuperCall::class, "throwReferenceError", Nothing::class)
+            loadUndefined()
+            areturn
+        }
+
+        // result, thisEnv
+        dup2
+        // result, thisEnv, result, thisEnv
+        swap
+        // result, thisEnv, thisEnv, result
+        invokevirtual(FunctionEnvRecord::class, "bindThisValue", JSValue::class, JSValue::class)
+        pop
+        // result, thisEnv
+        invokevirtual(FunctionEnvRecord::class, "getFunction", JSFunction::class)
+        // result, function
+        swap
+        // function, result
+        checkcast<JSObject>()
+        // function, result
+        dup_x1
+        swap
+        // result, function
+        invokestatic(JSFunction::class, "initializeInstanceFields", void, JSObject::class, JSFunction::class)
     }
 
     private inline fun <reified T> MethodAssembly.loadKObject() {

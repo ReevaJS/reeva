@@ -50,6 +50,7 @@ abstract class JSFunction(
     }
 
     companion object {
+        @JvmStatic
         fun initializeInstanceFields(obj: JSObject, ctor: JSFunction) {
             ctor.fields.forEach {
                 defineField(obj, it)
