@@ -343,7 +343,7 @@ class Compiler {
                     compileStatementList(it)
                 }
                 loadUndefined()
-                expect(stackHeight == 0)
+                expect(stackHeight == 0, "expected empty stack after compiling function dependency")
                 areturn
             }
         }
@@ -1414,14 +1414,13 @@ class Compiler {
         val node = classDeclarationNode.classNode
         if (node.identifier == null) {
             classDefinitionEvaluation(node, null, "default")
-            stackHeight++
         } else {
             val className = node.identifier.identifierName
             classDefinitionEvaluation(node, className, className)
             dup
             loadLexicalEnv()
             swap
-            stackHeight += 3
+            stackHeight += 2
             initializeBoundName(className)
         }
     }
@@ -1451,6 +1450,7 @@ class Compiler {
             load(classScope)
             storeLexicalEnv()
             compileExpression(node.heritage)
+            stackHeight--
             load(env)
             storeLexicalEnv()
             getValue
@@ -1676,7 +1676,6 @@ class Compiler {
         load(classFunction)
         load(instanceFields)
         invokevirtual(JSFunction::class, "setFields", void, List::class)
-        stackHeight--
 
         load(classFunction)
     }
@@ -1699,12 +1698,14 @@ class Compiler {
                         // obj, name, undefined
                         // <empty>
                         operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
+                        pop
                         stackHeight--
                     } else {
                         compileExpression(element.initializer.node)
                         // obj, name, expr
                         getValue
                         operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
+                        pop
                         // <empty>
                         stackHeight -= 2
                     }
@@ -2094,6 +2095,7 @@ class Compiler {
         }
         if (node.arguments == null) {
             construct(ArrayList::class)
+            stackHeight++
         } else {
             argumentsListEvaluation(node.arguments)
         }
