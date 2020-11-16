@@ -13,6 +13,8 @@ import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.environment.*
+import me.mattco.reeva.jvmcompat.JSClassObject
+import me.mattco.reeva.jvmcompat.ProxyClassCompiler
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -22,6 +24,7 @@ import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.runtime.primitives.JSString
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
+import java.lang.reflect.Modifier
 
 open class JSGlobalObject protected constructor(
     realm: Realm,
@@ -64,6 +67,8 @@ open class JSGlobalObject protected constructor(
         defineNativeFunction("id".key(), 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::id)
         defineNativeFunction("eval".key(), 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::eval)
 
+        defineNativeFunction("jvm".key(), 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::jvm)
+
         // Debug method
         defineNativeFunction("isStrict".key(), 0, 0) { _, _ -> Operations.isStrict().toValue() }
     }
@@ -75,6 +80,32 @@ open class JSGlobalObject protected constructor(
 
     fun eval(thisValue: JSValue, arguments: JSArguments): JSValue {
         return performEval(arguments.argument(0), Agent.runningContext.realm, strictCaller = false, direct = false)
+    }
+
+    fun jvm(thisValue: JSValue, arguments: JSArguments): JSValue {
+        if (arguments.isEmpty())
+            Errors.JVMCompat.JVMFuncNoArgs.throwTypeError()
+
+        if (arguments.any { it !is JSClassObject })
+            Errors.JVMCompat.JVMFuncBadArgType.throwTypeError()
+
+        val classObjects = arguments.map { (it as JSClassObject).clazz }
+        if (classObjects.count { it.isInterface } > 1)
+            Errors.JVMCompat.JVMFuncMultipleBaseClasses.throwTypeError()
+
+        classObjects.firstOrNull {
+            Modifier.isFinal(it.modifiers)
+        }?.let {
+            Errors.JVMCompat.JVMFuncFinalClass(it.name).throwTypeError()
+        }
+
+        val baseClass = classObjects.firstOrNull { !it.isInterface }
+        val interfaces = classObjects.filter { it.isInterface }
+
+        return JSClassObject.create(
+            realm,
+            ProxyClassCompiler().makeProxyClass(baseClass, interfaces)
+        )
     }
 
     companion object {

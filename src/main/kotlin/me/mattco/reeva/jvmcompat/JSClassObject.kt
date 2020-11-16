@@ -19,11 +19,22 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
         isConstructable = true
     }
 
+    override fun init() {
+        super.init()
+
+        defineOwnProperty("prototype", clazzProto, 0)
+    }
+
     override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         Errors.JVMClass.InvalidCall.throwTypeError()
     }
 
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
+    override fun construct(_arguments: JSArguments, newTarget: JSValue): JSValue {
+        val arguments = if (JVMProxyMarker::class.java in clazz.interfaces) {
+            expect(newTarget is JSObject)
+            listOf(newTarget.get("prototype")) + _arguments
+        } else _arguments
+
         val ctors = clazz.constructors.toList()
 
         if (ctors.isEmpty())

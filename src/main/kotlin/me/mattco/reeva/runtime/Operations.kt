@@ -677,11 +677,12 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("7.3.3")
-    fun getV(target: JSValue, property: JSValue): JSValue {
-        ecmaAssert(isPropertyKey(property))
+    fun getV(target: JSValue, property: PropertyKey): JSValue {
         val obj = toObject(target)
-        return obj.get(toPropertyKey(property))
+        return obj.get(property)
     }
+
+    fun getV(target: JSValue, property: JSValue) = getV(target, toPropertyKey(property))
 
     @JvmStatic @ECMAImpl("7.3.4")
     fun set(obj: JSObject, property: PropertyKey, value: JSValue, throws: Boolean): Boolean {
@@ -852,8 +853,12 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("7.3.20")
-    fun invoke(value: JSValue, property: JSValue, arguments: JSArguments = emptyList()): JSValue {
+    fun invoke(value: JSValue, property: PropertyKey, arguments: JSArguments = emptyList()): JSValue {
         return call(getV(value, property), value, arguments)
+    }
+
+    fun invoke(value: JSValue, property: JSValue, arguments: JSArguments = emptyList()): JSValue {
+        return invoke(value, toPropertyKey(property), arguments)
     }
 
     @JvmStatic @ECMAImpl("7.3.21")

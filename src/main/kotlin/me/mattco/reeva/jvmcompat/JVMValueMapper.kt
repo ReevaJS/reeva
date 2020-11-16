@@ -22,7 +22,9 @@ import java.lang.reflect.Type
 object JVMValueMapper {
     const val CONVERSION_FAILURE = -1
 
-    fun getConversionWeight(value: JSValue, type: Class<*>) = when (value) {
+    fun getConversionWeight(value: JSValue, type: Class<*>) = if (type.isInstance(value)) {
+        0
+    } else when (value) {
         is JSUndefined -> 1
         is JSBoolean -> {
             when (type) {
@@ -122,12 +124,16 @@ object JVMValueMapper {
     }
 
     @JvmOverloads
-    fun coerceValueToType(value: JSValue, type: Class<*>, genericInfo: Array<Type>? = null): Any? = when (value) {
+    @JvmStatic
+    fun coerceValueToType(value: JSValue, type: Class<*>, genericInfo: Array<Type>? = null): Any? = if (type.isInstance(value)) {
+        value
+    } else when (value) {
         is JSUndefined -> {
-            if (type == String::class.java)
+            if (type == String::class.java) {
                 "undefined"
-            else
+            } else {
                 null
+            }
         }
         is JSBoolean -> {
             when (type) {
@@ -170,27 +176,6 @@ object JVMValueMapper {
             else
                 Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
         }
-        is JSClassInstanceObject -> {
-            val javaObject = value.obj
-            if (type.isInstance(javaObject))
-                javaObject
-            else when (type) {
-                String::class.java -> javaObject.toString()
-                Double::class.javaPrimitiveType, Double::class.javaObjectType, Float::class.javaPrimitiveType,
-                Float::class.javaObjectType, Long::class.javaPrimitiveType, Long::class.javaObjectType,
-                Int::class.javaPrimitiveType, Int::class.javaObjectType, Short::class.javaPrimitiveType,
-                Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType ->
-                    coerceValueToType(javaObject.toString().toValue(), type)
-                else -> Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
-            }
-        }
-        is JSClassObject -> {
-            when (type) {
-                Class::class.java, Any::class.java -> value.clazz
-                String::class.java -> value.clazz.toString()
-                else -> Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
-            }
-        }
         is JSArrayObject -> {
             if (type == String::class.java) {
                 Operations.toString(value).string
@@ -229,6 +214,27 @@ object JVMValueMapper {
                 else -> Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
             }
         }
+        is JSClassInstanceObject -> {
+            val javaObject = value.obj
+            if (type.isInstance(javaObject)) {
+                javaObject
+            } else when (type) {
+                String::class.java -> javaObject.toString()
+                Double::class.javaPrimitiveType, Double::class.javaObjectType, Float::class.javaPrimitiveType,
+                Float::class.javaObjectType, Long::class.javaPrimitiveType, Long::class.javaObjectType,
+                Int::class.javaPrimitiveType, Int::class.javaObjectType, Short::class.javaPrimitiveType,
+                Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType ->
+                    coerceValueToType(javaObject.toString().toValue(), type)
+                else -> Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
+            }
+        }
+        is JSClassObject -> {
+            when (type) {
+                Class::class.java, Any::class.java -> value.clazz
+                String::class.java -> value.clazz.toString()
+                else -> Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
+            }
+        }
         else -> Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
     }
 
@@ -251,13 +257,13 @@ object JVMValueMapper {
 
         return arguments.mapIndexed { index, jsValue ->
             val genericType = genericTypes[index]
-            if (genericType is ParameterizedType)
+            if (genericType is ParameterizedType) {
                 coerceValueToType(jsValue, genericType.rawType as Class<*>, genericInfo = genericType.actualTypeArguments)
-            else
-                coerceValueToType(jsValue, genericType as Class<*>)
+            } else coerceValueToType(jsValue, genericType as Class<*>)
         }
     }
 
+    @JvmStatic
     fun jvmToJS(realm: Realm, instance: Any?): JSValue {
         return when (instance) {
             null -> JSUndefined
@@ -291,39 +297,6 @@ object JVMValueMapper {
             }
             is Package -> JSPackageObject.create(realm, instance.name)
             is Class<*> -> JSClassObject.create(realm, instance)
-            else -> TODO()
-        }
-    }
-
-    fun jsToJVM(value: JSValue): Any? {
-        return when (value) {
-            is JSUndefined, is JSNull -> null
-            is JSString -> value.string
-            is JSNumber -> value.number
-            is JSMapObject -> {
-                mutableMapOf<Any?, Any?>().also { map ->
-                    value.mapData.forEach { key, value ->
-                        map[jsToJVM(key)] = jsToJVM(value)
-                    }
-                }
-            }
-            is JSSetObject -> {
-                mutableSetOf<Any?>().also { set ->
-                    value.setData.forEach {
-                        set.add(jsToJVM(it))
-                    }
-                }
-            }
-            is JSArrayObject -> {
-                mutableListOf<Any?>().also { array ->
-                    value.indexedProperties.indices().forEach { index ->
-                        array.add(jsToJVM(value.get(index)))
-                    }
-                }
-            }
-            is JSPackageObject -> if (value.packageName == null) null else Package.getPackage(value.packageName)
-            is JSClassObject -> value.clazz
-            is JSClassInstanceObject -> value.obj
             else -> TODO()
         }
     }

@@ -19,6 +19,8 @@ import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
+import me.mattco.reeva.core.modules.ExportEntryRecord
+import me.mattco.reeva.core.modules.records.SourceTextModuleRecord
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.JSReference
 import me.mattco.reeva.runtime.JSValue
@@ -35,12 +37,11 @@ import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.*
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.tree.TryCatchBlockNode
-import kotlin.Error
 
-class Compiler {
-    private var stackHeight = 0
-    private val labelNodes = mutableListOf<LabelNode>()
-    private val dependencies = mutableListOf<NamedByteArray>()
+open class Compiler {
+    protected var stackHeight = 0
+    protected val labelNodes = mutableListOf<LabelNode>()
+    protected val dependencies = mutableListOf<NamedByteArray>()
 
     data class LabelNode(
         val stackHeight: Int,
@@ -117,7 +118,7 @@ class Compiler {
         )
     }
 
-    private fun MethodAssembly.globalDeclarationInstantiation(node: ScriptNode) {
+    protected fun MethodAssembly.globalDeclarationInstantiation(node: ScriptNode) {
         loadRealm()
         invokevirtual(Realm::class, "getGlobalEnv", GlobalEnvRecord::class)
 
@@ -231,7 +232,7 @@ class Compiler {
     }
 
     // Consumes an EnvRecord from the stack, pushes a JSFunction
-    private fun MethodAssembly.instantiateFunctionObject(functionNode: FunctionDeclarationNode) {
+    protected fun MethodAssembly.instantiateFunctionObject(functionNode: FunctionDeclarationNode) {
         loadRealm()
         invokevirtual(Realm::class, "getFunctionProto", JSFunctionProto::class)
 
@@ -248,7 +249,7 @@ class Compiler {
     }
 
     // Consumes an EnvRecord and a JSObject (the prototype) from the stack, pushes a JSFunction
-    private fun MethodAssembly.ordinaryFunctionCreate(
+    protected fun MethodAssembly.ordinaryFunctionCreate(
         sourceText: String,
         parameters: FormalParametersNode,
         body: FunctionStatementList,
@@ -368,7 +369,7 @@ class Compiler {
     }
 
     // Consumes JSFunction and List<JSValue> from the stack
-    private fun MethodAssembly.functionDeclarationInstantiation(
+    protected fun MethodAssembly.functionDeclarationInstantiation(
         parameters: FormalParametersNode,
         body: FunctionStatementList,
         thisMode: JSFunction.ThisMode,
@@ -712,14 +713,14 @@ class Compiler {
         stackHeight -= 2
     }
 
-    private fun MethodAssembly.compileStatementList(statementListNode: StatementListNode) {
+    protected fun MethodAssembly.compileStatementList(statementListNode: StatementListNode) {
         // TODO: store last value
         statementListNode.statements.forEach {
             compileStatement(it as StatementNode)
         }
     }
 
-    private fun MethodAssembly.compileStatement(statement: StatementNode) {
+    protected fun MethodAssembly.compileStatement(statement: StatementNode) {
         when (statement) {
             is BlockStatementNode -> compileBlockStatement(statement)
             is VariableStatementNode -> compileVariableStatement(statement)
@@ -742,11 +743,11 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileBlockStatement(node: BlockStatementNode) {
+    protected fun MethodAssembly.compileBlockStatement(node: BlockStatementNode) {
         compileBlock(node.block)
     }
 
-    private fun MethodAssembly.compileBlock(node: BlockNode) {
+    protected fun MethodAssembly.compileBlock(node: BlockNode) {
         if (node.statements == null)
             return
         loadLexicalEnv()
@@ -806,7 +807,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileVariableStatement(node: VariableStatementNode) {
+    protected fun MethodAssembly.compileVariableStatement(node: VariableStatementNode) {
         node.declarations.declarations.forEach { decl ->
             if (decl.initializer == null)
                 return@forEach
@@ -830,14 +831,14 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileExpressionStatement(node: ExpressionStatementNode) {
+    protected fun MethodAssembly.compileExpressionStatement(node: ExpressionStatementNode) {
         compileExpression(node.node)
         getValue
         pop
         stackHeight--
     }
 
-    private fun MethodAssembly.compileIfStatement(node: IfStatementNode) {
+    protected fun MethodAssembly.compileIfStatement(node: IfStatementNode) {
         compileExpression(node.condition)
         getValue
         toBoolean
@@ -864,7 +865,7 @@ class Compiler {
 //        labelledEvaluation(node, emptySet())
 //    }
 
-    private fun MethodAssembly.compileIterationStatement(node: IterationStatement, label: String?) {
+    protected fun MethodAssembly.compileIterationStatement(node: IterationStatement, label: String?) {
         when (node) {
             is DoWhileStatementNode -> compileDoWhileStatement(node, label)
             is WhileStatementNode -> compileWhileStatement(node, label)
@@ -875,7 +876,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileForInStatement(node: ForInNode, label: String?) {
+    protected fun MethodAssembly.compileForInStatement(node: ForInNode, label: String?) {
         forInOfHeadEvaluation(
             if (node.decl is ForDeclarationNode) {
                 node.decl.boundNames()
@@ -908,7 +909,7 @@ class Compiler {
         stackHeight--
     }
 
-    private fun MethodAssembly.compileForOfStatement(node: ForOfNode, label: String?) {
+    protected fun MethodAssembly.compileForOfStatement(node: ForOfNode, label: String?) {
         forInOfHeadEvaluation(
             if (node.decl is ForDeclarationNode) {
                 node.decl.boundNames()
@@ -932,7 +933,7 @@ class Compiler {
         stackHeight--
     }
 
-    private fun MethodAssembly.forInOfHeadEvaluation(
+    protected fun MethodAssembly.forInOfHeadEvaluation(
         uninitializedBoundNames: List<String>,
         expr: ExpressionNode,
         iterationKind: Interpreter.IterationKind,
@@ -1032,7 +1033,7 @@ class Compiler {
     }
 
     // Consumes an IteratorRecord from the stack
-    private fun MethodAssembly.forInOfBodyEvaluation(
+    protected fun MethodAssembly.forInOfBodyEvaluation(
         lhs: ASTNode,
         statement: StatementNode,
         iterationKind: Interpreter.IterationKind,
@@ -1174,7 +1175,7 @@ class Compiler {
         placeLabel(end)
     }
 
-    private fun MethodAssembly.bindingInstantiation(node: ForDeclarationNode) {
+    protected fun MethodAssembly.bindingInstantiation(node: ForDeclarationNode) {
         node.binding.boundNames().forEach { name ->
             dup
             ldc(name)
@@ -1184,7 +1185,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileDoWhileStatement(node: DoWhileStatementNode, label: String?) {
+    protected fun MethodAssembly.compileDoWhileStatement(node: DoWhileStatementNode, label: String?) {
         val start = makeLabel()
         val end = makeLabel()
         labelNodes.add(LabelNode(stackHeight, label, end, start))
@@ -1202,7 +1203,7 @@ class Compiler {
         placeLabel(end)
     }
 
-    private fun MethodAssembly.compileWhileStatement(node: WhileStatementNode, label: String?) {
+    protected fun MethodAssembly.compileWhileStatement(node: WhileStatementNode, label: String?) {
         val start = makeLabel()
         val end = makeLabel()
         labelNodes.add(LabelNode(stackHeight, label, end, start))
@@ -1218,7 +1219,7 @@ class Compiler {
         placeLabel(end)
     }
 
-    private fun MethodAssembly.compileForStatement(node: ForStatementNode, label: String?) {
+    protected fun MethodAssembly.compileForStatement(node: ForStatementNode, label: String?) {
         when (node.initializer) {
             is ExpressionNode -> {
                 compileExpression(node.initializer)
@@ -1288,7 +1289,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.forBodyEvaluation(
+    protected fun MethodAssembly.forBodyEvaluation(
         condition: ExpressionNode?,
         incrementer: ExpressionNode?,
         body: StatementNode,
@@ -1327,7 +1328,7 @@ class Compiler {
         placeLabel(end)
     }
 
-    private fun MethodAssembly.createPerIterationEnvironment(perIterationBindings: List<String>) {
+    protected fun MethodAssembly.createPerIterationEnvironment(perIterationBindings: List<String>) {
         if (perIterationBindings.isEmpty())
             return
 
@@ -1373,7 +1374,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileLexicalDeclaration(node: LexicalDeclarationNode) {
+    protected fun MethodAssembly.compileLexicalDeclaration(node: LexicalDeclarationNode) {
         node.bindingList.lexicalBindings.forEach { binding ->
             ldc(binding.identifier.identifierName)
             operation("resolveBinding", JSReference::class, String::class)
@@ -1400,17 +1401,17 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileFunctionDeclaration(node: StatementNode) {
+    protected fun MethodAssembly.compileFunctionDeclaration(node: StatementNode) {
         // nop
     }
 
-    private fun MethodAssembly.compileClassDeclaration(node: ClassDeclarationNode) {
+    protected fun MethodAssembly.compileClassDeclaration(node: ClassDeclarationNode) {
         bindingClassDeclarationEvaluation(node)
         pop
         stackHeight--
     }
 
-    private fun MethodAssembly.bindingClassDeclarationEvaluation(classDeclarationNode: ClassDeclarationNode) {
+    protected fun MethodAssembly.bindingClassDeclarationEvaluation(classDeclarationNode: ClassDeclarationNode) {
         val node = classDeclarationNode.classNode
         if (node.identifier == null) {
             classDefinitionEvaluation(node, null, "default")
@@ -1425,7 +1426,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.classDefinitionEvaluation(node: ClassNode, classBinding: String?, className: String) {
+    protected fun MethodAssembly.classDefinitionEvaluation(node: ClassNode, classBinding: String?, className: String) {
         loadLexicalEnv()
         dup
         val env = astore()
@@ -1681,7 +1682,7 @@ class Compiler {
     }
 
     // Consumes a JSObject from the stack, pushes a FieldRecord or null
-    private fun MethodAssembly.classElementEvaluation(element: ClassElementNode, enumerable: Boolean, isStatic: Boolean) {
+    protected fun MethodAssembly.classElementEvaluation(element: ClassElementNode, enumerable: Boolean, isStatic: Boolean) {
         when (element.type) {
             ClassElementNode.Type.Method -> {
                 propertyDefinitionEvaluation(element.node!! as MethodDefinitionNode, enumerable, true)
@@ -1773,7 +1774,7 @@ class Compiler {
     }
 
     // Consumes an env and JSValue from the stack
-    private fun MethodAssembly.initializeBoundName(name: String) {
+    protected fun MethodAssembly.initializeBoundName(name: String) {
         dup
         ifElseStatement(JumpCondition.Null) {
             ifBlock {
@@ -1795,7 +1796,7 @@ class Compiler {
         stackHeight -= 2
     }
 
-    private fun MethodAssembly.compileReturnStatement(node: ReturnStatementNode) {
+    protected fun MethodAssembly.compileReturnStatement(node: ReturnStatementNode) {
         if (node.node != null) {
             compileExpression(node.node)
             getValue
@@ -1806,7 +1807,7 @@ class Compiler {
         areturn
     }
 
-    private fun MethodAssembly.compileThrowStatement(node: ThrowStatementNode) {
+    protected fun MethodAssembly.compileThrowStatement(node: ThrowStatementNode) {
         construct(ThrowException::class, JSValue::class) {
             compileExpression(node.expr)
             getValue
@@ -1815,7 +1816,7 @@ class Compiler {
         stackHeight--
     }
 
-    private fun MethodAssembly.compileTryStatement(node: TryStatementNode) {
+    protected fun MethodAssembly.compileTryStatement(node: TryStatementNode) {
         tryCatchBuilder {
             tryBlock {
                 compileBlock(node.tryBlock)
@@ -1871,7 +1872,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileBreakStatement(node: BreakStatementNode) {
+    protected fun MethodAssembly.compileBreakStatement(node: BreakStatementNode) {
         var labelNode = labelNodes.removeLast()
         if (node.label != null) {
             while (labelNode.labelName != node.label.identifierName)
@@ -1890,7 +1891,7 @@ class Compiler {
         goto(labelNode.breakLabel!!)
     }
 
-    private fun MethodAssembly.compileLabelledStatement(node: LabelledStatementNode) {
+    protected fun MethodAssembly.compileLabelledStatement(node: LabelledStatementNode) {
         val label = node.label.identifierName
         when (node.item) {
             is DoWhileStatementNode -> compileDoWhileStatement(node.item, label)
@@ -1900,15 +1901,15 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileImportDeclaration(node: StatementNode) {
+    protected fun MethodAssembly.compileImportDeclaration(node: StatementNode) {
         TODO()
     }
 
-    private fun MethodAssembly.compileExportDeclaration(node: StatementNode) {
+    protected fun MethodAssembly.compileExportDeclaration(node: StatementNode) {
         TODO()
     }
 
-    private fun MethodAssembly.compileExpression(node: ExpressionNode) {
+    protected fun MethodAssembly.compileExpression(node: ExpressionNode) {
         when (node) {
             ThisNode -> compileThis()
             is CommaExpressionNode -> compileCommaExpressionNode(node)
@@ -1948,12 +1949,12 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileThis() {
+    protected fun MethodAssembly.compileThis() {
         operation("resolveThisBinding", JSValue::class)
         stackHeight++
     }
 
-    private fun MethodAssembly.compileCommaExpressionNode(node: CommaExpressionNode) {
+    protected fun MethodAssembly.compileCommaExpressionNode(node: CommaExpressionNode) {
         node.expressions.forEachIndexed { index, expression ->
             compileExpression(expression)
             getValue
@@ -1964,13 +1965,13 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileIdentifierReference(node: IdentifierReferenceNode) {
+    protected fun MethodAssembly.compileIdentifierReference(node: IdentifierReferenceNode) {
         ldc(node.identifierName)
         operation("resolveBinding", JSReference::class, String::class)
         stackHeight++
     }
 
-    private fun MethodAssembly.compileFunctionExpression(node: FunctionExpressionNode) {
+    protected fun MethodAssembly.compileFunctionExpression(node: FunctionExpressionNode) {
         if (node.identifier == null) {
             loadLexicalEnv()
             loadRealm()
@@ -2026,7 +2027,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileArrowFunction(node: ArrowFunctionNode) {
+    protected fun MethodAssembly.compileArrowFunction(node: ArrowFunctionNode) {
         loadLexicalEnv()
         val sourceText = "TODO"
         val parameters = node.parameters.let {
@@ -2061,7 +2062,7 @@ class Compiler {
         )
     }
 
-    private fun MethodAssembly.compileLiteral(node: LiteralNode) {
+    protected fun MethodAssembly.compileLiteral(node: LiteralNode) {
         when (node) {
             is NullNode -> loadNull()
             is BooleanNode -> (if (node.value) JSTrue::class else JSFalse::class).let {
@@ -2078,7 +2079,7 @@ class Compiler {
         stackHeight++
     }
 
-    private fun MethodAssembly.compileNewExpression(node: NewExpressionNode) {
+    protected fun MethodAssembly.compileNewExpression(node: NewExpressionNode) {
         compileExpression(node.target)
         getValue
         dup
@@ -2103,7 +2104,7 @@ class Compiler {
         stackHeight--
     }
 
-    private fun MethodAssembly.argumentsListEvaluation(node: ArgumentsNode) {
+    protected fun MethodAssembly.argumentsListEvaluation(node: ArgumentsNode) {
         construct(ArrayList::class)
         stackHeight++
 
@@ -2164,7 +2165,7 @@ class Compiler {
 
     }
 
-    private fun MethodAssembly.compileCallExpression(node: CallExpressionNode) {
+    protected fun MethodAssembly.compileCallExpression(node: CallExpressionNode) {
         compileExpression(node.target)
         dup
         getValue
@@ -2260,7 +2261,7 @@ class Compiler {
 //        stackHeight++
     }
 
-    private fun MethodAssembly.compileObjectLiteral(node: ObjectLiteralNode) {
+    protected fun MethodAssembly.compileObjectLiteral(node: ObjectLiteralNode) {
         loadRealm()
         invokestatic(JSObject::class, "create", JSObject::class, Realm::class)
 
@@ -2301,7 +2302,7 @@ class Compiler {
     }
 
     // Takes obj (JSObject) on the stack. Does not push a result
-    private fun MethodAssembly.propertyDefinitionEvaluation(
+    protected fun MethodAssembly.propertyDefinitionEvaluation(
         methodDefinitionNode: MethodDefinitionNode,
         enumerable: Boolean,
         isStrict: Boolean,
@@ -2433,7 +2434,7 @@ class Compiler {
     }
 
     // Takes obj (JSObject) and functionPrototype (JSObject) on the stack, pushes DefinedMethod
-    private fun MethodAssembly.defineMethod(method: MethodDefinitionNode) {
+    protected fun MethodAssembly.defineMethod(method: MethodDefinitionNode) {
         expect(method.type == MethodDefinitionNode.Type.Normal)
 
         loadLexicalEnv()
@@ -2473,7 +2474,7 @@ class Compiler {
         // DefinedMethod
     }
 
-    private fun MethodAssembly.evaluatePropertyName(node: ASTNode) {
+    protected fun MethodAssembly.evaluatePropertyName(node: ASTNode) {
         if (node is PropertyNameNode) {
             if (node.isComputed) {
                 compileExpression(node.expr)
@@ -2493,7 +2494,7 @@ class Compiler {
         } else TODO()
     }
 
-    private fun MethodAssembly.compileArrayLiteral(node: ArrayLiteralNode) {
+    protected fun MethodAssembly.compileArrayLiteral(node: ArrayLiteralNode) {
         ldc(node.elements.size)
         operation("arrayCreate", JSObject::class, Int::class)
         stackHeight++
@@ -2519,7 +2520,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileMemberExpression(node: MemberExpressionNode) {
+    protected fun MethodAssembly.compileMemberExpression(node: MemberExpressionNode) {
         when (node.type) {
             MemberExpressionNode.Type.Computed -> {
                 compileExpression(node.lhs)
@@ -2543,11 +2544,11 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileOptionalExpression(node: ExpressionNode) {
+    protected fun MethodAssembly.compileOptionalExpression(node: ExpressionNode) {
         TODO()
     }
 
-    private fun MethodAssembly.compileAssignmentExpression(node: AssignmentExpressionNode) {
+    protected fun MethodAssembly.compileAssignmentExpression(node: AssignmentExpressionNode) {
         val (lhs, rhs) = node.let { it.lhs to it.rhs }
 
         if (lhs.let { it is ObjectLiteralNode && it is ArrayLiteralNode })
@@ -2628,7 +2629,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileConditionalExpression(node: ConditionalExpressionNode) {
+    protected fun MethodAssembly.compileConditionalExpression(node: ConditionalExpressionNode) {
         compileExpression(node.predicate)
         getValue
         toBoolean
@@ -2646,7 +2647,7 @@ class Compiler {
         getValue
     }
 
-    private fun MethodAssembly.compileCoalesceExpression(node: CoalesceExpressionNode) {
+    protected fun MethodAssembly.compileCoalesceExpression(node: CoalesceExpressionNode) {
         compileExpression(node.lhs)
         getValue
         dup
@@ -2659,7 +2660,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileLogicalORExpression(node: LogicalORExpressionNode) {
+    protected fun MethodAssembly.compileLogicalORExpression(node: LogicalORExpressionNode) {
         compileExpression(node.lhs)
         getValue
         dup
@@ -2672,7 +2673,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileLogicalANDExpression(node: LogicalANDExpressionNode) {
+    protected fun MethodAssembly.compileLogicalANDExpression(node: LogicalANDExpressionNode) {
         compileExpression(node.lhs)
         getValue
         dup
@@ -2685,7 +2686,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.evaluateStringOrNumericBinaryExpression(lhs: ExpressionNode, rhs: ExpressionNode, op: String) {
+    protected fun MethodAssembly.evaluateStringOrNumericBinaryExpression(lhs: ExpressionNode, rhs: ExpressionNode, op: String) {
         compileExpression(lhs)
         getValue
         compileExpression(rhs)
@@ -2695,19 +2696,19 @@ class Compiler {
         stackHeight--
     }
 
-    private fun MethodAssembly.compileBitwiseORExpression(node: BitwiseORExpressionNode) {
+    protected fun MethodAssembly.compileBitwiseORExpression(node: BitwiseORExpressionNode) {
         evaluateStringOrNumericBinaryExpression(node.lhs, node.rhs, "|")
     }
 
-    private fun MethodAssembly.compileBitwiseXORExpression(node: BitwiseXORExpressionNode) {
+    protected fun MethodAssembly.compileBitwiseXORExpression(node: BitwiseXORExpressionNode) {
         evaluateStringOrNumericBinaryExpression(node.lhs, node.rhs, "^")
     }
 
-    private fun MethodAssembly.compileBitwiseANDExpression(node: BitwiseANDExpressionNode) {
+    protected fun MethodAssembly.compileBitwiseANDExpression(node: BitwiseANDExpressionNode) {
         evaluateStringOrNumericBinaryExpression(node.lhs, node.rhs, "&")
     }
 
-    private fun MethodAssembly.compileEqualityExpression(node: EqualityExpressionNode) {
+    protected fun MethodAssembly.compileEqualityExpression(node: EqualityExpressionNode) {
         compileExpression(node.lhs)
         getValue
         compileExpression(node.rhs)
@@ -2736,7 +2737,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileRelationalExpression(node: RelationalExpressionNode) {
+    protected fun MethodAssembly.compileRelationalExpression(node: RelationalExpressionNode) {
         compileExpression(node.lhs)
         getValue
         compileExpression(node.rhs)
@@ -2799,7 +2800,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileShiftExpression(node: ShiftExpressionNode) {
+    protected fun MethodAssembly.compileShiftExpression(node: ShiftExpressionNode) {
         evaluateStringOrNumericBinaryExpression(
             node.lhs,
             node.rhs,
@@ -2811,7 +2812,7 @@ class Compiler {
         )
     }
 
-    private fun MethodAssembly.compileAdditiveExpression(node: AdditiveExpressionNode) {
+    protected fun MethodAssembly.compileAdditiveExpression(node: AdditiveExpressionNode) {
         evaluateStringOrNumericBinaryExpression(
             node.lhs,
             node.rhs,
@@ -2819,7 +2820,7 @@ class Compiler {
         )
     }
 
-    private fun MethodAssembly.compileMultiplicationExpression(node: MultiplicativeExpressionNode) {
+    protected fun MethodAssembly.compileMultiplicationExpression(node: MultiplicativeExpressionNode) {
         evaluateStringOrNumericBinaryExpression(
             node.lhs,
             node.rhs,
@@ -2831,7 +2832,7 @@ class Compiler {
         )
     }
 
-    private fun MethodAssembly.compileExponentiationExpression(node: ExponentiationExpressionNode) {
+    protected fun MethodAssembly.compileExponentiationExpression(node: ExponentiationExpressionNode) {
         evaluateStringOrNumericBinaryExpression(
             node.lhs,
             node.rhs,
@@ -2839,7 +2840,7 @@ class Compiler {
         )
     }
 
-    private fun MethodAssembly.compileUnaryExpression(node: UnaryExpressionNode) {
+    protected fun MethodAssembly.compileUnaryExpression(node: UnaryExpressionNode) {
         compileExpression(node.node)
 
         when (node.op) {
@@ -2905,7 +2906,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileUpdateExpression(node: UpdateExpressionNode) {
+    protected fun MethodAssembly.compileUpdateExpression(node: UpdateExpressionNode) {
         compileExpression(node.target)
         dup
         // expr, expr
@@ -2946,13 +2947,13 @@ class Compiler {
         pop
     }
 
-    private fun MethodAssembly.compileForBinding(node: ForBindingNode) {
+    protected fun MethodAssembly.compileForBinding(node: ForBindingNode) {
         ldc(node.identifier.identifierName)
         operation("resolveBinding", JSReference::class, String::class)
         stackHeight++
     }
 
-    private fun MethodAssembly.compileTemplateLiteral(node: TemplateLiteralNode) {
+    protected fun MethodAssembly.compileTemplateLiteral(node: TemplateLiteralNode) {
         construct(JSString::class, String::class) {
             buildStringHelper {
                 node.parts.forEach {
@@ -2969,7 +2970,7 @@ class Compiler {
         stackHeight++
     }
 
-    private fun MethodAssembly.compileClassExpression(node: ClassExpressionNode) {
+    protected fun MethodAssembly.compileClassExpression(node: ClassExpressionNode) {
         val name = node.classNode.identifier?.identifierName
         // TODO: Set [[SourceText]]
         if (name != null) {
@@ -2979,7 +2980,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.compileSuperProperty(node: SuperPropertyNode) {
+    protected fun MethodAssembly.compileSuperProperty(node: SuperPropertyNode) {
         operation("getThisEnvironment", EnvRecord::class)
         checkcast<FunctionEnvRecord>()
         invokevirtual(FunctionEnvRecord::class, "getThisBinding", JSValue::class)
@@ -2997,7 +2998,7 @@ class Compiler {
         operation("makeSuperPropertyReference", JSReference::class, JSValue::class, PropertyKey::class, Boolean::class)
     }
 
-    private fun MethodAssembly.compileSuperCall(node: SuperCallNode) {
+    protected fun MethodAssembly.compileSuperCall(node: SuperCallNode) {
         operation("getSuperConstructor", JSValue::class)
         dup
         operation("isConstructor", Boolean::class, JSValue::class)
@@ -3049,25 +3050,25 @@ class Compiler {
         invokestatic(JSFunction::class, "initializeInstanceFields", void, JSObject::class, JSFunction::class)
     }
 
-    private inline fun <reified T> MethodAssembly.loadEnumMember(name: String) {
+    protected inline fun <reified T> MethodAssembly.loadEnumMember(name: String) {
         getstatic(T::class, name, T::class)
     }
 
-    private inline fun <reified T> MethodAssembly.loadKObject() {
+    protected inline fun <reified T> MethodAssembly.loadKObject() {
         getstatic(T::class, "INSTANCE", T::class)
     }
 
-    private fun MethodAssembly.loadEmpty() = loadKObject<JSEmpty>()
+    protected fun MethodAssembly.loadEmpty() = loadKObject<JSEmpty>()
 
-    private fun MethodAssembly.loadUndefined() = loadKObject<JSUndefined>()
+    protected fun MethodAssembly.loadUndefined() = loadKObject<JSUndefined>()
 
-    private fun MethodAssembly.loadNull() = loadKObject<JSNull>()
+    protected fun MethodAssembly.loadNull() = loadKObject<JSNull>()
 
-    private fun MethodAssembly.loadTrue() = loadKObject<JSTrue>()
+    protected fun MethodAssembly.loadTrue() = loadKObject<JSTrue>()
 
-    private fun MethodAssembly.loadFalse() = loadKObject<JSFalse>()
+    protected fun MethodAssembly.loadFalse() = loadKObject<JSFalse>()
 
-    private fun MethodAssembly.invertJSBoolean() {
+    protected fun MethodAssembly.invertJSBoolean() {
         loadTrue()
         ifElseStatement(JumpCondition.RefEqual) {
             ifBlock {
@@ -3080,7 +3081,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.operation(name: String, returnType: TypeLike, vararg parameterTypes: TypeLike) {
+    protected fun MethodAssembly.operation(name: String, returnType: TypeLike, vararg parameterTypes: TypeLike) {
         invokestatic(Operations::class, name, returnType, *parameterTypes)
     }
 
@@ -3090,42 +3091,42 @@ class Compiler {
     val MethodAssembly.toBoolean: Unit
         get() = operation("toBoolean", Boolean::class, JSValue::class)
 
-    private fun MethodAssembly.createDeclarativeEnvRecord() {
+    protected fun MethodAssembly.createDeclarativeEnvRecord() {
         invokestatic(DeclarativeEnvRecord::class, "create", DeclarativeEnvRecord::class, EnvRecord::class)
     }
 
-    private fun MethodAssembly.loadContext() {
+    protected fun MethodAssembly.loadContext() {
         invokestatic(Agent::class, "getRunningContext", ExecutionContext::class)
     }
 
-    private fun MethodAssembly.loadRealm() {
+    protected fun MethodAssembly.loadRealm() {
         loadContext()
         getfield(ExecutionContext::class, "realm", Realm::class)
     }
 
-    private fun MethodAssembly.loadVariableEnv() {
+    protected fun MethodAssembly.loadVariableEnv() {
         loadContext()
         getfield(ExecutionContext::class, "variableEnv", EnvRecord::class)
     }
 
-    private fun MethodAssembly.loadLexicalEnv() {
+    protected fun MethodAssembly.loadLexicalEnv() {
         loadContext()
         getfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
     }
 
-    private fun MethodAssembly.storeVariableEnv() {
+    protected fun MethodAssembly.storeVariableEnv() {
         loadContext()
         swap
         putfield(ExecutionContext::class, "variableEnv", EnvRecord::class)
     }
 
-    private fun MethodAssembly.storeLexicalEnv() {
+    protected fun MethodAssembly.storeLexicalEnv() {
         loadContext()
         swap
         putfield(ExecutionContext::class, "lexicalEnv", EnvRecord::class)
     }
 
-    private fun MethodAssembly.tryCatchBuilder(block: TryCatchBuilder.() -> Unit) {
+    protected fun MethodAssembly.tryCatchBuilder(block: TryCatchBuilder.() -> Unit) {
         val builder = TryCatchBuilder().apply(block)
         expect(builder.catchBlocks.isNotEmpty() || builder.finallyBlock != null)
 
@@ -3207,14 +3208,14 @@ class Compiler {
         placeLabel(tryCatchFinallyEnd)
     }
 
-    private fun verifyConsistentStackHeight(block: () -> Unit) {
+    protected fun verifyConsistentStackHeight(block: () -> Unit) {
         val initialStackHeight = stackHeight
         block()
         if (initialStackHeight != stackHeight)
             throw IllegalStateException("verifyConsistentStackHeight failed. Initial: $initialStackHeight, final: $stackHeight")
     }
 
-    private class TryCatchBuilder {
+    protected class TryCatchBuilder {
         lateinit var tryBlock: (() -> Unit)
         val catchBlocks = mutableListOf<Pair<TypeLike, () -> Unit>>()
         var finallyBlock: (() -> Unit)? = null
@@ -3232,7 +3233,7 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.buildStringHelper(block: BuildStringHelper.() -> Unit) {
+    protected fun MethodAssembly.buildStringHelper(block: BuildStringHelper.() -> Unit) {
         val helper = BuildStringHelper().apply(block)
         construct(StringBuilder::class)
         helper.parts.forEach {
@@ -3250,33 +3251,33 @@ class Compiler {
         }
     }
 
-    private fun MethodAssembly.runtime(name: String, returnType: TypeLike, vararg paramTypes: TypeLike) {
+    protected fun MethodAssembly.runtime(name: String, returnType: TypeLike, vararg paramTypes: TypeLike) {
         invokestatic(CompilerRuntime::class, name, returnType, *paramTypes)
     }
 
     // helper JVM bytecodes
     // a, b, c -> a, c
-    private val MethodAssembly.pop_x1: Unit
+    protected val MethodAssembly.pop_x1: Unit
         get() {
             swap
             pop
         }
 
     // a, b, c -> c, b, a
-    private val MethodAssembly.swap_x1: Unit
+    protected val MethodAssembly.swap_x1: Unit
         get() {
             dup_x2
             pop
             swap
         }
 
-    private val MethodAssembly.pop3: Unit
+    protected val MethodAssembly.pop3: Unit
         get() {
             pop2
             pop
         }
 
-    private val MethodAssembly.pop4: Unit
+    protected val MethodAssembly.pop4: Unit
         get() {
             pop2
             pop2
