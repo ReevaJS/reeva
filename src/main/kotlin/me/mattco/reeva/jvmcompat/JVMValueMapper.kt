@@ -199,21 +199,6 @@ object JVMValueMapper {
                 Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
             }
         }
-        is JSObject -> {
-            when (type) {
-                Any::class.java -> TODO("convert to map?")
-                String::class.java -> Operations.toString(value).string
-                Double::class.javaPrimitiveType, Double::class.javaObjectType, Float::class.javaPrimitiveType,
-                Float::class.javaObjectType, Long::class.javaPrimitiveType, Long::class.javaObjectType,
-                Int::class.javaPrimitiveType, Int::class.javaObjectType, Short::class.javaPrimitiveType,
-                Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType ->
-                    coerceValueToType(
-                        Operations.toPrimitive(value, Operations.ToPrimitiveHint.AsNumber),
-                        type
-                    )
-                else -> Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
-            }
-        }
         is JSClassInstanceObject -> {
             val javaObject = value.obj
             if (type.isInstance(javaObject)) {
@@ -232,6 +217,21 @@ object JVMValueMapper {
             when (type) {
                 Class::class.java, Any::class.java -> value.clazz
                 String::class.java -> value.clazz.toString()
+                else -> Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
+            }
+        }
+        is JSObject -> {
+            when (type) {
+                Any::class.java -> TODO("convert to map?")
+                String::class.java -> Operations.toString(value).string
+                Double::class.javaPrimitiveType, Double::class.javaObjectType, Float::class.javaPrimitiveType,
+                Float::class.javaObjectType, Long::class.javaPrimitiveType, Long::class.javaObjectType,
+                Int::class.javaPrimitiveType, Int::class.javaObjectType, Short::class.javaPrimitiveType,
+                Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType ->
+                    coerceValueToType(
+                        Operations.toPrimitive(value, Operations.ToPrimitiveHint.AsNumber),
+                        type
+                    )
                 else -> Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
             }
         }

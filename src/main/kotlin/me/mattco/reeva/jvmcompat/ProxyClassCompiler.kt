@@ -97,50 +97,26 @@ class ProxyClassCompiler : Compiler() {
                             return@method
                         }
 
-                        ldc(coerceType(method.returnType))
+                        data class RetInfo(val wrapperType: String, val primitiveMethod: String?, val instr: () -> Unit)
+
+                        val (wrapperType, primitiveMethod, retInstr) = when (method.returnType) {
+                            Float::class.java -> RetInfo("java/lang/Float", "floatValue") { freturn }
+                            Double::class.java -> RetInfo("java/lang/Double", "doubleValue") { dreturn }
+                            Long::class.java -> RetInfo("java/lang/Long", "longValue") { lreturn }
+                            Byte::class.java -> RetInfo("java/lang/Byte", "byteValue") { ireturn }
+                            Short::class.java -> RetInfo("java/lang/Short", "shortValue") { ireturn }
+                            Char::class.java -> RetInfo("java/lang/Char", "charValue") { ireturn }
+                            Int::class.java -> RetInfo("java/lang/Integer", "intValue") { ireturn }
+                            else -> RetInfo(method.returnType.typeName, null) { areturn }
+                        }
+
+                        ldc(coerceType(wrapperType))
                         invokestatic(JVMValueMapper::class, "coerceValueToType", Any::class, JSValue::class, Class::class)
 
-                        when (method.returnType) {
-                            Float::class.java -> {
-                                checkcast("java/lang/Float")
-                                invokevirtual("java/lang/Float", "doubleValue", Double::class)
-                                freturn
-                            }
-                            Double::class.java -> {
-                                checkcast("java/lang/Double")
-                                invokevirtual("java/lang/Double", "doubleValue", Double::class)
-                                dreturn
-                            }
-                            Long::class.java -> {
-                                checkcast("java/lang/Long")
-                                invokevirtual("java/lang/Long", "longValue", Long::class)
-                                lreturn
-                            }
-                            Byte::class.java -> {
-                                checkcast("java/lang/Byte")
-                                invokevirtual("java/lang/Byte", "byteValue", Byte::class)
-                                ireturn
-                            }
-                            Short::class.java -> {
-                                checkcast("java/lang/Short")
-                                invokevirtual("java/lang/Short", "shortValue", Double::class)
-                                ireturn
-                            }
-                            Char::class.java -> {
-                                checkcast("java/lang/Char")
-                                invokevirtual("java/lang/Char", "charValue", Double::class)
-                                ireturn
-                            }
-                            Int::class.java -> {
-                                checkcast("java/lang/Integer")
-                                invokevirtual("java/lang/Integer", "intValue", Int::class)
-                                ireturn
-                            }
-                            else -> {
-                                checkcast(method.returnType)
-                                areturn
-                            }
-                        }
+                        checkcast(wrapperType)
+                        if (primitiveMethod != null)
+                            invokevirtual(wrapperType, primitiveMethod, method.returnType)
+                        retInstr()
                     }
                 }
             }

@@ -23,11 +23,14 @@ class JSPackageObject private constructor(
             packageName == null -> create(realm, name)
             packageObj == null -> create(realm, "$packageName.$name")
             else -> {
-                try {
-                    val clazz = Class.forName("$packageName.$name")
-                    return JSClassObject.create(realm, clazz)
-                } catch (e: ClassNotFoundException) {
-                    create(realm, "$packageName.$name")
+                val className = "$packageName.$name"
+                classObjectsCache.getOrPut(className) {
+                    try {
+                        val clazz = Class.forName(className)
+                        JSClassObject.create(realm, clazz)
+                    } catch (e: ClassNotFoundException) {
+                        return create(realm, "$packageName.$name")
+                    }
                 }
             }
         }
@@ -65,6 +68,8 @@ class JSPackageObject private constructor(
     }
 
     companion object {
+        private val classObjectsCache = mutableMapOf<String, JSClassObject>()
+
         fun create(realm: Realm, name: String? = null) = JSPackageObject(realm, name).also { it.init() }
     }
 }

@@ -7,6 +7,7 @@ import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
+import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 import java.lang.reflect.Modifier
@@ -116,6 +117,11 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
 
         clazz.methods.groupBy { it.name to Modifier.isStatic(it.modifiers) }.forEach { (key, availableMethods) ->
             val (name, isStatic) = key
+
+            if (name.startsWith("access$") && name.endsWith("\$p")) {
+                // seems to be a Kotlin magic method
+                return@forEach
+            }
 
             val nativeMethod: NativeFunctionSignature = { thisValue, arguments ->
                 val instance = if (isStatic) {
