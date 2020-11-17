@@ -92,8 +92,8 @@ open class JSModuleNamespaceObject(
         return property.asString !in exports
     }
 
-    override fun ownPropertyKeys(): List<PropertyKey> {
-        return exports.map(String::key) + super.ownPropertyKeys()
+    override fun ownPropertyKeys(onlyEnumerable: Boolean): List<PropertyKey> {
+        return exports.map(String::key) + super.ownPropertyKeys(onlyEnumerable)
     }
 
     companion object {
@@ -101,6 +101,6 @@ open class JSModuleNamespaceObject(
             realm: Realm,
             module: ModuleRecord,
             exports: List<String>
-        ) = JSModuleNamespaceObject(realm, module, exports.sorted()).also { it.init() }
+        ) = JSModuleNamespaceObject(realm, module, exports.sorted()).initialize()
     }
 }

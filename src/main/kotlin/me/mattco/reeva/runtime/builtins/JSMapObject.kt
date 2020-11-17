@@ -17,6 +17,6 @@ class JSMapObject private constructor(realm: Realm) : JSObject(realm, realm.mapP
 
 
     companion object {
-        fun create(realm: Realm) = JSMapObject(realm).also { it.init() }
+        fun create(realm: Realm) = JSMapObject(realm).initialize()
     }
 }

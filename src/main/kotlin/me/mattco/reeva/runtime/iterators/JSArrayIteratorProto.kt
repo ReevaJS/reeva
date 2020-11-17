@@ -47,6 +47,6 @@ class JSArrayIteratorProto private constructor(realm: Realm) : JSObject(realm, r
     }
 
     companion object {
-        fun create(realm: Realm) = JSArrayIteratorProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSArrayIteratorProto(realm).initialize()
     }
 }

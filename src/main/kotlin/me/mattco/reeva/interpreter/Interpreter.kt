@@ -1484,7 +1484,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 Operations.definePropertyOrThrow(
                     obj,
                     propKey,
-                    Descriptor(JSEmpty, Descriptor.CONFIGURABLE or enumAttr, getter = closure)
+                    Descriptor(JSAccessor(closure, null), Descriptor.CONFIGURABLE or enumAttr)
                 )
             }
             MethodDefinitionNode.Type.Setter -> {
@@ -1502,7 +1502,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 Operations.definePropertyOrThrow(
                     obj,
                     propKey,
-                    Descriptor(JSEmpty, Descriptor.CONFIGURABLE or enumAttr, setter = closure)
+                    Descriptor(JSAccessor(null, closure), Descriptor.CONFIGURABLE or enumAttr)
                 )
             }
             MethodDefinitionNode.Type.Generator -> TODO()

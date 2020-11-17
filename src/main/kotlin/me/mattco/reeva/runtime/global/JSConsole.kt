@@ -5,6 +5,6 @@ import me.mattco.reeva.runtime.objects.JSObject
 
 class JSConsole(realm: Realm) : JSObject(realm, realm.consoleProto) {
     companion object {
-        fun create(realm: Realm) = JSConsole(realm).also { it.init() }
+        fun create(realm: Realm) = JSConsole(realm).initialize()
     }
 }

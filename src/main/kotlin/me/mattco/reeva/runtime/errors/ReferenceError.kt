@@ -7,7 +7,7 @@ import me.mattco.reeva.runtime.objects.JSObject
 class JSReferenceErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.referenceErrorProto) {
     companion object {
         @JvmStatic
-        fun create(realm: Realm, message: String? = null) = JSReferenceErrorObject(realm, message).also { it.init() }
+        fun create(realm: Realm, message: String? = null) = JSReferenceErrorObject(realm, message).initialize()
     }
 }
 
@@ -18,7 +18,7 @@ class JSReferenceErrorProto private constructor(realm: Realm) : JSObject(realm, 
     }
 
     companion object {
-        fun create(realm: Realm) = JSReferenceErrorProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSReferenceErrorProto(realm).initialize()
     }
 }
 
@@ -28,6 +28,6 @@ class JSReferenceErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm
     }
 
     companion object {
-        fun create(realm: Realm) = JSReferenceErrorCtor(realm).also { it.init() }
+        fun create(realm: Realm) = JSReferenceErrorCtor(realm).initialize()
     }
 }

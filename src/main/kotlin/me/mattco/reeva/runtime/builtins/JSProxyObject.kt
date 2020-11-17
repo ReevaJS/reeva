@@ -226,10 +226,10 @@ class JSProxyObject private constructor(
         return true
     }
 
-    override fun ownPropertyKeys(): List<PropertyKey> {
+    override fun ownPropertyKeys(onlyEnumerable: Boolean): List<PropertyKey> {
         checkRevoked("OwnKeys")
         val trap = getTrapOr("ownKeys") {
-            return target.ownPropertyKeys()
+            return target.ownPropertyKeys(onlyEnumerable)
         }
         val trapResultArray = Operations.call(trap, handler, listOf(target))
         // Spec deviation: We use numbers as keys, so we need to include the number type in this list
@@ -242,7 +242,7 @@ class JSProxyObject private constructor(
         if (trapResult.distinct().size != trapResult.size)
             Errors.Proxy.OwnPropertyKeys.DuplicateKeys.throwTypeError()
         val isExtensible = target.isExtensible()
-        val targetKeys = target.ownPropertyKeys()
+        val targetKeys = target.ownPropertyKeys(onlyEnumerable)
         val targetConfigurableKeys = mutableListOf<PropertyKey>()
         val targetNonconfigurableKeys = mutableListOf<PropertyKey>()
         targetKeys.forEach { key ->
@@ -297,6 +297,6 @@ class JSProxyObject private constructor(
 
     companion object {
         fun create(realm: Realm, target: JSObject, handler: JSObject) =
-            JSProxyObject(realm, target, handler).also { it.init() }
+            JSProxyObject(realm, target, handler).initialize()
     }
 }

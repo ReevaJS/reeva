@@ -416,6 +416,6 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             }
         }
 
-        fun create(realm: Realm) = JSDateProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSDateProto(realm).initialize()
     }
 }

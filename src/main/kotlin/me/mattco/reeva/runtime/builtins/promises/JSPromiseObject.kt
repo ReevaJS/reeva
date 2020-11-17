@@ -15,6 +15,6 @@ class JSPromiseObject private constructor(
     var isHandled = false
 
     companion object {
-        fun create(state: Operations.PromiseState, result: JSValue, realm: Realm) = JSPromiseObject(state, result, realm).also { it.init() }
+        fun create(state: Operations.PromiseState, result: JSValue, realm: Realm) = JSPromiseObject(state, result, realm).initialize()
     }
 }

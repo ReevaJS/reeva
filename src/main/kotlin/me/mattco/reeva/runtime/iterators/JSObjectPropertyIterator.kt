@@ -20,6 +20,6 @@ class JSObjectPropertyIterator private constructor(
             objWasVisited: Boolean = false,
             visitedKeys: MutableList<PropertyKey> = ArrayList(),
             remainingKeys: MutableList<PropertyKey> = ArrayList(),
-        ) = JSObjectPropertyIterator(realm, obj, objWasVisited, visitedKeys, remainingKeys).also { it.init() }
+        ) = JSObjectPropertyIterator(realm, obj, objWasVisited, visitedKeys, remainingKeys).initialize()
     }
 }

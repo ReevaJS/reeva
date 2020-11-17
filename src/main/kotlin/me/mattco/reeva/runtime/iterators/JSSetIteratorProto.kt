@@ -42,6 +42,6 @@ class JSSetIteratorProto private constructor(realm: Realm) : JSObject(realm, rea
     }
 
     companion object {
-        fun create(realm: Realm) = JSSetIteratorProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSSetIteratorProto(realm).initialize()
     }
 }

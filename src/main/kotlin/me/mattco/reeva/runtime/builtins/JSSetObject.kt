@@ -16,6 +16,6 @@ class JSSetObject private constructor(realm: Realm) : JSObject(realm, realm.setP
         }
 
     companion object {
-        fun create(realm: Realm) = JSSetObject(realm).also { it.init() }
+        fun create(realm: Realm) = JSSetObject(realm).initialize()
     }
 }

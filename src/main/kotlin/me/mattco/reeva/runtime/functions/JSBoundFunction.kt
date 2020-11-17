@@ -41,6 +41,6 @@ class JSBoundFunction private constructor(
             boundThis: JSValue,
             boundArguments: JSArguments,
             prototype: JSValue,
-        ) = JSBoundFunction(realm, boundTargetFunction, boundThis, boundArguments, prototype).also { it.init() }
+        ) = JSBoundFunction(realm, boundTargetFunction, boundThis, boundArguments, prototype).initialize()
     }
 }

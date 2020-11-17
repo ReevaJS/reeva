@@ -50,6 +50,6 @@ class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject
     }
 
     companion object {
-        fun create(realm: Realm) = JSObjectPropertyIteratorProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSObjectPropertyIteratorProto(realm).initialize()
     }
 }

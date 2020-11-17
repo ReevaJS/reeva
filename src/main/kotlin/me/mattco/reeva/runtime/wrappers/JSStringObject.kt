@@ -10,13 +10,13 @@ import me.mattco.reeva.utils.toValue
 
 open class JSStringObject protected constructor(realm: Realm, val string: JSString) : JSObject(realm) {
     override fun init() {
-        internalSetPrototype(realm.stringProto)
+        setPrototype(realm.stringProto)
         super.init()
 
         defineOwnProperty("length", string.string.length.toValue(), 0)
     }
 
     companion object {
-        fun create(realm: Realm, string: JSString) = JSStringObject(realm, string).also { it.init() }
+        fun create(realm: Realm, string: JSString) = JSStringObject(realm, string).initialize()
     }
 }

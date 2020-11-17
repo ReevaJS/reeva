@@ -50,6 +50,6 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
     }
 
     companion object {
-        fun create(realm: Realm) = JSPromiseProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSPromiseProto(realm).initialize()
     }
 }

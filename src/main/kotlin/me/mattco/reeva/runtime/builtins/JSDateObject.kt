@@ -7,6 +7,6 @@ import java.time.ZonedDateTime
 // null dateValue indicates an invalid date (usually when passing NaN into the date ctor)
 class JSDateObject private constructor(realm: Realm, var dateValue: ZonedDateTime?) : JSObject(realm, realm.dateProto) {
     companion object {
-        fun create(realm: Realm, dateValue: ZonedDateTime?) = JSDateObject(realm, dateValue).also { it.init() }
+        fun create(realm: Realm, dateValue: ZonedDateTime?) = JSDateObject(realm, dateValue).initialize()
     }
 }

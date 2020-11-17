@@ -11,6 +11,6 @@ class JSClassInstanceObject private constructor(realm: Realm, private val protot
     }
 
     companion object {
-        fun create(realm: Realm, prototype: JSObject, obj: Any) = JSClassInstanceObject(realm, prototype, obj).also { it.init() }
+        fun create(realm: Realm, prototype: JSObject, obj: Any) = JSClassInstanceObject(realm, prototype, obj).initialize()
     }
 }

@@ -50,6 +50,6 @@ class JSPromiseAllSettledResolver private constructor(
             capability: Operations.PromiseCapability,
             remainingElements: Operations.Wrapper<Int>,
             isRejector: Boolean
-        ) = JSPromiseAllSettledResolver(realm, index, values, capability, remainingElements, isRejector).also { it.init() }
+        ) = JSPromiseAllSettledResolver(realm, index, values, capability, remainingElements, isRejector).initialize()
     }
 }

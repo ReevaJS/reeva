@@ -121,7 +121,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
     }
 
     companion object {
-        fun create(realm: Realm) = JSMapProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSMapProto(realm).initialize()
 
         private fun thisMapObject(thisValue: JSValue, method: String): JSMapObject {
             if (thisValue !is JSMapObject)

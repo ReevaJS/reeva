@@ -55,7 +55,7 @@ class JSPackageObject private constructor(
         return false
     }
 
-    override fun ownPropertyKeys(): List<PropertyKey> {
+    override fun ownPropertyKeys(onlyEnumerable: Boolean): List<PropertyKey> {
         return emptyList()
     }
 
@@ -70,6 +70,6 @@ class JSPackageObject private constructor(
     companion object {
         private val classObjectsCache = mutableMapOf<String, JSClassObject>()
 
-        fun create(realm: Realm, name: String? = null) = JSPackageObject(realm, name).also { it.init() }
+        fun create(realm: Realm, name: String? = null) = JSPackageObject(realm, name).initialize()
     }
 }

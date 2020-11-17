@@ -277,6 +277,6 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
     }
 
     companion object {
-        fun create(realm: Realm) = JSMathObject(realm).also { it.init() }
+        fun create(realm: Realm) = JSMathObject(realm).initialize()
     }
 }

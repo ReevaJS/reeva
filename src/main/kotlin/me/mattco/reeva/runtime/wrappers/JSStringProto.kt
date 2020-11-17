@@ -16,7 +16,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
     override fun init() {
         // No super call to avoid prototype complications
 
-        internalSetPrototype(realm.objectProto)
+        setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, 0)
         configureInstanceProperties()
 
@@ -524,7 +524,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
     }
 
     companion object {
-        fun create(realm: Realm) = JSStringProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSStringProto(realm).initialize()
 
         private fun thisStringValue(thisValue: JSValue, methodName: String): JSString {
             if (thisValue is JSString)

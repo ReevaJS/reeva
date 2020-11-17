@@ -21,7 +21,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     override fun init() {
         // No super call to avoid prototype complications
 
-        internalSetPrototype(realm.objectProto)
+        setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, 0)
         configureInstanceProperties()
 
@@ -751,7 +751,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     }
 
     companion object {
-        fun create(realm: Realm) = JSArrayProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSArrayProto(realm).initialize()
 
         @ECMAImpl("22.1.5.1")
         private fun createArrayIterator(realm: Realm, array: JSObject, kind: PropertyKind): JSValue {

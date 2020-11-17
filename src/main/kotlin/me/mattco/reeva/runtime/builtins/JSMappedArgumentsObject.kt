@@ -81,6 +81,6 @@ class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm
     }
 
     companion object {
-        fun create(realm: Realm) = JSMappedArgumentsObject(realm).also { it.init() }
+        fun create(realm: Realm) = JSMappedArgumentsObject(realm).initialize()
     }
 }

@@ -33,6 +33,6 @@ abstract class JSNativeFunction protected constructor(
                 override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
                     Errors.NotACtor(name).throwTypeError()
                 }
-            }.also { it.init() }
+            }.initialize()
     }
 }

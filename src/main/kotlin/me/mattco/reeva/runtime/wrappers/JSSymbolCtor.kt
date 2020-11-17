@@ -69,6 +69,6 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     companion object {
-        fun create(realm: Realm) = JSSymbolCtor(realm).also { it.init() }
+        fun create(realm: Realm) = JSSymbolCtor(realm).initialize()
     }
 }

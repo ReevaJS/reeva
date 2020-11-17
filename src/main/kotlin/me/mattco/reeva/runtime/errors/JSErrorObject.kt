@@ -17,6 +17,6 @@ open class JSErrorObject protected constructor(
 
     companion object {
         @JvmStatic
-        fun create(realm: Realm, message: String? = null) = JSErrorObject(realm, message).also { it.init() }
+        fun create(realm: Realm, message: String? = null) = JSErrorObject(realm, message).initialize()
     }
 }

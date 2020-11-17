@@ -144,6 +144,6 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
     }
 
     companion object {
-        fun create(realm: Realm) = JSReflectObject(realm).also { it.init() }
+        fun create(realm: Realm) = JSReflectObject(realm).initialize()
     }
 }

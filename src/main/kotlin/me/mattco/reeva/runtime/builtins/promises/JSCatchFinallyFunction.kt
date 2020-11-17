@@ -30,6 +30,6 @@ class JSCatchFinallyFunction private constructor(
 
     companion object {
         fun create(realm: Realm, ctor: JSFunction, onFinally: JSFunction) =
-            JSCatchFinallyFunction(realm, ctor, onFinally).also { it.init() }
+            JSCatchFinallyFunction(realm, ctor, onFinally).initialize()
     }
 }

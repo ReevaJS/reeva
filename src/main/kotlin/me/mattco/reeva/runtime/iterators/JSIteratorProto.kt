@@ -13,6 +13,6 @@ class JSIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.
     }
 
     companion object {
-        fun create(realm: Realm) = JSIteratorProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSIteratorProto(realm).initialize()
     }
 }

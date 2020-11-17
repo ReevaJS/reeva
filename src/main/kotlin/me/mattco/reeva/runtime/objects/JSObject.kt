@@ -16,11 +16,26 @@ import me.mattco.reeva.utils.*
 
 open class JSObject protected constructor(
     val realm: Realm,
-    private var prototype: JSValue = JSNull
+    prototype: JSValue = JSNull,
 ) : JSValue() {
-    private val storage = mutableMapOf<StringOrSymbol, Descriptor>()
+    private val storage = mutableListOf<JSValue>()
     internal val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
+    private var shape: Shape
+
+    var transitionsEnabled: Boolean = true
+
+    init {
+        expect(prototype is JSObject || prototype == JSNull)
+        shape = realm.emptyShape
+
+        // Whenever the setPrototype method is overridden, its effects are
+        // only necessary after construction, for example in Object.setPrototypeOf.
+        // When the class is constructed, we always want the parent implementation of
+        // setPrototype here.
+        @Suppress("LeakingThis")
+        setPrototype(prototype)
+    }
 
     var isSealed = false
         internal set(value) {
@@ -34,19 +49,6 @@ open class JSObject protected constructor(
                 expect(!field)
             field = value
         }
-
-    init {
-        if (prototype !is JSObject && prototype != JSNull)
-            throw IllegalArgumentException("Invalid prototype provided to JSObject constructor")
-    }
-
-    // To facilitate classes which must set their prototypes in the init()
-    // call instead of the class constructor
-    protected fun internalSetPrototype(prototype: JSValue) {
-        if (prototype !is JSObject && prototype != JSNull)
-            throw IllegalArgumentException("Invalid prototype provided to internalSetPrototype")
-        this.prototype = prototype
-    }
 
     data class NativeMethodPair(
         var attributes: Int,
@@ -70,7 +72,7 @@ open class JSObject protected constructor(
         // TODO: This is probably terrible for performance, but very cool :)
         // A better way to do it would be to use an annotation processor, and bake
         // these properties into the class's "init" method as direct calls to the
-        // appropriate "defineXYZ" method intead of having to do all this reflection
+        // appropriate "defineXYZ" method instead of having to do all this reflection
         // every single time a property is instantiated
 
         val nativeProperties = mutableMapOf<PropertyKey, NativeMethodPair>()
@@ -180,28 +182,23 @@ open class JSObject protected constructor(
     }
 
     @ECMAImpl("9.1.1")
-    open fun getPrototype() = prototype
+    open fun getPrototype() = shape.prototype ?: JSNull
 
     @ECMAImpl("9.1.2")
     open fun setPrototype(newPrototype: JSValue): Boolean {
-        ecmaAssert(newPrototype.isObject || newPrototype.isNull)
-        if (newPrototype.sameValue(prototype))
+        ecmaAssert(newPrototype is JSObject || newPrototype == JSNull)
+        if (newPrototype.sameValue(shape.prototype ?: JSNull))
             return true
 
         if (!extensible)
             return false
 
-        var p = newPrototype
-        while (true) {
-            if (p.isNull)
-                break
-            if (p.sameValue(this))
-                return false
-            // TODO: Handle 9.1.2.1.8.c.i?
-            p = (p as JSObject).getPrototype()
+        if (shape.isUnique) {
+            shape.setPrototypeWithoutTransition(newPrototype as? JSObject)
+            return true
         }
 
-        prototype = p
+        shape = shape.makePrototypeTransition(newPrototype as? JSObject)
         return true
     }
 
@@ -274,7 +271,7 @@ open class JSObject protected constructor(
             return (parent as JSObject).get(property, receiver)
         }
         if (desc.isAccessorDescriptor)
-            return if (desc.hasGetter) Operations.call(desc.getter, receiver) else JSUndefined
+            return if (desc.hasGetter) Operations.call(desc.getter!!, receiver) else JSUndefined
         return desc.getActualValue(receiver)
     }
 
@@ -317,8 +314,7 @@ open class JSObject protected constructor(
         expect(ownDesc.isAccessorDescriptor)
         if (!ownDesc.hasSetter)
             return false
-        val setter = ownDesc.setter
-        Operations.call(setter, receiver, listOf(value))
+        Operations.call(ownDesc.setter!!, receiver, listOf(value))
         return true
     }
 
@@ -336,11 +332,10 @@ open class JSObject protected constructor(
     }
 
     @ECMAImpl("9.1.11")
-    open fun ownPropertyKeys(): List<PropertyKey> {
-        // TODO: Ordering is wrong here
-        return indexedProperties.indices().map(::PropertyKey) + storage.keys.map {
-            if (it.isString) PropertyKey(it.asString) else PropertyKey(it.asSymbol)
-        }
+    open fun ownPropertyKeys(onlyEnumerable: Boolean = false): List<PropertyKey> {
+        return indexedProperties.indices().map(::PropertyKey) + shape.orderedPropertyTable().filter {
+            if (onlyEnumerable) (it.attributes and Descriptor.ENUMERABLE) != 0 else true
+        }.map { PropertyKey(it.name) }
     }
 
     fun defineNativeAccessor(key: PropertyKey, attributes: Int, getter: JSFunction?, setter: JSFunction?) {
@@ -378,7 +373,8 @@ open class JSObject protected constructor(
             else -> unreachable()
         }
 
-        return storage[stringOrSymbol]
+        val data = shape[stringOrSymbol] ?: return null
+        return Descriptor(storage[data.offset], data.attributes)
     }
 
     internal fun internalSet(property: PropertyKey, descriptor: Descriptor) {
@@ -393,10 +389,8 @@ open class JSObject protected constructor(
                 StringOrSymbol(property.asString)
             }
             property.isInt -> {
-                if (property.asInt >= 0) {
-                    indexedProperties.setDescriptor(property.asInt, descriptor)
-                    return
-                }
+                if (property.asInt >= 0)
+                    return indexedProperties.setDescriptor(property.asInt, descriptor)
                 StringOrSymbol(property.asInt.toString())
             }
             property.isDouble -> StringOrSymbol(property.asDouble.toString())
@@ -404,7 +398,45 @@ open class JSObject protected constructor(
             else -> unreachable()
         }
 
-        storage[stringOrSymbol] = descriptor
+        internalSet(stringOrSymbol, descriptor)
+    }
+
+    internal fun internalSet(key: StringOrSymbol, descriptor: Descriptor) {
+        if (!transitionsEnabled && !shape.isUnique) {
+            shape.addPropertyWithoutTransition(key, descriptor.attributes)
+            ensureStorageCapacity(shape.propertyCount)
+            storage[shape.propertyCount - 1] = descriptor.getRawValue()
+            return
+        }
+
+        var data = shape[key] ?: run {
+            if (!shape.isUnique && shape.propertyCount > Shape.PROPERTY_COUNT_TRANSITION_LIMIT)
+                shape = shape.makeUniqueClone()
+
+            when {
+                shape.isUnique -> shape.addUniqueShapeProperty(key, descriptor.attributes)
+                transitionsEnabled -> shape = shape.makePutTransition(key, descriptor.attributes)
+                else -> shape.addPropertyWithoutTransition(key, descriptor.attributes)
+            }
+            ensureStorageCapacity(shape.propertyCount)
+
+            shape[key]!!
+        }
+
+        if (descriptor.attributes != data.attributes) {
+            if (shape.isUnique) {
+                shape.reconfigureUniqueShapeProperty(key, descriptor.attributes)
+            } else {
+                shape = shape.makeConfigureTransition(key, descriptor.attributes)
+            }
+            data = shape[key]!!
+        }
+
+        when (val existingValue = storage[data.offset]) {
+            is JSAccessor -> existingValue.callSetter(this, descriptor.getActualValue(this))
+            is JSNativeProperty -> existingValue.set(this, descriptor.getActualValue(this))
+            else -> storage[data.offset] = descriptor.getRawValue()
+        }
     }
 
     internal fun internalDelete(property: PropertyKey): Boolean {
@@ -426,8 +458,19 @@ open class JSObject protected constructor(
             else -> unreachable()
         }
 
-        storage.remove(stringOrSymbol)
+        val data = shape[stringOrSymbol] ?: return true
+        if (!shape.isUnique)
+            shape = shape.makeUniqueClone()
+
+        shape.removeUniqueShapeProperty(stringOrSymbol, data.offset)
+        storage.removeAt(data.offset)
         return true
+    }
+
+    private fun ensureStorageCapacity(capacity: Int) {
+        repeat(capacity - storage.size) {
+            storage.add(JSEmpty)
+        }
     }
 
     enum class PropertyKind {
@@ -475,6 +518,12 @@ open class JSObject protected constructor(
 
         @JvmStatic
         @JvmOverloads
-        fun create(realm: Realm, proto: JSValue = realm.objectProto) = JSObject(realm, proto).also { it.init() }
+        fun create(realm: Realm, proto: JSValue = realm.objectProto) = JSObject(realm, proto).initialize()
+
+        fun <T : JSObject> T.initialize() = apply {
+//            transitionsEnabled = false
+            init()
+//            transitionsEnabled = true
+        }
     }
 }

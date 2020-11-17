@@ -783,7 +783,7 @@ object Operations {
     fun setIntegrityLevel(obj: JSObject, level: IntegrityLevel): Boolean {
         if (!obj.preventExtensions())
             return false
-        val keys = obj.ownPropertyKeys()
+        val keys = obj.ownPropertyKeys(onlyEnumerable = false)
         if (level == IntegrityLevel.Sealed) {
             keys.forEach { key ->
                 definePropertyOrThrow(obj, key, Descriptor(JSEmpty, Descriptor.HAS_CONFIGURABLE))
@@ -912,7 +912,7 @@ object Operations {
     fun enumerableOwnPropertyNames(target: JSValue, kind: JSObject.PropertyKind): List<JSValue> {
         ecmaAssert(target is JSObject)
         val properties = mutableListOf<JSValue>()
-        target.ownPropertyKeys().forEach { property ->
+        target.ownPropertyKeys(onlyEnumerable = true).forEach { property ->
             if (property.isSymbol)
                 return@forEach
             val desc = target.getOwnPropertyDescriptor(property) ?: return@forEach
@@ -1100,10 +1100,8 @@ object Operations {
                     target?.internalSet(
                         property!!,
                         Descriptor(
-                            JSUndefined,
+                            newDesc.getRawValue(),
                             currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
-                            newDesc.getter,
-                            newDesc.setter,
                         )
                     )
                 } else {
@@ -1125,11 +1123,11 @@ object Operations {
             } else if (currentDesc.run { hasConfigurable && !isConfigurable }) {
                 val currentSetter = currentDesc.setter
                 val newSetter = newDesc.setter
-                if (newDesc.hasSetter && (!currentDesc.hasSetter || !newSetter.sameValue(currentSetter)))
+                if (newDesc.hasSetter && (!currentDesc.hasSetter || newSetter == currentSetter))
                     return false
                 val currentGetter = currentDesc.setter
                 val newGetter = newDesc.setter
-                if (newDesc.hasGetter && (!currentDesc.hasGetter || !newGetter.sameValue(currentGetter)))
+                if (newDesc.hasGetter && (!currentDesc.hasGetter || newGetter == currentGetter))
                     return false
                 return true
             }
@@ -1258,7 +1256,7 @@ object Operations {
 
     // TODO: This length should be a Long
     @JvmStatic @JvmOverloads @ECMAImpl("9.4.2.2")
-    fun arrayCreate(length: Int, proto: JSObject? = Agent.runningContext.realm.arrayProto): JSObject {
+    fun arrayCreate(length: Int, proto: JSValue = Agent.runningContext.realm.arrayProto): JSObject {
         if (length >= MAX_32BIT_INT - 1)
             Errors.InvalidArrayLength(length).throwRangeError()
         val array = JSArrayObject.create(Agent.runningContext.realm, proto)
@@ -1303,7 +1301,7 @@ object Operations {
             Descriptor(realm.arrayProto.get("values"), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         )
 
-        val typeErrorThrow = object : JSNativeFunction(realm, "", 0) {
+        val throwTypeError = object : JSNativeFunction(realm, "", 0) {
             override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
                 Errors.CalleePropertyAccess.throwTypeError()
             }
@@ -1315,7 +1313,7 @@ object Operations {
         definePropertyOrThrow(
             obj,
             "callee".key(),
-            Descriptor(JSEmpty, Descriptor.HAS_CONFIGURABLE or Descriptor.HAS_ENUMERABLE, getter = typeErrorThrow, setter = typeErrorThrow)
+            Descriptor(JSAccessor(throwTypeError, throwTypeError), Descriptor.HAS_CONFIGURABLE or Descriptor.HAS_ENUMERABLE)
         )
 
         return obj
@@ -1350,7 +1348,7 @@ object Operations {
                 if (index < arguments.size) {
                     val getter = makeArgGetter(name, env)
                     val setter = makeArgSetter(name, env)
-                    map.defineOwnProperty(index.key(), Descriptor(JSEmpty, Descriptor.HAS_ENUMERABLE or Descriptor.CONFIGURABLE, getter, setter))
+                    map.defineNativeAccessor(index.key(), Descriptor.CONFIGURABLE or Descriptor.HAS_ENUMERABLE, getter, setter)
                 }
             }
         }
@@ -1365,7 +1363,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("9.4.4.7.1")
-    fun makeArgGetter(name: String, env: EnvRecord): JSValue {
+    fun makeArgGetter(name: String, env: EnvRecord): JSFunction {
         return object : JSNativeFunction(Agent.runningContext.realm, name, 0) {
             override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
                 val function = Agent.runningContext.function
@@ -1380,7 +1378,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("9.4.4.7.2")
-    fun makeArgSetter(name: String, env: EnvRecord): JSValue {
+    fun makeArgSetter(name: String, env: EnvRecord): JSFunction {
         return object : JSNativeFunction(Agent.runningContext.realm, name, 0) {
             override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
                 val function = Agent.runningContext.function

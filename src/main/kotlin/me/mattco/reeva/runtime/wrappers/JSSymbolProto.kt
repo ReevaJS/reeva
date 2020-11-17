@@ -44,7 +44,7 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
     }
 
     companion object {
-        fun create(realm: Realm) = JSSymbolProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSSymbolProto(realm).initialize()
 
         @ECMAImpl("19.4.3")
         private fun thisSymbolValue(value: JSValue, methodName: String): JSSymbol {

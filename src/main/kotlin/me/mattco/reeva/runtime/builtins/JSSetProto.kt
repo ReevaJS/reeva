@@ -111,7 +111,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
     }
 
     companion object {
-        fun create(realm: Realm) = JSSetProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSSetProto(realm).initialize()
 
         private fun thisSetObject(thisValue: JSValue, method: String): JSSetObject {
             if (thisValue !is JSSetObject)

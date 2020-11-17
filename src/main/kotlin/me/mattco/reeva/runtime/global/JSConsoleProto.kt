@@ -20,6 +20,6 @@ class JSConsoleProto private constructor(realm: Realm) : JSObject(realm, realm.o
     }
 
     companion object {
-        fun create(realm: Realm) = JSConsoleProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSConsoleProto(realm).initialize()
     }
 }

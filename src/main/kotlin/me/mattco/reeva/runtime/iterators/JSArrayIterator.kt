@@ -15,6 +15,6 @@ class JSArrayIterator private constructor(
             iteratedArrayLike: JSObject,
             arrayLikeNextIndex: Int,
             arrayLikeIterationKind: PropertyKind
-        ) = JSArrayIterator(realm, iteratedArrayLike, arrayLikeNextIndex, arrayLikeIterationKind).also { it.init() }
+        ) = JSArrayIterator(realm, iteratedArrayLike, arrayLikeNextIndex, arrayLikeIterationKind).initialize()
     }
 }

@@ -278,6 +278,6 @@ open class JSGlobalObject protected constructor(
                 }
             }
         }
-        fun create(realm: Realm) = JSGlobalObject(realm).also { it.init() }
+        fun create(realm: Realm) = JSGlobalObject(realm).initialize()
     }
 }

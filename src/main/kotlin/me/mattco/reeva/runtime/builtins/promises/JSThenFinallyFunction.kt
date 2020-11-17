@@ -29,6 +29,6 @@ class JSThenFinallyFunction private constructor(
 
     companion object {
         fun create(realm: Realm, ctor: JSFunction, onFinally: JSFunction) =
-            JSThenFinallyFunction(realm, ctor, onFinally).also { it.init() }
+            JSThenFinallyFunction(realm, ctor, onFinally).initialize()
     }
 }

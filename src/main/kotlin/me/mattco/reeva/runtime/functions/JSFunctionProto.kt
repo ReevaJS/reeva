@@ -18,7 +18,7 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
             Errors.Function.CallerArgumentsAccess.throwTypeError()
         }
 
-        val desc = Descriptor(JSEmpty, Descriptor.CONFIGURABLE, thrower, thrower)
+        val desc = Descriptor(JSAccessor(thrower, thrower), Descriptor.CONFIGURABLE)
         defineOwnProperty("caller".key(), desc)
         defineOwnProperty("arguments".key(), desc)
     }

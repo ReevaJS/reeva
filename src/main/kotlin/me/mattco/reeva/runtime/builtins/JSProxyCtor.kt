@@ -43,7 +43,7 @@ class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "P
     }
 
     companion object {
-        fun create(realm: Realm) = JSProxyCtor(realm).also { it.init() }
+        fun create(realm: Realm) = JSProxyCtor(realm).initialize()
 
         private fun proxyCreate(realm: Realm, target: JSValue, handler: JSValue): JSObject {
             if (target !is JSObject)

@@ -7,7 +7,7 @@ import me.mattco.reeva.runtime.objects.JSObject
 class JSURIErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.uriErrorProto) {
     companion object {
         @JvmStatic
-        fun create(realm: Realm, message: String? = null) = JSURIErrorObject(realm, message).also { it.init() }
+        fun create(realm: Realm, message: String? = null) = JSURIErrorObject(realm, message).initialize()
     }
 }
 
@@ -18,7 +18,7 @@ class JSURIErrorProto private constructor(realm: Realm) : JSObject(realm, realm.
     }
 
     companion object {
-        fun create(realm: Realm) = JSURIErrorProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSURIErrorProto(realm).initialize()
     }
 }
 
@@ -28,6 +28,6 @@ class JSURIErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "URI
     }
 
     companion object {
-        fun create(realm: Realm) = JSURIErrorCtor(realm).also { it.init() }
+        fun create(realm: Realm) = JSURIErrorCtor(realm).initialize()
     }
 }

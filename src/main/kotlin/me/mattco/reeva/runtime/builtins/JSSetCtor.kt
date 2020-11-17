@@ -57,6 +57,6 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
     }
 
     companion object {
-        fun create(realm: Realm) = JSSetCtor(realm).also { it.init() }
+        fun create(realm: Realm) = JSSetCtor(realm).initialize()
     }
 }

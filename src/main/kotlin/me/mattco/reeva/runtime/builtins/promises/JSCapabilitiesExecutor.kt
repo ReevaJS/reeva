@@ -41,6 +41,6 @@ class JSCapabilitiesExecutor private constructor(
 
     companion object {
         fun create(realm: Realm, capability: Operations.PromiseCapability) =
-            JSCapabilitiesExecutor(realm, capability).also { it.init() }
+            JSCapabilitiesExecutor(realm, capability).initialize()
     }
 }

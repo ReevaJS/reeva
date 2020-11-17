@@ -49,7 +49,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         val getter = arguments.argument(1)
         if (!Operations.isCallable(getter))
             Errors.Object.DefineGetterBadArgType.throwTypeError()
-        val desc = Descriptor(JSEmpty, Descriptor.ENUMERABLE or Descriptor.CONFIGURABLE, getter)
+        val desc = Descriptor(JSAccessor(getter as JSFunction, null), Descriptor.ENUMERABLE or Descriptor.CONFIGURABLE)
         val key = Operations.toPropertyKey(arguments.argument(0))
         Operations.definePropertyOrThrow(obj, key, desc)
         return JSUndefined
@@ -62,7 +62,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         val setter = arguments.argument(1)
         if (!Operations.isCallable(setter))
             Errors.Object.DefineSetterBadArgType.throwTypeError()
-        val desc = Descriptor(JSEmpty, Descriptor.ENUMERABLE or Descriptor.CONFIGURABLE, setter = setter)
+        val desc = Descriptor(JSAccessor(null, setter as JSFunction), Descriptor.ENUMERABLE or Descriptor.CONFIGURABLE)
         val key = Operations.toPropertyKey(arguments.argument(0))
         Operations.definePropertyOrThrow(obj, key, desc)
         return JSUndefined
@@ -77,7 +77,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
             val desc = obj.getOwnPropertyDescriptor(key)
             if (desc != null) {
                 if (desc.isAccessorDescriptor)
-                    return desc.getter
+                    return desc.getter ?: JSNull
                 return JSUndefined
             }
             obj = obj.getPrototype() as? JSObject ?: return JSUndefined
@@ -93,7 +93,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
             val desc = obj.getOwnPropertyDescriptor(key)
             if (desc != null) {
                 if (desc.isAccessorDescriptor)
-                    return desc.setter
+                    return desc.setter ?: JSNull
                 return JSUndefined
             }
             obj = obj.getPrototype() as? JSObject ?: return JSUndefined

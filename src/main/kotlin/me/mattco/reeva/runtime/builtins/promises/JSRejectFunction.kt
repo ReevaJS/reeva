@@ -29,6 +29,6 @@ class JSRejectFunction private constructor(
             promise: JSPromiseObject,
             alreadyResolved: Operations.Wrapper<Boolean>,
             realm: Realm
-        ) = JSRejectFunction(promise, alreadyResolved, realm).also { it.init() }
+        ) = JSRejectFunction(promise, alreadyResolved, realm).initialize()
     }
 }

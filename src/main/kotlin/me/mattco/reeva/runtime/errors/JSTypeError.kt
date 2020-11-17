@@ -8,7 +8,7 @@ class JSTypeErrorObject private constructor(realm: Realm, message: String? = nul
     companion object {
         @JvmStatic
         @JvmOverloads
-        fun create(realm: Realm, message: String? = null) = JSTypeErrorObject(realm, message).also { it.init() }
+        fun create(realm: Realm, message: String? = null) = JSTypeErrorObject(realm, message).initialize()
     }
 }
 
@@ -19,7 +19,7 @@ class JSTypeErrorProto private constructor(realm: Realm) : JSObject(realm, realm
     }
 
     companion object {
-        fun create(realm: Realm) = JSTypeErrorProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSTypeErrorProto(realm).initialize()
     }
 }
 
@@ -29,6 +29,6 @@ class JSTypeErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "Ty
     }
 
     companion object {
-        fun create(realm: Realm) = JSTypeErrorCtor(realm).also { it.init() }
+        fun create(realm: Realm) = JSTypeErrorCtor(realm).initialize()
     }
 }

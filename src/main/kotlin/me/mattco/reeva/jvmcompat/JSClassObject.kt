@@ -90,7 +90,9 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
                 JVMValueMapper.jvmToJS(realm, field.get(instance))
             }
 
-            val setter: NativeSetterSignature = { thisValue: JSValue, value: JSValue ->
+            val setter: NativeSetterSignature? = if (Modifier.isFinal(field.modifiers)) {
+                null
+            } else { thisValue: JSValue, value: JSValue ->
                 val instance = if (isStatic) {
                     if (thisValue != this)
                         Errors.JVMClass.IncompatibleStaticFieldSet(className, field.name).throwTypeError()
@@ -106,8 +108,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
                     instance
                 }
 
-                val jvmValue = JVMValueMapper.coerceValueToType(value, field.type)
-                field.set(instance, jvmValue)
+                field.set(instance, JVMValueMapper.coerceValueToType(value, field.type))
 
                 JSUndefined
             }
@@ -173,6 +174,6 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
     companion object {
         private val classProtoCache = mutableMapOf<Class<*>, JSObject>()
 
-        fun create(realm: Realm, clazz: Class<*>) = JSClassObject(realm, clazz).also { it.init() }
+        fun create(realm: Realm, clazz: Class<*>) = JSClassObject(realm, clazz).initialize()
     }
 }

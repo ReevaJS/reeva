@@ -61,9 +61,8 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     }
 
     companion object {
-        fun create(realm: Realm) = JSArrayCtor(realm).also { it.init() }
-        fun create(realm: Realm, length: Int) = JSArrayCtor(realm).also {
-            it.init()
+        fun create(realm: Realm) = JSArrayCtor(realm).initialize()
+        fun create(realm: Realm, length: Int) = JSArrayCtor(realm).initialize().also {
             it.indexedProperties.setArrayLikeSize(length)
         }
     }

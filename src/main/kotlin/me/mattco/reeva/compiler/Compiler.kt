@@ -2374,53 +2374,51 @@ open class Compiler {
                     null,
                     isConstructor = false,
                 )
-                // obj, func
+                // obj, closure
                 dup
-                // obj, func, func
+                // obj, closure, closure
                 evaluatePropertyName(methodDefinitionNode.identifier)
-                // obj, func, func, keyValue
+                // obj, closure, closure, keyValue
                 stackHeight--
                 operation("toPropertyKey", PropertyKey::class, JSValue::class)
-                // obj, func, func, key
+                // obj, closure, closure, key
                 dup
                 val propKey = astore()
                 ldc(if (isGetter) "get" else "set")
-                // obj, func, func, key, "get"
+                // obj, closure, closure, key, "get"
                 operation("setFunctionName", Boolean::class, JSFunction::class, PropertyKey::class, String::class)
-                // obj, func, boolean
+                // obj, closure, boolean
                 pop
-                // obj, func
+                // obj, closure
                 dup2
-                // obj, func, obj, func
+                // obj, closure, obj, closure
                 swap
-                // obj, func, func, obj
+                // obj, closure, closure, obj
                 operation("makeMethod", JSValue::class, JSFunction::class, JSObject::class)
-                // obj, func, value
+                // obj, closure, value
                 pop
-                // obj, func
+                // obj, closure
                 load(propKey)
                 swap
                 new<Descriptor>()
-                // obj, func, desc
+                // obj, closure, desc
                 dup_x1
-                // obj, desc, func, desc
+                // obj, desc, closure, desc
                 swap
-                // obj, desc, desc, func
-                loadEmpty()
-                // obj, desc, desc, func, empty
+                // obj, desc, desc, closure
+
+                new<JSAccessor>()
+                dup_x1
                 swap
-                // obj, desc, desc, empty, func
-                ldc(Descriptor.CONFIGURABLE or enumAttr)
-                // obj, desc, desc, empty, func, attrs
-                swap
-                // obj, desc, desc, empty, attrs, func
-                if (isGetter) {
-                    invokespecial(Descriptor::class, "<init>", void, JSValue::class, Int::class, JSValue::class)
-                } else {
-                    loadEmpty()
+
+                aconst_null
+                if (!isGetter)
                     swap
-                    invokespecial(Descriptor::class, "<init>", void, JSValue::class, Int::class, JSValue::class, JSValue::class)
-                }
+                invokespecial(JSAccessor::class, "<init>", void, JSFunction::class, JSFunction::class)
+                // obj, desc, desc, accessor
+                ldc(Descriptor.CONFIGURABLE or enumAttr)
+                // obj, desc, desc, accessor, attrs
+                invokespecial(Descriptor::class, "<init>", void, JSValue::class, Int::class)
                 // obj, desc
                 operation("definePropertyOrThrow", Boolean::class, JSValue::class, PropertyKey::class, Descriptor::class)
                 pop

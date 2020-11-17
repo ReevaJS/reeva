@@ -94,6 +94,6 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     companion object {
-        fun create(realm: Realm) = JSNumberCtor(realm).also { it.init() }
+        fun create(realm: Realm) = JSNumberCtor(realm).initialize()
     }
 }

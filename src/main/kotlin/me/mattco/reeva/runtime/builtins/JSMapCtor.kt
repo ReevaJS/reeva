@@ -38,6 +38,6 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
     }
 
     companion object {
-        fun create(realm: Realm) = JSMapCtor(realm).also { it.init() }
+        fun create(realm: Realm) = JSMapCtor(realm).initialize()
     }
 }

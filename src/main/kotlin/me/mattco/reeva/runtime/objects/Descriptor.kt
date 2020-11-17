@@ -5,19 +5,19 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.errors.JSTypeErrorObject
+import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.toValue
 
-data class Descriptor @JvmOverloads constructor(
+data class Descriptor constructor(
     private var value: JSValue,
     var attributes: Int,
-    var getter: JSValue = JSEmpty,
-    var setter: JSValue = JSEmpty
 ) {
     @ECMAImpl("6.2.5.1")
     val isAccessorDescriptor: Boolean
-        get() = getter != JSEmpty || setter != JSEmpty
+        get() = value is JSAccessor
 
     @ECMAImpl("6.2.5.2")
     val isDataDescriptor: Boolean
@@ -40,10 +40,10 @@ data class Descriptor @JvmOverloads constructor(
         get() = attributes and HAS_WRITABLE != 0
 
     val hasGetter: Boolean
-        get() = getter != JSEmpty
+        get() = (value as? JSAccessor)?.getter != null
 
     val hasSetter: Boolean
-        get() = setter != JSEmpty
+        get() = (value as? JSAccessor)?.setter != null
 
     val isConfigurable: Boolean
         get() = attributes and CONFIGURABLE != 0
@@ -53,6 +53,26 @@ data class Descriptor @JvmOverloads constructor(
 
     val isWritable: Boolean
         get() = attributes and WRITABLE != 0
+
+    var getter: JSFunction?
+        get() {
+            expect(isAccessorDescriptor)
+            return (value as JSAccessor).getter
+        }
+        set(newGetter) {
+            expect(isAccessorDescriptor)
+            (value as JSAccessor).getter = newGetter
+        }
+
+    var setter: JSFunction?
+        get() {
+            expect(isAccessorDescriptor)
+            return (value as JSAccessor).setter
+        }
+        set(newSetter) {
+            expect(isAccessorDescriptor)
+            (value as JSAccessor).setter = newSetter
+        }
 
     init {
         if (attributes and CONFIGURABLE != 0)
@@ -126,9 +146,9 @@ data class Descriptor @JvmOverloads constructor(
         val obj = JSObject.create(realm)
         if (isAccessorDescriptor) {
             if (hasGetter)
-                obj.set("get", getter)
+                obj.set("get", (value as JSAccessor).getter!!)
             if (hasSetter)
-                obj.set("set", setter)
+                obj.set("set", (value as JSAccessor).setter!!)
         } else if (isDataDescriptor) {
             obj.set("value", getActualValue(thisValue))
         }
@@ -192,23 +212,27 @@ data class Descriptor @JvmOverloads constructor(
                 descriptor.setRawValue(obj.get("value"))
             }
 
+            var getter: JSFunction? = null
+            var setter: JSFunction? = null
+
             if (obj.hasProperty("get")) {
-                val getter = obj.get("get")
-                if (!Operations.isCallable(getter) && getter != JSUndefined)
+                val getterTemp = obj.get("get")
+                if (!Operations.isCallable(getterTemp) && getterTemp != JSUndefined)
                     Errors.DescriptorGetType.throwTypeError()
-                descriptor.getter = getter
+                getter = getterTemp as JSFunction
             }
 
             if (obj.hasProperty("set")) {
-                val setter = obj.get("set")
-                if (!Operations.isCallable(setter) && setter != JSUndefined)
+                val setterTemp = obj.get("set")
+                if (!Operations.isCallable(setterTemp) && setterTemp != JSUndefined)
                     Errors.DescriptorSetType.throwTypeError()
-                descriptor.setter = setter
+                setter = setterTemp as JSFunction
             }
 
-            if (descriptor.hasGetter || descriptor.hasSetter) {
+            if (getter != null || setter != null) {
                 if (descriptor.value != JSEmpty || descriptor.hasWritable)
                     Errors.DescriptorPropType.throwTypeError()
+                descriptor.setRawValue(JSAccessor(getter, setter))
             }
 
             return descriptor

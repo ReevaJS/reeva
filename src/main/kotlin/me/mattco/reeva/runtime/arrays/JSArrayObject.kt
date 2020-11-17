@@ -6,7 +6,6 @@ import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.annotations.JSNativePropertySetter
-import me.mattco.reeva.runtime.errors.JSRangeErrorObject
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
@@ -113,6 +112,6 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
     }
 
     companion object {
-        fun create(realm: Realm, proto: JSObject? = null) = JSArrayObject(realm, proto ?: realm.arrayProto).also { it.init() }
+        fun create(realm: Realm, proto: JSValue = realm.arrayProto) = JSArrayObject(realm, proto).initialize()
     }
 }

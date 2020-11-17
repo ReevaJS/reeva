@@ -13,9 +13,7 @@ import me.mattco.reeva.utils.toValue
 
 class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, JSFalse) {
     override fun init() {
-        // No super call to avoid prototype complications
-
-        internalSetPrototype(realm.objectProto)
+        setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, 0)
         configureInstanceProperties()
 
@@ -36,7 +34,7 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
     }
 
     companion object {
-        fun create(realm: Realm) = JSBooleanProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSBooleanProto(realm).initialize()
 
         private fun thisBooleanValue(value: JSValue, methodName: String): JSBoolean {
             if (value.isBoolean)

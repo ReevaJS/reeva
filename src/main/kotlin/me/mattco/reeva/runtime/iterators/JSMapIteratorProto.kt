@@ -45,6 +45,6 @@ class JSMapIteratorProto private constructor(realm: Realm) : JSObject(realm, rea
     }
 
     companion object {
-        fun create(realm: Realm) = JSMapIteratorProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSMapIteratorProto(realm).initialize()
     }
 }

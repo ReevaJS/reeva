@@ -54,6 +54,6 @@ class JSResolveFunction private constructor(
             promise: JSPromiseObject,
             alreadyResolved: Operations.Wrapper<Boolean>,
             realm: Realm
-        ) = JSResolveFunction(promise, alreadyResolved, realm).also { it.init() }
+        ) = JSResolveFunction(promise, alreadyResolved, realm).initialize()
     }
 }

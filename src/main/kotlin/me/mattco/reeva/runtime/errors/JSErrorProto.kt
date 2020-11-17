@@ -47,6 +47,6 @@ open class JSErrorProto protected constructor(
     }
 
     companion object {
-        fun create(realm: Realm) = JSErrorProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSErrorProto(realm).initialize()
     }
 }

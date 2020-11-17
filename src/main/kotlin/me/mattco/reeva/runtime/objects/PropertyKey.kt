@@ -40,6 +40,7 @@ data class PropertyKey private constructor(internal val value: Any) {
     constructor(value: Double) : this(value as Any)
     constructor(value: Int) : this(value as Any)
     constructor(value: JSSymbol) : this(value as Any)
+    constructor(value: JSObject.StringOrSymbol) : this(if (value.isString) value.asString else value.asSymbol)
 
     override fun equals(other: Any?): Boolean {
         return other is PropertyKey && value == other.value

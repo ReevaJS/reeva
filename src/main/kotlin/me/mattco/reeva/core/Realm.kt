@@ -19,10 +19,8 @@ import me.mattco.reeva.runtime.iterators.*
 import me.mattco.reeva.jvmcompat.JSClassProto
 import me.mattco.reeva.jvmcompat.JSPackageObject
 import me.mattco.reeva.jvmcompat.JSPackageProto
-import me.mattco.reeva.runtime.objects.JSObject
-import me.mattco.reeva.runtime.objects.JSObjectCtor
-import me.mattco.reeva.runtime.objects.JSObjectProto
-import me.mattco.reeva.runtime.objects.Descriptor
+import me.mattco.reeva.runtime.objects.*
+import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.wrappers.*
 import java.util.concurrent.ConcurrentHashMap
@@ -93,6 +91,9 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     lateinit var classProto: JSClassProto private set
     lateinit var packageObj: JSPackageObject private set
 
+    val emptyShape = Shape(this)
+    val newObjectShape = Shape(this)
+
     fun setGlobalObject(obj: JSObject) {
         globalObject = obj
         globalEnv = GlobalEnvRecord.create(globalObject)
@@ -102,9 +103,9 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
         objectProto = JSObjectProto.create(this)
         functionProto = JSFunctionProto.create(this)
         objectCtor = JSObjectCtor.create(this)
-        objectProto.init()
-        functionProto.init()
-        objectCtor.init()
+        objectProto.initialize()
+        functionProto.initialize()
+        objectCtor.initialize()
 
         numberCtor = JSNumberCtor.create(this)
         booleanCtor = JSBooleanCtor.create(this)
@@ -179,6 +180,8 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
         syntaxErrorCtor.defineOwnProperty("prototype", syntaxErrorProto, 0)
         uriErrorCtor.defineOwnProperty("prototype", uriErrorProto, 0)
         functionProto.defineOwnProperty("constructor", functionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+
+        newObjectShape.setPrototypeWithoutTransition(objectProto)
     }
 
     data class ScriptRecord(

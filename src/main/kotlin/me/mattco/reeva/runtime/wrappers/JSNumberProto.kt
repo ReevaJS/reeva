@@ -15,7 +15,7 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
     override fun init() {
         // No super call to avoid prototype complications
 
-        internalSetPrototype(realm.objectProto)
+        setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, 0)
         configureInstanceProperties()
 
@@ -74,7 +74,7 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
     }
 
     companion object {
-        fun create(realm: Realm) = JSNumberProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSNumberProto(realm).initialize()
 
         @ECMAImpl("20.1.3")
         private fun thisNumberValue(value: JSValue, methodName: String): JSNumber {

@@ -42,6 +42,6 @@ class JSPromiseAllResolver private constructor(
             values: MutableList<JSValue>,
             capability: Operations.PromiseCapability,
             remainingElements: Operations.Wrapper<Int>,
-        ) = JSPromiseAllResolver(realm, index, values, capability, remainingElements).also { it.init() }
+        ) = JSPromiseAllResolver(realm, index, values, capability, remainingElements).initialize()
     }
 }

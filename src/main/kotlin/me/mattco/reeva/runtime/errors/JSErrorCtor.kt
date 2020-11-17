@@ -42,6 +42,6 @@ open class JSErrorCtor protected constructor(
     }
 
     companion object {
-        fun create(realm: Realm) = JSErrorCtor(realm).also { it.init() }
+        fun create(realm: Realm) = JSErrorCtor(realm).initialize()
     }
 }

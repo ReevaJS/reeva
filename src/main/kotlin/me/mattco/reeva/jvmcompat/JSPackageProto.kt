@@ -21,7 +21,7 @@ class JSPackageProto private constructor(realm: Realm) : JSObject(realm, realm.o
     }
 
     companion object {
-        fun create(realm: Realm) = JSPackageProto(realm).also { it.init() }
+        fun create(realm: Realm) = JSPackageProto(realm).initialize()
 
         private fun thisPackageObject(thisValue: JSValue, methodName: String): JSPackageObject {
             if (thisValue !is JSPackageObject)

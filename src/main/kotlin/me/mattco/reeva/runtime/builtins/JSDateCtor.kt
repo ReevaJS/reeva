@@ -203,6 +203,6 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
             .toFormatter()
 
 
-        fun create(realm: Realm) = JSDateCtor(realm).also { it.init() }
+        fun create(realm: Realm) = JSDateCtor(realm).initialize()
     }
 }

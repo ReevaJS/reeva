@@ -242,6 +242,6 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     )
 
     companion object {
-        fun create(realm: Realm) = JSONObject(realm).also { it.init() }
+        fun create(realm: Realm) = JSONObject(realm).initialize()
     }
 }
