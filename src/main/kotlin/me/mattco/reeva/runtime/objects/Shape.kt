@@ -109,11 +109,11 @@ class Shape {
     }
 
     fun orderedPropertyTable(): List<Property> {
-        val table = ArrayList<Property>()
-        table.ensureCapacity(propertyCount)
-        for (data in getPropertyTable())
-            table[data.value.offset] = Property(data.key, data.value.offset, data.value.attributes)
-        return table
+        return getPropertyTable().entries.sortedBy {
+            it.value.offset
+        }.map {
+            Property(it.key, it.value.offset, it.value.attributes)
+        }
     }
 
     fun removeUniqueShapeProperty(name: JSObject.StringOrSymbol, offset: Int) {
