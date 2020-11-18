@@ -3,7 +3,6 @@ package me.mattco.reeva.test262
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.modules.resolver.DefaultModuleResolver
-import me.mattco.reeva.core.modules.resolver.ModuleResolver
 import me.mattco.reeva.runtime.Operations
 import org.junit.jupiter.api.*
 import java.io.File
@@ -37,7 +36,7 @@ class Test262Test(
         if (isModule)
             realm.moduleResolver = DefaultModuleResolver(realm, file.parentFile)
 
-        val pretestResult = Reeva.evaluate("$requiredScript\n\n", realm)
+        val pretestResult = Reeva.evaluateScript("$requiredScript\n\n", realm)
         Assertions.assertTrue(!pretestResult.isError) {
             Reeva.with(realm) {
                 Operations.toString(pretestResult.value).string
@@ -55,7 +54,7 @@ class Test262Test(
         val testResult = if (isModule) {
             Reeva.evaluateModule(script, realm)
         } else {
-            Reeva.evaluate(script, realm)
+            Reeva.evaluateScript(script, realm)
         }
         Assertions.assertTrue(!testResult.isError) {
             Reeva.with(realm) {
@@ -71,7 +70,7 @@ class Test262Test(
         val testResult = if (isModule) {
             Reeva.evaluateModule(script, realm)
         } else {
-            Reeva.evaluate(script, realm)
+            Reeva.evaluateScript(script, realm)
         }
         Assertions.assertTrue(!testResult.isError) {
             Reeva.with(realm) {

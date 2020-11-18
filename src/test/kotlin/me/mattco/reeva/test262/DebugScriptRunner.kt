@@ -1,15 +1,8 @@
 package me.mattco.reeva.test262
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.core.Agent
-import me.mattco.reeva.core.ExecutionContext
-import me.mattco.reeva.core.Realm
-import me.mattco.reeva.interpreter.Interpreter
-import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.Operations
 import java.io.File
-import kotlin.system.measureNanoTime
-import kotlin.system.measureTimeMillis
 
 val outDirectory = File("./demo/out/")
 val indexFile = File("./demo/index.js")
@@ -19,7 +12,7 @@ fun main() {
     Reeva.setup()
 
     val realm = Reeva.makeRealm()
-    val test262Result = Reeva.evaluate(test262HarnessFile.readText(), realm)
+    val test262Result = Reeva.evaluateScript(test262HarnessFile.readText(), realm)
 
     Reeva.with(realm) {
         if (test262Result.isError)

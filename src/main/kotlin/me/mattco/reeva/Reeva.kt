@@ -37,7 +37,13 @@ object Reeva {
 
     @JvmStatic
     @JvmOverloads
-    fun evaluate(script: String, realm: Realm = makeRealm()): Result {
+    fun evaluateScript(script: File, realm: Realm = makeRealm()): Result {
+        return getAgent().runTask(EvaluationTask(script.readText(), realm, false))
+    }
+
+    @JvmStatic
+    @JvmOverloads
+    fun evaluateScript(script: String, realm: Realm = makeRealm()): Result {
         return getAgent().runTask(EvaluationTask(script, realm, false))
     }
 
