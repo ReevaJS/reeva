@@ -15,7 +15,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
     override fun init() {
         super.init()
 
-        defineOwnProperty("$262", JS262Object(realm).also { it.init() }, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        defineOwnProperty("$262", JS262Object(realm).initialize(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     override fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
@@ -68,11 +68,11 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
 //        }
 
         companion object {
-            fun create(realm: Realm) = JS262AgentObject(realm).also { it.init() }
+            fun create(realm: Realm) = JS262AgentObject(realm).initialize()
         }
     }
 
     companion object {
-        fun create(realm: Realm) = Test262GlobalObject(realm).also { it.init() }
+        fun create(realm: Realm) = Test262GlobalObject(realm).initialize()
     }
 }

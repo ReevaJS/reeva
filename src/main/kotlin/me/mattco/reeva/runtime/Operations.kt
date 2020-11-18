@@ -1363,33 +1363,20 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("9.4.4.7.1")
-    fun makeArgGetter(name: String, env: EnvRecord): JSFunction {
-        return object : JSNativeFunction(Agent.runningContext.realm, name, 0) {
-            override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-                val function = Agent.runningContext.function
-                expect(function != null)
-                return env.getBindingValue(name, false)
-            }
-
-            override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-                throw IllegalStateException("Unexpected construction of ArgGetter function")
-            }
+    fun makeArgGetter(name: String, env: EnvRecord): NativeGetterSignature {
+        return { _ ->
+            val function = Agent.runningContext.function
+            expect(function != null)
+            env.getBindingValue(name, false)
         }
     }
 
     @JvmStatic @ECMAImpl("9.4.4.7.2")
-    fun makeArgSetter(name: String, env: EnvRecord): JSFunction {
-        return object : JSNativeFunction(Agent.runningContext.realm, name, 0) {
-            override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-                val function = Agent.runningContext.function
-                expect(function != null)
-                env.setMutableBinding(name, arguments.argument(0), false)
-                return JSEmpty
-            }
-
-            override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-                throw IllegalStateException("Unexpected construction of ArgSetter function")
-            }
+    fun makeArgSetter(name: String, env: EnvRecord): NativeSetterSignature {
+        return { _, newValue ->
+            val function = Agent.runningContext.function
+            expect(function != null)
+            env.setMutableBinding(name, newValue, false)
         }
     }
 

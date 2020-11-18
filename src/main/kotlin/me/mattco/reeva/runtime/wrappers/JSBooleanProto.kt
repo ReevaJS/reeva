@@ -13,9 +13,9 @@ import me.mattco.reeva.utils.toValue
 
 class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, JSFalse) {
     override fun init() {
+        annotationInit()
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, 0)
-        configureInstanceProperties()
 
         defineOwnProperty("constructor", realm.booleanCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }

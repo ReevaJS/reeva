@@ -68,123 +68,12 @@ open class JSObject protected constructor(
     )
 
     open fun init() {
-        configureInstanceProperties()
+        annotationInit()
     }
 
-    // This method exists to be called directly by subclass who cannot call their
-    // super.init() method due to prototype complications
-    protected fun configureInstanceProperties() {
-        // TODO: This is probably terrible for performance, but very cool :)
-        // A better way to do it would be to use an annotation processor, and bake
-        // these properties into the class's "init" method as direct calls to the
-        // appropriate "defineXYZ" method instead of having to do all this reflection
-        // every single time a property is instantiated
-
-        val nativeProperties = mutableMapOf<PropertyKey, NativeMethodPair>()
-
-        this::class.java.declaredMethods.filter {
-            it.isAnnotationPresent(JSNativePropertyGetter::class.java)
-        }.forEach { method ->
-            val getter = method.getAnnotation(JSNativePropertyGetter::class.java)
-            val methodPair = NativeMethodPair(attributes = getter.attributes, getter = { thisValue ->
-                method.invoke(this, thisValue) as JSValue
-            })
-            val key = if (getter.name.startsWith("@@")) {
-                Realm.wellknownSymbols[getter.name]?.let(::PropertyKey) ?:
-                throw IllegalArgumentException("No well known symbol found with name ${getter.name}")
-            } else PropertyKey(getter.name)
-            expect(key !in nativeProperties)
-            nativeProperties[key] = methodPair
-        }
-
-        this::class.java.declaredMethods.filter {
-            it.isAnnotationPresent(JSNativePropertySetter::class.java)
-        }.forEach { method ->
-            val setter = method.getAnnotation(JSNativePropertySetter::class.java)
-            val key = if (setter.name.startsWith("@@")) {
-                Realm.wellknownSymbols[setter.name]?.let(::PropertyKey) ?:
-                throw IllegalArgumentException("No well known symbol found with name ${setter.name}")
-            } else PropertyKey(setter.name)
-            val methodPair = if (key in nativeProperties) {
-                nativeProperties[key]!!.also {
-                    expect(it.attributes == setter.attributes)
-                }
-            } else {
-                val t = NativeMethodPair(setter.attributes)
-                nativeProperties[key] = t
-                t
-            }
-            methodPair.setter = { thisValue, value -> method.invoke(this, thisValue, value) }
-        }
-
-        nativeProperties.forEach { (name, methods) ->
-            defineNativeProperty(name, methods.attributes, methods.getter, methods.setter)
-        }
-
-        val nativeAccessors = mutableMapOf<PropertyKey, NativeAccessorPair>()
-
-        this::class.java.declaredMethods.filter {
-            it.isAnnotationPresent(JSNativeAccessorGetter::class.java)
-        }.forEach { method ->
-            val getter = method.getAnnotation(JSNativeAccessorGetter::class.java)
-            val methodPair = NativeAccessorPair(
-                attributes = getter.attributes,
-                JSNativeFunction.fromLambda(realm, "TODO", 0) { thisValue, _ ->
-                    method.invoke(this, thisValue) as JSValue
-                }
-            )
-            val key = if (getter.name.startsWith("@@")) {
-                Realm.wellknownSymbols[getter.name]?.let(::PropertyKey) ?:
-                throw IllegalArgumentException("No well known symbol found with name ${getter.name}")
-            } else PropertyKey(getter.name)
-            expect(key !in nativeAccessors)
-            nativeAccessors[key] = methodPair
-        }
-
-        this::class.java.declaredMethods.filter {
-            it.isAnnotationPresent(JSNativeAccessorSetter::class.java)
-        }.forEach { method ->
-            val setter = method.getAnnotation(JSNativeAccessorSetter::class.java)
-            val key = if (setter.name.startsWith("@@")) {
-                Realm.wellknownSymbols[setter.name]?.let(::PropertyKey) ?:
-                throw IllegalArgumentException("No well known symbol found with name ${setter.name}")
-            } else PropertyKey(setter.name)
-            val methodPair = if (key in nativeAccessors) {
-                nativeAccessors[key]!!.also {
-                    expect(it.attributes == setter.attributes)
-                }
-            } else {
-                val t = NativeAccessorPair(setter.attributes)
-                nativeAccessors[key] = t
-                t
-            }
-            methodPair.setter = JSNativeFunction.fromLambda(realm, "TODO", 1) { thisValue, arguments ->
-                method.invoke(this, thisValue, arguments.argument(0)) as JSValue
-            }
-        }
-
-        nativeAccessors.forEach { (name, methods) ->
-            defineNativeAccessor(name, methods.attributes, methods.getter, methods.setter)
-        }
-
-        this::class.java.declaredMethods.filter {
-            it.isAnnotationPresent(JSMethod::class.java)
-        }.forEach {
-            val annotation = it.getAnnotation(JSMethod::class.java)
-            val key = if (annotation.name.startsWith("@@")) {
-                Realm.wellknownSymbols[annotation.name]?.let(::PropertyKey) ?:
-                throw IllegalArgumentException("No well known symbol found with name ${annotation.name}")
-            } else PropertyKey(annotation.name)
-
-            defineNativeFunction(
-                key,
-                annotation.length,
-                annotation.attributes
-            ) { thisValue, arguments ->
-                it.invoke(this, thisValue, arguments) as JSValue
-            }
-        }
-    }
+    // This function is automatically overridden by the Reeva compiler
+    // plugin - do not inherit manually!
+    open fun annotationInit() { }
 
     @ECMAImpl("9.1.1")
     open fun getPrototype() = shape.prototype ?: JSNull
@@ -343,8 +232,20 @@ open class JSObject protected constructor(
         }.map { PropertyKey(it.name) }
     }
 
-    fun defineNativeAccessor(key: PropertyKey, attributes: Int, getter: JSFunction?, setter: JSFunction?) {
-        val value = JSAccessor(getter, setter)
+    fun defineNativeAccessor(key: PropertyKey, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
+        val getterFunc = getter?.let { f ->
+            JSNativeFunction.fromLambda(realm, "TODO", 0) { thisValue, _ -> f(thisValue) }
+        }
+        val setterFunc = setter?.let { f ->
+            JSNativeFunction.fromLambda(realm, "TODO", 0) { thisValue, args ->
+                if (args.size != 1)
+                    TODO()
+                f(thisValue, args[0])
+                JSUndefined
+            }
+        }
+
+        val value = JSAccessor(getterFunc, setterFunc)
         internalSet(key, Descriptor(value, attributes))
     }
 

@@ -16,9 +16,9 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
     override fun init() {
         // No super call to avoid prototype complications
 
+        annotationInit()
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, 0)
-        configureInstanceProperties()
 
         defineOwnProperty("constructor", realm.stringCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }

@@ -21,9 +21,9 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     override fun init() {
         // No super call to avoid prototype complications
 
+        annotationInit()
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, 0)
-        configureInstanceProperties()
 
         defineOwnProperty("constructor", realm.arrayCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
 
