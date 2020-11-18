@@ -35,61 +35,63 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     lateinit var globalEnv: GlobalEnvRecord
         private set
 
+    // Special objects that have to be handled manually
     lateinit var objectProto: JSObjectProto private set
-    lateinit var numberProto: JSNumberProto private set
-    lateinit var booleanProto: JSBooleanProto private set
-    lateinit var stringProto: JSStringProto private set
-    lateinit var symbolProto: JSSymbolProto private set
     lateinit var functionProto: JSFunctionProto private set
-    lateinit var arrayProto: JSArrayProto private set
-    lateinit var setProto: JSSetProto private set
-    lateinit var mapProto: JSMapProto private set
-    lateinit var promiseProto: JSPromiseProto private set
-    lateinit var dateProto: JSDateProto private set
-    lateinit var iteratorProto: JSIteratorProto private set
-    lateinit var arrayIteratorProto: JSArrayIteratorProto private set
-    lateinit var setIteratorProto: JSSetIteratorProto private set
-    lateinit var mapIteratorProto: JSMapIteratorProto private set
-    lateinit var objectPropertyIteratorProto: JSObjectPropertyIteratorProto private set
-    lateinit var consoleProto: JSConsoleProto private set
-
-    lateinit var errorProto: JSErrorProto private set
-    lateinit var evalErrorProto: JSEvalErrorProto private set
-    lateinit var typeErrorProto: JSTypeErrorProto private set
-    lateinit var rangeErrorProto: JSRangeErrorProto private set
-    lateinit var referenceErrorProto: JSReferenceErrorProto private set
-    lateinit var syntaxErrorProto: JSSyntaxErrorProto private set
-    lateinit var uriErrorProto: JSURIErrorProto private set
-
-    lateinit var objectCtor: JSObjectCtor private set
-    lateinit var numberCtor: JSNumberCtor private set
-    lateinit var booleanCtor: JSBooleanCtor private set
-    lateinit var stringCtor: JSStringCtor private set
+    lateinit var symbolProto: JSSymbolProto private set
     lateinit var symbolCtor: JSSymbolCtor private set
-    lateinit var functionCtor: JSFunctionCtor private set
-    lateinit var arrayCtor: JSArrayCtor private set
-    lateinit var setCtor: JSSetCtor private set
-    lateinit var mapCtor: JSMapCtor private set
-    lateinit var proxyCtor: JSProxyCtor private set
-    lateinit var promiseCtor: JSPromiseCtor private set
-    lateinit var dateCtor: JSDateCtor private set
 
-    lateinit var errorCtor: JSErrorCtor private set
-    lateinit var evalErrorCtor: JSEvalErrorCtor private set
-    lateinit var typeErrorCtor: JSTypeErrorCtor private set
-    lateinit var rangeErrorCtor: JSRangeErrorCtor private set
-    lateinit var referenceErrorCtor: JSReferenceErrorCtor private set
-    lateinit var syntaxErrorCtor: JSSyntaxErrorCtor private set
-    lateinit var uriErrorCtor: JSURIErrorCtor private set
+    val numberProto by lazy { JSNumberProto.create(this) }
+    val booleanProto by lazy { JSBooleanProto.create(this) }
+    val stringProto by lazy { JSStringProto.create(this) }
+    val arrayProto by lazy { JSArrayProto.create(this) }
+    val setProto by lazy { JSSetProto.create(this) }
+    val mapProto by lazy { JSMapProto.create(this) }
+    val promiseProto by lazy { JSPromiseProto.create(this) }
+    val dateProto by lazy { JSDateProto.create(this) }
+    val iteratorProto by lazy { JSIteratorProto.create(this) }
+    val arrayIteratorProto by lazy { JSArrayIteratorProto.create(this) }
+    val setIteratorProto by lazy { JSSetIteratorProto.create(this) }
+    val mapIteratorProto by lazy { JSMapIteratorProto.create(this) }
+    val objectPropertyIteratorProto by lazy { JSObjectPropertyIteratorProto.create(this) }
+    val consoleProto by lazy { JSConsoleProto.create(this) }
 
-    lateinit var mathObj: JSMathObject private set
-    lateinit var reflectObj: JSReflectObject private set
-    lateinit var jsonObj: JSONObject private set
-    lateinit var consoleObj: JSConsole private set
+    val errorProto by lazy { JSErrorProto.create(this) }
+    val evalErrorProto by lazy { JSEvalErrorProto.create(this) }
+    val typeErrorProto by lazy { JSTypeErrorProto.create(this) }
+    val rangeErrorProto by lazy { JSRangeErrorProto.create(this) }
+    val referenceErrorProto by lazy { JSReferenceErrorProto.create(this) }
+    val syntaxErrorProto by lazy { JSSyntaxErrorProto.create(this) }
+    val uriErrorProto by lazy { JSURIErrorProto.create(this) }
 
-    lateinit var packageProto: JSPackageProto private set
-    lateinit var classProto: JSClassProto private set
-    lateinit var packageObj: JSPackageObject private set
+    val objectCtor by lazy { JSObjectCtor.create(this) }
+    val numberCtor by lazy { JSNumberCtor.create(this) }
+    val booleanCtor by lazy { JSBooleanCtor.create(this) }
+    val stringCtor by lazy { JSStringCtor.create(this) }
+    val functionCtor by lazy { JSFunctionCtor.create(this) }
+    val arrayCtor by lazy { JSArrayCtor.create(this) }
+    val setCtor by lazy { JSSetCtor.create(this) }
+    val mapCtor by lazy { JSMapCtor.create(this) }
+    val proxyCtor by lazy { JSProxyCtor.create(this) }
+    val promiseCtor by lazy { JSPromiseCtor.create(this) }
+    val dateCtor by lazy { JSDateCtor.create(this) }
+
+    val errorCtor by lazy { JSErrorCtor.create(this) }
+    val evalErrorCtor by lazy { JSEvalErrorCtor.create(this) }
+    val typeErrorCtor by lazy { JSTypeErrorCtor.create(this) }
+    val rangeErrorCtor by lazy { JSRangeErrorCtor.create(this) }
+    val referenceErrorCtor by lazy { JSReferenceErrorCtor.create(this) }
+    val syntaxErrorCtor by lazy { JSSyntaxErrorCtor.create(this) }
+    val uriErrorCtor by lazy { JSURIErrorCtor.create(this) }
+
+    val mathObj by lazy { JSMathObject.create(this) }
+    val reflectObj by lazy { JSReflectObject.create(this) }
+    val jsonObj by lazy { JSONObject.create(this) }
+    val consoleObj by lazy { JSConsole.create(this) }
+
+    val packageProto by lazy { JSPackageProto.create(this) }
+    val classProto by lazy { JSClassProto.create(this) }
+    val packageObj by lazy { JSPackageObject.create(this) }
 
     val emptyShape = Shape(this)
     val newObjectShape = Shape(this)
@@ -102,60 +104,8 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     fun initObjects() {
         objectProto = JSObjectProto.create(this)
         functionProto = JSFunctionProto.create(this)
-        objectCtor = JSObjectCtor.create(this)
         functionProto.initialize()
         objectProto.initialize()
-        objectCtor.initialize()
-
-        numberCtor = JSNumberCtor.create(this)
-        booleanCtor = JSBooleanCtor.create(this)
-        stringCtor = JSStringCtor.create(this)
-        functionCtor = JSFunctionCtor.create(this)
-        arrayCtor = JSArrayCtor.create(this)
-        setCtor = JSSetCtor.create(this)
-        mapCtor = JSMapCtor.create(this)
-        proxyCtor = JSProxyCtor.create(this)
-        promiseCtor = JSPromiseCtor.create(this)
-        dateCtor = JSDateCtor.create(this)
-
-        errorCtor = JSErrorCtor.create(this)
-        evalErrorCtor = JSEvalErrorCtor.create(this)
-        typeErrorCtor = JSTypeErrorCtor.create(this)
-        rangeErrorCtor = JSRangeErrorCtor.create(this)
-        referenceErrorCtor = JSReferenceErrorCtor.create(this)
-        syntaxErrorCtor = JSSyntaxErrorCtor.create(this)
-        uriErrorCtor = JSURIErrorCtor.create(this)
-
-        numberProto = JSNumberProto.create(this)
-        booleanProto = JSBooleanProto.create(this)
-        stringProto = JSStringProto.create(this)
-        arrayProto = JSArrayProto.create(this)
-        setProto = JSSetProto.create(this)
-        mapProto = JSMapProto.create(this)
-        promiseProto = JSPromiseProto.create(this)
-        dateProto = JSDateProto.create(this)
-        iteratorProto = JSIteratorProto.create(this)
-        arrayIteratorProto = JSArrayIteratorProto.create(this)
-        setIteratorProto = JSSetIteratorProto.create(this)
-        mapIteratorProto = JSMapIteratorProto.create(this)
-        objectPropertyIteratorProto = JSObjectPropertyIteratorProto.create(this)
-        consoleProto = JSConsoleProto.create(this)
-        mathObj = JSMathObject.create(this)
-        reflectObj = JSReflectObject.create(this)
-        jsonObj = JSONObject.create(this)
-        consoleObj = JSConsole.create(this)
-
-        errorProto = JSErrorProto.create(this)
-        evalErrorProto = JSEvalErrorProto.create(this)
-        typeErrorProto = JSTypeErrorProto.create(this)
-        rangeErrorProto = JSRangeErrorProto.create(this)
-        referenceErrorProto = JSReferenceErrorProto.create(this)
-        syntaxErrorProto = JSSyntaxErrorProto.create(this)
-        uriErrorProto = JSURIErrorProto.create(this)
-
-        packageProto = JSPackageProto.create(this)
-        classProto = JSClassProto.create(this)
-        packageObj = JSPackageObject.create(this)
 
         // Must be created after well-known symbols
         symbolCtor = JSSymbolCtor.create(this)
