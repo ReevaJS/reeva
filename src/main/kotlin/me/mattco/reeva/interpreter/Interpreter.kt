@@ -1821,6 +1821,8 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 JSUndefined
             }
             UnaryExpressionNode.Operator.Typeof -> {
+                if (exprRef is JSReference && exprRef.isUnresolvableReference)
+                    return "undefined".toValue()
                 Operations.typeofOperator(Operations.getValue(exprRef))
             }
             UnaryExpressionNode.Operator.Plus -> {
