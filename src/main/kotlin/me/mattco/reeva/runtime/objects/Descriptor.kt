@@ -21,7 +21,7 @@ data class Descriptor constructor(
 
     @ECMAImpl("6.2.5.2")
     val isDataDescriptor: Boolean
-        get() = !value.isEmpty || hasWritable
+        get() = (!value.isEmpty && !isAccessorDescriptor) || hasWritable
 
     @ECMAImpl("6.2.5.3")
     val isGenericDescriptor: Boolean
