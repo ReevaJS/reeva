@@ -27,14 +27,19 @@ open class JSObject protected constructor(
 
     init {
         expect(prototype is JSObject || prototype == JSNull)
-        shape = realm.emptyShape
 
-        // Whenever the setPrototype method is overridden, its effects are
-        // only necessary after construction, for example in Object.setPrototypeOf.
-        // When the class is constructed, we always want the parent implementation of
-        // setPrototype here.
-        @Suppress("LeakingThis")
-        setPrototype(prototype)
+        if (prototype == JSNull) {
+            shape = Shape(realm)
+        } else {
+            shape = realm.emptyShape
+
+            // Whenever the setPrototype method is overridden, its effects are
+            // only necessary after construction, for example in Object.setPrototypeOf.
+            // When the class is constructed, we always want the parent implementation of
+            // setPrototype here.
+            @Suppress("LeakingThis")
+            setPrototype(prototype)
+        }
     }
 
     var isSealed = false
@@ -521,9 +526,9 @@ open class JSObject protected constructor(
         fun create(realm: Realm, proto: JSValue = realm.objectProto) = JSObject(realm, proto).initialize()
 
         fun <T : JSObject> T.initialize() = apply {
-//            transitionsEnabled = false
+            transitionsEnabled = false
             init()
-//            transitionsEnabled = true
+            transitionsEnabled = true
         }
     }
 }

@@ -103,8 +103,8 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
         objectProto = JSObjectProto.create(this)
         functionProto = JSFunctionProto.create(this)
         objectCtor = JSObjectCtor.create(this)
-        objectProto.initialize()
         functionProto.initialize()
+        objectProto.initialize()
         objectCtor.initialize()
 
         numberCtor = JSNumberCtor.create(this)
