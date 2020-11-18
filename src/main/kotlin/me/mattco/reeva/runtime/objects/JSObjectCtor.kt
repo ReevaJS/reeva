@@ -266,6 +266,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
     companion object {
         // Special object: do not init
-        fun create(realm: Realm) = JSObjectCtor(realm)
+        fun create(realm: Realm) = JSObjectCtor(realm).initialize()
     }
 }
