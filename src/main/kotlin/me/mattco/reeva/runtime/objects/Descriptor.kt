@@ -40,10 +40,10 @@ data class Descriptor constructor(
         get() = attributes and HAS_WRITABLE != 0
 
     val hasGetter: Boolean
-        get() = (value as? JSAccessor)?.getter != null
+        get() = value.let { it is JSAccessor && it.getter != null }
 
     val hasSetter: Boolean
-        get() = (value as? JSAccessor)?.setter != null
+        get() = value.let { it is JSAccessor && it.setter != null }
 
     val isConfigurable: Boolean
         get() = attributes and CONFIGURABLE != 0
@@ -81,6 +81,10 @@ data class Descriptor constructor(
             attributes = attributes or HAS_ENUMERABLE
         if (attributes and WRITABLE != 0)
             attributes = attributes or HAS_WRITABLE
+        if (value.let { it is JSAccessor && it.getter != null })
+            attributes = attributes or HAS_GETTER
+        if (value.let { it is JSAccessor && it.setter != null })
+            attributes = attributes or HAS_SETTER
     }
 
     fun setHasConfigurable() = apply {
@@ -145,10 +149,8 @@ data class Descriptor constructor(
     fun toObject(realm: Realm, thisValue: JSValue): JSObject {
         val obj = JSObject.create(realm)
         if (isAccessorDescriptor) {
-            if (hasGetter)
-                obj.set("get", (value as JSAccessor).getter!!)
-            if (hasSetter)
-                obj.set("set", (value as JSAccessor).setter!!)
+            obj.set("get", (value as JSAccessor).getter ?: JSUndefined)
+            obj.set("set", (value as JSAccessor).setter ?: JSUndefined)
         } else if (isDataDescriptor) {
             obj.set("value", getActualValue(thisValue))
         }
@@ -183,6 +185,8 @@ data class Descriptor constructor(
         const val HAS_CONFIGURABLE = 1 shl 3
         const val HAS_ENUMERABLE = 1 shl 4
         const val HAS_WRITABLE = 1 shl 5
+        const val HAS_GETTER = 1 shl 6
+        const val HAS_SETTER = 1 shl 7
         const val HAS_BASIC = HAS_CONFIGURABLE or HAS_ENUMERABLE or HAS_WRITABLE
 
         const val defaultAttributes = CONFIGURABLE or ENUMERABLE or WRITABLE or HAS_BASIC
@@ -214,12 +218,15 @@ data class Descriptor constructor(
 
             var getter: JSFunction? = null
             var setter: JSFunction? = null
+            var hasGetterOrSetter = false
 
             if (obj.hasProperty("get")) {
                 val getterTemp = obj.get("get")
                 if (!Operations.isCallable(getterTemp) && getterTemp != JSUndefined)
                     Errors.DescriptorGetType.throwTypeError()
                 getter = getterTemp as? JSFunction
+                descriptor.attributes = descriptor.attributes or HAS_GETTER
+                hasGetterOrSetter = true
             }
 
             if (obj.hasProperty("set")) {
@@ -227,9 +234,11 @@ data class Descriptor constructor(
                 if (!Operations.isCallable(setterTemp) && setterTemp != JSUndefined)
                     Errors.DescriptorSetType.throwTypeError()
                 setter = setterTemp as? JSFunction
+                descriptor.attributes = descriptor.attributes or HAS_SETTER
+                hasGetterOrSetter = true
             }
 
-            if (getter != null || setter != null) {
+            if (hasGetterOrSetter) {
                 if (descriptor.value != JSEmpty || descriptor.hasWritable)
                     Errors.DescriptorPropType.throwTypeError()
                 descriptor.setRawValue(JSAccessor(getter, setter))

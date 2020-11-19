@@ -1149,9 +1149,13 @@ object Operations {
             if (newDesc.isDataDescriptor && newDesc.getRawValue() != JSEmpty)
                 currentDesc.setActualValue(target, newDesc.getActualValue(target))
 
-            if (newDesc.hasGetter)
+            // HAS_GETTER and HAS_SETTER are used over the hasGetter and hasSetter
+            // fields as the latter indicate whether the accessor is a valid function
+            // or not. In order to know if the getter or setter was specified (including
+            // being specified as undefined), we need to look at the attributes.
+            if ((newDesc.attributes and Descriptor.HAS_GETTER) != 0)
                 currentDesc.getter = newDesc.getter
-            if (newDesc.hasSetter)
+            if ((newDesc.attributes and Descriptor.HAS_SETTER) != 0)
                 currentDesc.setter = newDesc.setter
 
             if (newDesc.hasConfigurable)

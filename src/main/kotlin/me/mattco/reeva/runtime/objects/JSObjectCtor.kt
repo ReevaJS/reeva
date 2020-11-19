@@ -121,7 +121,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val obj = Operations.toObject(arguments.argument(0))
         val key = Operations.toPropertyKey(arguments.argument(1))
         val desc = obj.getOwnPropertyDescriptor(key) ?: return JSUndefined
-        return desc.toObject(realm, JSUndefined)
+        return desc.toObject(realm, obj)
     }
 
     @JSMethod("getOwnPropertyDescriptors", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
@@ -130,7 +130,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val descriptors = JSObject.create(realm)
         obj.ownPropertyKeys().forEach { key ->
             val desc = obj.getOwnPropertyDescriptor(key)!!
-            val descObj = desc.toObject(realm, JSUndefined)
+            val descObj = desc.toObject(realm, obj)
             Operations.createDataPropertyOrThrow(descriptors, key, descObj)
         }
         return descriptors
@@ -249,7 +249,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val descriptors = mutableListOf<Pair<PropertyKey, Descriptor>>()
         props.ownPropertyKeys().forEach { key ->
             val propDesc = props.getOwnPropertyDescriptor(key)!!
-            if (propDesc.getRawValue() != JSUndefined && propDesc.isEnumerable) {
+            if (propDesc.isEnumerable) {
                 val descObj = props.get(key)
                 descriptors.add(key to Descriptor.fromObject(descObj))
             }
