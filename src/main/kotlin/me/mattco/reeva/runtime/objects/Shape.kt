@@ -71,18 +71,22 @@ class Shape {
     }
 
     fun makePutTransition(name: JSObject.StringOrSymbol, attributes: Int): Shape {
-        return transitions.getOrPut(Transition(name, attributes)) {
+        return transitions.getOrPut(PropertyTransition(name, attributes)) {
             Shape(this, name, attributes, TransitionType.Put)
         }
     }
 
     fun makeConfigureTransition(name: JSObject.StringOrSymbol, attributes: Int): Shape {
-        return transitions.getOrPut(Transition(name, attributes)) {
+        return transitions.getOrPut(PropertyTransition(name, attributes)) {
             Shape(this, name, attributes, TransitionType.Configure)
         }
     }
 
-    fun makePrototypeTransition(prototype: JSObject?) = Shape(this, prototype)
+    fun makePrototypeTransition(prototype: JSObject?): Shape {
+        return transitions.getOrPut(PrototypeTransition(prototype)) {
+            Shape(this, prototype)
+        }
+    }
 
     fun addPropertyWithoutTransition(name: JSObject.StringOrSymbol, attributes: Int) {
         buildPropertyTable()
@@ -186,8 +190,6 @@ class Shape {
 
     data class Property(val name: JSObject.StringOrSymbol, val offset: Int, val attributes: Int)
 
-    data class Transition(val name: JSObject.StringOrSymbol, val attributes: Int)
-
     enum class TransitionType {
         Invalid,
         Put,
@@ -199,3 +201,9 @@ class Shape {
         const val PROPERTY_COUNT_TRANSITION_LIMIT = 100
     }
 }
+
+sealed class Transition
+
+data class PrototypeTransition(val prototype: JSObject?) : Transition()
+
+data class PropertyTransition(val name: JSObject.StringOrSymbol, val attributes: Int) : Transition()

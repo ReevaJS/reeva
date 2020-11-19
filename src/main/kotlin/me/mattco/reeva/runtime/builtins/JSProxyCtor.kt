@@ -41,8 +41,6 @@ class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "P
     }
 
     companion object {
-        fun create(realm: Realm) = JSProxyCtor(realm).initialize()
-
         private fun proxyCreate(realm: Realm, target: JSValue, handler: JSValue): JSObject {
             if (target !is JSObject)
                 Errors.Proxy.CtorFirstArgType.throwTypeError()
@@ -50,5 +48,7 @@ class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "P
                 Errors.Proxy.CtorSecondArgType.throwTypeError()
             return JSProxyObject.create(realm, target, handler)
         }
+
+        fun create(realm: Realm) = JSProxyCtor(realm).initialize()
     }
 }

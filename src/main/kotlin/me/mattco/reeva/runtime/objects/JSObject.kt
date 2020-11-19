@@ -426,9 +426,7 @@ open class JSObject protected constructor(
         fun create(realm: Realm, proto: JSValue = realm.objectProto) = JSObject(realm, proto).initialize()
 
         fun <T : JSObject> T.initialize() = apply {
-            transitionsEnabled = false
             init()
-            transitionsEnabled = true
         }
     }
 }
