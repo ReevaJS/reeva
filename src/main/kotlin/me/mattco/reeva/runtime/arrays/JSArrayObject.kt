@@ -32,9 +32,9 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
     @ECMAImpl("9.4.2.4", "ArrayLengthSet")
     override fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
         if (property.isString && property.asString == "length") {
-            val value = descriptor.getActualValue(this)
-            if (value == JSEmpty)
+            if (descriptor.getRawValue() == JSEmpty)
                 return super.defineOwnProperty(property, descriptor)
+            val value = descriptor.getActualValue(this)
             val newLenDesc = descriptor.copy()
             val newLenObj = Operations.toUint32(value)
             val numberLen = Operations.toNumeric(value)

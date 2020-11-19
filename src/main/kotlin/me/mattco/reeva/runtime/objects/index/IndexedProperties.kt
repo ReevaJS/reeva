@@ -33,7 +33,7 @@ class IndexedProperties private constructor(
     fun setDescriptor(index: Int, descriptor: Descriptor) {
         if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD ||
             descriptor.attributes != Descriptor.defaultAttributes ||
-            descriptor.hasGetter || descriptor.hasSetter)
+            descriptor.hasGetterFunction || descriptor.hasSetterFunction)
         ) {
             switchToGenericStorage()
         }

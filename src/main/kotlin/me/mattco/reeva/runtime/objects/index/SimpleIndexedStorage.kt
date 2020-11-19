@@ -22,7 +22,7 @@ class SimpleIndexedStorage : IndexedStorage {
 
     override fun set(index: Int, descriptor: Descriptor) {
         expect(descriptor.attributes == Descriptor.defaultAttributes)
-        expect(!descriptor.hasGetter && !descriptor.hasSetter)
+        expect(!descriptor.hasGetterFunction && !descriptor.hasSetterFunction)
         expect(index < IndexedStorage.SPARSE_ARRAY_THRESHOLD)
 
         if (index >= sizeBacker) {
@@ -42,7 +42,7 @@ class SimpleIndexedStorage : IndexedStorage {
 
     override fun insert(index: Int, descriptor: Descriptor) {
         expect(descriptor.attributes == Descriptor.defaultAttributes)
-        expect(!descriptor.hasGetter && !descriptor.hasSetter)
+        expect(!descriptor.hasGetterFunction && !descriptor.hasSetterFunction)
         expect(index < IndexedStorage.SPARSE_ARRAY_THRESHOLD)
         sizeBacker++
         elements.add(index, descriptor.getRawValue())

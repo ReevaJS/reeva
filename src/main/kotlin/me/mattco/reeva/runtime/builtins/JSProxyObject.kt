@@ -186,7 +186,7 @@ class JSProxyObject private constructor(
         if (targetDesc != null && !targetDesc.isConfigurable) {
             if (targetDesc.isDataDescriptor && !targetDesc.isWritable && !trapResult.sameValue(targetDesc.getRawValue()))
                 Errors.Proxy.Get.DifferentValue(property).throwTypeError()
-            if (targetDesc.isAccessorDescriptor && !targetDesc.hasGetter && trapResult != JSUndefined)
+            if (targetDesc.isAccessorDescriptor && !targetDesc.hasGetterFunction && trapResult != JSUndefined)
                 Errors.Proxy.Get.NonConfAccessor(property).throwTypeError()
         }
         return trapResult
@@ -204,7 +204,7 @@ class JSProxyObject private constructor(
         if (targetDesc != null && !targetDesc.isConfigurable) {
             if (targetDesc.isDataDescriptor && !targetDesc.isWritable && !value.sameValue(targetDesc.getRawValue()))
                 Errors.Proxy.Set.NonConfNonWritable(property).throwTypeError()
-            if (targetDesc.isAccessorDescriptor && !targetDesc.hasSetter)
+            if (targetDesc.isAccessorDescriptor && !targetDesc.hasSetterFunction)
                 Errors.Proxy.Set.NonConfAccessor(property).throwTypeError()
         }
         return true

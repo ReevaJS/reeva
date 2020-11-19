@@ -164,7 +164,7 @@ open class JSObject protected constructor(
             return (parent as JSObject).get(property, receiver)
         }
         if (desc.isAccessorDescriptor)
-            return if (desc.hasGetter) Operations.call(desc.getter!!, receiver) else JSUndefined
+            return if (desc.hasGetterFunction) Operations.call(desc.getter!!, receiver) else JSUndefined
         return desc.getActualValue(receiver)
     }
 
@@ -205,7 +205,7 @@ open class JSObject protected constructor(
             return receiver.defineOwnProperty(property, Descriptor(value, Descriptor.defaultAttributes))
         }
         expect(ownDesc.isAccessorDescriptor)
-        if (!ownDesc.hasSetter)
+        if (!ownDesc.hasSetterFunction)
             return false
         Operations.call(ownDesc.setter!!, receiver, listOf(value))
         return true

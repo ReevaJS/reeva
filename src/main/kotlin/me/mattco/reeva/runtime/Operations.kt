@@ -431,7 +431,7 @@ object Operations {
                 JSNumber.NaN
             }
             is JSSymbol, is JSBigInt -> Errors.FailedToNumber(value.type).throwTypeError()
-            is JSObject -> toPrimitive(value, ToPrimitiveHint.AsNumber)
+            is JSObject -> toNumber(toPrimitive(value, ToPrimitiveHint.AsNumber))
             else -> unreachable()
         }
     }
@@ -931,13 +931,13 @@ object Operations {
             if (!desc.isEnumerable)
                 return@forEach
             if (kind == JSObject.PropertyKind.Key) {
-                properties.add(property.asValue)
+                properties.add(toString(property.asValue))
             } else {
                 val value = target.get(property)
                 if (kind == JSObject.PropertyKind.Value) {
                     properties.add(value)
                 } else {
-                    TODO("Create an entry array")
+                    properties.add(createArrayFromList(listOf(toString(property.asValue), value)))
                 }
             }
         }
@@ -1073,8 +1073,9 @@ object Operations {
         property: PropertyKey?,
         extensible: Boolean,
         newDesc: Descriptor,
-        currentDesc: Descriptor?
+        _currentDesc: Descriptor?
     ): Boolean {
+        var currentDesc = _currentDesc
         if (currentDesc == null) {
             if (!extensible)
                 return false
@@ -1088,10 +1089,10 @@ object Operations {
                 if (newDesc.getRawValue() == JSEmpty)
                     newDesc.setRawValue(JSUndefined)
             } else {
+                if (!newDesc.hasConfigurable)
+                    newDesc.setConfigurable(false)
                 if (!newDesc.hasEnumerable)
                     newDesc.setEnumerable(false)
-                if (!newDesc.hasWritable)
-                    newDesc.setWritable(false)
             }
             target?.internalSet(property!!, newDesc)
             return true
@@ -1108,23 +1109,15 @@ object Operations {
             if (currentDesc.isDataDescriptor != newDesc.isDataDescriptor) {
                 if (currentDesc.run { hasConfigurable && !isConfigurable })
                     return false
-                if (currentDesc.isDataDescriptor) {
-                    target?.internalSet(
-                        property!!,
-                        Descriptor(
-                            newDesc.getRawValue(),
-                            currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
-                        )
-                    )
+                val newAttrs = ((currentDesc.attributes and (Descriptor.CONFIGURABLE or Descriptor.ENUMERABLE))
+                    or Descriptor.HAS_CONFIGURABLE or Descriptor.HAS_ENUMERABLE)
+
+                currentDesc = if (currentDesc.isDataDescriptor) {
+                    Descriptor(JSAccessor(null, null), newAttrs)
                 } else {
-                    target?.internalSet(
-                        property!!,
-                        Descriptor(
-                            newDesc.getActualValue(target),
-                            currentDesc.attributes and (Descriptor.WRITABLE or Descriptor.HAS_WRITABLE).inv(),
-                        )
-                    )
+                    Descriptor(JSUndefined, newAttrs)
                 }
+                target?.internalSet(property!!, currentDesc)
             } else if (currentDesc.isDataDescriptor && newDesc.isDataDescriptor) {
                 if (currentDesc.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {
                     if (newDesc.isWritable)
@@ -1135,11 +1128,11 @@ object Operations {
             } else if (currentDesc.run { hasConfigurable && !isConfigurable }) {
                 val currentSetter = currentDesc.setter
                 val newSetter = newDesc.setter
-                if (newDesc.hasSetter && (!currentDesc.hasSetter || newSetter == currentSetter))
+                if (newDesc.hasSetter && newSetter != currentSetter)
                     return false
-                val currentGetter = currentDesc.setter
-                val newGetter = newDesc.setter
-                if (newDesc.hasGetter && (!currentDesc.hasGetter || newGetter == currentGetter))
+                val currentGetter = currentDesc.getter
+                val newGetter = newDesc.getter
+                if (newDesc.hasGetter && newGetter != currentGetter)
                     return false
                 return true
             }
@@ -1149,13 +1142,9 @@ object Operations {
             if (newDesc.isDataDescriptor && newDesc.getRawValue() != JSEmpty)
                 currentDesc.setActualValue(target, newDesc.getActualValue(target))
 
-            // HAS_GETTER and HAS_SETTER are used over the hasGetter and hasSetter
-            // fields as the latter indicate whether the accessor is a valid function
-            // or not. In order to know if the getter or setter was specified (including
-            // being specified as undefined), we need to look at the attributes.
-            if ((newDesc.attributes and Descriptor.HAS_GETTER) != 0)
+            if (newDesc.hasGetter)
                 currentDesc.getter = newDesc.getter
-            if ((newDesc.attributes and Descriptor.HAS_SETTER) != 0)
+            if (newDesc.hasSetter)
                 currentDesc.setter = newDesc.setter
 
             if (newDesc.hasConfigurable)

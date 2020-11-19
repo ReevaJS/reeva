@@ -28,7 +28,7 @@ data class Descriptor constructor(
         get() = !isAccessorDescriptor && !isDataDescriptor
 
     val isEmpty: Boolean
-        get() = value == JSUndefined && attributes == 0 && !hasGetter && !hasSetter
+        get() = value == JSUndefined && attributes == 0 && !hasGetterFunction && !hasSetterFunction
 
     val hasConfigurable: Boolean
         get() = attributes and HAS_CONFIGURABLE != 0
@@ -40,9 +40,15 @@ data class Descriptor constructor(
         get() = attributes and HAS_WRITABLE != 0
 
     val hasGetter: Boolean
-        get() = value.let { it is JSAccessor && it.getter != null }
+        get() = attributes and HAS_GETTER != 0
 
     val hasSetter: Boolean
+        get() = attributes and HAS_SETTER != 0
+
+    val hasGetterFunction: Boolean
+        get() = value.let { it is JSAccessor && it.getter != null }
+
+    val hasSetterFunction: Boolean
         get() = value.let { it is JSAccessor && it.setter != null }
 
     val isConfigurable: Boolean
@@ -104,7 +110,7 @@ data class Descriptor constructor(
             attributes or CONFIGURABLE
         } else {
             attributes and CONFIGURABLE.inv()
-        }
+        } or HAS_CONFIGURABLE
     }
 
     fun setEnumerable(enumerable: Boolean = true) = apply {
@@ -112,7 +118,7 @@ data class Descriptor constructor(
             attributes or ENUMERABLE
         } else {
             attributes and ENUMERABLE.inv()
-        }
+        } or HAS_ENUMERABLE
     }
 
     fun setWritable(writable: Boolean = true) = apply {
@@ -120,7 +126,7 @@ data class Descriptor constructor(
             attributes or WRITABLE
         } else {
             attributes and WRITABLE.inv()
-        }
+        } or HAS_WRITABLE
     }
 
     fun getActualValue(thisValue: JSValue?): JSValue {
@@ -178,6 +184,32 @@ data class Descriptor constructor(
             attributes = attributes or HAS_CONFIGURABLE
         if (!hasEnumerable)
             attributes = attributes or HAS_ENUMERABLE
+    }
+
+    override fun toString() = buildString {
+        append("Descriptor(")
+        when {
+            isAccessorDescriptor -> append("type=accessor")
+            isDataDescriptor -> append("type=data")
+            else -> append("type=generic")
+        }
+
+        if (attributes != 0) {
+            append(", attributes=")
+            if (hasConfigurable)
+                append(if (isConfigurable) 'C' else 'c')
+            if (hasEnumerable)
+                append(if (isEnumerable) 'E' else 'e')
+            if (isDataDescriptor) {
+                if (hasWritable)
+                    append(if (isWritable) 'W' else 'w')
+            } else if (isAccessorDescriptor) {
+                append(if (hasGetter) 'G' else 'g')
+                append(if (hasSetter) 'S' else 's')
+            }
+        }
+
+        append(')')
     }
 
     companion object {
