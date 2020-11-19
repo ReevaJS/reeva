@@ -25,6 +25,7 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.utils.*
+import java.math.BigInteger
 import kotlin.jvm.Throws
 
 class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOrModuleNode) {
@@ -1357,6 +1358,14 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             is NullNode -> JSNull
             is BooleanNode -> literalNode.value.toValue()
             is NumericLiteralNode -> literalNode.value.toValue()
+            is BigIntLiteralNode -> {
+                JSBigInt(BigInteger(literalNode.value, when (literalNode.type) {
+                    BigIntLiteralNode.Type.Binary -> 2
+                    BigIntLiteralNode.Type.Octal -> 8
+                    BigIntLiteralNode.Type.Normal -> 10
+                    BigIntLiteralNode.Type.Hex -> 16
+                }))
+            }
             is StringLiteralNode -> literalNode.value.toValue()
             else -> unreachable()
         }
@@ -1832,16 +1841,16 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             UnaryExpressionNode.Operator.Minus -> {
                 val exprValue = Operations.getValue(exprRef)
                 val oldValue = Operations.toNumeric(exprValue)
-                if (oldValue is JSBigInt)
-                    TODO()
-                Operations.numericUnaryMinus(oldValue)
+                return if (oldValue is JSBigInt) {
+                    Operations.bigintUnaryMinus(oldValue)
+                } else Operations.numericUnaryMinus(oldValue)
             }
             UnaryExpressionNode.Operator.BitwiseNot -> {
                 val exprValue = Operations.getValue(exprRef)
                 val oldValue = Operations.toNumeric(exprValue)
-                if (oldValue is JSBigInt)
-                    TODO()
-                Operations.numericBitwiseNOT(oldValue)
+                return if (oldValue is JSBigInt) {
+                    Operations.bigintBitwiseNOT(oldValue)
+                } else Operations.numericBitwiseNOT(oldValue)
             }
             UnaryExpressionNode.Operator.Not -> {
                 val exprValue = Operations.getValue(exprRef)

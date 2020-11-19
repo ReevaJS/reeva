@@ -31,11 +31,9 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.runtime.wrappers.JSBooleanObject
-import me.mattco.reeva.runtime.wrappers.JSNumberObject
-import me.mattco.reeva.runtime.wrappers.JSStringObject
-import me.mattco.reeva.runtime.wrappers.JSSymbolObject
+import me.mattco.reeva.runtime.wrappers.*
 import me.mattco.reeva.utils.*
+import java.math.BigInteger
 import java.time.*
 import java.time.format.TextStyle
 import java.util.*
@@ -52,6 +50,8 @@ object Operations {
     val defaultZone = ZoneId.systemDefault()
     val defaultZoneOffset = defaultZone.rules.getOffset(Instant.now())
     val defaultLocale = Locale.getDefault()
+
+    private val exponentRegex = Regex("""[eE][+-]?[0-9]+${'$'}""")
 
     // Note this common gotcha: In Kotlin this really does accept any
     // value, however it gets translated to Object in Java, which can't
@@ -226,7 +226,7 @@ object Operations {
         if (lhs.isNaN || rhs.isNaN)
             return JSUndefined
         // TODO: Other requirements
-        return wrapInValue(lhs.asDouble < rhs.asDouble)
+        return (lhs.asDouble < rhs.asDouble).toValue()
     }
 
     @JvmStatic @ECMAImpl("6.1.6.1.13")
@@ -273,22 +273,166 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("6.1.6.1.20")
-    fun numericToString(value: JSValue): JSString {
+    fun numericToString(value: JSValue): String {
         expect(value is JSNumber)
         if (value.isNaN)
-            return "NaN".toValue()
+            return "NaN"
         if (value.isZero)
-            return "0".toValue()
+            return "0"
         if (value.number < 0)
-            return JSString("-" + numericToString(JSNumber(-value.number)))
+            return "-" + numericToString(JSNumber(-value.number))
         if (value.isPositiveInfinity)
-            return "Infinity".toValue()
+            return "Infinity"
 
         // TODO: Better conversion, preferably V8's algorithm
         // (mfbt/double-conversion/double-conversion.{h,cc}
         if (value.isInt)
-            return value.asInt.toString().toValue()
-        return value.asDouble.toString().toValue()
+            return value.asInt.toString()
+        return value.asDouble.toString()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.1")
+    fun bigintUnaryMinus(value: JSValue): JSBigInt {
+        expect(value is JSBigInt)
+        if (value.number == BigInteger.ZERO)
+            return value
+        return value.number.negate().toValue()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.2")
+    fun bigintBitwiseNOT(value: JSValue): JSBigInt {
+        expect(value is JSBigInt)
+        return value.number.inv().toValue()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.3")
+    fun bigintExponentiate(base: JSValue, exponent: JSValue): JSBigInt {
+        expect(base is JSBigInt)
+        expect(exponent is JSBigInt)
+        if (exponent.number.signum() == -1)
+            Errors.BigInt.NegativeExponentiation.throwRangeError()
+        if (exponent.number.signum() == 0)
+            return JSBigInt.ONE
+        try {
+            return base.number.pow(exponent.number.intValueExact()).toValue()
+        } catch (e: ArithmeticException) {
+            Errors.BigInt.OutOfBoundsExponentiation.throwRangeError()
+        }
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.4")
+    fun bigintMultiply(lhs: JSValue, rhs: JSValue): JSBigInt {
+        expect(lhs is JSBigInt)
+        expect(rhs is JSBigInt)
+        return lhs.number.multiply(rhs.number).toValue()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.5")
+    fun bigintDivide(lhs: JSValue, rhs: JSValue): JSBigInt {
+        expect(lhs is JSBigInt)
+        expect(rhs is JSBigInt)
+        if (rhs.number == BigInteger.ZERO)
+            Errors.BigInt.DivideByZero.throwRangeError()
+        return lhs.number.divide(rhs.number).toValue()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.6")
+    fun bigintRemainder(lhs: JSValue, rhs: JSValue): JSBigInt {
+        expect(lhs is JSBigInt)
+        expect(rhs is JSBigInt)
+        if (rhs.number == BigInteger.ZERO)
+            Errors.BigInt.DivideByZero.throwRangeError()
+        if (lhs.number == BigInteger.ZERO)
+            return JSBigInt.ZERO
+        return lhs.number.remainder(rhs.number).toValue()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.7")
+    fun bigintAdd(lhs: JSValue, rhs: JSValue): JSBigInt {
+        expect(lhs is JSBigInt)
+        expect(rhs is JSBigInt)
+        return lhs.number.add(rhs.number).toValue()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.8")
+    fun bigintSubtract(lhs: JSValue, rhs: JSValue): JSBigInt {
+        expect(lhs is JSBigInt)
+        expect(rhs is JSBigInt)
+        return lhs.number.subtract(rhs.number).toValue()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.9")
+    fun bigintLeftShift(lhs: JSValue, rhs: JSValue): JSBigInt {
+        expect(lhs is JSBigInt)
+        expect(rhs is JSBigInt)
+        try {
+            return lhs.number.shiftLeft(rhs.number.intValueExact()).toValue()
+        } catch (e: ArithmeticException) {
+            Errors.BigInt.OutOfBoundsShift.throwRangeError()
+        }
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.10")
+    fun bigintSignedRightShift(lhs: JSValue, rhs: JSValue): JSBigInt {
+        expect(lhs is JSBigInt)
+        expect(rhs is JSBigInt)
+        return bigintLeftShift(lhs, rhs.number.negate().toValue())
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.11")
+    fun bigintUnsignedRightShift(lhs: JSValue, rhs: JSValue): JSBigInt {
+        Errors.BigInt.UnsignedRightShift.throwTypeError()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.12")
+    fun bigintLessThan(lhs: JSValue, rhs: JSValue): JSBoolean {
+        expect(lhs is JSBigInt)
+        expect(rhs is JSBigInt)
+        return (lhs.number < rhs.number).toValue()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.12")
+    fun bigintEqual(lhs: JSValue, rhs: JSValue): JSBoolean {
+        expect(lhs is JSBigInt)
+        expect(rhs is JSBigInt)
+        return (lhs.number == rhs.number).toValue()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.12")
+    fun bigintSameValue(lhs: JSValue, rhs: JSValue): JSBoolean {
+        return bigintEqual(lhs, rhs)
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.12")
+    fun bigintSameValueZero(lhs: JSValue, rhs: JSValue): JSBoolean {
+        return bigintEqual(lhs, rhs)
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.20")
+    fun bigintBitwiseAND(lhs: JSValue, rhs: JSValue): JSBigInt {
+        expect(lhs is JSBigInt)
+        expect(rhs is JSBigInt)
+        return lhs.number.and(rhs.number).toValue()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.21")
+    fun bigintBitwiseXOR(lhs: JSValue, rhs: JSValue): JSBigInt {
+        expect(lhs is JSBigInt)
+        expect(rhs is JSBigInt)
+        return lhs.number.xor(rhs.number).toValue()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.22")
+    fun bigintBitwiseOR(lhs: JSValue, rhs: JSValue): JSBigInt {
+        expect(lhs is JSBigInt)
+        expect(rhs is JSBigInt)
+        return lhs.number.or(rhs.number).toValue()
+    }
+
+    @JvmStatic @ECMAImpl("6.1.6.2.23")
+    fun bigintToString(value: JSValue): String {
+        expect(value is JSBigInt)
+        return value.number.toString(10)
     }
 
     @JvmStatic @ECMAImpl("6.2.4.5")
@@ -364,6 +508,7 @@ object Operations {
             val result = call(exoticToPrim, value, listOf(hint))
             if (result !is JSObject)
                 return result
+            Errors.BadToPrimitiveReturnValue.throwTypeError()
         }
 
         // TODO Get @@toPrimitive method
@@ -474,6 +619,50 @@ object Operations {
         return JSNumber(int % MAX_32BIT_INT)
     }
 
+    @JvmStatic @ECMAImpl("7.1.13")
+    fun toBigInt(value: JSValue): JSBigInt = when (val prim = toPrimitive(value, ToPrimitiveHint.AsNumber)) {
+        JSUndefined -> Errors.BigInt.Conversion("undefined").throwTypeError()
+        JSNull -> Errors.BigInt.Conversion("null").throwTypeError()
+        is JSBoolean -> if (prim.boolean) JSBigInt.ONE else JSBigInt.ZERO
+        is JSBigInt -> prim
+        is JSNumber -> Errors.BigInt.Conversion(prim.number.toString()).throwTypeError()
+        is JSString -> stringToBigInt(prim.string)
+        is JSSymbol -> Errors.BigInt.Conversion(prim.descriptiveString()).throwTypeError()
+        else -> unreachable()
+    }
+
+    @JvmStatic @ECMAImpl("7.1.14")
+    fun stringToBigInt(string: String): JSBigInt {
+        val trimmed = string.trim()
+        if (trimmed.isEmpty())
+            return JSBigInt.ZERO
+        if (trimmed == "Infinity" || '.' in trimmed || trimmed.matches(exponentRegex))
+            Errors.BigInt.Conversion(string).throwSyntaxError()
+
+        var lc = trimmed.toLowerCase()
+        val radix = when {
+            lc.startsWith("0x") -> {
+                lc = lc.drop(2)
+                16
+            }
+            lc.startsWith("0o") -> {
+                lc = lc.drop(2)
+                8
+            }
+            lc.startsWith("0b") -> {
+                lc = lc.drop(2)
+                2
+            }
+            else -> 10
+        }
+
+        try {
+            return BigInteger(lc, radix).toValue()
+        } catch (e: NumberFormatException) {
+            Errors.BigInt.Conversion(string).throwSyntaxError()
+        }
+    }
+
     @JvmStatic @ECMAImpl("7.1.17")
     fun toString(value: JSValue): JSString {
         return when (value) {
@@ -483,10 +672,9 @@ object Operations {
             JSTrue -> "true"
             JSFalse -> "false"
             // TODO: Make sure to follow all of JS's number conversion rules here
-            is JSNumber -> if (value.isInt) {
-                value.number.toLong().toString().replace('E', 'e')
-            } else value.number.toString().replace('E', 'e')
+            is JSNumber -> numericToString(value)
             is JSSymbol -> Errors.FailedSymbolToString.throwTypeError()
+            is JSBigInt -> bigintToString(value)
             is JSObject -> toString(toPrimitive(value, ToPrimitiveHint.AsString)).string
             else -> unreachable()
         }.let(::JSString)
@@ -506,6 +694,7 @@ object Operations {
                 value.isInt -> value.asInt.toString()
                 else -> value.asDouble.toString()
             }
+            is JSBigInt -> value.number.toString(10) + "n"
             is JSString -> value.string
             is JSSymbol -> value.descriptiveString()
             is JSObject -> "[object <${value::class.java.simpleName}>]"
@@ -524,7 +713,7 @@ object Operations {
             is JSNumber -> JSNumberObject.create(Agent.runningContext.realm, value)
             is JSString -> JSStringObject.create(Agent.runningContext.realm, value)
             is JSSymbol -> JSSymbolObject.create(Agent.runningContext.realm, value)
-            is JSBigInt -> TODO()
+            is JSBigInt -> JSBigIntObject.create(Agent.runningContext.realm, value)
             else -> TODO()
         }
     }
@@ -559,6 +748,19 @@ object Operations {
         if (toString(num).string != argument.string)
             return null
         return num as? JSNumber
+    }
+
+    @JvmStatic @ECMAImpl("7.1.22")
+    fun toIndex(value: JSValue): Int {
+        if (value == JSUndefined)
+            return 0
+        val intIndex = toIntegerOrInfinity(value)
+        if (intIndex.isNegativeInfinity || intIndex.asInt < 0)
+            Errors.BadIndex(toPrintableString(value)).throwRangeError()
+        val index = toLength(intIndex)
+        if (!intIndex.sameValue(index))
+            Errors.BadIndex(toPrintableString(value)).throwRangeError()
+        return index.asInt
     }
 
     @JvmStatic @ECMAImpl("7.2.1")
@@ -625,20 +827,46 @@ object Operations {
         }
 
         if (px is JSString && py is JSString)
-            TODO()
+            return (px.string < py.string).toValue()
 
-        if (px is JSBigInt && py is JSString)
-            TODO()
-        if (px is JSString && py is JSBigInt)
-            TODO()
+        if (px is JSBigInt && py is JSString) {
+            return try {
+                bigintLessThan(px, BigInteger(py.string).toValue())
+            } catch (e: NumberFormatException) {
+                return JSUndefined
+            }
+        }
+
+        if (px is JSString && py is JSBigInt) {
+            return try {
+                bigintLessThan(BigInteger(px.string).toValue(), py)
+            } catch (e: NumberFormatException) {
+                return JSUndefined
+            }
+        }
 
         val nx = toNumeric(px)
         val ny = toNumeric(py)
 
         if (nx is JSNumber && ny is JSNumber)
             return numericLessThan(nx, ny)
+        if (nx is JSBigInt && ny is JSBigInt)
+            return bigintLessThan(nx, ny)
 
-        TODO()
+        if (nx.isNaN || ny.isNaN)
+            return JSUndefined
+
+        if (nx.isNegativeInfinity || ny.isPositiveInfinity)
+            return JSTrue
+        if (nx.isPositiveInfinity || ny.isNegativeInfinity)
+            return JSFalse
+
+        if (nx is JSBigInt)
+            return (nx.number < BigInteger.valueOf(ny.asLong)).toValue()
+        if (ny is JSBigInt)
+            return (BigInteger.valueOf(nx.asLong) < ny.number).toValue()
+
+        unreachable()
     }
 
     @JvmStatic @ECMAImpl("7.2.14")
@@ -656,10 +884,21 @@ object Operations {
         if (lhs is JSString && rhs is JSNumber)
             return abstractEqualityComparison(toNumber(lhs), rhs)
 
-        if (lhs is JSBigInt && rhs is JSString)
-            TODO()
-        if (lhs is JSString && rhs is JSBigInt)
-            TODO()
+        if (lhs is JSBigInt && rhs is JSString) {
+            return try {
+                abstractEqualityComparison(lhs, BigInteger(rhs.string).toValue())
+            } catch (e: NumberFormatException) {
+                JSFalse
+            }
+        }
+
+        if (lhs is JSString && rhs is JSBigInt) {
+            return try {
+                abstractEqualityComparison(BigInteger(lhs.string).toValue(), rhs)
+            } catch (e: NumberFormatException) {
+                JSFalse
+            }
+        }
 
         if (lhs is JSBoolean)
             return abstractEqualityComparison(toNumber(lhs), rhs)
@@ -671,8 +910,14 @@ object Operations {
         if ((rhs is JSString || rhs is JSNumber || rhs is JSBigInt || rhs is JSSymbol) && lhs is JSObject)
             return abstractEqualityComparison(toPrimitive(lhs), rhs)
 
-        if ((lhs is JSBigInt && rhs is JSNumber) || (lhs is JSNumber && rhs is JSBigInt))
-            TODO()
+        if ((lhs is JSBigInt && rhs is JSNumber) || (lhs is JSNumber && rhs is JSBigInt)) {
+            if (!lhs.isFinite || !rhs.isFinite)
+                return JSFalse
+            if (lhs is JSBigInt)
+                return (lhs.number < BigInteger.valueOf(rhs.asLong)).toValue()
+            expect(rhs is JSBigInt)
+            return (BigInteger.valueOf(lhs.asLong) < rhs.number).toValue()
+        }
 
         return JSFalse
     }
@@ -684,7 +929,7 @@ object Operations {
         if (lhs is JSNumber)
             return numericEqual(lhs, rhs)
         if (lhs is JSBigInt)
-            TODO()
+            return bigintEqual(lhs, rhs)
         return lhs.sameValueNonNumeric(rhs).toValue()
     }
 
@@ -1558,10 +1803,23 @@ object Operations {
         if (lnum.type != rnum.type)
             Errors.BadOperator(op, lnum.type, rnum.type).throwTypeError()
 
-        if (lnum.type == JSValue.Type.BigInt)
-            TODO()
-
-        return when (op) {
+        return if (lnum.type == JSValue.Type.BigInt) {
+            when (op) {
+                "**" -> bigintExponentiate(lnum, rnum)
+                "*" -> bigintMultiply(lnum, rnum)
+                "/" -> bigintDivide(lnum, rnum)
+                "%" -> bigintRemainder(lnum, rnum)
+                "+" -> bigintAdd(lnum, rnum)
+                "-" -> bigintSubtract(lnum, rnum)
+                "<<" -> bigintLeftShift(lnum, rnum)
+                ">>" -> bigintSignedRightShift(lnum, rnum)
+                ">>>" -> bigintUnsignedRightShift(lnum, rnum)
+                "&" -> bigintBitwiseAND(lnum, rnum)
+                "^" -> bigintBitwiseXOR(lnum, rnum)
+                "|" -> bigintBitwiseOR(lnum, rnum)
+                else -> unreachable()
+            }
+        } else when (op) {
             "**" -> numericExponentiate(lnum, rnum)
             "*" -> numericMultiply(lnum, rnum)
             "/" -> numericDivide(lnum, rnum)

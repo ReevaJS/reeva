@@ -2,6 +2,7 @@ package me.mattco.reeva.utils
 
 import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.*
+import java.math.BigInteger
 
 fun Iterable<Boolean>.all() = this.all { it }
 fun <T> Iterable<T>.allIndexed(predicate: (index: Int, T) -> Boolean) = this.mapIndexed(predicate).all()
@@ -28,3 +29,4 @@ fun Boolean.toValue() = if (this) JSTrue else JSFalse
 fun String.toValue() = JSString(this)
 fun Char.toValue() = JSString(this.toString())
 fun Number.toValue() = JSNumber(this.toDouble())
+fun BigInteger.toValue() = JSBigInt(this)

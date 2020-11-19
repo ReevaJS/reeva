@@ -137,8 +137,8 @@ object JVMValueMapper {
         }
         is JSBoolean -> {
             when (type) {
-                Boolean::class.javaPrimitiveType, Boolean::class.javaObjectType, Any::class.java -> value.value
-                String::class.java -> value.value.toString()
+                Boolean::class.javaPrimitiveType, Boolean::class.javaObjectType, Any::class.java -> value.boolean
+                String::class.java -> value.boolean.toString()
                 else -> Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
             }
         }
@@ -153,7 +153,7 @@ object JVMValueMapper {
                 Char::class.javaPrimitiveType, Char::class.javaObjectType ->
                     if (value.isNaN) Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
                     else value.number.toInt().toChar()
-                String::class.java -> Operations.numericToString(value).string
+                String::class.java -> Operations.numericToString(value)
                 else -> Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
             }
         }

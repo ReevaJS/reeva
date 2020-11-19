@@ -48,9 +48,10 @@ object Errors {
     class AssignmentBeforeInitialization(propertyName: String) : Error("cannot assign to variable \"$propertyName\" " +
         "before it is initialized")
     class AssignmentToConstant(propertyName: String) : Error("cannot assign to constant variable \"$propertyName\"")
-    object NoThisBinding : Error("current context has no 'this' property binding")
+    object NoThisBinding : Error("current context has no \"this\" property binding")
 
     class FailedToPrimitive(value: String) : Error("cannot convert $value to primitive value")
+    object BadToPrimitiveReturnValue : Error("object's @@toPrimitive method must return a primitive value")
     class FailedToNumber(type: JSValue.Type) : Error("cannot convert $type to Number")
     object FailedSymbolToString : Error("cannot convert Symbol to String")
     class FailedToObject(type: JSValue.Type) : Error("cannot convert $type to Object")
@@ -68,6 +69,7 @@ object Errors {
     class NotACtor(value: String) : Error("$value is not a constructor")
     class NotCallable(value: String) : Error("$value is not callable")
     class BadOperator(op: String, lhs: JSValue.Type, rhs: JSValue.Type) : Error("cannot apply operator $op to types $lhs and $rhs")
+    class BadIndex(value: String) : Error("invalid index $value")
     object NewTargetOutsideFunc : Error("new.target accessed outside of a function")
     object SuperOutsideMethod : Error("super property accessed outside of a method")
     object SuperCallOutsideCtor : Error("super call outside of a constructor")
@@ -89,8 +91,18 @@ object Errors {
         object ReduceEmptyArray : Error("cannot reduce empty array with no initial value")
     }
 
+    object BigInt {
+        object NegativeExponentiation : Error("BigInt exponentiation cannot have a negative exponent")
+        object OutOfBoundsExponentiation : Error("cannot exponentiate two BigInts where the exponent is larger than 2**31-1")
+        object DivideByZero : Error("BigInt division by zero")
+        object OutOfBoundsShift : Error("cannot shift two BigInts where the right-hand-side is larger than 2**31-1")
+        object UnsignedRightShift : Error("cannot unsigned right-shift two BigInts")
+        object CtorCalledWithNew : Error("the BigInt constructor cannot be called with the \"new\" operation")
+        class Conversion(value: String) : Error("cannot convert $value to BigInt")
+    }
+
     object Class {
-        object DerivedSuper : Error("derived class must call super() before using 'this'")
+        object DerivedSuper : Error("derived class must call super() before using \"this\"")
         object BadExtends : Error("class extends target must be a constructor or null")
         object BadExtendsProto : Error("class extends target must be a prototype which is an object or null")
         object BadSuperFunc : Error("super call on non-constructable super")

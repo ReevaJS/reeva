@@ -42,6 +42,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     lateinit var symbolCtor: JSSymbolCtor private set
 
     val numberProto by lazy { JSNumberProto.create(this) }
+    val bigIntProto by lazy { JSBigIntProto.create(this) }
     val booleanProto by lazy { JSBooleanProto.create(this) }
     val stringProto by lazy { JSStringProto.create(this) }
     val arrayProto by lazy { JSArrayProto.create(this) }
@@ -67,6 +68,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
 
     val objectCtor by lazy { JSObjectCtor.create(this) }
     val numberCtor by lazy { JSNumberCtor.create(this) }
+    val bigIntCtor by lazy { JSBigIntCtor.create(this) }
     val booleanCtor by lazy { JSBooleanCtor.create(this) }
     val stringCtor by lazy { JSStringCtor.create(this) }
     val functionCtor by lazy { JSFunctionCtor.create(this) }
@@ -117,6 +119,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
         objectCtor.defineOwnProperty("prototype", objectProto, Descriptor.HAS_BASIC)
         functionCtor.defineOwnProperty("prototype", functionProto, Descriptor.HAS_BASIC)
         numberCtor.defineOwnProperty("prototype", numberProto, Descriptor.HAS_BASIC)
+        bigIntCtor.defineOwnProperty("prototype", bigIntProto, Descriptor.HAS_BASIC)
         stringCtor.defineOwnProperty("prototype", stringProto, Descriptor.HAS_BASIC)
         booleanCtor.defineOwnProperty("prototype", booleanProto, Descriptor.HAS_BASIC)
         symbolCtor.defineOwnProperty("prototype", symbolProto, Descriptor.HAS_BASIC)

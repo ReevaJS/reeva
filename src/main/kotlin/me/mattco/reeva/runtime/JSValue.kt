@@ -9,7 +9,6 @@ import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.expect
-import me.mattco.reeva.utils.unreachable
 import kotlin.math.floor
 
 abstract class JSValue : Ref {
@@ -22,6 +21,7 @@ abstract class JSValue : Ref {
             is JSString -> Type.String
             is JSSymbol -> Type.Symbol
             is JSNumber -> Type.Number
+            is JSBigInt -> Type.BigInt
             is JSNativeProperty -> Type.NativeProperty
             is JSAccessor -> Type.Accessor
             is JSObject -> Type.Object
@@ -55,7 +55,7 @@ abstract class JSValue : Ref {
     val asBoolean: Boolean
         get() {
             expect(isBoolean)
-            return (this as JSBoolean).value
+            return (this as JSBoolean).boolean
         }
 
     val asString: String
@@ -111,9 +111,9 @@ abstract class JSValue : Ref {
         if (type != other.type)
             return false
         if (type == Type.Number)
-            return Operations.numericSameValue(this, other).value
+            return Operations.numericSameValue(this, other).boolean
         if (type == Type.BigInt)
-            TODO()
+            return Operations.bigintSameValue(this, other).boolean
         return sameValueNonNumeric(other)
     }
 
@@ -122,9 +122,9 @@ abstract class JSValue : Ref {
         if (type != other.type)
             return false
         if (type == Type.Number)
-            return Operations.numericSameValueZero(this, other).value
+            return Operations.numericSameValueZero(this, other).boolean
         if (type == Type.BigInt)
-            TODO()
+            return Operations.bigintSameValueZero(this, other).boolean
         return sameValueNonNumeric(other)
     }
 

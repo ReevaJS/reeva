@@ -1597,6 +1597,7 @@ class Parser(text: String, private val realm: Realm) {
         return parseNullLiteral() ?:
             parseBooleanLiteral() ?:
             parseNumericLiteral() ?:
+            parseBigIntLiteral() ?:
             parseStringLiteral()
     }
 
@@ -1620,6 +1621,21 @@ class Parser(text: String, private val realm: Realm) {
     private fun parseNumericLiteral(): NumericLiteralNode? {
         return if (tokenType == TokenType.NumericLiteral) {
             NumericLiteralNode(consume().doubleValue())
+        } else null
+    }
+
+    private fun parseBigIntLiteral(): BigIntLiteralNode? {
+        return if (tokenType == TokenType.BigIntLiteral) {
+            val value = consume().value.toLowerCase()
+            val type = when {
+                value.startsWith("0x") -> BigIntLiteralNode.Type.Hex
+                value.startsWith("0b") -> BigIntLiteralNode.Type.Binary
+                value.startsWith("0o") -> BigIntLiteralNode.Type.Octal
+                else -> BigIntLiteralNode.Type.Normal
+            }
+            BigIntLiteralNode(value.dropLast(1).let {
+                if (type != BigIntLiteralNode.Type.Normal) it.drop(2) else it
+            }, type)
         } else null
     }
 

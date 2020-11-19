@@ -132,16 +132,28 @@ class Lexer(private val source: String) : Iterable<Token> {
                         consume()
                         while (char in '0'..'7')
                             consume()
+                        if (char == 'n') {
+                            consume()
+                            tokenType = TokenType.BigIntLiteral
+                        }
                     }
                     char == 'b' || char == 'B' -> {
                         consume()
                         while (char == '0' || char == '1')
                             consume()
+                        if (char == 'n') {
+                            consume()
+                            tokenType = TokenType.BigIntLiteral
+                        }
                     }
                     char == 'x' || char == 'X' -> {
                         consume()
                         while (char.isHexDigit())
                             consume()
+                        if (char == 'n') {
+                            consume()
+                            tokenType = TokenType.BigIntLiteral
+                        }
                     }
                     char == 'n' -> {
                         consume()

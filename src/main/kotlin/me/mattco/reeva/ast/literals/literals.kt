@@ -38,6 +38,23 @@ class NumericLiteralNode(val value: Double) : NodeBase(), LiteralNode {
     }
 }
 
+class BigIntLiteralNode(val value: String, val type: Type) : NodeBase(), LiteralNode {
+    override fun dump(indent: Int) = buildString {
+        appendIndent(indent)
+        appendName()
+        append(" (value=")
+        append(value)
+        append(")\n")
+    }
+
+    enum class Type {
+        Normal,
+        Hex,
+        Octal,
+        Binary,
+    }
+}
+
 object NullNode : NodeBase(), LiteralNode
 
 object ThisNode : NodeBase(), PrimaryExpressionNode

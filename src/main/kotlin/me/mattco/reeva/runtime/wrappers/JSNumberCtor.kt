@@ -7,6 +7,7 @@ import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
+import me.mattco.reeva.runtime.primitives.JSBigInt
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSTrue
 import me.mattco.reeva.runtime.primitives.JSUndefined
@@ -86,8 +87,8 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     private fun numberFromArg(argument: JSValue): Double {
         return if (!argument.isUndefined) {
             val prim = Operations.toNumeric(argument)
-            if (prim.isBigInt)
-                TODO()
+            if (prim is JSBigInt)
+                return prim.number.toDouble()
             prim.asDouble
         } else 0.0
     }
