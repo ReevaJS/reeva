@@ -6,29 +6,33 @@ import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.errors.*
 import me.mattco.reeva.runtime.objects.PropertyKey
 
-open class Error(private val formatString: String) {
+open class Error(private val message: String) {
     fun throwEvalError(): Nothing {
-        throw ThrowException(JSEvalErrorObject.create(Agent.runningContext.realm, formatString))
+        throw ThrowException(JSEvalErrorObject.create(Agent.runningContext.realm, message))
+    }
+
+    fun throwInternalError(): Nothing {
+        throw ThrowException(JSInternalErrorObject.create(Agent.runningContext.realm, message))
     }
 
     fun throwTypeError(): Nothing {
-        throw ThrowException(JSTypeErrorObject.create(Agent.runningContext.realm, formatString))
+        throw ThrowException(JSTypeErrorObject.create(Agent.runningContext.realm, message))
     }
 
     fun throwRangeError(): Nothing {
-        throw ThrowException(JSRangeErrorObject.create(Agent.runningContext.realm, formatString))
+        throw ThrowException(JSRangeErrorObject.create(Agent.runningContext.realm, message))
     }
 
     fun throwReferenceError(): Nothing {
-        throw ThrowException(JSReferenceErrorObject.create(Agent.runningContext.realm, formatString))
+        throw ThrowException(JSReferenceErrorObject.create(Agent.runningContext.realm, message))
     }
 
     fun throwSyntaxError(): Nothing {
-        throw ThrowException(JSSyntaxErrorObject.create(Agent.runningContext.realm, formatString))
+        throw ThrowException(JSSyntaxErrorObject.create(Agent.runningContext.realm, message))
     }
 
     fun throwURIError(): Nothing {
-        throw ThrowException(JSURIErrorObject.create(Agent.runningContext.realm, formatString))
+        throw ThrowException(JSURIErrorObject.create(Agent.runningContext.realm, message))
     }
 }
 

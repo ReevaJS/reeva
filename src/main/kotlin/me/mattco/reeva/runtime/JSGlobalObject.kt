@@ -40,6 +40,7 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("Error", realm.errorCtor, attrs)
         defineOwnProperty("EvalError", realm.evalErrorCtor, attrs)
         defineOwnProperty("Function", realm.functionCtor, attrs)
+        defineOwnProperty("InternalError", realm.internalErrorCtor, attrs)
         defineOwnProperty("Map", realm.mapCtor, attrs)
         defineOwnProperty("Number", realm.numberCtor, attrs)
         defineOwnProperty("Object", realm.objectCtor, attrs)

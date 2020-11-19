@@ -58,6 +58,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
 
     val errorProto by lazy { JSErrorProto.create(this) }
     val evalErrorProto by lazy { JSEvalErrorProto.create(this) }
+    val internalErrorProto by lazy { JSInternalErrorProto.create(this) }
     val typeErrorProto by lazy { JSTypeErrorProto.create(this) }
     val rangeErrorProto by lazy { JSRangeErrorProto.create(this) }
     val referenceErrorProto by lazy { JSReferenceErrorProto.create(this) }
@@ -78,6 +79,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
 
     val errorCtor by lazy { JSErrorCtor.create(this) }
     val evalErrorCtor by lazy { JSEvalErrorCtor.create(this) }
+    val internalErrorCtor by lazy { JSInternalErrorCtor.create(this) }
     val typeErrorCtor by lazy { JSTypeErrorCtor.create(this) }
     val rangeErrorCtor by lazy { JSRangeErrorCtor.create(this) }
     val referenceErrorCtor by lazy { JSReferenceErrorCtor.create(this) }
@@ -124,6 +126,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
         dateCtor.defineOwnProperty("prototype", dateProto, Descriptor.HAS_BASIC)
         errorCtor.defineOwnProperty("prototype", errorProto, Descriptor.HAS_BASIC)
         evalErrorCtor.defineOwnProperty("prototype", evalErrorProto, Descriptor.HAS_BASIC)
+        internalErrorCtor.defineOwnProperty("prototype", internalErrorProto, Descriptor.HAS_BASIC)
         typeErrorCtor.defineOwnProperty("prototype", typeErrorProto, Descriptor.HAS_BASIC)
         rangeErrorCtor.defineOwnProperty("prototype", rangeErrorProto, Descriptor.HAS_BASIC)
         referenceErrorCtor.defineOwnProperty("prototype", referenceErrorProto, Descriptor.HAS_BASIC)
