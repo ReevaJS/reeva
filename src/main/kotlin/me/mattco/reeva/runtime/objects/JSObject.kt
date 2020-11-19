@@ -32,13 +32,7 @@ open class JSObject protected constructor(
             shape = Shape(realm)
         } else {
             shape = realm.emptyShape
-
-            // Whenever the setPrototype method is overridden, its effects are
-            // only necessary after construction, for example in Object.setPrototypeOf.
-            // When the class is constructed, we always want the parent implementation of
-            // setPrototype here.
-            @Suppress("LeakingThis")
-            setPrototype(prototype)
+            ordinarySetPrototype(prototype)
         }
     }
 
@@ -80,6 +74,11 @@ open class JSObject protected constructor(
 
     @ECMAImpl("9.1.2")
     open fun setPrototype(newPrototype: JSValue): Boolean {
+        return ordinarySetPrototype(newPrototype)
+    }
+
+    @ECMAImpl("9.1.2.1")
+    open fun ordinarySetPrototype(newPrototype: JSValue): Boolean {
         ecmaAssert(newPrototype is JSObject || newPrototype == JSNull)
         if (newPrototype.sameValue(shape.prototype ?: JSNull))
             return true
