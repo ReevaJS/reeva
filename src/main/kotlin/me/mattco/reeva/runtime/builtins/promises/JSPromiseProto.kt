@@ -18,12 +18,12 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
         defineOwnProperty(Realm.`@@toStringTag`, "Promise".toValue(), Descriptor.CONFIGURABLE)
     }
 
-    @JSMethod("catch", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("catch", 1)
     fun catch(thisValue: JSValue, arguments: JSArguments): JSValue {
         return Operations.invoke(thisValue, "then".toValue(), listOf(JSUndefined, arguments.argument(0)))
     }
 
-    @JSMethod("finally", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("finally", 1)
     fun finally(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("Promise.prototype.finally").throwTypeError()
@@ -39,7 +39,7 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
         return Operations.invoke(thisValue, "then".toValue(), listOf(thenFinally, catchFinally))
     }
 
-    @JSMethod("then", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("then", 2)
     fun then(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSPromiseObject)
             Errors.IncompatibleMethodCall("Promise.prototype.then").throwTypeError()

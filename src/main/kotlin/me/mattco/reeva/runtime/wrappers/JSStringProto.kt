@@ -18,12 +18,11 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
         annotationInit()
         setPrototype(realm.objectProto)
-        defineOwnProperty("prototype", realm.objectProto, 0)
-
+        defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.stringCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
-    @JSMethod("charAt", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("charAt", 1)
     fun charAt(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val str = Operations.toString(obj)
@@ -38,7 +37,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return str.string[position].toValue()
     }
 
-    @JSMethod("charCodeAt", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("charCodeAt", 1)
     fun charCodeAt(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val str = Operations.toString(obj)
@@ -53,7 +52,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return str.string[position].toInt().toValue()
     }
 
-    @JSMethod("codePointAt", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("codePointAt", 1)
     fun codePointAt(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -67,7 +66,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return Operations.codePointAt(string, position).codepoint.toValue()
     }
 
-    @JSMethod("concat", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("concat", 1)
     fun concat(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -78,7 +77,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return result.toValue()
     }
 
-    @JSMethod("endsWith", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("endsWith", 1)
     fun endsWith(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -101,7 +100,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return (string.substring(start, end) == searchString).toValue()
     }
 
-    @JSMethod("includes", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("includes", 1)
     fun includes(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -112,7 +111,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.substring(pos).contains(searchString).toValue()
     }
 
-    @JSMethod("indexOf", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("indexOf", 1)
     fun indexOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -124,7 +123,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.indexOf(searchString, pos).toValue()
     }
 
-    @JSMethod("lastIndexOf", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("lastIndexOf", 1)
     fun lastIndexOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -140,19 +139,19 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.lastIndexOf(searchString, pos).toValue()
     }
 
-    @JSMethod("padEnd", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("padEnd", 1)
     fun padEnd(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         return stringPad(obj, arguments.argument(0), arguments.argument(1), false).toValue()
     }
 
-    @JSMethod("padStart", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("padStart", 1)
     fun padStart(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         return stringPad(obj, arguments.argument(0), arguments.argument(1), true).toValue()
     }
 
-    @JSMethod("repeat", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("repeat", 1)
     fun repeat(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -162,7 +161,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.repeat(count).toValue()
     }
 
-    @JSMethod("replace", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("replace", 1)
     fun replace(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         var (searchValue, replaceValue) = arguments.takeArgs(0..1)
@@ -197,7 +196,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return (preserved + replacement + string.substring(position + searchString.length)).toValue()
     }
 
-    @JSMethod("slice", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("slice", 2)
     fun slice(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -228,7 +227,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.substring(from, to).toValue()
     }
 
-    @JSMethod("split", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("split", 2)
     fun split(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val (separator, limit) = arguments.takeArgs(0..1)
@@ -289,7 +288,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return array
     }
 
-    @JSMethod("startsWith", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("startsWith", 1)
     fun startsWith(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -312,7 +311,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return (string.substring(start, end) == searchString).toValue()
     }
 
-    @JSMethod("substring", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("substring", 2)
     fun substring(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -331,7 +330,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.substring(from, to).toValue()
     }
 
-    @JSMethod("toLowerCase", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("toLowerCase", 0)
     fun toLowerCase(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -340,12 +339,12 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.toLowerCase().toValue()
     }
 
-    @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("toString", 0)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisStringValue(thisValue, "toString")
     }
 
-    @JSMethod("toUpperCase", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("toUpperCase", 0)
     fun toUpperCase(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -354,28 +353,28 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.toUpperCase().toValue()
     }
 
-    @JSMethod("trim", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("trim", 0)
     fun trim(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
         return string.trim().toValue()
     }
 
-    @JSMethod("trimEnd", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("trimEnd", 0)
     fun trimEnd(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
         return string.trimEnd().toValue()
     }
 
-    @JSMethod("trimStart", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("trimStart", 0)
     fun trimStart(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
         return string.trimStart().toValue()
     }
 
-    @JSMethod("valueOf", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("valueOf", 0)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisStringValue(thisValue, "valueOf")
     }

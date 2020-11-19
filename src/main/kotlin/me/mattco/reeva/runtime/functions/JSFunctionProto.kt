@@ -23,7 +23,7 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
         defineOwnProperty("arguments".key(), desc)
     }
 
-    @JSMethod("bind", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("bind", 1)
     fun bind(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isCallable(thisValue))
             Errors.Function.BindNonFunction.throwTypeError()
@@ -58,14 +58,14 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
         return function
     }
 
-    @JSMethod("call", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("call", 1)
     fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isCallable(thisValue))
             Errors.Function.NonCallable("call").throwTypeError()
         return Operations.call(thisValue, arguments.argument(0), arguments.subList(1, arguments.size))
     }
 
-    @JSMethod("apply", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("apply", 2)
     fun apply(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isCallable(thisValue))
             Errors.Function.NonCallable("apply").throwTypeError()

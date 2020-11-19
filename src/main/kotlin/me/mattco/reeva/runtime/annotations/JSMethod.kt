@@ -7,5 +7,5 @@ import me.mattco.reeva.runtime.objects.Descriptor
 annotation class JSMethod(
     val name: String,
     val length: Int,
-    val attributes: Int = Descriptor.defaultAttributes
+    val attributes: String = "CeW"
 )

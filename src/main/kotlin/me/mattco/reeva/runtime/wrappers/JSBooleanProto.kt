@@ -15,20 +15,19 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
     override fun init() {
         annotationInit()
         setPrototype(realm.objectProto)
-        defineOwnProperty("prototype", realm.objectProto, 0)
-
+        defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.booleanCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     @ECMAImpl("19.3.3.2")
-    @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("toString", 0)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         val b = thisBooleanValue(thisValue, "toString")
         return if (b.value) "true".toValue() else "false".toValue()
     }
 
     @ECMAImpl("19.3.3.2")
-    @JSMethod("valueOf", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("valueOf", 0)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisBooleanValue(thisValue, "valueOf")
     }

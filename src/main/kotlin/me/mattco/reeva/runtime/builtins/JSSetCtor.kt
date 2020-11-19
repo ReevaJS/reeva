@@ -19,7 +19,7 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
         isConstructable = true
     }
 
-    @JSNativeAccessorGetter("@@species", Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSNativeAccessorGetter("@@species", "Ce")
     fun `get@@species`(thisValue: JSValue): JSValue {
         return thisValue
     }

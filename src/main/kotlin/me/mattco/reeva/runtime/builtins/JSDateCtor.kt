@@ -90,12 +90,12 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
         return JSDateObject.create(realm, zdt)
     }
 
-    @JSMethod("now", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("now", 0)
     fun now(thisValue: JSValue, arguments: JSArguments): JSValue {
         return Instant.now().toEpochMilli().toValue()
     }
 
-    @JSMethod("parse", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("parse", 1)
     fun parse(thisValue: JSValue, arguments: JSArguments): JSValue {
         return JSDateObject.create(realm, parseHelper(arguments) ?: return JSNumber.NaN)
     }
@@ -125,7 +125,7 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
         return if (isSupported(field)) get(field) else default
     }
 
-    @JSMethod("UTC", 7, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("UTC", 7)
     fun utc(thisValue: JSValue, arguments: JSArguments): JSValue {
         fun getArg(index: Int, offset: Int = 0): Long? {
             if (arguments.size <= index)

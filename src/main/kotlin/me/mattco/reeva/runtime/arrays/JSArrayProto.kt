@@ -23,8 +23,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
         annotationInit()
         setPrototype(realm.objectProto)
-        defineOwnProperty("prototype", realm.objectProto, 0)
-
+        defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.arrayCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
 
         // "The initial values of the @@iterator property is the same function object as the initial
@@ -49,7 +48,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         defineOwnProperty(Realm.`@@unscopables`, unscopables, Descriptor.CONFIGURABLE)
     }
 
-    @JSMethod("concat", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("concat", 1)
     fun concat(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         val array = Operations.arraySpeciesCreate(thisObj, 0)
@@ -83,7 +82,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("copyWithin", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("copyWithin", 2)
     fun copyWithin(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, start, end) = arguments.takeArgs(0..2)
 
@@ -135,13 +134,13 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return thisObj
     }
 
-    @JSMethod("entries", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("entries", 0)
     fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         return createArrayIterator(realm, obj, PropertyKind.KeyValue)
     }
 
-    @JSMethod("every", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("every", 1)
     fun every(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (callback, thisArg) = arguments.takeArgs(0..1)
 
@@ -165,7 +164,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return JSTrue
     }
 
-    @JSMethod("fill", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("fill", 1)
     fun fill(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
 
@@ -198,7 +197,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return thisObj
     }
 
-    @JSMethod("filter", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("filter", 1)
     fun filter(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(thisObj)
@@ -227,7 +226,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("find", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("find", 1)
     fun find(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(thisObj)
@@ -250,7 +249,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return JSUndefined
     }
 
-    @JSMethod("findIndex", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("findIndex", 1)
     fun findIndex(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(thisObj)
@@ -273,7 +272,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return JSUndefined
     }
 
-    @JSMethod("flat", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("flat", 0)
     fun flat(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         val sourceLength = Operations.lengthOfArrayLike(thisObj)
@@ -286,7 +285,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("flatMap", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("flatMap", 1)
     fun flatMap(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         val sourceLength = Operations.lengthOfArrayLike(thisObj)
@@ -300,7 +299,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("forEach", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("forEach", 1)
     fun forEach(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -320,7 +319,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return JSUndefined
     }
 
-    @JSMethod("join", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("join", 1)
     fun join(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -337,13 +336,13 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         }.toValue()
     }
 
-    @JSMethod("keys", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("keys", 0)
     fun keys(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         return createArrayIterator(realm, obj, PropertyKind.Key)
     }
 
-    @JSMethod("lastIndexOf", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("lastIndexOf", 1)
     fun lastIndexOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -374,7 +373,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return (-1).toValue()
     }
 
-    @JSMethod("map", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("map", 1)
     fun map(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -394,7 +393,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("pop", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("pop", 0)
     fun pop(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -407,7 +406,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return element
     }
 
-    @JSMethod("push", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("push", 1)
     fun push(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         var length = Operations.lengthOfArrayLike(obj)
@@ -421,17 +420,17 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return length.toValue()
     }
 
-    @JSMethod("reduce", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("reduce", 1)
     fun reduce(thisValue: JSValue, arguments: JSArguments): JSValue {
         return reduceHelper(thisValue, arguments, false)
     }
 
-    @JSMethod("reduceRight", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("reduceRight", 1)
     fun reduceRight(thisValue: JSValue, arguments: JSArguments): JSValue {
         return reduceHelper(thisValue, arguments, true)
     }
 
-    @JSMethod("reverse", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("reverse", 0)
     fun reverse(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         var length = Operations.lengthOfArrayLike(obj)
@@ -491,7 +490,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return obj
     }
 
-    @JSMethod("shift", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("shift", 0)
     fun shift(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -503,7 +502,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return element.getActualValue(obj)
     }
 
-    @JSMethod("slice", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("slice", 2)
     fun slice(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -540,7 +539,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("some", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("some", 1)
     fun some(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -562,7 +561,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return JSFalse
     }
 
-    @JSMethod("splice", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("splice", 1)
     fun splice(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -643,7 +642,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("toString", 0)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val func = obj.get("join")
@@ -652,7 +651,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return realm.objectProto.toString(thisValue, arguments)
     }
 
-    @JSMethod("unshift", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("unshift", 1)
     fun unshift(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -669,7 +668,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return (length + argCount).toValue()
     }
 
-    @JSMethod("values", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("values", 0)
     fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         return createArrayIterator(realm, obj, PropertyKind.Value)

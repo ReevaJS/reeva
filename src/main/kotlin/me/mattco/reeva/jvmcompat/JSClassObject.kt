@@ -22,7 +22,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
     override fun init() {
         super.init()
 
-        defineOwnProperty("prototype", clazzProto, 0)
+        defineOwnProperty("prototype", clazzProto, Descriptor.HAS_BASIC)
     }
 
     override fun evaluate(_arguments: JSArguments): JSValue {
@@ -57,7 +57,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
         )
     }
 
-    @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("toString", 0)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         return "Class(${clazz.name})".toValue()
     }

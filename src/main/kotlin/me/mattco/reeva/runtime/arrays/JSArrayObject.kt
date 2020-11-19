@@ -9,18 +9,19 @@ import me.mattco.reeva.runtime.annotations.JSNativePropertySetter
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
+import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.runtime.primitives.JSString
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
 open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = realm.arrayProto) : JSObject(realm, proto) {
-    @JSNativePropertyGetter("length", Descriptor.WRITABLE)
+    @JSNativePropertyGetter("length", "ceW")
     fun getLength(thisValue: JSValue): JSValue {
         expect(thisValue is JSObject)
         return thisValue.indexedProperties.arrayLikeSize.toValue()
     }
 
-    @JSNativePropertySetter("length", Descriptor.WRITABLE)
+    @JSNativePropertySetter("length", "ceW")
     fun setLength(thisValue: JSValue, newLength: JSValue): JSValue {
         expect(thisValue is JSObject)
         thisValue.indexedProperties.setArrayLikeSize(Operations.toLength(newLength).asInt)
@@ -32,7 +33,7 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
     override fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
         if (property.isString && property.asString == "length") {
             val value = descriptor.getActualValue(this)
-            if (value == JSUndefined)
+            if (value == JSEmpty)
                 return super.defineOwnProperty(property, descriptor)
             val newLenDesc = descriptor.copy()
             val newLenObj = Operations.toUint32(value)

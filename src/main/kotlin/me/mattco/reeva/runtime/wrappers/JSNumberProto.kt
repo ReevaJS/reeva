@@ -17,37 +17,36 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
 
         annotationInit()
         setPrototype(realm.objectProto)
-        defineOwnProperty("prototype", realm.objectProto, 0)
-
+        defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.numberCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     @ECMAImpl("20.1.3.2")
-    @JSMethod("toExponential", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("toExponential", 1)
     fun toExponential(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.3.3")
-    @JSMethod("toFixed", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("toFixed", 1)
     fun toFixed(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.3.3")
-    @JSMethod("toLocaleString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("toLocaleString", 0)
     fun toLocaleString(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.3.3")
-    @JSMethod("toPrecision", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("toPrecision", 1)
     fun toPrecision(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.3.3")
-    @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("toString", 0)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         // TODO: Spec-compliant conversion
         val x = thisNumberValue(thisValue, "toString")
@@ -68,7 +67,7 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
     }
 
     @ECMAImpl("20.1.3.3")
-    @JSMethod("valueOf", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("valueOf", 0)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisNumberValue(thisValue, "valueOf")
     }

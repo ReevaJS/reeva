@@ -30,7 +30,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
             defineOwnProperty("agent", JS262AgentObject.create(realm), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         }
 
-        @JSMethod("createRealm", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        @JSMethod("createRealm", 0)
         fun createRealm(thisValue: JSValue, arguments: JSArguments): JSValue {
             val newRealm = Reeva.makeRealm()
             newRealm.initObjects()
@@ -39,7 +39,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
             return newGlobal.get("$262")
         }
 
-        @JSMethod("gc", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        @JSMethod("gc", 0)
         fun gc(thisValue: JSValue, arguments: JSArguments): JSValue {
             Error("unable to force JVM garbage collection").throwTypeError()
         }
@@ -47,7 +47,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
 
     // TODO
     class JS262AgentObject(realm: Realm) : JSObject(realm, realm.objectProto) {
-//        @JSMethod("start", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+//        @JSMethod("start", 1)
 //        fun start(thisValue: JSValue, arguments: JSArguments): JSValue {
 //            val script = Operations.toString(arguments.argument(0))
 //            val hasStarted = AtomicBoolean(false)

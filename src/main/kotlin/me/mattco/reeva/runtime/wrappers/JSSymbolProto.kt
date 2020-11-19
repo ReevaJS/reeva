@@ -20,12 +20,12 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         defineOwnProperty("constructor", realm.symbolCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
-    @JSNativePropertyGetter("description", attributes = 0)
+    @JSNativePropertyGetter("description", "Ce")
     fun getDescription(thisValue: JSValue): JSValue {
         return thisSymbolValue(thisValue, "description").description?.toValue() ?: JSUndefined
     }
 
-    @JSNativePropertyGetter("@@toStringTag", Descriptor.CONFIGURABLE)
+    @JSNativePropertyGetter("@@toStringTag", "Cew")
     fun `get@@toStringTag`(thisValue: JSValue) = "Symbol".toValue()
 
     @JSMethod("toString", 0)

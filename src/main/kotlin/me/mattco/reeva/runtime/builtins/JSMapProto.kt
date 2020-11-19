@@ -23,12 +23,12 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         defineOwnProperty(Realm.`@@toStringTag`, "Map".toValue(), Descriptor.CONFIGURABLE)
     }
 
-    @JSNativeAccessorGetter("size", Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSNativeAccessorGetter("size", "Ce")
     fun getSize(thisValue: JSValue): JSValue {
         return thisMapObject(thisValue, "size").mapData.size.toValue()
     }
 
-    @JSMethod("clear", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("clear", 0)
     fun clear(thisValue: JSValue, arguments: JSArguments): JSValue {
         val map = thisMapObject(thisValue, "clear")
         map.mapData.clear()
@@ -42,7 +42,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return JSUndefined
     }
 
-    @JSMethod("delete", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("delete", 1)
     fun delete(thisValue: JSValue, arguments: JSArguments): JSValue {
         val map = thisMapObject(thisValue, "delete")
         val key = arguments.argument(0)
@@ -58,13 +58,13 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return (map.mapData.remove(key) != null).toValue()
     }
 
-    @JSMethod("entries", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("entries", 0)
     fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
         val map = thisMapObject(thisValue, "entries")
         return JSMapIterator.create(realm, map, PropertyKind.KeyValue)
     }
 
-    @JSMethod("forEach", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("forEach", 1)
     fun forEach(thisValue: JSValue, arguments: JSArguments): JSValue {
         val map = thisMapObject(thisValue, "forEach")
         val (callback, thisArg) = arguments.takeArgs(0..1)
@@ -87,25 +87,25 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return JSUndefined
     }
 
-    @JSMethod("get", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("get", 1)
     fun get(thisValue: JSValue, arguments: JSArguments): JSValue {
         val map = thisMapObject(thisValue, "get")
         return map.mapData[arguments.argument(0)] ?: JSUndefined
     }
 
-    @JSMethod("has", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("has", 1)
     fun has(thisValue: JSValue, arguments: JSArguments): JSValue {
         val map = thisMapObject(thisValue, "has")
         return (arguments.argument(0) in map.mapData).toValue()
     }
 
-    @JSMethod("keys", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("keys", 1)
     fun keys(thisValue: JSValue, arguments: JSArguments): JSValue {
         val map = thisMapObject(thisValue, "keys")
         return JSMapIterator.create(realm, map, PropertyKind.Key)
     }
 
-    @JSMethod("set", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("set", 2)
     fun set(thisValue: JSValue, arguments: JSArguments): JSValue {
         val map = thisMapObject(thisValue, "set")
         val key = arguments.argument(0)
@@ -114,7 +114,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return map
     }
 
-    @JSMethod("values", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("values", 0)
     fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
         val map = thisMapObject(thisValue, "values")
         return JSMapIterator.create(realm, map, PropertyKind.Value)

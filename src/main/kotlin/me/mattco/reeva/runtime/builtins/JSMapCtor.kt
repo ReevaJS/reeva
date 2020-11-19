@@ -17,7 +17,7 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
         isConstructable = true
     }
 
-    @JSNativeAccessorGetter("@@species", Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSNativeAccessorGetter("@@species", "Ce")
     fun `get@@species`(thisValue: JSValue): JSValue {
         return thisValue
     }

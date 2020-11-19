@@ -6,5 +6,5 @@ import me.mattco.reeva.runtime.objects.Descriptor
 @Target(AnnotationTarget.FUNCTION)
 annotation class JSNativeAccessorGetter(
     val name: String,
-    val attributes: Int = Descriptor.defaultAttributes
+    val attributes: String = "CeW"
 )

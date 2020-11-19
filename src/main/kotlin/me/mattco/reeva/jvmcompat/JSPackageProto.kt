@@ -10,7 +10,7 @@ import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.toValue
 
 class JSPackageProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    @JSMethod("toString", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("toString", 0)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         val packageName = thisPackageObject(thisValue, "toString").packageName
         return if (packageName == null) {

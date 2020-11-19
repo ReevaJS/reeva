@@ -34,7 +34,7 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @ECMAImpl("20.1.2.2")
-    @JSMethod("isFinite", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("isFinite", 1)
     fun isFinite(thisValue: JSValue, arguments: JSArguments): JSValue {
         val number = arguments.argument(0)
         if (!number.isNumber)
@@ -45,19 +45,19 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @ECMAImpl("20.1.2.3")
-    @JSMethod("isInteger", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("isInteger", 1)
     fun isInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
         return Operations.isIntegralNumber(arguments.argument(0)).toValue()
     }
 
     @ECMAImpl("20.1.2.4")
-    @JSMethod("isNaN", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("isNaN", 1)
     fun isNaN(thisValue: JSValue, arguments: JSArguments): JSValue {
         return arguments.argument(0).isNaN.toValue()
     }
 
     @ECMAImpl("20.1.2.5")
-    @JSMethod("isSafeInteger", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("isSafeInteger", 1)
     fun isSafeInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isIntegralNumber(arguments.argument(0)))
             return JSFalse
@@ -65,13 +65,13 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @ECMAImpl("20.1.2.12")
-    @JSMethod("parseFloat", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("parseFloat", 1)
     fun parseFloat(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.2.13")
-    @JSMethod("parseInt", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("parseInt", 1)
     fun parseInt(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }

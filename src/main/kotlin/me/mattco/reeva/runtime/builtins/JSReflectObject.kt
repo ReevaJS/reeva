@@ -17,7 +17,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         defineOwnProperty(Realm.`@@toStringTag`, "Reflect".toValue(), Descriptor.CONFIGURABLE)
     }
 
-    @JSMethod("apply", 3, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("apply", 3)
     fun apply(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, thisArg, argumentsList) = arguments.takeArgs(0..2)
 
@@ -28,7 +28,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return Operations.call(target, thisArg, args)
     }
 
-    @JSMethod("construct", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("construct", 2)
     fun construct(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, argumentsList) = arguments.takeArgs(0..1)
         val newTarget = if (arguments.size <= 2) {
@@ -45,7 +45,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return Operations.construct(target, args, newTarget)
     }
 
-    @JSMethod("defineProperty", 3, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("defineProperty", 3)
     fun defineProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, propertyKey, attributes) = arguments.takeArgs(0..2)
         if (target !is JSObject)
@@ -55,7 +55,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.defineOwnProperty(key, desc).toValue()
     }
 
-    @JSMethod("deleteProperty", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("deleteProperty", 2)
     fun deleteProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject)
@@ -64,7 +64,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.delete(key).toValue()
     }
 
-    @JSMethod("get", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("get", 2)
     fun get(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, propertyKey, receiver) = arguments.takeArgs(0..2)
         if (target !is JSObject)
@@ -73,7 +73,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.get(key, receiver.ifUndefined(target))
     }
 
-    @JSMethod("getOwnPropertyDescriptor", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("getOwnPropertyDescriptor", 2)
     fun getOwnPropertyDescriptor(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject)
@@ -82,7 +82,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.getOwnPropertyDescriptor(key)?.toObject(realm, JSUndefined) ?: JSUndefined
     }
 
-    @JSMethod("getPrototypeOf", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("getPrototypeOf", 1)
     fun getPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
@@ -90,7 +90,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.getPrototype()
     }
 
-    @JSMethod("has", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("has", 2)
     fun has(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject)
@@ -99,7 +99,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.hasProperty(key).toValue()
     }
 
-    @JSMethod("isExtensible", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("isExtensible", 1)
     fun isExtensible(thisValue: JSValue, arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
@@ -107,7 +107,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.isExtensible().toValue()
     }
 
-    @JSMethod("ownKeys", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("ownKeys", 1)
     fun ownKeys(thisValue: JSValue, arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
@@ -116,7 +116,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return Operations.createArrayFromList(keys.map { it.asValue })
     }
 
-    @JSMethod("preventExtensions", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("preventExtensions", 1)
     fun preventExtensions(thisValue: JSValue, arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
@@ -124,7 +124,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.preventExtensions().toValue()
     }
 
-    @JSMethod("set", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("set", 2)
     fun set(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, propertyKey, value, receiver) = arguments.takeArgs(0..3)
         if (target !is JSObject)
@@ -133,7 +133,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.set(key, value, receiver.ifUndefined(target)).toValue()
     }
 
-    @JSMethod("setPrototypeOf", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("setPrototypeOf", 2)
     fun setPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, proto) = arguments.takeArgs(0..1)
         if (target !is JSObject)

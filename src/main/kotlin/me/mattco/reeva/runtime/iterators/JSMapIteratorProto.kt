@@ -19,7 +19,7 @@ class JSMapIteratorProto private constructor(realm: Realm) : JSObject(realm, rea
         defineOwnProperty(Realm.`@@toStringTag`, "Map Iterator".toValue(), Descriptor.CONFIGURABLE)
     }
 
-    @JSMethod("next", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("next", 0)
     fun next(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSMapIterator)
             Errors.IncompatibleMethodCall("%MapIteratorPrototype%.next").throwTypeError()

@@ -22,19 +22,19 @@ import me.mattco.reeva.utils.*
 import kotlin.math.min
 
 class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    @JSNativePropertyGetter("@@toStringTag", Descriptor.CONFIGURABLE)
+    @JSNativePropertyGetter("@@toStringTag", "Cew")
     fun `get@@toStringTag`(thisValue: JSValue): JSValue {
         return "JSON".toValue()
     }
 
     @ECMAImpl("24.5.1")
-    @JSMethod("parse", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("parse", 2)
     fun parse(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("24.5.2")
-    @JSMethod("stringify", 3, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("stringify", 3)
     fun stringify(thisValue: JSValue, arguments: JSArguments): JSValue {
         // TODO: ReplacerFunction
 

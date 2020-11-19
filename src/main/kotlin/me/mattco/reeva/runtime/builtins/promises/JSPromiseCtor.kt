@@ -39,7 +39,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
 
     @ECMAImpl("26.6.4.1")
     @ECMAImpl("26.6.4.1.2", name = "PerformPromiseAll")
-    @JSMethod("all", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("all", 1)
     fun all(thisValue: JSValue, arguments: JSArguments): JSValue {
         val capability = Operations.newPromiseCapability(thisValue)
         val resolve = ifAbruptRejectPromise(capability, { return it }) {
@@ -111,7 +111,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         }
     }
 
-    @JSMethod("allSettled", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("allSettled", 1)
     fun allSettled(thisValue: JSValue, arguments: JSArguments): JSValue {
         val capability = Operations.newPromiseCapability(thisValue)
         val resolve = ifAbruptRejectPromise(capability, { return it }) {
@@ -183,14 +183,14 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         }
     }
 
-    @JSMethod("reject", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("reject", 1)
     fun reject(thisValue: JSValue, arguments: JSArguments): JSValue {
         val capability = Operations.newPromiseCapability(thisValue)
         Operations.call(capability.reject!!, JSUndefined, listOf(arguments.argument(0)))
         return capability.promise
     }
 
-    @JSMethod("resolve", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("resolve", 1)
     fun resolve(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("Promise.resolve").throwTypeError()

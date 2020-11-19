@@ -24,7 +24,7 @@ class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "P
         return proxyCreate(realm, arguments.argument(0), arguments.argument(1))
     }
 
-    @JSMethod("revocable", 2, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("revocable", 2)
     fun revocable(thisValue: JSValue, arguments: JSArguments): JSValue {
         val proxy = proxyCreate(realm, arguments.argument(0), arguments.argument(1))
 

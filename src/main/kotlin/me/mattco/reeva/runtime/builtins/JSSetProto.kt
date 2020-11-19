@@ -26,13 +26,13 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         defineOwnProperty(Realm.`@@toStringTag`, "Set".toValue(), Descriptor.CONFIGURABLE)
     }
 
-    @JSNativeAccessorGetter("size", Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSNativeAccessorGetter("size", "Ce")
     fun getSize(thisValue: JSValue): JSValue {
         val set = thisSetObject(thisValue, "getSize")
         return set.setData.size.toValue()
     }
 
-    @JSMethod("add", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("add", 1)
     fun add(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "add")
         set.setData.add(arguments.argument(0))
@@ -40,7 +40,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return set
     }
 
-    @JSMethod("clear", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("clear", 0)
     fun clear(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "clear")
         set.setData.clear()
@@ -54,7 +54,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return JSUndefined
     }
 
-    @JSMethod("delete", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("delete", 1)
     fun delete(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "delete")
         val value = arguments.argument(0)
@@ -69,13 +69,13 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return set.setData.remove(value).toValue()
     }
 
-    @JSMethod("entries", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("entries", 0)
     fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "entries")
         return JSSetIterator.create(realm, set, PropertyKind.KeyValue)
     }
 
-    @JSMethod("forEach", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("forEach", 1)
     fun forEach(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "forEach")
         val (callback, thisArg) = arguments.takeArgs(0..1)
@@ -98,13 +98,13 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return JSUndefined
     }
 
-    @JSMethod("has", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("has", 1)
     fun has(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "has")
         return (arguments.argument(0) in set.setData).toValue()
     }
 
-    @JSMethod("values", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    @JSMethod("values", 0)
     fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "values")
         return JSSetIterator.create(realm, set, PropertyKind.Value)
