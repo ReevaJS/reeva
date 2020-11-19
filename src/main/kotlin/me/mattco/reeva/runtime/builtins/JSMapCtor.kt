@@ -22,11 +22,9 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
         return thisValue
     }
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        Errors.CtorCallWithoutNew("Map").throwTypeError()
-    }
-
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
+    override fun evaluate(arguments: JSArguments): JSValue {
+        if (newTarget == JSUndefined)
+            Errors.CtorCallWithoutNew("Map").throwTypeError()
         // TODO: Handle newTarget properly
         val map = JSMapObject.create(realm)
         val iterable = arguments.argument(0)

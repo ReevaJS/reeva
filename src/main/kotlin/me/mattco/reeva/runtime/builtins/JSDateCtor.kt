@@ -29,11 +29,10 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
         isConstructable = true
     }
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return Operations.toDateString(ZonedDateTime.now()).toValue()
-    }
+    override fun evaluate(arguments: JSArguments): JSValue {
+        if (newTarget == JSUndefined)
+            return Operations.toDateString(ZonedDateTime.now()).toValue()
 
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
         val zdt = when (arguments.size) {
             0 -> ZonedDateTime.now()
             1 -> {

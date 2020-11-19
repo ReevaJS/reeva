@@ -7,7 +7,6 @@ import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
-import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 import java.lang.reflect.Modifier
@@ -26,11 +25,11 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
         defineOwnProperty("prototype", clazzProto, 0)
     }
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        Errors.JVMClass.InvalidCall.throwTypeError()
-    }
+    override fun evaluate(_arguments: JSArguments): JSValue {
+        val newTarget = super.newTarget
+        if (newTarget == JSUndefined)
+            Errors.JVMClass.InvalidCall.throwTypeError()
 
-    override fun construct(_arguments: JSArguments, newTarget: JSValue): JSValue {
         val arguments = if (JVMProxyMarker::class.java in clazz.interfaces) {
             expect(newTarget is JSObject)
             listOf(newTarget.get("prototype")) + _arguments

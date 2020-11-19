@@ -9,6 +9,7 @@ import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSTrue
+import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
 import me.mattco.reeva.utils.toValue
@@ -75,11 +76,9 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         TODO()
     }
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return numberFromArg(arguments.argument(0)).toValue()
-    }
-
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
+    override fun evaluate(arguments: JSArguments): JSValue {
+        if (newTarget == JSUndefined)
+            return numberFromArg(arguments.argument(0)).toValue()
         // TODO: Handle newTarget?
         return JSNumberObject.create(realm, numberFromArg(arguments.argument(0)).toValue())
     }

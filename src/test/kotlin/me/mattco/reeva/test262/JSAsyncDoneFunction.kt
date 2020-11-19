@@ -6,6 +6,7 @@ import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
+import me.mattco.reeva.utils.expect
 
 class JSAsyncDoneFunction private constructor(realm: Realm) : JSNativeFunction(realm, "\$DONE", 1) {
     var invocationCount = 0
@@ -14,14 +15,11 @@ class JSAsyncDoneFunction private constructor(realm: Realm) : JSNativeFunction(r
     var result: JSValue = JSUndefined
         private set
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
+    override fun evaluate(arguments: JSArguments): JSValue {
+        expect(newTarget == JSUndefined)
         invocationCount++
         result = arguments.argument(0)
         return JSUndefined
-    }
-
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-        throw IllegalStateException("Unexpected constructino of JSAsyncDoneFunction")
     }
 
     companion object {

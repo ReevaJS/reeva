@@ -334,7 +334,7 @@ open class Compiler {
                 _return
             }
 
-            method(public, "evalBody", JSValue::class, List::class) {
+            method(public, "evaluate", JSValue::class, List::class) {
                 currentLocalIndex = 2
                 aload_0
                 aload_1

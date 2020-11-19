@@ -14,16 +14,14 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         isConstructable = true
     }
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return construct(arguments, JSUndefined)
-    }
+    override fun evaluate(arguments: JSArguments): JSValue {
+        val realNewTarget = newTarget.let {
+            if (it is JSUndefined) {
+                Agent.runningContext.function ?: JSUndefined
+            } else it
+        }
 
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-        val newTargetReal = if (newTarget is JSUndefined) {
-            Agent.runningContext.function ?: JSUndefined
-        } else newTarget
-
-        val proto = Operations.getPrototypeFromConstructor(newTargetReal, realm.arrayProto)
+        val proto = Operations.getPrototypeFromConstructor(realNewTarget, realm.arrayProto)
 
         return when (arguments.size) {
             0 -> JSArrayObject.create(realm, proto)

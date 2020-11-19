@@ -14,7 +14,9 @@ class JSCapabilitiesExecutor private constructor(
     realm: Realm,
     private val capability: Operations.PromiseCapability
 ) : JSNativeFunction(realm, "", 2) {
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
+    override fun evaluate(arguments: JSArguments): JSValue {
+        if (newTarget != JSUndefined)
+            throw IllegalStateException("Unexpected construction of JSCapabilitiesExecutor")
         if (capability.resolve != null)
             Errors.TODO("JSCapabilitiesExecutor 1").throwTypeError()
         if (capability.reject != null)
@@ -33,10 +35,6 @@ class JSCapabilitiesExecutor private constructor(
         }
 
         return JSUndefined
-    }
-
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-        throw IllegalStateException("Unexpected construction of JSCapabilitiesExecutor")
     }
 
     companion object {

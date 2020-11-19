@@ -19,12 +19,9 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         isConstructable = true
     }
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return construct(arguments, JSUndefined)
-    }
-
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
+    override fun evaluate(arguments: JSArguments): JSValue {
         val value = arguments.argument(0)
+        val newTarget = super.newTarget
         if (newTarget != JSUndefined && newTarget != Agent.runningContext.function)
             return Operations.ordinaryCreateFromConstructor(newTarget, realm.objectProto)
         if (value.isUndefined || value.isNull)

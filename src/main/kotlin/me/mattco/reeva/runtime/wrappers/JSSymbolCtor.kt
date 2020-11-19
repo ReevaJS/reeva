@@ -57,15 +57,14 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return JSUndefined
     }
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
+    override fun evaluate(arguments: JSArguments): JSValue {
+        if (newTarget != JSUndefined)
+            Errors.NotACtor("Symbol").throwTypeError()
+
         val description = arguments.argument(0).let {
             if (it == JSUndefined) null else Operations.toString(it).string
         }
         return JSSymbol(description)
-    }
-
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-        Errors.NotACtor("Symbol").throwTypeError()
     }
 
     companion object {

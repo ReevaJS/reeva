@@ -3,7 +3,7 @@ package me.mattco.reeva.runtime.functions
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.objects.JSObject
+import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.ecmaAssert
 
@@ -21,11 +21,10 @@ class JSBoundFunction private constructor(
     boundTargetFunction.isStrict,
     prototype,
 ) {
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return Operations.call(boundTargetFunction, boundThis, boundArguments + arguments)
-    }
-
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
+    override fun evaluate(arguments: JSArguments): JSValue {
+        val newTarget = super.newTarget
+        if (newTarget == JSUndefined)
+            return Operations.call(boundTargetFunction, boundThis, boundArguments + arguments)
         ecmaAssert(Operations.isConstructor(boundTargetFunction))
         return Operations.construct(
             boundTargetFunction,

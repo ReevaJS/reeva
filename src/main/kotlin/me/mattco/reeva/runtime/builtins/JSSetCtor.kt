@@ -1,6 +1,5 @@
 package me.mattco.reeva.runtime.builtins
 
-import me.mattco.reeva.core.AbruptCompletion
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.runtime.JSValue
@@ -25,11 +24,10 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
         return thisValue
     }
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        Errors.CtorCallWithoutNew("Set").throwTypeError()
-    }
+    override fun evaluate(arguments: JSArguments): JSValue {
+        if (newTarget != JSUndefined)
+            Errors.CtorCallWithoutNew("Set").throwTypeError()
 
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
         // TODO: Handle newTarget properly
 
         val set = JSSetObject.create(realm)

@@ -4,6 +4,7 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
+import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
@@ -14,21 +15,20 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         isConstructable = true
     }
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return construct(arguments, JSUndefined)
-    }
+    override fun evaluate(arguments: JSArguments): JSValue {
+        val newTarget = super.newTarget
 
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-        val argument = arguments.argument(0)
-        if (newTarget == JSUndefined && argument.isSymbol)
-            return argument.asSymbol.descriptiveString().toValue()
-        val s = if (arguments.isEmpty()) {
+        val theString = if (arguments.isEmpty()) {
             "".toValue()
-        } else Operations.toString(argument)
-        if (newTarget == JSUndefined)
-            return s
+        } else {
+            val value = arguments.argument(0)
+            if (newTarget == JSUndefined && value is JSSymbol)
+                return value.descriptiveString().toValue()
+            Operations.toString(value)
+        }
+
         // TODO: GetPrototypeFromConstructor?
-        return JSStringObject.create(realm, s)
+        return JSStringObject.create(realm, theString)
     }
 
     companion object {

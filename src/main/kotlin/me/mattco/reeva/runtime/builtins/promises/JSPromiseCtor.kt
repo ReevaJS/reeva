@@ -19,11 +19,10 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         isConstructable = true
     }
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        Errors.CtorCallWithoutNew("Promise").throwTypeError()
-    }
+    override fun evaluate(arguments: JSArguments): JSValue {
+        if (newTarget == JSUndefined)
+            Errors.CtorCallWithoutNew("Promise").throwTypeError()
 
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
         val executor = arguments.argument(0)
         if (!Operations.isCallable(executor))
             Errors.Promise.CtorFirstArgCallable.throwTypeError()

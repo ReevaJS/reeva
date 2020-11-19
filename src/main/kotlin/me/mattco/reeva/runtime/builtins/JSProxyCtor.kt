@@ -18,11 +18,9 @@ class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "P
         isConstructable = true
     }
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        Errors.CtorCallWithoutNew("Proxy").throwTypeError()
-    }
-
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
+    override fun evaluate(arguments: JSArguments): JSValue {
+        if (newTarget == JSUndefined)
+            Errors.CtorCallWithoutNew("Proxy").throwTypeError()
         return proxyCreate(realm, arguments.argument(0), arguments.argument(1))
     }
 

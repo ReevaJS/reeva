@@ -13,7 +13,7 @@ class FunctionEnvRecord(
     var thisBindingStatus: ThisBindingStatus,
     val newTarget: JSValue = JSUndefined,
     outerEnv: EnvRecord? = null
-) : DeclarativeEnvRecord(outerEnv) {
+) : DeclarativeEnvRecord(outerEnv), ThisBindable {
     init {
         if (!function.homeObject.isUndefined && !function.homeObject.isObject)
             throw IllegalArgumentException()
@@ -41,7 +41,7 @@ class FunctionEnvRecord(
     override fun hasSuperBinding() = hasThisBinding() && function.homeObject.isObject
 
     @ECMAImpl("8.1.1.3.4")
-    fun getThisBinding(): JSValue {
+    override fun getThisBinding(): JSValue {
         if (!hasThisBinding())
             Errors.NoThisBinding.throwReferenceError()
 

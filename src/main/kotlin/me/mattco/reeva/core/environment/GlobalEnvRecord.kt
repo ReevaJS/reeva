@@ -13,7 +13,7 @@ class GlobalEnvRecord(
     val declarativeRecord: DeclarativeEnvRecord,
     val globalThis: JSObject,
     outerEnv: EnvRecord? = null
-) : EnvRecord(outerEnv) {
+) : EnvRecord(outerEnv), ThisBindable {
     private val objectRecord = ObjectEnvRecord(globalThis, false, this)
     private val varNames = mutableListOf<String>()
     internal var isStrict = false
@@ -86,7 +86,7 @@ class GlobalEnvRecord(
     override fun withBaseObject() = JSUndefined
 
     @ECMAImpl("8.1.1.4.11")
-    fun getThisBinding() = globalThis
+    override fun getThisBinding() = globalThis
 
     @ECMAImpl("8.1.1.4.12")
     fun hasVarDeclaration(name: String) = name in varNames

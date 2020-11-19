@@ -13,15 +13,13 @@ class JSRejectFunction private constructor(
     var alreadyResolved: Operations.Wrapper<Boolean>,
     realm: Realm
 ) : JSNativeFunction(realm, "", 1) {
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
+    override fun evaluate(arguments: JSArguments): JSValue {
+        if (newTarget != JSUndefined)
+            TODO()
         if (alreadyResolved.value)
             return JSUndefined
         alreadyResolved.value = true
         return Operations.rejectPromise(promise, arguments.argument(0))
-    }
-
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-        TODO("Not yet implemented")
     }
 
     companion object {

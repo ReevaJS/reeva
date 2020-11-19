@@ -10,7 +10,7 @@ import me.mattco.reeva.utils.unreachable
 
 class ModuleEnvRecord(
     outerEnv: EnvRecord?
-) : DeclarativeEnvRecord(outerEnv) {
+) : DeclarativeEnvRecord(outerEnv), ThisBindable {
     @ECMAImpl("8.1.1.5.1")
     override fun getBindingValue(name: String, throwOnNotFound: Boolean): JSValue {
         ecmaAssert(throwOnNotFound)
@@ -36,7 +36,7 @@ class ModuleEnvRecord(
 
     override fun hasThisBinding() = true
 
-    fun getThisBinding(): JSValue = JSUndefined
+    override fun getThisBinding(): JSValue = JSUndefined
 
     fun createImportBinding(localName: String, targetEnv: ModuleRecord, targetName: String) {
         ecmaAssert(!hasBinding(localName))

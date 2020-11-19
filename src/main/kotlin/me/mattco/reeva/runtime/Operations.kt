@@ -1301,12 +1301,9 @@ object Operations {
         )
 
         val throwTypeError = object : JSNativeFunction(realm, "", 0) {
-            override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
+            override fun evaluate(arguments: JSArguments): JSValue {
+                expect(newTarget == JSUndefined)
                 Errors.CalleePropertyAccess.throwTypeError()
-            }
-
-            override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-                throw IllegalStateException("Unexpected construction of %ThrowTypeError%")
             }
         }
         definePropertyOrThrow(

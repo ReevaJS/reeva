@@ -1,6 +1,5 @@
 package me.mattco.reeva.runtime.errors
 
-import me.mattco.reeva.core.Agent
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
@@ -23,11 +22,7 @@ open class JSErrorCtor protected constructor(
         return JSErrorObject.create(realm)
     }
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return construct(arguments, Agent.runningContext.function ?: JSUndefined)
-    }
-
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
+    override fun evaluate(arguments: JSArguments): JSValue {
         // TODO: Handle new target?
         val obj = constructErrorObj()
         val message = arguments.argument(0)

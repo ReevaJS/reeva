@@ -211,7 +211,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             sourceText,
             prototype,
         ) {
-            override fun evalBody(arguments: JSArguments): JSValue {
+            override fun evaluate(arguments: JSArguments): JSValue {
                 functionDeclarationInstantiation(this, parameterList, arguments, body)
                 return if (body.statementList != null) {
                     interpretStatementList(body.statementList)

@@ -17,7 +17,9 @@ class JSPromiseAllResolver private constructor(
 ) : JSNativeFunction(realm, "", 1) {
     private var alreadyCalled: Boolean = false
 
-    override fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
+    override fun evaluate(arguments: JSArguments): JSValue {
+        if (newTarget != JSUndefined)
+            throw IllegalStateException("Unexpected construction of JSPromiseAllResolver")
         if (alreadyCalled)
             return JSUndefined
         alreadyCalled = true
@@ -29,10 +31,6 @@ class JSPromiseAllResolver private constructor(
             return Operations.call(capability.resolve!!, JSUndefined, listOf(valuesArray))
         }
         return JSUndefined
-    }
-
-    override fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-        throw IllegalStateException("Unexpected construction of JSPromiseAllResolver")
     }
 
     companion object {
