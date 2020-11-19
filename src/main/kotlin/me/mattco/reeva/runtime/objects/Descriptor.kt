@@ -219,14 +219,14 @@ data class Descriptor constructor(
                 val getterTemp = obj.get("get")
                 if (!Operations.isCallable(getterTemp) && getterTemp != JSUndefined)
                     Errors.DescriptorGetType.throwTypeError()
-                getter = getterTemp as JSFunction
+                getter = getterTemp as? JSFunction
             }
 
             if (obj.hasProperty("set")) {
                 val setterTemp = obj.get("set")
                 if (!Operations.isCallable(setterTemp) && setterTemp != JSUndefined)
                     Errors.DescriptorSetType.throwTypeError()
-                setter = setterTemp as JSFunction
+                setter = setterTemp as? JSFunction
             }
 
             if (getter != null || setter != null) {
