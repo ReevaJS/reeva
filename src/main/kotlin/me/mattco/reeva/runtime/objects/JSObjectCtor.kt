@@ -57,9 +57,9 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         if (obj !is JSObject && obj != JSNull)
             Errors.Object.CreateBadArgType.throwTypeError()
         val newObj = create(Agent.runningContext.realm, obj)
-        if (arguments.size > 1) {
-            objectDefineProperties(newObj, arguments.argument(1))
-        }
+        val properties = arguments.argument(1)
+        if (properties != JSUndefined)
+            objectDefineProperties(newObj, properties)
         return newObj
     }
 
