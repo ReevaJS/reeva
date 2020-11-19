@@ -4,7 +4,6 @@ package me.mattco.reeva.runtime
 
 import me.mattco.reeva.ast.ASTNode
 import me.mattco.reeva.ast.FormalParametersNode
-import me.mattco.reeva.compiler.JSScriptFunction
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
@@ -1903,25 +1902,6 @@ object Operations {
     fun hostEnqueuePromiseJob(job: Microtask, realm: Realm?) {
         // TODO: Use realm?
         Agent.activeAgent.submitMicrotask(job)
-    }
-
-    @JvmStatic
-    fun applyFunctionArguments(function: JSScriptFunction, arguments: List<JSValue>, env: EnvRecord?) {
-        function.getParameterNames().forEachIndexed { index, name ->
-            val lhs = resolveBinding(name, env)
-            var value = if (index > arguments.lastIndex) {
-                JSUndefined
-            } else arguments[index]
-
-            if (value == JSUndefined && function.getParamHasDefaultValue(index))
-                value = function.getDefaultParameterValue(index)
-
-            if (env == null) {
-                putValue(lhs, value)
-            } else {
-                initializeReferencedBinding(lhs, value)
-            }
-        }
     }
 
     enum class ToPrimitiveHint(private val _text: String) {
