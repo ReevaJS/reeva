@@ -19,15 +19,13 @@ import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
-import me.mattco.reeva.core.modules.ExportEntryRecord
-import me.mattco.reeva.core.modules.records.SourceTextModuleRecord
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.JSReference
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSFunctionProto
-import me.mattco.reeva.runtime.functions.JSRuntimeFunction
+import me.mattco.reeva.runtime.functions.JSInterpreterFunction
 import me.mattco.reeva.runtime.iterators.JSObjectPropertyIterator
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -275,7 +273,7 @@ open class Compiler {
         val functionClassNode = assembleClass(
             public,
             className,
-            superName = "me/mattco/reeva/runtime/functions/JSRuntimeFunction"
+            superName = "me/mattco/reeva/runtime/functions/JSCompilerFunction"
         ) {
             method(public, "<init>", void, EnvRecord::class, JSObject::class) {
                 currentLocalIndex = 3
@@ -289,7 +287,7 @@ open class Compiler {
                 aload_2
 
                 invokespecial(
-                    JSRuntimeFunction::class,
+                    JSInterpreterFunction::class,
                     "<init>",
                     void,
                     Realm::class,

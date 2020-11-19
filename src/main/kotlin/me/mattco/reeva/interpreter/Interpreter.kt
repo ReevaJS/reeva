@@ -18,7 +18,7 @@ import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.JSReference
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSFunction
-import me.mattco.reeva.runtime.functions.JSRuntimeFunction
+import me.mattco.reeva.runtime.functions.JSInterpreterFunction
 import me.mattco.reeva.runtime.iterators.JSObjectPropertyIterator
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -198,7 +198,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
     ): JSFunction {
         val strict = body.statementList?.hasUseStrictDirective() == true
 
-        val function = object : JSRuntimeFunction(
+        val function = object : JSInterpreterFunction(
             Agent.runningContext.realm,
             when {
                 thisMode == ThisMode.Lexical -> ThisMode.Lexical
@@ -233,7 +233,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
     }
 
     private fun functionDeclarationInstantiation(
-        function: JSRuntimeFunction,
+        function: JSInterpreterFunction,
         formals: FormalParametersNode,
         arguments: JSArguments,
         body: FunctionStatementList,

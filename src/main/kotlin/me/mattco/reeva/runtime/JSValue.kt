@@ -139,7 +139,7 @@ abstract class JSValue : Ref {
             Type.Null -> true
             Type.Boolean -> asBoolean == other.asBoolean
             Type.String -> asString == other.asString
-            Type.Object -> this === other
+            Type.Symbol, Type.Object -> this === other
             else -> TODO()
         }
     }

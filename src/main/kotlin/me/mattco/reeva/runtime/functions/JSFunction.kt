@@ -39,10 +39,6 @@ abstract class JSFunction(
         Operations.ordinaryCallBindThis(this, calleeContext, thisValue)
         return try {
             evaluate(arguments)
-        } catch (e: ReturnException) {
-            // TODO: This is only necessary for the interpreter... can we move this
-            // somewhere else?
-            e.value
         } finally {
             Agent.popContext()
         }
@@ -76,15 +72,6 @@ abstract class JSFunction(
             if (constructorKind == ConstructorKind.Base)
                 return thisArgument!!
             if (result != JSUndefined)
-                Errors.Class.ReturnObjectFromDerivedCtor.throwTypeError()
-        } catch (e: ReturnException) {
-            // TODO: This is only necessary for the interpreter... can we move this
-            // somewhere else?
-            if (e.value is JSObject)
-                return e.value
-            if (constructorKind == ConstructorKind.Base)
-                return thisArgument!!
-            if (e.value != JSUndefined)
                 Errors.Class.ReturnObjectFromDerivedCtor.throwTypeError()
         } finally {
             Agent.popContext()
