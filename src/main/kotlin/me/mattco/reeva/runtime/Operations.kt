@@ -548,6 +548,19 @@ object Operations {
         return min(number, MAX_SAFE_INTEGER).toValue()
     }
 
+    @ECMAImpl("7.1.21")
+    fun canonicalNumericIndexString(argument: JSValue): JSNumber? {
+        if (argument is JSNumber)
+            return argument
+        ecmaAssert(argument is JSString)
+        if (argument.string == "-0")
+            return JSNumber.NEGATIVE_ZERO
+        val num = toNumber(argument)
+        if (toString(num).string != argument.string)
+            return null
+        return num as? JSNumber
+    }
+
     @JvmStatic @ECMAImpl("7.2.1")
     fun requireObjectCoercible(value: JSValue): JSValue {
         if (value is JSUndefined || value is JSNull)

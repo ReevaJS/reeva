@@ -237,9 +237,8 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val obj = Operations.toObject(target)
         val keyList = mutableListOf<JSValue>()
         obj.ownPropertyKeys().forEach { key ->
-            if (key.isSymbol xor !isSymbols)
-                return@forEach
-            keyList.add(key.asValue)
+            if (!key.isSymbol xor isSymbols)
+                keyList.add(key.asValue)
         }
         return Operations.createArrayFromList(keyList)
     }
