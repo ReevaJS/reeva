@@ -17,6 +17,7 @@ import me.mattco.reeva.core.modules.records.SourceTextModuleRecord
 import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.JSReference
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSInterpreterFunction
 import me.mattco.reeva.runtime.iterators.JSObjectPropertyIterator
@@ -1178,6 +1179,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             is FunctionExpressionNode -> interpretFunctionExpression(expression)
             is ArrowFunctionNode -> interpretArrowFunction(expression)
             is LiteralNode -> interpretLiteral(expression)
+            is RegExpLiteralNode -> interpretRegExp(expression)
             is NewExpressionNode -> interpretNewExpression(expression)
             is CallExpressionNode -> interpretCallExpression(expression)
             is ObjectLiteralNode -> interpretObjectLiteral(expression)
@@ -1369,6 +1371,10 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             is StringLiteralNode -> literalNode.value.toValue()
             else -> unreachable()
         }
+    }
+
+    private fun interpretRegExp(regExpLiteralNode: RegExpLiteralNode): JSValue {
+        return JSRegExpObject.create(realm, regExpLiteralNode.source, regExpLiteralNode.flags)
     }
 
     private fun interpretNewExpression(newExpressionNode: NewExpressionNode): JSValue {

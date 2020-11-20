@@ -11,6 +11,7 @@ import me.mattco.reeva.lexer.Lexer
 import me.mattco.reeva.lexer.SourceLocation
 import me.mattco.reeva.lexer.Token
 import me.mattco.reeva.lexer.TokenType
+import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
 import me.mattco.reeva.utils.all
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
@@ -1868,8 +1869,29 @@ class Parser(text: String, private val realm: Realm) {
     }
 
     private fun parseRegularExpressionLiteral(): PrimaryExpressionNode? {
-        // TODO
-        return null
+        if (tokenType == TokenType.UnterminatedRegexLiteral) {
+            consume()
+            unexpected("unterminated regex literal")
+            return null
+        }
+
+        if (tokenType != TokenType.RegexLiteral)
+            return null
+
+        val source = consume().value.drop(1).dropLast(1)
+        val flags = if (tokenType == TokenType.RegexFlags) consume().value else ""
+        if (flags.toCharArray().distinct().size != flags.length) {
+            syntaxError("RegExp literal contains duplicate flags")
+            consume()
+            return null
+        }
+        val invalidFlag = flags.firstOrNull { JSRegExpObject.Flag.values().none { flag -> flag.char == it } }
+        if (invalidFlag != null) {
+            syntaxError("RegExp literal contains invalid flag \"$invalidFlag\"")
+            consume()
+            return null
+        }
+        return RegExpLiteralNode(source, flags)
     }
 
     private fun parseTemplateLiteral(): PrimaryExpressionNode? {

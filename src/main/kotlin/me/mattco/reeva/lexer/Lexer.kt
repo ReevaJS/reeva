@@ -65,7 +65,7 @@ class Lexer(private val source: String) : Iterable<Token> {
 
         if (isDone) {
             tokenType = TokenType.Eof
-        } else if (lastToken.type == TokenType.RegexLiteral && !isDone && char.isLetter()) {
+        } else if (lastToken.type == TokenType.RegexLiteral && !isDone && char.isLetter() && '\n' !in source.substring(triviaStartCursor, valueStartCursor)) {
             tokenType = TokenType.RegexFlags
             while (!isDone && char.isLetter())
                 consume()

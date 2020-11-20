@@ -19,6 +19,9 @@ import me.mattco.reeva.runtime.iterators.*
 import me.mattco.reeva.jvmcompat.JSClassProto
 import me.mattco.reeva.jvmcompat.JSPackageObject
 import me.mattco.reeva.jvmcompat.JSPackageProto
+import me.mattco.reeva.runtime.builtins.regexp.JSRegExpCtor
+import me.mattco.reeva.runtime.builtins.regexp.JSRegExpProto
+import me.mattco.reeva.runtime.builtins.regexp.JSRegExpStringIteratorProto
 import me.mattco.reeva.runtime.objects.*
 import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.primitives.JSSymbol
@@ -45,6 +48,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     val bigIntProto by lazy { JSBigIntProto.create(this) }
     val booleanProto by lazy { JSBooleanProto.create(this) }
     val stringProto by lazy { JSStringProto.create(this) }
+    val regExpProto by lazy { JSRegExpProto.create(this) }
     val arrayProto by lazy { JSArrayProto.create(this) }
     val setProto by lazy { JSSetProto.create(this) }
     val mapProto by lazy { JSMapProto.create(this) }
@@ -55,6 +59,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     val setIteratorProto by lazy { JSSetIteratorProto.create(this) }
     val mapIteratorProto by lazy { JSMapIteratorProto.create(this) }
     val objectPropertyIteratorProto by lazy { JSObjectPropertyIteratorProto.create(this) }
+    val regExpStringIteratorProto by lazy { JSRegExpStringIteratorProto.create(this) }
     val consoleProto by lazy { JSConsoleProto.create(this) }
 
     val errorProto by lazy { JSErrorProto.create(this) }
@@ -71,6 +76,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     val bigIntCtor by lazy { JSBigIntCtor.create(this) }
     val booleanCtor by lazy { JSBooleanCtor.create(this) }
     val stringCtor by lazy { JSStringCtor.create(this) }
+    val regExpCtor by lazy { JSRegExpCtor.create(this) }
     val functionCtor by lazy { JSFunctionCtor.create(this) }
     val arrayCtor by lazy { JSArrayCtor.create(this) }
     val setCtor by lazy { JSSetCtor.create(this) }
@@ -121,6 +127,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
         numberCtor.defineOwnProperty("prototype", numberProto, Descriptor.HAS_BASIC)
         bigIntCtor.defineOwnProperty("prototype", bigIntProto, Descriptor.HAS_BASIC)
         stringCtor.defineOwnProperty("prototype", stringProto, Descriptor.HAS_BASIC)
+        regExpCtor.defineOwnProperty("prototype", regExpProto, Descriptor.HAS_BASIC)
         booleanCtor.defineOwnProperty("prototype", booleanProto, Descriptor.HAS_BASIC)
         symbolCtor.defineOwnProperty("prototype", symbolProto, Descriptor.HAS_BASIC)
         arrayCtor.defineOwnProperty("prototype", arrayProto, Descriptor.HAS_BASIC)

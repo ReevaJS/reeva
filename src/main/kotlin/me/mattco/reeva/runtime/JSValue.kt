@@ -148,6 +148,8 @@ abstract class JSValue : Ref {
 
     fun ifUndefined(value: JSValue) = if (this == JSUndefined) value else this
 
+    fun ifUndefined(block: () -> JSValue) = if (this == JSUndefined) block() else this
+
     fun ifNull(value: JSValue) = if (this == JSUndefined) value else this
 
     fun ifNullish(value: JSValue) = if (this == JSUndefined || this == JSNull) value else this

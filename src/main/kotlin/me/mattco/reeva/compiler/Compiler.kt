@@ -23,6 +23,7 @@ import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.JSReference
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSFunctionProto
 import me.mattco.reeva.runtime.functions.JSInterpreterFunction
@@ -1915,6 +1916,7 @@ open class Compiler {
             is FunctionExpressionNode -> compileFunctionExpression(node)
             is ArrowFunctionNode -> compileArrowFunction(node)
             is LiteralNode -> compileLiteral(node)
+            is RegExpLiteralNode -> compileRegExp(node)
             is NewExpressionNode -> compileNewExpression(node)
             is CallExpressionNode -> compileCallExpression(node)
             is ObjectLiteralNode -> compileObjectLiteral(node)
@@ -2075,6 +2077,13 @@ open class Compiler {
             else -> unreachable()
         }
         stackHeight++
+    }
+
+    protected fun MethodAssembly.compileRegExp(node: RegExpLiteralNode) {
+        loadRealm()
+        ldc(node.source)
+        ldc(node.flags)
+        invokestatic(JSRegExpObject::class, "create", JSRegExpObject::class, Realm::class, String::class, String::class)
     }
 
     protected fun MethodAssembly.compileNewExpression(node: NewExpressionNode) {

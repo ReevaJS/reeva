@@ -27,12 +27,16 @@ import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.jvmcompat.JSClassInstanceObject
 import me.mattco.reeva.jvmcompat.JSClassObject
+import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
+import me.mattco.reeva.runtime.builtins.regexp.JSRegExpProto
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.wrappers.*
 import me.mattco.reeva.utils.*
+import org.joni.Matcher
+import org.joni.Option
 import java.math.BigInteger
 import java.time.*
 import java.time.format.TextStyle
@@ -812,6 +816,16 @@ object Operations {
 
     @JvmStatic @ECMAImpl("7.2.7")
     fun isPropertyKey(value: JSValue) = value is JSString || value is JSSymbol
+
+    @JvmStatic @ECMAImpl("7.2.8")
+    fun isRegExp(value: JSValue): Boolean {
+        if (value !is JSObject)
+            return false
+        val matcher = value.get(Realm.`@@match`)
+        if (matcher != JSUndefined)
+            return toBoolean(matcher)
+        return value is JSRegExpObject
+    }
 
     @JvmStatic @ECMAImpl("7.2.13")
     fun abstractRelationalComparison(lhs: JSValue, rhs: JSValue, leftFirst: Boolean): JSValue {
@@ -1930,6 +1944,106 @@ object Operations {
             append(timeString(tv))
             append(timeZoneString(tv))
         }
+    }
+
+    @JvmStatic @ECMAImpl("21.2.3.2.2")
+    fun regExpInitialize(realm: Realm, patternArg: JSValue, flagsArg: JSValue): JSObject {
+        // TODO: Actually use regExpAlloc and newTarget for subclassibility
+        val pattern = if (patternArg == JSUndefined) "" else toString(patternArg).string
+        val flags = if (flagsArg == JSUndefined) "" else toString(flagsArg).string
+
+        return JSRegExpObject.create(realm, pattern, flags)
+    }
+
+    @ECMAImpl("21.2.5.2.1")
+    fun regExpExec(realm: Realm, thisValue: JSValue, string: JSValue, methodName: String): JSValue {
+        ecmaAssert(thisValue is JSObject)
+        ecmaAssert(string is JSString)
+
+        val exec = thisValue.get("exec")
+        if (Operations.isCallable(exec)) {
+            val result = Operations.call(exec, thisValue, listOf(string))
+            if (result !is JSObject && result != JSNull)
+                Errors.RegExp.ExecBadReturnType.throwTypeError()
+            return result
+        }
+        if (thisValue !is JSRegExpProto)
+            Errors.IncompatibleMethodCall("RegExp.prototype$methodName").throwTypeError()
+        return regExpBuiltinExec(realm, thisValue, string)
+    }
+
+    @ECMAImpl("21.2.5.2.2")
+    fun regExpBuiltinExec(realm: Realm, thisValue: JSValue, string: JSValue): JSValue {
+        ecmaAssert(thisValue is JSRegExpObject)
+        ecmaAssert(string is JSString)
+
+        val length = string.string.length
+        val bytes = string.string.toByteArray()
+        val flags = thisValue.flags
+        val global = JSRegExpObject.Flag.Global in flags
+        val sticky = JSRegExpObject.Flag.Sticky in flags
+        val fullUnicode = JSRegExpObject.Flag.Unicode in flags
+        var lastIndex = if (global || sticky) {
+            Operations.toLength(thisValue.get("lastIndex")).asInt
+        } else 0
+
+        val matcher = thisValue.regex.matcher(bytes, 0, length)
+
+        var matchSucceeded = false
+        while (!matchSucceeded) {
+            if (lastIndex > length) {
+                if (global || sticky)
+                    Operations.set(thisValue, "lastIndex".key(), 0.toValue(), true)
+                return JSNull
+            }
+            val result = matcher.search(lastIndex, length - lastIndex, Option.DEFAULT)
+            if (result == Matcher.FAILED || result == Matcher.INTERRUPTED) {
+                if (sticky) {
+                    Operations.set(thisValue, "lastIndex".key(), 0.toValue(), true)
+                    return JSNull
+                }
+                if (fullUnicode)
+                    TODO()
+                lastIndex++
+            } else {
+                matchSucceeded = true
+            }
+        }
+
+        val eagerRegion = matcher.eagerRegion
+
+        val arr = Operations.arrayCreate(eagerRegion.numRegs)
+        Operations.createDataPropertyOrThrow(arr, "index".key(), lastIndex.toValue())
+        Operations.createDataPropertyOrThrow(arr, "input".key(), string)
+
+        val matchedSubstr = string.string.substring(lastIndex, eagerRegion.end[0])
+        Operations.createDataPropertyOrThrow(arr, 0.key(), matchedSubstr.toValue())
+
+        val groupNames = thisValue.regex.namedBackrefIterator().asSequence().toList()
+        val groups = if (groupNames.isNotEmpty()) {
+            JSObject.create(realm, JSNull)
+        } else JSUndefined
+
+        Operations.createDataPropertyOrThrow(arr, "groups".key(), groups)
+
+        for (i in 1 until eagerRegion.numRegs) {
+            val capturedValue = if (fullUnicode) {
+                TODO()
+            } else {
+                string.string.substring(eagerRegion.beg[i], eagerRegion.end[i])
+            }.toValue()
+            Operations.createDataPropertyOrThrow(arr, i.key(), capturedValue)
+            val namedGroup = groupNames.firstOrNull { i in it.backRefs }
+            if (namedGroup != null) {
+                Operations.createDataPropertyOrThrow(
+                    groups,
+                    thisValue.originalSource.substring(namedGroup.nameP, namedGroup.nameEnd).key(),
+                    capturedValue
+                )
+            }
+        }
+
+        return arr
     }
 
     @JvmStatic @ECMAImpl("23.1.1.2")

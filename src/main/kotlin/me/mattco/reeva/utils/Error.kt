@@ -288,6 +288,15 @@ object Errors {
         object BadProto : Error("the prototype give to Reflect.setPrototypeOf must be an object or null")
     }
 
+    object RegExp {
+        class InvalidFlag(flag: Char) : Error("invalid RegExp flag \"$flag\"")
+        object DuplicateFlag : Error("RegExp object cannot have duplicate flags")
+        object ExecBadReturnType : Error("exec method of RegExp object must return an object or null")
+        object InvalidRange : Error("invalid range in RegExp character class")
+        object BackwardsBraceQuantifier : Error("the first number in curly brace quantifier in higher than the second")
+        object BadEscape : Error("invalid escape sequence in RegExp expression")
+    }
+
     object Set {
         class FirstArgNotCallable(methodName: String) : Error("the first argument to Set.prototype.$methodName must be an object")
         object ThisMissingAdd : Error("Set constructor expected this value to have a callable \"add\" property")

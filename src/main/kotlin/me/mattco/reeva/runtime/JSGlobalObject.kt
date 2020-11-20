@@ -51,6 +51,7 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("RangeError", realm.rangeErrorCtor, attrs)
         defineOwnProperty("ReferenceError", realm.referenceErrorCtor, attrs)
         defineOwnProperty("Reflect", realm.reflectObj, attrs)
+        defineOwnProperty("RegExp", realm.regExpCtor, attrs)
         defineOwnProperty("Set", realm.setCtor, attrs)
         defineOwnProperty("String", realm.stringCtor, attrs)
         defineOwnProperty("Symbol", realm.symbolCtor, attrs)
