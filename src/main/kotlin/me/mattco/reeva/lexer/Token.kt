@@ -160,7 +160,13 @@ data class Token(
                                 appendCodePoint(codePoint)
                             }
                         }
-                        else -> TODO()
+                        else -> {
+                            if (type == TokenType.TemplateLiteralString && value[i] == '`') {
+                                append('`')
+                            } else {
+                                TODO()
+                            }
+                        }
                     }
                 } else {
                     append(value[i])
