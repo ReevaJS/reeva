@@ -27,6 +27,7 @@ import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSFunctionProto
 import me.mattco.reeva.runtime.functions.JSInterpreterFunction
+import me.mattco.reeva.runtime.iterators.JSListIterator
 import me.mattco.reeva.runtime.iterators.JSObjectPropertyIterator
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -264,8 +265,8 @@ open class Compiler {
             else -> JSFunction.ThisMode.Global
         }
 
-        val indexOfLastNormal = parameters.functionParameters.parameters.indexOfLast {
-            it.bindingElement.binding.initializer == null
+        val indexOfLastNormal = parameters.functionParameters.parameters.indexOfLast { param ->
+            (param.bindingElement as? SingleNameBindingElement)?.initializer == null
         }
 
         val prevLocalIndex = currentLocalIndex
@@ -458,171 +459,17 @@ open class Compiler {
             parameterNames + listOf("arguments")
         } else parameterNames
 
-        parameters.functionParameters.parameters.forEachIndexed { index, parameter ->
-            ldc(parameter.bindingElement.binding.identifier.identifierName)
-            // string
-            operation("resolveBinding", JSReference::class, String::class)
-            // lhs
+        construct(Operations.IteratorRecord::class, JSObject::class, JSValue::class, Boolean::class) {
+            loadRealm()
             load(arguments)
-            invokeinterface(List::class, "size", Int::class)
-            if (index != 0) {
-                ldc(index)
-                isub
-            }
-            // lhs, num
-            ifElseStatement(JumpCondition.LessThanOrEqual) {
-                ifBlock {
-                    // lhs
-                    loadUndefined()
-                    // lhs, value
-                }
-
-                elseBlock {
-                    // lhs
-                    load(arguments)
-                    // lhs, args
-                    ldc(index)
-                    // lhs, args, index
-                    invokeinterface(List::class, "get", Any::class, Int::class)
-                    checkcast<JSValue>()
-                    // lhs, value
-                }
-            }
-
-            // lhs, value
-            val value = astore()
-            // lhs
-
-            if (parameter.bindingElement.binding.initializer != null) {
-                // lhs
-                load(value)
-                // lhs, value
-                loadUndefined()
-                // lhs, value, undefined
-                ifStatement(JumpCondition.RefEqual) {
-                    // lhs
-                    compileExpression(parameter.bindingElement.binding.initializer.node)
-                    // lhs, expr
-                    stackHeight--
-                    getValue
-                    astore(value.index)
-                    // lhs
-                }
-            }
-
-            // lhs
-            load(value)
-            // lhs, value
-
-            if (hasDuplicates) {
-                operation("putValue", void, JSValue::class, JSValue::class)
-            } else {
-                operation("initializeReferencedBinding", void, JSReference::class, JSValue::class)
-            }
-        }
-
-        if (parameters.restParameter != null) {
-            val startingIndex = parameters.functionParameters.parameters.size
-            ldc(parameters.restParameter.element.identifier.identifierName)
-            // name
-            operation("resolveBinding", JSReference::class, String::class)
-            // binding
-            load(arguments)
-            invokeinterface(List::class, "size", Int::class)
-            // binding, size
+            invokestatic(JSListIterator::class, "create", JSListIterator::class, Realm::class, List::class)
             dup
-            // binding, size, size
-            if (startingIndex > 0) {
-                ldc(startingIndex)
-                // binding, size, size, startingIndex
-                isub
-            }
-            // binding, size, number
-            ifElseStatement(JumpCondition.LessThanOrEqual) {
-                ifBlock {
-                    // binding, size
-                    pop
-                    // binding
-                    ldc(0)
-                    // binding, 0
-                    operation("arrayCreate", JSObject::class, Int::class)
-                    // binding, arr
-                }
-
-                elseBlock {
-                    // binding, size
-                    if (startingIndex != 0) {
-                        ldc(startingIndex)
-                        // binding, size, index
-                        isub
-                    }
-                    // binding, length
-                    operation("arrayCreate", JSObject::class, Int::class)
-                    // binding, arr
-                    val arr = astore()
-                    // binding
-
-                    val loopStart = makeLabel()
-                    val loopEnd = makeLabel()
-
-                    ldc(startingIndex)
-                    val incr = istore()
-
-                    // binding
-
-                    placeLabel(loopStart)
-
-                    load(incr)
-                    load(arguments)
-                    // binding, incr, args
-                    invokeinterface(List::class, "size", Int::class)
-                    // binding, incr, size
-                    isub
-                    // binding, value
-                    ifStatement(JumpCondition.GreaterThanOrEqual) {
-                        // binding
-                        goto(loopEnd)
-                    }
-
-                    // binding
-                    load(arr)
-                    // binding, arr
-                    construct(JSNumber::class, Int::class) {
-                        load(incr)
-                    }
-                    // binding, arr, key
-
-                    load(arguments)
-                    // binding, arr, key, args
-                    load(incr)
-                    // binding, arr, key, args, incr
-                    invokeinterface(List::class, "get", Any::class, Int::class)
-                    // binding, arr, key, value
-                    checkcast<JSValue>()
-                    // binding, arr, key, value
-
-                    operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
-                    // binding, boolean
-                    pop
-                    // binding
-
-                    iinc(incr.index)
-
-                    goto(loopStart)
-
-                    placeLabel(loopEnd)
-
-                    load(arr)
-                    // binding, arr
-                }
-            }
-
-            if (hasDuplicates) {
-                operation("putValue", void, JSValue::class, JSValue::class)
-            } else {
-                operation("initializeReferencedBinding", void, JSReference::class, JSValue::class)
-            }
+            ldc("next")
+            invokevirtual(JSObject::class, "get", JSValue::class, String::class)
+            ldc(false)
         }
+        loadLexicalEnv()
+        iteratorBindingInitialization(parameters)
 
         val varEnv: Local
 
@@ -710,6 +557,281 @@ open class Compiler {
         }
 
         stackHeight -= 2
+    }
+
+    // Consumed an IteratorRecord and EnvRecord? from the stack
+    private fun MethodAssembly.iteratorBindingInitialization(node: ASTNode) {
+        when (node) {
+            is FormalParametersNode -> {
+                node.functionParameters.parameters.forEach {
+                    dup2
+                    iteratorBindingInitialization(it.bindingElement)
+                }
+                if (node.restParameter != null) {
+                    iteratorBindingInitialization(node.restParameter.element)
+                } else {
+                    pop2
+                }
+            }
+            is ArrayBindingPattern -> {
+                node.bindingElements.forEach {
+                    dup2
+                    if (it is BindingElisionNode) {
+                        pop
+                        iteratorDestructuringAssignmentEvaluation(it)
+                    } else {
+                        iteratorBindingInitialization(it)
+                    }
+                }
+
+                if (node.restProperty != null) {
+                    iteratorBindingInitialization(node.restProperty)
+                } else {
+                    pop2
+                }
+            }
+            is SingleNameBindingElement -> {
+                swap
+                ldc(node.identifier.identifierName)
+                operation("resolveBinding", JSReference::class, String::class, EnvRecord::class)
+                // env, record, lhs
+                loadUndefined()
+                val value = astore()
+                // env, record, lhs
+
+                swap
+                dup
+                val record = astore()
+                invokevirtual(Operations.IteratorRecord::class, "isDone", Boolean::class)
+                // env, lhs, boolean
+
+                ifStatement(JumpCondition.False) {
+                    tryCatchBuilder {
+                        tryBlock {
+                            // lhs
+                            load(record)
+                            operation("iteratorStep", JSValue::class, Operations.IteratorRecord::class)
+                            // lhs, next
+                            dup
+                            loadFalse()
+                            ifElseStatement(JumpCondition.RefEqual) {
+                                ifBlock {
+                                    pop
+                                    load(record)
+                                    ldc(true)
+                                    invokevirtual(Operations.IteratorRecord::class, "setDone", void, Boolean::class)
+                                }
+
+                                elseBlock {
+                                    operation("iteratorValue", JSValue::class, JSValue::class)
+                                    astore(value.index)
+                                }
+                            }
+                        }
+
+                        catchBlock<ThrowException> {
+                            load(record)
+                            ldc(true)
+                            invokevirtual(Operations.IteratorRecord::class, "setDone", void, Boolean::class)
+                            athrow
+                        }
+                    }
+                }
+
+                // env, lhs
+                if (node.initializer != null) {
+                    load(value)
+                    loadUndefined()
+                    ifStatement(JumpCondition.RefEqual) {
+                        if (Operations.isAnonymousFunctionDefinition(node.initializer))
+                            TODO()
+                        compileExpression(node.initializer.node)
+                        getValue
+                        astore(value.index)
+                    }
+                }
+
+                swap
+                load(value)
+                ifElseStatement(JumpCondition.Null) {
+                    ifBlock {
+                        operation("putValue", void, JSValue::class, JSValue::class)
+                    }
+
+                    elseBlock {
+                        operation("initializeReferencedBinding", void, JSReference::class, JSValue::class)
+                    }
+                }
+            }
+            is PatternBindingElement -> {
+                swap
+                loadUndefined()
+                val value = astore()
+                val record = astore()
+                // env
+
+                load(record)
+                invokevirtual(Operations.IteratorRecord::class, "isDone", Boolean::class)
+                ifStatement(JumpCondition.False) {
+                    tryCatchBuilder {
+                        tryBlock {
+                            load(record)
+                            operation("iteratorStep", JSValue::class, Operations.IteratorRecord::class)
+                            dup
+                            loadFalse()
+                            ifElseStatement(JumpCondition.RefEqual) {
+                                ifBlock {
+                                    pop
+                                    load(record)
+                                    ldc(true)
+                                    invokevirtual(Operations.IteratorRecord::class, "setDone", void, Boolean::class)
+                                }
+
+                                elseBlock {
+                                    operation("iteratorValue", JSValue::class, JSValue::class)
+                                    astore(value.index)
+                                }
+                            }
+                        }
+
+                        catchBlock<ThrowException> {
+                            load(record)
+                            ldc(true)
+                            invokevirtual(Operations.IteratorRecord::class, "setDone", void, Boolean::class)
+                            athrow
+                        }
+                    }
+                }
+
+                if (node.initializer != null) {
+                    load(value)
+                    loadUndefined()
+                    ifStatement(JumpCondition.RefEqual) {
+                        compileExpression(node.initializer.node)
+                        getValue
+                        astore(value.index)
+                    }
+                }
+
+                load(value)
+                swap
+                bindingInitialization(node.pattern)
+            }
+            is BindingRestElement -> {
+                val env = astore()
+                val record = astore()
+                ldc(0)
+                operation("arrayCreate", JSObject::class, Int::class)
+                val arr = astore()
+                ldc(0)
+                // n
+
+                val start = makeLabel()
+                val end = makeLabel()
+                placeLabel(start)
+
+                if (node.target is BindingIdentifierNode) {
+                    ldc(node.target.identifierName)
+                    load(env)
+                    operation("resolveBinding", JSReference::class, String::class, EnvRecord::class)
+                    load(record)
+                    invokevirtual(EnvRecord::class, "isDone", Boolean::class)
+                    ifStatement(JumpCondition.True) {
+                        load(arr)
+                        load(env)
+                        ifElseStatement(JumpCondition.Null) {
+                            ifBlock {
+                                operation("putValue", void, JSValue::class, JSValue::class)
+                            }
+
+                            elseBlock {
+                                operation("initializeReferencedBinding", void, JSReference::class, JSValue::class)
+                            }
+                        }
+                    }
+                } else {
+                    expect(node.target is BindingPattern)
+                    load(record)
+                    invokevirtual(EnvRecord::class, "isDone", Boolean::class)
+                    ifStatement(JumpCondition.True) {
+                        load(arr)
+                        load(env)
+                        bindingInitialization(node.target)
+                        goto(end)
+                    }
+                }
+
+                placeLabel(end)
+                pop
+            }
+            else -> unreachable()
+        }
+    }
+
+    // Consumes a JSValue and EnvRecord? from the stack
+    protected fun MethodAssembly.bindingInitialization(node: ASTNode) {
+        when (node) {
+            is BindingIdentifierNode -> {
+                dup
+                ifElseStatement(JumpCondition.Null) {
+                    ifBlock {
+                        pop
+                        ldc(node.identifierName)
+                        operation("resolveBinding", JSReference::class, String::class)
+                        swap
+                        operation("putValue", void, JSValue::class, JSValue::class)
+                    }
+
+                    elseBlock {
+                        swap
+                        ldc(node.identifierName)
+                        swap
+                        operation("initializeBinding", void, String::class, JSValue::class)
+                    }
+                }
+            }
+            is ArrayBindingPattern -> {
+                TODO()
+            }
+            is ObjectBindingPattern -> {
+                TODO()
+            }
+            else -> TODO()
+        }
+    }
+
+    // Consumes an IteratorRecord from the stack
+    private fun MethodAssembly.iteratorDestructuringAssignmentEvaluation(node: ASTNode) {
+        val record = astore()
+
+        when (node) {
+            is BindingElisionNode -> {
+                load(record)
+                invokevirtual(EnvRecord::class, "isDone", Boolean::class)
+                ifStatement(JumpCondition.False) {
+                    tryCatchBuilder {
+                        tryBlock {
+                            load(record)
+                            operation("iteratorStep", JSValue::class, Operations.IteratorRecord::class)
+                            loadFalse()
+                            ifStatement(JumpCondition.RefEqual) {
+                                load(record)
+                                ldc(true)
+                                invokevirtual(Operations.IteratorRecord::class, "setDone", void, Boolean::class)
+                            }
+                        }
+
+                        catchBlock<ThrowException> {
+                            load(record)
+                            ldc(true)
+                            invokevirtual(Operations.IteratorRecord::class, "setDone", void, Boolean::class)
+                            athrow
+                        }
+                    }
+                }
+            }
+            else -> TODO()
+        }
     }
 
     protected fun MethodAssembly.compileStatementList(statementListNode: StatementListNode) {
@@ -1528,8 +1650,8 @@ open class Compiler {
                 PropertyNameNode(IdentifierNode("constructor"), false),
                 FormalParametersNode(
                     FormalParameterListNode(emptyList()),
-                    FormalRestParameterNode(
-                        BindingRestElementNode(BindingIdentifierNode("args"))
+                    FunctionRestParameterNode(
+                        BindingRestElement(BindingIdentifierNode("args"))
                     )
                 ),
                 FunctionStatementList(
@@ -1846,11 +1968,11 @@ open class Compiler {
 
                         tryCatchBuilder {
                             tryBlock {
-                                loadLexicalEnv()
-                                ldc(parameter.identifierName)
                                 load(ex)
                                 invokevirtual(ThrowException::class, "getValue", JSValue::class)
-                                invokevirtual(EnvRecord::class, "initializeBinding", void, String::class, JSValue::class)
+                                loadLexicalEnv()
+                                bindingInitialization(parameter)
+
                                 compileBlock(node.catchNode.block)
                             }
 
@@ -2034,7 +2156,7 @@ open class Compiler {
             if (it is BindingIdentifierNode) {
                 FormalParametersNode(
                     FormalParameterListNode(
-                        listOf(FormalParameterNode(BindingElementNode(SingleNameBindingNode(it, null))))
+                        listOf(FormalParameterNode(SingleNameBindingElement(it, null)))
                     ),
                     null
                 )

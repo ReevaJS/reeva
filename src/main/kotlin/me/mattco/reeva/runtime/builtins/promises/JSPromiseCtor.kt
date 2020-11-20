@@ -7,7 +7,6 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.functions.JSNativeFunction
-import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.runtime.primitives.JSFalse
@@ -53,7 +52,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             performPromiseAll(iteratorRecord, thisValue, capability, resolve)
         } catch (e: ThrowException) {
             try {
-                if (!iteratorRecord.done)
+                if (!iteratorRecord.isDone)
                     Operations.iteratorClose(iteratorRecord, e.value)
                 else JSEmpty
             } finally {
@@ -80,12 +79,12 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             val next = try {
                 Operations.iteratorStep(iteratorRecord)
             } catch (e: ThrowException) {
-                iteratorRecord.done = true
+                iteratorRecord.isDone = true
                 throw e
             }
 
             if (next == JSFalse) {
-                iteratorRecord.done = true
+                iteratorRecord.isDone = true
                 remainingElementCount.value--
                 if (remainingElementCount.value == 0) {
                     val valuesArray = Operations.createArrayFromList(values)
@@ -97,7 +96,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             val nextValue = try {
                 Operations.iteratorValue(next)
             } catch (e: ThrowException) {
-                iteratorRecord.done = true
+                iteratorRecord.isDone = true
                 throw e
             }
 
@@ -125,7 +124,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             performPromiseAllSettled(iteratorRecord, thisValue, capability, resolve)
         } catch (e: ThrowException) {
             try {
-                if (!iteratorRecord.done)
+                if (!iteratorRecord.isDone)
                     Operations.iteratorClose(iteratorRecord, e.value)
                 else JSEmpty
             } finally {
@@ -152,12 +151,12 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             val next = try {
                 Operations.iteratorStep(iteratorRecord)
             } catch (e: ThrowException) {
-                iteratorRecord.done = true
+                iteratorRecord.isDone = true
                 throw e
             }
 
             if (next == JSFalse) {
-                iteratorRecord.done = true
+                iteratorRecord.isDone = true
                 remainingElementCount.value--
                 if (remainingElementCount.value == 0) {
                     val valuesArray = Operations.createArrayFromList(values)
@@ -169,7 +168,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             val nextValue = try {
                 Operations.iteratorValue(next)
             } catch (e: ThrowException) {
-                iteratorRecord.done = true
+                iteratorRecord.isDone = true
                 throw e
             }
 

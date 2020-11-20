@@ -676,17 +676,13 @@ class Parser(text: String, private val realm: Realm) {
             return FormalParametersNode(FormalParameterListNode(emptyList()), it)
         }
 
-        var restNode: FormalRestParameterNode? = null
+        var restNode: FunctionRestParameterNode? = null
 
-        var identifier = parseBindingIdentifier() ?: return null
-        var initializer = withIn { parseInitializer() }
-        parameters.add(FormalParameterNode(BindingElementNode(SingleNameBindingNode(identifier, initializer))))
+        parameters.add(FormalParameterNode(parseBindingElement() ?: return null))
 
         while (tokenType == TokenType.Comma) {
             consume()
-            identifier = parseBindingIdentifier() ?: break
-            initializer = withIn { parseInitializer() }
-            parameters.add(FormalParameterNode(BindingElementNode(SingleNameBindingNode(identifier, initializer))))
+            parameters.add(FormalParameterNode(parseBindingElement() ?: break))
         }
 
         if (tokenType == TokenType.TripleDot)
@@ -695,18 +691,11 @@ class Parser(text: String, private val realm: Realm) {
         return FormalParametersNode(FormalParameterListNode(parameters), restNode)
     }
 
-    private fun parseFunctionRestParameter(): FormalRestParameterNode? {
+    private fun parseFunctionRestParameter(): FunctionRestParameterNode? {
         if (tokenType != TokenType.TripleDot)
             return null
 
-        consume()
-        // TODO: Binding patterns
-        val identifier = parseBindingIdentifier() ?: run {
-            expected("identifier")
-            consume()
-            return null
-        }
-        return FormalRestParameterNode(BindingRestElementNode(identifier))
+        return FunctionRestParameterNode(parseBindingRestElement() ?: return null)
     }
 
     private fun parseFunctionBody(): StatementListNode? {
@@ -1241,11 +1230,11 @@ class Parser(text: String, private val realm: Realm) {
                 BindingIdentifierNode(it.node.identifierName) to null
             }
 
-            FormalParameterNode(BindingElementNode(SingleNameBindingNode(identifier, initializer?.let(::InitializerNode))))
+            FormalParameterNode(SingleNameBindingElement(identifier, initializer?.let(::InitializerNode)))
         }
 
         val restParameter = elements.firstOrNull { it.isSpread }?.let {
-            FormalRestParameterNode(BindingRestElementNode(it.node as BindingIdentifierNode))
+            FunctionRestParameterNode(BindingRestElement(it.node as BindingIdentifierNode))
         }
 
         return FormalParametersNode(FormalParameterListNode(parameters), restParameter)
@@ -1691,7 +1680,7 @@ class Parser(text: String, private val realm: Realm) {
         return ArrayLiteralNode(elements)
     }
 
-    private fun parseObjectLiteral(): ObjectLiteralNode? {
+    private fun parseObjectLiteral(isCoverForDestructure: Boolean = false): ObjectLiteralNode? {
         if (tokenType != TokenType.OpenCurly)
             return null
 
@@ -1701,7 +1690,151 @@ class Parser(text: String, private val realm: Realm) {
             consume()
 
         consume(TokenType.CloseCurly)
+
+        if (!isCoverForDestructure) {
+            list?.properties?.forEach {
+                if (it.type == PropertyDefinitionNode.Type.Initializer)
+                    unexpected("object destructuring expression")
+            }
+        }
+
         return ObjectLiteralNode(list)
+    }
+
+    private fun parseBindingPattern(): BindingPattern? {
+        return when (tokenType) {
+            TokenType.OpenCurly -> parseObjectBindingPattern()
+            TokenType.OpenBracket -> parseArrayBindingPattern()
+            else -> null
+        }
+    }
+
+    private fun parseObjectBindingPattern(): ObjectBindingPattern? {
+        consume(TokenType.OpenCurly)
+
+        val properties = mutableListOf<BindingProperty>()
+        var restProperty: BindingRestProperty? = null
+
+        while (true) {
+            if (tokenType == TokenType.TripleDot) {
+                consume()
+                val identifier = parseBindingIdentifier() ?: run {
+                    expected("identifier")
+                    consume()
+                    return null
+                }
+                restProperty = BindingRestProperty(identifier)
+                break
+            }
+
+            val propertyName = parsePropertyNameNode()
+            if (propertyName != null && propertyName.expr is IdentifierNode && tokenType != TokenType.Colon) {
+                val initializer = parseInitializer()
+                properties.add(SingleNameBindingProperty(BindingIdentifierNode(propertyName.expr.identifierName), initializer))
+            } else if (propertyName != null && tokenType == TokenType.Colon) {
+                consume(TokenType.Colon)
+                val element = parseBindingElement() ?: run {
+                    expected("binding identifier or pattern")
+                    consume()
+                    return null
+                }
+                properties.add(ComplexBindingProperty(propertyName, element))
+            } else if (propertyName == null) {
+                val (identifier, initializer) = parseSingleNameBindingComponents() ?: run {
+                    expected("identifier")
+                    consume()
+                    return null
+                }
+                properties.add(SingleNameBindingProperty(identifier, initializer))
+            } else {
+                expected("colon followed by a binding element")
+                consume()
+                return null
+            }
+
+            if (tokenType != TokenType.Comma)
+                break
+            consume()
+        }
+
+        consume(TokenType.CloseCurly)
+
+        return ObjectBindingPattern(properties, restProperty)
+    }
+
+    private fun parseBindingElement(): BindingElementNode? {
+        if (tokenType == TokenType.OpenCurly || tokenType == TokenType.OpenBracket) {
+            val pattern = parseBindingPattern() ?: run {
+                expected("destructuring pattern")
+                consume()
+                return null
+            }
+            val initializer = parseInitializer()
+
+            return PatternBindingElement(pattern, initializer)
+        }
+
+        val (identifier, expr) = parseSingleNameBindingComponents() ?: run {
+            expected("identifier")
+            consume()
+            return null
+        }
+
+        return SingleNameBindingElement(identifier, expr)
+    }
+
+    private fun parseSingleNameBindingComponents(): Pair<BindingIdentifierNode, InitializerNode?>? {
+        val identifier = parseBindingIdentifier() ?: return null
+        val initializer = parseInitializer()
+        return identifier to initializer
+    }
+
+    private fun parseBindingRestElement(): BindingRestElement? {
+        if (tokenType != TokenType.TripleDot)
+            return null
+        consume()
+
+        val node = parseBindingPattern() ?: parseBindingIdentifier() ?: run {
+            expected("identifier or destructuring pattern")
+            consume()
+            return null
+        }
+
+        return BindingRestElement(node)
+    }
+
+    private fun parseArrayBindingPattern(): ArrayBindingPattern? {
+        consume(TokenType.OpenBracket)
+
+        val elements = mutableListOf<BindingElisionElement>()
+        var restElement: BindingRestElement? = null
+
+        while (true) {
+            if (tokenType == TokenType.Comma && has(1) && peek(1).type == TokenType.TripleDot) {
+                consume()
+                restElement = parseBindingRestElement() ?: return null
+                break
+            }
+
+            if (tokenType == TokenType.Comma)
+                elements.add(BindingElisionNode)
+
+            val element = parseBindingElement() ?: run {
+                expected("binding array destructuring element")
+                consume()
+                return null
+            }
+
+            elements.add(element)
+
+            if (tokenType != TokenType.Comma)
+                break
+            consume()
+        }
+
+        consume(TokenType.CloseBracket)
+
+        return ArrayBindingPattern(elements, restElement)
     }
 
     private fun parsePropertyDefinitionList(): PropertyDefinitionListNode? {
@@ -1739,6 +1872,15 @@ class Parser(text: String, private val realm: Realm) {
 
             val propertyName = parsePropertyNameNode()
             if (propertyName != null) {
+                if (propertyName.expr is IdentifierNode && tokenType == TokenType.Equals) {
+                    consume()
+                    val expr = withIn { parseAssignmentExpression() } ?: run {
+                        expected("expression")
+                        consume()
+                        return null
+                    }
+                    return PropertyDefinitionNode(propertyName.expr, expr, PropertyDefinitionNode.Type.Initializer)
+                }
                 consume(TokenType.Colon)
                 val expr = withIn { parseAssignmentExpression() } ?: run {
                     expected("expression")

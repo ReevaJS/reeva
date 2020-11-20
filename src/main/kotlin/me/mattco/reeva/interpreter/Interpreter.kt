@@ -20,6 +20,7 @@ import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSInterpreterFunction
+import me.mattco.reeva.runtime.iterators.JSListIterator
 import me.mattco.reeva.runtime.iterators.JSObjectPropertyIterator
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -221,8 +222,8 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             }
         }
 
-        val indexOfLastNormal = parameterList.functionParameters.parameters.indexOfLast {
-            it.bindingElement.binding.initializer == null
+        val indexOfLastNormal = parameterList.functionParameters.parameters.indexOfLast { param ->
+            (param.bindingElement as? SingleNameBindingElement)?.initializer == null
         }
 
         Operations.definePropertyOrThrow(
@@ -302,46 +303,9 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             parameterNames + listOf("arguments")
         } else parameterNames
 
-
-        formals.functionParameters.parameters.forEachIndexed { index, parameter ->
-            val lhs = Operations.resolveBinding(parameter.bindingElement.binding.identifier.identifierName)
-            var value = if (index > arguments.lastIndex) {
-                JSUndefined
-            } else arguments[index]
-
-            if (value == JSUndefined && parameter.bindingElement.binding.initializer != null) {
-                val result = interpretExpression(parameter.bindingElement.binding.initializer.node)
-                val defaultValue = Operations.getValue(result)
-                value = defaultValue
-            }
-
-            if (hasDuplicates) {
-                Operations.putValue(lhs, value)
-            } else {
-                Operations.initializeReferencedBinding(lhs, value)
-            }
-        }
-
-        if (formals.restParameter != null) {
-            val id = formals.restParameter.element.identifier.identifierName
-            val startingIndex = formals.functionParameters.parameters.size
-            val lhs = Operations.resolveBinding(id)
-            val value = if (startingIndex > arguments.lastIndex) {
-                Operations.arrayCreate(0)
-            } else {
-                val arr = Operations.arrayCreate(arguments.lastIndex - startingIndex + 1)
-                arguments.subList(startingIndex, arguments.size).forEachIndexed { index, value ->
-                    Operations.createDataPropertyOrThrow(arr, index.toValue(), value)
-                }
-                arr
-            }
-
-            if (hasDuplicates) {
-                Operations.putValue(lhs, value)
-            } else {
-                Operations.initializeReferencedBinding(lhs, value)
-            }
-        }
+        val iterator = JSListIterator.create(realm, arguments)
+        val record = Operations.IteratorRecord(iterator, iterator.get("next"), false)
+        iteratorBindingInitialization(formals, record, if (hasDuplicates) null else env)
 
         val varEnv = if (!hasParameterExpressions) {
             val instantiatedVarNames = parameterBindings.toMutableList()
@@ -390,6 +354,141 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             val functionName = decl.boundNames()[0]
             val function = instantiateFunctionObject(decl, lexEnv)
             varEnv.setMutableBinding(functionName, function, false)
+        }
+    }
+
+    private fun iteratorBindingInitialization(node: ASTNode, record: Operations.IteratorRecord, env: EnvRecord?) {
+        when (node) {
+            is FormalParametersNode -> {
+                node.functionParameters.parameters.forEach {
+                    iteratorBindingInitialization(it.bindingElement, record, env)
+                }
+                if (node.restParameter != null)
+                    iteratorBindingInitialization(node.restParameter.element, record, env)
+            }
+            is ArrayBindingPattern -> {
+                node.bindingElements.forEach {
+                    if (it is BindingElisionNode) {
+                        iteratorDestructuringAssignmentEvaluation(it, record)
+                    } else iteratorBindingInitialization(it, record, env)
+                }
+
+                if (node.restProperty != null)
+                    iteratorBindingInitialization(node.restProperty, record, env)
+            }
+            is SingleNameBindingElement -> {
+                val lhs = Operations.resolveBinding(node.identifier.identifierName, env)
+
+                var value: JSValue = JSUndefined
+                if (!record.isDone) {
+                    try {
+                        val next = Operations.iteratorStep(record)
+                        if (next == JSFalse) {
+                            record.isDone = true
+                        } else {
+                            value = Operations.iteratorValue(next)
+                        }
+                    } catch (e: ThrowException) {
+                        record.isDone = true
+                        throw e
+                    }
+
+                }
+
+                if (node.initializer != null && value == JSUndefined) {
+                    if (Operations.isAnonymousFunctionDefinition(node.initializer)) {
+                        TODO()
+                    } else {
+                        value = Operations.getValue(interpretExpression(node.initializer.node))
+                    }
+                }
+
+                if (env == null) {
+                    Operations.putValue(lhs, value)
+                } else {
+                    Operations.initializeReferencedBinding(lhs, value)
+                }
+            }
+            is PatternBindingElement -> {
+                var value: JSValue = JSUndefined
+                if (!record.isDone) {
+                    try {
+                        val next = Operations.iteratorStep(record)
+                        if (next == JSFalse) {
+                            record.isDone = true
+                        } else {
+                            value = Operations.iteratorValue(next)
+                        }
+                    } catch (e: ThrowException) {
+                        record.isDone = true
+                        throw e
+                    }
+                }
+
+                if (node.initializer != null && value == JSUndefined)
+                    value = Operations.getValue(interpretExpression(node.initializer.node))
+
+                bindingInitialization(node.pattern, value, env)
+            }
+            is BindingRestElement -> {
+                val arr = Operations.arrayCreate(0)
+                var n = 0
+
+                while (true) {
+                    if (node.target is BindingIdentifierNode) {
+                        val lhs = Operations.resolveBinding(node.target.identifierName, env)
+                        if (record.isDone) {
+                            if (env == null) {
+                                Operations.putValue(lhs, arr)
+                            } else {
+                                Operations.initializeReferencedBinding(lhs, arr)
+                            }
+                            return
+                        }
+                    } else {
+                        expect(node.target is BindingPattern)
+                        if (record.isDone) {
+                            bindingInitialization(node.target, arr, env)
+                            return
+                        }
+                    }
+
+                    try {
+                        val next = Operations.iteratorStep(record)
+                        if (next == JSFalse) {
+                            record.isDone = true
+                        } else {
+                            val nextValue = Operations.iteratorValue(next)
+                            Operations.createDataPropertyOrThrow(arr, n.key(), nextValue)
+                        }
+                    } catch (e: ThrowException) {
+                        record.isDone = true
+                        throw e
+                    }
+
+                    n++
+                }
+            }
+            else -> unreachable()
+        }
+    }
+
+    private fun iteratorDestructuringAssignmentEvaluation(node: ASTNode, record: Operations.IteratorRecord) {
+        when (node) {
+            is BindingElisionNode -> {
+                if (record.isDone)
+                    return
+                try {
+                    Operations.iteratorStep(record)
+                } catch (e: ThrowException) {
+                    record.isDone = true
+                    throw e
+                }.also {
+                    if (it == JSFalse)
+                        record.isDone = true
+                }
+            }
+            else -> TODO()
         }
     }
 
@@ -514,14 +613,14 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         }
 
         val proto = JSObject.create(realm, protoParent)
-        val constructor = (classNode.body.constructorMethod() as? ClassElementNode)?.node as? MethodDefinitionNode ?:
-            if (classNode.heritage != null) {
+        val constructor = (classNode.body.constructorMethod() as? ClassElementNode)?.node as? MethodDefinitionNode
+            ?: if (classNode.heritage != null) {
                 MethodDefinitionNode(
                     PropertyNameNode(IdentifierNode("constructor"), false),
                     FormalParametersNode(
                         FormalParameterListNode(emptyList()),
-                        FormalRestParameterNode(
-                            BindingRestElementNode(BindingIdentifierNode("args"))
+                        FunctionRestParameterNode(
+                            BindingRestElement(BindingIdentifierNode("args"))
                         )
                     ),
                     FunctionStatementList(
@@ -631,7 +730,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                         JSEmpty to false
                     }
 
-                    JSFunction.FieldRecord(name, initializer, isAnonDef)
+                    JSFunction.FieldRecord(name.asValue, initializer, isAnonDef)
                 }
             }
             ClassElementNode.Type.Empty -> null
@@ -1148,7 +1247,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 }
                 Agent.runningContext.lexicalEnv = catchEnv
                 try {
-                    bindingInitialization(parameter.identifierName, e.value, catchEnv)
+                    bindingInitialization(parameter, e.value, catchEnv)
                     updateEmpty(JSUndefined) { interpretBlock(tryStatementNode.catchNode.block) }
                 } finally {
                     Agent.runningContext.lexicalEnv = oldEnv
@@ -1160,14 +1259,81 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         }
     }
 
-    private fun bindingInitialization(identifier: String, value: JSValue, env: EnvRecord?): JSValue {
-        return if (env == null) {
-            val lhs = Operations.resolveBinding(identifier)
-            Operations.putValue(lhs, value)
-            JSEmpty
-        } else {
-            env.initializeBinding(identifier, value)
-            JSUndefined
+    private fun bindingInitialization(node: ASTNode, value: JSValue, env: EnvRecord?) {
+        when (node) {
+            is BindingIdentifierNode -> if (env == null) {
+                val lhs = Operations.resolveBinding(node.identifierName)
+                Operations.putValue(lhs, value)
+            } else {
+                env.initializeBinding(node.identifierName, value)
+            }
+            is ArrayBindingPattern -> {
+                val record = Operations.getIterator(value)
+                iteratorBindingInitialization(node, record, env)
+                if (!record.isDone)
+                    Operations.iteratorClose(record, JSEmpty)
+            }
+            is ObjectBindingPattern -> {
+                val excludedNames = mutableListOf<PropertyKey>()
+                node.bindingProperties.forEach {
+                    excludedNames.addAll(propertyBindingInitialization(it, value, env))
+                }
+
+                if (node.restProperty != null) {
+                    val lhs = Operations.resolveBinding(node.restProperty.target.identifierName, env)
+                    val restObj = JSObject.create(realm)
+                    Operations.copyDataProperties(restObj, value, excludedNames)
+                    if (env == null) {
+                        Operations.putValue(lhs, restObj)
+                    } else {
+                        Operations.initializeReferencedBinding(lhs, restObj)
+                    }
+                }
+            }
+            else -> TODO()
+        }
+    }
+
+    private fun propertyBindingInitialization(node: ASTNode, value: JSValue, env: EnvRecord?): List<PropertyKey> {
+        return when (node) {
+            is SingleNameBindingProperty -> {
+                val name = node.identifier.identifierName.key()
+                keyedBindingInitialization(node, value, env, name)
+                listOf(name)
+            }
+            is ComplexBindingProperty -> {
+                val propertyName = evaluatePropertyName(node.propertyName)
+                keyedBindingInitialization(node.element, value, env, propertyName)
+                listOf(propertyName)
+            }
+            else -> unreachable()
+        }
+    }
+
+    private fun keyedBindingInitialization(node: ASTNode, value: JSValue, env: EnvRecord?, name: PropertyKey) {
+        when (node) {
+            is PatternBindingElement -> {
+                var value = Operations.getV(value, name)
+                if (node.initializer != null && value == JSUndefined)
+                    value = Operations.getValue(interpretExpression(node.initializer.node))
+                bindingInitialization(node.pattern, value, env)
+            }
+            is SingleNameBindingProperty -> {
+                val lhs = Operations.resolveBinding(node.identifier.identifierName, env)
+                var value = Operations.getV(value, name)
+                if (node.initializer != null && value == JSUndefined) {
+                    if (Operations.isAnonymousFunctionDefinition(node.initializer))
+                        TODO()
+                    value = Operations.getValue(interpretExpression(node.initializer.node))
+                }
+
+                if (env == null) {
+                    Operations.putValue(lhs, value)
+                } else {
+                    Operations.initializeReferencedBinding(lhs, value)
+                }
+            }
+            else -> unreachable()
         }
     }
 
@@ -1330,7 +1496,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             if (it is BindingIdentifierNode) {
                 FormalParametersNode(
                     FormalParameterListNode(
-                        listOf(FormalParameterNode(BindingElementNode(SingleNameBindingNode(it, null))))
+                        listOf(FormalParameterNode(SingleNameBindingElement(it, null)))
                     ),
                     null
                 )
@@ -1485,7 +1651,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 )
             }
             MethodDefinitionNode.Type.Getter -> {
-                val propKey = Operations.toPropertyKey(evaluatePropertyName(methodDefinitionNode.identifier))
+                val propKey = evaluatePropertyName(methodDefinitionNode.identifier)
                 val closure = ordinaryFunctionCreate(
                     realm.functionProto,
                     "TODO",
@@ -1503,7 +1669,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                 )
             }
             MethodDefinitionNode.Type.Setter -> {
-                val propKey = Operations.toPropertyKey(evaluatePropertyName(methodDefinitionNode.identifier))
+                val propKey = evaluatePropertyName(methodDefinitionNode.identifier)
                 val closure = ordinaryFunctionCreate(
                     realm.functionProto,
                     "TODO",
@@ -1541,22 +1707,22 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
             Agent.runningContext.lexicalEnv!!,
         )
         Operations.makeMethod(closure, obj)
-        return DefinedMethod(Operations.toPropertyKey(propKey), closure)
+        return DefinedMethod(propKey, closure)
     }
 
-    private fun evaluatePropertyName(propertyName: ASTNode): JSValue {
+    private fun evaluatePropertyName(propertyName: ASTNode): PropertyKey {
         return if (propertyName is PropertyNameNode) {
             if (propertyName.isComputed) {
                 val exprValue = interpretExpression(propertyName.expr)
                 val propName = Operations.getValue(exprValue)
-                Operations.toPropertyKey(propName).asValue
+                Operations.toPropertyKey(propName)
             } else {
                 when (val expr = propertyName.expr) {
                     is IdentifierNode -> expr.identifierName
                     is StringLiteralNode -> expr.value
-                    is NumericLiteralNode -> return Operations.toString(expr.value.toValue())
+                    is NumericLiteralNode -> Operations.toString(expr.value.toValue()).string
                     else -> unreachable()
-                }.toValue()
+                }.key()
             }
         } else TODO()
     }
@@ -1573,7 +1739,8 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
                     Operations.createDataPropertyOrThrow(array, index.toValue(), initValue)
                 }
                 ArrayElementNode.Type.Spread -> TODO()
-                ArrayElementNode.Type.Elision -> { }
+                ArrayElementNode.Type.Elision -> {
+                }
             }
         }
         return array

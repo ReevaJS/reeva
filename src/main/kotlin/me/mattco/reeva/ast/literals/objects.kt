@@ -36,6 +36,7 @@ class PropertyDefinitionNode(
             Type.KeyValue -> first.propName()
             Type.Method -> super.propName()
             Type.Spread -> null
+            Type.Initializer -> unreachable()
         }
     }
 
@@ -53,7 +54,8 @@ class PropertyDefinitionNode(
         KeyValue,
         Shorthand,
         Method,
-        Spread
+        Spread,
+        Initializer,
     }
 }
 

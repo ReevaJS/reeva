@@ -1203,6 +1203,24 @@ object Operations {
         return properties
     }
 
+    @JvmStatic
+    @ECMAImpl("7.3.25")
+    fun copyDataProperties(target: JSObject, source: JSValue, excludedItems: List<PropertyKey>): JSObject {
+        if (source.isNullish)
+            return target
+        val from = toObject(source)
+        from.ownPropertyKeys(onlyEnumerable = true).forEach outer@ { key ->
+            excludedItems.forEach {
+                if (it == key)
+                    return@outer
+            }
+            val desc = from.getOwnPropertyDescriptor(key)
+            if (desc != null)
+                createDataPropertyOrThrow(target, key, from.get(key))
+        }
+        return target
+    }
+
     @JvmStatic @JvmOverloads
     @ECMAImpl("7.4.1")
     fun getIterator(obj: JSValue, hint: IteratorHint? = IteratorHint.Sync, _method: JSFunction? = null): IteratorRecord {
@@ -1588,7 +1606,8 @@ object Operations {
         env: EnvRecord
     ): JSMappedArgumentsObject {
         ecmaAssert(formals.restParameter == null)
-        ecmaAssert(formals.functionParameters.parameters.all { it.bindingElement.binding.initializer == null })
+        // TODO
+//        ecmaAssert(formals.functionParameters.parameters.all { it.bindingElement.binding.initializer == null })
 
         val realm = Agent.runningContext.realm
         val obj = JSMappedArgumentsObject.create(realm)
@@ -2298,7 +2317,7 @@ object Operations {
         Async
     }
 
-    data class IteratorRecord(val iterator: JSObject, val nextMethod: JSValue, var done: Boolean)
+    data class IteratorRecord(val iterator: JSObject, val nextMethod: JSValue, var isDone: Boolean)
 
     data class CodepointRecord(val codepoint: Int, val codeUnitCount: Int, val isUnpairedSurrogate: Boolean)
 

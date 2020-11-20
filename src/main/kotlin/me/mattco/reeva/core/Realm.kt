@@ -59,6 +59,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     val setIteratorProto by lazy { JSSetIteratorProto.create(this) }
     val mapIteratorProto by lazy { JSMapIteratorProto.create(this) }
     val objectPropertyIteratorProto by lazy { JSObjectPropertyIteratorProto.create(this) }
+    val listIteratorProto by lazy { JSListIteratorProto.create(this) }
     val regExpStringIteratorProto by lazy { JSRegExpStringIteratorProto.create(this) }
     val consoleProto by lazy { JSConsoleProto.create(this) }
 

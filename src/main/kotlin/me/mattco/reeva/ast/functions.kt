@@ -115,7 +115,7 @@ class FunctionStatementList(val statementList: StatementListNode?) : NodeBase(li
 
 class FormalParametersNode(
     val functionParameters: FormalParameterListNode,
-    val restParameter: FormalRestParameterNode?
+    val restParameter: FunctionRestParameterNode?
 ) : NodeBase(listOfNotNull(functionParameters, restParameter)) {
     override fun boundNames(): List<String> {
         val list = restParameter?.element?.boundNames() ?: emptyList()
@@ -163,23 +163,7 @@ class FormalParameterListNode(val parameters: List<FormalParameterNode>) : NodeB
 
 class FormalParameterNode(val bindingElement: BindingElementNode) : NodeBase(listOf(bindingElement))
 
-// TODO: Patterns
-class BindingElementNode(val binding: SingleNameBindingNode) : NodeBase(listOf(binding))
-
-class BindingRestElementNode(val identifier: BindingIdentifierNode) : NodeBase(listOf(identifier))
-
-class FormalRestParameterNode(val element: BindingRestElementNode) : NodeBase(listOf(element))
-
-class SingleNameBindingNode(
-    val identifier: BindingIdentifierNode,
-    val initializer: InitializerNode?
-) : NodeBase(listOfNotNull(identifier, initializer)) {
-    override fun boundNames() = identifier.boundNames()
-
-    override fun isSimpleParameterList() = initializer == null
-
-    override fun hasInitializer() = initializer != null
-}
+class FunctionRestParameterNode(val element: BindingRestElement) : NodeBase(listOf(element))
 
 class ArrowFunctionNode(
     val parameters: ASTNode, // FormalParameterNode or BindingIdentifierNode
