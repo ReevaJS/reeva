@@ -10,6 +10,7 @@ import org.joni.Syntax
 import org.joni.constants.MetaChar
 import org.joni.constants.SyntaxProperties.*
 import org.joni.exception.ErrorMessages
+import org.joni.exception.SyntaxException
 import org.joni.exception.ValueException
 
 class JSRegExpObject private constructor(
@@ -48,8 +49,11 @@ class JSRegExpObject private constructor(
             when (e.message) {
                 ErrorMessages.ERR_EMPTY_RANGE_IN_CHAR_CLASS -> Errors.RegExp.InvalidRange
                 ErrorMessages.ERR_UPPER_SMALLER_THAN_LOWER_IN_REPEAT_RANGE -> Errors.RegExp.BackwardsBraceQuantifier
+                else -> throw e
+            }.throwSyntaxError()
+        } catch (e: SyntaxException) {
+            when (e.message) {
                 ErrorMessages.ERR_END_PATTERN_AT_ESCAPE -> Errors.RegExp.BadEscape
-                
                 else -> throw e
             }.throwSyntaxError()
         }
@@ -78,6 +82,9 @@ class JSRegExpObject private constructor(
             OP_ESC_W_WORD and
             OP_ESC_LTGT_WORD_BEGIN_END.inv()
 
+        if (Flag.DotAll in flags)
+            op = op or OP_DOT_ANYCHAR
+
         val op2 =
             CONTEXT_INDEP_ANCHORS or
             CONTEXT_INDEP_REPEAT_OPS or
@@ -88,11 +95,9 @@ class JSRegExpObject private constructor(
             DIFFERENT_LEN_ALT_LOOK_BEHIND or
             OP2_QMARK_LT_NAMED_GROUP
 
+        val behavior = DIFFERENT_LEN_ALT_LOOK_BEHIND
 
-        if (Flag.DotAll in flags)
-            op = op or OP_DOT_ANYCHAR
-
-        return Syntax(op, op2, Option.NONE, 0, metaCharTable)
+        return Syntax(op, op2, behavior, 0, metaCharTable)
     }
 
     companion object {
