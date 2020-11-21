@@ -3038,31 +3038,29 @@ open class Compiler {
         dup
         // expr, expr
         getValue
-        dup
-        // expr, oldValue, oldValue
-        instanceof<JSBigInt>()
-        // expr, oldValue, boolean
-        ifStatement(JumpCondition.True) {
-            // expr, oldValue
-            pop2
-            construct(Errors.TODO::class, String::class) {
-                ldc("compileUpdateExpression, BigInt")
-            }
-            invokevirtual(Errors.TODO::class, "throwTypeError", Nothing::class)
-            loadUndefined()
-            areturn
-        }
         // expr, oldValue
         dup_x1
         // oldValue, expr, oldValue
-        construct(JSNumber::class, Double::class) {
-            ldc(1.0)
-        }
-        // oldValue, expr, oldValue, 1.0
-        if (node.isIncrement) {
-            operation("numericAdd", JSValue::class, JSValue::class, JSValue::class)
-        } else {
-            operation("numericSubtract", JSValue::class, JSValue::class, JSValue::class)
+        dup
+        instanceof<JSBigInt>()
+        ifElseStatement(JumpCondition.True) {
+            ifBlock {
+                getstatic(JSBigInt::class, "ONE", JSBigInt::class)
+                if (node.isIncrement) {
+                    operation("bigintAdd", JSValue::class, JSValue::class, JSValue::class)
+                } else {
+                    operation("bigintSubtract", JSValue::class, JSValue::class, JSValue::class)
+                }
+            }
+
+            elseBlock {
+                getstatic(JSNumber::class, "ONE", JSNumber::class)
+                if (node.isIncrement) {
+                    operation("numericAdd", JSValue::class, JSValue::class, JSValue::class)
+                } else {
+                    operation("numericSubtract", JSValue::class, JSValue::class, JSValue::class)
+                }
+            }
         }
         // oldValue, expr, newValue
         dup_x1

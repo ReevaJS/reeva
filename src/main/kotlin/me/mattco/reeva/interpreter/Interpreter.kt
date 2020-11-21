@@ -2036,12 +2036,14 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
     private fun interpretUpdateExpression(updateExpressionNode: UpdateExpressionNode): JSValue {
         val expr = interpretExpression(updateExpressionNode.target)
         val oldValue = Operations.getValue(expr)
-        if (oldValue is JSBigInt)
-            TODO()
         val newValue = if (updateExpressionNode.isIncrement) {
-            Operations.numericAdd(oldValue, JSNumber(1.0))
+            if (oldValue is JSBigInt) {
+                Operations.bigintAdd(oldValue, JSBigInt.ONE)
+            } else Operations.numericAdd(oldValue, JSNumber(1.0))
         } else {
-            Operations.numericSubtract(oldValue, JSNumber(1.0))
+            if (oldValue is JSBigInt) {
+                Operations.bigintSubtract(oldValue, JSBigInt.ONE)
+            } else Operations.numericSubtract(oldValue, JSNumber(1.0))
         }
         Operations.putValue(expr, newValue)
         return if (updateExpressionNode.isPostfix) {
