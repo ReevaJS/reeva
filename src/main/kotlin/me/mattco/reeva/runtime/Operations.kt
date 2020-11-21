@@ -50,6 +50,7 @@ object Operations {
     const val MAX_SAFE_INTEGER: Long = (2L shl 52) - 1L
     const val MAX_32BIT_INT = 2L shl 31
     const val MAX_31BIT_INT = 2L shl 30
+    const val MAX_16BIT_INT = 2 shl 15
 
     val defaultZone = ZoneId.systemDefault()
     val defaultZoneOffset = defaultZone.rules.getOffset(Instant.now())
@@ -619,8 +620,17 @@ object Operations {
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
 
-        var int = floor(abs(number.asDouble)).toLong()
+        val int = floor(abs(number.asDouble)).toLong()
         return JSNumber(int % MAX_32BIT_INT)
+    }
+
+    @JvmStatic @ECMAImpl("7.1.9")
+    fun toUint16(value: JSValue): Int {
+        val number = toNumber(value)
+        if (number.isZero || number.isInfinite || number.isNaN)
+            return 0
+
+        return floor(abs(number.asDouble)).toInt() % MAX_16BIT_INT
     }
 
     @JvmStatic @ECMAImpl("7.1.13")

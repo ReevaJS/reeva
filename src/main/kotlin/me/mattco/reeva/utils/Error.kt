@@ -302,6 +302,10 @@ object Errors {
         object ThisMissingAdd : Error("Set constructor expected this value to have a callable \"add\" property")
     }
 
+    object Strings {
+        class InvalidCodepoint(value: String) : Error("invalid codepoint $value")
+    }
+
     object Symbol {
         object KeyForBadArg : Error("the first argument to Symbol.keyFor must be a symbol")
     }

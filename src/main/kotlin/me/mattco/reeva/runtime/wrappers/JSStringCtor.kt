@@ -3,9 +3,11 @@ package me.mattco.reeva.runtime.wrappers
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
 import me.mattco.reeva.utils.toValue
@@ -29,6 +31,30 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         // TODO: GetPrototypeFromConstructor?
         return JSStringObject.create(realm, theString)
+    }
+
+    @JSMethod("fromCharCode", 1)
+    fun fromCharCode(thisValue: JSValue, arguments: JSArguments): JSValue {
+        return buildString {
+            arguments.forEach {
+                appendCodePoint(Operations.toUint16(it))
+            }
+        }.toValue()
+    }
+
+    @JSMethod("fromCodePoint", 1)
+    fun fromCodePoint(thisValue: JSValue, arguments: JSArguments): JSValue {
+        return buildString {
+            arguments.forEach {
+                val nextCP = Operations.toNumber(it)
+                if (!Operations.isIntegralNumber(nextCP))
+                    Errors.Strings.InvalidCodepoint(Operations.toPrintableString(nextCP)).throwRangeError()
+                val value = nextCP.asInt
+                if (value < 0 || value > 0x10ffff)
+                    Errors.Strings.InvalidCodepoint(value.toString()).throwRangeError()
+                appendCodePoint(value)
+            }
+        }.toValue()
     }
 
     companion object {
