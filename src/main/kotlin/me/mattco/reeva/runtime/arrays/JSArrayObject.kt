@@ -29,7 +29,7 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
     }
 
     @ECMAImpl("9.4.2.1", "[[DefineOwnProperty]]")
-    @ECMAImpl("9.4.2.4", "ArrayLengthSet")
+    @ECMAImpl("9.4.2.4", "ArraySetLength")
     override fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
         if (property.isString && property.asString == "length") {
             if (descriptor.getRawValue() == JSEmpty)
@@ -80,7 +80,7 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
                 return false
 
             if (!newWritable)
-                ecmaAssert(super.defineOwnProperty(property, Descriptor(JSUndefined, Descriptor.HAS_WRITABLE)))
+                ecmaAssert(super.defineOwnProperty(property, Descriptor(JSEmpty, Descriptor.HAS_WRITABLE)))
 
             return true
         }
