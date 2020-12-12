@@ -1215,23 +1215,25 @@ class Parser(text: String, private val realm: Realm) {
             }
         }
 
-        discardState()
-
         val parameters = elements.flatMap {
             if (it.node is CommaExpressionNode) {
-                it.node.expressions.map { CPEAPPLPart(it, false) }
+                it.node.expressions.map { expr -> CPEAPPLPart(expr, false) }
             } else listOf(it)
         }.filterNot { it.isSpread }.map {
             val (identifier, initializer) = if (it.node is AssignmentExpressionNode) {
                 expect(it.node.lhs is IdentifierReferenceNode)
                 BindingIdentifierNode(it.node.lhs.identifierName) to it.node.rhs
-            } else {
-                expect(it.node is IdentifierReferenceNode)
+            } else if (it.node is IdentifierReferenceNode) {
                 BindingIdentifierNode(it.node.identifierName) to null
+            } else {
+                loadState()
+                return null
             }
 
             FormalParameterNode(SingleNameBindingElement(identifier, initializer?.let(::InitializerNode)))
         }
+
+        discardState()
 
         val restParameter = elements.firstOrNull { it.isSpread }?.let {
             FunctionRestParameterNode(BindingRestElement(it.node as BindingIdentifierNode))
