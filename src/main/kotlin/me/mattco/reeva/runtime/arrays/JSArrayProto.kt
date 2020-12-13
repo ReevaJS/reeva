@@ -54,7 +54,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val array = Operations.arraySpeciesCreate(thisObj, 0)
 
         val items = listOf(thisObj) + arguments
-        var n = 0
+        var n = 0L
         items.forEach { item ->
             val isConcatSpreadable = if (item !is JSObject) {
                 false
@@ -92,15 +92,15 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val relativeTarget = Operations.toIntegerOrInfinity(target)
         var to = when {
             relativeTarget.isNegativeInfinity -> 0
-            relativeTarget.asInt < 0 -> max(length + relativeTarget.asInt, 0)
-            else -> min(relativeTarget.asInt, length)
+            relativeTarget.asLong < 0 -> max(length + relativeTarget.asLong, 0L)
+            else -> min(relativeTarget.asLong, length)
         }
         val relativeStart = Operations.toIntegerOrInfinity(start)
 
         var from = when {
             relativeStart.isNegativeInfinity -> 0
-            relativeStart.asInt < 0 -> max(length + relativeStart.asInt, 0)
-            else -> min(relativeStart.asInt, length)
+            relativeStart.asLong < 0 -> max(length + relativeStart.asLong, 0L)
+            else -> min(relativeStart.asLong, length)
         }
         val relativeEnd = if (end == JSUndefined) {
             length.toValue()
@@ -108,8 +108,8 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
         val final = when {
             relativeEnd.isNegativeInfinity -> 0
-            relativeEnd.asInt < 0 -> max(length + relativeEnd.asInt, 0)
-            else -> min(relativeEnd.asInt, length)
+            relativeEnd.asLong < 0L -> max(length + relativeEnd.asLong, 0L)
+            else -> min(relativeEnd.asLong, length)
         }
 
         var count = min(final - from, length - to)
@@ -175,8 +175,8 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
         var startIndex = when {
             relativeStart.isNegativeInfinity -> 0
-            relativeStart.asInt < 0 -> max(length + relativeStart.asInt, 0)
-            else -> min(relativeStart.asInt, length)
+            relativeStart.asLong < 0L -> max(length + relativeStart.asLong, 0L)
+            else -> min(relativeStart.asLong, length)
         }
 
         val relativeEnd = if (end == JSUndefined) {
@@ -185,8 +185,8 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
         val endIndex = when {
             relativeEnd.isNegativeInfinity -> 0
-            relativeEnd.asInt < 0 -> max(length + relativeEnd.asInt, 0)
-            else -> min(relativeEnd.asInt, length)
+            relativeEnd.asLong < 0L -> max(length + relativeEnd.asLong, 0L)
+            else -> min(relativeEnd.asLong, length)
         }
 
         while (startIndex < endIndex) {
@@ -346,20 +346,20 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     fun lastIndexOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
-        if (length == 0)
+        if (length == 0L)
             return (-1).toValue()
 
         val (searchElement, fromIndex) = arguments.takeArgs(0..1)
         val fromNumber = if (fromIndex == JSUndefined) {
-            length - 1
+            length - 1L
         } else Operations.toIntegerOrInfinity(fromIndex).let {
             if (it.isNegativeInfinity)
                 return (-1).toValue()
-            it.asInt
+            it.asLong
         }
 
-        val limit = if (fromNumber >= 0) {
-            min(fromNumber, length - 1)
+        val limit = if (fromNumber >= 0L) {
+            min(fromNumber, length - 1L)
         } else length + fromNumber
 
         obj.indexedProperties.indices().asReversed().filter {
@@ -397,7 +397,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     fun pop(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
-        if (length == 0)
+        if (length == 0L)
             return JSUndefined
 
         val element = obj.get(length - 1)
@@ -437,8 +437,8 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val middle = floor(length / 2.0)
         val indices = obj.indexedProperties.indices()
 
-        val lowerIndices = mutableSetOf<Int>()
-        val upperIndices = mutableSetOf<Int>()
+        val lowerIndices = mutableSetOf<Long>()
+        val upperIndices = mutableSetOf<Long>()
         indices.forEach {
             if (it < middle) {
                 lowerIndices.add(it)
@@ -494,7 +494,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     fun shift(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
-        if (length == 0)
+        if (length == 0L)
             return JSUndefined
 
         val element = obj.indexedProperties.removeFirst(obj)
@@ -511,15 +511,15 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val k = Operations.toIntegerOrInfinity(start).let {
             when {
                 it.isNegativeInfinity -> 0
-                it.asInt < 0 -> max(length + it.asInt, 0)
-                else -> min(it.asInt, length)
+                it.asLong < 0L -> max(length + it.asLong, 0L)
+                else -> min(it.asLong, length)
             }
         }
 
-        val final = (if (end == JSUndefined) length else Operations.toIntegerOrInfinity(end).asInt).let {
+        val final = (if (end == JSUndefined) length else Operations.toIntegerOrInfinity(end).asLong).let {
             when {
-                it == Int.MIN_VALUE -> 0
-                it < 0 -> max(length + it, 0)
+                it == Long.MIN_VALUE -> 0
+                it < 0L -> max(length + it, 0L)
                 else -> min(it, length)
             }
         }
@@ -569,18 +569,18 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
         val actualStart = Operations.toIntegerOrInfinity(start).let {
             when {
-                it.isNegativeInfinity -> 0
-                it.asInt < 0 -> max(length + it.asInt, 0)
-                else -> min(it.asInt, length)
+                it.isNegativeInfinity -> 0L
+                it.asLong < 0L -> max(length + it.asLong, 0L)
+                else -> min(it.asLong, length)
             }
         }
 
         val (insertCount, actualDeleteCount) = when {
-            arguments.isEmpty() -> 0 to 0
-            arguments.size == 1 -> 0 to length - actualStart
+            arguments.isEmpty() -> 0L to 0L
+            arguments.size == 1 -> 0L to length - actualStart
             else -> {
-                val dc = Operations.toIntegerOrInfinity(deleteCount).asInt.coerceIn(0, length - actualStart)
-                (arguments.size - 2) to dc
+                val dc = Operations.toIntegerOrInfinity(deleteCount).asLong.coerceIn(0L, length - actualStart)
+                (arguments.size - 2L) to dc
             }
         }
 
@@ -598,7 +598,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
         Operations.set(array, "length".key(), actualDeleteCount.toValue(), true)
 
-        val itemCount = arguments.size - 2
+        val itemCount = (arguments.size - 2).coerceAtLeast(0)
         if (itemCount < actualDeleteCount) {
             var k = actualStart
             while (k < length - actualDeleteCount) {
@@ -677,7 +677,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     private fun flattenIntoArray(
         target: JSValue,
         source: JSValue,
-        sourceLength: Int,
+        sourceLength: Long,
         start: Int,
         depth: Int?, // null indicates +Infinity
         mapperFunction: JSValue? = null,
@@ -726,7 +726,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         if (!Operations.isCallable(callback))
             Errors.Array.CallableFirstArg("reduceRight").throwTypeError()
 
-        if (length == 0 && arguments.size == 1)
+        if (length == 0L && arguments.size == 1)
             Errors.Array.ReduceEmptyArray.throwTypeError()
 
         val indices = obj.indexedProperties.indices().let {

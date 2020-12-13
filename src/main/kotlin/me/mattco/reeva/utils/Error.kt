@@ -86,7 +86,9 @@ object Errors {
 
     object Array {
         class CallableFirstArg(methodName: String) : Error("the first argument to Array.prototype.$methodName must be callable")
-        class CopyWithinFailedSet(fromIndex: Int, toIndex: Int) : Error("unable to copy index $fromIndex to index $toIndex")
+        class CopyWithinFailedSet(fromIndex: Long, toIndex: Long) : Error("unable to copy index $fromIndex to index $toIndex") {
+            constructor(fromIndex: Int, toIndex: Int) : this(fromIndex.toLong(), toIndex.toLong())
+        }
         object GrowToInvalidLength : Error("cannot increase array length beyond 2 ** 53 - 1")
         object ReduceEmptyArray : Error("cannot reduce empty array with no initial value")
     }

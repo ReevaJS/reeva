@@ -42,7 +42,10 @@ abstract class JSValue : Ref {
     val isArray: Boolean get() = this is JSArrayObject
 
     val isNullish: Boolean get() = this == JSNull || this == JSUndefined
-    val isInt: Boolean get() = isNumber && !isInfinite && floor(asDouble) == asDouble
+    val isInt: Boolean get() = isNumber && !isInfinite && floor(asDouble) == asDouble &&
+        asDouble in Int.MIN_VALUE.toDouble()..Int.MAX_VALUE.toDouble()
+    val isLong: Boolean get() = isNumber && !isInfinite && floor(asDouble) == asDouble &&
+        asDouble in Long.MIN_VALUE.toDouble()..Long.MAX_VALUE.toDouble()
     val isNaN: Boolean get() = isNumber && asDouble.isNaN()
     val isFinite: Boolean get() = isNumber && asDouble.isFinite()
     val isInfinite: Boolean get() = isNumber && asDouble.isInfinite()

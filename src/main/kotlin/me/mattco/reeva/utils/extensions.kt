@@ -19,10 +19,11 @@ fun Char.hexValue(): Int {
     throw NumberFormatException("$this is not a hex character")
 }
 
-fun StringBuilder.newline() = append("\n")
+fun StringBuilder.newline(): StringBuilder = append("\n")
 
 fun String.key() = PropertyKey(this)
 fun Int.key() = PropertyKey(this)
+fun Long.key() = PropertyKey(this)
 fun JSSymbol.key() = PropertyKey(this)
 
 fun Boolean.toValue() = if (this) JSTrue else JSFalse

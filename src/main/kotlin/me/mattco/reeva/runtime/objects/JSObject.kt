@@ -12,6 +12,7 @@ import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.index.IndexedProperties
+import me.mattco.reeva.runtime.objects.index.IndexedStorage
 import me.mattco.reeva.utils.*
 
 open class JSObject protected constructor(
@@ -151,8 +152,12 @@ open class JSObject protected constructor(
 
     @JvmOverloads fun get(property: String, receiver: JSValue = this) = get(property.key(), receiver)
     @JvmOverloads fun get(property: JSSymbol, receiver: JSValue = this) = get(property.key(), receiver)
-    @JvmOverloads fun get(property: Int, receiver: JSValue = this) = get(property.key(), receiver)
-    @JvmOverloads fun get(property: Long, receiver: JSValue = this) = get(property.toString().key(), receiver)
+    @JvmOverloads
+    fun get(property: Number, receiver: JSValue = this) = when (property) {
+        is Int -> get(property.key(), receiver)
+        is Long -> get(property.key(), receiver)
+        else -> throw IllegalArgumentException()
+    }
 
     @JvmOverloads @ECMAImpl("9.1.8")
     open fun get(property: PropertyKey, receiver: JSValue = this): JSValue {
@@ -170,8 +175,12 @@ open class JSObject protected constructor(
 
     @JvmOverloads fun set(property: String, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
     @JvmOverloads fun set(property: JSSymbol, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
-    @JvmOverloads fun set(property: Int, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
-    @JvmOverloads fun set(property: Long, value: JSValue, receiver: JSValue = this) = set(property.toString().key(), value, receiver)
+    @JvmOverloads
+    fun set(property: Number, value: JSValue, receiver: JSValue = this) = when (property) {
+        is Int -> set(property.key(), value, receiver)
+        is Long -> set(property.key(), value, receiver)
+        else -> throw IllegalArgumentException()
+    }
 
     @JvmOverloads @ECMAImpl("9.1.9")
     open fun set(property: PropertyKey, value: JSValue, receiver: JSValue = this): Boolean {
@@ -213,8 +222,11 @@ open class JSObject protected constructor(
 
     fun delete(property: String) = delete(property.key())
     fun delete(property: JSSymbol) = delete(property.key())
-    fun delete(property: Int) = delete(property.key())
-    fun delete(property: Long) = delete(property.toString().key())
+    fun delete(property: Number) = when (property) {
+        is Int -> delete(property.key())
+        is Long -> delete(property.key())
+        else -> throw IllegalArgumentException()
+    }
 
     @ECMAImpl("9.1.10")
     open fun delete(property: PropertyKey): Boolean {
@@ -262,8 +274,8 @@ open class JSObject protected constructor(
     internal fun internalGet(property: PropertyKey): Descriptor? {
         val stringOrSymbol = when {
             property.isString -> {
-                property.asString.toIntOrNull()?.also {
-                    if (it >= 0)
+                property.asString.toLongOrNull()?.also {
+                    if (it in 0L..IndexedStorage.INDEX_UPPER_BOUND)
                         return indexedProperties.getDescriptor(it)
                 }
                 StringOrSymbol(property.asString)
@@ -272,6 +284,11 @@ open class JSObject protected constructor(
                 if (property.asInt >= 0)
                     return indexedProperties.getDescriptor(property.asInt)
                 StringOrSymbol(property.asInt.toString())
+            }
+            property.isLong -> {
+                if (property.asLong in 0L..IndexedStorage.INDEX_UPPER_BOUND)
+                    return indexedProperties.getDescriptor(property.asLong)
+                StringOrSymbol(property.asLong.toString())
             }
             property.isDouble -> StringOrSymbol(property.asDouble.toString())
             property.isSymbol -> StringOrSymbol(property.asSymbol)
@@ -285,8 +302,8 @@ open class JSObject protected constructor(
     internal fun internalSet(property: PropertyKey, descriptor: Descriptor) {
         val stringOrSymbol = when {
             property.isString -> {
-                property.asString.toIntOrNull()?.also {
-                    if (it >= 0) {
+                property.asString.toLongOrNull()?.also {
+                    if (it in 0L..IndexedStorage.INDEX_UPPER_BOUND) {
                         indexedProperties.setDescriptor(it, descriptor)
                         return
                     }
@@ -297,6 +314,11 @@ open class JSObject protected constructor(
                 if (property.asInt >= 0)
                     return indexedProperties.setDescriptor(property.asInt, descriptor)
                 StringOrSymbol(property.asInt.toString())
+            }
+            property.isLong -> {
+                if (property.asLong in 0L..IndexedStorage.INDEX_UPPER_BOUND)
+                    return indexedProperties.setDescriptor(property.asLong, descriptor)
+                StringOrSymbol(property.asLong.toString())
             }
             property.isDouble -> StringOrSymbol(property.asDouble.toString())
             property.isSymbol -> StringOrSymbol(property.asSymbol)
@@ -347,8 +369,8 @@ open class JSObject protected constructor(
     internal fun internalDelete(property: PropertyKey): Boolean {
         val stringOrSymbol = when {
             property.isString -> {
-                property.asString.toIntOrNull()?.also {
-                    if (it >= 0)
+                property.asString.toLongOrNull()?.also {
+                    if (it in 0L..IndexedStorage.INDEX_UPPER_BOUND)
                         return indexedProperties.remove(it)
                 }
                 StringOrSymbol(property.asString)
@@ -357,6 +379,11 @@ open class JSObject protected constructor(
                 if (property.asInt >= 0)
                     return indexedProperties.remove(property.asInt)
                 StringOrSymbol(property.asInt.toString())
+            }
+            property.isLong -> {
+                if (property.asLong in 0L..IndexedStorage.INDEX_UPPER_BOUND)
+                    return indexedProperties.remove(property.asLong)
+                StringOrSymbol(property.asLong.toString())
             }
             property.isDouble -> StringOrSymbol(property.asDouble.toString())
             property.isSymbol -> StringOrSymbol(property.asSymbol)

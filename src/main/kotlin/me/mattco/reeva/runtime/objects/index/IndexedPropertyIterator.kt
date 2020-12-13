@@ -4,8 +4,8 @@ class IndexedPropertyIterator(
     private val storage: IndexedProperties,
     startIndex: Int,
     private val skipEmpty: Boolean,
-) : Iterator<Int> {
-    private var currentIndex = startIndex
+) : Iterator<Long> {
+    private var currentIndex: Long = startIndex.toLong()
 
     init {
         if (skipEmpty)
@@ -14,7 +14,7 @@ class IndexedPropertyIterator(
 
     override fun hasNext() = currentIndex < storage.arrayLikeSize
 
-    override fun next(): Int {
+    override fun next(): Long {
         currentIndex++
 
         if (skipEmpty)

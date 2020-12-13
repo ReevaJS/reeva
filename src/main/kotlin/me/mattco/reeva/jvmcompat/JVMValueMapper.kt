@@ -184,7 +184,9 @@ object JVMValueMapper {
                 val listType = genericInfo?.firstOrNull() as? Class<*> ?: Any::class.java
 
                 value.indexedProperties.indices().forEach { index ->
-                    listInstance.add(index, coerceValueToType(value.get(index), listType))
+                    if (index !in Int.MIN_VALUE..Int.MAX_VALUE)
+                        TODO()
+                    listInstance.add(index.toInt(), coerceValueToType(value.get(index), listType))
                 }
 
                 listInstance
@@ -192,7 +194,9 @@ object JVMValueMapper {
                 val arrayType = if (type.isArray) type.componentType else Any::class.java
                 val constructedArray = java.lang.reflect.Array.newInstance(arrayType, value.getLength(value).asInt)
                 value.indexedProperties.indices().forEach { index ->
-                    java.lang.reflect.Array.set(constructedArray, index, coerceValueToType(value.get(index), arrayType))
+                    if (index !in Int.MIN_VALUE..Int.MAX_VALUE)
+                        TODO()
+                    java.lang.reflect.Array.set(constructedArray, index.toInt(), coerceValueToType(value.get(index), arrayType))
                 }
                 constructedArray
             } else {

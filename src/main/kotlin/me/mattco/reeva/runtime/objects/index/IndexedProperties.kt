@@ -10,24 +10,30 @@ import me.mattco.reeva.runtime.primitives.JSUndefined
 class IndexedProperties private constructor(
     private var storage: IndexedStorage
 ) {
-    val size: Int
+    val size: Long
         get() = storage.size
-    val arrayLikeSize: Int
+    val arrayLikeSize: Long
         get() = storage.arrayLikeSize
 
     val isEmpty: Boolean
-        get() = size == 0
+        get() = size == 0L
 
     constructor() : this(SimpleIndexedStorage())
 
     fun hasIndex(index: Int) = storage.hasIndex(index)
+    fun hasIndex(index: Long) = storage is GenericIndexedStorage && storage.hasIndex(index)
 
-    fun getDescriptor(index: Int): Descriptor? {
-        return storage.get(index)
-    }
+    fun getDescriptor(index: Int): Descriptor? = storage.get(index)
+    fun getDescriptor(index: Long): Descriptor? = if (storage is SimpleIndexedStorage) null else storage.get(index)
 
     fun get(thisValue: JSValue, index: Int): JSValue {
         return storage.get(index)?.getActualValue(thisValue) ?: return JSUndefined
+    }
+
+    fun get(thisValue: JSValue, index: Long): JSValue {
+        return if (storage is GenericIndexedStorage) {
+            storage.get(index)?.getActualValue(thisValue) ?: return JSUndefined
+        } else JSUndefined
     }
 
     fun setDescriptor(index: Int, descriptor: Descriptor) {
@@ -38,6 +44,12 @@ class IndexedProperties private constructor(
             switchToGenericStorage()
         }
 
+        storage.set(index, descriptor)
+    }
+
+    fun setDescriptor(index: Long, descriptor: Descriptor) {
+        if (storage is SimpleIndexedStorage)
+            switchToGenericStorage()
         storage.set(index, descriptor)
     }
 
@@ -58,11 +70,35 @@ class IndexedProperties private constructor(
         existingValue.attributes = descriptor.attributes
     }
 
+    fun set(thisValue: JSValue, index: Long, descriptor: Descriptor) {
+        if (storage is SimpleIndexedStorage)
+            switchToGenericStorage()
+
+        val existingValue = storage.get(index) ?: run {
+            storage.set(index, descriptor)
+            return
+        }
+        existingValue.setActualValue(thisValue, descriptor.getActualValue(thisValue))
+        existingValue.attributes = descriptor.attributes
+    }
+
     fun set(thisValue: JSValue, index: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
         set(thisValue, index, Descriptor(value, attributes))
     }
 
+    fun set(thisValue: JSValue, index: Long, value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
+        set(thisValue, index, Descriptor(value, attributes))
+    }
+
     fun remove(index: Int): Boolean {
+        val result = storage.get(index) ?: return true
+        if (!result.isConfigurable)
+            return false
+        storage.remove(index)
+        return true
+    }
+
+    fun remove(index: Long): Boolean {
         val result = storage.get(index) ?: return true
         if (!result.isConfigurable)
             return false
@@ -76,7 +112,17 @@ class IndexedProperties private constructor(
         storage.insert(index, descriptor)
     }
 
+    fun insert(index: Long, descriptor: Descriptor) {
+        if (storage is SimpleIndexedStorage)
+            switchToGenericStorage()
+        storage.insert(index, descriptor)
+    }
+
     fun insert(index: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
+        insert(index, Descriptor(value, attributes))
+    }
+
+    fun insert(index: Long, value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
         insert(index, Descriptor(value, attributes))
     }
 
@@ -101,28 +147,28 @@ class IndexedProperties private constructor(
         }
     }
 
-    fun setArrayLikeSize(size: Int) {
+    fun setArrayLikeSize(size: Long) {
         if (storage is SimpleIndexedStorage && size > SPARSE_ARRAY_THRESHOLD)
             switchToGenericStorage()
         storage.setArrayLikeSize(size)
     }
 
-    fun indices(): List<Int> {
-        val indices = ArrayList<Int>()
+    fun indices(): List<Long> {
+        val indices = ArrayList<Long>()
         if (storage is SimpleIndexedStorage) {
-            indices.ensureCapacity(storage.arrayLikeSize)
             (storage as SimpleIndexedStorage).elements.forEachIndexed { index, value ->
                 if (value != JSEmpty)
-                    indices.add(index)
+                    indices.add(index.toLong())
             }
         } else {
             (storage as GenericIndexedStorage).also {
                 indices.ensureCapacity(it.packedElements.size)
                 it.packedElements.forEachIndexed { index, descriptor ->
                     if (descriptor.getRawValue() != JSEmpty)
-                        indices.add(index)
+                        indices.add(index.toLong())
                 }
-                indices.addAll(it.sparseElements.keys.sorted())
+                indices.addAll(it.sparseElements.keys.sorted().map { k -> k.toLong() })
+                indices.addAll(it.longElements.keys.sorted().map { k -> k.toLong() + Int.MAX_VALUE })
             }
         }
         return indices

@@ -24,7 +24,7 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
     @JSNativePropertySetter("length", "ceW")
     fun setLength(thisValue: JSValue, newLength: JSValue): JSValue {
         expect(thisValue is JSObject)
-        thisValue.indexedProperties.setArrayLikeSize(Operations.toLength(newLength).asInt)
+        thisValue.indexedProperties.setArrayLikeSize(Operations.toLength(newLength).asLong)
         return JSUndefined
     }
 
@@ -68,7 +68,7 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
             }.forEach {
                 val deleteSucceeded = delete(it)
                 if (!deleteSucceeded) {
-                    newLenDesc.setActualValue(this, (it + 1).toValue())
+                    newLenDesc.setActualValue(this, (it + 1L).toValue())
                     if (!newWritable)
                         newLenDesc.setWritable(false)
                     super.defineOwnProperty(property, newLenDesc)

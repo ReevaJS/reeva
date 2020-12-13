@@ -40,15 +40,16 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                     array.set(0, lengthArg)
                     1
                 }
-                array.indexedProperties.setArrayLikeSize(length)
-                array
+                array.also {
+                    it.indexedProperties.setArrayLikeSize(length.toLong())
+                }
             }
             else -> {
                 val array = Operations.arrayCreate(arguments.size, proto)
                 arguments.forEachIndexed { index, value ->
                     array.indexedProperties.set(array, index, value)
                 }
-                expect(array.indexedProperties.arrayLikeSize == arguments.size)
+                expect(array.indexedProperties.arrayLikeSize == arguments.size.toLong())
                 array
             }
         }
@@ -62,6 +63,9 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     companion object {
         fun create(realm: Realm) = JSArrayCtor(realm).initialize()
         fun create(realm: Realm, length: Int) = JSArrayCtor(realm).initialize().also {
+            it.indexedProperties.setArrayLikeSize(length.toLong())
+        }
+        fun create(realm: Realm, length: Long) = JSArrayCtor(realm).initialize().also {
             it.indexedProperties.setArrayLikeSize(length)
         }
     }

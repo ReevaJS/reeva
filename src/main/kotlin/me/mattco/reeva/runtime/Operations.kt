@@ -32,6 +32,7 @@ import me.mattco.reeva.runtime.builtins.regexp.JSRegExpProto
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
+import me.mattco.reeva.runtime.objects.index.IndexedStorage
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.wrappers.*
 import me.mattco.reeva.utils.*
@@ -63,7 +64,7 @@ object Operations {
     // accept primitives.
     @JvmStatic
     fun wrapInValue(value: Any?): JSValue = when (value) {
-        null -> throw IllegalArgumentException("Ambiguous use of null in Operations.wrapInValue")
+        null -> throw IllegalArgumentException("Ambiguous use of null in wrapInValue")
         is Double -> JSNumber(value)
         is Number -> JSNumber(value.toDouble())
         is String -> JSString(value)
@@ -293,6 +294,8 @@ object Operations {
         // (mfbt/double-conversion/double-conversion.{h,cc}
         if (value.isInt)
             return value.asInt.toString()
+        if (value.isLong)
+            return value.asLong.toString()
         return value.asDouble.toString()
     }
 
@@ -735,8 +738,8 @@ object Operations {
     @JvmStatic @ECMAImpl("7.1.19")
     fun toPropertyKey(value: JSValue): PropertyKey {
         val key = toPrimitive(value, ToPrimitiveHint.AsString)
-        if (key is JSNumber && key.number.let { floor(it) == it })
-            return PropertyKey(key.number.toInt())
+        if (key is JSNumber && key.number.let { it in 0.0..IndexedStorage.INDEX_UPPER_BOUND.toDouble() && floor(it) == it })
+            return PropertyKey(key.number.toLong())
         if (key is JSSymbol)
             return PropertyKey(key)
         return PropertyKey(toString(key).string)
@@ -1095,13 +1098,9 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("7.3.18")
-    fun lengthOfArrayLike(target: JSValue): Int {
+    fun lengthOfArrayLike(target: JSValue): Long {
         ecmaAssert(target is JSObject)
-        return toLength(target.get("length")).asLong.let {
-            if (it > Int.MAX_VALUE)
-                TODO("Better Long support")
-            it.toInt()
-        }
+        return toLength(target.get("length")).asLong
     }
 
     @JvmStatic @ECMAImpl("7.3.19")
@@ -1546,9 +1545,12 @@ object Operations {
         return JSBoundFunction.create(Agent.runningContext.realm, targetFunction, boundThis, boundArgs, proto)
     }
 
-    // TODO: This length should be a Long
-    @JvmStatic @JvmOverloads @ECMAImpl("9.4.2.2")
     fun arrayCreate(length: Int, proto: JSValue = Agent.runningContext.realm.arrayProto): JSObject {
+        return arrayCreate(length.toLong(), proto)
+    }
+
+    @JvmStatic @JvmOverloads @ECMAImpl("9.4.2.2")
+    fun arrayCreate(length: Long, proto: JSValue = Agent.runningContext.realm.arrayProto): JSObject {
         if (length >= MAX_32BIT_INT - 1)
             Errors.InvalidArrayLength(length).throwRangeError()
         val array = JSArrayObject.create(Agent.runningContext.realm, proto)
@@ -1557,7 +1559,10 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("9.4.2.3")
-    fun arraySpeciesCreate(originalArray: JSObject, length: Int): JSValue {
+    fun arraySpeciesCreate(originalArray: JSObject, length: Int) = arraySpeciesCreate(originalArray, length.toLong())
+
+    @JvmStatic @ECMAImpl("9.4.2.3")
+    fun arraySpeciesCreate(originalArray: JSObject, length: Long): JSValue {
         if (!isArray(originalArray))
             return arrayCreate(length)
         var ctor = originalArray.get("constructor")
@@ -1990,8 +1995,8 @@ object Operations {
         ecmaAssert(string is JSString)
 
         val exec = thisValue.get("exec")
-        if (Operations.isCallable(exec)) {
-            val result = Operations.call(exec, thisValue, listOf(string))
+        if (isCallable(exec)) {
+            val result = call(exec, thisValue, listOf(string))
             if (result !is JSObject && result != JSNull)
                 Errors.RegExp.ExecBadReturnType.throwTypeError()
             return result
@@ -2013,7 +2018,7 @@ object Operations {
         val sticky = JSRegExpObject.Flag.Sticky in flags
         val fullUnicode = JSRegExpObject.Flag.Unicode in flags
         var lastIndex = if (global || sticky) {
-            Operations.toLength(thisValue.get("lastIndex")).asInt
+            toLength(thisValue.get("lastIndex")).asInt
         } else 0
 
         val matcher = thisValue.regex.matcher(bytes, 0, length)
@@ -2022,13 +2027,13 @@ object Operations {
         while (!matchSucceeded) {
             if (lastIndex > length) {
                 if (global || sticky)
-                    Operations.set(thisValue, "lastIndex".key(), 0.toValue(), true)
+                    set(thisValue, "lastIndex".key(), 0.toValue(), true)
                 return JSNull
             }
             val result = matcher.search(lastIndex, length - lastIndex, Option.DEFAULT)
             if (result == Matcher.FAILED || result == Matcher.INTERRUPTED) {
                 if (sticky) {
-                    Operations.set(thisValue, "lastIndex".key(), 0.toValue(), true)
+                    set(thisValue, "lastIndex".key(), 0.toValue(), true)
                     return JSNull
                 }
                 if (fullUnicode)
@@ -2041,19 +2046,19 @@ object Operations {
 
         val eagerRegion = matcher.eagerRegion
 
-        val arr = Operations.arrayCreate(eagerRegion.numRegs)
-        Operations.createDataPropertyOrThrow(arr, "index".key(), lastIndex.toValue())
-        Operations.createDataPropertyOrThrow(arr, "input".key(), string)
+        val arr = arrayCreate(eagerRegion.numRegs)
+        createDataPropertyOrThrow(arr, "index".key(), lastIndex.toValue())
+        createDataPropertyOrThrow(arr, "input".key(), string)
 
         val matchedSubstr = string.string.substring(lastIndex, eagerRegion.end[0])
-        Operations.createDataPropertyOrThrow(arr, 0.key(), matchedSubstr.toValue())
+        createDataPropertyOrThrow(arr, 0.key(), matchedSubstr.toValue())
 
         val groupNames = thisValue.regex.namedBackrefIterator().asSequence().toList()
         val groups = if (groupNames.isNotEmpty()) {
             JSObject.create(realm, JSNull)
         } else JSUndefined
 
-        Operations.createDataPropertyOrThrow(arr, "groups".key(), groups)
+        createDataPropertyOrThrow(arr, "groups".key(), groups)
 
         for (i in 1 until eagerRegion.numRegs) {
             val capturedValue = if (fullUnicode) {
@@ -2061,10 +2066,10 @@ object Operations {
             } else {
                 string.string.substring(eagerRegion.beg[i], eagerRegion.end[i])
             }.toValue()
-            Operations.createDataPropertyOrThrow(arr, i.key(), capturedValue)
+            createDataPropertyOrThrow(arr, i.key(), capturedValue)
             val namedGroup = groupNames.firstOrNull { i in it.backRefs }
             if (namedGroup != null) {
-                Operations.createDataPropertyOrThrow(
+                createDataPropertyOrThrow(
                     groups,
                     thisValue.originalSource.substring(namedGroup.nameP, namedGroup.nameEnd).key(),
                     capturedValue
