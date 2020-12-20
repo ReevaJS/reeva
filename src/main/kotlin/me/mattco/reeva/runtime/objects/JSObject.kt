@@ -237,16 +237,28 @@ open class JSObject protected constructor(
         }.map { PropertyKey(it.name) }
     }
 
-    fun defineNativeAccessor(key: String, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
-        defineNativeAccessor(key.key(), attributes, getter, setter)
+    fun defineNativeAccessor(
+        key: String,
+        attributes: Int,
+        getter: NativeGetterSignature? = null,
+        setter: NativeSetterSignature? = null,
+        name: String = ""
+    ) {
+        defineNativeAccessor(key.key(), attributes, getter, setter, name)
     }
 
-    fun defineNativeAccessor(key: PropertyKey, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
+    fun defineNativeAccessor(
+        key: PropertyKey,
+        attributes: Int,
+        getter: NativeGetterSignature? = null,
+        setter: NativeSetterSignature? = null,
+        name: String = ""
+    ) {
         val getterFunc = getter?.let { f ->
-            JSNativeFunction.fromLambda(realm, "TODO", 0) { thisValue, _ -> f(thisValue) }
+            JSNativeFunction.fromLambda(realm, name, 0) { thisValue, _ -> f(thisValue) }
         }
         val setterFunc = setter?.let { f ->
-            JSNativeFunction.fromLambda(realm, "TODO", 0) { thisValue, args ->
+            JSNativeFunction.fromLambda(realm, name, 0) { thisValue, args ->
                 if (args.size != 1)
                     TODO()
                 f(thisValue, args[0])
@@ -267,16 +279,30 @@ open class JSObject protected constructor(
         internalSet(key, Descriptor(value, attributes))
     }
 
-    fun defineNativeFunction(key: String, length: Int, function: NativeFunctionSignature) {
-        defineNativeFunction(key.key(), length, attrs { +conf -enum +writ }, function)
+    fun defineNativeFunction(
+        key: String,
+        length: Int,
+        function: NativeFunctionSignature
+    ) {
+        defineNativeFunction(key.key(), length, attrs { +conf -enum +writ }, key, function)
     }
 
-    fun defineNativeFunction(key: String, length: Int, attributes: Int = attrs { +conf -enum +writ }, function: NativeFunctionSignature) {
-        defineNativeFunction(key.key(), length, attributes, function)
+    fun defineNativeFunction(
+        key: String,
+        length: Int,
+        attributes: Int = attrs { +conf -enum +writ },
+        function: NativeFunctionSignature
+    ) {
+        defineNativeFunction(key.key(), length, attributes, key, function)
     }
 
-    fun defineNativeFunction(key: PropertyKey, length: Int, attributes: Int = attrs { +conf -enum +writ }, function: NativeFunctionSignature) {
-        val name = if (key.isString) key.asString else "[${key.asSymbol.descriptiveString()}]"
+    fun defineNativeFunction(
+        key: PropertyKey,
+        length: Int,
+        attributes: Int = attrs { +conf -enum +writ },
+        name: String = if (key.isString) key.asString else "[${key.asSymbol.descriptiveString()}]",
+        function: NativeFunctionSignature
+    ) {
         val obj = JSNativeFunction.fromLambda(realm, name, length, function)
         internalSet(key, Descriptor(obj, attributes))
     }
