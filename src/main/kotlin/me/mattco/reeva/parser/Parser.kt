@@ -1675,7 +1675,7 @@ class Parser(text: String, private val realm: Realm) {
 
         consume(TokenType.CloseBracket)
 
-        if (elements.isNotEmpty() && elements.last().type == ArrayElementNode.Type.Elision)
+        if (elements.size > 1 && elements.last().type == ArrayElementNode.Type.Elision)
             elements.removeLast()
 
         return ArrayLiteralNode(elements)
