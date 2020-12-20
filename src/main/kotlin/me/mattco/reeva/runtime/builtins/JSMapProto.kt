@@ -27,7 +27,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         defineNativeFunction("values", 2, ::values)
         // "The initial value of the @@iterator property is the same function object
         // as the initial value of the 'entries' property."
-        defineNativeFunction(Realm.`@@iterator`.key(), 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::entries)
+        defineNativeFunction(Realm.`@@iterator`.key(), 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, function = ::entries)
     }
 
     fun getSize(thisValue: JSValue): JSValue {

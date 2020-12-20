@@ -43,16 +43,18 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
             if (!newLenObj.sameValue(numberLen))
                 Errors.InvalidArrayLength(Operations.toPrintableString(value)).throwRangeError()
 
-            val newLen = newLenObj.asInt
+            val newLen = newLenObj.asLong
             newLenDesc.setActualValue(this, newLenObj)
             val oldLenDesc = getOwnPropertyDescriptor("length")
             expect(oldLenDesc != null)
             ecmaAssert(oldLenDesc.isDataDescriptor)
             ecmaAssert(!oldLenDesc.isConfigurable)
 
-            val oldLen = oldLenDesc.getActualValue(this).asInt
-            if (newLen >= oldLen)
+            val oldLen = oldLenDesc.getActualValue(this).asLong
+            if (newLen >= oldLen) {
+                indexedProperties.setArrayLikeSize(newLen)
                 return super.defineOwnProperty(property, newLenDesc)
+            }
             if (!oldLenDesc.isWritable)
                 return false
             val newWritable = if (!newLenDesc.hasWritable || newLenDesc.isWritable) {
@@ -77,6 +79,7 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
                     return false
                 }
             }
+            indexedProperties.setArrayLikeSize(newLen)
             val succeeded = super.defineOwnProperty(property, newLenDesc)
             if (!succeeded)
                 return false
@@ -87,7 +90,9 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
             return true
         }
 
-        if (property.isInt && property.asInt >= 0 || (property.isString && property.asString.toIntOrNull() != null)) {
+        if (property.isInt && property.asInt >= 0 ||
+            (property.isString && property.asString.toIntOrNull().let { it != null && it >= 0 })
+        ) {
             val oldLenDesc = getOwnPropertyDescriptor("length")
             expect(oldLenDesc != null)
             ecmaAssert(oldLenDesc.isDataDescriptor)

@@ -34,7 +34,7 @@ class Test262Runner {
         val testDirectory = File(test262Directory, "test")
         val testDirectoryStr = testDirectory.absolutePath
         val harnessDirectory = File(test262Directory, "harness")
-        val targetDirectory: File? = File(testDirectory, "built-ins/Object")
+        val targetDirectory: File? = File(testDirectory, "built-ins/Array")
 //        val targetDirectory: File? = null
         lateinit var pretestScript: String
 

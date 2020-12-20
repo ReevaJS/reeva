@@ -64,6 +64,7 @@ data class PropertyKey private constructor(internal val value: Any) {
         return when {
             isString -> asString
             isInt -> asInt.toString()
+            isLong -> asLong.toString()
             isDouble -> asDouble.toString()
             else -> asSymbol.descriptiveString()
         }

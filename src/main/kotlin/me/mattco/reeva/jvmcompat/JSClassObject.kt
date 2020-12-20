@@ -155,7 +155,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
 
             val receiver = if (isStatic) this else obj
             receiver.defineNativeFunction(
-                name.key(),
+                name,
                 availableMethods.minOf { it.parameterCount },
                 Descriptor.defaultAttributes,
                 nativeMethod

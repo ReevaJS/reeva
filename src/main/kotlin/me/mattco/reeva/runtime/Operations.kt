@@ -739,7 +739,7 @@ object Operations {
     fun toPropertyKey(value: JSValue): PropertyKey {
         val key = toPrimitive(value, ToPrimitiveHint.AsString)
         if (key is JSNumber && key.number.let { it in 0.0..IndexedStorage.INDEX_UPPER_BOUND.toDouble() && floor(it) == it })
-            return PropertyKey(key.number.toLong())
+            return if (key.number > Int.MAX_VALUE) PropertyKey(key.number.toLong()) else PropertyKey(key.number.toInt())
         if (key is JSSymbol)
             return PropertyKey(key)
         return PropertyKey(toString(key).string)

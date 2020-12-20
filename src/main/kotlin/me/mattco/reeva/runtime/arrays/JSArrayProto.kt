@@ -101,11 +101,12 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                     Operations.createDataPropertyOrThrow(array, (n + index).key(), item.get(index))
                 }
 
-                n += indices.last()
+                n += length
             } else {
                 Operations.createDataPropertyOrThrow(array, n.key(), item)
             }
         }
+        Operations.set(array as JSObject, "length".key(), n.toValue(), true)
         return array
     }
 

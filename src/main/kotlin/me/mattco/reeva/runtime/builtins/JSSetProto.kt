@@ -26,10 +26,10 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         // "The initial value of the 'keys' property is the same function object as the initial value
         // of the 'values' property"
-        defineNativeFunction("keys", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::values)
+        defineNativeFunction("keys", 0, ::values)
         // "The initial value of the @@iterator property is the same function object as the initial value
         // of the 'values' property"
-        defineNativeFunction(Realm.`@@iterator`.key(), 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::values)
+        defineNativeFunction(Realm.`@@iterator`.key(), 0, function = ::values)
     }
 
     fun getSize(thisValue: JSValue): JSValue {
