@@ -14,7 +14,7 @@ import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
-class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ArrayConstructor", 1) {
+class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Array", 1) {
     init {
         isConstructable = true
     }
@@ -25,10 +25,55 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         defineNativeAccessor(Realm.`@@species`.key(), attrs { +conf -enum }, ::`get@@species`, null, "get [Symbol.species]")
         defineNativeFunction("isArray", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::isArray)
         defineNativeFunction("from", 1, ::from)
+        defineNativeFunction("of", 0, ::of)
+    }
+
+    override fun evaluate(arguments: JSArguments): JSValue {
+        val realNewTarget = newTarget.let {
+            if (it is JSUndefined) {
+                Agent.runningContext.function ?: JSUndefined
+            } else it
+        }
+
+        val proto = Operations.getPrototypeFromConstructor(realNewTarget, realm.arrayProto)
+
+        return when (arguments.size) {
+            0 -> JSArrayObject.create(realm, proto)
+            1 -> {
+                val array = JSArrayObject.create(realm, proto)
+                val lengthArg = arguments[0]
+                val length = if (lengthArg.isNumber) {
+                    val intLen = Operations.toUint32(lengthArg)
+                    // TODO: The spec says "if intLen is not the same value as len...", does that refer to the
+                    // operation SameValue? Or is it different?
+                    if (!intLen.sameValue(lengthArg))
+                        Errors.InvalidArrayLength(Operations.toPrintableString(lengthArg)).throwRangeError()
+                    intLen.asInt
+                } else {
+                    array.set(0, lengthArg)
+                    1
+                }
+                array.also {
+                    it.indexedProperties.setArrayLikeSize(length.toLong())
+                }
+            }
+            else -> {
+                val array = Operations.arrayCreate(arguments.size, proto)
+                arguments.forEachIndexed { index, value ->
+                    array.indexedProperties.set(array, index, value)
+                }
+                expect(array.indexedProperties.arrayLikeSize == arguments.size.toLong())
+                array
+            }
+        }
     }
 
     fun `get@@species`(thisValue: JSValue): JSValue {
         return thisValue
+    }
+
+    fun isArray(thisValue: JSValue, arguments: JSArguments): JSValue {
+        return Operations.isArray(arguments.argument(0)).toValue()
     }
 
     fun from(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -106,48 +151,16 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         return array
     }
 
-    override fun evaluate(arguments: JSArguments): JSValue {
-        val realNewTarget = newTarget.let {
-            if (it is JSUndefined) {
-                Agent.runningContext.function ?: JSUndefined
-            } else it
+    fun of(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val array = (if (Operations.isConstructor(thisValue)) {
+            Operations.construct(thisValue, listOf(arguments.size.toValue()))
+        } else Operations.arrayCreate(arguments.size)) as JSObject
+
+        arguments.forEachIndexed { index, value ->
+            Operations.createDataPropertyOrThrow(array, index.key(), value)
         }
-
-        val proto = Operations.getPrototypeFromConstructor(realNewTarget, realm.arrayProto)
-
-        return when (arguments.size) {
-            0 -> JSArrayObject.create(realm, proto)
-            1 -> {
-                val array = JSArrayObject.create(realm, proto)
-                val lengthArg = arguments[0]
-                val length = if (lengthArg.isNumber) {
-                    val intLen = Operations.toUint32(lengthArg)
-                    // TODO: The spec says "if intLen is not the same value as len...", does that refer to the
-                    // operation SameValue? Or is it different?
-                    if (!intLen.sameValue(lengthArg))
-                        Errors.InvalidArrayLength(Operations.toPrintableString(lengthArg)).throwRangeError()
-                    intLen.asInt
-                } else {
-                    array.set(0, lengthArg)
-                    1
-                }
-                array.also {
-                    it.indexedProperties.setArrayLikeSize(length.toLong())
-                }
-            }
-            else -> {
-                val array = Operations.arrayCreate(arguments.size, proto)
-                arguments.forEachIndexed { index, value ->
-                    array.indexedProperties.set(array, index, value)
-                }
-                expect(array.indexedProperties.arrayLikeSize == arguments.size.toLong())
-                array
-            }
-        }
-    }
-
-    fun isArray(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return Operations.isArray(arguments.argument(0)).toValue()
+        Operations.set(array, "length".key(), arguments.size.toValue(), true)
+        return array
     }
 
     companion object {

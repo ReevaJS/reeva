@@ -39,6 +39,7 @@ data class Token(
         || type == TokenType.Let
         || type == TokenType.New
         || type == TokenType.NullLiteral
+        || type == TokenType.Of
         || type == TokenType.Return
         || type == TokenType.Super
         || type == TokenType.Switch
