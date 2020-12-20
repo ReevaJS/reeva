@@ -51,10 +51,14 @@ class Test262Test(
     }
 
     private fun runSyncTest(realm: Realm, isModule: Boolean) {
+        val theScript = if (metadata.flags?.contains(Flag.OnlyStrict) == true) {
+            "'use strict'; $script"
+        } else script
+
         val testResult = if (isModule) {
-            Reeva.evaluateModule(script, realm)
+            Reeva.evaluateModule(theScript, realm)
         } else {
-            Reeva.evaluateScript(script, realm)
+            Reeva.evaluateScript(theScript, realm)
         }
         Assertions.assertTrue(!testResult.isError) {
             Reeva.with(realm) {
@@ -67,10 +71,14 @@ class Test262Test(
         val doneFunction = JSAsyncDoneFunction.create(realm)
         realm.globalObject.set("\$DONE", doneFunction)
 
+        val theScript = if (metadata.flags?.contains(Flag.OnlyStrict) == true) {
+            "'use strict'; $script"
+        } else script
+
         val testResult = if (isModule) {
-            Reeva.evaluateModule(script, realm)
+            Reeva.evaluateModule(theScript, realm)
         } else {
-            Reeva.evaluateScript(script, realm)
+            Reeva.evaluateScript(theScript, realm)
         }
         Assertions.assertTrue(!testResult.isError) {
             Reeva.with(realm) {
