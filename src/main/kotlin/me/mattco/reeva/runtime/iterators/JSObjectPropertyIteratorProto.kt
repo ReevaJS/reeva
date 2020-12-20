@@ -29,6 +29,8 @@ class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject
                         thisValue.remainingKeys.add(key)
                     if (key.isInt)
                         thisValue.remainingKeys.add(PropertyKey(key.asInt.toString()))
+                    if (key.isLong)
+                        thisValue.remainingKeys.add(PropertyKey(key.asLong.toString()))
                     if (key.isDouble)
                         thisValue.remainingKeys.add(PropertyKey(key.asDouble.toString()))
                 }
