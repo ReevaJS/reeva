@@ -311,6 +311,8 @@ open class JSObject protected constructor(
         val stringOrSymbol = when {
             property.isString -> {
                 property.asString.toLongOrNull()?.also {
+                    if (it in 0..Int.MAX_VALUE)
+                        return indexedProperties.getDescriptor(it.toInt())
                     if (it in 0L..IndexedStorage.INDEX_UPPER_BOUND)
                         return indexedProperties.getDescriptor(it)
                 }
@@ -339,6 +341,10 @@ open class JSObject protected constructor(
         val stringOrSymbol = when {
             property.isString -> {
                 property.asString.toLongOrNull()?.also {
+                    if (it in 0..Int.MAX_VALUE) {
+                        indexedProperties.setDescriptor(it.toInt(), descriptor)
+                        return
+                    }
                     if (it in 0L..IndexedStorage.INDEX_UPPER_BOUND) {
                         indexedProperties.setDescriptor(it, descriptor)
                         return
@@ -406,6 +412,8 @@ open class JSObject protected constructor(
         val stringOrSymbol = when {
             property.isString -> {
                 property.asString.toLongOrNull()?.also {
+                    if (it in 0..Int.MAX_VALUE)
+                        return indexedProperties.remove(it.toInt())
                     if (it in 0L..IndexedStorage.INDEX_UPPER_BOUND)
                         return indexedProperties.remove(it)
                 }

@@ -737,11 +737,16 @@ object Operations {
     @JvmStatic @ECMAImpl("7.1.19")
     fun toPropertyKey(value: JSValue): PropertyKey {
         val key = toPrimitive(value, ToPrimitiveHint.AsString)
+
         if (key is JSNumber && key.number.let { it in 0.0..IndexedStorage.INDEX_UPPER_BOUND.toDouble() && floor(it) == it })
             return if (key.number > Int.MAX_VALUE) PropertyKey(key.number.toLong()) else PropertyKey(key.number.toInt())
         if (key is JSSymbol)
             return PropertyKey(key)
-        return PropertyKey(toString(key).string)
+
+        val str = toString(key).string
+        return str.toLongOrNull()?.let {
+            if (it in 0..IndexedStorage.INDEX_UPPER_BOUND) PropertyKey(it) else null
+        } ?: PropertyKey(str)
     }
 
     @JvmStatic @ECMAImpl("7.1.20")
