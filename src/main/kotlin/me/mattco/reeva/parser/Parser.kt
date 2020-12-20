@@ -1649,10 +1649,9 @@ class Parser(text: String, private val realm: Realm) {
             if (tokenType == TokenType.CloseBracket) {
                 return null
             } else if (tokenType == TokenType.Comma) {
-                consume()
                 return ArrayElementNode(null, ArrayElementNode.Type.Elision)
             }
-            var type = if (tokenType == TokenType.TripleDot) {
+            val type = if (tokenType == TokenType.TripleDot) {
                 consume()
                 ArrayElementNode.Type.Spread
             } else ArrayElementNode.Type.Normal
