@@ -91,6 +91,8 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             }
             if (isConcatSpreadable) {
                 val length = Operations.lengthOfArrayLike(item)
+                if (length == 0L)
+                    return@forEach
                 val indices = (item as JSObject).indexedProperties.indices()
 
                 for (index in indices) {
