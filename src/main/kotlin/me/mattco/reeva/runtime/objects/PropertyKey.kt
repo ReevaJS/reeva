@@ -48,9 +48,9 @@ data class PropertyKey private constructor(internal val value: Any) {
     constructor(value: JSString) : this(value.string)
     constructor(value: JSSymbol) : this(value as Any)
     constructor(value: JSObject.StringOrSymbol) : this(if (value.isString) value.asString else value.asSymbol)
-    constructor(value: Number) : this(value as Any) {
-        expect(value is Double || value is Int || value is Long)
-    }
+    constructor(value: Long) : this(if (value <= Int.MAX_VALUE) value.toInt() else value)
+    constructor(value: Int) : this(value as Any)
+    constructor(value: Double) : this(value as Any)
 
     override fun equals(other: Any?): Boolean {
         return other is PropertyKey && value == other.value
