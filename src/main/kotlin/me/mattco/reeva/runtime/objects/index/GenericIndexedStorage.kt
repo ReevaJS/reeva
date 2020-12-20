@@ -44,7 +44,7 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
     }
 
     override fun get(index: Int): Descriptor? {
-        if (index >= sizeBacker)
+        if (!hasIndex(index))
             return null
         if (index < SPARSE_ARRAY_THRESHOLD)
             return packedElements.getOrNull(index)
@@ -52,6 +52,8 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
     }
 
     override fun get(index: Long): Descriptor? {
+        if (!hasIndex(index))
+            return null
         if (index <= Int.MAX_VALUE)
             return get(index.toInt())
         if (index >= sizeBacker)
