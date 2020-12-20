@@ -86,10 +86,6 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
     override fun remove(index: Int) {
         if (index >= sizeBacker)
             return
-        if (index + 1L == sizeBacker) {
-            removeLast()
-            return
-        }
 
         if (index < SPARSE_ARRAY_THRESHOLD) {
             if (index < packedElements.size)
@@ -104,10 +100,6 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
             return remove(index.toInt())
         if (index >= sizeBacker)
             return
-        if (index + 1L == sizeBacker) {
-            removeLast()
-            return
-        }
 
         longElements.remove(trimLongIndex(index))
     }

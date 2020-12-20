@@ -519,7 +519,6 @@ object Operations {
             Errors.BadToPrimitiveReturnValue.throwTypeError()
         }
 
-        // TODO Get @@toPrimitive method
         return ordinaryToPrimitive(value, type ?: ToPrimitiveHint.AsNumber)
     }
 
