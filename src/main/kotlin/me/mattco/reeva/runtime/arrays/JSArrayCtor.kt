@@ -3,9 +3,14 @@ package me.mattco.reeva.runtime.arrays
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.errors.JSTypeErrorObject
+import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
+import me.mattco.reeva.runtime.objects.JSObject
+import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
@@ -19,10 +24,86 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
 
         defineNativeAccessor(Realm.`@@species`.key(), attrs { +conf -enum }, ::`get@@species`, null, "get [Symbol.species]")
         defineNativeFunction("isArray", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::isArray)
+        defineNativeFunction("from", 1, ::from)
     }
 
     fun `get@@species`(thisValue: JSValue): JSValue {
         return thisValue
+    }
+
+    fun from(thisValue: JSValue, arguments: JSArguments): JSValue {
+        val items = arguments.argument(0)
+        val mapFn = arguments.argument(1)
+        val thisArg = arguments.argument(2)
+
+        val mapping = if (mapFn == JSUndefined) false else {
+            if (!Operations.isCallable(mapFn))
+                Errors.NotCallable(Operations.toPrintableString(mapFn)).throwTypeError()
+            true
+        }
+
+        val usingIterator = Operations.getMethod(items, Realm.`@@iterator`)
+        if (usingIterator != JSUndefined) {
+            val array = (if (Operations.isConstructor(thisValue)) {
+                Operations.construct(thisValue)
+            } else Operations.arrayCreate(0)) as JSObject
+
+            val iteratorRecord = Operations.getIterator(items, Operations.IteratorHint.Sync, usingIterator as JSFunction)
+            var k = 0L
+            while (true) {
+                if (k == Long.MAX_VALUE) {
+                    return Operations.iteratorClose(
+                        iteratorRecord,
+                        JSTypeErrorObject.create(
+                            Agent.runningContext.realm,
+                            "array length ${Long.MAX_VALUE} is too large"
+                        )
+                    )
+                }
+
+                val next = Operations.iteratorStep(iteratorRecord)
+                if (next == JSFalse) {
+                    Operations.set(array, "length".key(), k.toValue(), true)
+                    return array
+                }
+
+                val nextValue = Operations.iteratorValue(next)
+                val mappedValue = if (mapping) {
+                    try {
+                        Operations.call(mapFn, thisArg, listOf(nextValue, k.toValue()))
+                    } catch (e: ThrowException) {
+                        return Operations.iteratorClose(iteratorRecord, e.value)
+                    }
+                } else nextValue
+
+                try {
+                    Operations.createDataPropertyOrThrow(array, k.key(), mappedValue)
+                } catch (e: ThrowException) {
+                    return Operations.iteratorClose(iteratorRecord, e.value)
+                }
+
+                k++
+            }
+        }
+
+        val arrayLike = Operations.toObject(items)
+        val len = Operations.lengthOfArrayLike(arrayLike)
+        val array = (if (Operations.isConstructor(thisValue)) {
+            Operations.construct(thisValue, listOf(len.toValue()))
+        } else Operations.arrayCreate(len)) as JSObject
+
+        var k = 0
+        while (k < len) {
+            val kValue = arrayLike.get(k)
+            val mappedValue = if (mapping) {
+                Operations.call(mapFn, thisArg, listOf(kValue, k.toValue()))
+            } else kValue
+            Operations.createDataPropertyOrThrow(array, k.key(), mappedValue)
+            k++
+        }
+
+        Operations.set(array, "length".key(), len.toValue(), true)
+        return array
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

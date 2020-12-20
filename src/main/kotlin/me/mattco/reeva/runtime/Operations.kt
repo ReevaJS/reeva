@@ -1055,7 +1055,7 @@ object Operations {
 
     @JvmStatic @JvmOverloads
     @ECMAImpl("7.3.14")
-    fun construct(constructor: JSValue, arguments: List<JSValue>, newTarget: JSValue = constructor): JSValue {
+    fun construct(constructor: JSValue, arguments: List<JSValue> = emptyList(), newTarget: JSValue = constructor): JSValue {
         ecmaAssert(isConstructor(constructor))
         ecmaAssert(isConstructor(newTarget))
         if (constructor is JSProxyObject)
