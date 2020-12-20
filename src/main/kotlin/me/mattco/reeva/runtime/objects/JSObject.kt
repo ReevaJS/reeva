@@ -93,7 +93,7 @@ open class JSObject protected constructor(
     fun hasProperty(property: String): Boolean = hasProperty(property.key())
     fun hasProperty(property: JSSymbol) = hasProperty(property.key())
     fun hasProperty(property: Int) = hasProperty(property.key())
-    fun hasProperty(property: Long) = hasProperty(property.toString().key())
+    fun hasProperty(property: Long) = hasProperty(property.key())
 
     @ECMAImpl("9.1.7")
     open fun hasProperty(property: PropertyKey): Boolean {
