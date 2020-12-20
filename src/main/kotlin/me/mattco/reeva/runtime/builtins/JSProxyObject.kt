@@ -212,10 +212,10 @@ class JSProxyObject private constructor(
 
     override fun delete(property: PropertyKey): Boolean {
         checkRevoked("Delete")
-        val trap = getTrapOr("delete") {
+        val trap = getTrapOr("deleteProperty") {
             return target.delete(property)
         }
-        val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, property.asValue)))
+        val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, Operations.toString(property.asValue))))
         if (!booleanTrapResult)
             return false
         val targetDesc = target.getOwnPropertyDescriptor(property) ?: return true
