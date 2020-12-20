@@ -3,16 +3,19 @@ package me.mattco.reeva.runtime.iterators
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.ecmaAssert
-import me.mattco.reeva.utils.toValue
+import me.mattco.reeva.utils.key
 
 class JSListIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
+    override fun init() {
+        super.init()
+        defineNativeFunction("next", 0, ::next)
+    }
+
     // TODO: Spec doesn't say this is an actual method
-    @JSMethod("next", 0)
     fun next(thisValue: JSValue, arguments: JSArguments): JSValue {
         ecmaAssert(thisValue is JSListIterator)
         if (thisValue.nextIndex >= thisValue.iteratorList.size)

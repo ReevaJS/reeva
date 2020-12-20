@@ -4,7 +4,6 @@ import me.mattco.reeva.Reeva
 import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
@@ -18,19 +17,16 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
         defineOwnProperty("$262", JS262Object(realm).initialize(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
-    override fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
-        return super.getOwnPropertyDescriptor(property)
-    }
-
     inner class JS262Object(realm: Realm) : JSObject(realm, realm.objectProto) {
         override fun init() {
             super.init()
 
             defineOwnProperty("global", this@Test262GlobalObject, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
             defineOwnProperty("agent", JS262AgentObject.create(realm), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+            defineNativeFunction("createRealm", 0, ::createRealm)
+            defineNativeFunction("gc", 0, ::gc)
         }
 
-        @JSMethod("createRealm", 0)
         fun createRealm(thisValue: JSValue, arguments: JSArguments): JSValue {
             val newRealm = Reeva.makeRealm()
             newRealm.initObjects()
@@ -39,7 +35,6 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
             return newGlobal.get("$262")
         }
 
-        @JSMethod("gc", 0)
         fun gc(thisValue: JSValue, arguments: JSArguments): JSValue {
             Error("unable to force JVM garbage collection").throwTypeError()
         }

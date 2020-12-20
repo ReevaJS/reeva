@@ -14,25 +14,32 @@ import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.wrappers.JSBooleanObject
 import me.mattco.reeva.runtime.wrappers.JSNumberObject
 import me.mattco.reeva.runtime.wrappers.JSStringObject
-import me.mattco.reeva.utils.Errors
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
-import me.mattco.reeva.utils.toValue
+import me.mattco.reeva.utils.*
 
 class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) {
     override fun init() {
         super.init()
+
         defineOwnProperty("constructor", realm.objectCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        defineNativeAccessor("__proto__", attrs { +conf -enum }, ::getProto, ::setProto)
+        defineNativeFunction("__defineGetter__", 2, ::defineGetter)
+        defineNativeFunction("__defineSetter__", 2, ::defineSetter)
+        defineNativeFunction("__lookupGetter__", 1, ::lookupGetter)
+        defineNativeFunction("__lookupSetter__", 1, ::lookupSetter)
+        defineNativeFunction("hasOwnProperty", 1, ::hasOwnProperty)
+        defineNativeFunction("isPrototypeOf", 1, ::isPrototypeOf)
+        defineNativeFunction("propertyIsEnumerable", 1, ::propertyIsEnumerable)
+        defineNativeFunction("toLocaleString", 0, ::toLocaleString)
+        defineNativeFunction("toString", 0, ::toString)
+        defineNativeFunction("valueOf", 0, ::valueOf)
     }
 
     @ECMAImpl("B.2.2.1.1")
-    @JSNativeAccessorGetter("__proto__", "Ce")
     fun getProto(thisValue: JSValue): JSValue {
         return Operations.toObject(thisValue).getPrototype()
     }
 
     @ECMAImpl("B.2.2.1.2")
-    @JSNativeAccessorSetter("__proto__", "Ce")
     fun setProto(thisValue: JSValue, proto: JSValue): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         if (proto !is JSObject && proto != JSNull)
@@ -43,7 +50,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("B.2.2.2")
-    @JSMethod("__defineGetter__", 2)
     fun defineGetter(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val getter = arguments.argument(1)
@@ -56,7 +62,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("B.2.2.2")
-    @JSMethod("__defineSetter__", 2)
     fun defineSetter(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val setter = arguments.argument(1)
@@ -69,7 +74,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("B.2.2.4")
-    @JSMethod("__lookupGetter__", 1)
     fun lookupGetter(thisValue: JSValue, arguments: JSArguments): JSValue {
         var obj = Operations.toObject(thisValue)
         val key = Operations.toPropertyKey(arguments.argument(0))
@@ -85,7 +89,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("B.2.2.4")
-    @JSMethod("__lookupSetter__", 1)
     fun lookupSetter(thisValue: JSValue, arguments: JSArguments): JSValue {
         var obj = Operations.toObject(thisValue)
         val key = Operations.toPropertyKey(arguments.argument(0))
@@ -101,7 +104,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("19.1.3.2")
-    @JSMethod("hasOwnProperty", 1)
     fun hasOwnProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = Operations.toPropertyKey(arguments.argument(0))
         val o = Operations.toObject(thisValue)
@@ -109,7 +111,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("19.1.3.3")
-    @JSMethod("isPrototypeOf", 1)
     fun isPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         var arg = arguments.argument(0)
         if (arg !is JSObject)
@@ -125,7 +126,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("19.1.3.4")
-    @JSMethod("propertyIsEnumerable", 1)
     fun propertyIsEnumerable(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = Operations.toPropertyKey(arguments.argument(0))
         val thisObj = Operations.toObject(thisValue)
@@ -134,14 +134,11 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("19.1.3.5")
-    @JSMethod("toLocaleString", 0)
     fun toLocaleString(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         return Operations.invoke(thisObj, "toString".toValue())
     }
 
-    // Doesn't throw because Symbol overrides this method,
-    @JSMethod("toString", 0)
     fun toString(thisValue: JSValue, arguments: List<JSValue>): JSValue {
         if (thisValue == JSUndefined)
             return "[object Undefined]".toValue()
@@ -171,7 +168,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         return "[object $tag]".toValue()
     }
 
-    @JSMethod("valueOf", 0)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         return Operations.toObject(thisValue)
     }

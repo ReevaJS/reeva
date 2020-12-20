@@ -3,7 +3,6 @@ package me.mattco.reeva.runtime.arrays
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.iterators.JSArrayIterator
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -21,15 +20,9 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     override fun init() {
         // No super call to avoid prototype complications
 
-        annotationInit()
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.arrayCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-
-        // "The initial values of the @@iterator property is the same function object as the initial
-        // value of the Array.prototype.values property.
-        // https://tc39.es/ecma262/#sec-array.prototype-@@iterator
-        defineOwnProperty(Realm.`@@iterator`, internalGet("values".key())!!.getRawValue())
 
         // Inherit length getter/setter
         defineNativeProperty("length".key(), Descriptor.WRITABLE, ::getLength, ::setLength)
@@ -46,9 +39,41 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         Operations.createDataPropertyOrThrow(unscopables, "keys".key(), JSTrue)
         Operations.createDataPropertyOrThrow(unscopables, "values".key(), JSTrue)
         defineOwnProperty(Realm.`@@unscopables`, unscopables, Descriptor.CONFIGURABLE)
+
+        defineNativeFunction("concat", 1, ::concat)
+        defineNativeFunction("copyWithin", 2, ::copyWithin)
+        defineNativeFunction("entries", 0, ::entries)
+        defineNativeFunction("every", 1, ::every)
+        defineNativeFunction("fill", 1, ::fill)
+        defineNativeFunction("filter", 1, ::filter)
+        defineNativeFunction("find", 1, ::find)
+        defineNativeFunction("findIndex", 1, ::findIndex)
+        defineNativeFunction("flat", 1, ::flat)
+        defineNativeFunction("flatMap", 1, ::flatMap)
+        defineNativeFunction("forEach", 1, ::forEach)
+        defineNativeFunction("join", 1, ::join)
+        defineNativeFunction("keys", 1, ::keys)
+        defineNativeFunction("lastIndexOf", 1, ::lastIndexOf)
+        defineNativeFunction("map", 1, ::map)
+        defineNativeFunction("pop", 1, ::pop)
+        defineNativeFunction("push", 1, ::push)
+        defineNativeFunction("reduce", 1, ::reduce)
+        defineNativeFunction("reduceRight", 1, ::reduceRight)
+        defineNativeFunction("reverse", 1, ::reverse)
+        defineNativeFunction("shift", 1, ::shift)
+        defineNativeFunction("slice", 1, ::slice)
+        defineNativeFunction("some", 1, ::some)
+        defineNativeFunction("splice", 1, ::splice)
+        defineNativeFunction("toString", 1, ::toString)
+        defineNativeFunction("unshift", 1, ::unshift)
+        defineNativeFunction("values", 1, ::values)
+
+        // "The initial values of the @@iterator property is the same function object as the initial
+        // value of the Array.prototype.values property.
+        // https://tc39.es/ecma262/#sec-array.prototype-@@iterator
+        defineOwnProperty(Realm.`@@iterator`, internalGet("values".key())!!.getRawValue())
     }
 
-    @JSMethod("concat", 1)
     fun concat(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         val array = Operations.arraySpeciesCreate(thisObj, 0)
@@ -82,7 +107,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("copyWithin", 2)
     fun copyWithin(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (target, start, end) = arguments.takeArgs(0..2)
 
@@ -134,13 +158,11 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return thisObj
     }
 
-    @JSMethod("entries", 0)
     fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         return createArrayIterator(realm, obj, PropertyKind.KeyValue)
     }
 
-    @JSMethod("every", 1)
     fun every(thisValue: JSValue, arguments: JSArguments): JSValue {
         val (callback, thisArg) = arguments.takeArgs(0..1)
 
@@ -164,7 +186,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return JSTrue
     }
 
-    @JSMethod("fill", 1)
     fun fill(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
 
@@ -197,7 +218,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return thisObj
     }
 
-    @JSMethod("filter", 1)
     fun filter(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(thisObj)
@@ -226,7 +246,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("find", 1)
     fun find(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(thisObj)
@@ -249,7 +268,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return JSUndefined
     }
 
-    @JSMethod("findIndex", 1)
     fun findIndex(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(thisObj)
@@ -272,7 +290,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return JSUndefined
     }
 
-    @JSMethod("flat", 0)
     fun flat(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         val sourceLength = Operations.lengthOfArrayLike(thisObj)
@@ -285,7 +302,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("flatMap", 1)
     fun flatMap(thisValue: JSValue, arguments: JSArguments): JSValue {
         val thisObj = Operations.toObject(thisValue)
         val sourceLength = Operations.lengthOfArrayLike(thisObj)
@@ -299,7 +315,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("forEach", 1)
     fun forEach(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -319,7 +334,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return JSUndefined
     }
 
-    @JSMethod("join", 1)
     fun join(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -336,13 +350,11 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         }.toValue()
     }
 
-    @JSMethod("keys", 0)
     fun keys(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         return createArrayIterator(realm, obj, PropertyKind.Key)
     }
 
-    @JSMethod("lastIndexOf", 1)
     fun lastIndexOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -373,7 +385,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return (-1).toValue()
     }
 
-    @JSMethod("map", 1)
     fun map(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -393,7 +404,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("pop", 0)
     fun pop(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -406,7 +416,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return element
     }
 
-    @JSMethod("push", 1)
     fun push(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         var length = Operations.lengthOfArrayLike(obj)
@@ -420,17 +429,14 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return length.toValue()
     }
 
-    @JSMethod("reduce", 1)
     fun reduce(thisValue: JSValue, arguments: JSArguments): JSValue {
         return reduceHelper(thisValue, arguments, false)
     }
 
-    @JSMethod("reduceRight", 1)
     fun reduceRight(thisValue: JSValue, arguments: JSArguments): JSValue {
         return reduceHelper(thisValue, arguments, true)
     }
 
-    @JSMethod("reverse", 0)
     fun reverse(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         var length = Operations.lengthOfArrayLike(obj)
@@ -490,7 +496,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return obj
     }
 
-    @JSMethod("shift", 0)
     fun shift(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -502,7 +507,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return element.getActualValue(obj)
     }
 
-    @JSMethod("slice", 2)
     fun slice(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -539,7 +543,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("some", 1)
     fun some(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -561,7 +564,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return JSFalse
     }
 
-    @JSMethod("splice", 1)
     fun splice(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -642,7 +644,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    @JSMethod("toString", 0)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val func = obj.get("join")
@@ -651,7 +652,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return realm.objectProto.toString(thisValue, arguments)
     }
 
-    @JSMethod("unshift", 1)
     fun unshift(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(obj)
@@ -668,7 +668,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return (length + argCount).toValue()
     }
 
-    @JSMethod("values", 0)
     fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
         return createArrayIterator(realm, obj, PropertyKind.Value)

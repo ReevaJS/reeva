@@ -3,7 +3,6 @@ package me.mattco.reeva.runtime.arrays
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -13,6 +12,12 @@ import me.mattco.reeva.utils.*
 class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ArrayConstructor", 1) {
     init {
         isConstructable = true
+    }
+
+    override fun init() {
+        super.init()
+
+        defineNativeFunction("isArray", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::isArray)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -55,7 +60,6 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         }
     }
 
-    @JSMethod("isArray", 1)
     fun isArray(thisValue: JSValue, arguments: JSArguments): JSValue {
         return Operations.isArray(arguments.argument(0)).toValue()
     }

@@ -3,7 +3,6 @@ package me.mattco.reeva.runtime.wrappers
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.primitives.JSUndefined
@@ -15,6 +14,13 @@ import me.mattco.reeva.utils.toValue
 class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "String", 1) {
     init {
         isConstructable = true
+    }
+
+    override fun init() {
+        super.init()
+
+        defineNativeFunction("fromCharCode", 1, ::fromCharCode)
+        defineNativeFunction("fromCodePoint", 1, ::fromCodePoint)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -33,7 +39,6 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return JSStringObject.create(realm, theString)
     }
 
-    @JSMethod("fromCharCode", 1)
     fun fromCharCode(thisValue: JSValue, arguments: JSArguments): JSValue {
         return buildString {
             arguments.forEach {
@@ -42,7 +47,6 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         }.toValue()
     }
 
-    @JSMethod("fromCodePoint", 1)
     fun fromCodePoint(thisValue: JSValue, arguments: JSArguments): JSValue {
         return buildString {
             arguments.forEach {

@@ -3,7 +3,6 @@ package me.mattco.reeva.runtime.builtins.regexp
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNull
@@ -13,10 +12,11 @@ import me.mattco.reeva.utils.*
 class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
     override fun init() {
         super.init()
+
         defineOwnProperty(Realm.`@@toStringTag`, "RegExp String Iterator".toValue(), Descriptor.CONFIGURABLE or Descriptor.HAS_BASIC)
+        defineNativeFunction("next", 0, ::next)
     }
 
-    @JSMethod("next", 0)
     fun next(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSRegExpStringIterator)
             Errors.IncompatibleMethodCall("%RegExpStringIterator%.prototype.next").throwTypeError()

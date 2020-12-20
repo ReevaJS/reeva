@@ -3,8 +3,6 @@ package me.mattco.reeva.runtime.builtins
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSMethod
-import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.errors.JSTypeErrorObject
@@ -22,19 +20,24 @@ import me.mattco.reeva.utils.*
 import kotlin.math.min
 
 class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    @JSNativePropertyGetter("@@toStringTag", "Cew")
+    override fun init() {
+        super.init()
+
+        defineNativeProperty(Realm.`@@toStringTag`.key(), attrs { +conf -enum -writ }, ::`get@@toStringTag`, null)
+        defineNativeFunction("parse", 2, function = ::parse)
+        defineNativeFunction("stringify", 3, function = ::stringify)
+    }
+
     fun `get@@toStringTag`(thisValue: JSValue): JSValue {
         return "JSON".toValue()
     }
 
     @ECMAImpl("24.5.1")
-    @JSMethod("parse", 2)
     fun parse(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("24.5.2")
-    @JSMethod("stringify", 3)
     fun stringify(thisValue: JSValue, arguments: JSArguments): JSValue {
         // TODO: ReplacerFunction
 

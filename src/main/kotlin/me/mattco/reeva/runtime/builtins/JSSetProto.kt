@@ -3,8 +3,6 @@ package me.mattco.reeva.runtime.builtins
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.annotations.JSMethod
-import me.mattco.reeva.runtime.annotations.JSNativeAccessorGetter
 import me.mattco.reeva.runtime.iterators.JSSetIterator
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -16,23 +14,29 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
     override fun init() {
         super.init()
 
+        defineNativeAccessor("size", attrs { +conf -enum }, ::getSize, null)
+        defineOwnProperty(Realm.`@@toStringTag`, "Set".toValue(), Descriptor.CONFIGURABLE)
+        defineNativeFunction("add", 1, ::add)
+        defineNativeFunction("clear", 1, ::clear)
+        defineNativeFunction("delete", 1, ::delete)
+        defineNativeFunction("entries", 1, ::entries)
+        defineNativeFunction("forEach", 1, ::forEach)
+        defineNativeFunction("has", 1, ::has)
+        defineNativeFunction("values", 1, ::values)
+
         // "The initial value of the 'keys' property is the same function object as the initial value
         // of the 'values' property"
-        defineNativeFunction("keys".key(), 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::values)
+        defineNativeFunction("keys", 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::values)
         // "The initial value of the @@iterator property is the same function object as the initial value
         // of the 'values' property"
         defineNativeFunction(Realm.`@@iterator`.key(), 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::values)
-
-        defineOwnProperty(Realm.`@@toStringTag`, "Set".toValue(), Descriptor.CONFIGURABLE)
     }
 
-    @JSNativeAccessorGetter("size", "Ce")
     fun getSize(thisValue: JSValue): JSValue {
         val set = thisSetObject(thisValue, "getSize")
         return set.setData.size.toValue()
     }
 
-    @JSMethod("add", 1)
     fun add(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "add")
         set.setData.add(arguments.argument(0))
@@ -40,7 +44,6 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return set
     }
 
-    @JSMethod("clear", 0)
     fun clear(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "clear")
         set.setData.clear()
@@ -54,7 +57,6 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return JSUndefined
     }
 
-    @JSMethod("delete", 1)
     fun delete(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "delete")
         val value = arguments.argument(0)
@@ -69,13 +71,11 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return set.setData.remove(value).toValue()
     }
 
-    @JSMethod("entries", 0)
     fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "entries")
         return JSSetIterator.create(realm, set, PropertyKind.KeyValue)
     }
 
-    @JSMethod("forEach", 1)
     fun forEach(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "forEach")
         val (callback, thisArg) = arguments.takeArgs(0..1)
@@ -98,13 +98,11 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return JSUndefined
     }
 
-    @JSMethod("has", 1)
     fun has(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "has")
         return (arguments.argument(0) in set.setData).toValue()
     }
 
-    @JSMethod("values", 0)
     fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
         val set = thisSetObject(thisValue, "values")
         return JSSetIterator.create(realm, set, PropertyKind.Value)

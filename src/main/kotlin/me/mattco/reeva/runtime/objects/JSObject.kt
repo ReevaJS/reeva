@@ -62,13 +62,7 @@ open class JSObject protected constructor(
         var setter: JSFunction? = null,
     )
 
-    open fun init() {
-        annotationInit()
-    }
-
-    // This function is automatically overridden by the Reeva compiler
-    // plugin - do not inherit manually!
-    open fun annotationInit() { }
+    open fun init() { }
 
     @ECMAImpl("9.1.1")
     open fun getPrototype() = shape.prototype ?: JSNull
@@ -243,6 +237,10 @@ open class JSObject protected constructor(
         }.map { PropertyKey(it.name) }
     }
 
+    fun defineNativeAccessor(key: String, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
+        defineNativeAccessor(key.key(), attributes, getter, setter)
+    }
+
     fun defineNativeAccessor(key: PropertyKey, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
         val getterFunc = getter?.let { f ->
             JSNativeFunction.fromLambda(realm, "TODO", 0) { thisValue, _ -> f(thisValue) }
@@ -260,12 +258,24 @@ open class JSObject protected constructor(
         internalSet(key, Descriptor(value, attributes))
     }
 
+    fun defineNativeProperty(key: String, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
+        defineNativeProperty(key.key(), attributes, getter, setter)
+    }
+
     fun defineNativeProperty(key: PropertyKey, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
         val value = JSNativeProperty(getter, setter)
         internalSet(key, Descriptor(value, attributes))
     }
 
-    fun defineNativeFunction(key: PropertyKey, length: Int, attributes: Int, function: NativeFunctionSignature) {
+    fun defineNativeFunction(key: String, length: Int, function: NativeFunctionSignature) {
+        defineNativeFunction(key.key(), length, attrs { +conf -enum +writ }, function)
+    }
+
+    fun defineNativeFunction(key: String, length: Int, attributes: Int = attrs { +conf -enum +writ }, function: NativeFunctionSignature) {
+        defineNativeFunction(key.key(), length, attributes, function)
+    }
+
+    fun defineNativeFunction(key: PropertyKey, length: Int, attributes: Int = attrs { +conf -enum +writ }, function: NativeFunctionSignature) {
         val name = if (key.isString) key.asString else "[${key.asSymbol.descriptiveString()}]"
         val obj = JSNativeFunction.fromLambda(realm, name, length, function)
         internalSet(key, Descriptor(obj, attributes))

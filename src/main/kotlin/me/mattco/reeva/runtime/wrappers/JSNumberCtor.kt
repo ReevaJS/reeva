@@ -3,10 +3,8 @@ package me.mattco.reeva.runtime.wrappers
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
-import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSBigInt
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSTrue
@@ -32,10 +30,15 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineOwnProperty("NaN", Double.NaN.toValue(), 0)
         defineOwnProperty("NEGATIVE_INFINITY", Double.NEGATIVE_INFINITY.toValue(), 0)
         defineOwnProperty("POSITIVE_INFINITY", Double.POSITIVE_INFINITY.toValue(), 0)
+        defineNativeFunction("isFinite", 1, ::isFinite)
+        defineNativeFunction("isInteger", 1, ::isInteger)
+        defineNativeFunction("isNaN", 1, ::isNaN)
+        defineNativeFunction("isSafeInteger", 1, ::isSafeInteger)
+        defineNativeFunction("parseFloat", 1, ::parseFloat)
+        defineNativeFunction("parseInt", 1, ::parseInt)
     }
 
     @ECMAImpl("20.1.2.2")
-    @JSMethod("isFinite", 1)
     fun isFinite(thisValue: JSValue, arguments: JSArguments): JSValue {
         val number = arguments.argument(0)
         if (!number.isNumber)
@@ -46,19 +49,16 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @ECMAImpl("20.1.2.3")
-    @JSMethod("isInteger", 1)
     fun isInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
         return Operations.isIntegralNumber(arguments.argument(0)).toValue()
     }
 
     @ECMAImpl("20.1.2.4")
-    @JSMethod("isNaN", 1)
     fun isNaN(thisValue: JSValue, arguments: JSArguments): JSValue {
         return arguments.argument(0).isNaN.toValue()
     }
 
     @ECMAImpl("20.1.2.5")
-    @JSMethod("isSafeInteger", 1)
     fun isSafeInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isIntegralNumber(arguments.argument(0)))
             return JSFalse
@@ -66,13 +66,11 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @ECMAImpl("20.1.2.12")
-    @JSMethod("parseFloat", 1)
     fun parseFloat(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.2.13")
-    @JSMethod("parseInt", 1)
     fun parseInt(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }

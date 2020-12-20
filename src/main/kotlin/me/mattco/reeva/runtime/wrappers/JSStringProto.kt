@@ -1,10 +1,8 @@
 package me.mattco.reeva.runtime.wrappers
 
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.*
@@ -15,14 +13,34 @@ import kotlin.streams.toList
 class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JSString("")) {
     override fun init() {
         // No super call to avoid prototype complications
-
-        annotationInit()
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.stringCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        defineNativeFunction("charAt", 1, ::charAt)
+        defineNativeFunction("charCodeAt", 1, ::charCodeAt)
+        defineNativeFunction("codePointAt", 1, ::codePointAt)
+        defineNativeFunction("concat", 1, ::concat)
+        defineNativeFunction("endsWith", 1, ::endsWith)
+        defineNativeFunction("includes", 1, ::includes)
+        defineNativeFunction("indexOf", 1, ::indexOf)
+        defineNativeFunction("lastIndexOf", 1, ::lastIndexOf)
+        defineNativeFunction("padEnd", 1, ::padEnd)
+        defineNativeFunction("padStart", 1, ::padStart)
+        defineNativeFunction("repeat", 1, ::repeat)
+        defineNativeFunction("replace", 1, ::replace)
+        defineNativeFunction("slice", 2, ::slice)
+        defineNativeFunction("split", 2, ::split)
+        defineNativeFunction("startsWith", 1, ::startsWith)
+        defineNativeFunction("substring", 2, ::substring)
+        defineNativeFunction("toLowerCase", 0, ::toLowerCase)
+        defineNativeFunction("toString", 0, ::toString)
+        defineNativeFunction("toUpperCase", 0, ::toUpperCase)
+        defineNativeFunction("trim", 0, ::trim)
+        defineNativeFunction("trimEnd", 0, ::trimEnd)
+        defineNativeFunction("trimStart", 0, ::trimStart)
+        defineNativeFunction("valueOf", 0, ::valueOf)
     }
 
-    @JSMethod("charAt", 1)
     fun charAt(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val str = Operations.toString(obj)
@@ -37,7 +55,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return str.string[position].toValue()
     }
 
-    @JSMethod("charCodeAt", 1)
     fun charCodeAt(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val str = Operations.toString(obj)
@@ -52,7 +69,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return str.string[position].toInt().toValue()
     }
 
-    @JSMethod("codePointAt", 1)
     fun codePointAt(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -66,7 +82,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return Operations.codePointAt(string, position).codepoint.toValue()
     }
 
-    @JSMethod("concat", 1)
     fun concat(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -77,7 +92,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return result.toValue()
     }
 
-    @JSMethod("endsWith", 1)
     fun endsWith(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -100,7 +114,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return (string.substring(start, end) == searchString).toValue()
     }
 
-    @JSMethod("includes", 1)
     fun includes(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -111,7 +124,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.substring(pos).contains(searchString).toValue()
     }
 
-    @JSMethod("indexOf", 1)
     fun indexOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -123,7 +135,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.indexOf(searchString, pos).toValue()
     }
 
-    @JSMethod("lastIndexOf", 1)
     fun lastIndexOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -139,19 +150,16 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.lastIndexOf(searchString, pos).toValue()
     }
 
-    @JSMethod("padEnd", 1)
     fun padEnd(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         return stringPad(obj, arguments.argument(0), arguments.argument(1), false).toValue()
     }
 
-    @JSMethod("padStart", 1)
     fun padStart(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         return stringPad(obj, arguments.argument(0), arguments.argument(1), true).toValue()
     }
 
-    @JSMethod("repeat", 1)
     fun repeat(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -161,7 +169,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.repeat(count).toValue()
     }
 
-    @JSMethod("replace", 1)
     fun replace(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         var (searchValue, replaceValue) = arguments.takeArgs(0..1)
@@ -196,7 +203,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return (preserved + replacement + string.substring(position + searchString.length)).toValue()
     }
 
-    @JSMethod("slice", 2)
     fun slice(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -227,7 +233,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.substring(from, to).toValue()
     }
 
-    @JSMethod("split", 2)
     fun split(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val (separator, limit) = arguments.takeArgs(0..1)
@@ -288,7 +293,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return array
     }
 
-    @JSMethod("startsWith", 1)
     fun startsWith(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -311,7 +315,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return (string.substring(start, end) == searchString).toValue()
     }
 
-    @JSMethod("substring", 2)
     fun substring(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -330,7 +333,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.substring(from, to).toValue()
     }
 
-    @JSMethod("toLowerCase", 0)
     fun toLowerCase(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -339,12 +341,10 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.toLowerCase().toValue()
     }
 
-    @JSMethod("toString", 0)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisStringValue(thisValue, "toString")
     }
 
-    @JSMethod("toUpperCase", 0)
     fun toUpperCase(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
@@ -353,28 +353,24 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         return string.toUpperCase().toValue()
     }
 
-    @JSMethod("trim", 0)
     fun trim(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
         return string.trim().toValue()
     }
 
-    @JSMethod("trimEnd", 0)
     fun trimEnd(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
         return string.trimEnd().toValue()
     }
 
-    @JSMethod("trimStart", 0)
     fun trimStart(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.requireObjectCoercible(thisValue)
         val string = Operations.toString(obj).string
         return string.trimStart().toValue()
     }
 
-    @JSMethod("valueOf", 0)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisStringValue(thisValue, "valueOf")
     }

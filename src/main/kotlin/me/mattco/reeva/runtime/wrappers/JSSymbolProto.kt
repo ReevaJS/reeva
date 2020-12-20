@@ -1,44 +1,39 @@
 package me.mattco.reeva.runtime.wrappers
 
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSMethod
-import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.Errors
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.toValue
+import me.mattco.reeva.utils.*
 
 class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {
         super.init()
         defineOwnProperty("constructor", realm.symbolCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        defineNativeProperty("description", attrs { +conf -enum }, ::getDescription, null)
+        defineNativeProperty(Realm.`@@toStringTag`.key(), attrs { +conf -enum -writ }, ::`get@@toStringTag`, null)
+        defineNativeFunction("toString", 0, ::toString)
+        defineNativeFunction("toValue", 0, ::toValue)
+        defineNativeFunction(Realm.`@@toPrimitive`.key(), 0, function = ::`@@toPrimitive`)
     }
 
-    @JSNativePropertyGetter("description", "Ce")
     fun getDescription(thisValue: JSValue): JSValue {
         return thisSymbolValue(thisValue, "description").description?.toValue() ?: JSUndefined
     }
 
-    @JSNativePropertyGetter("@@toStringTag", "Cew")
     fun `get@@toStringTag`(thisValue: JSValue) = "Symbol".toValue()
 
-    @JSMethod("toString", 0)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisSymbolValue(thisValue, "toString").descriptiveString().toValue()
     }
 
-    @JSMethod("toValue", 0)
     fun toValue(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisSymbolValue(thisValue, "toValue")
     }
 
-    @JSMethod("@@toPrimitive", 1)
     fun `@@toPrimitive`(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisSymbolValue(thisValue, "@@toPrimitive")
     }

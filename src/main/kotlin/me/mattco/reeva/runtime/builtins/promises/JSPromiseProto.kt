@@ -3,7 +3,6 @@ package me.mattco.reeva.runtime.builtins.promises
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -16,14 +15,16 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
 
         defineOwnProperty("constructor", realm.promiseCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty(Realm.`@@toStringTag`, "Promise".toValue(), Descriptor.CONFIGURABLE)
+
+        defineNativeFunction("catch", 1, ::catch)
+        defineNativeFunction("finally", 1, ::finally)
+        defineNativeFunction("then", 1, ::then)
     }
 
-    @JSMethod("catch", 1)
     fun catch(thisValue: JSValue, arguments: JSArguments): JSValue {
         return Operations.invoke(thisValue, "then".toValue(), listOf(JSUndefined, arguments.argument(0)))
     }
 
-    @JSMethod("finally", 1)
     fun finally(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("Promise.prototype.finally").throwTypeError()
@@ -39,7 +40,6 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
         return Operations.invoke(thisValue, "then".toValue(), listOf(thenFinally, catchFinally))
     }
 
-    @JSMethod("then", 2)
     fun then(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSPromiseObject)
             Errors.IncompatibleMethodCall("Promise.prototype.then").throwTypeError()

@@ -3,7 +3,6 @@ package me.mattco.reeva.jvmcompat
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -23,6 +22,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
         super.init()
 
         defineOwnProperty("prototype", clazzProto, Descriptor.HAS_BASIC)
+        defineNativeFunction("toString", 0, ::toString)
     }
 
     override fun evaluate(_arguments: JSArguments): JSValue {
@@ -57,8 +57,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
         )
     }
 
-    @JSMethod("toString", 0)
-    fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         return "Class(${clazz.name})".toValue()
     }
 

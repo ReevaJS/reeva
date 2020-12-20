@@ -2,7 +2,6 @@ package me.mattco.reeva.runtime.functions
 
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -21,10 +20,13 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
         val desc = Descriptor(JSAccessor(thrower, thrower), Descriptor.CONFIGURABLE)
         defineOwnProperty("caller".key(), desc)
         defineOwnProperty("arguments".key(), desc)
+
+        defineNativeFunction("bind", 1, ::bind)
+        defineNativeFunction("call", 1, ::call)
+        defineNativeFunction("apply", 2, ::apply)
     }
 
-    @JSMethod("bind", 1)
-    fun bind(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun bind(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isCallable(thisValue))
             Errors.Function.BindNonFunction.throwTypeError()
 
@@ -58,15 +60,13 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
         return function
     }
 
-    @JSMethod("call", 1)
-    fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isCallable(thisValue))
             Errors.Function.NonCallable("call").throwTypeError()
         return Operations.call(thisValue, arguments.argument(0), arguments.subList(1, arguments.size))
     }
 
-    @JSMethod("apply", 2)
-    fun apply(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun apply(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (!Operations.isCallable(thisValue))
             Errors.Function.NonCallable("apply").throwTypeError()
         val array = arguments.argument(1)

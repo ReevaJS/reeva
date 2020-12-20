@@ -2,13 +2,13 @@ package me.mattco.reeva.runtime.errors
 
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
+import me.mattco.reeva.utils.key
 import me.mattco.reeva.utils.toValue
 
 open class JSErrorProto protected constructor(
@@ -20,9 +20,9 @@ open class JSErrorProto protected constructor(
 
         defineOwnProperty("constructor", realm.errorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty("name", name.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        defineNativeFunction("toString", 0, ::toString)
     }
 
-    @JSMethod("toString", 0)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("Error.prototype.toString").throwTypeError()

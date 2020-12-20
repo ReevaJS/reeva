@@ -3,24 +3,38 @@ package me.mattco.reeva.runtime.builtins.regexp
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSMethod
-import me.mattco.reeva.runtime.annotations.JSNativeAccessorGetter
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNull
-import me.mattco.reeva.runtime.primitives.JSString
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
-import org.joni.Matcher
-import org.joni.Option
 
 class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    @JSNativeAccessorGetter("dotAll", "Ce")
+    override fun init() {
+        super.init()
+
+        val attrs = attrs { +conf -enum }
+        defineNativeAccessor("dotAll", attrs, ::getDotAll, null)
+        defineNativeAccessor("flags", attrs, ::getFlags, null)
+        defineNativeAccessor("global", attrs, ::getGlobal, null)
+        defineNativeAccessor("ignoreCase", attrs, ::getIgnoreCase, null)
+        defineNativeAccessor("multiline", attrs, ::getMultiline, null)
+        defineNativeAccessor("source", attrs, ::getSource, null)
+        defineNativeAccessor("sticky", attrs, ::getSticky, null)
+        defineNativeAccessor("unicode", attrs, ::getUnicode, null)
+        defineNativeFunction(Realm.`@@match`.key(), 1, function = ::`@@match`)
+        defineNativeFunction(Realm.`@@matchAll`.key(), 1, function = ::`@@matchAll`)
+        defineNativeFunction(Realm.`@@replace`.key(), 2, function = ::`@@replace`)
+        defineNativeFunction(Realm.`@@search`.key(), 1, function = ::`@@search`)
+        defineNativeFunction(Realm.`@@split`.key(), 2, function = ::`@@split`)
+        defineNativeFunction("exec", 1, ::exec)
+        defineNativeFunction("test", 1, ::test)
+        defineNativeFunction("toString", 0, ::toString)
+    }
+
     fun getDotAll(thisValue: JSValue): JSValue {
         return getFlagHelper(thisValue, "dotAll", JSRegExpObject.Flag.DotAll)
     }
 
-    @JSNativeAccessorGetter("flags", "Ce")
     fun getFlags(thisValue: JSValue): JSValue {
         if (thisValue !is JSRegExpObject)
             Errors.IncompatibleMethodCall("RegExp.prototype.flags").throwTypeError()
@@ -40,22 +54,18 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         return result.toValue()
     }
 
-    @JSNativeAccessorGetter("global", "Ce")
     fun getGlobal(thisValue: JSValue): JSValue {
         return getFlagHelper(thisValue, "global", JSRegExpObject.Flag.Global)
     }
 
-    @JSNativeAccessorGetter("ignoreCase", "Ce")
     fun getIgnoreCase(thisValue: JSValue): JSValue {
         return getFlagHelper(thisValue, "ignoreCase", JSRegExpObject.Flag.IgnoreCase)
     }
 
-    @JSNativeAccessorGetter("multiline", "Ce")
     fun getMultiline(thisValue: JSValue): JSValue {
         return getFlagHelper(thisValue, "multiline", JSRegExpObject.Flag.Multiline)
     }
 
-    @JSNativeAccessorGetter("source", "Ce")
     fun getSource(thisValue: JSValue): JSValue {
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("RegExp.prototype.source").throwTypeError()
@@ -68,17 +78,14 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         return thisValue.originalSource.toValue()
     }
 
-    @JSNativeAccessorGetter("sticky", "Ce")
     fun getSticky(thisValue: JSValue): JSValue {
         return getFlagHelper(thisValue, "sticky", JSRegExpObject.Flag.Sticky)
     }
 
-    @JSNativeAccessorGetter("unicode", "Ce")
     fun getUnicode(thisValue: JSValue): JSValue {
         return getFlagHelper(thisValue, "unicode", JSRegExpObject.Flag.Unicode)
     }
 
-    @JSMethod("@@match", 1)
     fun `@@match`(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("RegExp.prototype[@@match]").throwTypeError()
@@ -108,7 +115,6 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         }
     }
 
-    @JSMethod("@@matchAll", 1)
     fun `@@matchAll`(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("RegExp.prototype[@@matchAll]").throwTypeError()
@@ -126,14 +132,12 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         return JSRegExpStringIterator.create(realm, thisValue as JSRegExpObject, string, global, fullUnicode)
     }
 
-    @JSMethod("@@replace", 2)
     fun `@@replace`(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("RegExp.prototype[@@replace]").throwTypeError()
         TODO()
     }
 
-    @JSMethod("@@search", 1)
     fun `@@search`(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("RegExp.prototype[@@search]").throwTypeError()
@@ -154,21 +158,18 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         return result.get("index")
     }
 
-    @JSMethod("@@split", 2)
     fun `@@split`(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("RegExp.prototype[@@split]").throwTypeError()
         TODO()
     }
 
-    @JSMethod("exec", 1)
     fun exec(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSRegExpObject)
             Errors.IncompatibleMethodCall("RegExp.prototype.exec").throwTypeError()
         return Operations.regExpBuiltinExec(realm, thisValue, Operations.toString(arguments.argument(0)))
     }
 
-    @JSMethod("test", 1)
     fun test(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSRegExpObject)
             Errors.IncompatibleMethodCall("RegExp.prototype.test").throwTypeError()
@@ -177,7 +178,6 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         return (match != JSNull).toValue()
     }
 
-    @JSMethod("toString", 0)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (thisValue !is JSRegExpObject)
             Errors.IncompatibleMethodCall("RegExp.prototype.toString").throwTypeError()

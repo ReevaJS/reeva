@@ -3,14 +3,13 @@ package me.mattco.reeva.runtime.builtins
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.functions.JSNativeFunction
-import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.runtime.primitives.JSString
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
+import me.mattco.reeva.utils.key
 import me.mattco.reeva.utils.toValue
 import java.time.Instant
 import java.time.LocalDateTime
@@ -27,6 +26,14 @@ import java.time.temporal.TemporalField
 class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Date", 7) {
     init {
         isConstructable = true
+    }
+
+    override fun init() {
+        super.init()
+
+        defineNativeFunction("now", 0, ::now)
+        defineNativeFunction("parse", 0, ::parse)
+        defineNativeFunction("UTC", 0, ::utc)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -90,12 +97,10 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
         return JSDateObject.create(realm, zdt)
     }
 
-    @JSMethod("now", 0)
     fun now(thisValue: JSValue, arguments: JSArguments): JSValue {
         return Instant.now().toEpochMilli().toValue()
     }
 
-    @JSMethod("parse", 1)
     fun parse(thisValue: JSValue, arguments: JSArguments): JSValue {
         return JSDateObject.create(realm, parseHelper(arguments) ?: return JSNumber.NaN)
     }
@@ -125,7 +130,6 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
         return if (isSupported(field)) get(field) else default
     }
 
-    @JSMethod("UTC", 7)
     fun utc(thisValue: JSValue, arguments: JSArguments): JSValue {
         fun getArg(index: Int, offset: Int = 0): Long? {
             if (arguments.size <= index)

@@ -2,10 +2,8 @@ package me.mattco.reeva.runtime.builtins
 
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
-import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
@@ -18,13 +16,17 @@ class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "P
         isConstructable = true
     }
 
+    override fun init() {
+        super.init()
+        defineNativeFunction("revocable", 2, function = ::revocable)
+    }
+
     override fun evaluate(arguments: JSArguments): JSValue {
         if (newTarget == JSUndefined)
             Errors.CtorCallWithoutNew("Proxy").throwTypeError()
         return proxyCreate(realm, arguments.argument(0), arguments.argument(1))
     }
 
-    @JSMethod("revocable", 2)
     fun revocable(thisValue: JSValue, arguments: JSArguments): JSValue {
         val proxy = proxyCreate(realm, arguments.argument(0), arguments.argument(1))
 

@@ -4,20 +4,22 @@ import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.annotations.JSNativeAccessorGetter
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
-import me.mattco.reeva.utils.toValue
+import me.mattco.reeva.utils.*
 
 class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "RegExp", 2) {
     init {
         isConstructable = true
     }
 
-    @JSNativeAccessorGetter("@@species", "Ce")
+    override fun init() {
+        super.init()
+
+        defineNativeAccessor(Realm.`@@species`.key(), attrs { +conf -enum }, ::`get@@species`, null)
+    }
+
     fun `get@@species`(thisValue: JSValue): JSValue {
         return thisValue
     }

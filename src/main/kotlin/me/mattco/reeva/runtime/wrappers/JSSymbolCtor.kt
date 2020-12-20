@@ -2,10 +2,8 @@ package me.mattco.reeva.runtime.wrappers
 
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
-import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
@@ -31,9 +29,11 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineOwnProperty("toPrimitive", Realm.`@@toPrimitive`, 0)
         defineOwnProperty("toStringTag", Realm.`@@toStringTag`, 0)
         defineOwnProperty("unscopables", Realm.`@@unscopables`, 0)
+
+        defineNativeFunction("for", 1, ::`for`)
+        defineNativeFunction("keyFor", 1, ::keyFor)
     }
 
-    @JSMethod("for", 1)
     fun `for`(thisValue: JSValue, arguments: JSArguments): JSValue {
         val key = arguments.argument(0).asString
         for ((globalKey, globalSymbol) in Realm.globalSymbolRegistry) {
@@ -45,7 +45,6 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return newSymbol
     }
 
-    @JSMethod("keyFor", 1)
     fun keyFor(thisValue: JSValue, arguments: JSArguments): JSValue {
         val sym = arguments.argument(0)
         if (!sym.isSymbol)

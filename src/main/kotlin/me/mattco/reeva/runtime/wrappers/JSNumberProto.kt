@@ -3,7 +3,6 @@ package me.mattco.reeva.runtime.wrappers
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSMethod
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.primitives.JSNumber
@@ -14,39 +13,40 @@ import me.mattco.reeva.utils.toValue
 class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JSNumber.ZERO) {
     override fun init() {
         // No super call to avoid prototype complications
-
-        annotationInit()
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.numberCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        defineNativeFunction("toString", 0, ::toString)
+        defineNativeFunction("valueOf", 0, ::valueOf)
+        defineNativeFunction("toExponential", 1, ::toExponential)
+        defineNativeFunction("toFixed", 1, ::toFixed)
+        defineNativeFunction("toLocaleString", 0, ::toLocaleString)
+        defineNativeFunction("toPrecision", 1, ::toPrecision)
+        defineNativeFunction("toString", 0, ::toString)
+        defineNativeFunction("valueOf", 0, ::valueOf)
     }
 
     @ECMAImpl("20.1.3.2")
-    @JSMethod("toExponential", 1)
     fun toExponential(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.3.3")
-    @JSMethod("toFixed", 1)
     fun toFixed(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.3.3")
-    @JSMethod("toLocaleString", 0)
     fun toLocaleString(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.3.3")
-    @JSMethod("toPrecision", 1)
     fun toPrecision(thisValue: JSValue, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.3.3")
-    @JSMethod("toString", 0)
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
         // TODO: Spec-compliant conversion
         val x = thisNumberValue(thisValue, "toString")
@@ -67,7 +67,6 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
     }
 
     @ECMAImpl("20.1.3.3")
-    @JSMethod("valueOf", 0)
     fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
         return thisNumberValue(thisValue, "valueOf")
     }

@@ -3,9 +3,7 @@ package me.mattco.reeva.runtime.arrays
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.annotations.JSNativePropertyGetter
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.annotations.JSNativePropertySetter
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
@@ -15,13 +13,17 @@ import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
 open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = realm.arrayProto) : JSObject(realm, proto) {
-    @JSNativePropertyGetter("length", "ceW")
+    override fun init() {
+        super.init()
+
+        defineNativeProperty("length", attrs { -conf -enum +writ }, ::getLength, ::setLength)
+    }
+
     fun getLength(thisValue: JSValue): JSValue {
         expect(thisValue is JSObject)
         return thisValue.indexedProperties.arrayLikeSize.toValue()
     }
 
-    @JSNativePropertySetter("length", "ceW")
     fun setLength(thisValue: JSValue, newLength: JSValue): JSValue {
         expect(thisValue is JSObject)
         thisValue.indexedProperties.setArrayLikeSize(Operations.toLength(newLength).asLong)
