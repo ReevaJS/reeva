@@ -67,10 +67,11 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("NaN", JSNumber.NaN, 0)
         defineOwnProperty("globalThis", this, Descriptor.WRITABLE or Descriptor.CONFIGURABLE)
         defineOwnProperty("undefined", JSUndefined, 0)
-        defineNativeFunction("id", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::id)
-        defineNativeFunction("eval", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::eval)
+        defineNativeFunction("id", 1, ::id)
+        defineNativeFunction("eval", 1, ::eval)
+        defineNativeFunction("parseInt", 1, ::parseInt)
 
-        defineNativeFunction("jvm", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::jvm)
+        defineNativeFunction("jvm", 1, ::jvm)
 
         // Debug method
         defineNativeFunction("isStrict".key(), 0, 0) { _, _ -> Operations.isStrict().toValue() }
@@ -83,6 +84,44 @@ open class JSGlobalObject protected constructor(
 
     fun eval(thisValue: JSValue, arguments: JSArguments): JSValue {
         return performEval(arguments.argument(0), Agent.runningContext.realm, strictCaller = false, direct = false)
+    }
+
+    fun parseInt(thisValue: JSValue, arguments: JSArguments): JSValue {
+        var inputString = Operations.trimString(Operations.toString(arguments.argument(0)), Operations.TrimType.Start)
+        val sign = when {
+            inputString.startsWith("-") -> {
+                inputString = inputString.substring(1)
+                -1
+            }
+            inputString.startsWith("+") -> {
+                inputString = inputString.substring(1)
+                1
+            }
+            else -> 1
+        }
+
+        var stripPrefix = true
+        var radix = Operations.toInt32(arguments.argument(1)).asInt.let {
+            if (it != 0) {
+                if (it !in 2..36)
+                    return JSNumber.NaN
+                if (it != 16)
+                    stripPrefix = false
+                it
+            } else 10
+        }
+
+        if (stripPrefix && inputString.toLowerCase().startsWith("0x")) {
+            inputString = inputString.substring(2)
+            radix = 16
+        }
+
+        val end = inputString.indexOfFirst { !it.isRadixDigit(radix) }.let { if (it == -1) inputString.length else it }
+        val content = inputString.substring(0, end)
+        if (content.isEmpty())
+            return JSNumber.NaN
+        val numericValue = content.toLongOrNull(radix) ?: return JSNumber.NaN
+        return JSNumber(numericValue * sign)
     }
 
     fun jvm(thisValue: JSValue, arguments: JSArguments): JSValue {

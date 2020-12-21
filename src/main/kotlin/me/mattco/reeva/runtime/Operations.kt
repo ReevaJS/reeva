@@ -2006,6 +2006,24 @@ object Operations {
         }
     }
 
+    @JvmStatic @ECMAImpl("21.1.3.29.1")
+    fun trimString(string: JSValue, where: TrimType): String {
+        val str = toString(requireObjectCoercible(string)).string
+
+        fun removable(ch: Char) = isWhitespace(ch) || isLineTerminator(ch)
+
+        return when (where) {
+            TrimType.Start -> str.dropWhile(::removable)
+            TrimType.End -> str.dropLastWhile(::removable)
+            TrimType.StartEnd -> str.dropWhile(::removable).dropLastWhile(::removable)
+        }
+    }
+
+    private fun isWhitespace(ch: Char) = ch == '\u0009' || ch == '\u000b' || ch == '\u000c' || ch == ' ' ||
+        ch == '\u00a0' || ch == '\uffef' || ch.isSpaceSeparator()
+
+    private fun isLineTerminator(ch: Char) = ch == '\u000a' || ch == '\u000d' || ch == '\u2028' || ch == '\u2029'
+
     @JvmStatic @ECMAImpl("21.2.3.2.2")
     fun regExpInitialize(realm: Realm, patternArg: JSValue, flagsArg: JSValue): JSObject {
         // TODO: Actually use regExpAlloc and newTarget for subclassibility
@@ -2361,6 +2379,12 @@ object Operations {
     data class IteratorRecord(val iterator: JSObject, val nextMethod: JSValue, var isDone: Boolean)
 
     data class CodepointRecord(val codepoint: Int, val codeUnitCount: Int, val isUnpairedSurrogate: Boolean)
+
+    enum class TrimType {
+        Start,
+        End,
+        StartEnd
+    }
 
     data class PromiseReaction(
         val capability: PromiseCapability?,
