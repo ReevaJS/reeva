@@ -179,7 +179,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val thisObj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(thisObj)
 
-        for (index in thisObj.indexedProperties.indices()) {
+        for (index in Operations.objectIndices(thisObj)) {
             if (index >= length)
                 break
 
@@ -236,7 +236,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val array = Operations.arraySpeciesCreate(thisObj, 0)
         var toIndex = 0
 
-        for (index in thisObj.indexedProperties.indices()) {
+        for (index in Operations.objectIndices(thisObj)) {
             if (index >= length)
                 break
 
@@ -261,7 +261,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         if (!Operations.isCallable(predicate))
             Errors.Array.CallableFirstArg("find").throwTypeError()
 
-        for (index in thisObj.indexedProperties.indices()) {
+        for (index in Operations.objectIndices(thisObj)) {
             if (index >= length)
                 break
 
@@ -283,7 +283,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         if (!Operations.isCallable(predicate))
             Errors.Array.CallableFirstArg("findIndex").throwTypeError()
 
-        for (index in thisObj.indexedProperties.indices()) {
+        for (index in Operations.objectIndices(thisObj)) {
             if (index >= length)
                 break
 
@@ -330,7 +330,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         if (!Operations.isCallable(callbackFn))
             Errors.Array.CallableFirstArg("forEach").throwTypeError()
 
-        for (index in obj.indexedProperties.indices()) {
+        for (index in Operations.objectIndices(obj)) {
             if (index >= length)
                 break
 
@@ -381,7 +381,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             min(fromNumber, length - 1L)
         } else length + fromNumber
 
-        obj.indexedProperties.indices().reversed().filter {
+        Operations.objectIndices(obj).reversed().filter {
             it <= limit
         }.forEach {
             val value = obj.get(it)
@@ -400,7 +400,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             Errors.Array.CallableFirstArg("map").throwTypeError()
 
         val array = Operations.arraySpeciesCreate(obj, length)
-        obj.indexedProperties.indices().filter {
+        Operations.objectIndices(obj).filter {
             it < length
         }.forEach {
             val value = obj.get(it)
@@ -448,7 +448,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val obj = Operations.toObject(thisValue)
         var length = Operations.lengthOfArrayLike(obj)
         val middle = floor(length / 2.0)
-        val indices = obj.indexedProperties.indices()
+        val indices = Operations.objectIndices(obj)
 
         val lowerIndices = mutableSetOf<Long>()
         val upperIndices = mutableSetOf<Long>()
@@ -539,7 +539,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val array = Operations.arraySpeciesCreate(obj, count)
         val range = k until final
 
-        obj.indexedProperties.indices().filter {
+        Operations.objectIndices(obj).filter {
             it in range
         }.forEach {
             Operations.createDataPropertyOrThrow(array, it.key(), obj.get(it))
@@ -558,7 +558,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         if (!Operations.isCallable(callback))
             Errors.Array.CallableFirstArg("some").throwTypeError()
 
-        obj.indexedProperties.indices().forEach {
+        Operations.objectIndices(obj).forEach {
             if (it >= length)
                 return@forEach
 
@@ -597,7 +597,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             Errors.Array.GrowToInvalidLength.throwTypeError()
 
         val array = Operations.arraySpeciesCreate(obj, actualDeleteCount) as JSObject
-        val objIndices = obj.indexedProperties.indices()
+        val objIndices = Operations.objectIndices(obj)
 
         objIndices.filter {
             it in actualStart..(actualStart + actualDeleteCount)
@@ -735,7 +735,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         if (length == 0L && arguments.size == 1)
             Errors.Array.ReduceEmptyArray.throwTypeError()
 
-        val indices = obj.indexedProperties.indices().let {
+        val indices = Operations.objectIndices(obj).let {
             if (isRight) it.reversed() else it
         }.toMutableList()
 
