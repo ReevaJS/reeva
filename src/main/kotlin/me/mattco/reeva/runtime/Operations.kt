@@ -797,7 +797,8 @@ object Operations {
             return false
         if (value is JSArrayObject)
             return true
-        // TODO: Proxies
+        if (value is JSProxyObject)
+            return isArray(value.target)
         return false
     }
 
