@@ -35,6 +35,9 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             Operations.toString(value)
         }
 
+        if (newTarget == JSUndefined)
+            return theString
+
         // TODO: GetPrototypeFromConstructor?
         return JSStringObject.create(realm, theString)
     }
