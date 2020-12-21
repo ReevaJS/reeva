@@ -1560,6 +1560,14 @@ object Operations {
      * 2 ^ 53 - 1) in order to do hasProperty checks.
      */
     fun objectIndices(obj: JSObject, includePrototypes: Boolean = true): SortedSet<Long> {
+        // special-case string
+        if (obj is JSStringObject) {
+            return TreeSet<Long>().apply {
+                for (i in obj.string.string.indices)
+                    add(i.toLong())
+            }
+        }
+
         val indices = obj.indexedProperties.indices()
         if (includePrototypes) {
             var proto = obj.getPrototype()
