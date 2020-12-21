@@ -571,16 +571,20 @@ object Operations {
             JSTrue -> JSNumber(1)
             is JSNumber -> return value
             // TODO: spec-compliant string printing
-            is JSString -> if ('.' in value.string) {
-                try {
-                    java.lang.Double.parseDouble(value.string).toValue()
+            is JSString -> when (value.string) {
+                "+Infinity", "Infinity" -> JSNumber.POSITIVE_INFINITY
+                "-Infinity" -> JSNumber.NEGATIVE_INFINITY
+                else -> if ('.' in value.string) {
+                    try {
+                        java.lang.Double.parseDouble(value.string).toValue()
+                    } catch (e: NumberFormatException) {
+                        JSNumber.NaN
+                    }
+                } else try {
+                    Integer.parseInt(value.string).toValue()
                 } catch (e: NumberFormatException) {
                     JSNumber.NaN
                 }
-            } else try {
-                Integer.parseInt(value.string).toValue()
-            } catch (e: NumberFormatException) {
-                JSNumber.NaN
             }
             is JSSymbol, is JSBigInt -> Errors.FailedToNumber(value.type).throwTypeError()
             is JSObject -> toNumber(toPrimitive(value, ToPrimitiveHint.AsNumber))
