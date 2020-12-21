@@ -96,7 +96,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
             val iteratorRecord = Operations.getIterator(items, Operations.IteratorHint.Sync, usingIterator as JSFunction)
             var k = 0L
             while (true) {
-                if (k == Long.MAX_VALUE) {
+                if (k == Operations.MAX_SAFE_INTEGER) {
                     return Operations.iteratorClose(
                         iteratorRecord,
                         JSTypeErrorObject.create(

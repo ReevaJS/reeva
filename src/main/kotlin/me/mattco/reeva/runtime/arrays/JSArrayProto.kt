@@ -93,6 +93,9 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                 val length = Operations.lengthOfArrayLike(item)
                 if (length == 0L)
                     return@forEach
+                if (length + n > Operations.MAX_SAFE_INTEGER)
+                    Errors.InvalidArrayLength(length + n).throwTypeError()
+
                 val indices = Operations.objectIndices(item as JSObject)
 
                 for (index in indices) {
