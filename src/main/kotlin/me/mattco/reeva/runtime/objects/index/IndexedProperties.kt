@@ -6,6 +6,7 @@ import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.index.IndexedStorage.Companion.SPARSE_ARRAY_THRESHOLD
 import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import java.util.*
 
 class IndexedProperties private constructor(
     private var storage: IndexedStorage
@@ -153,8 +154,9 @@ class IndexedProperties private constructor(
         storage.setArrayLikeSize(size)
     }
 
-    fun indices(): List<Long> {
-        val indices = ArrayList<Long>()
+    fun indices(): SortedSet<Long> {
+        val indices = TreeSet<Long>()
+        indices.iterator()
         if (storage is SimpleIndexedStorage) {
             (storage as SimpleIndexedStorage).elements.forEachIndexed { index, value ->
                 if (value != JSEmpty)
@@ -162,7 +164,6 @@ class IndexedProperties private constructor(
             }
         } else {
             (storage as GenericIndexedStorage).also {
-                indices.ensureCapacity(it.packedElements.size)
                 it.packedElements.forEachIndexed { index, descriptor ->
                     if (descriptor.getRawValue() != JSEmpty)
                         indices.add(index.toLong())

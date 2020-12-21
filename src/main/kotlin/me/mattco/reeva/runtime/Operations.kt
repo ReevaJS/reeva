@@ -1549,6 +1549,27 @@ object Operations {
         return JSBoundFunction.create(Agent.runningContext.realm, targetFunction, boundThis, boundArgs, proto)
     }
 
+    /**
+     * Non-standard function.
+     *
+     * This function gets all of the object's numeric indices,
+     * as well as optionally the numeric indices of its complete
+     * prototype chain. This should generally be used wherever the
+     * spec requires a loop from 0 to a very large number (usually
+     * 2 ^ 53 - 1) in order to do hasProperty checks.
+     */
+    fun objectIndices(obj: JSObject, includePrototypes: Boolean = true): SortedSet<Long> {
+        val indices = obj.indexedProperties.indices()
+        if (includePrototypes) {
+            var proto = obj.getPrototype()
+            while (proto != JSNull) {
+                indices.addAll((proto as JSObject).indexedProperties.indices())
+                proto = proto.getPrototype()
+            }
+        }
+        return indices
+    }
+
     fun arrayCreate(length: Int, proto: JSValue = Agent.runningContext.realm.arrayProto): JSObject {
         return arrayCreate(length.toLong(), proto)
     }

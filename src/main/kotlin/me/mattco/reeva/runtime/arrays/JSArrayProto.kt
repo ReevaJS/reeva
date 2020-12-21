@@ -93,7 +93,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                 val length = Operations.lengthOfArrayLike(item)
                 if (length == 0L)
                     return@forEach
-                val indices = (item as JSObject).indexedProperties.indices()
+                val indices = Operations.objectIndices(item as JSObject)
 
                 for (index in indices) {
                     if (index >= length)
@@ -104,6 +104,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                 n += length
             } else {
                 Operations.createDataPropertyOrThrow(array, n.key(), item)
+                n++
             }
         }
         Operations.set(array as JSObject, "length".key(), n.toValue(), true)
@@ -377,7 +378,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             min(fromNumber, length - 1L)
         } else length + fromNumber
 
-        obj.indexedProperties.indices().asReversed().filter {
+        obj.indexedProperties.indices().reversed().filter {
             it <= limit
         }.forEach {
             val value = obj.get(it)
