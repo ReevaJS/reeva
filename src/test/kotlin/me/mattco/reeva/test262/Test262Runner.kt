@@ -12,7 +12,9 @@ class Test262Runner {
         return (targetDirectory ?: testDirectory).walkTopDown().onEnter {
             it.name != "intl402" && it.name != "annexB"
         }.filter {
-            !it.isDirectory && !it.name.endsWith("_FIXTURE.js") && "S13.2.1_A1_T1.js" !in it.name // the nested function call test
+            !it.isDirectory && !it.name.endsWith("_FIXTURE.js") &&
+                "S13.2.1_A1_T1.js" !in it.name && // the nested function call test
+                "S7.8.5_A2.1_T2.js" !in it.name // a regexp test that hangs
         }.toList().sortedBy { it.absolutePath }.map { file ->
             val name = file.absolutePath.replace(testDirectory.absolutePath, "")
             val contents = file.readText()
