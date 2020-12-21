@@ -401,11 +401,7 @@ open class JSObject protected constructor(
             data = shape[key]!!
         }
 
-        when (val existingValue = storage[data.offset]) {
-            is JSAccessor -> existingValue.callSetter(this, descriptor.getActualValue(this))
-            is JSNativeProperty -> existingValue.set(this, descriptor.getActualValue(this))
-            else -> storage[data.offset] = descriptor.getRawValue()
-        }
+        storage[data.offset] = descriptor.getRawValue()
     }
 
     internal fun internalDelete(property: PropertyKey): Boolean {
