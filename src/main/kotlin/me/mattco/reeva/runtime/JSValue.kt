@@ -38,8 +38,6 @@ abstract class JSValue : Ref {
     val isSymbol: Boolean get() = type == Type.Symbol
     val isObject: Boolean get() = type == Type.Object
     val isAccessor: Boolean get() = type == Type.Accessor
-    val isFunction: Boolean get() = this is JSFunction
-    val isArray: Boolean get() = this is JSArrayObject
 
     val isNullish: Boolean get() = this == JSNull || this == JSUndefined
     val isInt: Boolean get() = isNumber && !isInfinite && floor(asDouble) == asDouble &&
@@ -97,12 +95,6 @@ abstract class JSValue : Ref {
             return this as JSNativeProperty
         }
 
-    val asFunction: JSFunction
-        get() {
-            expect(isFunction)
-            return this as JSFunction
-        }
-
     val asArray: JSArrayObject
         get() {
             expect(isArray)
@@ -157,6 +149,10 @@ abstract class JSValue : Ref {
 
     fun ifNullish(value: JSValue) = if (this == JSUndefined || this == JSNull) value else this
 
+    override fun toString(): String {
+        return Operations.toPrintableString(this)
+    }
+
     override fun equals(other: Any?): Boolean {
         if (other === this)
             return true
@@ -199,3 +195,34 @@ abstract class JSValue : Ref {
         val INVALID_VALUE = object : JSValue() {}
     }
 }
+
+/**
+ * Operations extension methods
+ */
+
+val JSValue.isArray: Boolean get() = Operations.isArray(this)
+val JSValue.isCallable: Boolean get() = Operations.isCallable(this)
+val JSValue.isConstructor: Boolean get() = Operations.isConstructor(this)
+val JSValue.isIntegralNumber: Boolean get() = Operations.isIntegralNumber(this)
+val JSValue.isPropertyKey: Boolean get() = Operations.isPropertyKey(this)
+val JSValue.isRegExp: Boolean get() = Operations.isRegExp(this)
+
+fun JSValue.toPrimitive(hint: Operations.ToPrimitiveHint? = null) = Operations.toPrimitive(this, hint)
+fun JSValue.toBoolean() = Operations.toBoolean(this)
+fun JSValue.toNumeric() = Operations.toNumeric(this)
+fun JSValue.toNumber() = Operations.toNumber(this)
+fun JSValue.toIntegerOrInfinity() = Operations.toIntegerOrInfinity(this)
+fun JSValue.toInt32() = Operations.toInt32(this)
+fun JSValue.toUint32() = Operations.toUint32(this)
+fun JSValue.toUint16() = Operations.toUint16(this)
+fun JSValue.toBigInt() = Operations.toBigInt(this)
+fun JSValue.toPrintableString() = Operations.toPrintableString(this)
+fun JSValue.toObject() = Operations.toObject(this)
+fun JSValue.toPropertyKey() = Operations.toPropertyKey(this)
+fun JSValue.toLength() = Operations.toLength(this)
+fun JSValue.toIndex() = Operations.toIndex(this)
+fun JSValue.requireObjectCoercible() = Operations.requireObjectCoercible(this)
+fun JSValue.lengthOfArrayLike() = Operations.lengthOfArrayLike(this)
+
+
+
