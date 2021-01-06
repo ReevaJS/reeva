@@ -1,10 +1,15 @@
 package me.mattco.reeva.test262
 
 import com.charleskorn.kaml.Yaml
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.utils.expect
 import org.junit.jupiter.api.*
 import java.io.File
+import java.time.LocalDateTime
+import java.time.ZonedDateTime
 
 class Test262Runner {
     @TestFactory
@@ -31,14 +36,29 @@ class Test262Runner {
         }
     }
 
+    @Serializable
+    data class TestResult(
+        val name: String,
+        val status: Status,
+        val extra: String? = null
+    ) {
+        enum class Status {
+            Passed,
+            Failed,
+            Ignored
+        }
+    }
+
     companion object {
         val test262Directory = File("./src/test/resources/test262/")
         val testDirectory = File(test262Directory, "test")
         val testDirectoryStr = testDirectory.absolutePath
         val harnessDirectory = File(test262Directory, "harness")
-        val targetDirectory: File? = File(testDirectory, "built-ins/Array")
-//        val targetDirectory: File? = null
+//        val targetDirectory: File? = File(testDirectory, "language/statements/class/subclass")
+        val targetDirectory: File? = null
         lateinit var pretestScript: String
+
+        val testResults = mutableListOf<TestResult>()
 
         @BeforeAll
         @JvmStatic
@@ -58,6 +78,10 @@ class Test262Runner {
         @AfterAll
         @JvmStatic
         fun teardown() {
+            File("./demo/test_results/${LocalDateTime.now()}.json").writeText(
+                Json { prettyPrint = true }.encodeToString(testResults.sortedBy { it.name })
+            )
+
             Reeva.teardown()
         }
     }

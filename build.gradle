@@ -29,7 +29,7 @@ dependencies {
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.7.0"
     testImplementation 'com.charleskorn.kaml:kaml:0.25.0'
     testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
-    testImplementation 'org.jetbrains.kotlinx:kotlinx-serialization-runtime-jvm:1.0-M1-1.4.0-rc'
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.1'
     testImplementation "io.strikt:strikt-core:0.28.0"
 }
 
