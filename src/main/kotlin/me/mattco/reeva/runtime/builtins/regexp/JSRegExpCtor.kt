@@ -48,7 +48,8 @@ class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             else -> pattern to flags
         }
 
-        return Operations.regExpInitialize(realm, patternSource, flagSource)
+        val obj = Operations.regExpAlloc(realm, newTarget)
+        return Operations.regExpInitialize(realm, obj, patternSource, flagSource)
     }
 
     companion object {

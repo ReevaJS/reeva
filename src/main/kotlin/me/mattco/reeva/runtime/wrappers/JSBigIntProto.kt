@@ -3,6 +3,7 @@ package me.mattco.reeva.runtime.wrappers
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSBigInt
@@ -41,9 +42,10 @@ class JSBigIntProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         private fun thisBigIntValue(thisValue: JSValue, methodName: String): JSBigInt {
             if (thisValue is JSBigInt)
                 return thisValue
-            if (thisValue is JSBigIntObject)
-                return thisValue.value
-            Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError()
+            if (thisValue !is JSObject)
+                Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError()
+            return thisValue.getSlotAs(SlotName.BigIntData) ?:
+                Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError()
         }
 
         fun create(realm: Realm) = JSBigIntProto(realm).initialize()

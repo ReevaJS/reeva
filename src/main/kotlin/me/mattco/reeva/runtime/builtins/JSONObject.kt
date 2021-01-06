@@ -4,14 +4,15 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.arrays.JSArrayObject
-import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSTrue
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
+import me.mattco.reeva.runtime.primitives.JSBigInt
+import me.mattco.reeva.runtime.toNumber
 import me.mattco.reeva.runtime.wrappers.JSBigIntObject
 import me.mattco.reeva.runtime.wrappers.JSBooleanObject
 import me.mattco.reeva.runtime.wrappers.JSNumberObject
@@ -47,15 +48,15 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         var gap = ""
 
-        if (replacer.isObject) {
+        if (replacer is JSObject) {
             TODO()
         }
 
-        if (space.isObject) {
-            if (space is JSNumberObject) {
-                space = space.number
-            } else if (space is JSStringObject) {
-                space = space.string
+        if (space is JSObject) {
+            if (space.hasSlot(SlotName.NumberData)) {
+                space = space.toNumber()
+            } else if (space.hasSlot(SlotName.StringData)) {
+                space = Operations.toString(space)
             }
         }
 
@@ -82,18 +83,19 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
 
     private fun serializeJSONProperty(state: SerializeState, key: PropertyKey, holder: JSObject): String? {
         var value = holder.get(key)
-        if (value.isObject || value.isBigInt) {
+        if (value is JSObject || value is JSBigInt) {
             val toJSON = Operations.getV(value, "toJSON".toValue())
             if (Operations.isCallable(toJSON)) {
                 value = Operations.call(toJSON, value, listOf(key.asValue))
             }
         }
-        if (value.isObject) {
-            when (value) {
-                is JSNumberObject -> value = Operations.toNumber(value)
-                is JSStringObject -> value = Operations.toString(value)
-                is JSBooleanObject -> value = value.value
-                is JSBigIntObject -> value = value.value
+        if (value is JSObject) {
+            value = when {
+                value.hasSlot(SlotName.NumberData) -> value.toNumber()
+                value.hasSlot(SlotName.StringData) -> Operations.toString(value)
+                value.hasSlot(SlotName.BooleanData) -> value.getSlotAs(SlotName.BooleanData)
+                value.hasSlot(SlotName.BigIntData) -> value.getSlotAs(SlotName.BigIntData)
+                else -> value
             }
         }
         if (value.isNull)

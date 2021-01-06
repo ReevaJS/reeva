@@ -4,7 +4,9 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.objects.Descriptor
+import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
@@ -78,9 +80,10 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
         private fun thisNumberValue(value: JSValue, methodName: String): JSNumber {
             if (value.isNumber)
                 return value as JSNumber
-            if (value is JSNumberObject)
-                return value.number
-            Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError()
+            if (value !is JSObject)
+                Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError()
+            return value.getSlotAs(SlotName.NumberData) ?:
+                Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError()
         }
     }
 }

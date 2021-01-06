@@ -23,9 +23,7 @@ class JSRangeErrorProto private constructor(realm: Realm) : JSObject(realm, real
 }
 
 class JSRangeErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "RangeError") {
-    override fun constructErrorObj(): JSErrorObject {
-        return JSRangeErrorObject.create(realm)
-    }
+    override fun errorProto(): JSObject = realm.rangeErrorProto
 
     companion object {
         fun create(realm: Realm) = JSRangeErrorCtor(realm).initialize()

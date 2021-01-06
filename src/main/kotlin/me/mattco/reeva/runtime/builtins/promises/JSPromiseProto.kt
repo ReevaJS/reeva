@@ -41,7 +41,7 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
     }
 
     fun then(thisValue: JSValue, arguments: JSArguments): JSValue {
-        if (thisValue !is JSPromiseObject)
+        if (!Operations.isPromise(thisValue))
             Errors.IncompatibleMethodCall("Promise.prototype.then").throwTypeError()
 
         val ctor = Operations.speciesConstructor(thisValue, realm.promiseCtor)

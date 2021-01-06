@@ -4,6 +4,7 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSNull
@@ -25,12 +26,12 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
+        val newTarget = super.newTarget
         if (newTarget != JSUndefined)
             Errors.CtorCallWithoutNew("Set").throwTypeError()
 
-        // TODO: Handle newTarget properly
-
-        val set = JSSetObject.create(realm)
+        val set = Operations.ordinaryCreateFromConstructor(newTarget, realm.setProto, listOf(SlotName.SetData))
+        set.setSlot(SlotName.SetData, JSSetObject.SetData())
         val iterator = arguments.argument(0)
         if (iterator == JSUndefined || iterator == JSNull)
             return set

@@ -24,9 +24,7 @@ class JSTypeErrorProto private constructor(realm: Realm) : JSObject(realm, realm
 }
 
 class JSTypeErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "TypeError") {
-    override fun constructErrorObj(): JSErrorObject {
-        return JSTypeErrorObject.create(realm)
-    }
+    override fun errorProto(): JSObject = realm.typeErrorProto
 
     companion object {
         fun create(realm: Realm) = JSTypeErrorCtor(realm).initialize()

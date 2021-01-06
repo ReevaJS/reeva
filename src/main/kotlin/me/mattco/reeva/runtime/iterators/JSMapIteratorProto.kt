@@ -9,7 +9,6 @@ import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.key
 import me.mattco.reeva.utils.toValue
 
 class JSMapIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
@@ -24,22 +23,22 @@ class JSMapIteratorProto private constructor(realm: Realm) : JSObject(realm, rea
         if (thisValue !is JSMapIterator)
             Errors.IncompatibleMethodCall("%MapIteratorPrototype%.next").throwTypeError()
 
-        val map = thisValue.iteratedMap ?: return Operations.createIterResultObject(JSUndefined, true)
+        val data = thisValue.iteratedMap ?: return Operations.createIterResultObject(JSUndefined, true)
 
-        while (thisValue.nextIndex < map.keyInsertionOrder.size) {
-            val key = map.keyInsertionOrder[thisValue.nextIndex]
+        while (thisValue.nextIndex < data.keyInsertionOrder.size) {
+            val key = data.keyInsertionOrder[thisValue.nextIndex]
             thisValue.nextIndex++
             if (key != JSEmpty) {
                 val result = when (thisValue.iterationKind) {
                     PropertyKind.Key -> key
-                    PropertyKind.Value -> map.mapData[key]!!
-                    PropertyKind.KeyValue -> Operations.createArrayFromList(listOf(key, map.mapData[key]!!))
+                    PropertyKind.Value -> data.map[key]!!
+                    PropertyKind.KeyValue -> Operations.createArrayFromList(listOf(key, data.map[key]!!))
                 }
                 return Operations.createIterResultObject(result, false)
             }
         }
 
-        map.iterationCount--
+        data.iterationCount--
         thisValue.iteratedMap = null
         return Operations.createIterResultObject(JSUndefined, true)
     }

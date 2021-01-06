@@ -4,46 +4,45 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
-import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSNull
-import me.mattco.reeva.runtime.primitives.JSTrue
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 
 class JSProxyObject private constructor(
     realm: Realm,
-    val target: JSObject,
-    val handler: JSObject,
+    target: JSObject,
+    handler: JSObject,
 ) : JSObject(realm, realm.objectProto) {
     val isCallable = Operations.isCallable(target)
     val isConstructor = Operations.isConstructor(target)
 
-    private var isRevoked = false
+    val target by slot(SlotName.ProxyTarget, target)
+    var handler: JSObject? by slot(SlotName.ProxyHandler, handler)
 
     fun revoke() {
-        expect(!isRevoked)
-        isRevoked = true
+        expect(handler != null)
+        handler = null
     }
 
-    private fun checkRevoked(trapName: String) {
-        if (isRevoked)
-            Errors.Proxy.Revoked(trapName).throwTypeError()
-    }
-
-    private inline fun getTrapOr(name: String, block: () -> Unit): JSValue {
+    private inline fun getTrapAndHandler(name: String, block: () -> Unit): Pair<JSObject, JSValue> {
+        val handler = handler.let {
+            if (it == null)
+                Errors.Proxy.Revoked(name).throwTypeError()
+            it
+        }
         val trap = Operations.getMethod(handler, name.toValue())
         if (trap == JSUndefined)
             block()
-        return trap
+        return handler to trap
     }
 
     @ECMAImpl("9.5.1")
     override fun getPrototype(): JSValue {
-        checkRevoked("GetPrototypeOf")
-        val trap = getTrapOr("getPrototypeOf") {
+        val (handler, trap) = getTrapAndHandler("getPrototypeOf") {
             return target.getPrototype()
         }
         val handlerProto = Operations.call(trap, handler, listOf(target))
@@ -59,9 +58,8 @@ class JSProxyObject private constructor(
     }
 
     override fun setPrototype(newPrototype: JSValue): Boolean {
-        checkRevoked("SetPrototypeOf")
         ecmaAssert(newPrototype is JSObject || newPrototype is JSNull)
-        val trap = getTrapOr("setPrototypeOf") {
+        val (handler, trap) = getTrapAndHandler("setPrototypeOf") {
             return target.setPrototype(newPrototype)
         }
         val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, newPrototype)))
@@ -76,8 +74,7 @@ class JSProxyObject private constructor(
     }
 
     override fun isExtensible(): Boolean {
-        checkRevoked("IsExtensible")
-        val trap = getTrapOr("isExtensible") {
+        val (handler, trap) = getTrapAndHandler("isExtensible") {
             return target.isExtensible()
         }
         val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target)))
@@ -87,8 +84,7 @@ class JSProxyObject private constructor(
     }
 
     override fun preventExtensions(): Boolean {
-        checkRevoked("PreventExtensions")
-        val trap = getTrapOr("preventExtensions()") {
+        val (handler, trap) = getTrapAndHandler("preventExtensions") {
             return target.preventExtensions()
         }
         val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target)))
@@ -98,8 +94,7 @@ class JSProxyObject private constructor(
     }
 
     override fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
-        checkRevoked("GetOwnProperty")
-        val trap = getTrapOr("getOwnPropertyDescriptor") {
+        val (handler, trap) = getTrapAndHandler("getOwnPropertyDescriptor") {
             return target.getOwnPropertyDescriptor(property)
         }
         val trapResultObj = Operations.call(trap, handler, listOf(target, property.asValue))
@@ -130,8 +125,7 @@ class JSProxyObject private constructor(
     }
 
     override fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
-        checkRevoked("DefineProperty")
-        val trap = getTrapOr("defineProperty") {
+        val (handler, trap) = getTrapAndHandler("defineProperty") {
             return target.defineOwnProperty(property, descriptor)
         }
 
@@ -159,8 +153,7 @@ class JSProxyObject private constructor(
     }
 
     override fun hasProperty(property: PropertyKey): Boolean {
-        checkRevoked("Has")
-        val trap = getTrapOr("has") {
+        val (handler, trap) = getTrapAndHandler("has") {
             return target.hasProperty(property)
         }
         val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, property.asValue)))
@@ -177,8 +170,7 @@ class JSProxyObject private constructor(
     }
 
     override fun get(property: PropertyKey, receiver: JSValue): JSValue {
-        checkRevoked("Get")
-        val trap = getTrapOr("get") {
+        val (handler, trap) = getTrapAndHandler("get") {
             return target.get(property, receiver)
         }
         val trapResult = Operations.call(trap, handler, listOf(target, property.asValue, receiver))
@@ -193,8 +185,7 @@ class JSProxyObject private constructor(
     }
 
     override fun set(property: PropertyKey, value: JSValue, receiver: JSValue): Boolean {
-        checkRevoked("Set")
-        val trap = getTrapOr("set") {
+        val (handler, trap) = getTrapAndHandler("set") {
             return target.set(property, value, receiver)
         }
         val trapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, property.asValue, receiver)))
@@ -211,8 +202,7 @@ class JSProxyObject private constructor(
     }
 
     override fun delete(property: PropertyKey): Boolean {
-        checkRevoked("Delete")
-        val trap = getTrapOr("deleteProperty") {
+        val (handler, trap) = getTrapAndHandler("deleteProperty") {
             return target.delete(property)
         }
         val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, Operations.toString(property.asValue))))
@@ -227,8 +217,7 @@ class JSProxyObject private constructor(
     }
 
     override fun ownPropertyKeys(onlyEnumerable: Boolean): List<PropertyKey> {
-        checkRevoked("OwnKeys")
-        val trap = getTrapOr("ownKeys") {
+        val (handler, trap) = getTrapAndHandler("ownKeys") {
             return target.ownPropertyKeys(onlyEnumerable)
         }
         val trapResultArray = Operations.call(trap, handler, listOf(target))
@@ -273,9 +262,8 @@ class JSProxyObject private constructor(
     }
 
     fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        checkRevoked("Call")
         expect(isCallable)
-        val trap = getTrapOr("apply") {
+        val (_, trap) = getTrapAndHandler("apply") {
             return Operations.call(target, thisValue, arguments)
         }
         val argArray = Operations.createArrayFromList(arguments)
@@ -283,9 +271,8 @@ class JSProxyObject private constructor(
     }
 
     fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
-        checkRevoked("Construct")
         expect(isConstructor)
-        val trap = getTrapOr("construct") {
+        val (handler, trap) = getTrapAndHandler("construct") {
             return Operations.construct(target, arguments, newTarget)
         }
         val argArray = Operations.createArrayFromList(arguments)

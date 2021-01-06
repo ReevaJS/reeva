@@ -3,7 +3,9 @@ package me.mattco.reeva.runtime.wrappers
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.objects.Descriptor
+import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSBoolean
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.utils.Errors
@@ -36,9 +38,10 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
         private fun thisBooleanValue(value: JSValue, methodName: String): JSBoolean {
             if (value.isBoolean)
                 return value as JSBoolean
-            if (value is JSBooleanObject)
-                return value.value
-            Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError()
+            if (value !is JSObject)
+                Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError()
+            return value.getSlotAs(SlotName.BooleanData) ?:
+                Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError()
         }
     }
 }

@@ -3,7 +3,9 @@ package me.mattco.reeva.runtime.builtins
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.functions.JSNativeFunction
+import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.runtime.primitives.JSString
 import me.mattco.reeva.runtime.primitives.JSUndefined
@@ -37,6 +39,7 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
+        val newTarget = super.newTarget
         if (newTarget == JSUndefined)
             return Operations.toDateString(ZonedDateTime.now()).toValue()
 
@@ -44,8 +47,8 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
             0 -> ZonedDateTime.now()
             1 -> {
                 val arg = arguments.argument(0)
-                if (arg is JSDateObject) {
-                    arg.dateValue ?: return JSDateObject.create(realm, null)
+                if (arg is JSObject && arg.hasSlot(SlotName.DateValue)) {
+                    arg.getSlot(SlotName.DateValue) ?: return JSDateObject.create(realm, null)
                 } else {
                     val prim = Operations.toPrimitive(arg)
                     if (prim is JSString) {
@@ -94,7 +97,9 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
             }
         }
 
-        return JSDateObject.create(realm, zdt)
+        return Operations.ordinaryCreateFromConstructor(newTarget, realm.dateProto, listOf(SlotName.DateValue)).also {
+            it.setSlot(SlotName.DateValue, zdt)
+        }
     }
 
     fun now(thisValue: JSValue, arguments: JSArguments): JSValue {

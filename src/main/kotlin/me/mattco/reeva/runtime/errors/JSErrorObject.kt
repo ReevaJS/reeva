@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.errors
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.utils.toValue
@@ -10,6 +11,10 @@ open class JSErrorObject protected constructor(
     val message: String? = null,
     errorProto: JSObject = realm.errorProto
 ) : JSObject(realm, errorProto) {
+    init {
+        addSlot(SlotName.ErrorData)
+    }
+
     override fun init() {
         if (message != null)
             defineOwnProperty("message", message.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)

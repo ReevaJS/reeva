@@ -42,11 +42,14 @@ import java.math.BigInteger
 import java.time.*
 import java.time.format.TextStyle
 import java.util.*
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.min
 import kotlin.math.pow
 
+@OptIn(ExperimentalContracts::class)
 object Operations {
     const val MAX_SAFE_INTEGER: Long = (2L shl 52) - 1L
     const val MAX_32BIT_INT = 2L shl 31
@@ -443,7 +446,7 @@ object Operations {
         return value.number.toString(10)
     }
 
-    @JvmStatic @ECMAImpl("6.2.4.5")
+    @JvmStatic @ECMAImpl("6.2.4.4")
     fun getValue(reference: JSValue): JSValue {
         if (reference !is JSReference)
             return reference
@@ -468,7 +471,7 @@ object Operations {
         return base.getBindingValue(reference.name.asString, reference.isStrict)
     }
 
-    @JvmStatic @ECMAImpl("6.2.4.6")
+    @JvmStatic @ECMAImpl("6.2.4.5")
     fun putValue(reference: JSValue, value: JSValue) {
         if (reference !is JSReference)
             Errors.InvalidLHSAssignment(toPrintableString(value)).throwReferenceError()
@@ -801,8 +804,16 @@ object Operations {
             return false
         if (value is JSArrayObject)
             return true
-        if (value is JSProxyObject)
+        if (value is JSProxyObject) {
+            if (value.handler == null)
+                Errors.Proxy.RevokedGeneric.throwTypeError()
             return isArray(value.target)
+        }
+        if (value is JSObject) {
+            val handler = value.getSlot(SlotName.ProxyHandler)
+            if (handler != null)
+                return isArray(value.getSlotAs(SlotName.ProxyTarget))
+        }
         return false
     }
 
@@ -846,7 +857,9 @@ object Operations {
         val matcher = value.get(Realm.`@@match`)
         if (matcher != JSUndefined)
             return toBoolean(matcher)
-        return value is JSRegExpObject
+        if (value is JSRegExpObject)
+            return true
+        return value.hasSlot(SlotName.RegExpMatcher)
     }
 
     @JvmStatic @ECMAImpl("7.2.13")
@@ -1455,10 +1468,26 @@ object Operations {
         return true
     }
 
+    @JvmStatic @ECMAImpl("9.1.12")
+    fun ordinaryObjectCreate(realm: Realm, proto: JSValue, additionalInternalSlotList: List<SlotName>): JSObject {
+        // Spec deviation: [[Prototype]] and [[Extensible]] are not implemented as slots,
+        // as they are present in every Object, and thus are just plain fields in the
+        // Kotlin side
+        val obj = JSObject.create(realm, proto)
+        additionalInternalSlotList.forEach {
+            obj.addSlot(it, JSUndefined)
+        }
+        return obj
+    }
+
     @JvmStatic @ECMAImpl("9.1.13")
-    fun ordinaryCreateFromConstructor(constructor: JSValue, intrinsicDefaultProto: JSObject): JSObject {
+    fun ordinaryCreateFromConstructor(
+        constructor: JSValue,
+        intrinsicDefaultProto: JSObject,
+        internalSlotsList: List<SlotName> = emptyList()
+    ): JSObject {
         val proto = getPrototypeFromConstructor(constructor, intrinsicDefaultProto)
-        return JSObject.create((constructor as JSObject).realm, proto)
+        return ordinaryObjectCreate(proto.realm, proto, internalSlotsList)
     }
 
     @JvmStatic @ECMAImpl("9.1.14")
@@ -1468,6 +1497,14 @@ object Operations {
         if (proto is JSObject)
             return proto
         return intrinsicDefaultProto
+    }
+
+    @JvmStatic @ECMAImpl("9.1.15")
+    fun requireInternalSlot(obj: JSValue, slot: SlotName): Boolean {
+        contract {
+            returns(true) implies (obj is JSObject)
+        }
+        return obj is JSObject && obj.hasSlot(slot)
     }
 
     @JvmStatic @ECMAImpl("9.2.1.1")
@@ -2036,13 +2073,37 @@ object Operations {
 
     private fun isLineTerminator(ch: Char) = ch == '\u000a' || ch == '\u000d' || ch == '\u2028' || ch == '\u2029'
 
+    @JvmStatic @ECMAImpl("21.2.3.2.1")
+    fun regExpAlloc(realm: Realm, newTarget: JSValue): JSObject {
+        val slots = listOf(SlotName.RegExpMatcher, SlotName.OriginalSource, SlotName.OriginalFlags)
+        val obj = ordinaryCreateFromConstructor(newTarget, realm.regExpProto, slots)
+        definePropertyOrThrow(obj, "lastIndex".key(), Descriptor(JSEmpty, attrs { +writ -enum -conf }))
+        return obj
+    }
+
     @JvmStatic @ECMAImpl("21.2.3.2.2")
-    fun regExpInitialize(realm: Realm, patternArg: JSValue, flagsArg: JSValue): JSObject {
-        // TODO: Actually use regExpAlloc and newTarget for subclassibility
+    fun regExpInitialize(realm: Realm, obj: JSObject, patternArg: JSValue, flagsArg: JSValue): JSObject {
         val pattern = if (patternArg == JSUndefined) "" else toString(patternArg).string
         val flags = if (flagsArg == JSUndefined) "" else toString(flagsArg).string
 
-        return JSRegExpObject.create(realm, pattern, flags)
+        val invalidFlag = flags.firstOrNull { JSRegExpObject.Flag.values().none { flag -> flag.char == it } }
+        if (invalidFlag != null)
+            Errors.RegExp.InvalidFlag(invalidFlag).throwSyntaxError()
+        if (flags.toCharArray().distinct().size != flags.length)
+            Errors.RegExp.DuplicateFlag.throwSyntaxError()
+
+        obj.setSlot(SlotName.OriginalSource, pattern)
+        obj.setSlot(SlotName.OriginalFlags, flags)
+        obj.setSlot(SlotName.RegExpMatcher, JSRegExpObject.makeClosure(pattern, flags))
+        set(obj, "lastIndex".key(), 0.toValue(), true)
+
+        return obj
+    }
+
+    @JvmStatic @ECMAImpl("21.2.3.2.4")
+    fun regExpCreate(realm: Realm, pattern: JSValue, flags: JSValue): JSObject {
+        val obj = regExpAlloc(realm, realm.regExpCtor)
+        return regExpInitialize(realm, obj, pattern, flags)
     }
 
     @ECMAImpl("21.2.5.2.1")
@@ -2064,20 +2125,22 @@ object Operations {
 
     @ECMAImpl("21.2.5.2.2")
     fun regExpBuiltinExec(realm: Realm, thisValue: JSValue, string: JSValue): JSValue {
-        ecmaAssert(thisValue is JSRegExpObject)
+        ecmaAssert(thisValue is JSObject)
         ecmaAssert(string is JSString)
+        requireInternalSlot(thisValue, SlotName.RegExpMatcher)
 
         val length = string.string.length
         val bytes = string.string.toByteArray()
-        val flags = thisValue.flags
-        val global = JSRegExpObject.Flag.Global in flags
-        val sticky = JSRegExpObject.Flag.Sticky in flags
-        val fullUnicode = JSRegExpObject.Flag.Unicode in flags
+        val flags = thisValue.getSlotAs<String>(SlotName.OriginalFlags)
+        val global = JSRegExpObject.Flag.Global.char in flags
+        val sticky = JSRegExpObject.Flag.Sticky.char in flags
+        val fullUnicode = JSRegExpObject.Flag.Unicode.char in flags
         var lastIndex = if (global || sticky) {
             toLength(thisValue.get("lastIndex")).asInt
         } else 0
 
-        val matcher = thisValue.regex.matcher(bytes, 0, length)
+        val regex = thisValue.getSlotAs<org.joni.Regex>(SlotName.RegExpMatcher)
+        val matcher = regex.matcher(bytes, 0, length)
 
         var matchSucceeded = false
         while (!matchSucceeded) {
@@ -2109,7 +2172,7 @@ object Operations {
         val matchedSubstr = string.string.substring(lastIndex, eagerRegion.end[0])
         createDataPropertyOrThrow(arr, 0.key(), matchedSubstr.toValue())
 
-        val groupNames = thisValue.regex.namedBackrefIterator().asSequence().toList()
+        val groupNames = regex.namedBackrefIterator().asSequence().toList()
         val groups = if (groupNames.isNotEmpty()) {
             JSObject.create(realm, JSNull)
         } else JSUndefined
@@ -2127,7 +2190,7 @@ object Operations {
             if (namedGroup != null) {
                 createDataPropertyOrThrow(
                     groups,
-                    thisValue.originalSource.substring(namedGroup.nameP, namedGroup.nameEnd).key(),
+                    thisValue.getSlotAs<String>(SlotName.OriginalSource).substring(namedGroup.nameP, namedGroup.nameEnd).key(),
                     capturedValue
                 )
             }
@@ -2177,7 +2240,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("26.6.1.3")
-    fun createResolvingFunctions(promise: JSPromiseObject): Pair<JSFunction, JSFunction> {
+    fun createResolvingFunctions(promise: JSObject): Pair<JSFunction, JSFunction> {
         val resolvedStatus = Wrapper(false)
         val resolve = JSResolveFunction.create(promise, resolvedStatus, promise.realm)
         val reject = JSRejectFunction.create(promise, resolvedStatus, promise.realm)
@@ -2185,14 +2248,13 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("26.6.1.4")
-    fun fulfillPromise(promise: JSPromiseObject, reason: JSValue): JSValue {
-        ecmaAssert(promise.state == PromiseState.Pending)
-        val reactions = promise.fulfillReactions.toList()
-        promise.result = reason
-        promise.fulfillReactions.clear()
-        promise.rejectReactions.clear()
-        promise.state = PromiseState.Fulfilled
-
+    fun fulfillPromise(promise: JSObject, reason: JSValue): JSValue {
+        ecmaAssert(promise.getSlot(SlotName.PromiseState) == PromiseState.Pending)
+        val reactions = promise.getSlotAs<List<PromiseReaction>>(SlotName.PromiseFulfillReactions).toList()
+        promise.setSlot(SlotName.PromiseResult, reason)
+        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<PromiseReaction>())
+        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<PromiseReaction>())
+        promise.setSlot(SlotName.PromiseState, PromiseState.Fulfilled)
         return triggerPromiseReactions(reactions, reason)
     }
 
@@ -2209,22 +2271,27 @@ object Operations {
 
     @JvmStatic @ECMAImpl("26.6.1.6")
     fun isPromise(value: JSValue): Boolean {
+        contract {
+            returns(true) implies (value is JSObject)
+        }
+        if (value !is JSObject)
+            return false
         if (value is JSPromiseObject)
             return true
         if (value is JSProxyObject)
             return isPromise(value.target)
-        return false
+        return value.hasSlot(SlotName.PromiseState)
     }
 
     @JvmStatic @ECMAImpl("26.6.1.7")
-    internal fun rejectPromise(promise: JSPromiseObject, reason: JSValue): JSValue {
-        ecmaAssert(promise.state == PromiseState.Pending)
-        val reactions = promise.rejectReactions.toList()
-        promise.result = reason
-        promise.fulfillReactions.clear()
-        promise.rejectReactions.clear()
-        promise.state = PromiseState.Rejected
-        if (!promise.isHandled) {
+    internal fun rejectPromise(promise: JSObject, reason: JSValue): JSValue {
+        ecmaAssert(promise.getSlot(SlotName.PromiseState) == PromiseState.Pending)
+        val reactions = promise.getSlotAs<List<PromiseReaction>>(SlotName.PromiseRejectReactions).toList()
+        promise.setSlot(SlotName.PromiseResult, reason)
+        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<PromiseReaction>())
+        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<PromiseReaction>())
+        promise.setSlot(SlotName.PromiseState, PromiseState.Rejected)
+        if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled)) {
             hostPromiseRejectionTracker(promise, "reject")
         }
 
@@ -2241,14 +2308,16 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("26.6.1.9")
-    fun hostPromiseRejectionTracker(promise: JSPromiseObject, operation: String) {
+    fun hostPromiseRejectionTracker(promise: JSObject, operation: String) {
         if (operation == "reject") {
             val unhandledRejectionTask = object : Microtask() {
                 override fun execute(): JSValue {
                     // If promise does not have any handlers by the time this microtask is ran, it
                     // will not have any handlers, and we can print a warning
-                    if (!promise.isHandled)
-                        println("\u001b[31mUnhandled promise rejection: ${toString(promise.result)}\u001B[0m")
+                    if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled)) {
+                        val result = promise.getSlotAs<JSValue>(SlotName.PromiseResult)
+                        println("\u001b[31mUnhandled promise rejection: ${toString(result)}\u001B[0m")
+                    }
                     return JSEmpty
                 }
             }
@@ -2290,7 +2359,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("26.6.2.2")
-    fun newPromiseResolveThenableJob(promise: JSPromiseObject, thenable: JSValue, then: JSValue): PromiseReactionJob {
+    fun newPromiseResolveThenableJob(promise: JSObject, thenable: JSValue, then: JSValue): PromiseReactionJob {
         val job = object : Microtask() {
             override fun execute(): JSValue {
                 val (resolveFunction, rejectFunction) = createResolvingFunctions(promise)
@@ -2330,7 +2399,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("26.6.5.4.1")
-    fun performPromiseThen(promise: JSPromiseObject, onFulfilled: JSValue, onRejected: JSValue, resultCapability: PromiseCapability?): JSValue {
+    fun performPromiseThen(promise: JSObject, onFulfilled: JSValue, onRejected: JSValue, resultCapability: PromiseCapability?): JSValue {
         val onFulfilledCallback = if (isCallable(onFulfilled)) {
             onFulfilled as JSFunction
         } else null
@@ -2341,24 +2410,24 @@ object Operations {
         val fulfillReaction = PromiseReaction(resultCapability, PromiseReaction.Type.Fulfill, onFulfilledCallback)
         val rejectReaction = PromiseReaction(resultCapability, PromiseReaction.Type.Reject, onRejectedCallback)
 
-        when (promise.state) {
+        when (promise.getSlotAs<PromiseState>(SlotName.PromiseState)) {
             PromiseState.Pending -> {
-                promise.fulfillReactions.add(fulfillReaction)
-                promise.rejectReactions.add(rejectReaction)
+                promise.getSlotAs<MutableList<PromiseReaction>>(SlotName.PromiseFulfillReactions).add(fulfillReaction)
+                promise.getSlotAs<MutableList<PromiseReaction>>(SlotName.PromiseRejectReactions).add(rejectReaction)
             }
             PromiseState.Fulfilled -> {
-                val fulfillJob = newPromiseReactionJob(fulfillReaction, promise.result)
+                val fulfillJob = newPromiseReactionJob(fulfillReaction, promise.getSlotAs(SlotName.PromiseResult))
                 hostEnqueuePromiseJob(fulfillJob.job, fulfillJob.realm)
             }
             else -> {
-                if (!promise.isHandled)
+                if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled))
                     hostPromiseRejectionTracker(promise, "handle")
-                val rejectJob = newPromiseReactionJob(rejectReaction, promise.result)
+                val rejectJob = newPromiseReactionJob(rejectReaction, promise.getSlotAs(SlotName.PromiseResult))
                 hostEnqueuePromiseJob(rejectJob.job, rejectJob.realm)
             }
         }
 
-        promise.isHandled = true
+        promise.setSlot(SlotName.PromiseIsHandled, true)
 
         return resultCapability?.promise ?: JSUndefined
     }

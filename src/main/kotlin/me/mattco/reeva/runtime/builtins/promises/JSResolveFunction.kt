@@ -12,7 +12,7 @@ import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
 
 class JSResolveFunction private constructor(
-    val promise: JSPromiseObject,
+    val promise: JSObject,
     var alreadyResolved: Operations.Wrapper<Boolean>,
     realm: Realm
 ) : JSNativeFunction(realm, "", 1) {
@@ -49,7 +49,7 @@ class JSResolveFunction private constructor(
 
     companion object {
         fun create(
-            promise: JSPromiseObject,
+            promise: JSObject,
             alreadyResolved: Operations.Wrapper<Boolean>,
             realm: Realm
         ) = JSResolveFunction(promise, alreadyResolved, realm).initialize()

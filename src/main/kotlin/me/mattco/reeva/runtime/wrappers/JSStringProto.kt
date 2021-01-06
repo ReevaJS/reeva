@@ -3,7 +3,9 @@ package me.mattco.reeva.runtime.wrappers
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.objects.Descriptor
+import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.*
 import kotlin.math.max
@@ -524,9 +526,10 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         private fun thisStringValue(thisValue: JSValue, methodName: String): JSString {
             if (thisValue is JSString)
                 return thisValue
-            if (thisValue is JSStringObject)
-                return thisValue.string
-            Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError()
+            if (thisValue !is JSObject)
+                Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError()
+            return thisValue.getSlotAs(SlotName.StringData) ?:
+                Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError()
         }
     }
 }

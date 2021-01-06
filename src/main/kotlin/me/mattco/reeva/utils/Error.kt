@@ -194,6 +194,7 @@ object Errors {
 
     object Proxy {
         class Revoked(trapName: String) : Error("attempt to use revoked Proxy's [[$trapName]] trap")
+        object RevokedGeneric : Error("illegal operation attempted on revoked proxy")
         object CtorFirstArgType : Error("the first argument to the Proxy constructor must be an object")
         object CtorSecondArgType : Error("the second argument to the Proxy constructor must be an object")
 

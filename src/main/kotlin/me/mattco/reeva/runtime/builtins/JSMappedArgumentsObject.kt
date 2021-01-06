@@ -3,6 +3,7 @@ package me.mattco.reeva.runtime.builtins
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
@@ -12,8 +13,7 @@ import me.mattco.reeva.runtime.primitives.JSTrue
 import me.mattco.reeva.utils.ecmaAssert
 
 class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    lateinit var parameterMap: JSObject
-        internal set
+    var parameterMap by lateinitSlot<JSObject>(SlotName.ParameterMap)
 
     override fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
         val desc = super.getOwnPropertyDescriptor(property) ?: return null

@@ -23,9 +23,7 @@ class JSEvalErrorProto private constructor(realm: Realm) : JSObject(realm, realm
 }
 
 class JSEvalErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "EvalError") {
-    override fun constructErrorObj(): JSErrorObject {
-        return JSEvalErrorObject.create(realm)
-    }
+    override fun errorProto(): JSObject = realm.evalErrorProto
 
     companion object {
         fun create(realm: Realm) = JSEvalErrorCtor(realm).initialize()

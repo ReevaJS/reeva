@@ -11,14 +11,20 @@ import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.objects.index.IndexedProperties
 import me.mattco.reeva.runtime.objects.index.IndexedStorage
 import me.mattco.reeva.utils.*
+import java.util.*
+import kotlin.properties.ReadWriteProperty
+import kotlin.reflect.KProperty
 
 open class JSObject protected constructor(
     val realm: Realm,
     prototype: JSValue = JSNull,
 ) : JSValue() {
+    private val slots = EnumMap<SlotName, Any>(SlotName::class.java)
+
     private val storage = mutableListOf<JSValue>()
     internal val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
@@ -307,6 +313,20 @@ open class JSObject protected constructor(
         internalSet(key, Descriptor(obj, attributes))
     }
 
+    fun addSlot(name: SlotName, value: JSValue = JSUndefined) {
+        slots[name] = value
+    }
+
+    fun hasSlot(name: SlotName) = name in slots
+
+    fun getSlot(name: SlotName) = slots[name]
+
+    inline fun <reified T> getSlotAs(name: SlotName) = getSlot(name) as T
+
+    fun setSlot(name: SlotName, value: Any?) {
+        slots[name] = value
+    }
+
     internal fun internalGet(property: PropertyKey): Descriptor? {
         val stringOrSymbol = when {
             property.isString -> {
@@ -482,6 +502,40 @@ open class JSObject protected constructor(
 
         companion object {
             val INVALID_KEY = StringOrSymbol(0)
+        }
+    }
+
+    protected fun <T> slot(name: SlotName, initialValue: T) = SlotDelegator(name, initialValue)
+
+    protected fun <T> lateinitSlot(name: SlotName) = LateInitSlotDelegator<T>(name)
+
+    protected inner class SlotDelegator<T>(val name: SlotName, initialValue: T) : ReadWriteProperty<JSObject, T> {
+        init {
+            slots[name] = initialValue
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        override fun getValue(thisRef: JSObject, property: KProperty<*>): T {
+            return slots[name] as T
+        }
+
+        override fun setValue(thisRef: JSObject, property: KProperty<*>, value: T) {
+            slots[name] = value
+        }
+    }
+
+    protected inner class LateInitSlotDelegator<T>(val name: SlotName) : ReadWriteProperty<JSObject, T> {
+        init {
+            slots[name] = null
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        override fun getValue(thisRef: JSObject, property: KProperty<*>): T {
+            return slots[name] as T
+        }
+
+        override fun setValue(thisRef: JSObject, property: KProperty<*>, value: T) {
+            slots[name] = value
         }
     }
 

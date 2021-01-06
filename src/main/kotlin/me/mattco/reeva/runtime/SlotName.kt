@@ -1,0 +1,25 @@
+package me.mattco.reeva.runtime
+
+enum class SlotName {
+    BigIntData,
+    BooleanData,
+    DateValue,
+    Description,
+    ErrorData,
+    MapData,
+    NumberData,
+    OriginalSource,
+    OriginalFlags,
+    ParameterMap,
+    PromiseFulfillReactions,
+    PromiseIsHandled,
+    PromiseState,
+    PromiseRejectReactions,
+    PromiseResult,
+    ProxyHandler,
+    ProxyTarget,
+    RegExpMatcher,
+    SetData,
+    StringData,
+    SymbolData,
+}

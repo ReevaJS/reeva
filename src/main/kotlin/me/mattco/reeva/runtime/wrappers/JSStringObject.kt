@@ -2,6 +2,7 @@ package me.mattco.reeva.runtime.wrappers
 
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -9,7 +10,9 @@ import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.JSString
 import me.mattco.reeva.utils.toValue
 
-open class JSStringObject protected constructor(realm: Realm, val string: JSString) : JSObject(realm) {
+open class JSStringObject protected constructor(realm: Realm, string: JSString) : JSObject(realm) {
+    val string by slot(SlotName.StringData, string)
+
     override fun init() {
         setPrototype(realm.stringProto)
         super.init()

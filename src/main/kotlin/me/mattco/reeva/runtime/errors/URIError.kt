@@ -23,9 +23,7 @@ class JSURIErrorProto private constructor(realm: Realm) : JSObject(realm, realm.
 }
 
 class JSURIErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "URIError") {
-    override fun constructErrorObj(): JSErrorObject {
-        return JSURIErrorObject.create(realm)
-    }
+    override fun errorProto(): JSObject = realm.uriErrorProto
 
     companion object {
         fun create(realm: Realm) = JSURIErrorCtor(realm).initialize()

@@ -23,9 +23,7 @@ class JSReferenceErrorProto private constructor(realm: Realm) : JSObject(realm, 
 }
 
 class JSReferenceErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "ReferenceError") {
-    override fun constructErrorObj(): JSErrorObject {
-        return JSReferenceErrorObject.create(realm)
-    }
+    override fun errorProto(): JSObject = realm.referenceErrorProto
 
     companion object {
         fun create(realm: Realm) = JSReferenceErrorCtor(realm).initialize()

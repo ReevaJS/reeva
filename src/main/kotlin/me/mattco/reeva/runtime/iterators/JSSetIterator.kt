@@ -7,18 +7,18 @@ import me.mattco.reeva.utils.expect
 
 class JSSetIterator private constructor(
     realm: Realm,
-    set: JSSetObject,
+    data: JSSetObject.SetData,
     val iterationKind: PropertyKind
 ) : JSObject(realm, realm.setIteratorProto) {
-    var iteratedSet: JSSetObject? = set
+    var iteratedSet: JSSetObject.SetData? = data
     var nextIndex = 0
 
     init {
         expect(iterationKind != PropertyKind.Key)
-        set.iterationCount++
+        data.iterationCount++
     }
 
     companion object {
-        fun create(realm: Realm, set: JSSetObject, kind: PropertyKind) = JSSetIterator(realm, set, kind).initialize()
+        fun create(realm: Realm, data: JSSetObject.SetData, kind: PropertyKind) = JSSetIterator(realm, data, kind).initialize()
     }
 }

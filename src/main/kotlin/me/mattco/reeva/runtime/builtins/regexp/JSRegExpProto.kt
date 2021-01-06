@@ -3,6 +3,7 @@ package me.mattco.reeva.runtime.builtins.regexp
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
@@ -36,7 +37,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
     }
 
     fun getFlags(thisValue: JSValue): JSValue {
-        if (thisValue !is JSRegExpObject)
+        if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
             Errors.IncompatibleMethodCall("RegExp.prototype.flags").throwTypeError()
         var result = ""
         if (Operations.toBoolean(thisValue.get("global")))
@@ -69,13 +70,13 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
     fun getSource(thisValue: JSValue): JSValue {
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("RegExp.prototype.source").throwTypeError()
-        if (thisValue !is JSRegExpObject) {
+        if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher)) {
             if (thisValue.sameValue(this))
                 return "(?:)".toValue()
             Errors.IncompatibleMethodCall("RegExp.prototype.source").throwTypeError()
         }
         // TODO: EscapeRegExpPattern (21.2.5.12)
-        return thisValue.originalSource.toValue()
+        return thisValue.getSlotAs<String>(SlotName.OriginalSource).toValue()
     }
 
     fun getSticky(thisValue: JSValue): JSValue {
@@ -165,13 +166,13 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
     }
 
     fun exec(thisValue: JSValue, arguments: JSArguments): JSValue {
-        if (thisValue !is JSRegExpObject)
-            Errors.IncompatibleMethodCall("RegExp.prototype.exec").throwTypeError()
+        // Handled by the regExpBuiltinExec function
+//        Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher)
         return Operations.regExpBuiltinExec(realm, thisValue, Operations.toString(arguments.argument(0)))
     }
 
     fun test(thisValue: JSValue, arguments: JSArguments): JSValue {
-        if (thisValue !is JSRegExpObject)
+        if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
             Errors.IncompatibleMethodCall("RegExp.prototype.test").throwTypeError()
         val string = Operations.toString(arguments.argument(0))
         val match = Operations.regExpExec(realm, thisValue, string, ".test")
@@ -179,7 +180,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
     }
 
     fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
-        if (thisValue !is JSRegExpObject)
+        if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
             Errors.IncompatibleMethodCall("RegExp.prototype.toString").throwTypeError()
         val pattern = Operations.toString(thisValue.get("source"))
         val flags = Operations.toString(thisValue.get("flags"))
@@ -193,13 +194,14 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
     private fun getFlagHelper(thisValue: JSValue, methodName: String, flag: JSRegExpObject.Flag): JSValue {
         if (thisValue !is JSObject)
-            Errors.IncompatibleMethodCall("RegExp.prototype.dotAll").throwTypeError()
-        if (thisValue !is JSRegExpObject) {
-            if (thisValue.sameValue(this))
+            Errors.IncompatibleMethodCall("RegExp.prototype.$methodName").throwTypeError()
+        val flags = thisValue.getSlotAs<String?>(SlotName.OriginalFlags)
+        if (flags == null) {
+            if (thisValue.sameValue(realm.regExpProto))
                 return JSUndefined
             Errors.IncompatibleMethodCall("RegExp.prototype.$methodName").throwTypeError()
         }
-        return (flag in thisValue.flags).toValue()
+        return (flag.char in flags).toValue()
     }
 
     companion object {

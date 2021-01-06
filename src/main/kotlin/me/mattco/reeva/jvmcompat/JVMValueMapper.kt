@@ -278,8 +278,8 @@ object JVMValueMapper {
                 val jsMap = JSMapObject.create(realm)
                 instance.forEach { (key, value) ->
                     val jsKey = jvmToJS(realm, key)
-                    jsMap.mapData[jsKey] = jvmToJS(realm, value)
-                    jsMap.keyInsertionOrder.add(jsKey)
+                    jsMap.mapData.map[jsKey] = jvmToJS(realm, value)
+                    jsMap.mapData.keyInsertionOrder.add(jsKey)
                 }
                 jsMap
             }
@@ -287,8 +287,8 @@ object JVMValueMapper {
                 val jsSet = JSSetObject.create(realm)
                 instance.forEach { key ->
                     val jsKey = jvmToJS(realm, key)
-                    jsSet.setData.add(jsKey)
-                    jsSet.insertionOrder.add(jsKey)
+                    jsSet.setData.set.add(jsKey)
+                    jsSet.setData.insertionOrder.add(jsKey)
                 }
                 jsSet
             }

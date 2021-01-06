@@ -4,12 +4,13 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.functions.JSNativeFunction
+import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
 
 class JSRejectFunction private constructor(
-    val promise: JSPromiseObject,
+    val promise: JSObject,
     var alreadyResolved: Operations.Wrapper<Boolean>,
     realm: Realm
 ) : JSNativeFunction(realm, "", 1) {
@@ -24,7 +25,7 @@ class JSRejectFunction private constructor(
 
     companion object {
         fun create(
-            promise: JSPromiseObject,
+            promise: JSObject,
             alreadyResolved: Operations.Wrapper<Boolean>,
             realm: Realm
         ) = JSRejectFunction(promise, alreadyResolved, realm).initialize()

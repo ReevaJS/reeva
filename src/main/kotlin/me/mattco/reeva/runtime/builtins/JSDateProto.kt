@@ -3,6 +3,7 @@ package me.mattco.reeva.runtime.builtins
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNull
@@ -13,6 +14,8 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 
 @Suppress("UNUSED_PARAMETER")
 class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
@@ -140,7 +143,6 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
 
     fun setDate(thisValue: JSValue, arguments: JSArguments): JSValue {
         val zdt = thisTimeValue(thisValue, "setDate") ?: return JSNumber.NaN
-        expect(thisValue is JSDateObject)
         val days = Operations.toNumber(arguments.argument(0))
         ifAnyNotFinite(thisValue, days) { return it }
         return dateValueSetHelper(thisValue, zdt.plusDays(days.asLong))
@@ -375,19 +377,19 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         }
     }
 
-    private fun dateValueSetHelper(dateObj: JSDateObject, zdt: ZonedDateTime): JSValue {
+    private fun dateValueSetHelper(dateObj: JSObject, zdt: ZonedDateTime): JSValue {
         return if (Operations.timeClip(zdt) == null) {
-            dateObj.dateValue = null
+            dateObj.setSlot(SlotName.DateValue, null)
             JSNumber.NaN
         } else {
-            dateObj.dateValue = zdt
+            dateObj.setSlot(SlotName.DateValue, zdt)
             zdt.toInstant().toEpochMilli().toValue()
         }
     }
 
-    private inline fun ifAnyNotFinite(dateObj: JSDateObject, vararg values: JSValue, returner: (JSValue) -> Unit) {
+    private inline fun ifAnyNotFinite(dateObj: JSObject, vararg values: JSValue, returner: (JSValue) -> Unit) {
         if (values.any { !it.isFinite }) {
-            dateObj.dateValue = null
+            dateObj.setSlot(SlotName.DateValue, null)
             returner(JSNumber.NaN)
         }
     }
@@ -396,16 +398,18 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         private val isoDTF = DateTimeFormatter.ofPattern("YYYY-MM-DD'T'HH:mm:ss.AAA'Z'")
         private val isoExtendedDTF = DateTimeFormatter.ofPattern("yyyyyy-MM-DD'T'HH:mm:ss.AAA'Z'")
 
+        @OptIn(ExperimentalContracts::class)
         private fun thisTimeValue(value: JSValue, method: String): ZonedDateTime? {
-            if (value !is JSDateObject)
+            contract {
+                returns() implies (value is JSObject)
+            }
+            if (value !is JSObject || !value.hasSlot(SlotName.DateValue))
                 Errors.IncompatibleMethodCall("Date.prototype.$method").throwTypeError()
-            return value.dateValue
+            return value.getSlotAs(SlotName.DateValue)
         }
 
         private fun thisUTCTimeValue(value: JSValue, method: String): ZonedDateTime? {
-            if (value !is JSDateObject)
-                Errors.IncompatibleMethodCall("Date.prototype.$method").throwTypeError()
-            return value.dateValue?.let {
+            return thisTimeValue(value, method)?.let {
                 it.plusSeconds(it.offset.totalSeconds.toLong())
             }
         }

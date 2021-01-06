@@ -3,6 +3,7 @@ package me.mattco.reeva.runtime.objects
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.annotations.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.builtins.JSDateObject
@@ -150,15 +151,16 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
             if (it is JSString) {
                 it.string
             } else {
-                when (obj) {
-                    is JSArrayObject -> "Array"
-                    is JSDateObject -> "Date"
-                    is JSFunction -> "Function"
-                    is JSErrorObject -> "Error"
-                    is JSBooleanObject -> "Boolean"
-                    is JSNumberObject -> "Number"
-                    is JSStringObject -> "String"
-                    is JSUnmappedArgumentsObject, is JSMappedArgumentsObject -> "Arguments"
+                when {
+                    Operations.isArray(obj) -> "Array"
+                    obj.hasSlot(SlotName.ParameterMap) -> "Arguments"
+                    obj is JSFunction -> "Function" // TODO: Slot check? Can you extend Function?
+                    obj.hasSlot(SlotName.ErrorData) -> "Error"
+                    obj.hasSlot(SlotName.BooleanData) -> "Boolean"
+                    obj.hasSlot(SlotName.NumberData) -> "Number"
+                    obj.hasSlot(SlotName.StringData) -> "String"
+                    obj.hasSlot(SlotName.DateValue) -> "Date"
+                    obj.hasSlot(SlotName.RegExpMatcher) -> "RegExp"
                     else -> "Object"
                 }
             }

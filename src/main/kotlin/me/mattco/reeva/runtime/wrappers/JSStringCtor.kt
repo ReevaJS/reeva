@@ -38,8 +38,9 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         if (newTarget == JSUndefined)
             return theString
 
-        // TODO: GetPrototypeFromConstructor?
-        return JSStringObject.create(realm, theString)
+        return JSStringObject.create(realm, theString).also {
+            it.setPrototype(Operations.getPrototypeFromConstructor(newTarget, realm.stringProto))
+        }
     }
 
     fun fromCharCode(thisValue: JSValue, arguments: JSArguments): JSValue {

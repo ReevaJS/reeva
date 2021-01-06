@@ -4,14 +4,14 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.functions.JSNativeFunction
-import me.mattco.reeva.runtime.primitives.JSBigInt
-import me.mattco.reeva.runtime.primitives.JSFalse
-import me.mattco.reeva.runtime.primitives.JSTrue
-import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.runtime.primitives.*
+import me.mattco.reeva.runtime.toNumeric
 import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.argument
 import me.mattco.reeva.utils.toValue
+import java.math.BigInteger
 import kotlin.math.abs
 
 class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Number", 1) {
@@ -76,10 +76,18 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
+        val newTarget = super.newTarget
+        val value = arguments.argument(0)
+        val n = if (value != JSUndefined) {
+            numberFromArg(value).toValue()
+        } else JSNumber.ZERO
+
         if (newTarget == JSUndefined)
-            return numberFromArg(arguments.argument(0)).toValue()
-        // TODO: Handle newTarget?
-        return JSNumberObject.create(realm, numberFromArg(arguments.argument(0)).toValue())
+            return n
+
+        return Operations.ordinaryCreateFromConstructor(newTarget, realm.numberProto, listOf(SlotName.NumberData)).also {
+            it.setSlot(SlotName.NumberData, n)
+        }
     }
 
     private fun numberFromArg(argument: JSValue): Double {
