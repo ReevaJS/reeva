@@ -487,9 +487,13 @@ class CatchNode(
 
 class BreakStatementNode(val label: LabelIdentifierNode?) : NodeBase(listOfNotNull(label)), StatementNode {
     override fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
-        if (label == null)
-            return false
-        return label.identifierName !in labelSet
+        return label != null && label.identifierName !in labelSet
+    }
+}
+
+class ContinueStatementNode(val label: LabelIdentifierNode?) : NodeBase(listOfNotNull(label)), StatementNode {
+    override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
+        return label != null && label.identifierName !in iterationSet
     }
 }
 

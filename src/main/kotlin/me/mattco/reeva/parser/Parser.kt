@@ -548,8 +548,18 @@ class Parser(text: String) {
     }
 
     private fun parseContinueStatement(): StatementNode? {
-        // TODO
-        return null
+        if (tokenType != TokenType.Continue)
+            return null
+        consume()
+
+        if ('\n' in token.trivia) {
+            automaticSemicolonInsertion()
+            return ContinueStatementNode(null)
+        }
+
+        val expr = parseLabelIdentifier()
+        automaticSemicolonInsertion()
+        return ContinueStatementNode(expr)
     }
 
     private fun parseBreakStatement(): StatementNode? {

@@ -512,6 +512,7 @@ class Interpreter(private val realm: Realm) {
             is ThrowStatementNode -> interpretThrowStatement(statement)
             is TryStatementNode -> interpretTryStatement(statement)
             is BreakStatementNode -> interpretBreakStatement(statement)
+            is ContinueStatementNode -> interpretContinueStatement(statement)
             is ImportDeclarationNode -> interpretImportDeclaration(statement)
             is ExportDeclarationNode -> interpretExportDeclaration(statement)
             else -> TODO()
@@ -589,8 +590,11 @@ class Interpreter(private val realm: Realm) {
             constructorParent = realm.functionProto
         } else {
             Agent.runningContext.lexicalEnv = classScope
-            val superclassRef = interpretExpression(classNode.heritage)
-            Agent.runningContext.lexicalEnv = env
+            val superclassRef = try {
+                interpretExpression(classNode.heritage)
+            } finally {
+                Agent.runningContext.lexicalEnv = env
+            }
             val superclass = Operations.getValue(superclassRef)
             if (superclass == JSNull) {
                 protoParent = JSNull
@@ -741,7 +745,9 @@ class Interpreter(private val realm: Realm) {
         val blockEnv = DeclarativeEnvRecord.create(Agent.runningContext.lexicalEnv)
         blockDeclarationInstantiation(block.statements, blockEnv)
         Agent.runningContext.lexicalEnv = blockEnv
-        return interpretStatementList(block.statements).also {
+        try {
+            return interpretStatementList(block.statements)
+        } finally {
             Agent.runningContext.lexicalEnv = oldEnv
         }
     }
@@ -870,8 +876,11 @@ class Interpreter(private val realm: Realm) {
             Agent.runningContext.lexicalEnv = newEnv
         }
 
-        val exprRef = interpretExpression(expr)
-        Agent.runningContext.lexicalEnv = oldEnv
+        val exprRef = try {
+            interpretExpression(expr)
+        } finally {
+            Agent.runningContext.lexicalEnv = oldEnv
+        }
         val exprValue = Operations.getValue(exprRef)
 
         return if (iterationKind == IterationKind.Enumerate) {
@@ -1156,6 +1165,14 @@ class Interpreter(private val realm: Realm) {
             throw BreakException(null)
         } else {
             throw BreakException(breakStatementNode.label.identifierName)
+        }
+    }
+
+    private fun interpretContinueStatement(continueStatementNode: ContinueStatementNode): JSValue {
+        if (continueStatementNode.label == null) {
+            throw ContinueException(null)
+        } else {
+            throw ContinueException(continueStatementNode.label.identifierName)
         }
     }
 
