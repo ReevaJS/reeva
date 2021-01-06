@@ -175,7 +175,7 @@ open class JSGlobalObject protected constructor(
                 }
             }
 
-            val parser = Parser(argument.string, evalRealm)
+            val parser = Parser(argument.string)
             val scriptNode = parser.parseScript()
 
             if (Reeva.PRINT_PARSE_NODES) {
@@ -218,11 +218,11 @@ open class JSGlobalObject protected constructor(
             evalContext.lexicalEnv = lexEnv
             Agent.pushContext(evalContext)
 
-            val interpreter = Interpreter(callerRealm, ScriptOrModuleNode(scriptNode))
+            val interpreter = Interpreter(callerRealm)
 
             try {
                 evalDeclarationInstantiation(scriptNode.statementList, varEnv, lexEnv, strictEval, interpreter)
-                return interpreter.interpretScript().let { if (it == JSEmpty) JSUndefined else it }
+                return interpreter.interpretScript(scriptNode).let { if (it == JSEmpty) JSUndefined else it }
             } finally {
                 Agent.popContext()
             }

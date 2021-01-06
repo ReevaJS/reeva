@@ -42,12 +42,12 @@ class DefaultModuleResolver(
     }
 
     private fun resolveJSModule(file: File): ModuleRecord {
-        val module = Parser(file.readText(), realm).parseModule()
+        val module = Parser(file.readText()).parseModule()
         if (Reeva.PRINT_PARSE_NODES) {
             println("==== module ${file.absolutePath} ====")
             println(module.dump(1))
         }
-        return Interpreter(realm, ScriptOrModuleNode(module)).setupModule()
+        return Interpreter(realm).setupModule(module)
     }
 
     private fun resolveJVMModule(packageName: String): ModuleRecord {

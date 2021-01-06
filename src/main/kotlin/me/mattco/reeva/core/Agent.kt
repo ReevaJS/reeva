@@ -5,6 +5,7 @@ import me.mattco.reeva.core.tasks.Microtask
 import me.mattco.reeva.core.tasks.Task
 import me.mattco.reeva.utils.expect
 import java.util.concurrent.ConcurrentLinkedDeque
+import java.util.concurrent.CopyOnWriteArrayList
 
 class Agent private constructor() {
     @Volatile
@@ -12,7 +13,7 @@ class Agent private constructor() {
 
     private val tasks = ConcurrentLinkedDeque<Task<*>>()
     private val microTasks = ConcurrentLinkedDeque<Microtask>()
-    private val runningContextStack = ConcurrentLinkedDeque<ExecutionContext>()
+    val runningContextStack = CopyOnWriteArrayList<ExecutionContext>()
 
     internal val compilerClassLoader = ReevaClassLoader()
 
@@ -78,7 +79,7 @@ class Agent private constructor() {
 
         @JvmStatic
         val runningContext: ExecutionContext
-            get() = activeAgent.runningContextStack.last
+            get() = activeAgent.runningContextStack.last()
 
 
         @JvmStatic

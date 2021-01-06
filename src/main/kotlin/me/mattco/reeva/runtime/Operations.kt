@@ -13,6 +13,7 @@ import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.core.environment.ModuleEnvRecord
 import me.mattco.reeva.core.tasks.Microtask
+import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.builtins.JSMappedArgumentsObject
@@ -27,6 +28,7 @@ import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.jvmcompat.JSClassInstanceObject
 import me.mattco.reeva.jvmcompat.JSClassObject
+import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpProto
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -1964,6 +1966,70 @@ object Operations {
         return node.isFunctionDefinition() && !node.hasName()
     }
 
+    @JvmStatic @ECMAImpl("18.2.1.2")
+    fun hostEnsureCanCompileStrings(callerRealm: Realm, calleeRealm: Realm): Boolean {
+        // TODO: Allow this to be provided by the user of this library
+        return true
+    }
+
+    @JvmStatic @ECMAImpl("19.2.1.1")
+    fun createDynamicFunction(constructor: JSObject, newTarget_: JSValue, kind: FunctionKind, args: JSArguments): JSValue {
+        ecmaAssert(Agent.activeAgent.runningContextStack.size >= 2)
+        val callerContext = Agent.activeAgent.runningContextStack.let { it[it.lastIndex - 1] }
+        val callerRealm = callerContext.realm
+        val calleeRealm = Agent.runningContext.realm
+        if (!hostEnsureCanCompileStrings(callerRealm, calleeRealm))
+            Errors.CantCompileStrings.throwInternalError()
+
+        val newTarget = newTarget_.ifUndefined(constructor)
+        val fallbackProto = when (kind) {
+            FunctionKind.Normal -> calleeRealm.functionProto
+            else -> TODO()
+        }
+
+        val bodyArg = if (args.isEmpty()) "" else toString(args.last()).string
+
+        val parameterString = if (args.size > 1) {
+            args.subList(0, args.lastIndex).joinToString(separator = ",") { toString(it).string }
+        } else ""
+
+        val bodyString = "\n$bodyArg\n"
+        val sourceString = "${kind.prefix} anonymous($parameterString\n) {$bodyString}"
+
+        val parser = Parser(sourceString)
+        val functionNode = parser.parseDynamicFunction(kind)
+        if (functionNode == null) {
+            expect(parser.syntaxErrors.isNotEmpty())
+            val error = parser.syntaxErrors.first()
+            Errors.Custom("${error.message} (${error.lineNumber}, ${error.columnNumber})").throwSyntaxError()
+        }
+
+        val proto = getPrototypeFromConstructor(newTarget, fallbackProto)
+        val functionRealm = Agent.runningContext.realm
+        val scope = functionRealm.globalEnv
+        val interpreter = Interpreter(calleeRealm)
+        val function = interpreter.ordinaryFunctionCreate(
+            proto,
+            sourceString,
+            functionNode.parameters,
+            functionNode.body,
+            JSFunction.ThisMode.NonLexical,
+            scope
+        )
+
+        setFunctionName(function, "anonymous".key())
+
+        if (kind == FunctionKind.Generator) {
+            TODO("19.2.1.1.1 step 26")
+        } else if (kind == FunctionKind.AsyncGenerator) {
+            TODO("19.2.1.1.1 step 27")
+        } else if (kind == FunctionKind.Normal) {
+            makeConstructor(function)
+        }
+
+        return function
+    }
+
     @JvmStatic @ECMAImpl("20.4.1.11")
     fun makeTime(hour: JSValue, min: JSValue, sec: JSValue, ms: JSValue): JSValue {
         if (!hour.isFinite || !min.isFinite || !sec.isFinite || !ms.isFinite)
@@ -2450,6 +2516,13 @@ object Operations {
     enum class IntegrityLevel {
         Sealed,
         Frozen,
+    }
+
+    enum class FunctionKind(val prefix: String) {
+        Normal("function"),
+        Generator("function*"),
+        Async("async function"),
+        AsyncGenerator("async function*"),
     }
 
     enum class IteratorHint {

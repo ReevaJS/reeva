@@ -252,7 +252,7 @@ open class Compiler {
     protected fun MethodAssembly.ordinaryFunctionCreate(
         sourceText: String,
         parameters: FormalParametersNode,
-        body: FunctionStatementList,
+        body: GenericFunctionStatementList,
         thisMode: JSFunction.ThisMode,
         functionName: String?,
         isConstructor: Boolean,
@@ -371,7 +371,7 @@ open class Compiler {
     // Consumes JSFunction and List<JSValue> from the stack
     protected fun MethodAssembly.functionDeclarationInstantiation(
         parameters: FormalParametersNode,
-        body: FunctionStatementList,
+        body: GenericFunctionStatementList,
         thisMode: JSFunction.ThisMode,
         isStrict: Boolean,
     ) {

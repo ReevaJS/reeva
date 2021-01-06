@@ -35,11 +35,17 @@ data class ArgumentListEntry(val expression: ExpressionNode, val isSpread: Boole
     }
 }
 
-class FunctionDeclarationNode(
+open class GenericFunctionDeclarationNode(
     val identifier: BindingIdentifierNode?,
     val parameters: FormalParametersNode,
-    val body: FunctionStatementList,
-) : NodeBase(listOfNotNull(identifier, parameters, body)), DeclarationNode {
+    val body: GenericFunctionStatementList,
+) : NodeBase(listOfNotNull(identifier, parameters, body)), DeclarationNode
+
+class FunctionDeclarationNode(
+    identifier: BindingIdentifierNode?,
+    parameters: FormalParametersNode,
+    body: FunctionStatementList,
+) : GenericFunctionDeclarationNode(identifier, parameters, body) {
     override fun boundNames() = listOf(identifier?.identifierName ?: "*default*")
 
     override fun contains(nodeName: String) = false
@@ -83,8 +89,10 @@ class FunctionExpressionNode(
     override fun isFunctionDefinition() = true
 }
 
+open class GenericFunctionStatementList(val statementList: StatementListNode?) : NodeBase(listOfNotNull(statementList))
+
 // Also "FunctionBody" in the spec
-class FunctionStatementList(val statementList: StatementListNode?) : NodeBase(listOfNotNull(statementList)) {
+class FunctionStatementList(statementList: StatementListNode?) : GenericFunctionStatementList(statementList) {
     override fun containsDuplicateLabels(labelSet: Set<String>) = false
 
     override fun containsUndefinedBreakTarget(labelSet: Set<String>) =

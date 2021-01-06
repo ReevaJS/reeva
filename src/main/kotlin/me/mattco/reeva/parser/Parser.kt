@@ -11,12 +11,13 @@ import me.mattco.reeva.lexer.Lexer
 import me.mattco.reeva.lexer.SourceLocation
 import me.mattco.reeva.lexer.Token
 import me.mattco.reeva.lexer.TokenType
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
 import me.mattco.reeva.utils.all
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 
-class Parser(text: String, private val realm: Realm) {
+class Parser(text: String) {
     private val tokens = Lexer(text).toList() + Token(TokenType.Eof, "", "", SourceLocation(-1, -1), SourceLocation(-1, -1))
 
     val syntaxErrors = mutableListOf<SyntaxError>()
@@ -89,6 +90,52 @@ class Parser(text: String, private val realm: Realm) {
             throw IllegalStateException("parseModule ended with ${stateStack.size - 1} extra states on the stack")
 
         return ModuleNode(body)
+    }
+
+    fun parseDynamicFunction(kind: Operations.FunctionKind): GenericFunctionDeclarationNode? {
+        val result = when (kind) {
+            Operations.FunctionKind.Normal -> parseFunctionDeclaration()
+            Operations.FunctionKind.Generator -> parseGeneratorDeclaration()
+            Operations.FunctionKind.Async -> parseAsyncFunctionDeclaration()
+            Operations.FunctionKind.AsyncGenerator -> parseAsyncGeneratorDeclaration()
+        } ?: return null
+
+        if (result.body.containsUseStrict()) {
+            if (!result.parameters.isSimpleParameterList()) {
+                syntaxError("dynamic strict Function must have a simple parameter list")
+                return null
+            }
+
+            if (result.parameters.boundNames().let { it.distinct().size != it.size }) {
+                syntaxError("dynamic strict Function cannot contain duplicate parameter bindings")
+                return null
+            }
+        }
+
+        if (result.parameters.contains("SuperCallNode") || result.body.contains("SuperCallNode")) {
+            syntaxError("dynamic Function object cannot contain a super call")
+            return null
+        }
+
+        if (result.parameters.contains("SuperPropertyNode") || result.body.contains("SuperPropertyNode")) {
+            syntaxError("dynamic Function object cannot contain a super property access")
+            return null
+        }
+
+        val isGenerator = kind == Operations.FunctionKind.Generator || kind == Operations.FunctionKind.AsyncGenerator
+        val isAsync = kind == Operations.FunctionKind.Async || kind == Operations.FunctionKind.AsyncGenerator
+
+        if (isGenerator && result.parameters.contains("YieldExpressionNode")) {
+            syntaxError("dynamic generator Function cannot contain a yield expression in its parameters")
+            return null
+        }
+
+        if (isAsync && result.parameters.contains("AwaitExpressionNode")) {
+            syntaxError("dynamic async Function cannot contain an await expression in its parameters")
+            return null
+        }
+
+        return result
     }
 
     private fun parseStatementList(): StatementListNode? {
@@ -702,17 +749,17 @@ class Parser(text: String, private val realm: Realm) {
         return withReturn { parseStatementList() }
     }
 
-    private fun parseGeneratorDeclaration(): DeclarationNode? {
+    private fun parseGeneratorDeclaration(): GenericFunctionDeclarationNode? {
         // TODO
         return null
     }
 
-    private fun parseAsyncFunctionDeclaration(): DeclarationNode? {
+    private fun parseAsyncFunctionDeclaration(): GenericFunctionDeclarationNode? {
         // TODO
         return null
     }
 
-    private fun parseAsyncGeneratorDeclaration(): DeclarationNode? {
+    private fun parseAsyncGeneratorDeclaration(): GenericFunctionDeclarationNode? {
         // TODO
         return null
     }
@@ -1114,6 +1161,7 @@ class Parser(text: String, private val realm: Realm) {
 
     private fun parseBindingIdentifier(): BindingIdentifierNode? {
         parseIdentifier()?.let {
+
             return BindingIdentifierNode(it.identifierName)
         }
 

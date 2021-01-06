@@ -165,7 +165,7 @@ class SourceTextModuleRecord(
             }
         }
 
-        val interpreter = Interpreter(realm, ScriptOrModuleNode(scriptCode))
+        val interpreter = Interpreter(realm)
 
         scriptCode.lexicallyScopedDeclarations().forEach { decl ->
             decl.boundNames().forEach { name ->

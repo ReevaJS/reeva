@@ -35,7 +35,7 @@ class EvaluationTask(
     }
 
     override fun execute(): Reeva.Result {
-        val parser = Parser(script, realm)
+        val parser = Parser(script)
         val scriptOrModule = ScriptOrModuleNode(if (isModule) parser.parseModule() else parser.parseScript())
         if (parser.syntaxErrors.isNotEmpty()) {
             val error = parser.syntaxErrors.first()
@@ -78,7 +78,7 @@ class EvaluationTask(
                 val script = ccl.loadClass(primary.name).newInstance() as TopLevelScript
                 Reeva.Result(script.run(), false)
             } else {
-                Reeva.Result(Interpreter(realm, scriptOrModule).interpret(), false)
+                Reeva.Result(Interpreter(realm).interpret(scriptOrModule), false)
             }
         } catch (e: ThrowException) {
             Reeva.Result(e.value, true)

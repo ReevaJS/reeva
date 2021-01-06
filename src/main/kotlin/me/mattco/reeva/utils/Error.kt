@@ -82,6 +82,9 @@ object Errors {
     object DescriptorSetType : Error("descriptor's \"set\" property must be undefined or callable")
     object DescriptorPropType : Error("descriptor cannot specify a \"get\" or \"set\" property with a \"value\" or \"writable\" property")
 
+    object CantCompileStrings : Error("Compiled strings are not allowed in this Reeva context")
+
+    class Custom(message: String) : Error(message)
     class TODO(message: String) : Error("TODO: message ($message)")
 
     object Array {

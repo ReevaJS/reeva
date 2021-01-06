@@ -30,41 +30,34 @@ import me.mattco.reeva.utils.*
 import java.math.BigInteger
 import kotlin.jvm.Throws
 
-class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOrModuleNode) {
-    private val script: ScriptNode
-        get() = scriptOrModule.asScript
-
-    private val module: ModuleNode
-        get() = scriptOrModule.asModule
-
+class Interpreter(private val realm: Realm) {
     @Throws(ThrowException::class)
-    fun interpret(): JSValue {
+    fun interpret(scriptOrModule: ScriptOrModuleNode): JSValue {
         val globalEnv = realm.globalEnv
         if (scriptOrModule.isStrict)
             globalEnv.isStrict = true
         return if (scriptOrModule.isModule) {
-            return interpretModule()
-        } else interpretScript()
+            return interpretModule(scriptOrModule.asModule)
+        } else interpretScript(scriptOrModule.asScript)
     }
 
     @Throws(ThrowException::class)
-    fun interpretScript(): JSValue {
+    fun interpretScript(script: ScriptNode): JSValue {
         globalDeclarationInstantiation(script, realm.globalEnv)
         return interpretStatementList(script.statementList)
     }
 
     @Throws(ThrowException::class)
-    fun interpretModule(): JSValue {
-        val record = setupModule()
+    fun interpretModule(module: ModuleNode): JSValue {
+        val record = setupModule(module)
         record.link()
         return record.evaluate(this)
     }
 
     @ECMAImpl("15.2.1.17.1")
-    internal fun setupModule(): SourceTextModuleRecord {
+    internal fun setupModule(module: ModuleNode): SourceTextModuleRecord {
         val globalEnv = realm.globalEnv
-        if (scriptOrModule.isStrict)
-            globalEnv.isStrict = true
+        globalEnv.isStrict = true
         val requestedModules = module.moduleRequests()
         val importEntries = module.importEntries()
         val importedBoundNames = importEntries.map { it.localName }
@@ -195,7 +188,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         prototype: JSObject,
         sourceText: String,
         parameterList: FormalParametersNode,
-        body: FunctionStatementList,
+        body: GenericFunctionStatementList,
         thisMode: JSFunction.ThisMode,
         scope: EnvRecord,
     ): JSFunction {
@@ -239,7 +232,7 @@ class Interpreter(private val realm: Realm, private val scriptOrModule: ScriptOr
         function: JSInterpreterFunction,
         formals: FormalParametersNode,
         arguments: JSArguments,
-        body: FunctionStatementList,
+        body: GenericFunctionStatementList,
     ) {
         val calleeContext = Agent.runningContext
         val strict = function.isStrict
