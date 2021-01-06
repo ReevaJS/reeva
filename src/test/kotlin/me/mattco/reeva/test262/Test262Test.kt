@@ -15,9 +15,12 @@ class Test262Test(
     private val script: String,
     private val metadata: Test262Metadata
 ) {
+    // TODO: Split these phases up
+    private val shouldErrorDuringParse = metadata.negative?.phase.let { it == Negative.Phase.Parse || it == Negative.Phase.Early }
+    private val shouldErrorDuringRuntime = metadata.negative?.phase.let { it == Negative.Phase.Resolution || it == Negative.Phase.Runtime }
+
     fun test() {
         try {
-            Assumptions.assumeTrue(metadata.negative == null)
             Assumptions.assumeTrue(metadata.features?.any { "intl" in it.toLowerCase() } != true)
             Assumptions.assumeTrue(metadata.features?.any { it in excludedFeatures } != true)
 
@@ -40,6 +43,7 @@ class Test262Test(
                 realm.moduleResolver = DefaultModuleResolver(realm, file.parentFile)
 
             val pretestResult = Reeva.evaluateScript("$requiredScript\n\n", realm)
+
             Assertions.assertTrue(!pretestResult.isError) {
                 Reeva.with(realm) {
                     Operations.toString(pretestResult.value).string
@@ -69,40 +73,14 @@ class Test262Test(
     }
 
     private fun runSyncTest(realm: Realm, isModule: Boolean) {
-        val theScript = if (metadata.flags?.contains(Flag.OnlyStrict) == true) {
-            "'use strict'; $script"
-        } else script
-
-        val testResult = if (isModule) {
-            Reeva.evaluateModule(theScript, realm)
-        } else {
-            Reeva.evaluateScript(theScript, realm)
-        }
-        Assertions.assertTrue(!testResult.isError) {
-            Reeva.with(realm) {
-                Operations.toString(testResult.value).string
-            }
-        }
+        runTestCommon(realm, isModule)
     }
 
     private fun runAsyncTest(realm: Realm, isModule: Boolean) {
         val doneFunction = JSAsyncDoneFunction.create(realm)
         realm.globalObject.set("\$DONE", doneFunction)
 
-        val theScript = if (metadata.flags?.contains(Flag.OnlyStrict) == true) {
-            "'use strict'; $script"
-        } else script
-
-        val testResult = if (isModule) {
-            Reeva.evaluateModule(theScript, realm)
-        } else {
-            Reeva.evaluateScript(theScript, realm)
-        }
-        Assertions.assertTrue(!testResult.isError) {
-            Reeva.with(realm) {
-                Operations.toString(testResult.value).string
-            }
-        }
+        runTestCommon(realm, isModule)
 
         Assertions.assertTrue(doneFunction.invocationCount == 1) {
             if (doneFunction.invocationCount == 0) {
@@ -115,6 +93,37 @@ class Test262Test(
         Reeva.with(realm) {
             Assertions.assertTrue(!Operations.toBoolean(doneFunction.result)) {
                 "Expected \$DONE to be called with falsy value, received ${Operations.toString(doneFunction.result)}"
+            }
+        }
+    }
+
+    private fun runTestCommon(realm: Realm, isModule: Boolean) {
+        val theScript = if (metadata.flags?.contains(Flag.OnlyStrict) == true) {
+            "'use strict'; $script"
+        } else script
+
+        val task = Test262EvaluationTask(theScript, realm, isModule)
+        val testResult = Reeva.getAgent().runTask(task)
+
+        if (shouldErrorDuringParse || shouldErrorDuringRuntime) {
+            val expectedPhase = if (shouldErrorDuringParse) Negative.Phase.Parse else Negative.Phase.Runtime
+            val phaseName = expectedPhase.name.toLowerCase()
+
+            Assertions.assertTrue(testResult.isError && task.phaseFailed == expectedPhase) {
+                "Expected failure during $phaseName, but parsing succeeded"
+            }
+
+            val expectedClass = "JS${metadata.negative!!.type}Object"
+            val actualClass = testResult.value::class.simpleName
+
+            Assertions.assertTrue(actualClass == expectedClass) {
+                "Expected $expectedClass to be thrown at $phaseName time, but found $actualClass"
+            }
+        } else {
+            Assertions.assertTrue(!testResult.isError) {
+                Reeva.with(realm) {
+                    Operations.toString(testResult.value).string
+                }
             }
         }
     }
