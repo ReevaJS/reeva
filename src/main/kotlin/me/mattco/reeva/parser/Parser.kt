@@ -565,8 +565,48 @@ class Parser(text: String) {
     }
 
     private fun parseSwitchStatement(): StatementNode? {
-        // TODO
-        return null
+        if (tokenType != TokenType.Switch)
+            return null
+        consume()
+
+        consume(TokenType.OpenParen)
+        val target = withIn {
+            parseExpression() ?: run {
+                expected("expression")
+                consume()
+                return null
+            }
+        }
+        consume(TokenType.CloseParen)
+
+        consume(TokenType.OpenCurly)
+
+        val clauses = mutableListOf<SwitchClause>()
+
+        while (true) {
+            if (tokenType == TokenType.Case) {
+                consume()
+                val expr = parseExpression() ?: run {
+                    expected("expression")
+                    consume()
+                    return null
+                }
+                consume(TokenType.Colon)
+                val restoreBreakContext = ::inBreakContext.temporaryChange(true)
+                clauses.add(SwitchClause(expr, parseStatementList()))
+                restoreBreakContext()
+            } else if (tokenType == TokenType.Default) {
+                consume()
+                consume(TokenType.Colon)
+                val restoreBreakContext = ::inBreakContext.temporaryChange(true)
+                clauses.add(SwitchClause(null, parseStatementList()))
+                restoreBreakContext()
+            } else break
+        }
+
+        consume(TokenType.CloseCurly)
+
+        return SwitchStatementNode(target, SwitchClauses(clauses))
     }
 
     private fun parseContinueStatement(): StatementNode? {

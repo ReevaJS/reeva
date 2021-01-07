@@ -218,6 +218,105 @@ class WhileStatementNode(val condition: ExpressionNode, val body: StatementNode)
     }
 }
 
+class SwitchClauses(
+    val clauses: List<SwitchClause>,
+) : NodeBase(clauses) {
+    override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
+        return clauses.any { it.containsDuplicateLabels(labelSet) }
+    }
+
+    override fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
+        return clauses.any { it.containsUndefinedBreakTarget(labelSet) }
+    }
+
+    override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
+        return clauses.any { it.containsUndefinedContinueTarget(iterationSet, emptySet()) }
+    }
+
+    override fun lexicallyDeclaredNames(): List<String> {
+        return clauses.flatMap { it.lexicallyDeclaredNames() }
+    }
+
+    override fun lexicallyScopedDeclarations(): List<NodeBase> {
+        return clauses.flatMap { it.lexicallyScopedDeclarations() }
+    }
+
+    override fun varDeclaredNames(): List<String> {
+        return clauses.flatMap { it.varDeclaredNames() }
+    }
+
+    override fun varScopedDeclarations(): List<NodeBase> {
+        return clauses.flatMap { it.varScopedDeclarations() }
+    }
+}
+
+class SwitchStatementNode(
+    val target: ExpressionNode,
+    val clauses: SwitchClauses,
+) : NodeBase(listOfNotNull()), BreakableStatement {
+    override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
+        return clauses.containsDuplicateLabels(labelSet)
+    }
+
+    override fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
+        return clauses.containsUndefinedBreakTarget(labelSet)
+    }
+
+    override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
+        return clauses.containsUndefinedContinueTarget(iterationSet, labelSet)
+    }
+
+    override fun lexicallyDeclaredNames(): List<String> {
+        return clauses.lexicallyDeclaredNames()
+    }
+
+    override fun lexicallyScopedDeclarations(): List<NodeBase> {
+        return clauses.lexicallyScopedDeclarations()
+    }
+
+    override fun varDeclaredNames(): List<String> {
+        return clauses.varDeclaredNames()
+    }
+
+    override fun varScopedDeclarations(): List<NodeBase> {
+        return clauses.varScopedDeclarations()
+    }
+}
+
+class SwitchClause(
+    // null target indicates the default case
+    val target: ExpressionNode?,
+    val body: StatementListNode?,
+) : NodeBase(listOfNotNull(target, body)) {
+    override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
+        return body?.containsDuplicateLabels(labelSet) == true
+    }
+
+    override fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
+        return body?.containsUndefinedBreakTarget(labelSet) == true
+    }
+
+    override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
+        return body?.containsUndefinedContinueTarget(iterationSet, labelSet) == true
+    }
+
+    override fun lexicallyDeclaredNames(): List<String> {
+        return body?.lexicallyDeclaredNames() ?: emptyList()
+    }
+
+    override fun lexicallyScopedDeclarations(): List<NodeBase> {
+        return body?.lexicallyScopedDeclarations() ?: emptyList()
+    }
+
+    override fun varDeclaredNames(): List<String> {
+        return body?.varDeclaredNames() ?: emptyList()
+    }
+
+    override fun varScopedDeclarations(): List<NodeBase> {
+        return body?.varScopedDeclarations() ?: emptyList()
+    }
+}
+
 class ForStatementNode(
     val initializer: ASTNode?, // can be an expression or a statement
     val condition: ExpressionNode?,

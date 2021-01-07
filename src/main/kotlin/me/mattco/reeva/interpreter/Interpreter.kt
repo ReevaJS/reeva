@@ -502,6 +502,7 @@ class Interpreter(private val realm: Realm) {
             is EmptyStatementNode -> JSEmpty
             is ExpressionStatementNode -> interpretExpressionStatement(statement)
             is IfStatementNode -> interpretIfStatement(statement)
+            is SwitchStatementNode -> interpretSwitchStatement(statement)
             is BreakableStatement -> interpretBreakableStatement(statement)
             is IterationStatement -> interpretIterationStatement(statement, emptySet())
             is LabelledStatementNode -> labelledEvaluation(statement, emptySet())
@@ -752,8 +753,8 @@ class Interpreter(private val realm: Realm) {
         }
     }
 
-    private fun blockDeclarationInstantiation(statements: StatementListNode, env: DeclarativeEnvRecord) {
-        statements.lexicallyScopedDeclarations().forEach { decl ->
+    private fun blockDeclarationInstantiation(block: ASTNode, env: DeclarativeEnvRecord) {
+        block.lexicallyScopedDeclarations().forEach { decl ->
             decl.boundNames().forEach { name ->
                 if (decl.isConstantDeclaration()) {
                     env.createImmutableBinding(name, true)
@@ -794,6 +795,71 @@ class Interpreter(private val realm: Realm) {
             exprValue -> updateEmpty(JSUndefined) { interpretStatement(ifStatement.trueBlock) }
             ifStatement.falseBlock != null -> updateEmpty(JSUndefined) { interpretStatement(ifStatement.falseBlock) }
             else -> JSUndefined
+        }
+    }
+
+    private fun interpretSwitchStatement(switchStatementNode: SwitchStatementNode): JSValue {
+        val exprRef = interpretExpression(switchStatementNode.target)
+        val switchValue = Operations.getValue(exprRef)
+        val oldEnv = Agent.runningContext.lexicalEnv
+        val blockEnv = DeclarativeEnvRecord.create(oldEnv)
+        blockDeclarationInstantiation(switchStatementNode.clauses, blockEnv)
+        try {
+            Agent.runningContext.lexicalEnv = blockEnv
+
+            var found = false
+            var result: JSValue = JSUndefined
+            var defaultClause: SwitchClause? = null
+
+            for (clause in switchStatementNode.clauses.clauses) {
+                if (clause.target == null) {
+                    defaultClause = clause
+                    found = false
+                    continue
+                }
+
+                if (!found) {
+                    val clauseSelector = Operations.getValue(interpretExpression(clause.target))
+                    found = Operations.strictEqualityComparison(switchValue, clauseSelector).asBoolean
+                }
+
+                if (found) {
+                    // TODO: Spec doesn't mention break completions here for some reason,
+                    // so I must be missing something...
+                    try {
+                        clause.body?.let(::interpretStatementList)?.also {
+                            result = it
+                        }
+                    } catch (e: BreakException) {
+                        if (e.label == null)
+                            return result
+                        throw e
+                    }
+                }
+            }
+
+            if (found)
+                return result
+
+            if (defaultClause != null) {
+                // TODO: See above...
+                try {
+                    defaultClause.body?.let(::interpretStatementList)?.also {
+                        return it
+                    }
+                } catch (e: BreakException) {
+                    if (e.label == null)
+                        return result
+                    throw e
+                }
+            }
+
+            // TODO: Iterate clauses after default clause again? Spec says to, but
+            // I can't see that behavior in Spidermonkey
+
+            return result
+        } finally {
+            Agent.runningContext.lexicalEnv = oldEnv
         }
     }
 
