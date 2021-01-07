@@ -52,3 +52,14 @@ fun <T> KMutableProperty0<T>.temporaryChange(newValue: T): () -> Unit {
 
     return { this.set(oldValue) }
 }
+
+fun <T> Iterable<T>.duplicates(): Set<T> {
+    val seen = mutableSetOf<T>()
+    val duplicates = mutableSetOf<T>()
+    for (item in this) {
+        if (item in seen) {
+            duplicates.add(item)
+        } else seen.add(item)
+    }
+    return duplicates
+}

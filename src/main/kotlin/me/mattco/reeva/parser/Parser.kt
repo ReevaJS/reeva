@@ -12,10 +12,7 @@ import me.mattco.reeva.lexer.Token
 import me.mattco.reeva.lexer.TokenType
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
-import me.mattco.reeva.utils.all
-import me.mattco.reeva.utils.expect
-import me.mattco.reeva.utils.temporaryChange
-import me.mattco.reeva.utils.unreachable
+import me.mattco.reeva.utils.*
 
 class Parser(text: String) {
     private val tokens = Lexer(text).toList() + Token(TokenType.Eof, "", "", SourceLocation(-1, -1), SourceLocation(-1, -1))
@@ -198,6 +195,23 @@ class Parser(text: String) {
         val statements = parseStatementList()
         consume(TokenType.CloseCurly)
 
+        if (statements != null) {
+            val varNames = statements.varDeclaredNames()
+            val lexNames = statements.lexicallyDeclaredNames()
+
+            val lexDuplicates = lexNames.duplicates()
+            if (lexDuplicates.isNotEmpty()) {
+                syntaxError("cannot redeclare lexical declaration \"${lexDuplicates.first()}\"")
+                return null
+            }
+
+            val intersection = lexDuplicates.intersect(varNames)
+            if (intersection.isNotEmpty()) {
+                syntaxError("cannot redeclare non-lexical declaration \"${intersection.first()}\" as lexical")
+                return null
+            }
+        }
+
         return BlockNode(statements)
     }
 
@@ -348,7 +362,6 @@ class Parser(text: String) {
 
     // @ECMA why is this nonterminal so big :(
     private fun parseIterationStatement(): StatementNode? {
-
         when (tokenType) {
             TokenType.Do -> {
                 consume()
@@ -437,7 +450,7 @@ class Parser(text: String) {
                 }
                 VariableStatementNode(declList)
             }
-            TokenType.Let, TokenType.Const -> parseLexicalDeclaration(forceSemi = true) ?: return null
+            TokenType.Let, TokenType.Const -> parseLexicalDeclaration(forceSemicolon = true) ?: return null
             else -> {
                 saveState()
                 val expr = parseExpression()
@@ -465,6 +478,16 @@ class Parser(text: String) {
         }
         restoreBreakContext()
         restoreContinueContext()
+
+        if (initializer is LexicalDeclarationNode) {
+            val lexicalNames = initializer.bindingList.lexicalBindings.map { it.identifier.identifierName }
+            val intersection = lexicalNames.intersect(body.varDeclaredNames())
+            if (intersection.isNotEmpty()) {
+                syntaxError("for-loop initializer's lexical declaration of \"${intersection.first()}\" clashes with a " +
+                    "variable declaration in the for-loop's body")
+                return null
+            }
+        }
 
         return ForStatementNode(initializer, condition, incrementer, body)
     }
@@ -537,6 +560,13 @@ class Parser(text: String) {
         }
         restoreBreakContext()
         restoreContinueContext()
+
+        if (initializer.let { it !is ObjectLiteralNode && it !is ArrayLiteralNode &&
+                it.assignmentTargetType() != ASTNode.AssignmentTargetType.Simple }
+        ) {
+            syntaxError("for-${if (isIn) "in" else "of"} loop has an invalid left-hand-side")
+            return null
+        }
 
         return if (isIn) {
             ForInNode(initializer, expression, body)
@@ -615,7 +645,22 @@ class Parser(text: String) {
 
         consume(TokenType.CloseCurly)
 
-        return SwitchStatementNode(target, SwitchClauses(clauses))
+        val switchClauses = SwitchClauses(clauses)
+        val lexicalNames = switchClauses.lexicallyDeclaredNames()
+        val lexicalDuplicates = lexicalNames.duplicates()
+        if (lexicalDuplicates.isNotEmpty()) {
+            syntaxError("cannot redeclare lexical declaration \"${lexicalDuplicates.first()}\"")
+            return null
+        }
+
+        val varNames = switchClauses.varDeclaredNames()
+        val intersection = lexicalNames.intersect(varNames)
+        if (intersection.isNotEmpty()) {
+            syntaxError("cannot redeclare non-lexical declaration \"${intersection.first()}\" as lexical")
+            return null
+        }
+
+        return SwitchStatementNode(target, switchClauses)
     }
 
     private fun parseContinueStatement(): StatementNode? {
@@ -772,6 +817,21 @@ class Parser(text: String) {
             expected("block")
             consume()
             return null
+        }
+
+        if (parameter != null) {
+            val boundNames = parameter.boundNames()
+            val duplicates = boundNames.duplicates()
+            if (duplicates.isNotEmpty()) {
+                syntaxError("catch parameter contains duplicate bound names \"${duplicates.first()}\"")
+                return null
+            }
+
+            val intersection = boundNames.intersect(block.lexicallyDeclaredNames() + block.varDeclaredNames())
+            if (intersection.isNotEmpty()) {
+                syntaxError("catch block redefines the catch parameter name \"${intersection.first()}\"")
+                return null
+            }
         }
 
         return CatchNode(parameter, block)
@@ -1214,7 +1274,7 @@ class Parser(text: String) {
         return NamedExports(exports)
     }
 
-    private fun parseLexicalDeclaration(forceSemi: Boolean = false): DeclarationNode? {
+    private fun parseLexicalDeclaration(forceSemicolon: Boolean = false): DeclarationNode? {
         if (!matchAny(TokenType.Let, TokenType.Const))
             return null
 
@@ -1233,7 +1293,31 @@ class Parser(text: String) {
             return null
         }
 
-        if (forceSemi) {
+        val names = list.lexicalBindings.map { it.identifier.identifierName }
+        if (names.any { it == "let" }) {
+            syntaxError("cannot use \"let\" as a binding in a lexical declaration")
+            discardState()
+            return null
+        }
+
+        val duplicates = names.duplicates()
+        if (duplicates.isNotEmpty()) {
+            syntaxError("cannot redeclare lexical declaration \"${duplicates.first()}\"")
+            discardState()
+            return null
+        }
+
+        if (isConst) {
+            for (binding in list.lexicalBindings) {
+                if (binding.initializer == null) {
+                    syntaxError("const declaration must include an initializer")
+                    discardState()
+                    return null
+                }
+            }
+        }
+
+        if (forceSemicolon) {
             // For use in a for statement
             if (tokenType != TokenType.Semicolon) {
                 loadState()
@@ -1272,16 +1356,25 @@ class Parser(text: String) {
     }
 
     private fun parseBindingIdentifier(): BindingIdentifierNode? {
-        parseIdentifier()?.let {
-            return BindingIdentifierNode(it.identifierName)
+        parseIdentifier()?.identifierName?.let { identifier ->
+            if (isStrict && identifier.let { it == "arguments" || it == "eval" }) {
+                syntaxError("cannot use \"$identifier\" as an identifier in strict-mode code")
+                return null
+            }
+
+            return BindingIdentifierNode(identifier)
         }
 
         return when (tokenType) {
             TokenType.Await -> {
+                if (goalSymbol == GoalSymbol.Module || inAwaitContext)
+                    return null
                 consume()
                 BindingIdentifierNode("await")
             }
             TokenType.Yield -> {
+                if (isStrict)
+                    return null
                 consume()
                 BindingIdentifierNode("yield")
             }
@@ -1300,8 +1393,11 @@ class Parser(text: String) {
             else -> {
                 val name = consume().identifierValue()
                 if (isReserved(name)) {
-                    syntaxError("'$name' is not a valid identifier")
-                    consume()
+                    syntaxError("\"$name\" is not a valid identifier")
+                    return null
+                }
+                if (isStrict && name in strictModeReserved) {
+                    syntaxError("cannot use \"$name\" as an identifier in strict-mode code")
                     return null
                 }
                 IdentifierNode(name)
@@ -2029,8 +2125,13 @@ class Parser(text: String) {
             return PropertyDefinitionNode(expr, null, PropertyDefinitionNode.Type.Spread)
         } else {
             val method = parseMethodDefinition()
-            if (method != null)
+            if (method != null) {
+                if (method.hasDirectSuper()) {
+                    syntaxError("\"super\" can only be used in derived class constructors")
+                    return null
+                }
                 return PropertyDefinitionNode(method, null, PropertyDefinitionNode.Type.Method)
+            }
 
             val propertyName = parsePropertyNameNode()
             if (propertyName != null) {
@@ -2286,14 +2387,11 @@ class Parser(text: String) {
     }
 
     private fun parseAssignmentExpression(): ExpressionNode? {
-        fun doMatch(): ExpressionNode? {
-            return parseArrowFunction() ?:
-                parseConditionalExpression() ?:
-                if (inYieldContext) parseYieldExpression() else null ?:
-                parseAsyncArrowFunction()
-        }
-
-        var expr = doMatch() ?: return null
+        val expr = parseArrowFunction() ?:
+            parseConditionalExpression() ?:
+            (if (inYieldContext) parseYieldExpression() else null) ?:
+            parseAsyncArrowFunction() ?:
+            return null
         var node: AssignmentExpressionNode? = null
 
         while (true) {
@@ -2325,11 +2423,16 @@ class Parser(text: String) {
                 return null
             }
 
-            node = if (node == null) {
-                AssignmentExpressionNode(expr, rhs, op)
-            } else {
-                AssignmentExpressionNode(node, rhs, op)
+            val lhs = node ?: expr
+
+            if (lhs !is ObjectLiteralNode && lhs !is ArrayLiteralNode &&
+                lhs.assignmentTargetType() != ASTNode.AssignmentTargetType.Simple
+            ) {
+                syntaxError("invalid left-hand-side assignment")
+                return null
             }
+
+            node = AssignmentExpressionNode(lhs, rhs, op)
         }
     }
 
@@ -2580,7 +2683,20 @@ class Parser(text: String) {
             expected("expression")
             consume()
             null
-        } else UnaryExpressionNode(expr, op)
+        } else {
+            if (isStrict) {
+                var theExprToCheck = expr
+                while (theExprToCheck is ParenthesizedExpressionNode)
+                    theExprToCheck = theExprToCheck.target
+
+                if (theExprToCheck is IdentifierReferenceNode) {
+                    syntaxError("using the \"delete\" operator with an identifier is not allow in strict-mode code")
+                    return null
+                }
+            }
+
+            UnaryExpressionNode(expr, op)
+        }
     }
 
     private fun parseUpdateExpression(): ExpressionNode? {
@@ -2606,6 +2722,11 @@ class Parser(text: String) {
                 return expr
             isPostfix = true
             isIncrement = consume().type == TokenType.PlusPlus
+        }
+
+        if (expr.assignmentTargetType() != ASTNode.AssignmentTargetType.Simple) {
+            syntaxError("invalid update operator target")
+            return null
         }
 
         return UpdateExpressionNode(expr, isIncrement, isPostfix)
@@ -2821,6 +2942,18 @@ class Parser(text: String) {
             "while",
             "with",
             "yield",
+        )
+
+        private val strictModeReserved = listOf(
+            "implements",
+            "interface",
+            "let",
+            "package",
+            "private",
+            "protected",
+            "public",
+            "static",
+            "yield"
         )
 
         fun isReserved(identifier: String) = identifier in reservedWords

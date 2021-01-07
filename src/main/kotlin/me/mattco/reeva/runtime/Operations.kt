@@ -476,7 +476,7 @@ object Operations {
     @JvmStatic @ECMAImpl("6.2.4.5")
     fun putValue(reference: JSValue, value: JSValue) {
         if (reference !is JSReference)
-            Errors.InvalidLHSAssignment(toPrintableString(value)).throwReferenceError()
+            Errors.InvalidLHSAssignment(toPrintableString(reference)).throwReferenceError()
         var base = reference.baseValue
         if (reference.isUnresolvableReference) {
             if (reference.isStrict)
