@@ -6,7 +6,6 @@ import me.mattco.reeva.ast.expressions.TemplateLiteralNode
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.literals.PropertyNameNode
 import me.mattco.reeva.ast.statements.*
-import me.mattco.reeva.core.Realm
 import me.mattco.reeva.lexer.Lexer
 import me.mattco.reeva.lexer.SourceLocation
 import me.mattco.reeva.lexer.Token
@@ -33,6 +32,7 @@ class Parser(text: String) {
 
     private var inBreakContext = false
     private var inContinueContext = false
+    private var activeLabels = mutableListOf<String>()
 
     private var state = State(0)
     private val stateStack = mutableListOf(state)
@@ -584,9 +584,13 @@ class Parser(text: String) {
             return ContinueStatementNode(null)
         }
 
-        val expr = parseLabelIdentifier()
+        val label = parseLabelIdentifier()
         automaticSemicolonInsertion()
-        return ContinueStatementNode(expr)
+        if (label != null && label.identifierName !in activeLabels) {
+            syntaxError("label \"${label.identifierName}\" not found in the current scope")
+            return null
+        }
+        return ContinueStatementNode(label)
     }
 
     private fun parseBreakStatement(): StatementNode? {
@@ -604,9 +608,13 @@ class Parser(text: String) {
             automaticSemicolonInsertion()
             return BreakStatementNode(null)
         }
-        val expr = parseLabelIdentifier()
+        val label = parseLabelIdentifier()
         automaticSemicolonInsertion()
-        return BreakStatementNode(expr)
+        if (label != null && label.identifierName !in activeLabels) {
+            syntaxError("label \"${label.identifierName}\" not found in the current scope")
+            return null
+        }
+        return BreakStatementNode(label)
     }
 
     private fun parseReturnStatement(): StatementNode? {
@@ -632,12 +640,14 @@ class Parser(text: String) {
             return null
 
         val label = parseBindingIdentifier()?.identifierName?.let(::LabelIdentifierNode) ?: return null
+        activeLabels.add(label.identifierName)
         consume(TokenType.Colon)
         val statement = parseStatement() ?: run {
             expected("statement")
             consume()
             return null
         }
+        activeLabels.remove(label.identifierName)
         return LabelledStatementNode(label, statement)
     }
 
@@ -760,13 +770,7 @@ class Parser(text: String) {
 
         consume(TokenType.CloseParen)
         consume(TokenType.OpenCurly)
-
-        val restoreBreakContext = ::inBreakContext.temporaryChange(false)
-        val restoreContinueContext = ::inContinueContext.temporaryChange(false)
-        val body = parseFunctionBody()
-        restoreBreakContext()
-        restoreContinueContext()
-
+        val body = functionBoundary(::parseFunctionBody)
         consume(TokenType.CloseCurly)
 
         return FunctionDeclarationNode(identifier, parameters, FunctionStatementList(body))
@@ -1283,9 +1287,11 @@ class Parser(text: String) {
         }
         consume()
         discardState()
-        val body = parseConciseBody() ?: run {
-            expected("arrow function body")
-            return null
+        val body = functionBoundary {
+            parseConciseBody() ?: run {
+                expected("arrow function body")
+                return null
+            }
         }
         return ArrowFunctionNode(parameters, body)
     }
@@ -2045,7 +2051,7 @@ class Parser(text: String) {
         }
 
         consume(TokenType.OpenCurly)
-        val body = parseFunctionBody()
+        val body = functionBoundary(::parseFunctionBody)
         consume(TokenType.CloseCurly)
 
         return MethodDefinitionNode(name, params, FunctionStatementList(body), type)
@@ -2082,7 +2088,7 @@ class Parser(text: String) {
         val args = parseFormalParameters() ?: return null
         consume(TokenType.CloseParen)
         consume(TokenType.OpenCurly)
-        val body = parseFunctionBody()
+        val body = functionBoundary(::parseFunctionBody)
         consume(TokenType.CloseCurly)
 
         return FunctionExpressionNode(id, args, FunctionStatementList(body))
@@ -2567,6 +2573,20 @@ class Parser(text: String) {
             consume()
             return null
         } else AwaitExpressionNode(expr)
+    }
+
+    private inline fun <T> functionBoundary(block: () -> T): T {
+        val restoreBreakContext = ::inBreakContext.temporaryChange(false)
+        val restoreContinueContext = ::inContinueContext.temporaryChange(false)
+        val restoreLabels = ::activeLabels.temporaryChange(mutableListOf())
+
+        val result =  block()
+
+        restoreBreakContext()
+        restoreContinueContext()
+        restoreLabels()
+
+        return result
     }
 
     private fun saveState() {
