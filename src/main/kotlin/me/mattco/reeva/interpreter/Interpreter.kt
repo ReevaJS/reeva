@@ -1114,7 +1114,7 @@ class Interpreter(private val realm: Realm) {
                 if (e is ThrowException)
                     throw e
                 if (!loopContinues(e, labelSet))
-                    return value
+                    throw e
                 JSEmpty
             }
             if (result != JSEmpty)
@@ -1180,11 +1180,14 @@ class Interpreter(private val realm: Realm) {
         return when (node) {
             is LabelledStatementNode -> {
                 try {
-                    labelledEvaluation(node.item, labelSet + node.label.identifierName)
+                    val statement = node.item
+                    return if (statement is LabelledStatementNode || statement is BreakableStatement) {
+                        labelledEvaluation(node.item, labelSet + node.label.identifierName)
+                    } else interpretStatement(statement)
                 } catch (e: BreakException) {
-                    if (e.label == node.label.identifierName)
+                    if (e.label == node.label.identifierName) {
                         JSEmpty
-                    throw e
+                    } else throw e
                 }
             }
             is FunctionDeclarationNode -> interpretFunctionDeclaration(node)

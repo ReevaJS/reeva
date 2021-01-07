@@ -374,7 +374,7 @@ interface StatementNode : ASTNode, LabelledItemNode, StatementListItemNode // TO
 interface HoistableDeclarationNode : DeclarationNode
 interface DeclarationNode : StatementNode
 interface BreakableStatement : StatementNode
-interface IterationStatement : StatementNode
+interface IterationStatement : BreakableStatement
 
 interface ExpressionNode : ASTNode
 interface LeftHandSideExpressionNode : ExpressionNode

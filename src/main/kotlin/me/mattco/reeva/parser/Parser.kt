@@ -157,20 +157,20 @@ class Parser(text: String) {
     }
 
     private fun parseStatement(): StatementNode? {
-        return parseBlockStatement() ?:
-                parseVariableStatement() ?:
-                parseEmptyStatement() ?:
-                parseExpressionStatement() ?:
-                parseIfStatement() ?:
-                parseBreakableStatement() ?:
-                parseContinueStatement() ?:
-                parseBreakStatement() ?:
-                (if (inReturnContext) parseReturnStatement() else null) ?:
-                parseWithStatement() ?:
-                parseLabelledStatement() ?:
-                parseThrowStatement() ?:
-                parseTryStatement() ?:
-                parseDebuggerStatement()
+        return parseLabelledStatement() ?:
+            parseBlockStatement() ?:
+            parseVariableStatement() ?:
+            parseEmptyStatement() ?:
+            parseExpressionStatement() ?:
+            parseIfStatement() ?:
+            parseBreakableStatement() ?:
+            parseContinueStatement() ?:
+            parseBreakStatement() ?:
+            (if (inReturnContext) parseReturnStatement() else null) ?:
+            parseWithStatement() ?:
+            parseThrowStatement() ?:
+            parseTryStatement() ?:
+            parseDebuggerStatement()
     }
 
     private fun parseBlockStatement(): BlockStatementNode? {
@@ -594,8 +594,17 @@ class Parser(text: String) {
     }
 
     private fun parseLabelledStatement(): StatementNode? {
-        // TODO
-        return null
+        if (tokenType != TokenType.Identifier || !has(1) || peek(1).type != TokenType.Colon)
+            return null
+
+        val label = parseBindingIdentifier()?.identifierName?.let(::LabelIdentifierNode) ?: return null
+        consume(TokenType.Colon)
+        val statement = parseStatement() ?: run {
+            expected("statement")
+            consume()
+            return null
+        }
+        return LabelledStatementNode(label, statement)
     }
 
     private fun parseThrowStatement(): ThrowStatementNode? {
@@ -1171,7 +1180,6 @@ class Parser(text: String) {
 
     private fun parseBindingIdentifier(): BindingIdentifierNode? {
         parseIdentifier()?.let {
-
             return BindingIdentifierNode(it.identifierName)
         }
 
