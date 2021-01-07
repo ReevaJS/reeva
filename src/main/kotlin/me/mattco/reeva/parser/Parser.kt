@@ -32,6 +32,8 @@ class Parser(text: String) {
 
     private var inBreakContext = false
     private var inContinueContext = false
+    private var isStrict = false
+
     private var activeLabels = mutableListOf<String>()
 
     private var state = State(0)
@@ -54,7 +56,7 @@ class Parser(text: String) {
 
     fun parseScript(): ScriptNode {
         goalSymbol = GoalSymbol.Script
-        val statementList = parseStatementList() ?: StatementListNode(emptyList())
+        val statementList = parseStatementList(setStrict = true) ?: StatementListNode(emptyList())
         if (!isDone)
             unexpected("token ${token.value}")
         if (stateStack.size != 1)
@@ -64,6 +66,7 @@ class Parser(text: String) {
 
     fun parseModule(): ModuleNode {
         goalSymbol = GoalSymbol.Module
+        isStrict = true
 
         val body = mutableListOf<StatementListItemNode>()
         while (true) {
@@ -142,11 +145,17 @@ class Parser(text: String) {
         return result
     }
 
-    private fun parseStatementList(): StatementListNode? {
+    private fun parseStatementList(setStrict: Boolean = false): StatementListNode? {
         val statements = mutableListOf<StatementListItemNode>()
 
         var statement = parseStatementListItem() ?: return null
         statements.add(statement)
+
+        if (setStrict && !isStrict && statement is ExpressionStatementNode &&
+            statement.node.let { it is StringLiteralNode && it.value == "use strict" }
+        ) {
+            isStrict = true
+        }
 
         while (true) {
             statement = parseStatementListItem() ?: break
@@ -849,7 +858,7 @@ class Parser(text: String) {
     }
 
     private fun parseFunctionBody(): StatementListNode? {
-        return withReturn { parseStatementList() }
+        return withReturn { parseStatementList(setStrict = true) }
     }
 
     private fun parseGeneratorDeclaration(): GenericFunctionDeclarationNode? {
@@ -2619,12 +2628,14 @@ class Parser(text: String) {
         val restoreBreakContext = ::inBreakContext.temporaryChange(false)
         val restoreContinueContext = ::inContinueContext.temporaryChange(false)
         val restoreLabels = ::activeLabels.temporaryChange(mutableListOf())
+        val previousIsStrict = isStrict
 
         val result =  block()
 
         restoreBreakContext()
         restoreContinueContext()
         restoreLabels()
+        isStrict = previousIsStrict
 
         return result
     }
