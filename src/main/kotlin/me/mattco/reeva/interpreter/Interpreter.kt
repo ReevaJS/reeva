@@ -1039,9 +1039,11 @@ class Interpreter(private val realm: Realm) {
 
     private fun interpretForStatement(forStatementNode: ForStatementNode, labelSet: Set<String>): JSValue {
         when (forStatementNode.initializer) {
-            is ExpressionNode -> {
-                val exprRef = interpretExpression(forStatementNode.initializer)
-                Operations.getValue(exprRef)
+            is ExpressionNode, null -> {
+                if (forStatementNode.initializer != null) {
+                    val exprRef = interpretExpression(forStatementNode.initializer as ExpressionNode)
+                    Operations.getValue(exprRef)
+                }
 
                 return forBodyEvaluation(
                     forStatementNode.condition,
