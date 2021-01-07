@@ -374,5 +374,7 @@ class Lexer(private val source: String) : Iterable<Token> {
             TokenType.TemplateLiteralEnd,
             TokenType.This,
         )
+
+        val lineTerminators = listOf('\n', '\u000d', '\u2028', '\u2029')
     }
 }

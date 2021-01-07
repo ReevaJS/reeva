@@ -579,7 +579,7 @@ class Parser(text: String) {
             return null
         }
 
-        if ('\n' in token.trivia) {
+        if (Lexer.lineTerminators.any { it in token.trivia}) {
             automaticSemicolonInsertion()
             return ContinueStatementNode(null)
         }
@@ -604,7 +604,7 @@ class Parser(text: String) {
             return null
         }
 
-        if ('\n' in token.trivia) {
+        if (Lexer.lineTerminators.any { it in token.trivia}) {
             automaticSemicolonInsertion()
             return BreakStatementNode(null)
         }
@@ -2606,7 +2606,7 @@ class Parser(text: String) {
     private fun automaticSemicolonInsertion(): Token {
         if (tokenType == TokenType.Semicolon)
             return consume()
-        if ('\n' in token.trivia)
+        if (Lexer.lineTerminators.any { it in token.trivia })
             return token
         if (tokenType == TokenType.CloseCurly || tokenType == TokenType.Eof)
             return token
