@@ -15,6 +15,7 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
 import me.mattco.reeva.utils.all
 import me.mattco.reeva.utils.expect
+import me.mattco.reeva.utils.temporaryChange
 import me.mattco.reeva.utils.unreachable
 
 class Parser(text: String) {
@@ -29,6 +30,9 @@ class Parser(text: String) {
     private var inInContext = false
     private var inDefaultContext = false
     private var inTaggedContext = false
+
+    private var inBreakContext = false
+    private var inContinueContext = false
 
     private var state = State(0)
     private val stateStack = mutableListOf(state)
@@ -340,11 +344,17 @@ class Parser(text: String) {
             TokenType.Do -> {
                 consume()
 
+                val restoreBreakContext = ::inBreakContext.temporaryChange(true)
+                val restoreContinueContext = ::inContinueContext.temporaryChange(true)
+
                 val statement = parseStatement() ?: run {
                     expected("statement")
                     consume()
                     return null
                 }
+
+                restoreBreakContext()
+                restoreContinueContext()
 
                 consume(TokenType.While)
                 consume(TokenType.OpenParen)
@@ -370,11 +380,15 @@ class Parser(text: String) {
                 }
 
                 consume(TokenType.CloseParen)
+                val restoreBreakContext = ::inBreakContext.temporaryChange(true)
+                val restoreContinueContext = ::inContinueContext.temporaryChange(true)
                 val statement = parseStatement() ?: run {
                     expected("statement")
                     consume()
                     return null
                 }
+                restoreBreakContext()
+                restoreContinueContext()
 
                 return WhileStatementNode(expression, statement)
             }
@@ -433,11 +447,15 @@ class Parser(text: String) {
         consume(TokenType.Semicolon)
         val incrementer = withIn { parseExpression() }
         consume(TokenType.CloseParen)
+        val restoreBreakContext = ::inBreakContext.temporaryChange(true)
+        val restoreContinueContext = ::inContinueContext.temporaryChange(true)
         val body = parseStatement() ?: run {
             expected("statement")
             consume()
             return null
         }
+        restoreBreakContext()
+        restoreContinueContext()
 
         return ForStatementNode(initializer, condition, incrementer, body)
     }
@@ -501,11 +519,15 @@ class Parser(text: String) {
         }
 
         consume(TokenType.CloseParen)
+        val restoreBreakContext = ::inBreakContext.temporaryChange(true)
+        val restoreContinueContext = ::inContinueContext.temporaryChange(true)
         val body = parseStatement() ?: run {
             expected("statement")
             consume()
             return null
         }
+        restoreBreakContext()
+        restoreContinueContext()
 
         return if (isIn) {
             ForInNode(initializer, expression, body)
@@ -552,6 +574,11 @@ class Parser(text: String) {
             return null
         consume()
 
+        if (!inContinueContext) {
+            syntaxError("cannot continue outside of a loop")
+            return null
+        }
+
         if ('\n' in token.trivia) {
             automaticSemicolonInsertion()
             return ContinueStatementNode(null)
@@ -565,7 +592,14 @@ class Parser(text: String) {
     private fun parseBreakStatement(): StatementNode? {
         if (tokenType != TokenType.Break)
             return null
+
         consume()
+
+        if (!inBreakContext) {
+            syntaxError("cannot break outside of a loop or switch statement")
+            return null
+        }
+
         if ('\n' in token.trivia) {
             automaticSemicolonInsertion()
             return BreakStatementNode(null)
@@ -726,7 +760,13 @@ class Parser(text: String) {
 
         consume(TokenType.CloseParen)
         consume(TokenType.OpenCurly)
+
+        val restoreBreakContext = ::inBreakContext.temporaryChange(false)
+        val restoreContinueContext = ::inContinueContext.temporaryChange(false)
         val body = parseFunctionBody()
+        restoreBreakContext()
+        restoreContinueContext()
+
         consume(TokenType.CloseCurly)
 
         return FunctionDeclarationNode(identifier, parameters, FunctionStatementList(body))

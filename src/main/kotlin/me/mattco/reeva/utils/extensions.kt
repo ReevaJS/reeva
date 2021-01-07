@@ -4,6 +4,8 @@ import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.*
 import java.math.BigInteger
 import kotlin.math.abs
+import kotlin.reflect.KMutableProperty0
+import kotlin.reflect.KProperty
 
 fun Iterable<Boolean>.all() = this.all { it }
 fun <T> Iterable<T>.allIndexed(predicate: (index: Int, T) -> Boolean) = this.mapIndexed(predicate).all()
@@ -43,3 +45,10 @@ fun String.toValue() = JSString(this)
 fun Char.toValue() = JSString(this.toString())
 fun Number.toValue() = JSNumber(this.toDouble())
 fun BigInteger.toValue() = JSBigInt(this)
+
+fun <T> KMutableProperty0<T>.temporaryChange(newValue: T): () -> Unit {
+    val oldValue = this.get()
+    this.set(newValue)
+
+    return { this.set(oldValue) }
+}
