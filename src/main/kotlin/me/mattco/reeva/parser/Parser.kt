@@ -450,7 +450,8 @@ class Parser(text: String) {
                 }
                 VariableStatementNode(declList)
             }
-            TokenType.Let, TokenType.Const -> parseLexicalDeclaration(forceSemicolon = true) ?: return null
+            TokenType.Let, TokenType.Const -> parseLexicalDeclaration(forceSemicolon = true, generateErrors = false)
+                ?: return null
             else -> {
                 saveState()
                 val expr = parseExpression()
@@ -561,8 +562,8 @@ class Parser(text: String) {
         restoreBreakContext()
         restoreContinueContext()
 
-        if (initializer.let { it !is ObjectLiteralNode && it !is ArrayLiteralNode &&
-                it.assignmentTargetType() != ASTNode.AssignmentTargetType.Simple }
+        if (initializer.let { it !is ObjectLiteralNode && it !is ArrayLiteralNode && it !is ForBindingNode &&
+                it !is ForDeclarationNode && it.assignmentTargetType() != ASTNode.AssignmentTargetType.Simple }
         ) {
             syntaxError("for-${if (isIn) "in" else "of"} loop has an invalid left-hand-side")
             return null
@@ -590,7 +591,7 @@ class Parser(text: String) {
                 break
             }
             discardState()
-            declarations.add(declaration)
+            declarations.add(declaration2)
         }
 
         return BindingListNode(declarations)
@@ -1274,7 +1275,7 @@ class Parser(text: String) {
         return NamedExports(exports)
     }
 
-    private fun parseLexicalDeclaration(forceSemicolon: Boolean = false): DeclarationNode? {
+    private fun parseLexicalDeclaration(forceSemicolon: Boolean = false, generateErrors: Boolean = true): DeclarationNode? {
         if (!matchAny(TokenType.Let, TokenType.Const))
             return null
 
@@ -1295,23 +1296,29 @@ class Parser(text: String) {
 
         val names = list.lexicalBindings.map { it.identifier.identifierName }
         if (names.any { it == "let" }) {
-            syntaxError("cannot use \"let\" as a binding in a lexical declaration")
-            discardState()
+            if (generateErrors) {
+                syntaxError("cannot use \"let\" as a binding in a lexical declaration")
+                discardState()
+            } else loadState()
             return null
         }
 
         val duplicates = names.duplicates()
         if (duplicates.isNotEmpty()) {
-            syntaxError("cannot redeclare lexical declaration \"${duplicates.first()}\"")
-            discardState()
+            if (generateErrors) {
+                syntaxError("cannot redeclare lexical declaration \"${duplicates.first()}\"")
+                discardState()
+            } else loadState()
             return null
         }
 
         if (isConst) {
             for (binding in list.lexicalBindings) {
                 if (binding.initializer == null) {
-                    syntaxError("const declaration must include an initializer")
-                    discardState()
+                    if (generateErrors) {
+                        syntaxError("const declaration must include an initializer")
+                        discardState()
+                    } else loadState()
                     return null
                 }
             }
