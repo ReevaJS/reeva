@@ -4,8 +4,12 @@ enum class SlotName {
     ArrayBufferData,
     ArrayBufferByteLength,
     ArrayBufferDetachKey,
+    ArrayLength,
     BigIntData,
     BooleanData,
+    ByteLength,
+    ByteOffset,
+    ContentType,
     DateValue,
     Description,
     ErrorData,
@@ -25,5 +29,7 @@ enum class SlotName {
     SetData,
     StringData,
     SymbolData,
+    TypedArrayKind, // non-standard
+    TypedArrayName,
     ViewedArrayBuffer,
 }

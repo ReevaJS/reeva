@@ -22,8 +22,7 @@ import me.mattco.reeva.jvmcompat.JSPackageProto
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpCtor
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpProto
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpStringIteratorProto
-import me.mattco.reeva.runtime.memory.JSArrayBufferCtor
-import me.mattco.reeva.runtime.memory.JSArrayBufferProto
+import me.mattco.reeva.runtime.memory.*
 import me.mattco.reeva.runtime.objects.*
 import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.primitives.JSSymbol
@@ -66,6 +65,18 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     val consoleProto by lazy { JSConsoleProto.create(this) }
 
     val arrayBufferProto by lazy { JSArrayBufferProto.create(this) }
+    val typedArrayProto by lazy { JSTypedArrayProto.create(this) }
+    val int8ArrayProto by lazy { JSInt8ArrayProto.create(this) }
+    val uint8ArrayProto by lazy { JSUint8ArrayProto.create(this) }
+    val uint8CArrayProto by lazy { JSUint8CArrayProto.create(this) }
+    val int16ArrayProto by lazy { JSInt16ArrayProto.create(this) }
+    val uint16ArrayProto by lazy { JSUint16ArrayProto.create(this) }
+    val int32ArrayProto by lazy { JSInt32ArrayProto.create(this) }
+    val uint32ArrayProto by lazy { JSUint32ArrayProto.create(this) }
+    val float32ArrayProto by lazy { JSFloat32ArrayProto.create(this) }
+    val float64ArrayProto by lazy { JSFloat64ArrayProto.create(this) }
+    val bigInt64ArrayProto by lazy { JSBigInt64ArrayProto.create(this) }
+    val bigUint64ArrayProto by lazy { JSBigUint64ArrayProto.create(this) }
 
     val errorProto by lazy { JSErrorProto.create(this) }
     val evalErrorProto by lazy { JSEvalErrorProto.create(this) }
@@ -91,6 +102,18 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     val dateCtor by lazy { JSDateCtor.create(this) }
 
     val arrayBufferCtor by lazy { JSArrayBufferCtor.create(this) }
+    val typedArrayCtor by lazy { JSTypedArrayCtor.create(this) }
+    val int8ArrayCtor by lazy { JSInt8ArrayCtor.create(this) }
+    val uint8ArrayCtor by lazy { JSUint8ArrayCtor.create(this) }
+    val uint8CArrayCtor by lazy { JSUint8CArrayCtor.create(this) }
+    val int16ArrayCtor by lazy { JSInt16ArrayCtor.create(this) }
+    val uint16ArrayCtor by lazy { JSUint16ArrayCtor.create(this) }
+    val int32ArrayCtor by lazy { JSInt32ArrayCtor.create(this) }
+    val uint32ArrayCtor by lazy { JSUint32ArrayCtor.create(this) }
+    val float32ArrayCtor by lazy { JSFloat32ArrayCtor.create(this) }
+    val float64ArrayCtor by lazy { JSFloat64ArrayCtor.create(this) }
+    val bigInt64ArrayCtor by lazy { JSBigInt64ArrayCtor.create(this) }
+    val bigUint64ArrayCtor by lazy { JSBigUint64ArrayCtor.create(this) }
 
     val errorCtor by lazy { JSErrorCtor.create(this) }
     val evalErrorCtor by lazy { JSEvalErrorCtor.create(this) }
@@ -141,7 +164,21 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
         setCtor.defineOwnProperty("prototype", setProto, Descriptor.HAS_BASIC)
         mapCtor.defineOwnProperty("prototype", mapProto, Descriptor.HAS_BASIC)
         dateCtor.defineOwnProperty("prototype", dateProto, Descriptor.HAS_BASIC)
+
         arrayBufferCtor.defineOwnProperty("prototype", arrayBufferProto, Descriptor.HAS_BASIC)
+        typedArrayCtor.defineOwnProperty("prototype", typedArrayProto, Descriptor.HAS_BASIC)
+        int8ArrayCtor.defineOwnProperty("prototype", int8ArrayProto, Descriptor.HAS_BASIC)
+        uint8ArrayCtor.defineOwnProperty("prototype", uint8ArrayProto, Descriptor.HAS_BASIC)
+        uint8CArrayCtor.defineOwnProperty("prototype", uint8CArrayProto, Descriptor.HAS_BASIC)
+        int16ArrayCtor.defineOwnProperty("prototype", int16ArrayProto, Descriptor.HAS_BASIC)
+        uint16ArrayCtor.defineOwnProperty("prototype", uint16ArrayProto, Descriptor.HAS_BASIC)
+        int32ArrayCtor.defineOwnProperty("prototype", int32ArrayProto, Descriptor.HAS_BASIC)
+        uint32ArrayCtor.defineOwnProperty("prototype", uint32ArrayProto, Descriptor.HAS_BASIC)
+        float32ArrayCtor.defineOwnProperty("prototype", float32ArrayProto, Descriptor.HAS_BASIC)
+        float64ArrayCtor.defineOwnProperty("prototype", float64ArrayProto, Descriptor.HAS_BASIC)
+        bigInt64ArrayCtor.defineOwnProperty("prototype", bigInt64ArrayProto, Descriptor.HAS_BASIC)
+        bigUint64ArrayCtor.defineOwnProperty("prototype", bigUint64ArrayProto, Descriptor.HAS_BASIC)
+
         errorCtor.defineOwnProperty("prototype", errorProto, Descriptor.HAS_BASIC)
         evalErrorCtor.defineOwnProperty("prototype", evalErrorProto, Descriptor.HAS_BASIC)
         internalErrorCtor.defineOwnProperty("prototype", internalErrorProto, Descriptor.HAS_BASIC)
@@ -150,6 +187,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
         referenceErrorCtor.defineOwnProperty("prototype", referenceErrorProto, Descriptor.HAS_BASIC)
         syntaxErrorCtor.defineOwnProperty("prototype", syntaxErrorProto, Descriptor.HAS_BASIC)
         uriErrorCtor.defineOwnProperty("prototype", uriErrorProto, Descriptor.HAS_BASIC)
+
         functionProto.defineOwnProperty("constructor", functionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
 
         newObjectShape.setPrototypeWithoutTransition(objectProto)

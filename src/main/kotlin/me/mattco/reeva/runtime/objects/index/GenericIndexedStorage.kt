@@ -27,7 +27,7 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
     init {
         sizeBacker = simpleStorage.arrayLikeSize
         simpleStorage.elements.forEach { element ->
-            packedElements.add(Descriptor(element, Descriptor.defaultAttributes))
+            packedElements.add(Descriptor(element, Descriptor.DEFAULT_ATTRIBUTES))
         }
     }
 

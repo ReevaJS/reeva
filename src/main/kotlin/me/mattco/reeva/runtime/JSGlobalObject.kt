@@ -17,6 +17,7 @@ import me.mattco.reeva.jvmcompat.JSClassObject
 import me.mattco.reeva.jvmcompat.ProxyClassCompiler
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.functions.JSFunction
+import me.mattco.reeva.runtime.memory.*
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSEmpty
@@ -64,6 +65,18 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("JSON", realm.jsonObj, attrs)
         defineOwnProperty("console", realm.consoleObj, attrs)
 
+        defineOwnProperty("Int8Array", realm.int8ArrayCtor, attrs)
+        defineOwnProperty("Uint8Array", realm.uint8ArrayCtor, attrs)
+        defineOwnProperty("Uint8ClampedArray", realm.uint8CArrayCtor, attrs)
+        defineOwnProperty("Int16Array", realm.int16ArrayCtor, attrs)
+        defineOwnProperty("Uint16Array", realm.uint16ArrayCtor, attrs)
+        defineOwnProperty("Int32Array", realm.int32ArrayCtor, attrs)
+        defineOwnProperty("Uint32Array", realm.uint32ArrayCtor, attrs)
+        defineOwnProperty("Float32Array", realm.float32ArrayCtor, attrs)
+        defineOwnProperty("Float64Array", realm.float64ArrayCtor, attrs)
+        defineOwnProperty("BigInt64Array", realm.bigInt64ArrayCtor, attrs)
+        defineOwnProperty("BigUint64Array", realm.bigUint64ArrayCtor, attrs)
+
         defineOwnProperty("Infinity", JSNumber.POSITIVE_INFINITY, 0)
         defineOwnProperty("NaN", JSNumber.NaN, 0)
         defineOwnProperty("globalThis", this, Descriptor.WRITABLE or Descriptor.CONFIGURABLE)
@@ -78,16 +91,16 @@ open class JSGlobalObject protected constructor(
         defineNativeFunction("isStrict".key(), 0, 0) { _, _ -> Operations.isStrict().toValue() }
     }
 
-    fun id(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun id(thisValue: JSValue, arguments: JSArguments): JSValue {
         val o = arguments.argument(0)
         return "${o::class.java.simpleName}@${Integer.toHexString(o.hashCode())}".toValue()
     }
 
-    fun eval(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun eval(thisValue: JSValue, arguments: JSArguments): JSValue {
         return performEval(arguments.argument(0), Agent.runningContext.realm, strictCaller = false, direct = false)
     }
 
-    fun parseInt(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun parseInt(thisValue: JSValue, arguments: JSArguments): JSValue {
         var inputString = Operations.trimString(Operations.toString(arguments.argument(0)), Operations.TrimType.Start)
         val sign = when {
             inputString.startsWith("-") -> {
@@ -125,7 +138,7 @@ open class JSGlobalObject protected constructor(
         return JSNumber(numericValue * sign)
     }
 
-    fun jvm(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun jvm(thisValue: JSValue, arguments: JSArguments): JSValue {
         if (arguments.isEmpty())
             Errors.JVMCompat.JVMFuncNoArgs.throwTypeError()
 

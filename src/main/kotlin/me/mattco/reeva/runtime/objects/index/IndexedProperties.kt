@@ -39,7 +39,7 @@ class IndexedProperties private constructor(
 
     fun setDescriptor(index: Int, descriptor: Descriptor) {
         if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD ||
-            descriptor.attributes != Descriptor.defaultAttributes ||
+            descriptor.attributes != Descriptor.DEFAULT_ATTRIBUTES ||
             descriptor.hasGetterFunction || descriptor.hasSetterFunction)
         ) {
             switchToGenericStorage()
@@ -55,7 +55,7 @@ class IndexedProperties private constructor(
     }
 
     fun set(thisValue: JSValue, index: Int, descriptor: Descriptor) {
-        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD || descriptor.attributes != Descriptor.defaultAttributes))
+        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD || descriptor.attributes != Descriptor.DEFAULT_ATTRIBUTES))
             switchToGenericStorage()
 
         if (storage is SimpleIndexedStorage) {
@@ -83,11 +83,11 @@ class IndexedProperties private constructor(
         existingValue.attributes = descriptor.attributes
     }
 
-    fun set(thisValue: JSValue, index: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
+    fun set(thisValue: JSValue, index: Int, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) {
         set(thisValue, index, Descriptor(value, attributes))
     }
 
-    fun set(thisValue: JSValue, index: Long, value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
+    fun set(thisValue: JSValue, index: Long, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) {
         set(thisValue, index, Descriptor(value, attributes))
     }
 
@@ -108,7 +108,7 @@ class IndexedProperties private constructor(
     }
 
     fun insert(index: Int, descriptor: Descriptor) {
-        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD || descriptor.attributes != Descriptor.defaultAttributes))
+        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD || descriptor.attributes != Descriptor.DEFAULT_ATTRIBUTES))
             switchToGenericStorage()
         storage.insert(index, descriptor)
     }
@@ -119,11 +119,11 @@ class IndexedProperties private constructor(
         storage.insert(index, descriptor)
     }
 
-    fun insert(index: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
+    fun insert(index: Int, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) {
         insert(index, Descriptor(value, attributes))
     }
 
-    fun insert(index: Long, value: JSValue, attributes: Int = Descriptor.defaultAttributes) {
+    fun insert(index: Long, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) {
         insert(index, Descriptor(value, attributes))
     }
 
@@ -177,7 +177,7 @@ class IndexedProperties private constructor(
 
     fun valuesUnordered(): List<Descriptor> {
         if (storage is SimpleIndexedStorage)
-            return (storage as SimpleIndexedStorage).elements.map { Descriptor(it, Descriptor.defaultAttributes) }
+            return (storage as SimpleIndexedStorage).elements.map { Descriptor(it, Descriptor.DEFAULT_ATTRIBUTES) }
 
         (storage as GenericIndexedStorage).also {
             val values = it.packedElements.toMutableList()

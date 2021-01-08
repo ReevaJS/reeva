@@ -20,13 +20,13 @@ class SimpleIndexedStorage : IndexedStorage {
     override fun hasIndex(index: Long) = unreachable()
 
     override fun get(index: Int) = if (hasIndex(index)) {
-        Descriptor(elements[index], Descriptor.defaultAttributes)
+        Descriptor(elements[index], Descriptor.DEFAULT_ATTRIBUTES)
     } else null
 
     override fun get(index: Long) = unreachable()
 
     override fun set(index: Int, descriptor: Descriptor) {
-        expect(descriptor.attributes == Descriptor.defaultAttributes)
+        expect(descriptor.attributes == Descriptor.DEFAULT_ATTRIBUTES)
         expect(!descriptor.hasGetterFunction && !descriptor.hasSetterFunction)
         expect(index < IndexedStorage.SPARSE_ARRAY_THRESHOLD)
 
@@ -50,7 +50,7 @@ class SimpleIndexedStorage : IndexedStorage {
     override fun remove(index: Long) = unreachable()
 
     override fun insert(index: Int, descriptor: Descriptor) {
-        expect(descriptor.attributes == Descriptor.defaultAttributes)
+        expect(descriptor.attributes == Descriptor.DEFAULT_ATTRIBUTES)
         expect(!descriptor.hasGetterFunction && !descriptor.hasSetterFunction)
         expect(index < IndexedStorage.SPARSE_ARRAY_THRESHOLD)
         sizeBacker++
@@ -61,12 +61,12 @@ class SimpleIndexedStorage : IndexedStorage {
 
     override fun removeFirst(): Descriptor {
         sizeBacker--
-        return Descriptor(elements.removeFirst(), Descriptor.defaultAttributes)
+        return Descriptor(elements.removeFirst(), Descriptor.DEFAULT_ATTRIBUTES)
     }
 
     override fun removeLast(): Descriptor {
         sizeBacker--
-        return Descriptor(elements.removeLast(), Descriptor.defaultAttributes)
+        return Descriptor(elements.removeLast(), Descriptor.DEFAULT_ATTRIBUTES)
     }
 
     override fun setArrayLikeSize(size: Long) {

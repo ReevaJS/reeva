@@ -223,7 +223,7 @@ data class Descriptor constructor(
         const val HAS_SETTER = 1 shl 7
         const val HAS_BASIC = HAS_CONFIGURABLE or HAS_ENUMERABLE or HAS_WRITABLE
 
-        const val defaultAttributes = CONFIGURABLE or ENUMERABLE or WRITABLE or HAS_BASIC
+        const val DEFAULT_ATTRIBUTES = CONFIGURABLE or ENUMERABLE or WRITABLE or HAS_BASIC
 
         @ECMAImpl("6.2.5.5", "ToPropertyDescriptor")
         fun fromObject(obj: JSValue): Descriptor {

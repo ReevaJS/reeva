@@ -21,6 +21,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         defineNativeFunction("deleteProperty", 2, ::deleteProperty)
         defineNativeFunction("get", 2, ::get)
         defineNativeFunction("getOwnPropertyDescriptor", 2, ::getOwnPropertyDescriptor)
+        defineNativeFunction("has", 2, ::has)
         defineNativeFunction("isExtensible", 1, ::isExtensible)
         defineNativeFunction("ownKeys", 1, ::ownKeys)
         defineNativeFunction("preventExtensions", 1, ::preventExtensions)

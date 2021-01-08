@@ -4,9 +4,6 @@ import me.mattco.reeva.core.Agent
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.*
-import me.mattco.reeva.core.ExecutionContext
-import me.mattco.reeva.core.environment.FunctionEnvRecord
-import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.*
@@ -28,7 +25,7 @@ open class JSObject protected constructor(
     private val storage = mutableListOf<JSValue>()
     internal val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
-    private var shape: Shape
+    protected var shape: Shape
 
     var transitionsEnabled: Boolean = true
 
@@ -140,10 +137,10 @@ open class JSObject protected constructor(
         return getOwnPropertyDescriptor(property)?.toObject(realm, this) ?: JSUndefined
     }
 
-    @JvmOverloads fun defineOwnProperty(property: String, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
-    @JvmOverloads fun defineOwnProperty(property: JSSymbol, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
-    @JvmOverloads fun defineOwnProperty(property: Int, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.key(), Descriptor(value, attributes))
-    @JvmOverloads fun defineOwnProperty(property: Long, value: JSValue, attributes: Int = Descriptor.defaultAttributes) = defineOwnProperty(property.toString().key(), Descriptor(value, attributes))
+    @JvmOverloads fun defineOwnProperty(property: String, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) = defineOwnProperty(property.key(), Descriptor(value, attributes))
+    @JvmOverloads fun defineOwnProperty(property: JSSymbol, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) = defineOwnProperty(property.key(), Descriptor(value, attributes))
+    @JvmOverloads fun defineOwnProperty(property: Int, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) = defineOwnProperty(property.key(), Descriptor(value, attributes))
+    @JvmOverloads fun defineOwnProperty(property: Long, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) = defineOwnProperty(property.toString().key(), Descriptor(value, attributes))
 
     @ECMAImpl("9.1.6")
     open fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
@@ -195,7 +192,7 @@ open class JSObject protected constructor(
             val parent = getPrototype()
             if (parent != JSNull)
                 return (parent as JSObject).set(property, value, receiver)
-            ownDesc = Descriptor(JSUndefined, Descriptor.defaultAttributes)
+            ownDesc = Descriptor(JSUndefined, Descriptor.DEFAULT_ATTRIBUTES)
         }
         if (ownDesc.isDataDescriptor) {
             if (!ownDesc.isWritable)
@@ -211,7 +208,7 @@ open class JSObject protected constructor(
                 val valueDesc = Descriptor(value, 0)
                 return receiver.defineOwnProperty(property, valueDesc)
             }
-            return receiver.defineOwnProperty(property, Descriptor(value, Descriptor.defaultAttributes))
+            return receiver.defineOwnProperty(property, Descriptor(value, Descriptor.DEFAULT_ATTRIBUTES))
         }
         expect(ownDesc.isAccessorDescriptor)
         if (!ownDesc.hasSetterFunction)

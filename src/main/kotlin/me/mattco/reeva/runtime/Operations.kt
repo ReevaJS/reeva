@@ -32,6 +32,7 @@ import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpProto
 import me.mattco.reeva.runtime.memory.DataBlock
+import me.mattco.reeva.runtime.memory.JSIntegerIndexedObject
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
@@ -43,7 +44,6 @@ import org.joni.Matcher
 import org.joni.Option
 import java.math.BigInteger
 import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.time.*
 import java.time.format.TextStyle
 import java.util.*
@@ -883,7 +883,7 @@ object Operations {
         val num = toNumber(argument)
         if (toString(num).string != argument.string)
             return null
-        return num as? JSNumber
+        return num
     }
 
     @JvmStatic @ECMAImpl("7.1.22")
@@ -1114,7 +1114,7 @@ object Operations {
     @JvmStatic @ECMAImpl("7.3.5")
     fun createDataProperty(target: JSValue, property: PropertyKey, value: JSValue): Boolean {
         ecmaAssert(target is JSObject)
-        return target.defineOwnProperty(property, Descriptor(value, Descriptor.defaultAttributes))
+        return target.defineOwnProperty(property, Descriptor(value, Descriptor.DEFAULT_ATTRIBUTES))
     }
 
     @JvmStatic
@@ -1363,13 +1363,13 @@ object Operations {
 
     @JvmStatic @JvmOverloads
     @ECMAImpl("7.4.1")
-    fun getIterator(obj: JSValue, hint: IteratorHint? = IteratorHint.Sync, _method: JSFunction? = null): IteratorRecord {
+    fun getIterator(obj: JSValue, hint: IteratorHint? = IteratorHint.Sync, method: JSFunction? = null): IteratorRecord {
         if (hint == IteratorHint.Async)
             TODO()
-        val method = _method ?: getMethod(obj, Realm.`@@iterator`)
-        if (method == JSUndefined)
+        val theMethod = method ?: getMethod(obj, Realm.`@@iterator`)
+        if (theMethod == JSUndefined)
             Errors.NotIterable(toPrintableString(obj)).throwTypeError()
-        val iterator = call(method, obj)
+        val iterator = call(theMethod, obj)
         if (iterator !is JSObject)
             Errors.NonObjectIterator.throwTypeError()
         val nextMethod = getV(iterator, "next".toValue())
@@ -1422,6 +1422,19 @@ object Operations {
         createDataPropertyOrThrow(obj, "value".toValue(), value)
         createDataPropertyOrThrow(obj, "done".toValue(), done.toValue())
         return obj
+    }
+
+    @JvmStatic @ECMAImpl("7.4.10")
+    fun iterableToList(items: JSValue, method: JSValue? = null): List<JSValue> {
+        val iteratorRecord = getIterator(items, method = method as? JSFunction)
+        val values = mutableListOf<JSValue>()
+        while (true) {
+            val next = iteratorStep(iteratorRecord)
+            if (next == JSFalse)
+                break
+            values.add(iteratorValue(next))
+        }
+        return values
     }
 
     @JvmStatic @ECMAImpl("8.1.2.1")
@@ -1839,6 +1852,61 @@ object Operations {
         definePropertyOrThrow(obj, "callee".key(), Descriptor(function, Descriptor.CONFIGURABLE or Descriptor.WRITABLE))
 
         return obj
+    }
+
+    @JvmStatic @ECMAImpl("9.4.5.9")
+    fun isValidIntegerIndex(obj: JSValue, index: JSNumber): Boolean {
+        ecmaAssert(obj is JSIntegerIndexedObject)
+        if (isDetachedBuffer(obj.getSlotAs(SlotName.ViewedArrayBuffer)))
+            return false
+        if (!isIntegralNumber(index))
+            return false
+        if (index.isNegativeZero)
+            return false
+        if (index.number < 0 || index.number > obj.getSlotAs<Int>(SlotName.ArrayLength))
+            return false
+        return true
+    }
+
+    @JvmStatic @ECMAImpl("9.4.5.10")
+    fun integerIndexedElementGet(obj: JSValue, index: JSValue): JSValue {
+        ecmaAssert(obj is JSIntegerIndexedObject)
+        if (index !is JSNumber || !isValidIntegerIndex(obj, index))
+            return JSUndefined
+        val offset = obj.getSlotAs<Int>(SlotName.ByteOffset)
+        val kind = obj.getSlotAs<TypedArrayKind>(SlotName.TypedArrayKind)
+        val indexedPosition = (index.asInt * kind.size) + offset
+        return getValueFromBuffer(
+            obj.getSlotAs(SlotName.ViewedArrayBuffer),
+            indexedPosition,
+            kind,
+            true,
+            TypedArrayOrder.Unordered
+        )
+    }
+
+    @JvmStatic @ECMAImpl("9.4.5.11")
+    fun integerIndexedElementSet(obj: JSValue, index: JSValue, value: JSValue) {
+        ecmaAssert(obj is JSIntegerIndexedObject)
+
+        if (index !is JSNumber || !isValidIntegerIndex(obj, index))
+            return
+
+        val kind = obj.getSlotAs<TypedArrayKind>(SlotName.TypedArrayKind)
+        val numValue = if (kind.isBigInt) {
+            value.toBigInt()
+        } else value.toNumber()
+
+        val offset = obj.getSlotAs<Int>(SlotName.ByteOffset)
+        val indexedPosition = (index.asInt * kind.size) + offset
+        setValueInBuffer(
+            obj.getSlotAs(SlotName.ViewedArrayBuffer),
+            indexedPosition,
+            kind,
+            numValue,
+            true,
+            TypedArrayOrder.Unordered
+        )
     }
 
     @JvmStatic @ECMAImpl("9.4.4.7.1")
@@ -2372,6 +2440,43 @@ object Operations {
         return arr
     }
 
+    @JvmStatic @ECMAImpl("22.2.4.1")
+    fun typedArraySpeciesCreate(exemplar: JSValue, arguments: JSArguments): JSObject {
+        ecmaAssert(exemplar is JSObject && exemplar.hasSlots(SlotName.TypedArrayName, SlotName.ContentType))
+
+        val kind = exemplar.getSlotAs<TypedArrayKind>(SlotName.TypedArrayKind)
+        val defaultConstructor = kind.getCtor(exemplar.realm)
+        val constructor = speciesConstructor(exemplar, defaultConstructor)
+        val result = typedArrayCreate(constructor, arguments)
+        if (result.getSlot(SlotName.ContentType) != exemplar.getSlot(SlotName.ContentType))
+            Errors.TODO("typedArraySpeciesCreate").throwTypeError()
+        return result
+    }
+
+    @JvmStatic @ECMAImpl("22.2.4.2")
+    fun typedArrayCreate(constructor: JSValue, arguments: JSArguments): JSObject {
+        val newTypedArray = construct(constructor, arguments)
+        validateTypedArray(newTypedArray)
+        expect(newTypedArray is JSObject)
+        if (arguments.size == 1) {
+            val arg = arguments.argument(0)
+            if (arg is JSNumber && newTypedArray.getSlotAs<Int>(SlotName.ArrayLength) != arg.asInt)
+                Errors.TODO("typedArrayCreate").throwTypeError()
+        }
+        return newTypedArray
+    }
+
+    @JvmStatic @ECMAImpl("22.2.4.3")
+    fun validateTypedArray(obj: JSValue): JSObject {
+        if (!requireInternalSlot(obj, SlotName.TypedArrayName))
+            Errors.TODO("validateTypedArray requireInternalSlot").throwTypeError()
+        ecmaAssert(obj.hasSlot(SlotName.ViewedArrayBuffer))
+        val buffer = obj.getSlotAs<JSObject>(SlotName.ViewedArrayBuffer)
+        if (isDetachedBuffer(buffer))
+            Errors.TODO("validateTypedArray isDetachedBuffer")
+        return buffer
+    }
+
     @JvmStatic @ECMAImpl("23.1.1.2")
     fun addEntriesFromIterable(target: JSObject, iterable: JSValue, adderValue: JSValue): JSObject {
         if (!isCallable(adderValue))
@@ -2516,7 +2621,7 @@ object Operations {
     fun getValueFromBuffer(
         arrayBuffer: JSValue,
         byteIndex: Int,
-        type: TypedArrayKind,
+        kind: TypedArrayKind,
         isTypedArray: Boolean,
         order: TypedArrayOrder,
         isLittleEndian: Boolean = Agent.activeAgent.isLittleEndian
@@ -2524,13 +2629,13 @@ object Operations {
         ecmaAssert(arrayBuffer is JSObject)
         ecmaAssert(!isDetachedBuffer(arrayBuffer))
         val block = arrayBuffer.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
-        ecmaAssert(byteIndex + type.size < block.size)
+        ecmaAssert(byteIndex + kind.size < block.size)
 
         if (isSharedArrayBuffer(arrayBuffer))
             TODO()
 
-        val rawBytes = block.getBytes(byteIndex, type.size)
-        return rawBytesToNumeric(type, rawBytes, isLittleEndian)
+        val rawBytes = block.getBytes(byteIndex, kind.size)
+        return rawBytesToNumeric(kind, rawBytes, isLittleEndian)
     }
 
     @JvmStatic @ECMAImpl("24.1.2.11")
@@ -2838,9 +2943,37 @@ object Operations {
         Int32(4, false, true, false, ::toInt32),
         Uint32(4, true, true, false, ::toUint32),
         Float32(4, false, false, false, null),
-        Float64(4, false, false, false, null),
-        BigInt64(4, false, false, true, ::toBigInt64),
-        BigUint64(4, true, false, true, ::toBigUint64);
+        Float64(8, false, false, false, null),
+        BigInt64(8, false, false, true, ::toBigInt64),
+        BigUint64(8, true, false, true, ::toBigUint64);
+
+        fun getCtor(realm: Realm) = when (this) {
+            Int8 -> realm.int8ArrayCtor
+            Uint8 -> realm.uint8ArrayCtor
+            Uint8C -> realm.uint8CArrayCtor
+            Int16 -> realm.int16ArrayCtor
+            Uint16 -> realm.uint16ArrayCtor
+            Int32 -> realm.int32ArrayCtor
+            Uint32 -> realm.uint32ArrayCtor
+            Float32 -> realm.float32ArrayCtor
+            Float64 -> realm.float64ArrayCtor
+            BigInt64 -> realm.bigInt64ArrayCtor
+            BigUint64 -> realm.bigUint64ArrayCtor
+        }
+
+        fun getProto(realm: Realm) = when (this) {
+            Int8 -> realm.int8ArrayProto
+            Uint8 -> realm.uint8ArrayProto
+            Uint8C -> realm.uint8CArrayProto
+            Int16 -> realm.int16ArrayProto
+            Uint16 -> realm.uint16ArrayProto
+            Int32 -> realm.int32ArrayProto
+            Uint32 -> realm.uint32ArrayProto
+            Float32 -> realm.float32ArrayProto
+            Float64 -> realm.float64ArrayProto
+            BigInt64 -> realm.bigInt64ArrayProto
+            BigUint64 -> realm.bigUint64ArrayProto
+        }
     }
 
     enum class TypedArrayOrder {

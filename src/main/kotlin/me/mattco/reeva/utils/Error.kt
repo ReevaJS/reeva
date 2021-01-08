@@ -3,6 +3,7 @@ package me.mattco.reeva.utils
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.errors.*
 import me.mattco.reeva.runtime.objects.PropertyKey
 
@@ -323,5 +324,16 @@ object Errors {
 
     object Symbol {
         object KeyForBadArg : Error("the first argument to Symbol.keyFor must be a symbol")
+    }
+
+    object TypedArrays {
+        class InvalidByteOffset(offset: Int, kind: Operations.TypedArrayKind) : Error("invalid ${kind.name}Array offset " +
+                "$offset ($offset % ${kind.size} !== 0)")
+        class InvalidBufferLength(length: Int, kind: Operations.TypedArrayKind) : Error("cannot initialize ${kind.name}Array " +
+                "from ArrayBuffer with length $length ($length % ${kind.size} !== 0)")
+        class InvalidOffsetAndBufferSize(offset: Int, size: Int, kind: Operations.TypedArrayKind) : Error("cannot " +
+                "initialize ${kind.name}Array with offset $offset from buffer of size $size")
+        class InvalidOffsetAndLength(offset: Int, length: Int, size: Int, kind: Operations.TypedArrayKind) : Error("cannot " +
+                "initialize ${kind.name}Array with offset $offset and length $length from buffer of size $size")
     }
 }

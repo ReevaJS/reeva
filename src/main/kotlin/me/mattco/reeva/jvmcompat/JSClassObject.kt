@@ -111,7 +111,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
                 JSUndefined
             }
 
-            obj.defineNativeProperty(field.name.key(), Descriptor.defaultAttributes, getter, setter)
+            obj.defineNativeProperty(field.name.key(), Descriptor.DEFAULT_ATTRIBUTES, getter, setter)
         }
 
         clazz.methods.groupBy { it.name to Modifier.isStatic(it.modifiers) }.forEach { (key, availableMethods) ->
@@ -157,7 +157,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
             receiver.defineNativeFunction(
                 name,
                 availableMethods.minOf { it.parameterCount },
-                Descriptor.defaultAttributes,
+                Descriptor.DEFAULT_ATTRIBUTES,
                 nativeMethod
             )
         }
