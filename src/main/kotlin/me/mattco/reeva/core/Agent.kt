@@ -4,6 +4,7 @@ import me.mattco.reeva.compiler.ReevaClassLoader
 import me.mattco.reeva.core.tasks.Microtask
 import me.mattco.reeva.core.tasks.Task
 import me.mattco.reeva.utils.expect
+import java.nio.ByteOrder
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -16,6 +17,12 @@ class Agent private constructor() {
     val runningContextStack = CopyOnWriteArrayList<ExecutionContext>()
 
     internal val compilerClassLoader = ReevaClassLoader()
+
+    val byteOrder = ByteOrder.nativeOrder()
+    val isLittleEndian: Boolean
+        get() = byteOrder == ByteOrder.LITTLE_ENDIAN
+    val isBigEndian: Boolean
+        get() = byteOrder == ByteOrder.BIG_ENDIAN
 
     init {
         activeAgentList.add(this)

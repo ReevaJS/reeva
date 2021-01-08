@@ -4,11 +4,14 @@ import me.mattco.reeva.Reeva
 import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
+import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Error
 import me.mattco.reeva.utils.JSArguments
+import me.mattco.reeva.utils.argument
 
 class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(realm) {
     override fun init() {
@@ -24,6 +27,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
             defineOwnProperty("global", this@Test262GlobalObject, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
             defineOwnProperty("agent", JS262AgentObject.create(realm), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
             defineNativeFunction("createRealm", 0, ::createRealm)
+            defineNativeFunction("detachArrayBuffer", 1, ::detachArrayBuffer)
             defineNativeFunction("gc", 0, ::gc)
         }
 
@@ -33,6 +37,11 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
             val newGlobal = Test262GlobalObject.create(newRealm)
             newRealm.setGlobalObject(newGlobal)
             return newGlobal.get("$262")
+        }
+
+        fun detachArrayBuffer(thisValue: JSValue, arguments: JSArguments): JSValue {
+            Operations.detachArrayBuffer(arguments.argument(0))
+            return JSUndefined
         }
 
         fun gc(thisValue: JSValue, arguments: JSArguments): JSValue {

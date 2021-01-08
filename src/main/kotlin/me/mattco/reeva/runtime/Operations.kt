@@ -31,6 +31,7 @@ import me.mattco.reeva.jvmcompat.JSClassObject
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpProto
+import me.mattco.reeva.runtime.memory.DataBlock
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
@@ -41,6 +42,8 @@ import me.mattco.reeva.utils.*
 import org.joni.Matcher
 import org.joni.Option
 import java.math.BigInteger
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.time.*
 import java.time.format.TextStyle
 import java.util.*
@@ -53,10 +56,20 @@ import kotlin.math.pow
 
 @OptIn(ExperimentalContracts::class)
 object Operations {
-    const val MAX_SAFE_INTEGER: Long = (2L shl 52) - 1L
-    const val MAX_32BIT_INT = 2L shl 31
-    const val MAX_31BIT_INT = 2L shl 30
-    const val MAX_16BIT_INT = 2 shl 15
+    const val MAX_SAFE_INTEGER: Long = (1L shl 53) - 1L
+    const val MAX_32BIT_INT = 1L shl 32
+    const val MAX_31BIT_INT = 1L shl 31
+    const val MAX_16BIT_INT = 1 shl 16
+    const val MAX_15BIT_INT = 1 shl 15
+    const val MAX_8BIT_INT = 1 shl 8
+    const val MAX_7BIT_INT = 1 shl 7
+
+    val MAX_64BIT_INT = BigInteger(1, byteArrayOf(
+        0x80.toByte(), 0x00, 0x00, 0x00
+    ))
+    val MAX_63BIT_INT = BigInteger(1, byteArrayOf(
+        0x40.toByte(), 0x00, 0x00, 0x00
+    ))
 
     val defaultZone = ZoneId.systemDefault()
     val defaultZoneOffset = defaultZone.rules.getOffset(Instant.now())
@@ -448,6 +461,21 @@ object Operations {
         return value.number.toString(10)
     }
 
+    @JvmStatic @ECMAImpl("6.2.8.1")
+    fun createByteDataBlock(size: Int): DataBlock {
+        ecmaAssert(size >= 0)
+        try {
+            return DataBlock(size)
+        } catch (e: OutOfMemoryError) {
+            Errors.DataBlock.OutOfMemory(size).throwRangeError()
+        }
+    }
+
+    @JvmStatic
+    fun copyDataBlockBytes(toBlock: DataBlock, toIndex: Int, fromBlock: DataBlock, fromIndex: Int, count: Int) {
+        toBlock.copyFrom(fromBlock, fromIndex, toIndex, count)
+    }
+
     @JvmStatic @ECMAImpl("6.2.4.4")
     fun getValue(reference: JSValue): JSValue {
         if (reference !is JSReference)
@@ -569,7 +597,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("7.1.4")
-    fun toNumber(value: JSValue): JSValue {
+    fun toNumber(value: JSValue): JSNumber {
         return when (value) {
             JSUndefined -> JSNumber.NaN
             JSNull, JSFalse -> JSNumber.ZERO
@@ -598,7 +626,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("7.1.5")
-    fun toIntegerOrInfinity(value: JSValue): JSValue {
+    fun toIntegerOrInfinity(value: JSValue): JSNumber {
         val number = toNumber(value)
         if (number.isNaN || number.isZero)
             return 0.toValue()
@@ -610,7 +638,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("7.1.6")
-    fun toInt32(value: JSValue): JSValue {
+    fun toInt32(value: JSValue): JSNumber {
         val number = toNumber(value)
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
@@ -626,7 +654,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("7.1.7")
-    fun toUint32(value: JSValue): JSValue {
+    fun toUint32(value: JSValue): JSNumber {
         val number = toNumber(value)
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
@@ -635,13 +663,77 @@ object Operations {
         return JSNumber(int % MAX_32BIT_INT)
     }
 
-    @JvmStatic @ECMAImpl("7.1.9")
-    fun toUint16(value: JSValue): Int {
+    @JvmStatic @ECMAImpl("7.1.8")
+    fun toInt16(value: JSValue): JSNumber {
         val number = toNumber(value)
         if (number.isZero || number.isInfinite || number.isNaN)
-            return 0
+            return JSNumber.ZERO
 
-        return floor(abs(number.asDouble)).toInt() % MAX_16BIT_INT
+        var int = floor(abs(number.asDouble)).toLong()
+        if (number.asDouble < 0)
+            int *= -1L
+
+        val int16bit = int % MAX_16BIT_INT
+        if (int16bit >= MAX_15BIT_INT)
+            return JSNumber(int16bit - MAX_15BIT_INT)
+        return JSNumber(int16bit)
+    }
+
+    @JvmStatic @ECMAImpl("7.1.9")
+    fun toUint16(value: JSValue): JSNumber {
+        val number = toNumber(value)
+        if (number.isZero || number.isInfinite || number.isNaN)
+            return JSNumber.ZERO
+
+        val int = floor(abs(number.asDouble)).toLong()
+        return JSNumber(int % MAX_16BIT_INT)
+    }
+
+    @JvmStatic @ECMAImpl("7.1.10")
+    fun toInt8(value: JSValue): JSNumber {
+        val number = toNumber(value)
+        if (number.isZero || number.isInfinite || number.isNaN)
+            return JSNumber.ZERO
+
+        var int = floor(abs(number.asDouble)).toLong()
+        if (number.asDouble < 0)
+            int *= -1L
+
+        val int8bit = int % MAX_8BIT_INT
+        if (int8bit >= MAX_7BIT_INT)
+            return JSNumber(int8bit - MAX_7BIT_INT)
+        return JSNumber(int8bit)
+    }
+
+    @JvmStatic @ECMAImpl("7.1.11")
+    fun toUint8(value: JSValue): JSNumber {
+        val number = toNumber(value)
+        if (number.isZero || number.isInfinite || number.isNaN)
+            return JSNumber.ZERO
+
+        val int = floor(abs(number.asDouble)).toLong()
+        return JSNumber(int % MAX_8BIT_INT)
+    }
+
+    @JvmStatic @ECMAImpl("7.1.12")
+    fun toUint8Clamp(value: JSValue): JSNumber {
+        val number = toNumber(value)
+        if (number.isNaN)
+            return JSNumber.ZERO
+        if (number.number <= 0)
+            return JSNumber.ZERO
+        if (number.number >= 255)
+            return JSNumber(255)
+
+        val double = number.number
+        val floored = floor(double)
+        if (floored + 0.5 < double)
+            return JSNumber(floored + 1.0)
+        if (double < floored + 0.5)
+            return JSNumber(floored)
+        if (floored.toInt() % 2 == 1)
+            return JSNumber(floored + 1.0)
+        return JSNumber(floored)
     }
 
     @JvmStatic @ECMAImpl("7.1.13")
@@ -686,6 +778,20 @@ object Operations {
         } catch (e: NumberFormatException) {
             Errors.BigInt.Conversion(string).throwSyntaxError()
         }
+    }
+
+    @JvmStatic @ECMAImpl("7.1.15")
+    fun toBigInt64(value: JSValue): JSBigInt {
+        val n = toBigInt(value)
+        val int64bit = n.number.mod(MAX_64BIT_INT)
+        if (int64bit >= MAX_63BIT_INT)
+            return int64bit.subtract(MAX_64BIT_INT).toValue()
+        return int64bit.toValue()
+    }
+
+    @JvmStatic @ECMAImpl("7.1.16")
+    fun toBigUint64(value: JSValue): JSBigInt {
+        return toBigInt(value).number.mod(MAX_64BIT_INT).toValue()
     }
 
     @JvmStatic @ECMAImpl("7.1.17")
@@ -1195,7 +1301,8 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("7.3.22")
-    fun speciesConstructor(obj: JSObject, defaultCtor: JSFunction): JSFunction {
+    fun speciesConstructor(obj: JSValue, defaultCtor: JSFunction): JSFunction {
+        ecmaAssert(obj is JSObject)
         val ctor = obj.get("constructor")
         if (ctor == JSUndefined)
             return defaultCtor
@@ -2305,6 +2412,182 @@ object Operations {
         }
     }
 
+    @JvmStatic @ECMAImpl("24.1.2.1")
+    fun allocateArrayBuffer(realm: Realm, constructor: JSValue, byteLength: Int): JSObject {
+        val slots = listOf(SlotName.ArrayBufferData, SlotName.ArrayBufferByteLength, SlotName.ArrayBufferDetachKey)
+        val obj = ordinaryCreateFromConstructor(constructor, realm.arrayBufferProto, slots)
+        val block = createByteDataBlock(byteLength)
+        obj.setSlot(SlotName.ArrayBufferData, block)
+        obj.setSlot(SlotName.ArrayBufferByteLength, byteLength)
+        return obj
+    }
+
+    @JvmStatic @ECMAImpl("24.1.2.2")
+    fun isDetachedBuffer(buffer: JSValue): Boolean {
+        ecmaAssert(buffer is JSObject && buffer.hasSlot(SlotName.ArrayBufferData))
+        return buffer.getSlot(SlotName.ArrayBufferData) == null
+    }
+
+    @JvmStatic @ECMAImpl("24.1.2.3")
+    fun detachArrayBuffer(arrayBuffer: JSValue, key: JSValue = JSUndefined) {
+        ecmaAssert(arrayBuffer is JSObject)
+        ecmaAssert(arrayBuffer.hasSlots(SlotName.ArrayBufferData, SlotName.ArrayBufferByteLength, SlotName.ArrayBufferDetachKey))
+        ecmaAssert(!isSharedArrayBuffer(arrayBuffer))
+
+        val expectedKey = arrayBuffer.getSlotAs<JSValue>(SlotName.ArrayBufferDetachKey)
+        if (!expectedKey.sameValue(key))
+            Errors.ArrayBuffer.BadDetachKey(expectedKey.toPrintableString(), key.toPrintableString()).throwTypeError()
+
+        arrayBuffer.setSlot(SlotName.ArrayBufferData, null)
+        arrayBuffer.setSlot(SlotName.ArrayBufferByteLength, 0)
+    }
+
+    @JvmStatic @ECMAImpl("24.1.2.4")
+    fun cloneArrayBuffer(
+        realm: Realm,
+        srcBuffer: JSValue,
+        srcByteOffset: Int,
+        srcLength: Int,
+        cloneConstructor: JSValue
+    ): JSObject {
+        ecmaAssert(srcBuffer is JSObject && srcBuffer.hasSlot(SlotName.ArrayBufferData))
+        ecmaAssert(cloneConstructor.isConstructor)
+
+        val targetBuffer = allocateArrayBuffer(realm, cloneConstructor, srcLength)
+        if (isDetachedBuffer(srcBuffer))
+            Errors.TODO("cloneArrayBuffer isDetachedBuffer").throwTypeError()
+        val srcBlock = srcBuffer.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
+        val targetBlock = targetBuffer.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
+        copyDataBlockBytes(targetBlock, 0, srcBlock, srcByteOffset, srcLength)
+        return targetBuffer
+    }
+
+    @JvmStatic @ECMAImpl("24.1.2.5")
+    fun isUnsignedElementType(type: TypedArrayKind) = type.isUnsigned
+
+    @JvmStatic @ECMAImpl("24.1.2.6")
+    fun isUnclampedIntegerElementType(type: TypedArrayKind) = type.isUnclampedInt
+
+    @JvmStatic @ECMAImpl("24.1.2.7")
+    fun isBigIntElementType(type: TypedArrayKind) = type.isBigInt
+
+    @JvmStatic @ECMAImpl("24.1.2.8")
+    fun isNoTearConfiguration(type: TypedArrayKind, order: TypedArrayOrder): Boolean {
+        if (isUnclampedIntegerElementType(type))
+            return true
+        if (isBigIntElementType(type) && order != TypedArrayOrder.Init && order != TypedArrayOrder.Unordered)
+            return true
+        return false
+    }
+
+    @JvmStatic @ECMAImpl("24.1.2.9")
+    fun rawBytesToNumeric(type: TypedArrayKind, rawBytes: ByteArray, isLittleEndian: Boolean): JSValue {
+        if (isLittleEndian)
+            rawBytes.reverse()
+
+        if (type == TypedArrayKind.Float32)
+            return ByteBuffer.wrap(rawBytes).float.toValue()
+        if (type == TypedArrayKind.Float64)
+            return ByteBuffer.wrap(rawBytes).double.toValue()
+
+        return if (isBigIntElementType(type)) {
+            if (isUnsignedElementType(type)) {
+                JSBigInt(BigInteger(1, rawBytes))
+            } else JSBigInt(BigInteger(rawBytes))
+        } else {
+            // TODO: There's gotta be a better way to do this...
+            if (isUnsignedElementType(type)) {
+                if (rawBytes[0] < 0) {
+                    val buff = ByteBuffer.wrap(rawBytes)
+                    var value = 0.0
+
+                    while (buff.hasRemaining()) {
+                        value *= 256.0
+                        value += java.lang.Byte.toUnsignedInt(buff.get()).toDouble()
+                    }
+
+                    value.toValue()
+                } else ByteBuffer.wrap(rawBytes).int.toValue()
+            } else ByteBuffer.wrap(rawBytes).int.toValue()
+        }
+    }
+
+    @JvmStatic @ECMAImpl("24.1.2.10")
+    fun getValueFromBuffer(
+        arrayBuffer: JSValue,
+        byteIndex: Int,
+        type: TypedArrayKind,
+        isTypedArray: Boolean,
+        order: TypedArrayOrder,
+        isLittleEndian: Boolean = Agent.activeAgent.isLittleEndian
+    ): JSValue {
+        ecmaAssert(arrayBuffer is JSObject)
+        ecmaAssert(!isDetachedBuffer(arrayBuffer))
+        val block = arrayBuffer.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
+        ecmaAssert(byteIndex + type.size < block.size)
+
+        if (isSharedArrayBuffer(arrayBuffer))
+            TODO()
+
+        val rawBytes = block.getBytes(byteIndex, type.size)
+        return rawBytesToNumeric(type, rawBytes, isLittleEndian)
+    }
+
+    @JvmStatic @ECMAImpl("24.1.2.11")
+    fun numericToRawBytes(type: TypedArrayKind, value: JSValue, isLittleEndian: Boolean): ByteArray {
+        when (type) {
+            TypedArrayKind.Float32 -> {
+                expect(value is JSNumber)
+                return ByteBuffer.allocate(4).putInt(value.number.toFloat().toRawBits()).array()
+            }
+            TypedArrayKind.Float64 -> {
+                expect(value is JSNumber)
+                return ByteBuffer.allocate(8).putLong(value.number.toRawBits()).array()
+            }
+            else -> {
+                val convOp = type.convOp!!
+                val numValue = convOp(value)
+                if (numValue is JSBigInt) {
+                    val arr = numValue.number.toByteArray()
+                    if (isLittleEndian)
+                        arr.reverse()
+                    return arr
+                }
+
+                expect(numValue is JSNumber)
+                return ByteBuffer.allocate(4).putInt(numValue.number.toInt()).array()
+            }
+        }
+    }
+
+    @JvmStatic @ECMAImpl("24.1.2.12")
+    fun setValueInBuffer(
+        arrayBuffer: JSValue,
+        byteIndex: Int,
+        type: TypedArrayKind,
+        value: JSValue,
+        isTypedArray: Boolean,
+        order: TypedArrayOrder,
+        isLittleEndian: Boolean = Agent.activeAgent.isLittleEndian
+    ) {
+        ecmaAssert(arrayBuffer is JSObject)
+        ecmaAssert(!isDetachedBuffer(arrayBuffer))
+        ecmaAssert(if (value is JSBigInt) isBigIntElementType(type) else value is JSNumber)
+
+        val block = arrayBuffer.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
+        ecmaAssert(byteIndex + type.size <= block.size)
+
+        val rawBytes = numericToRawBytes(type, value, isLittleEndian)
+        if (isSharedArrayBuffer(arrayBuffer))
+            TODO()
+
+        block.copyFrom(rawBytes, 0, byteIndex, type.size)
+    }
+
+    // Reeva doesn't support SharedArrayBuffers
+    @JvmStatic @ECMAImpl("24.2.1.2")
+    fun isSharedArrayBuffer(obj: JSValue) = false
+
     @JvmStatic @ECMAImpl("26.6.1.3")
     fun createResolvingFunctions(promise: JSObject): Pair<JSFunction, JSFunction> {
         val resolvedStatus = Wrapper(false)
@@ -2538,6 +2821,31 @@ object Operations {
         Start,
         End,
         StartEnd
+    }
+
+    enum class TypedArrayKind(
+        val size: Int,
+        val isUnsigned: Boolean,
+        val isUnclampedInt: Boolean,
+        val isBigInt: Boolean,
+        val convOp: ((JSValue) -> JSValue)?
+    ) {
+        Int8(1, false, true, false, ::toInt8),
+        Uint8(1, true, true, false, ::toUint8),
+        Uint8C(1, true, false, false, ::toUint8Clamp),
+        Int16(2, false, true, false, ::toInt16),
+        Uint16(2, true, true, false, ::toUint16),
+        Int32(4, false, true, false, ::toInt32),
+        Uint32(4, true, true, false, ::toUint32),
+        Float32(4, false, false, false, null),
+        Float64(4, false, false, false, null),
+        BigInt64(4, false, false, true, ::toBigInt64),
+        BigUint64(4, true, false, true, ::toBigUint64);
+    }
+
+    enum class TypedArrayOrder {
+        Init,
+        Unordered,
     }
 
     data class PromiseReaction(

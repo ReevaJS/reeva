@@ -248,9 +248,8 @@ open class JSObject protected constructor(
         attributes: Int,
         getter: NativeGetterSignature? = null,
         setter: NativeSetterSignature? = null,
-        name: String = ""
     ) {
-        defineNativeAccessor(key.key(), attributes, getter, setter, name)
+        defineNativeAccessor(key.key(), attributes, getter, setter)
     }
 
     fun defineNativeAccessor(
@@ -258,13 +257,13 @@ open class JSObject protected constructor(
         attributes: Int,
         getter: NativeGetterSignature? = null,
         setter: NativeSetterSignature? = null,
-        name: String = ""
+        name: String? = null
     ) {
         val getterFunc = getter?.let { f ->
-            JSNativeFunction.fromLambda(realm, name, 0) { thisValue, _ -> f(thisValue) }
+            JSNativeFunction.fromLambda(realm, "get ${name ?: key}", 0) { thisValue, _ -> f(thisValue) }
         }
         val setterFunc = setter?.let { f ->
-            JSNativeFunction.fromLambda(realm, name, 0) { thisValue, args ->
+            JSNativeFunction.fromLambda(realm, "set ${name ?: key}", 0) { thisValue, args ->
                 if (args.size != 1)
                     TODO()
                 f(thisValue, args[0])
@@ -318,6 +317,8 @@ open class JSObject protected constructor(
     }
 
     fun hasSlot(name: SlotName) = name in slots
+
+    fun hasSlots(vararg names: SlotName) = names.all(::hasSlot)
 
     fun getSlot(name: SlotName) = slots[name]
 

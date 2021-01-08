@@ -22,6 +22,8 @@ import me.mattco.reeva.jvmcompat.JSPackageProto
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpCtor
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpProto
 import me.mattco.reeva.runtime.builtins.regexp.JSRegExpStringIteratorProto
+import me.mattco.reeva.runtime.memory.JSArrayBufferCtor
+import me.mattco.reeva.runtime.memory.JSArrayBufferProto
 import me.mattco.reeva.runtime.objects.*
 import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.primitives.JSSymbol
@@ -63,6 +65,8 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     val regExpStringIteratorProto by lazy { JSRegExpStringIteratorProto.create(this) }
     val consoleProto by lazy { JSConsoleProto.create(this) }
 
+    val arrayBufferProto by lazy { JSArrayBufferProto.create(this) }
+
     val errorProto by lazy { JSErrorProto.create(this) }
     val evalErrorProto by lazy { JSEvalErrorProto.create(this) }
     val internalErrorProto by lazy { JSInternalErrorProto.create(this) }
@@ -85,6 +89,8 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     val proxyCtor by lazy { JSProxyCtor.create(this) }
     val promiseCtor by lazy { JSPromiseCtor.create(this) }
     val dateCtor by lazy { JSDateCtor.create(this) }
+
+    val arrayBufferCtor by lazy { JSArrayBufferCtor.create(this) }
 
     val errorCtor by lazy { JSErrorCtor.create(this) }
     val evalErrorCtor by lazy { JSEvalErrorCtor.create(this) }
@@ -135,6 +141,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
         setCtor.defineOwnProperty("prototype", setProto, Descriptor.HAS_BASIC)
         mapCtor.defineOwnProperty("prototype", mapProto, Descriptor.HAS_BASIC)
         dateCtor.defineOwnProperty("prototype", dateProto, Descriptor.HAS_BASIC)
+        arrayBufferCtor.defineOwnProperty("prototype", arrayBufferProto, Descriptor.HAS_BASIC)
         errorCtor.defineOwnProperty("prototype", errorProto, Descriptor.HAS_BASIC)
         evalErrorCtor.defineOwnProperty("prototype", evalErrorProto, Descriptor.HAS_BASIC)
         internalErrorCtor.defineOwnProperty("prototype", internalErrorProto, Descriptor.HAS_BASIC)

@@ -1,6 +1,9 @@
 package me.mattco.reeva.runtime
 
 enum class SlotName {
+    ArrayBufferData,
+    ArrayBufferByteLength,
+    ArrayBufferDetachKey,
     BigIntData,
     BooleanData,
     DateValue,
@@ -22,4 +25,5 @@ enum class SlotName {
     SetData,
     StringData,
     SymbolData,
+    ViewedArrayBuffer,
 }

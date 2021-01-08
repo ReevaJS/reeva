@@ -46,7 +46,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     fun fromCharCode(thisValue: JSValue, arguments: JSArguments): JSValue {
         return buildString {
             arguments.forEach {
-                appendCodePoint(Operations.toUint16(it))
+                appendCodePoint(Operations.toUint16(it).asInt)
             }
         }.toValue()
     }

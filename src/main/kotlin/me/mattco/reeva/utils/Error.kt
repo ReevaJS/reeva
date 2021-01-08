@@ -96,6 +96,11 @@ object Errors {
         object ReduceEmptyArray : Error("cannot reduce empty array with no initial value")
     }
 
+    object ArrayBuffer {
+        class BadSpecies(actual: String) : Error("expected object species constructor to return an ArrayBuffer, got $actual")
+        class BadDetachKey(expected: String, actual: String) : Error("provided ArrayBuffer detach key $actual does not match expected key $expected")
+    }
+
     object BigInt {
         object NegativeExponentiation : Error("BigInt exponentiation cannot have a negative exponent")
         object OutOfBoundsExponentiation : Error("cannot exponentiate two BigInts where the exponent is larger than 2**31-1")
@@ -114,6 +119,10 @@ object Errors {
         object DuplicateSuperCall : Error("duplicate super() call in derived class constructor")
         object CtorRequiresNew : Error("cannot call class constructor without \"new\" keyword")
         object ReturnObjectFromDerivedCtor : Error("derived class cannot return a non-object from its constructor")
+    }
+
+    class DataBlock {
+        class OutOfMemory(size: Int) : Error("requested DataBlock size of $size is too large")
     }
 
     object Function {
