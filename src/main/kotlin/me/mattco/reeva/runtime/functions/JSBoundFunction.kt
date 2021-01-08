@@ -21,6 +21,11 @@ class JSBoundFunction private constructor(
     boundTargetFunction.isStrict,
     prototype,
 ) {
+    init {
+        isCallable = boundTargetFunction.isCallable
+        isConstructable = boundTargetFunction.isConstructable
+    }
+
     override fun evaluate(arguments: JSArguments): JSValue {
         val newTarget = super.newTarget
         if (newTarget == JSUndefined)
