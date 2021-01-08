@@ -24,6 +24,11 @@ class Test262Test(
             Assumptions.assumeTrue(metadata.features?.any { "intl" in it.toLowerCase() } != true)
             Assumptions.assumeTrue(metadata.features?.any { it in excludedFeatures } != true)
 
+            // TODO: This function is used by many regexp tests, and often leads to for loops
+            // which are too intensive to run in Reeva. We'll have to do some more optimizations
+            // before we can allow these tests.
+            Assumptions.assumeTrue("buildString({" !in script)
+
             println("File: ${Test262Runner.testDirectoryStr}$name")
 
             var requiredScript = Test262Runner.pretestScript

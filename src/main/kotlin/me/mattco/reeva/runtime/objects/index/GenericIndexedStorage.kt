@@ -197,13 +197,12 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
     }
 
     override fun setArrayLikeSize(size: Long) {
-        sizeBacker = size
         if (size < SPARSE_ARRAY_THRESHOLD) {
             repeat(size.toInt() - packedElements.size) {
                 packedElements.add(Descriptor(JSEmpty, 0))
             }
             sparseElements.clear()
-        } else {
+        } else if (size < sizeBacker) {
             listOf(sparseElements.entries.iterator(), longElements.entries.iterator()).forEach {
                 while (it.hasNext()) {
                     val next = it.next()
@@ -212,6 +211,7 @@ class GenericIndexedStorage(simpleStorage: SimpleIndexedStorage) : IndexedStorag
                 }
             }
         }
+        sizeBacker = size
     }
 
     companion object {

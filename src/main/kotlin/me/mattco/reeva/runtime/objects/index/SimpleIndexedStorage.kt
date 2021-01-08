@@ -71,15 +71,15 @@ class SimpleIndexedStorage : IndexedStorage {
 
     override fun setArrayLikeSize(size: Long) {
         expect(size <= IndexedStorage.SPARSE_ARRAY_THRESHOLD)
-        sizeBacker = size
         if (size > elements.size.toLong()) {
             repeat((size - elements.size.toLong()).toInt()) {
                 elements.add(JSEmpty)
             }
-        } else {
+        } else if (size < sizeBacker) {
             for (i in elements.lastIndex downTo size.toInt()) {
                 elements.removeAt(i)
             }
         }
+        sizeBacker = size
     }
 }
