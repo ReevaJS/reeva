@@ -2691,7 +2691,7 @@ class Parser(text: String) {
             consume()
             null
         } else {
-            if (isStrict) {
+            if (isStrict && op == UnaryExpressionNode.Operator.Delete) {
                 var theExprToCheck = expr
                 while (theExprToCheck is ParenthesizedExpressionNode)
                     theExprToCheck = theExprToCheck.target
