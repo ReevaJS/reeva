@@ -14,6 +14,9 @@ import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.core.environment.ModuleEnvRecord
 import me.mattco.reeva.core.tasks.Microtask
 import me.mattco.reeva.interpreter.Interpreter
+import me.mattco.reeva.jvmcompat.JSClassInstanceObject
+import me.mattco.reeva.jvmcompat.JSClassObject
+import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.builtins.JSMappedArgumentsObject
@@ -23,14 +26,12 @@ import me.mattco.reeva.runtime.builtins.promises.JSCapabilitiesExecutor
 import me.mattco.reeva.runtime.builtins.promises.JSPromiseObject
 import me.mattco.reeva.runtime.builtins.promises.JSRejectFunction
 import me.mattco.reeva.runtime.builtins.promises.JSResolveFunction
+import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
+import me.mattco.reeva.runtime.builtins.regexp.JSRegExpProto
 import me.mattco.reeva.runtime.functions.JSBoundFunction
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
-import me.mattco.reeva.jvmcompat.JSClassInstanceObject
-import me.mattco.reeva.jvmcompat.JSClassObject
-import me.mattco.reeva.parser.Parser
-import me.mattco.reeva.runtime.builtins.regexp.JSRegExpObject
-import me.mattco.reeva.runtime.builtins.regexp.JSRegExpProto
+import me.mattco.reeva.runtime.iterators.JSArrayIterator
 import me.mattco.reeva.runtime.memory.DataBlock
 import me.mattco.reeva.runtime.memory.JSIntegerIndexedObject
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -49,10 +50,7 @@ import java.time.format.TextStyle
 import java.util.*
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
-import kotlin.math.abs
-import kotlin.math.floor
-import kotlin.math.min
-import kotlin.math.pow
+import kotlin.math.*
 
 @OptIn(ExperimentalContracts::class)
 object Operations {
@@ -112,6 +110,13 @@ object Operations {
             env = env.outerEnv
         }
         return false
+    }
+
+    @JvmStatic
+    fun mapWrappedArrayIndex(index: JSNumber, arrayLength: Long): Long = when {
+        index.isNegativeInfinity -> 0L
+        index.asLong < 0L -> max(arrayLength + index.asLong, 0L)
+        else -> min(index.asLong, arrayLength)
     }
 
     @JvmStatic @ECMAImpl("6.1.6.1.1")
@@ -2438,6 +2443,11 @@ object Operations {
         }
 
         return arr
+    }
+
+    @ECMAImpl("22.1.5.1")
+    fun createArrayIterator(realm: Realm, array: JSObject, kind: JSObject.PropertyKind): JSValue {
+        return JSArrayIterator.create(realm, array, 0, kind)
     }
 
     @JvmStatic @ECMAImpl("22.2.4.1")

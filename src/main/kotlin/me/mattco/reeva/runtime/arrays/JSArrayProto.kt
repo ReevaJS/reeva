@@ -1,16 +1,13 @@
 package me.mattco.reeva.runtime.arrays
 
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.iterators.JSArrayIterator
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
-import me.mattco.reeva.runtime.primitives.JSFalse
-import me.mattco.reeva.runtime.primitives.JSNull
-import me.mattco.reeva.runtime.primitives.JSTrue
-import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.runtime.primitives.*
+import me.mattco.reeva.runtime.toIntegerOrInfinity
+import me.mattco.reeva.runtime.toObject
 import me.mattco.reeva.utils.*
 import kotlin.math.floor
 import kotlin.math.max
@@ -51,6 +48,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         defineNativeFunction("flat", 1, ::flat)
         defineNativeFunction("flatMap", 1, ::flatMap)
         defineNativeFunction("forEach", 1, ::forEach)
+        defineNativeFunction("includes", 1, ::includes)
         defineNativeFunction("join", 1, ::join)
         defineNativeFunction("keys", 1, ::keys)
         defineNativeFunction("lastIndexOf", 1, ::lastIndexOf)
@@ -120,28 +118,13 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val thisObj = Operations.toObject(thisValue)
         val length = Operations.lengthOfArrayLike(thisObj)
 
-        val relativeTarget = Operations.toIntegerOrInfinity(target)
-        var to = when {
-            relativeTarget.isNegativeInfinity -> 0
-            relativeTarget.asLong < 0 -> max(length + relativeTarget.asLong, 0L)
-            else -> min(relativeTarget.asLong, length)
-        }
-        val relativeStart = Operations.toIntegerOrInfinity(start)
+        var to = Operations.mapWrappedArrayIndex(Operations.toIntegerOrInfinity(target), length)
+        var from = Operations.mapWrappedArrayIndex(Operations.toIntegerOrInfinity(start), length)
 
-        var from = when {
-            relativeStart.isNegativeInfinity -> 0
-            relativeStart.asLong < 0 -> max(length + relativeStart.asLong, 0L)
-            else -> min(relativeStart.asLong, length)
-        }
         val relativeEnd = if (end == JSUndefined) {
             length.toValue()
         } else Operations.toIntegerOrInfinity(end)
-
-        val final = when {
-            relativeEnd.isNegativeInfinity -> 0
-            relativeEnd.asLong < 0L -> max(length + relativeEnd.asLong, 0L)
-            else -> min(relativeEnd.asLong, length)
-        }
+        val final = Operations.mapWrappedArrayIndex(relativeEnd, length)
 
         var count = min(final - from, length - to)
         val direction = if (from < to && to < from + count) {
@@ -167,30 +150,11 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
     fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
-        return createArrayIterator(realm, obj, PropertyKind.KeyValue)
+        return Operations.createArrayIterator(realm, obj, PropertyKind.KeyValue)
     }
 
     fun every(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val (callback, thisArg) = arguments.takeArgs(0..1)
-
-        if (!Operations.isCallable(callback))
-            Errors.Array.CallableFirstArg("every").throwTypeError()
-
-        val thisObj = Operations.toObject(thisValue)
-        val length = Operations.lengthOfArrayLike(thisObj)
-
-        for (index in Operations.objectIndices(thisObj)) {
-            if (index >= length)
-                break
-
-            val value = thisObj.get(index)
-            val testResult = Operations.call(callback, thisArg, listOf(value, index.toValue(), thisObj))
-            val testBoolean = Operations.toBoolean(testResult)
-            if (!testBoolean)
-                return JSFalse
-        }
-
-        return JSTrue
+        return genericArrayEvery(thisValue, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
     fun fill(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -199,23 +163,13 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val length = Operations.lengthOfArrayLike(thisObj)
 
         val (value, start, end) = arguments.takeArgs(0..2)
-        val relativeStart = Operations.toIntegerOrInfinity(start)
-
-        var startIndex = when {
-            relativeStart.isNegativeInfinity -> 0
-            relativeStart.asLong < 0L -> max(length + relativeStart.asLong, 0L)
-            else -> min(relativeStart.asLong, length)
-        }
+        var startIndex = Operations.mapWrappedArrayIndex(Operations.toIntegerOrInfinity(start), length)
 
         val relativeEnd = if (end == JSUndefined) {
             length.toValue()
         } else Operations.toIntegerOrInfinity(end)
 
-        val endIndex = when {
-            relativeEnd.isNegativeInfinity -> 0
-            relativeEnd.asLong < 0L -> max(length + relativeEnd.asLong, 0L)
-            else -> min(relativeEnd.asLong, length)
-        }
+        val endIndex = Operations.mapWrappedArrayIndex(relativeEnd, length)
 
         while (startIndex < endIndex) {
             thisObj.set(startIndex, value)
@@ -254,47 +208,11 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     }
 
     fun find(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val thisObj = Operations.toObject(thisValue)
-        val length = Operations.lengthOfArrayLike(thisObj)
-        val (predicate, thisArg) = arguments.takeArgs(0..1)
-
-        if (!Operations.isCallable(predicate))
-            Errors.Array.CallableFirstArg("find").throwTypeError()
-
-        for (index in Operations.objectIndices(thisObj)) {
-            if (index >= length)
-                break
-
-            val value = thisObj.get(index)
-            val testResult = Operations.call(predicate, thisArg, listOf(value, index.toValue(), thisObj))
-            val booleanResult = Operations.toBoolean(testResult)
-            if (booleanResult)
-                return value
-        }
-
-        return JSUndefined
+        return genericArrayFind(thisValue, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
     fun findIndex(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val thisObj = Operations.toObject(thisValue)
-        val length = Operations.lengthOfArrayLike(thisObj)
-        val (predicate, thisArg) = arguments.takeArgs(0..1)
-
-        if (!Operations.isCallable(predicate))
-            Errors.Array.CallableFirstArg("findIndex").throwTypeError()
-
-        for (index in Operations.objectIndices(thisObj)) {
-            if (index >= length)
-                break
-
-            val value = thisObj.get(index)
-            val testResult = Operations.call(predicate, thisArg, listOf(value, index.toValue(), thisObj))
-            val booleanResult = Operations.toBoolean(testResult)
-            if (booleanResult)
-                return index.toValue()
-        }
-
-        return JSUndefined
+        return genericArrayFindIndex(thisValue, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
     fun flat(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -323,73 +241,24 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     }
 
     fun forEach(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(thisValue)
-        val length = Operations.lengthOfArrayLike(obj)
+        return genericArrayForEach(thisValue, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
+    }
 
-        val callbackFn = arguments.argument(0)
-        if (!Operations.isCallable(callbackFn))
-            Errors.Array.CallableFirstArg("forEach").throwTypeError()
-
-        for (index in Operations.objectIndices(obj)) {
-            if (index >= length)
-                break
-
-            val value = obj.indexedProperties.get(thisValue, index)
-            Operations.call(callbackFn, arguments.argument(1), listOf(value, index.toValue(), obj))
-        }
-
-        return JSUndefined
+    fun includes(thisValue: JSValue, arguments: JSArguments): JSValue {
+        return genericArrayIncludes(thisValue, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
     fun join(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(thisValue)
-        val length = Operations.lengthOfArrayLike(obj)
-        val sep = if (arguments.isEmpty()) "," else Operations.toString(arguments[0]).string
-
-        return buildString {
-            for (i in 0 until length) {
-                if (i > 0)
-                    append(sep)
-                val element = obj.get(i)
-                if (!element.isNullish)
-                    append(Operations.toString(element).string)
-            }
-        }.toValue()
+        return genericArrayJoin(thisValue, arguments, Operations::lengthOfArrayLike)
     }
 
     fun keys(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
-        return createArrayIterator(realm, obj, PropertyKind.Key)
+        return Operations.createArrayIterator(realm, obj, PropertyKind.Key)
     }
 
     fun lastIndexOf(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(thisValue)
-        val length = Operations.lengthOfArrayLike(obj)
-        if (length == 0L)
-            return (-1).toValue()
-
-        val (searchElement, fromIndex) = arguments.takeArgs(0..1)
-        val fromNumber = if (fromIndex == JSUndefined) {
-            length - 1L
-        } else Operations.toIntegerOrInfinity(fromIndex).let {
-            if (it.isNegativeInfinity)
-                return (-1).toValue()
-            it.asLong
-        }
-
-        val limit = if (fromNumber >= 0L) {
-            min(fromNumber, length - 1L)
-        } else length + fromNumber
-
-        Operations.objectIndices(obj).reversed().filter {
-            it <= limit
-        }.forEach {
-            val value = obj.get(it)
-            if (Operations.strictEqualityComparison(searchElement, value) == JSTrue)
-                return it.toValue()
-        }
-
-        return (-1).toValue()
+        return genericArrayLastIndexOf(thisValue, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
     fun map(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -437,70 +306,15 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     }
 
     fun reduce(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return reduceHelper(thisValue, arguments, false)
+        return genericArrayReduce(thisValue, arguments, Operations::lengthOfArrayLike, Operations::objectIndices, false)
     }
 
     fun reduceRight(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return reduceHelper(thisValue, arguments, true)
+        return genericArrayReduce(thisValue, arguments, Operations::lengthOfArrayLike, Operations::objectIndices, true)
     }
 
     fun reverse(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(thisValue)
-        var length = Operations.lengthOfArrayLike(obj)
-        val middle = floor(length / 2.0)
-        val indices = Operations.objectIndices(obj)
-
-        val lowerIndices = mutableSetOf<Long>()
-        val upperIndices = mutableSetOf<Long>()
-        indices.forEach {
-            if (it < middle) {
-                lowerIndices.add(it)
-            } else {
-                upperIndices.add(it)
-            }
-        }
-
-        val lowerIt = lowerIndices.iterator()
-        while (lowerIt.hasNext()) {
-            val lowerIndex = lowerIt.next()
-            val lowerVal = obj.get(lowerIndex)
-            val upperIndex = length - lowerIndex - 1
-
-            if (upperIndex in upperIndices) {
-                val upperVal = obj.get(upperIndex)
-                Operations.set(obj, upperIndex.key(), lowerVal, true)
-                Operations.set(obj, lowerIndex.key(), upperVal, true)
-                upperIndices.remove(upperIndex)
-            } else {
-                Operations.set(obj, upperIndex.key(), lowerVal, true)
-                Operations.deletePropertyOrThrow(obj, lowerIndex.key())
-            }
-
-            lowerIt.remove()
-        }
-
-        val upperIt = upperIndices.iterator()
-        while (upperIt.hasNext()) {
-            val upperIndex = upperIt.next()
-            val upperVal = obj.get(upperIndex)
-            val lowerIndex = length - upperIndex - 1
-
-            if (lowerIndex in lowerIndices) {
-                val lowerVal = obj.get(lowerIndex)
-                Operations.set(obj, lowerIndex.key(), upperVal, true)
-                Operations.set(obj, upperIndex.key(), lowerVal, true)
-                lowerIndices.remove(lowerIndex)
-            } else {
-                Operations.set(obj, lowerIndex.key(), upperVal, true)
-                Operations.deletePropertyOrThrow(obj, upperIndex.key())
-            }
-
-            upperIt.remove()
-        }
-
-        expect(lowerIndices.isEmpty() && upperIndices.isEmpty())
-
-        return obj
+        return genericArrayReverse(thisValue, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
     fun shift(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -519,21 +333,12 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val length = Operations.lengthOfArrayLike(obj)
         val (start, end) = arguments.takeArgs(0..1)
 
-        val k = Operations.toIntegerOrInfinity(start).let {
-            when {
-                it.isNegativeInfinity -> 0
-                it.asLong < 0L -> max(length + it.asLong, 0L)
-                else -> min(it.asLong, length)
-            }
-        }
+        val k = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(), length)
+        val relativeEnd = if (end == JSUndefined) {
+            length.toValue()
+        } else Operations.toIntegerOrInfinity(end)
 
-        val final = (if (end == JSUndefined) length else Operations.toIntegerOrInfinity(end).asLong).let {
-            when {
-                it == Long.MIN_VALUE -> 0
-                it < 0L -> max(length + it, 0L)
-                else -> min(it, length)
-            }
-        }
+        val final = Operations.mapWrappedArrayIndex(relativeEnd, length)
 
         val count = max(final - k, 0)
         val array = Operations.arraySpeciesCreate(obj, count)
@@ -551,24 +356,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     }
 
     fun some(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(thisValue)
-        val length = Operations.lengthOfArrayLike(obj)
-        val (callback, thisArg) = arguments.takeArgs(0..1)
-
-        if (!Operations.isCallable(callback))
-            Errors.Array.CallableFirstArg("some").throwTypeError()
-
-        Operations.objectIndices(obj).forEach {
-            if (it >= length)
-                return@forEach
-
-            val value = obj.get(it)
-            val testResult = Operations.toBoolean(Operations.call(callback, thisArg, listOf(value, it.toValue(), obj)))
-            if (testResult)
-                return JSTrue
-        }
-
-        return JSFalse
+        return genericArraySome(thisValue, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
     fun splice(thisValue: JSValue, arguments: JSArguments): JSValue {
@@ -576,13 +364,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         val length = Operations.lengthOfArrayLike(obj)
         val (start, deleteCount) = arguments.takeArgs(0..1)
 
-        val actualStart = Operations.toIntegerOrInfinity(start).let {
-            when {
-                it.isNegativeInfinity -> 0L
-                it.asLong < 0L -> max(length + it.asLong, 0L)
-                else -> min(it.asLong, length)
-            }
-        }
+        val actualStart = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(), length)
 
         val (insertCount, actualDeleteCount) = when {
             arguments.isEmpty() -> 0L to 0L
@@ -677,7 +459,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
     fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
         val obj = Operations.toObject(thisValue)
-        return createArrayIterator(realm, obj, PropertyKind.Value)
+        return Operations.createArrayIterator(realm, obj, PropertyKind.Value)
     }
 
     private fun flattenIntoArray(
@@ -725,42 +507,325 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return targetIndex
     }
 
-    private fun reduceHelper(thisValue: JSValue, arguments: JSArguments, isRight: Boolean): JSValue {
-        val obj = Operations.toObject(thisValue)
-        val length = Operations.lengthOfArrayLike(obj)
-        val (callback, initialValue) = arguments.takeArgs(0..1)
-        if (!Operations.isCallable(callback))
-            Errors.Array.CallableFirstArg("reduceRight").throwTypeError()
-
-        if (length == 0L && arguments.size == 1)
-            Errors.Array.ReduceEmptyArray.throwTypeError()
-
-        val indices = Operations.objectIndices(obj).let {
-            if (isRight) it.reversed() else it
-        }.toMutableList()
-
-        var accumulator = if (arguments.size > 1) {
-            initialValue
-        } else {
-            if (indices.isEmpty())
-                Errors.Array.ReduceEmptyArray.throwTypeError()
-            obj.get(indices.removeFirst())
-        }
-
-        indices.forEach {
-            val value = obj.get(it)
-            accumulator = Operations.call(callback, JSUndefined, listOf(accumulator, value, it.toValue(), obj))
-        }
-
-        return accumulator
-    }
-
     companion object {
         fun create(realm: Realm) = JSArrayProto(realm).initialize()
 
-        @ECMAImpl("22.1.5.1")
-        private fun createArrayIterator(realm: Realm, array: JSObject, kind: PropertyKind): JSValue {
-            return JSArrayIterator.create(realm, array, 0, kind)
+        fun genericArrayEvery(
+            thisValue: JSValue,
+            arguments: JSArguments,
+            lengthProducer: (obj: JSObject) -> Long,
+            indicesProducer: (obj: JSObject) -> Iterable<Long>
+        ): JSValue {
+            val (callback, thisArg) = arguments.takeArgs(0..1)
+
+            if (!Operations.isCallable(callback))
+                Errors.Array.CallableFirstArg("every").throwTypeError()
+
+            val thisObj = Operations.toObject(thisValue)
+            val length = lengthProducer(thisObj)
+
+            for (index in indicesProducer(thisObj)) {
+                if (index >= length)
+                    break
+
+                val value = thisObj.get(index)
+                val testResult = Operations.call(callback, thisArg, listOf(value, index.toValue(), thisObj))
+                val testBoolean = Operations.toBoolean(testResult)
+                if (!testBoolean)
+                    return JSFalse
+            }
+
+            return JSTrue
+        }
+
+        fun genericArrayFind(
+            thisValue: JSValue,
+            arguments: JSArguments,
+            lengthProducer: (obj: JSObject) -> Long,
+            indicesProducer: (obj: JSObject) -> Iterable<Long>
+        ): JSValue {
+            val thisObj = Operations.toObject(thisValue)
+            val length = lengthProducer(thisObj)
+            val (predicate, thisArg) = arguments.takeArgs(0..1)
+
+            if (!Operations.isCallable(predicate))
+                Errors.Array.CallableFirstArg("find").throwTypeError()
+
+            for (index in indicesProducer(thisObj)) {
+                if (index >= length)
+                    break
+
+                val value = thisObj.get(index)
+                val testResult = Operations.call(predicate, thisArg, listOf(value, index.toValue(), thisObj))
+                val booleanResult = Operations.toBoolean(testResult)
+                if (booleanResult)
+                    return value
+            }
+
+            return JSUndefined
+        }
+
+        fun genericArrayFindIndex(
+            thisValue: JSValue,
+            arguments: JSArguments,
+            lengthProducer: (obj: JSObject) -> Long,
+            indicesProducer: (obj: JSObject) -> Iterable<Long>
+        ): JSValue {
+            val thisObj = Operations.toObject(thisValue)
+            val length = lengthProducer(thisObj)
+            val (predicate, thisArg) = arguments.takeArgs(0..1)
+
+            if (!Operations.isCallable(predicate))
+                Errors.Array.CallableFirstArg("findIndex").throwTypeError()
+
+            for (index in indicesProducer(thisObj)) {
+                if (index >= length)
+                    break
+
+                val value = thisObj.get(index)
+                val testResult = Operations.call(predicate, thisArg, listOf(value, index.toValue(), thisObj))
+                val booleanResult = Operations.toBoolean(testResult)
+                if (booleanResult)
+                    return index.toValue()
+            }
+
+            return JSUndefined
+        }
+
+        fun genericArrayForEach(
+            thisValue: JSValue,
+            arguments: JSArguments,
+            lengthProducer: (obj: JSObject) -> Long,
+            indicesProducer: (obj: JSObject) -> Iterable<Long>
+        ): JSValue {
+            val obj = Operations.toObject(thisValue)
+            val length = lengthProducer(obj)
+
+            val callbackFn = arguments.argument(0)
+            if (!Operations.isCallable(callbackFn))
+                Errors.Array.CallableFirstArg("forEach").throwTypeError()
+
+            for (index in indicesProducer(obj)) {
+                if (index >= length)
+                    break
+
+                val value = obj.get(index)
+                Operations.call(callbackFn, arguments.argument(1), listOf(value, index.toValue(), obj))
+            }
+
+            return JSUndefined
+        }
+
+        fun genericArrayIncludes(
+            thisValue: JSValue,
+            arguments: JSArguments,
+            lengthProducer: (obj: JSObject) -> Long,
+            indicesProducer: (obj: JSObject) -> Iterable<Long>
+        ): JSValue {
+            val obj = thisValue.toObject()
+            val length = lengthProducer(obj)
+
+            if (length == 0L)
+                return JSFalse
+
+            val (searchElement, fromIndex) = arguments.takeArgs(0..1)
+            val n = fromIndex.toIntegerOrInfinity().let {
+                when {
+                    it.isPositiveInfinity -> return JSFalse
+                    it.isNegativeInfinity -> 0
+                    else -> it.asLong
+                }
+            }
+
+
+            val indices = indicesProducer(obj)
+            if (searchElement == JSUndefined)
+                return (indices.count().toLong() != length).toValue()
+
+            return indices.map(obj::get).any {
+                searchElement.sameValueZero(it)
+            }.toValue()
+        }
+
+        fun genericArrayJoin(
+            thisValue: JSValue,
+            arguments: JSArguments,
+            lengthProducer: (obj: JSObject) -> Long,
+        ): JSValue {
+            val obj = Operations.toObject(thisValue)
+            val length = lengthProducer(obj)
+            val sep = if (arguments.isEmpty()) "," else Operations.toString(arguments[0]).string
+
+            return buildString {
+                for (i in 0 until length) {
+                    if (i > 0)
+                        append(sep)
+                    val element = obj.get(i)
+                    if (!element.isNullish)
+                        append(Operations.toString(element).string)
+                }
+            }.toValue()
+        }
+
+        fun genericArrayLastIndexOf(
+            thisValue: JSValue,
+            arguments: JSArguments,
+            lengthProducer: (obj: JSObject) -> Long,
+            indicesProducer: (obj: JSObject) -> Iterable<Long>
+        ): JSValue {
+            val obj = Operations.toObject(thisValue)
+            val length = lengthProducer(obj)
+            if (length == 0L)
+                return (-1).toValue()
+
+            val (searchElement, fromIndex) = arguments.takeArgs(0..1)
+            val fromNumber = if (fromIndex == JSUndefined) {
+                length - 1L
+            } else Operations.toIntegerOrInfinity(fromIndex).let {
+                if (it.isNegativeInfinity)
+                    return (-1).toValue()
+                it.asLong
+            }
+
+            val limit = if (fromNumber >= 0L) {
+                min(fromNumber, length - 1L)
+            } else length + fromNumber
+
+            indicesProducer(obj).reversed().filter {
+                it <= limit
+            }.forEach {
+                val value = obj.get(it)
+                if (Operations.strictEqualityComparison(searchElement, value) == JSTrue)
+                    return it.toValue()
+            }
+
+            return (-1).toValue()
+        }
+
+        fun genericArrayReduce(
+            thisValue: JSValue,
+            arguments: JSArguments,
+            lengthProducer: (obj: JSObject) -> Long,
+            indicesProducer: (obj: JSObject) -> Iterable<Long>,
+            isRight: Boolean
+        ): JSValue {
+            val obj = Operations.toObject(thisValue)
+            val length = lengthProducer(obj)
+            val (callback, initialValue) = arguments.takeArgs(0..1)
+            if (!Operations.isCallable(callback))
+                Errors.Array.CallableFirstArg("reduceRight").throwTypeError()
+
+            if (length == 0L && arguments.size == 1)
+                Errors.Array.ReduceEmptyArray.throwTypeError()
+
+            val indices = indicesProducer(obj).let {
+                if (isRight) it.reversed() else it
+            }.toMutableList()
+
+            var accumulator = if (arguments.size > 1) {
+                initialValue
+            } else {
+                if (indices.isEmpty())
+                    Errors.Array.ReduceEmptyArray.throwTypeError()
+                obj.get(indices.removeFirst())
+            }
+
+            indices.forEach {
+                val value = obj.get(it)
+                accumulator = Operations.call(callback, JSUndefined, listOf(accumulator, value, it.toValue(), obj))
+            }
+
+            return accumulator
+        }
+
+        fun genericArrayReverse(
+            thisValue: JSValue,
+            arguments: JSArguments,
+            lengthProducer: (obj: JSObject) -> Long,
+            indicesProducer: (obj: JSObject) -> Iterable<Long>
+        ): JSValue {
+            val obj = Operations.toObject(thisValue)
+            var length = lengthProducer(obj)
+            val middle = floor(length / 2.0)
+            val indices = indicesProducer(obj)
+
+            val lowerIndices = mutableSetOf<Long>()
+            val upperIndices = mutableSetOf<Long>()
+            indices.forEach {
+                if (it < middle) {
+                    lowerIndices.add(it)
+                } else {
+                    upperIndices.add(it)
+                }
+            }
+
+            val lowerIt = lowerIndices.iterator()
+            while (lowerIt.hasNext()) {
+                val lowerIndex = lowerIt.next()
+                val lowerVal = obj.get(lowerIndex)
+                val upperIndex = length - lowerIndex - 1
+
+                if (upperIndex in upperIndices) {
+                    val upperVal = obj.get(upperIndex)
+                    Operations.set(obj, upperIndex.key(), lowerVal, true)
+                    Operations.set(obj, lowerIndex.key(), upperVal, true)
+                    upperIndices.remove(upperIndex)
+                } else {
+                    Operations.set(obj, upperIndex.key(), lowerVal, true)
+                    Operations.deletePropertyOrThrow(obj, lowerIndex.key())
+                }
+
+                lowerIt.remove()
+            }
+
+            val upperIt = upperIndices.iterator()
+            while (upperIt.hasNext()) {
+                val upperIndex = upperIt.next()
+                val upperVal = obj.get(upperIndex)
+                val lowerIndex = length - upperIndex - 1
+
+                if (lowerIndex in lowerIndices) {
+                    val lowerVal = obj.get(lowerIndex)
+                    Operations.set(obj, lowerIndex.key(), upperVal, true)
+                    Operations.set(obj, upperIndex.key(), lowerVal, true)
+                    lowerIndices.remove(lowerIndex)
+                } else {
+                    Operations.set(obj, lowerIndex.key(), upperVal, true)
+                    Operations.deletePropertyOrThrow(obj, upperIndex.key())
+                }
+
+                upperIt.remove()
+            }
+
+            expect(lowerIndices.isEmpty() && upperIndices.isEmpty())
+
+            return obj
+        }
+
+        fun genericArraySome(
+            thisValue: JSValue,
+            arguments: JSArguments,
+            lengthProducer: (obj: JSObject) -> Long,
+            indicesProducer: (obj: JSObject) -> Iterable<Long>
+        ): JSValue {
+            val obj = Operations.toObject(thisValue)
+            val length = lengthProducer(obj)
+            val (callback, thisArg) = arguments.takeArgs(0..1)
+
+            if (!Operations.isCallable(callback))
+                Errors.Array.CallableFirstArg("some").throwTypeError()
+
+            indicesProducer(obj).forEach {
+                if (it >= length)
+                    return@forEach
+
+                val value = obj.get(it)
+                val testResult = Operations.toBoolean(Operations.call(callback, thisArg, listOf(value, it.toValue(), obj)))
+                if (testResult)
+                    return JSTrue
+            }
+
+            return JSFalse
         }
     }
 }
