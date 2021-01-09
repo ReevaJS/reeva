@@ -587,7 +587,7 @@ object Operations {
         JSValue.Type.Boolean -> value == JSTrue
         JSValue.Type.String -> value.asString.isNotEmpty()
         JSValue.Type.Number -> !value.isZero && !value.isNaN
-        JSValue.Type.BigInt -> TODO()
+        JSValue.Type.BigInt -> (value as JSBigInt).number.signum() != 0
         JSValue.Type.Symbol -> true
         JSValue.Type.Object -> true
         else -> unreachable()
