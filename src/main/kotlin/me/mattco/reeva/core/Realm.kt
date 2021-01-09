@@ -1,27 +1,27 @@
 package me.mattco.reeva.core
 
 import me.mattco.reeva.ast.ScriptNode
-import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.core.modules.resolver.ModuleResolver
+import me.mattco.reeva.jvmcompat.JSClassProto
+import me.mattco.reeva.jvmcompat.JSPackageObject
+import me.mattco.reeva.jvmcompat.JSPackageProto
+import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.arrays.JSArrayCtor
 import me.mattco.reeva.runtime.arrays.JSArrayProto
 import me.mattco.reeva.runtime.builtins.*
 import me.mattco.reeva.runtime.builtins.promises.JSPromiseCtor
 import me.mattco.reeva.runtime.builtins.promises.JSPromiseProto
+import me.mattco.reeva.runtime.builtins.regexp.JSRegExpCtor
+import me.mattco.reeva.runtime.builtins.regexp.JSRegExpProto
+import me.mattco.reeva.runtime.builtins.regexp.JSRegExpStringIteratorProto
 import me.mattco.reeva.runtime.errors.*
 import me.mattco.reeva.runtime.functions.JSFunctionCtor
 import me.mattco.reeva.runtime.functions.JSFunctionProto
 import me.mattco.reeva.runtime.global.JSConsole
 import me.mattco.reeva.runtime.global.JSConsoleProto
 import me.mattco.reeva.runtime.iterators.*
-import me.mattco.reeva.jvmcompat.JSClassProto
-import me.mattco.reeva.jvmcompat.JSPackageObject
-import me.mattco.reeva.jvmcompat.JSPackageProto
-import me.mattco.reeva.runtime.builtins.regexp.JSRegExpCtor
-import me.mattco.reeva.runtime.builtins.regexp.JSRegExpProto
-import me.mattco.reeva.runtime.builtins.regexp.JSRegExpStringIteratorProto
 import me.mattco.reeva.runtime.memory.*
 import me.mattco.reeva.runtime.objects.*
 import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
@@ -64,6 +64,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     val regExpStringIteratorProto by lazy { JSRegExpStringIteratorProto.create(this) }
     val consoleProto by lazy { JSConsoleProto.create(this) }
 
+    val dataViewProto by lazy { JSDataViewProto.create(this) }
     val arrayBufferProto by lazy { JSArrayBufferProto.create(this) }
     val typedArrayProto by lazy { JSTypedArrayProto.create(this) }
     val int8ArrayProto by lazy { JSInt8ArrayProto.create(this) }
@@ -101,6 +102,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     val promiseCtor by lazy { JSPromiseCtor.create(this) }
     val dateCtor by lazy { JSDateCtor.create(this) }
 
+    val dataViewCtor by lazy { JSDataViewCtor.create(this) }
     val arrayBufferCtor by lazy { JSArrayBufferCtor.create(this) }
     val typedArrayCtor by lazy { JSTypedArrayCtor.create(this) }
     val int8ArrayCtor by lazy { JSInt8ArrayCtor.create(this) }
@@ -165,6 +167,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
         mapCtor.defineOwnProperty("prototype", mapProto, Descriptor.HAS_BASIC)
         dateCtor.defineOwnProperty("prototype", dateProto, Descriptor.HAS_BASIC)
 
+        dataViewCtor.defineOwnProperty("prototype", dataViewProto, Descriptor.HAS_BASIC)
         arrayBufferCtor.defineOwnProperty("prototype", arrayBufferProto, Descriptor.HAS_BASIC)
         typedArrayCtor.defineOwnProperty("prototype", typedArrayProto, Descriptor.HAS_BASIC)
         int8ArrayCtor.defineOwnProperty("prototype", int8ArrayProto, Descriptor.HAS_BASIC)

@@ -3,19 +3,18 @@ package me.mattco.reeva.runtime
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.BindingIdentifierNode
 import me.mattco.reeva.ast.FunctionDeclarationNode
-import me.mattco.reeva.ast.ScriptOrModuleNode
 import me.mattco.reeva.ast.statements.ForBindingNode
 import me.mattco.reeva.ast.statements.StatementListNode
 import me.mattco.reeva.ast.statements.VariableDeclarationNode
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.core.Realm
-import me.mattco.reeva.interpreter.Interpreter
-import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.core.ExecutionContext
+import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.environment.*
+import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.jvmcompat.JSClassObject
 import me.mattco.reeva.jvmcompat.ProxyClassCompiler
 import me.mattco.reeva.parser.Parser
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.memory.*
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -39,6 +38,7 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("ArrayBuffer", realm.arrayBufferCtor, attrs)
         defineOwnProperty("BigInt", realm.bigIntCtor, attrs)
         defineOwnProperty("Boolean", realm.booleanCtor, attrs)
+        defineOwnProperty("DataView", realm.dataViewCtor, attrs)
         defineOwnProperty("Date", realm.dateCtor, attrs)
         defineOwnProperty("Error", realm.errorCtor, attrs)
         defineOwnProperty("EvalError", realm.evalErrorCtor, attrs)

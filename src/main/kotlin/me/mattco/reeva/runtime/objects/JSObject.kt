@@ -20,7 +20,7 @@ open class JSObject protected constructor(
     val realm: Realm,
     prototype: JSValue = JSNull,
 ) : JSValue() {
-    private val slots = EnumMap<SlotName, Any>(SlotName::class.java)
+    private val slots = EnumMap<SlotName, Any?>(SlotName::class.java)
 
     private val storage = mutableListOf<JSValue>()
     internal val indexedProperties = IndexedProperties()

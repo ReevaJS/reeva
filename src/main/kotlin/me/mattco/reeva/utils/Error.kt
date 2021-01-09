@@ -126,6 +126,12 @@ object Errors {
         class OutOfMemory(size: Int) : Error("requested DataBlock size of $size is too large")
     }
 
+    class DataView {
+        object CtorBadBufferArg : Error("DataView constructor expects a buffer as its first argument")
+        class OutOfRangeOffset(index: Int, byteLength: Int) : Error("view offset $index is outside of the buffer's " +
+            "byte length $byteLength")
+    }
+
     object Function {
         object CallerArgumentsAccess : Error("cannot access \"caller\" or \"arguments\" properties on functions")
         object BindNonFunction : Error("cannot bind a non-callable object")

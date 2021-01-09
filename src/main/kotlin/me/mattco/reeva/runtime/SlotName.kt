@@ -10,6 +10,7 @@ enum class SlotName {
     ByteLength,
     ByteOffset,
     ContentType,
+    DataView,
     DateValue,
     Description,
     ErrorData,

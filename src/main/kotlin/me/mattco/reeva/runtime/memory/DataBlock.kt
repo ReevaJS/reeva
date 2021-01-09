@@ -10,7 +10,8 @@ class DataBlock(val size: Int) {
     operator fun get(index: Int): Byte = buffer[index]
 
     fun getBytes(index: Int, length: Int) = ByteArray(length).also {
-        buffer.get(it, index, length)
+        buffer.position(index)
+        buffer.get(it, 0, length)
     }
 
     fun getShort(index: Int) = buffer.getShort(index)

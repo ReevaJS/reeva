@@ -63,10 +63,10 @@ object Operations {
     const val MAX_7BIT_INT = 1 shl 7
 
     val MAX_64BIT_INT = BigInteger(1, byteArrayOf(
-        0x80.toByte(), 0x00, 0x00, 0x00
+        0x80.toByte(), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     ))
     val MAX_63BIT_INT = BigInteger(1, byteArrayOf(
-        0x40.toByte(), 0x00, 0x00, 0x00
+        0x40.toByte(), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     ))
 
     val defaultZone = ZoneId.systemDefault()
@@ -664,7 +664,9 @@ object Operations {
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
 
-        val int = floor(abs(number.asDouble)).toLong()
+        var int = floor(abs(number.asDouble)).toLong()
+        if (number.asDouble < 0)
+            int *= -1L
         return JSNumber(int % MAX_32BIT_INT)
     }
 
@@ -680,7 +682,7 @@ object Operations {
 
         val int16bit = int % MAX_16BIT_INT
         if (int16bit >= MAX_15BIT_INT)
-            return JSNumber(int16bit - MAX_15BIT_INT)
+            return JSNumber(int16bit - MAX_16BIT_INT)
         return JSNumber(int16bit)
     }
 
@@ -690,7 +692,9 @@ object Operations {
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
 
-        val int = floor(abs(number.asDouble)).toLong()
+        var int = floor(abs(number.asDouble)).toLong()
+        if (number.asDouble < 0)
+            int *= -1L
         return JSNumber(int % MAX_16BIT_INT)
     }
 
@@ -706,7 +710,7 @@ object Operations {
 
         val int8bit = int % MAX_8BIT_INT
         if (int8bit >= MAX_7BIT_INT)
-            return JSNumber(int8bit - MAX_7BIT_INT)
+            return JSNumber(int8bit - MAX_8BIT_INT)
         return JSNumber(int8bit)
     }
 
@@ -716,7 +720,9 @@ object Operations {
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
 
-        val int = floor(abs(number.asDouble)).toLong()
+        var int = floor(abs(number.asDouble)).toLong()
+        if (number.asDouble < 0)
+            int *= -1L
         return JSNumber(int % MAX_8BIT_INT)
     }
 
@@ -2621,9 +2627,18 @@ object Operations {
                         value += java.lang.Byte.toUnsignedInt(buff.get()).toDouble()
                     }
 
-                    value.toValue()
-                } else ByteBuffer.wrap(rawBytes).int.toValue()
-            } else ByteBuffer.wrap(rawBytes).int.toValue()
+                    return value.toValue()
+                }
+            }
+
+            val buff = ByteBuffer.wrap(rawBytes)
+
+            when (type.size) {
+                1 -> buff.get(0)
+                2 -> buff.short
+                4 -> buff.int
+                else -> unreachable()
+            }.toValue()
         }
     }
 
@@ -2639,7 +2654,7 @@ object Operations {
         ecmaAssert(arrayBuffer is JSObject)
         ecmaAssert(!isDetachedBuffer(arrayBuffer))
         val block = arrayBuffer.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
-        ecmaAssert(byteIndex + kind.size < block.size)
+        ecmaAssert(byteIndex + kind.size - 1 < block.size)
 
         if (isSharedArrayBuffer(arrayBuffer))
             TODO()
@@ -2653,24 +2668,50 @@ object Operations {
         when (type) {
             TypedArrayKind.Float32 -> {
                 expect(value is JSNumber)
-                return ByteBuffer.allocate(4).putInt(value.number.toFloat().toRawBits()).array()
+                return ByteBuffer.allocate(4).putInt(value.number.toFloat().toRawBits()).array().also {
+                    if (isLittleEndian)
+                        it.reverse()
+                }
             }
             TypedArrayKind.Float64 -> {
                 expect(value is JSNumber)
-                return ByteBuffer.allocate(8).putLong(value.number.toRawBits()).array()
+                return ByteBuffer.allocate(8).putLong(value.number.toRawBits()).array().also {
+                    if (isLittleEndian)
+                        it.reverse()
+                }
             }
             else -> {
                 val convOp = type.convOp!!
-                val numValue = convOp(value)
-                if (numValue is JSBigInt) {
-                    val arr = numValue.number.toByteArray()
-                    if (isLittleEndian)
-                        arr.reverse()
-                    return arr
+                val numValue = convOp(value).let {
+                    if (it is JSBigInt) {
+                        var arr = it.number.toByteArray()
+                        if (arr.size < type.size) {
+                            val newArr = ByteArray(type.size)
+                            System.arraycopy(arr, 0, newArr, type.size - arr.size, arr.size)
+                            if (it.number.signum() < 0) {
+                                for (i in 0 until (type.size - arr.size))
+                                    newArr[i] = 0xff.toByte()
+                            }
+                            arr = newArr
+                        }
+                        if (isLittleEndian)
+                            arr.reverse()
+                        return arr
+                    } else ((it as JSNumber).number.toLong() and 0xFFFFFFFF).toInt()
                 }
 
-                expect(numValue is JSNumber)
-                return ByteBuffer.allocate(4).putInt(numValue.number.toInt()).array()
+                val buff = ByteBuffer.allocate(type.size)
+                when (type.size) {
+                    1 -> buff.put(numValue.toByte())
+                    2 -> buff.putShort(numValue.toShort())
+                    4 -> buff.putInt(numValue)
+                    else -> unreachable()
+                }
+
+                return buff.array().also {
+                    if (isLittleEndian)
+                        it.reverse()
+                }
             }
         }
     }
@@ -2702,6 +2743,45 @@ object Operations {
     // Reeva doesn't support SharedArrayBuffers
     @JvmStatic @ECMAImpl("24.2.1.2")
     fun isSharedArrayBuffer(obj: JSValue) = false
+
+    @JvmStatic @ECMAImpl("24.3.1.1")
+    fun getViewValue(view: JSValue, requestIndex: JSValue, littleEndian: JSValue, kind: TypedArrayKind): JSValue {
+        if (!requireInternalSlot(view, SlotName.DataView))
+            Errors.TODO("getViewValue requireInternalSlot").throwTypeError()
+
+        val index = requestIndex.toIndex()
+        val isLittleEndian = littleEndian.toBoolean()
+        val buffer = view.getSlotAs<JSObject>(SlotName.ViewedArrayBuffer)
+        if (isDetachedBuffer(buffer))
+            Errors.TODO("getViewValue isDetachedBuffer").throwTypeError()
+
+        val viewOffset = view.getSlotAs<Int>(SlotName.ByteOffset)
+        val viewSize = view.getSlotAs<Int>(SlotName.ByteLength)
+        if (index + kind.size > viewSize)
+            Errors.TODO("getViewValue out of range").throwRangeError()
+
+        return getValueFromBuffer(buffer, index + viewOffset, kind, false, TypedArrayOrder.Unordered, isLittleEndian)
+    }
+
+    @JvmStatic @ECMAImpl("24.3.1.2")
+    fun setViewValue(view: JSValue, requestIndex: JSValue, littleEndian: JSValue, kind: TypedArrayKind, value: JSValue) {
+        if (!requireInternalSlot(view, SlotName.DataView))
+            Errors.TODO("setViewValue requireInternalSlot").throwTypeError()
+
+        val index = requestIndex.toIndex()
+        val numberValue = if (kind.isBigInt) value.toBigInt() else value.toNumber()
+        val isLittleEndian = littleEndian.toBoolean()
+        val buffer = view.getSlotAs<JSObject>(SlotName.ViewedArrayBuffer)
+        if (isDetachedBuffer(buffer))
+            Errors.TODO("getViewValue isDetachedBuffer").throwTypeError()
+
+        val viewOffset = view.getSlotAs<Int>(SlotName.ByteOffset)
+        val viewSize = view.getSlotAs<Int>(SlotName.ByteLength)
+        if (index + kind.size > viewSize)
+            Errors.TODO("getViewValue out of range").throwRangeError()
+
+        setValueInBuffer(buffer, index + viewOffset, kind, numberValue, false, TypedArrayOrder.Unordered, isLittleEndian)
+    }
 
     @JvmStatic @ECMAImpl("26.6.1.3")
     fun createResolvingFunctions(promise: JSObject): Pair<JSFunction, JSFunction> {
