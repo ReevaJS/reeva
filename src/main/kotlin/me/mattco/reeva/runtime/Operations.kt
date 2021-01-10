@@ -480,7 +480,12 @@ object Operations {
         if (reference.isPropertyReference) {
             if (reference.hasPrimitiveBase) {
                 expect(base != JSUndefined && base != JSNull)
-                base = toObject(base as JSValue)
+
+                val fastPathResult = resolvePrimitiveReference(base as JSValue, reference.name)
+                if (fastPathResult != null)
+                    return fastPathResult
+
+                base = toObject(base)
             }
             val value = (base as JSObject).get(reference.name, reference.getThisValue())
             if (value is JSNativeProperty)
@@ -493,6 +498,30 @@ object Operations {
         expect(base is EnvRecord)
         expect(reference.name.isString)
         return base.getBindingValue(reference.name.asString, reference.isStrict)
+    }
+
+    // A fast-path for common primitive reference operations. If this
+    // is able to complete successfully and return a non-null value, it
+    // avoid an object boxing operation
+    private fun resolvePrimitiveReference(base: JSValue, key: PropertyKey): JSValue? {
+        if (base is JSString) {
+            val str = base.string
+            if (key.isInt) {
+                val index = key.asInt
+                if (index < 0 || index > str.lastIndex)
+                    return JSUndefined
+                return str[index].toValue()
+            }
+
+            if (key.isLong) {
+                val index = key.asLong.toInt()
+                if (index < 0 || index > str.lastIndex)
+                    return JSUndefined
+                return str[index].toValue()
+            }
+        }
+
+        return null
     }
 
     @JvmStatic @ECMAImpl("6.2.4.5")
@@ -831,6 +860,7 @@ object Operations {
             is JSObject -> "[object <${value::class.java.simpleName}>]"
             is JSAccessor -> "<accessor>"
             is JSNativeProperty -> "<native-property>"
+            is JSReference -> "<ref ${value.name}>"
             else -> toString(value).string
         }
     }
