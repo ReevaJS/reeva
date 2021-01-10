@@ -99,18 +99,7 @@ object Operations {
     }
 
     @JvmStatic
-    fun isStrict(): Boolean {
-        // TODO: Do we need to check variableEnv here as well?
-        var env: EnvRecord? = Agent.runningContext.lexicalEnv
-        while (env != null) {
-            when {
-                env is FunctionEnvRecord && env.function.isStrict -> return true
-                env is GlobalEnvRecord && env.isStrict -> return true
-            }
-            env = env.outerEnv
-        }
-        return false
-    }
+    fun isStrict() = Agent.runningContext.lexicalEnv?.isStrict ?: false
 
     @JvmStatic
     fun mapWrappedArrayIndex(index: JSNumber, arrayLength: Long): Long = when {

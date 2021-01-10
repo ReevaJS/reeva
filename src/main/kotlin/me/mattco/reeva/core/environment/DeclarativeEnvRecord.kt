@@ -1,12 +1,14 @@
 package me.mattco.reeva.core.environment
 
-import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.ecmaAssert
 
 open class DeclarativeEnvRecord(outerEnv: EnvRecord?) : EnvRecord(outerEnv) {
+    override val isStrict = outerEnv?.isStrict ?: false
+
     internal val bindings = mutableMapOf<String, Binding>()
 
     @ECMAImpl("8.1.1.1.1")

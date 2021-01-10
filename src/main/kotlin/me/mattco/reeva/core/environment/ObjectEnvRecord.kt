@@ -1,7 +1,7 @@
 package me.mattco.reeva.core.environment
 
-import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
@@ -13,6 +13,8 @@ class ObjectEnvRecord(
     var withEnvironment: Boolean = false,
     outerEnv: EnvRecord? = null,
 ) : EnvRecord(outerEnv) {
+    override val isStrict = outerEnv?.isStrict ?: false
+
     @ECMAImpl("8.1.1.2.1")
     override fun hasBinding(name: String): Boolean {
         if (!boundObject.hasProperty(name))

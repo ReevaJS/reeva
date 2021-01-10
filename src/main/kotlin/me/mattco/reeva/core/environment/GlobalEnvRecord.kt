@@ -1,7 +1,7 @@
 package me.mattco.reeva.core.environment
 
-import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -16,7 +16,7 @@ class GlobalEnvRecord(
 ) : EnvRecord(outerEnv), ThisBindable {
     private val objectRecord = ObjectEnvRecord(globalThis, false, this)
     private val varNames = mutableListOf<String>()
-    internal var isStrict = false
+    override var isStrict = false
 
     @ECMAImpl("8.1.1.4.1")
     override fun hasBinding(name: String): Boolean {

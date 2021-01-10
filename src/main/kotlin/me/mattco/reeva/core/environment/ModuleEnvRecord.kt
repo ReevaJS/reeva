@@ -11,6 +11,8 @@ import me.mattco.reeva.utils.unreachable
 class ModuleEnvRecord(
     outerEnv: EnvRecord?
 ) : DeclarativeEnvRecord(outerEnv), ThisBindable {
+    override val isStrict: Boolean = true
+
     @ECMAImpl("8.1.1.5.1")
     override fun getBindingValue(name: String, throwOnNotFound: Boolean): JSValue {
         ecmaAssert(throwOnNotFound)

@@ -1,7 +1,7 @@
 package me.mattco.reeva.core.environment
 
-import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
@@ -14,6 +14,8 @@ class FunctionEnvRecord(
     val newTarget: JSValue = JSUndefined,
     outerEnv: EnvRecord? = null
 ) : DeclarativeEnvRecord(outerEnv), ThisBindable {
+    override var isStrict = (outerEnv?.isStrict ?: false) || function.isStrict
+
     init {
         if (!function.homeObject.isUndefined && !function.homeObject.isObject)
             throw IllegalArgumentException()

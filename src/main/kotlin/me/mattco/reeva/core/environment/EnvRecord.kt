@@ -1,11 +1,13 @@
 package me.mattco.reeva.core.environment
 
-import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Ref
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.primitives.JSUndefined
 
 abstract class EnvRecord(@JvmField var outerEnv: EnvRecord?) : Ref {
+    abstract val isStrict: Boolean
+
     @ECMAImpl("HasBinding")
     abstract fun hasBinding(name: String): Boolean
 
