@@ -299,6 +299,13 @@ object JVMValueMapper {
                 }
                 jsArray
             }
+            is Array<*> -> {
+                val jsArray = JSArrayObject.create(realm)
+                instance.forEachIndexed { index, value ->
+                    jsArray.set(index, jvmToJS(realm, value))
+                }
+                jsArray
+            }
             is Package -> JSPackageObject.create(realm, instance.name)
             is Class<*> -> JSClassObject.create(realm, instance)
             else -> TODO()
