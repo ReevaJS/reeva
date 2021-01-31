@@ -178,7 +178,7 @@ class ArrowFunctionNode(
     val body: ASTNode, // Expression or FunctionStatementList
 ) : NodeBase(listOf(parameters, body)), ExpressionNode {
     override fun contains(nodeName: String): Boolean {
-        if (nodeName !in listOf("NewTargetNode", "SuperPropertyNode", "SuperCallNode", "ThisNode", "super"))
+        if (nodeName !in listOf("NewTargetExpressionNode", "SuperPropertyExpressionNode", "SuperCallExpressionNode", "ThisLiteralNode", "super"))
             return false
         if (parameters.contains(nodeName))
             return true

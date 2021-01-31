@@ -58,7 +58,7 @@ class BlockNode(val statements: StatementListNode?) : NodeBase(listOfNotNull(sta
     } ?: emptyList()
 }
 
-class StatementListNode(val statements: List<StatementListItemNode>) : NodeBase(statements), StatementNode {
+class StatementListNode(val statements: List<StatementNode>) : NodeBase(statements), StatementNode {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return statements.any { it.containsDuplicateLabels(labelSet) }
     }
@@ -72,19 +72,19 @@ class StatementListNode(val statements: List<StatementListItemNode>) : NodeBase(
     }
 
     override fun lexicallyDeclaredNames(): List<String> {
-        return statements.flatMap(StatementListItemNode::lexicallyDeclaredNames)
+        return statements.flatMap(StatementNode::lexicallyDeclaredNames)
     }
 
     override fun lexicallyScopedDeclarations(): List<NodeBase> {
-        return statements.flatMap(StatementListItemNode::lexicallyScopedDeclarations)
+        return statements.flatMap(StatementNode::lexicallyScopedDeclarations)
     }
 
     override fun topLevelLexicallyDeclaredNames(): List<String> {
-        return statements.flatMap(StatementListItemNode::topLevelLexicallyDeclaredNames)
+        return statements.flatMap(StatementNode::topLevelLexicallyDeclaredNames)
     }
 
     override fun topLevelLexicallyScopedDeclarations(): List<NodeBase> {
-        return statements.flatMap(StatementListItemNode::topLevelLexicallyScopedDeclarations)
+        return statements.flatMap(StatementNode::topLevelLexicallyScopedDeclarations)
     }
 
     override fun topLevelVarDeclaredNames(): List<String> {
@@ -112,11 +112,11 @@ class StatementListNode(val statements: List<StatementListItemNode>) : NodeBase(
     }
 
     override fun varDeclaredNames(): List<String> {
-        return statements.flatMap(StatementListItemNode::varDeclaredNames)
+        return statements.flatMap(StatementNode::varDeclaredNames)
     }
 
     override fun varScopedDeclarations(): List<NodeBase> {
-        return statements.flatMap(StatementListItemNode::varScopedDeclarations)
+        return statements.flatMap(StatementNode::varScopedDeclarations)
     }
 
     fun hasUseStrictDirective(): Boolean {
@@ -596,4 +596,4 @@ class ContinueStatementNode(val label: LabelIdentifierNode?) : NodeBase(listOfNo
     }
 }
 
-class ReturnStatementNode(val node: ExpressionNode?) : NodeBase(listOfNotNull(node)), StatementNode
+class ReturnStatementNode(val expression: ExpressionNode?) : NodeBase(listOfNotNull(expression)), StatementNode

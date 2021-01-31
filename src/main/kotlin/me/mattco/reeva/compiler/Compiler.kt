@@ -645,7 +645,7 @@ open class Compiler {
                     ifStatement(JumpCondition.RefEqual) {
                         if (Operations.isAnonymousFunctionDefinition(node.initializer))
                             TODO()
-                        compileExpression(node.initializer.node)
+                        compileExpression(node.initializer.expression)
                         getValue
                         astore(value.index)
                     }
@@ -707,7 +707,7 @@ open class Compiler {
                     load(value)
                     loadUndefined()
                     ifStatement(JumpCondition.RefEqual) {
-                        compileExpression(node.initializer.node)
+                        compileExpression(node.initializer.expression)
                         getValue
                         astore(value.index)
                     }
@@ -935,10 +935,10 @@ open class Compiler {
             ldc(decl.identifier.identifierName)
             operation("resolveBinding", JSReference::class, String::class)
             stackHeight++
-            compileExpression(decl.initializer.node)
+            compileExpression(decl.initializer.expression)
             getValue
             // lhs, rhs
-            if (Operations.isAnonymousFunctionDefinition(decl.initializer.node)) {
+            if (Operations.isAnonymousFunctionDefinition(decl.initializer.expression)) {
                 dup
                 checkcast<JSFunction>()
                 construct(PropertyKey::class, String::class) {
@@ -1504,9 +1504,9 @@ open class Compiler {
                 expect(!node.isConst)
                 loadUndefined()
             } else {
-                compileExpression(binding.initializer.node)
+                compileExpression(binding.initializer.expression)
                 stackHeight--
-                if (Operations.isAnonymousFunctionDefinition(binding.initializer.node)) {
+                if (Operations.isAnonymousFunctionDefinition(binding.initializer.expression)) {
                     dup
                     checkcast<JSFunction>()
                     construct(PropertyKey::class, String::class) {
@@ -1656,7 +1656,7 @@ open class Compiler {
                 ),
                 FunctionStatementList(
                     StatementListNode(listOf(ExpressionStatementNode(
-                        SuperCallNode(ArgumentsNode(ArgumentsListNode(listOf(
+                        SuperCallExpressionNode(ArgumentsNode(ArgumentsListNode(listOf(
                             ArgumentListEntry(
                                 IdentifierReferenceNode("args"),
                                 true
@@ -1823,7 +1823,7 @@ open class Compiler {
                         pop
                         stackHeight--
                     } else {
-                        compileExpression(element.initializer.node)
+                        compileExpression(element.initializer.expression)
                         // obj, name, expr
                         getValue
                         operation("createDataPropertyOrThrow", Boolean::class, JSValue::class, JSValue::class, JSValue::class)
@@ -1852,7 +1852,7 @@ open class Compiler {
                             "TODO",
                             formalParameterList,
                             FunctionStatementList(StatementListNode(listOf(
-                                ReturnStatementNode(element.initializer.node)
+                                ReturnStatementNode(element.initializer.expression)
                             ))),
                             JSFunction.ThisMode.Lexical,
                             null,
@@ -1918,8 +1918,8 @@ open class Compiler {
     }
 
     protected fun MethodAssembly.compileReturnStatement(node: ReturnStatementNode) {
-        if (node.node != null) {
-            compileExpression(node.node)
+        if (node.expression != null) {
+            compileExpression(node.expression)
             getValue
             stackHeight--
         } else {
@@ -2032,7 +2032,7 @@ open class Compiler {
 
     protected fun MethodAssembly.compileExpression(node: ExpressionNode) {
         when (node) {
-            ThisNode -> compileThis()
+            ThisLiteralNode -> compileThis()
             is CommaExpressionNode -> compileCommaExpressionNode(node)
             is IdentifierReferenceNode -> compileIdentifierReference(node)
             is FunctionExpressionNode -> compileFunctionExpression(node)
@@ -2061,12 +2061,12 @@ open class Compiler {
             is ExponentiationExpressionNode -> compileExponentiationExpression(node)
             is UnaryExpressionNode -> compileUnaryExpression(node)
             is UpdateExpressionNode -> compileUpdateExpression(node)
-            is ParenthesizedExpressionNode -> compileExpression(node.target)
+            is ParenthesizedExpressionNode -> compileExpression(node.expression)
             is ForBindingNode -> compileForBinding(node)
             is TemplateLiteralNode -> compileTemplateLiteral(node)
             is ClassExpressionNode -> compileClassExpression(node)
-            is SuperPropertyNode -> compileSuperProperty(node)
-            is SuperCallNode -> compileSuperCall(node)
+            is SuperPropertyExpressionNode -> compileSuperProperty(node)
+            is SuperCallExpressionNode -> compileSuperCall(node)
             else -> unreachable()
         }
     }
@@ -2186,8 +2186,8 @@ open class Compiler {
 
     protected fun MethodAssembly.compileLiteral(node: LiteralNode) {
         when (node) {
-            is NullNode -> loadNull()
-            is BooleanNode -> (if (node.value) JSTrue::class else JSFalse::class).let {
+            is NullLiteralNode -> loadNull()
+            is BooleanLiteralNode  -> (if (node.value) JSTrue::class else JSFalse::class).let {
                 getstatic(it, "INSTANCE", it)
             }
             is NumericLiteralNode -> construct(JSNumber::class, Double::class) {
@@ -2968,7 +2968,7 @@ open class Compiler {
     }
 
     protected fun MethodAssembly.compileUnaryExpression(node: UnaryExpressionNode) {
-        compileExpression(node.node)
+        compileExpression(node.expression)
 
         when (node.op) {
             UnaryExpressionNode.Operator.Delete -> operation("deleteOperator", JSValue::class, JSValue::class)
@@ -3105,7 +3105,7 @@ open class Compiler {
         }
     }
 
-    protected fun MethodAssembly.compileSuperProperty(node: SuperPropertyNode) {
+    protected fun MethodAssembly.compileSuperProperty(node: SuperPropertyExpressionNode) {
         operation("getThisEnvironment", EnvRecord::class)
         checkcast<FunctionEnvRecord>()
         invokevirtual(FunctionEnvRecord::class, "getThisBinding", JSValue::class)
@@ -3123,7 +3123,7 @@ open class Compiler {
         operation("makeSuperPropertyReference", JSReference::class, JSValue::class, PropertyKey::class, Boolean::class)
     }
 
-    protected fun MethodAssembly.compileSuperCall(node: SuperCallNode) {
+    protected fun MethodAssembly.compileSuperCall(node: SuperCallExpressionNode) {
         operation("getSuperConstructor", JSValue::class)
         dup
         operation("isConstructor", Boolean::class, JSValue::class)

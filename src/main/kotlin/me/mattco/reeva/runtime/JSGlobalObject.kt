@@ -201,13 +201,13 @@ open class JSGlobalObject protected constructor(
                 Error(parser.syntaxErrors.first().message).throwSyntaxError()
 
             val body = scriptNode.statementList
-            if (!inFunction && body.contains("NewTargetNode"))
+            if (!inFunction && body.contains("NewTargetExpressionNode"))
                 Errors.NewTargetOutsideFunc.throwSyntaxError()
 
-            if (!inMethod && body.contains("SuperPropertyNode"))
+            if (!inMethod && body.contains("SuperPropertyExpressionNode"))
                 Errors.SuperOutsideMethod.throwSyntaxError()
 
-            if (!inDerivedConstructor && body.contains("SuperCallNode"))
+            if (!inDerivedConstructor && body.contains("SuperCallExpressionNode"))
                 Errors.SuperCallOutsideCtor.throwSyntaxError()
 
             val strictEval = strictCaller || scriptNode.statementList.hasUseStrictDirective()

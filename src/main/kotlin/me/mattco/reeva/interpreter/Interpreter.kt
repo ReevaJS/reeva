@@ -392,7 +392,7 @@ class Interpreter(private val realm: Realm) {
                     if (Operations.isAnonymousFunctionDefinition(node.initializer)) {
                         TODO()
                     } else {
-                        value = Operations.getValue(interpretExpression(node.initializer.node))
+                        value = Operations.getValue(interpretExpression(node.initializer.expression))
                     }
                 }
 
@@ -419,7 +419,7 @@ class Interpreter(private val realm: Realm) {
                 }
 
                 if (node.initializer != null && value == JSUndefined)
-                    value = Operations.getValue(interpretExpression(node.initializer.node))
+                    value = Operations.getValue(interpretExpression(node.initializer.expression))
 
                 bindingInitialization(node.pattern, value, env)
             }
@@ -623,7 +623,7 @@ class Interpreter(private val realm: Realm) {
                     ),
                     FunctionStatementList(
                         StatementListNode(listOf(ExpressionStatementNode(
-                            SuperCallNode(ArgumentsNode(ArgumentsListNode(listOf(
+                            SuperCallExpressionNode(ArgumentsNode(ArgumentsListNode(listOf(
                                 ArgumentListEntry(
                                     IdentifierReferenceNode("args"),
                                     true
@@ -703,7 +703,7 @@ class Interpreter(private val realm: Realm) {
                     if (classElementNode.initializer == null) {
                         Operations.createDataPropertyOrThrow(obj, name, JSUndefined)
                     } else {
-                        val value = interpretExpression(classElementNode.initializer.node)
+                        val value = interpretExpression(classElementNode.initializer.expression)
                         Operations.createDataPropertyOrThrow(obj, name, Operations.getValue(value))
                     }
                     null
@@ -716,7 +716,7 @@ class Interpreter(private val realm: Realm) {
                             "TODO",
                             formalParameterList,
                             FunctionStatementList(StatementListNode(listOf(
-                                ReturnStatementNode(classElementNode.initializer.node)
+                                ReturnStatementNode(classElementNode.initializer.expression)
                             ))),
                             JSFunction.ThisMode.Lexical,
                             lex!!,
@@ -775,8 +775,8 @@ class Interpreter(private val realm: Realm) {
             if (decl.initializer == null)
                 return@forEach
             val lhs = Operations.resolveBinding(decl.identifier.identifierName)
-            val rhs = Operations.getValue(interpretExpression(decl.initializer.node)).also {
-                if (Operations.isAnonymousFunctionDefinition(decl.initializer.node))
+            val rhs = Operations.getValue(interpretExpression(decl.initializer.expression)).also {
+                if (Operations.isAnonymousFunctionDefinition(decl.initializer.expression))
                     Operations.setFunctionName(it as JSFunction, decl.identifier.identifierName.key())
             }
             Operations.putValue(lhs, rhs)
@@ -1281,8 +1281,8 @@ class Interpreter(private val realm: Realm) {
                 Operations.initializeReferencedBinding(lhs, JSUndefined)
             } else {
                 val lhs = Operations.resolveBinding(binding.identifier.identifierName)
-                val rhs = interpretExpression(binding.initializer.node).also {
-                    if (Operations.isAnonymousFunctionDefinition(binding.initializer.node))
+                val rhs = interpretExpression(binding.initializer.expression).also {
+                    if (Operations.isAnonymousFunctionDefinition(binding.initializer.expression))
                         Operations.setFunctionName(it as JSFunction, binding.identifier.identifierName.key())
                 }
                 val value = Operations.getValue(rhs)
@@ -1297,10 +1297,10 @@ class Interpreter(private val realm: Realm) {
     }
 
     private fun interpretReturnStatement(returnStatementNode: ReturnStatementNode): JSValue {
-        if (returnStatementNode.node == null) {
+        if (returnStatementNode.expression == null) {
             throw ReturnException(JSUndefined)
         } else {
-            val exprRef = interpretExpression(returnStatementNode.node)
+            val exprRef = interpretExpression(returnStatementNode.expression)
             throw ReturnException(Operations.getValue(exprRef))
         }
     }
@@ -1396,7 +1396,7 @@ class Interpreter(private val realm: Realm) {
             is PatternBindingElement -> {
                 var value = Operations.getV(value, name)
                 if (node.initializer != null && value == JSUndefined)
-                    value = Operations.getValue(interpretExpression(node.initializer.node))
+                    value = Operations.getValue(interpretExpression(node.initializer.expression))
                 bindingInitialization(node.pattern, value, env)
             }
             is SingleNameBindingProperty -> {
@@ -1405,7 +1405,7 @@ class Interpreter(private val realm: Realm) {
                 if (node.initializer != null && value == JSUndefined) {
                     if (Operations.isAnonymousFunctionDefinition(node.initializer))
                         TODO()
-                    value = Operations.getValue(interpretExpression(node.initializer.node))
+                    value = Operations.getValue(interpretExpression(node.initializer.expression))
                 }
 
                 if (env == null) {
@@ -1420,7 +1420,7 @@ class Interpreter(private val realm: Realm) {
 
     private fun interpretExpression(expression: ExpressionNode): JSValue {
         return when (expression) {
-            ThisNode -> interpretThis()
+            ThisLiteralNode -> interpretThis()
             is CommaExpressionNode -> interpretCommaExpressionNode(expression)
             is IdentifierReferenceNode -> interpretIdentifierReference(expression)
             is FunctionExpressionNode -> interpretFunctionExpression(expression)
@@ -1449,35 +1449,35 @@ class Interpreter(private val realm: Realm) {
             is ExponentiationExpressionNode -> interpretExponentiationExpression(expression)
             is UnaryExpressionNode -> interpretUnaryExpression(expression)
             is UpdateExpressionNode -> interpretUpdateExpression(expression)
-            is ParenthesizedExpressionNode -> interpretExpression(expression.target)
+            is ParenthesizedExpressionNode -> interpretExpression(expression.expression)
             is ForBindingNode -> interpretForBinding(expression)
             is TemplateLiteralNode -> interpretTemplateLiteral(expression)
             is ClassExpressionNode -> interpretClassExpression(expression)
-            is SuperPropertyNode -> interpretSuperProperty(expression)
-            is SuperCallNode -> interpretSuperCall(expression)
+            is SuperPropertyExpressionNode -> interpretSuperProperty(expression)
+            is SuperCallExpressionNode -> interpretSuperCall(expression)
             else -> unreachable()
         }
     }
 
-    private fun interpretSuperProperty(superPropertyNode: SuperPropertyNode): JSValue {
+    private fun interpretSuperProperty(SuperPropertyExpressionNode: SuperPropertyExpressionNode): JSValue {
         val env = Operations.getThisEnvironment()
         expect(env is FunctionEnvRecord)
         val actualThis = env.getThisBinding()
-        val key = if (superPropertyNode.computed) {
-            val propertyNameReference = interpretExpression(superPropertyNode.target)
+        val key = if (SuperPropertyExpressionNode.computed) {
+            val propertyNameReference = interpretExpression(SuperPropertyExpressionNode.target)
             Operations.toPropertyKey(Operations.getValue(propertyNameReference))
         } else {
-            (superPropertyNode.target as IdentifierNode).identifierName.key()
+            (SuperPropertyExpressionNode.target as IdentifierNode).identifierName.key()
         }
 
         return Operations.makeSuperPropertyReference(actualThis, key, Operations.isStrict())
     }
 
-    private fun interpretSuperCall(superCallNode: SuperCallNode): JSValue {
+    private fun interpretSuperCall(SuperCallExpressionNode: SuperCallExpressionNode): JSValue {
         val newTarget = Operations.getNewTarget()
         ecmaAssert(newTarget is JSObject)
         val func = Operations.getSuperConstructor()
-        val argsList = argumentsListEvaluation(superCallNode.arguments)
+        val argsList = argumentsListEvaluation(SuperCallExpressionNode.arguments)
         if (!Operations.isConstructor(func))
             Errors.Class.BadSuperFunc.throwTypeError()
 
@@ -1604,8 +1604,8 @@ class Interpreter(private val realm: Realm) {
 
     private fun interpretLiteral(literalNode: LiteralNode): JSValue {
         return when (literalNode) {
-            is NullNode -> JSNull
-            is BooleanNode -> literalNode.value.toValue()
+            is NullLiteralNode -> JSNull
+            is BooleanLiteralNode  -> literalNode.value.toValue()
             is NumericLiteralNode -> literalNode.value.toValue()
             is BigIntLiteralNode -> {
                 JSBigInt(BigInteger(literalNode.value, when (literalNode.type) {
@@ -2075,7 +2075,7 @@ class Interpreter(private val realm: Realm) {
     }
 
     private fun interpretUnaryExpression(unaryExpressionNode: UnaryExpressionNode): JSValue {
-        val exprRef = interpretExpression(unaryExpressionNode.node)
+        val exprRef = interpretExpression(unaryExpressionNode.expression)
 
         return when (unaryExpressionNode.op) {
             UnaryExpressionNode.Operator.Delete -> Operations.deleteOperator(exprRef)

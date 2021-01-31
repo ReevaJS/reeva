@@ -4,14 +4,14 @@ import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.ExpressionNode
 import me.mattco.reeva.ast.NodeBase
 
-class UnaryExpressionNode(val node: ExpressionNode, val op: Operator) : NodeBase(listOf(node)), ExpressionNode {
+class UnaryExpressionNode(val expression: ExpressionNode, val op: Operator) : NodeBase(listOf(expression)), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (operator=")
         append(op.name)
         append(")\n")
-        append(node.dump(indent + 1))
+        append(expression.dump(indent + 1))
     }
 
     enum class Operator {

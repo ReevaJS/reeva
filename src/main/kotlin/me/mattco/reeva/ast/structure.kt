@@ -368,9 +368,7 @@ class ScriptOrModuleNode(private val value: Any) {
     }
 }
 
-interface LabelledItemNode : ASTNode
-interface StatementListItemNode : ASTNode
-interface StatementNode : ASTNode, LabelledItemNode, StatementListItemNode // TODO: This might cause problems
+interface StatementNode : ASTNode
 interface HoistableDeclarationNode : DeclarationNode
 interface DeclarationNode : StatementNode
 interface BreakableStatement : StatementNode
@@ -382,8 +380,3 @@ interface ShortCircuitExpressionNode : ExpressionNode
 interface MetaPropertyNode : LeftHandSideExpressionNode
 interface PrimaryExpressionNode : LeftHandSideExpressionNode
 interface LiteralNode : PrimaryExpressionNode
-
-interface AssignmentPatternNode : ASTNode
-interface LiteralPropertyNameNode : ASTNode
-interface TemplateLiteralNode : ASTNode
-interface CatchParameterNode : ASTNode

@@ -2,9 +2,6 @@ package me.mattco.reeva.ast.literals
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
-import me.mattco.reeva.ast.statements.StatementListNode
-import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.utils.unreachable
 
 class ObjectLiteralNode(val list: PropertyDefinitionListNode?) : NodeBase(listOfNotNull(list)), PrimaryExpressionNode
@@ -94,8 +91,8 @@ class MethodDefinitionNode(
 
     override fun hasDirectSuper(): Boolean {
         return when (type) {
-            Type.Normal, Type.Setter -> parameters.contains("SuperCallNode") || body.contains("SuperCallNode")
-            Type.Getter -> body.contains("SuperCallNode")
+            Type.Normal, Type.Setter -> parameters.contains("SuperCallExpressionNode") || body.contains("SuperCallExpressionNode")
+            Type.Getter -> body.contains("SuperCallExpressionNode")
             Type.Generator, Type.Async, Type.AsyncGenerator -> TODO()
         }
     }

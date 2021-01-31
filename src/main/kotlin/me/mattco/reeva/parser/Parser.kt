@@ -65,7 +65,7 @@ class Parser(text: String) {
         goalSymbol = GoalSymbol.Module
         isStrict = true
 
-        val body = mutableListOf<StatementListItemNode>()
+        val body = mutableListOf<StatementNode>()
         while (true) {
             val import = parseImportDeclaration()
             if (import != null) {
@@ -116,12 +116,12 @@ class Parser(text: String) {
             }
         }
 
-        if (result.parameters.contains("SuperCallNode") || result.body.contains("SuperCallNode")) {
+        if (result.parameters.contains("SuperCallExpressionNode") || result.body.contains("SuperCallExpressionNode")) {
             syntaxError("dynamic Function object cannot contain a super call")
             return null
         }
 
-        if (result.parameters.contains("SuperPropertyNode") || result.body.contains("SuperPropertyNode")) {
+        if (result.parameters.contains("SuperPropertyExpressionNode") || result.body.contains("SuperPropertyExpressionNode")) {
             syntaxError("dynamic Function object cannot contain a super property access")
             return null
         }
@@ -143,7 +143,7 @@ class Parser(text: String) {
     }
 
     private fun parseStatementList(setStrict: Boolean = false): StatementListNode? {
-        val statements = mutableListOf<StatementListItemNode>()
+        val statements = mutableListOf<StatementNode>()
 
         var statement = parseStatementListItem() ?: return null
         statements.add(statement)
@@ -162,7 +162,7 @@ class Parser(text: String) {
         return StatementListNode(statements)
     }
 
-    private fun parseStatementListItem(): StatementListItemNode? {
+    private fun parseStatementListItem(): StatementNode? {
         return parseStatement() ?: parseDeclaration()
     }
 
@@ -843,7 +843,7 @@ class Parser(text: String) {
             return null
         consume()
         automaticSemicolonInsertion()
-        return DebuggerNode
+        return DebuggerStatementNode
     }
 
     private fun parseDeclaration(): DeclarationNode? {
@@ -1602,7 +1602,7 @@ class Parser(text: String) {
             consume()
             return null
         }
-        return SuperCallNode(args)
+        return SuperCallExpressionNode(args)
     }
 
     private fun parseImportCall(): ExpressionNode? {
@@ -1686,7 +1686,7 @@ class Parser(text: String) {
                     return null
                 }
                 consume()
-                NewTargetNode
+                NewTargetExpressionNode
             }
             TokenType.Import -> {
                 // TODO: Should we save? Or should we error if we don't find a period
@@ -1702,7 +1702,7 @@ class Parser(text: String) {
                     return null
                 }
                 consume()
-                ImportMetaNode
+                ImportMetaExpressionNode
             }
             else -> null
         }
@@ -1723,7 +1723,7 @@ class Parser(text: String) {
                     return null
                 }
                 consume(TokenType.CloseBracket)
-                SuperPropertyNode(expression, true)
+                SuperPropertyExpressionNode(expression, true)
             }
             TokenType.Period -> {
                 discardState()
@@ -1733,7 +1733,7 @@ class Parser(text: String) {
                     consume()
                     return null
                 }
-                SuperPropertyNode(identifier, false)
+                SuperPropertyExpressionNode(identifier, false)
             }
             else -> {
                 loadState()
@@ -1816,7 +1816,7 @@ class Parser(text: String) {
     private fun parsePrimaryExpression(): PrimaryExpressionNode? {
         if (tokenType == TokenType.This) {
             consume()
-            return ThisNode
+            return ThisLiteralNode
         }
 
         val result = parseIdentifierReference() ?:
@@ -1857,14 +1857,14 @@ class Parser(text: String) {
             parseStringLiteral()
     }
 
-    private fun parseNullLiteral(): NullNode? {
+    private fun parseNullLiteral(): NullLiteralNode? {
         return if (tokenType == TokenType.NullLiteral) {
             consume()
-            NullNode
+            NullLiteralNode
         } else null
     }
 
-    private fun parseBooleanLiteral(): BooleanNode? {
+    private fun parseBooleanLiteral(): BooleanLiteralNode ? {
         return when (tokenType) {
             TokenType.True -> TrueNode
             TokenType.False -> FalseNode
@@ -2694,7 +2694,7 @@ class Parser(text: String) {
             if (isStrict && op == UnaryExpressionNode.Operator.Delete) {
                 var theExprToCheck = expr
                 while (theExprToCheck is ParenthesizedExpressionNode)
-                    theExprToCheck = theExprToCheck.target
+                    theExprToCheck = theExprToCheck.expression
 
                 if (theExprToCheck is IdentifierReferenceNode) {
                     syntaxError("using the \"delete\" operator with an identifier is not allow in strict-mode code")

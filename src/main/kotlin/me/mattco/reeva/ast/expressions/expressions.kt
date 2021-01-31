@@ -93,7 +93,7 @@ class NewExpressionNode(
 
 class OptionalExpressionNode : NodeBase(), LeftHandSideExpressionNode
 
-class SuperPropertyNode(val target: ExpressionNode, val computed: Boolean) : NodeBase(listOf(target)), LeftHandSideExpressionNode {
+class SuperPropertyExpressionNode(val target: ExpressionNode, val computed: Boolean) : NodeBase(listOf(target)), LeftHandSideExpressionNode {
     override fun assignmentTargetType() = ASTNode.AssignmentTargetType.Simple
 
     override fun contains(nodeName: String) = nodeName == "super"
@@ -108,16 +108,16 @@ class SuperPropertyNode(val target: ExpressionNode, val computed: Boolean) : Nod
     }
 }
 
-class SuperCallNode(val arguments: ArgumentsNode) : NodeBase(listOf(arguments)), ExpressionNode
+class SuperCallExpressionNode(val arguments: ArgumentsNode) : NodeBase(listOf(arguments)), ExpressionNode
 
-class ImportCallNode(val expression: ExpressionNode) : NodeBase(listOf(expression)), ExpressionNode
+class ImportCallExpressionNode(val expression: ExpressionNode) : NodeBase(listOf(expression)), ExpressionNode
 
 class YieldExpressionNode(
-    val target: ExpressionNode?,
+    val expression: ExpressionNode?,
     val generatorYield: Boolean
-) : NodeBase(listOfNotNull(target)), ExpressionNode {
+) : NodeBase(listOfNotNull(expression)), ExpressionNode {
     init {
-        if (target == null && generatorYield)
+        if (expression == null && generatorYield)
             throw IllegalArgumentException("Cannot have a generatorYield expression without a target expression")
     }
 
@@ -127,11 +127,11 @@ class YieldExpressionNode(
         append(" (generatorYield=")
         append(generatorYield)
         append(")\n")
-        target?.dump(indent + 1)?.also(::append)
+        expression?.dump(indent + 1)?.also(::append)
     }
 }
 
-class ParenthesizedExpressionNode(val target: ExpressionNode) : NodeBase(listOf(target)), PrimaryExpressionNode
+class ParenthesizedExpressionNode(val expression: ExpressionNode) : NodeBase(listOf(expression)), PrimaryExpressionNode
 
 class TemplateLiteralNode(val parts: List<ExpressionNode>) : NodeBase(parts), PrimaryExpressionNode
 

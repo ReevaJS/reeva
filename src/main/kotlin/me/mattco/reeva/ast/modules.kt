@@ -9,7 +9,7 @@ import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.newline
 import me.mattco.reeva.utils.unreachable
 
-class ModuleNode(val body: List<StatementListItemNode>) : NodeBase(body) {
+class ModuleNode(val body: List<StatementNode>) : NodeBase(body) {
     override fun containsDuplicateLabels(labelSet: Set<String>) = body.any { it.containsDuplicateLabels(labelSet) }
 
     override fun containsUndefinedBreakTarget(labelSet: Set<String>) = body.any { it.containsUndefinedBreakTarget(labelSet) }

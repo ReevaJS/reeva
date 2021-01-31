@@ -1,8 +1,9 @@
 package me.mattco.reeva.ast.expressions
 
-import me.mattco.reeva.ast.*
+import me.mattco.reeva.ast.MetaPropertyNode
+import me.mattco.reeva.ast.NodeBase
 
-object ImportMetaNode : NodeBase(), MetaPropertyNode
+object ImportMetaExpressionNode : NodeBase(), MetaPropertyNode
 
-object NewTargetNode : NodeBase(), MetaPropertyNode
+object NewTargetExpressionNode : NodeBase(), MetaPropertyNode
 

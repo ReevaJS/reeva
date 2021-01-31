@@ -1,11 +1,8 @@
 package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.expressions.CallExpressionNode
-import me.mattco.reeva.ast.expressions.ParenthesizedExpressionNode
-import me.mattco.reeva.parser.Parser
-import me.mattco.reeva.utils.expect
 
-class InitializerNode(val node: ExpressionNode) : NodeBase(listOf(node))
+class InitializerNode(val expression: ExpressionNode) : NodeBase(listOf(expression))
 
 class SpreadElementNode(val expression: ExpressionNode) : NodeBase(listOf(expression))
 
