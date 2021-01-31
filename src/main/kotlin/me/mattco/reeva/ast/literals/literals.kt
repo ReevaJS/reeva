@@ -2,10 +2,10 @@ package me.mattco.reeva.ast.literals
 
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.LiteralNode
-import me.mattco.reeva.ast.NodeBase
+import me.mattco.reeva.ast.ASTNodeBase
 import me.mattco.reeva.ast.PrimaryExpressionNode
 
-sealed class BooleanLiteralNode (val value: Boolean) : NodeBase(), LiteralNode {
+sealed class BooleanLiteralNode (val value: Boolean) : ASTNodeBase(), LiteralNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         append(" (value=")
@@ -18,7 +18,7 @@ object TrueNode : BooleanLiteralNode (true)
 
 object FalseNode : BooleanLiteralNode (false)
 
-class StringLiteralNode(val value: String) : NodeBase(), LiteralNode {
+class StringLiteralNode(val value: String) : ASTNodeBase(), LiteralNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -28,7 +28,7 @@ class StringLiteralNode(val value: String) : NodeBase(), LiteralNode {
     }
 }
 
-class NumericLiteralNode(val value: Double) : NodeBase(), LiteralNode {
+class NumericLiteralNode(val value: Double) : ASTNodeBase(), LiteralNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -38,7 +38,7 @@ class NumericLiteralNode(val value: Double) : NodeBase(), LiteralNode {
     }
 }
 
-class BigIntLiteralNode(val value: String, val type: Type) : NodeBase(), LiteralNode {
+class BigIntLiteralNode(val value: String, val type: Type) : ASTNodeBase(), LiteralNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -55,6 +55,6 @@ class BigIntLiteralNode(val value: String, val type: Type) : NodeBase(), Literal
     }
 }
 
-object NullLiteralNode : NodeBase(), LiteralNode
+object NullLiteralNode : ASTNodeBase(), LiteralNode
 
-object ThisLiteralNode : NodeBase(), PrimaryExpressionNode
+object ThisLiteralNode : ASTNodeBase(), PrimaryExpressionNode

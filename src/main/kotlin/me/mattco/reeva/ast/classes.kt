@@ -1,9 +1,8 @@
 package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.literals.MethodDefinitionNode
-import me.mattco.reeva.ast.literals.PropertyNameNode
 
-class ClassDeclarationNode(val classNode: ClassNode) : NodeBase(listOf(classNode)), DeclarationNode {
+class ClassDeclarationNode(val classNode: ClassNode) : ASTNodeBase(listOf(classNode)), DeclarationNode {
     override fun boundNames() = classNode.identifier?.boundNames() ?: listOf("*default*")
 
     override fun declarationPart() = this
@@ -26,14 +25,14 @@ class ClassDeclarationNode(val classNode: ClassNode) : NodeBase(listOf(classNode
 
     override fun topLevelVarDeclaredNames() = emptyList<String>()
 
-    override fun topLevelVarScopedDeclarations() = emptyList<NodeBase>()
+    override fun topLevelVarScopedDeclarations() = emptyList<ASTNodeBase>()
 
     override fun varDeclaredNames() = emptyList<String>()
 
-    override fun varScopedDeclarations() = emptyList<NodeBase>()
+    override fun varScopedDeclarations() = emptyList<ASTNodeBase>()
 }
 
-class ClassExpressionNode(val classNode: ClassNode) : NodeBase(listOf(classNode)), PrimaryExpressionNode {
+class ClassExpressionNode(val classNode: ClassNode) : ASTNodeBase(listOf(classNode)), PrimaryExpressionNode {
     override fun hasName() = classNode.identifier != null
 
     override fun isFunctionDefinition() = true
@@ -45,11 +44,11 @@ class ClassNode(
     val identifier: BindingIdentifierNode?,
     val heritage: ExpressionNode?,
     val body: ClassElementList
-) : NodeBase(listOfNotNull(identifier, heritage) + body) {
+) : ASTNodeBase(listOfNotNull(identifier, heritage) + body) {
     override fun constructorMethod() = body.constructorMethod()
 }
 
-class ClassElementList(val elements: List<ClassElementNode>) : NodeBase(elements) {
+class ClassElementList(val elements: List<ClassElementNode>) : ASTNodeBase(elements) {
     override fun constructorMethod(): ASTNode? {
         return elements.firstOrNull { it.classElementKind() == ASTNode.ClassElementKind.ConstructorMethod }
     }
@@ -60,7 +59,7 @@ class ClassElementNode(
     val initializer: InitializerNode?,
     val isStatic: Boolean,
     val type: Type,
-) : NodeBase(listOfNotNull(node)) {
+) : ASTNodeBase(listOfNotNull(node)) {
     override fun propName(): String? {
         return when (type) {
             Type.Method -> null

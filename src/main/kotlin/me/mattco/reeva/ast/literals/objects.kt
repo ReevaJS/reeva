@@ -4,9 +4,9 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.utils.unreachable
 
-class ObjectLiteralNode(val list: PropertyDefinitionListNode?) : NodeBase(listOfNotNull(list)), PrimaryExpressionNode
+class ObjectLiteralNode(val list: PropertyDefinitionListNode?) : ASTNodeBase(listOfNotNull(list)), PrimaryExpressionNode
 
-class PropertyDefinitionListNode(val properties: List<PropertyDefinitionNode>) : NodeBase(properties) {
+class PropertyDefinitionListNode(val properties: List<PropertyDefinitionNode>) : ASTNodeBase(properties) {
     override fun propertyNameList(): List<String> {
         return properties.mapNotNull(ASTNode::propName)
     }
@@ -17,7 +17,7 @@ class PropertyDefinitionNode(
     val first: ASTNode,
     val second: ExpressionNode?,
     val type: Type
-) : NodeBase(listOfNotNull(first, second)) {
+) : ASTNodeBase(listOfNotNull(first, second)) {
     override fun contains(nodeName: String): Boolean {
         if (nodeName == "MethodDefinitionNode") {
             if (type == Type.Method)
@@ -56,7 +56,7 @@ class PropertyDefinitionNode(
     }
 }
 
-class PropertyNameNode(val expr: ExpressionNode, val isComputed: Boolean) : NodeBase(listOf(expr)) {
+class PropertyNameNode(val expr: ExpressionNode, val isComputed: Boolean) : ASTNodeBase(listOf(expr)) {
     override fun computedPropertyContains(nodeName: String): Boolean {
         if (!isComputed)
             return false
@@ -86,7 +86,7 @@ class MethodDefinitionNode(
     val parameters: FormalParametersNode,
     val body: FunctionStatementList,
     val type: Type
-) : NodeBase(listOfNotNull(identifier, parameters, body)) {
+) : ASTNodeBase(listOfNotNull(identifier, parameters, body)) {
     override fun computedPropertyContains(nodeName: String) = identifier.computedPropertyContains(nodeName)
 
     override fun hasDirectSuper(): Boolean {

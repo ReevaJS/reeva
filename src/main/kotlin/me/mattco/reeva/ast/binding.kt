@@ -2,7 +2,7 @@ package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.literals.PropertyNameNode
 
-sealed class BindingPattern(children: List<ASTNode>) : NodeBase(children), ExpressionNode
+sealed class BindingPattern(children: List<ASTNode>) : ASTNodeBase(children), ExpressionNode
 
 class ObjectBindingPattern(
     val bindingProperties: List<BindingProperty>,
@@ -31,7 +31,7 @@ class ArrayBindingPattern(
     }
 }
 
-sealed class BindingProperty(children: List<ASTNode>) : NodeBase(children)
+sealed class BindingProperty(children: List<ASTNode>) : ASTNodeBase(children)
 
 class SingleNameBindingProperty(
     val identifier: BindingIdentifierNode,
@@ -57,7 +57,7 @@ class ComplexBindingProperty(
     }
 }
 
-sealed class BindingElisionElement(children: List<ASTNode>) : NodeBase(children)
+sealed class BindingElisionElement(children: List<ASTNode>) : ASTNodeBase(children)
 
 object BindingElisionNode : BindingElisionElement(emptyList()) {
     override fun containsExpression() = false
@@ -91,10 +91,10 @@ class PatternBindingElement(
     override fun isSimpleParameterList() = false
 }
 
-class BindingRestProperty(val target: BindingIdentifierNode) : NodeBase(listOf(target))
+class BindingRestProperty(val target: BindingIdentifierNode) : ASTNodeBase(listOf(target))
 
 class BindingRestElement(
     val target: ASTNode // BindingIdentifierNode or BindingPattern
-) : NodeBase(listOf(target)) {
+) : ASTNodeBase(listOf(target)) {
     override fun containsExpression() = target is BindingPattern && target.containsExpression()
 }

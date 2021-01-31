@@ -4,34 +4,34 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.literals.StringLiteralNode
 
-class BlockStatementNode(val block: BlockNode) : NodeBase(listOf(block)), StatementNode
+class BlockStatementNode(val block: BlockNode) : ASTNodeBase(listOf(block)), StatementNode
 
-class BlockNode(val statements: StatementListNode?) : NodeBase(listOfNotNull(statements)), StatementNode {
+class BlockNode(val statements: StatementListNode?) : NodeWithScope(listOfNotNull(statements)), StatementNode {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         if (statements == null)
             return false
-        return super<NodeBase>.containsDuplicateLabels(labelSet)
+        return super<NodeWithScope>.containsDuplicateLabels(labelSet)
     }
 
     override fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
         if (statements == null)
             return false
-        return super<NodeBase>.containsUndefinedBreakTarget(labelSet)
+        return super<NodeWithScope>.containsUndefinedBreakTarget(labelSet)
     }
 
     override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
         if (statements == null)
             return false
-        return super<NodeBase>.containsUndefinedContinueTarget(iterationSet, labelSet)
+        return super<NodeWithScope>.containsUndefinedContinueTarget(iterationSet, labelSet)
     }
 
     override fun lexicallyDeclaredNames(): List<String> {
         if (statements == null)
             return emptyList()
-        return super<NodeBase>.lexicallyDeclaredNames()
+        return super<NodeWithScope>.lexicallyDeclaredNames()
     }
 
-    override fun topLevelLexicallyScopedDeclarations() = emptyList<NodeBase>()
+    override fun topLevelLexicallyScopedDeclarations() = emptyList<ASTNodeBase>()
 
     override fun topLevelVarDeclaredNames() = statements?.statements?.flatMap {
         if (it is LabelledStatementNode) {
@@ -58,7 +58,7 @@ class BlockNode(val statements: StatementListNode?) : NodeBase(listOfNotNull(sta
     } ?: emptyList()
 }
 
-class StatementListNode(val statements: List<StatementNode>) : NodeBase(statements), StatementNode {
+class StatementListNode(val statements: List<StatementNode>) : ASTNodeBase(statements), StatementNode {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return statements.any { it.containsDuplicateLabels(labelSet) }
     }
@@ -75,7 +75,7 @@ class StatementListNode(val statements: List<StatementNode>) : NodeBase(statemen
         return statements.flatMap(StatementNode::lexicallyDeclaredNames)
     }
 
-    override fun lexicallyScopedDeclarations(): List<NodeBase> {
+    override fun lexicallyScopedDeclarations(): List<ASTNodeBase> {
         return statements.flatMap(StatementNode::lexicallyScopedDeclarations)
     }
 
@@ -83,7 +83,7 @@ class StatementListNode(val statements: List<StatementNode>) : NodeBase(statemen
         return statements.flatMap(StatementNode::topLevelLexicallyDeclaredNames)
     }
 
-    override fun topLevelLexicallyScopedDeclarations(): List<NodeBase> {
+    override fun topLevelLexicallyScopedDeclarations(): List<ASTNodeBase> {
         return statements.flatMap(StatementNode::topLevelLexicallyScopedDeclarations)
     }
 
@@ -99,7 +99,7 @@ class StatementListNode(val statements: List<StatementNode>) : NodeBase(statemen
         }
     }
 
-    override fun topLevelVarScopedDeclarations(): List<NodeBase> {
+    override fun topLevelVarScopedDeclarations(): List<ASTNodeBase> {
         return statements.flatMap {
             when (it) {
                 is LabelledStatementNode -> it.topLevelVarScopedDeclarations()
@@ -115,7 +115,7 @@ class StatementListNode(val statements: List<StatementNode>) : NodeBase(statemen
         return statements.flatMap(StatementNode::varDeclaredNames)
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
         return statements.flatMap(StatementNode::varScopedDeclarations)
     }
 
@@ -126,15 +126,15 @@ class StatementListNode(val statements: List<StatementNode>) : NodeBase(statemen
     }
 }
 
-object EmptyStatementNode : NodeBase(), StatementNode
+object EmptyStatementNode : ASTNodeBase(), StatementNode
 
-class ExpressionStatementNode(val node: ExpressionNode): NodeBase(listOf(node)), StatementNode
+class ExpressionStatementNode(val node: ExpressionNode): ASTNodeBase(listOf(node)), StatementNode
 
 class IfStatementNode(
     val condition: ExpressionNode,
     val trueBlock: StatementNode,
     val falseBlock: StatementNode?
-) : NodeBase(listOfNotNull(condition, trueBlock, falseBlock)), StatementNode {
+) : ASTNodeBase(listOfNotNull(condition, trueBlock, falseBlock)), StatementNode {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return trueBlock.containsDuplicateLabels(labelSet) || falseBlock?.containsDuplicateLabels(labelSet) ?: false
     }
@@ -153,12 +153,12 @@ class IfStatementNode(
         return trueBlock.varDeclaredNames() + (falseBlock?.varDeclaredNames() ?: emptyList())
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
         return trueBlock.varScopedDeclarations() + (falseBlock?.varScopedDeclarations() ?: emptyList())
     }
 }
 
-class DoWhileStatementNode(val condition: ExpressionNode, val body: StatementNode) : NodeBase(listOf(condition, body)), IterationStatement {
+class DoWhileStatementNode(val condition: ExpressionNode, val body: StatementNode) : ASTNodeBase(listOf(condition, body)), IterationStatement {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return body.containsDuplicateLabels(labelSet)
     }
@@ -175,7 +175,7 @@ class DoWhileStatementNode(val condition: ExpressionNode, val body: StatementNod
         return body.varDeclaredNames()
     }
 
-    override fun topLevelVarScopedDeclarations(): List<NodeBase> {
+    override fun topLevelVarScopedDeclarations(): List<ASTNodeBase> {
         return body.varScopedDeclarations()
     }
 
@@ -183,12 +183,12 @@ class DoWhileStatementNode(val condition: ExpressionNode, val body: StatementNod
         return body.varDeclaredNames()
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
         return body.varScopedDeclarations()
     }
 }
 
-class WhileStatementNode(val condition: ExpressionNode, val body: StatementNode) : NodeBase(listOf(condition, body)), IterationStatement {
+class WhileStatementNode(val condition: ExpressionNode, val body: StatementNode) : ASTNodeBase(listOf(condition, body)), IterationStatement {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return body.containsDuplicateLabels(labelSet)
     }
@@ -205,7 +205,7 @@ class WhileStatementNode(val condition: ExpressionNode, val body: StatementNode)
         return body.varDeclaredNames()
     }
 
-    override fun topLevelVarScopedDeclarations(): List<NodeBase> {
+    override fun topLevelVarScopedDeclarations(): List<ASTNodeBase> {
         return body.varScopedDeclarations()
     }
 
@@ -213,14 +213,14 @@ class WhileStatementNode(val condition: ExpressionNode, val body: StatementNode)
         return body.varDeclaredNames()
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
         return body.varScopedDeclarations()
     }
 }
 
 class SwitchClauses(
     val clauses: List<SwitchClause>,
-) : NodeBase(clauses) {
+) : ASTNodeBase(clauses) {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return clauses.any { it.containsDuplicateLabels(labelSet) }
     }
@@ -237,7 +237,7 @@ class SwitchClauses(
         return clauses.flatMap { it.lexicallyDeclaredNames() }
     }
 
-    override fun lexicallyScopedDeclarations(): List<NodeBase> {
+    override fun lexicallyScopedDeclarations(): List<ASTNodeBase> {
         return clauses.flatMap { it.lexicallyScopedDeclarations() }
     }
 
@@ -245,7 +245,7 @@ class SwitchClauses(
         return clauses.flatMap { it.varDeclaredNames() }
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
         return clauses.flatMap { it.varScopedDeclarations() }
     }
 }
@@ -253,7 +253,7 @@ class SwitchClauses(
 class SwitchStatementNode(
     val target: ExpressionNode,
     val clauses: SwitchClauses,
-) : NodeBase(listOfNotNull()), BreakableStatement {
+) : ASTNodeBase(listOfNotNull()), BreakableStatement {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return clauses.containsDuplicateLabels(labelSet)
     }
@@ -270,7 +270,7 @@ class SwitchStatementNode(
         return clauses.lexicallyDeclaredNames()
     }
 
-    override fun lexicallyScopedDeclarations(): List<NodeBase> {
+    override fun lexicallyScopedDeclarations(): List<ASTNodeBase> {
         return clauses.lexicallyScopedDeclarations()
     }
 
@@ -278,7 +278,7 @@ class SwitchStatementNode(
         return clauses.varDeclaredNames()
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
         return clauses.varScopedDeclarations()
     }
 }
@@ -287,7 +287,7 @@ class SwitchClause(
     // null target indicates the default case
     val target: ExpressionNode?,
     val body: StatementListNode?,
-) : NodeBase(listOfNotNull(target, body)) {
+) : ASTNodeBase(listOfNotNull(target, body)) {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return body?.containsDuplicateLabels(labelSet) == true
     }
@@ -304,7 +304,7 @@ class SwitchClause(
         return body?.lexicallyDeclaredNames() ?: emptyList()
     }
 
-    override fun lexicallyScopedDeclarations(): List<NodeBase> {
+    override fun lexicallyScopedDeclarations(): List<ASTNodeBase> {
         return body?.lexicallyScopedDeclarations() ?: emptyList()
     }
 
@@ -312,7 +312,7 @@ class SwitchClause(
         return body?.varDeclaredNames() ?: emptyList()
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
         return body?.varScopedDeclarations() ?: emptyList()
     }
 }
@@ -322,7 +322,7 @@ class ForStatementNode(
     val condition: ExpressionNode?,
     val incrementer: ExpressionNode?,
     val body: StatementNode,
-) : NodeBase(listOfNotNull(initializer, condition, incrementer, body)), IterationStatement {
+) : ASTNodeBase(listOfNotNull(initializer, condition, incrementer, body)), IterationStatement {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return body.containsDuplicateLabels(labelSet)
     }
@@ -345,7 +345,7 @@ class ForStatementNode(
         } else emptyList()
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
         return body.varScopedDeclarations() + if (initializer is VariableStatementNode) {
             initializer.varScopedDeclarations()
         } else emptyList()
@@ -375,7 +375,7 @@ class ForInNode(
     val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
-) : NodeBase(listOf(decl, expression)), IterationStatement {
+) : ASTNodeBase(listOf(decl, expression)), IterationStatement {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return body.containsDuplicateLabels(labelSet)
     }
@@ -394,7 +394,7 @@ class ForInNode(
         return body.varDeclaredNames()
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
         if (decl is ForBindingNode)
             return listOf(decl)
         return body.varScopedDeclarations()
@@ -405,7 +405,7 @@ class ForOfNode(
     val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
-) : NodeBase(listOf(decl, expression)), IterationStatement {
+) : ASTNodeBase(listOf(decl, expression)), IterationStatement {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return body.containsDuplicateLabels(labelSet)
     }
@@ -424,7 +424,7 @@ class ForOfNode(
         return body.varDeclaredNames()
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
         if (decl is ForBindingNode)
             return listOf(decl)
         return body.varScopedDeclarations()
@@ -435,7 +435,7 @@ class ForAwaitOfNode(
     val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
-) : NodeBase(listOf(decl, expression)), IterationStatement {
+) : ASTNodeBase(listOf(decl, expression)), IterationStatement {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return body.containsDuplicateLabels(labelSet)
     }
@@ -454,18 +454,18 @@ class ForAwaitOfNode(
         return body.varDeclaredNames()
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
         if (decl is ForBindingNode)
             return listOf(decl)
         return body.varScopedDeclarations()
     }
 }
 
-class ForBindingNode(val identifier: BindingIdentifierNode) : NodeBase(listOf(identifier)), ExpressionNode
+class ForBindingNode(val identifier: BindingIdentifierNode) : ASTNodeBase(listOf(identifier)), ExpressionNode
 
-class ForDeclarationNode(val isConst: Boolean, val binding: ForBindingNode) : NodeBase(listOf(binding))
+class ForDeclarationNode(val isConst: Boolean, val binding: ForBindingNode) : ASTNodeBase(listOf(binding))
 
-class LabelledStatementNode(val label: LabelIdentifierNode, val item: StatementNode) : NodeBase(listOf(label, item)), StatementNode {
+class LabelledStatementNode(val label: LabelIdentifierNode, val item: StatementNode) : ASTNodeBase(listOf(label, item)), StatementNode {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         if (label.identifierName in labelSet)
             return true
@@ -486,7 +486,7 @@ class LabelledStatementNode(val label: LabelIdentifierNode, val item: StatementN
         return emptyList()
     }
 
-    override fun lexicallyScopedDeclarations(): List<NodeBase> {
+    override fun lexicallyScopedDeclarations(): List<ASTNodeBase> {
 //        if (item is FunctionDeclarationNode)
 //            return listOf(item)
         return emptyList()
@@ -496,7 +496,7 @@ class LabelledStatementNode(val label: LabelIdentifierNode, val item: StatementN
         return emptyList()
     }
 
-    override fun topLevelLexicallyScopedDeclarations(): List<NodeBase> {
+    override fun topLevelLexicallyScopedDeclarations(): List<ASTNodeBase> {
         return emptyList()
     }
 
@@ -504,7 +504,7 @@ class LabelledStatementNode(val label: LabelIdentifierNode, val item: StatementN
         return item.topLevelVarDeclaredNames()
     }
 
-    override fun topLevelVarScopedDeclarations(): List<NodeBase> {
+    override fun topLevelVarScopedDeclarations(): List<ASTNodeBase> {
         return item.topLevelVarScopedDeclarations()
     }
 
@@ -514,20 +514,20 @@ class LabelledStatementNode(val label: LabelIdentifierNode, val item: StatementN
         return item.varDeclaredNames()
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
 //        if (item is FunctionDeclarationNode)
 //            return emptyList()
         return item.varScopedDeclarations()
     }
 }
 
-class ThrowStatementNode(val expr: ExpressionNode) : NodeBase(listOf(expr)), StatementNode
+class ThrowStatementNode(val expr: ExpressionNode) : ASTNodeBase(listOf(expr)), StatementNode
 
 class TryStatementNode(
     val tryBlock: BlockNode,
     val catchNode: CatchNode?,
     val finallyBlock: BlockNode?,
-) : NodeBase(listOfNotNull(tryBlock, catchNode, finallyBlock)), StatementNode {
+) : ASTNodeBase(listOfNotNull(tryBlock, catchNode, finallyBlock)), StatementNode {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         if (tryBlock.containsDuplicateLabels(labelSet))
             return true
@@ -556,7 +556,7 @@ class TryStatementNode(
                 (finallyBlock?.varDeclaredNames() ?: emptyList())
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
         return tryBlock.varScopedDeclarations() +
                 (catchNode?.varScopedDeclarations() ?: emptyList()) +
                 (finallyBlock?.varScopedDeclarations() ?: emptyList())
@@ -566,7 +566,7 @@ class TryStatementNode(
 class CatchNode(
     val catchParameter: BindingIdentifierNode?,
     val block: BlockNode
-) : NodeBase(listOfNotNull(catchParameter, block)) {
+) : ASTNodeBase(listOfNotNull(catchParameter, block)) {
     override fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
         return block.containsDuplicateLabels(labelSet)
     }
@@ -584,16 +584,16 @@ class CatchNode(
     override fun varScopedDeclarations() = block.varScopedDeclarations()
 }
 
-class BreakStatementNode(val label: LabelIdentifierNode?) : NodeBase(listOfNotNull(label)), StatementNode {
+class BreakStatementNode(val label: LabelIdentifierNode?) : ASTNodeBase(listOfNotNull(label)), StatementNode {
     override fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
         return label != null && label.identifierName !in labelSet
     }
 }
 
-class ContinueStatementNode(val label: LabelIdentifierNode?) : NodeBase(listOfNotNull(label)), StatementNode {
+class ContinueStatementNode(val label: LabelIdentifierNode?) : ASTNodeBase(listOfNotNull(label)), StatementNode {
     override fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
         return label != null && label.identifierName !in iterationSet
     }
 }
 
-class ReturnStatementNode(val expression: ExpressionNode?) : NodeBase(listOfNotNull(expression)), StatementNode
+class ReturnStatementNode(val expression: ExpressionNode?) : ASTNodeBase(listOfNotNull(expression)), StatementNode

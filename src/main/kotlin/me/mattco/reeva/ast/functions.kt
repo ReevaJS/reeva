@@ -6,12 +6,12 @@ import me.mattco.reeva.ast.statements.ExpressionStatementNode
 import me.mattco.reeva.ast.statements.StatementListNode
 
 // This is an ExpressionNode so it can be passed to MemberExpressionNode
-class ArgumentsNode(private val _argumentsList: ArgumentsListNode) : NodeBase(listOf(_argumentsList)), ExpressionNode {
+class ArgumentsNode(private val _argumentsList: ArgumentsListNode) : ASTNodeBase(listOf(_argumentsList)), ExpressionNode {
     val arguments: List<ArgumentListEntry>
         get() = _argumentsList.argumentsList
 }
 
-class ArgumentsListNode(val argumentsList: List<ArgumentListEntry>) : NodeBase(argumentsList) {
+class ArgumentsListNode(val argumentsList: List<ArgumentListEntry>) : ASTNodeBase(argumentsList) {
     override fun dump(indent: Int) = buildString {
         dumpSelf(indent)
         argumentsList.forEach {
@@ -24,7 +24,7 @@ class ArgumentsListNode(val argumentsList: List<ArgumentListEntry>) : NodeBase(a
     }
 }
 
-data class ArgumentListEntry(val expression: ExpressionNode, val isSpread: Boolean) : NodeBase(listOf(expression)) {
+data class ArgumentListEntry(val expression: ExpressionNode, val isSpread: Boolean) : ASTNodeBase(listOf(expression)) {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -39,7 +39,7 @@ open class GenericFunctionDeclarationNode(
     val identifier: BindingIdentifierNode?,
     val parameters: FormalParametersNode,
     val body: GenericFunctionStatementList,
-) : NodeBase(listOfNotNull(identifier, parameters, body)), DeclarationNode
+) : ASTNodeBase(listOfNotNull(identifier, parameters, body)), DeclarationNode
 
 class FunctionDeclarationNode(
     identifier: BindingIdentifierNode?,
@@ -66,7 +66,7 @@ class FunctionDeclarationNode(
 
     override fun topLevelLexicallyDeclaredNames() = emptyList<String>()
 
-    override fun topLevelLexicallyScopedDeclarations() = emptyList<NodeBase>()
+    override fun topLevelLexicallyScopedDeclarations() = emptyList<ASTNodeBase>()
 
     override fun topLevelVarDeclaredNames() = boundNames()
 
@@ -74,14 +74,14 @@ class FunctionDeclarationNode(
 
     override fun varDeclaredNames() = emptyList<String>()
 
-    override fun varScopedDeclarations() = emptyList<NodeBase>()
+    override fun varScopedDeclarations() = emptyList<ASTNodeBase>()
 }
 
 class FunctionExpressionNode(
     val identifier: BindingIdentifierNode?,
     val parameters: FormalParametersNode,
     val body: FunctionStatementList,
-) : NodeBase(listOfNotNull(identifier, parameters, body)), PrimaryExpressionNode {
+) : ASTNodeBase(listOfNotNull(identifier, parameters, body)), PrimaryExpressionNode {
     override fun contains(nodeName: String) = false
 
     override fun hasName() = identifier != null
@@ -89,7 +89,7 @@ class FunctionExpressionNode(
     override fun isFunctionDefinition() = true
 }
 
-open class GenericFunctionStatementList(val statementList: StatementListNode?) : NodeBase(listOfNotNull(statementList))
+open class GenericFunctionStatementList(val statementList: StatementListNode?) : ASTNodeBase(listOfNotNull(statementList))
 
 // Also "FunctionBody" in the spec
 class FunctionStatementList(statementList: StatementListNode?) : GenericFunctionStatementList(statementList) {
@@ -124,7 +124,7 @@ class FunctionStatementList(statementList: StatementListNode?) : GenericFunction
 class FormalParametersNode(
     val functionParameters: FormalParameterListNode,
     val restParameter: FunctionRestParameterNode?
-) : NodeBase(listOfNotNull(functionParameters, restParameter)) {
+) : ASTNodeBase(listOfNotNull(functionParameters, restParameter)) {
     override fun boundNames(): List<String> {
         val list = restParameter?.element?.boundNames() ?: emptyList()
         return list + functionParameters.boundNames()
@@ -151,7 +151,7 @@ class FormalParametersNode(
     }
 }
 
-class FormalParameterListNode(val parameters: List<FormalParameterNode>) : NodeBase(parameters) {
+class FormalParameterListNode(val parameters: List<FormalParameterNode>) : ASTNodeBase(parameters) {
     override fun boundNames() = parameters.flatMap(ASTNode::boundNames)
 
     override fun expectedArgumentCount(): Int {
@@ -169,14 +169,14 @@ class FormalParameterListNode(val parameters: List<FormalParameterNode>) : NodeB
     }
 }
 
-class FormalParameterNode(val bindingElement: BindingElementNode) : NodeBase(listOf(bindingElement))
+class FormalParameterNode(val bindingElement: BindingElementNode) : ASTNodeBase(listOf(bindingElement))
 
-class FunctionRestParameterNode(val element: BindingRestElement) : NodeBase(listOf(element))
+class FunctionRestParameterNode(val element: BindingRestElement) : ASTNodeBase(listOf(element))
 
 class ArrowFunctionNode(
-    val parameters: ASTNode, // FormalParameterNode or BindingIdentifierNode
+    val parameters: ASTNode, // FormalParametersNode or BindingIdentifierNode
     val body: ASTNode, // Expression or FunctionStatementList
-) : NodeBase(listOf(parameters, body)), ExpressionNode {
+) : ASTNodeBase(listOf(parameters, body)), ExpressionNode {
     override fun contains(nodeName: String): Boolean {
         if (nodeName !in listOf("NewTargetExpressionNode", "SuperPropertyExpressionNode", "SuperCallExpressionNode", "ThisLiteralNode", "super"))
             return false
@@ -194,7 +194,7 @@ class ArrowFunctionNode(
     override fun containsUseStrict(): Boolean {
         if (body is ExpressionNode)
             return false
-        return super<NodeBase>.containsUseStrict()
+        return super<ASTNodeBase>.containsUseStrict()
     }
 
     override fun expectedArgumentCount(): Int {
@@ -219,7 +219,7 @@ class ArrowFunctionNode(
         return body.lexicallyDeclaredNames()
     }
 
-    override fun lexicallyScopedDeclarations(): List<NodeBase> {
+    override fun lexicallyScopedDeclarations(): List<ASTNodeBase> {
         if (body is ExpressionNode)
             return emptyList()
         return body.lexicallyScopedDeclarations()
@@ -231,11 +231,11 @@ class ArrowFunctionNode(
         return body.varDeclaredNames()
     }
 
-    override fun varScopedDeclarations(): List<NodeBase> {
+    override fun varScopedDeclarations(): List<ASTNodeBase> {
         if (body is ExpressionNode)
             return emptyList()
         return body.varScopedDeclarations()
     }
 }
 
-class ArrowParameters(parameters: List<CPEAPPLPart>) : NodeBase()
+class ArrowParameters(parameters: List<CPEAPPLPart>) : ASTNodeBase()

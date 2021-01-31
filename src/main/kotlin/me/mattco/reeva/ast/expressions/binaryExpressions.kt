@@ -1,10 +1,10 @@
 package me.mattco.reeva.ast.expressions
 
 import me.mattco.reeva.ast.ExpressionNode
-import me.mattco.reeva.ast.NodeBase
+import me.mattco.reeva.ast.ASTNodeBase
 import me.mattco.reeva.ast.ShortCircuitExpressionNode
 
-open class BinaryExpression(val lhs: ExpressionNode, val rhs: ExpressionNode) : NodeBase(listOf(lhs, rhs)), ExpressionNode
+open class BinaryExpression(val lhs: ExpressionNode, val rhs: ExpressionNode) : ASTNodeBase(listOf(lhs, rhs)), ExpressionNode
 
 class AdditiveExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode, val isSubtraction: Boolean) : BinaryExpression(lhs, rhs)
 

@@ -2,13 +2,24 @@ package me.mattco.reeva.ast
 
 import me.mattco.reeva.core.modules.ExportEntryRecord
 import me.mattco.reeva.core.modules.ImportEntryRecord
+import me.mattco.reeva.ir.Scope
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.newline
 import me.mattco.reeva.utils.unreachable
 
-open class NodeBase(override val children: List<ASTNode> = emptyList()) : ASTNode {
+open class ASTNodeBase(override val children: List<ASTNode> = emptyList()) : ASTNode {
     override val name: String
         get() = this::class.java.simpleName
+}
+
+open class NodeWithScope(children: List<ASTNode> = emptyList()) : ASTNodeBase(children) {
+    lateinit var scope: Scope
+}
+
+open class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
+    // Either a function param, lexical decl, var decl, or
+    // Script/ModuleNode (for global declarations)
+    lateinit var source: ASTNode
 }
 
 interface ASTNode {
@@ -138,21 +149,21 @@ interface ASTNode {
         return children[0].containsUseStrict()
     }
 
-    fun coveredCallExpression(): NodeBase {
+    fun coveredCallExpression(): ASTNodeBase {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "coveredCallExpression, and cannot be delegated")
         return children[0].coveredCallExpression()
     }
 
-    fun coveredParenthesizedExpression(): NodeBase {
+    fun coveredParenthesizedExpression(): ASTNodeBase {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "coveredParenthesizedExpression, and cannot be delegated")
         return children[0].coveredParenthesizedExpression()
     }
 
-    fun declarationPart(): NodeBase {
+    fun declarationPart(): ASTNodeBase {
         if (children.size != 1)
             throw Error("Node ${this::class.java.simpleName} has no implementation for " +
                 "declarationPart, and cannot be delegated")
@@ -261,7 +272,7 @@ interface ASTNode {
         return children[0].lexicallyDeclaredNames()
     }
 
-    fun lexicallyScopedDeclarations(): List<NodeBase> {
+    fun lexicallyScopedDeclarations(): List<ASTNodeBase> {
         if (children.size != 1)
             return emptyList()
         return children[0].lexicallyScopedDeclarations()
@@ -304,7 +315,7 @@ interface ASTNode {
         return children[0].topLevelLexicallyDeclaredNames()
     }
 
-    fun topLevelLexicallyScopedDeclarations(): List<NodeBase> {
+    fun topLevelLexicallyScopedDeclarations(): List<ASTNodeBase> {
         if (children.size != 1)
             return emptyList()
         return children[0].topLevelLexicallyScopedDeclarations()
@@ -316,7 +327,7 @@ interface ASTNode {
         return children[0].topLevelVarDeclaredNames()
     }
 
-    fun topLevelVarScopedDeclarations(): List<NodeBase> {
+    fun topLevelVarScopedDeclarations(): List<ASTNodeBase> {
         if (children.size != 1)
             return emptyList()
         return children[0].topLevelVarScopedDeclarations()
@@ -328,7 +339,7 @@ interface ASTNode {
         return children[0].varDeclaredNames()
     }
 
-    fun varScopedDeclarations(): List<NodeBase> {
+    fun varScopedDeclarations(): List<ASTNodeBase> {
         if (children.size != 1)
             return emptyList()
         return children[0].varScopedDeclarations()

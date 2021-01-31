@@ -9,7 +9,7 @@ import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.newline
 import me.mattco.reeva.utils.unreachable
 
-class ModuleNode(val body: List<StatementNode>) : NodeBase(body) {
+class ModuleNode(val body: List<StatementNode>) : ASTNodeBase(body) {
     override fun containsDuplicateLabels(labelSet: Set<String>) = body.any { it.containsDuplicateLabels(labelSet) }
 
     override fun containsUndefinedBreakTarget(labelSet: Set<String>) = body.any { it.containsUndefinedBreakTarget(labelSet) }
@@ -39,7 +39,7 @@ class ModuleNode(val body: List<StatementNode>) : NodeBase(body) {
 class ImportDeclarationNode(
     val first: ASTNode, // ImportClause if fromClause is non-null, StringLiteralNode otherwise
     val fromClause: StringLiteralNode?
-) : NodeBase(listOfNotNull(first, fromClause)), StatementNode {
+) : ASTNodeBase(listOfNotNull(first, fromClause)), StatementNode {
     override fun boundNames(): List<String> {
         if (fromClause == null)
             return emptyList()
@@ -74,7 +74,7 @@ class ImportDeclarationNode(
     }
 }
 
-class ImportClause(val imports: List<Import>) : NodeBase(imports) {
+class ImportClause(val imports: List<Import>) : ASTNodeBase(imports) {
     override fun boundNames() = imports.flatMap(ASTNode::boundNames)
 }
 
@@ -82,7 +82,7 @@ class Import(
     val importName: String?,
     val localName: String?,
     val type: Type,
-) : NodeBase() {
+) : ASTNodeBase() {
     init {
         when (type) {
             Type.Normal -> expect(importName != null && localName == null)
@@ -146,7 +146,7 @@ class FromExport(
     val fromClause: StringLiteralNode,
     val node: ASTNode?, // Null if Wildcard, IdentifierNode if NamedWildcard, NamedExports if NamedList
     val type: Type,
-) : NodeBase(listOfNotNull(fromClause, node)), ExportDeclarationNode {
+) : ASTNodeBase(listOfNotNull(fromClause, node)), ExportDeclarationNode {
     override fun boundNames() = emptyList<String>()
 
     override fun exportedBindings() = emptyList<String>()
@@ -171,7 +171,7 @@ class FromExport(
 
     override fun lexicallyDeclaredNames() = boundNames()
 
-    override fun lexicallyScopedDeclarations() = emptyList<NodeBase>()
+    override fun lexicallyScopedDeclarations() = emptyList<ASTNodeBase>()
 
     override fun moduleRequests() = listOf(fromClause.value)
 
@@ -191,7 +191,7 @@ class FromExport(
     }
 }
 
-class NamedExports(val exports: List<Export>) : NodeBase(listOf()), ExportDeclarationNode {
+class NamedExports(val exports: List<Export>) : ASTNodeBase(listOf()), ExportDeclarationNode {
     override fun boundNames() = emptyList<String>()
 
     override fun exportedBindings() = exports.map { it.localName }
@@ -206,7 +206,7 @@ class NamedExports(val exports: List<Export>) : NodeBase(listOf()), ExportDeclar
 
     override fun lexicallyDeclaredNames() = boundNames()
 
-    override fun lexicallyScopedDeclarations() = emptyList<NodeBase>()
+    override fun lexicallyScopedDeclarations() = emptyList<ASTNodeBase>()
 
     override fun dump(indent: Int) = buildString {
         dumpSelf(indent)
@@ -225,7 +225,7 @@ class NamedExports(val exports: List<Export>) : NodeBase(listOf()), ExportDeclar
     data class Export(val localName: String, val exportName: String?)
 }
 
-class VariableExport(val variableStatement: VariableStatementNode) : NodeBase(listOf(variableStatement)), ExportDeclarationNode {
+class VariableExport(val variableStatement: VariableStatementNode) : ASTNodeBase(listOf(variableStatement)), ExportDeclarationNode {
     override fun boundNames() = variableStatement.boundNames()
 
     override fun exportedBindings() = boundNames()
@@ -238,14 +238,14 @@ class VariableExport(val variableStatement: VariableStatementNode) : NodeBase(li
 
     override fun lexicallyDeclaredNames() = emptyList<String>()
 
-    override fun lexicallyScopedDeclarations() = emptyList<NodeBase>()
+    override fun lexicallyScopedDeclarations() = emptyList<ASTNodeBase>()
 
     override fun varDeclaredNames() = variableStatement.varDeclaredNames()
 
     override fun varScopedDeclarations() = variableStatement.varScopedDeclarations()
 }
 
-class DeclarationExport(val declaration: DeclarationNode) : NodeBase(listOf(declaration)), ExportDeclarationNode {
+class DeclarationExport(val declaration: DeclarationNode) : ASTNodeBase(listOf(declaration)), ExportDeclarationNode {
     override fun boundNames() = declaration.boundNames()
 
     override fun exportedBindings() = boundNames()
@@ -261,7 +261,7 @@ class DeclarationExport(val declaration: DeclarationNode) : NodeBase(listOf(decl
     override fun lexicallyScopedDeclarations() = listOf(declaration.declarationPart())
 }
 
-class DefaultFunctionExport(val declaration: FunctionDeclarationNode) : NodeBase(listOf(declaration)), ExportDeclarationNode {
+class DefaultFunctionExport(val declaration: FunctionDeclarationNode) : ASTNodeBase(listOf(declaration)), ExportDeclarationNode {
     override fun boundNames(): List<String> {
         val declarationNames = declaration.boundNames()
         if ("*default*" !in declarationNames)
@@ -284,7 +284,7 @@ class DefaultFunctionExport(val declaration: FunctionDeclarationNode) : NodeBase
     override fun lexicallyScopedDeclarations() = listOf(declaration)
 }
 
-class DefaultClassExport(val classNode: ClassDeclarationNode) : NodeBase(listOf(classNode)), ExportDeclarationNode {
+class DefaultClassExport(val classNode: ClassDeclarationNode) : ASTNodeBase(listOf(classNode)), ExportDeclarationNode {
     override fun boundNames(): List<String> {
         val declarationNames = classNode.boundNames()
         if ("*default*" !in declarationNames)
@@ -307,7 +307,7 @@ class DefaultClassExport(val classNode: ClassDeclarationNode) : NodeBase(listOf(
     override fun lexicallyScopedDeclarations() = listOf(classNode)
 }
 
-class DefaultExpressionExport(val expression: ExpressionNode) : NodeBase(listOf(expression)), ExportDeclarationNode {
+class DefaultExpressionExport(val expression: ExpressionNode) : ASTNodeBase(listOf(expression)), ExportDeclarationNode {
     override fun boundNames() = listOf("*default*")
 
     override fun exportedBindings() = boundNames()
@@ -320,5 +320,5 @@ class DefaultExpressionExport(val expression: ExpressionNode) : NodeBase(listOf(
 
     override fun lexicallyDeclaredNames() = boundNames()
 
-    override fun lexicallyScopedDeclarations() = listOf(this as NodeBase)
+    override fun lexicallyScopedDeclarations() = listOf(this as ASTNodeBase)
 }
