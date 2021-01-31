@@ -5,7 +5,7 @@ import me.mattco.reeva.ast.*
 class LexicalDeclarationNode(
     val isConst: Boolean,
     val bindingList: BindingListNode
-) : NodeWithScope(listOf(bindingList)), DeclarationNode {
+) : VariableSourceNode(listOf(bindingList)), DeclarationNode {
     override fun boundNames() = bindingList.boundNames()
 
     override fun containsDuplicateLabels(labelSet: Set<String>) = false
@@ -46,7 +46,7 @@ class LexicalBindingNode(
     override fun boundNames() = identifier.boundNames()
 }
 
-class VariableStatementNode(val declarations: VariableDeclarationList) : ASTNodeBase(listOf(declarations)), StatementNode {
+class VariableStatementNode(val declarations: VariableDeclarationList) : VariableSourceNode(listOf(declarations)), StatementNode {
     override fun varDeclaredNames() = declarations.boundNames()
 
     override fun topLevelVarDeclaredNames() = varDeclaredNames()

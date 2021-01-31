@@ -3,7 +3,6 @@ package me.mattco.reeva.core.modules.records
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.FunctionDeclarationNode
 import me.mattco.reeva.ast.ModuleNode
-import me.mattco.reeva.ast.ScriptOrModuleNode
 import me.mattco.reeva.ast.statements.StatementListNode
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ExecutionContext

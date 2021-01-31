@@ -39,7 +39,7 @@ open class GenericFunctionDeclarationNode(
     val identifier: BindingIdentifierNode?,
     val parameters: FormalParametersNode,
     val body: GenericFunctionStatementList,
-) : ASTNodeBase(listOfNotNull(identifier, parameters, body)), DeclarationNode
+) : NodeWithScope(listOfNotNull(identifier, parameters, body)), DeclarationNode
 
 class FunctionDeclarationNode(
     identifier: BindingIdentifierNode?,
@@ -81,7 +81,7 @@ class FunctionExpressionNode(
     val identifier: BindingIdentifierNode?,
     val parameters: FormalParametersNode,
     val body: FunctionStatementList,
-) : ASTNodeBase(listOfNotNull(identifier, parameters, body)), PrimaryExpressionNode {
+) : NodeWithScope(listOfNotNull(identifier, parameters, body)), PrimaryExpressionNode {
     override fun contains(nodeName: String) = false
 
     override fun hasName() = identifier != null
@@ -124,7 +124,11 @@ class FunctionStatementList(statementList: StatementListNode?) : GenericFunction
 class FormalParametersNode(
     val functionParameters: FormalParameterListNode,
     val restParameter: FunctionRestParameterNode?
-) : ASTNodeBase(listOfNotNull(functionParameters, restParameter)) {
+) : VariableSourceNode(listOfNotNull(functionParameters, restParameter)) {
+    init {
+        isInlineable = false
+    }
+
     override fun boundNames(): List<String> {
         val list = restParameter?.element?.boundNames() ?: emptyList()
         return list + functionParameters.boundNames()
@@ -176,7 +180,7 @@ class FunctionRestParameterNode(val element: BindingRestElement) : ASTNodeBase(l
 class ArrowFunctionNode(
     val parameters: ASTNode, // FormalParametersNode or BindingIdentifierNode
     val body: ASTNode, // Expression or FunctionStatementList
-) : ASTNodeBase(listOf(parameters, body)), ExpressionNode {
+) : NodeWithScope(listOf(parameters, body)), ExpressionNode {
     override fun contains(nodeName: String): Boolean {
         if (nodeName !in listOf("NewTargetExpressionNode", "SuperPropertyExpressionNode", "SuperCallExpressionNode", "ThisLiteralNode", "super"))
             return false
@@ -194,7 +198,7 @@ class ArrowFunctionNode(
     override fun containsUseStrict(): Boolean {
         if (body is ExpressionNode)
             return false
-        return super<ASTNodeBase>.containsUseStrict()
+        return super<NodeWithScope>.containsUseStrict()
     }
 
     override fun expectedArgumentCount(): Int {

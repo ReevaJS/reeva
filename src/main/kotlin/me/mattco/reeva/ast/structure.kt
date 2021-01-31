@@ -6,6 +6,7 @@ import me.mattco.reeva.ir.Scope
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.newline
 import me.mattco.reeva.utils.unreachable
+import kotlin.reflect.KClass
 
 open class ASTNodeBase(override val children: List<ASTNode> = emptyList()) : ASTNode {
     override val name: String
@@ -20,6 +21,10 @@ open class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWithScop
     // Either a function param, lexical decl, var decl, or
     // Script/ModuleNode (for global declarations)
     lateinit var source: ASTNode
+}
+
+open class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
+    var isInlineable = true
 }
 
 interface ASTNode {
@@ -68,10 +73,6 @@ interface ASTNode {
     enum class AssignmentTargetType {
         Simple,
         Invalid
-    }
-
-    fun allPrivateIdentifiersValid(names: List<String>): Boolean {
-        return children.all { it.allPrivateIdentifiersValid(names) }
     }
 
     fun assignmentTargetType(): AssignmentTargetType {
@@ -350,6 +351,20 @@ interface ASTNode {
         NonConstructorMethod,
         Empty,
     }
+}
+
+fun <T : Any> childrenOfTypeHelper(node: ASTNode, clazz: KClass<T>, list: MutableList<T>) {
+    node.children.forEach {
+        if (it::class == clazz) {
+            @Suppress("UNCHECKED_CAST")
+            list.add(it as T)
+        }
+        childrenOfTypeHelper(it, clazz, list)
+    }
+}
+
+inline fun <reified T : Any> ASTNode.childrenOfType(): List<T> {
+    return mutableListOf<T>().also { childrenOfTypeHelper(this, T::class, it) }
 }
 
 class ScriptOrModuleNode(private val value: Any) {

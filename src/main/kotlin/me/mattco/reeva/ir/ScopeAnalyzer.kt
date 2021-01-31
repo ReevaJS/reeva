@@ -2,7 +2,6 @@ package me.mattco.reeva.ir
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.statements.BlockNode
-import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.utils.unreachable
 
 /**
@@ -16,7 +15,7 @@ import me.mattco.reeva.utils.unreachable
 class ScopeAnalyzer : ASTVisitor {
     private lateinit var topLevelScope: Scope
     private lateinit var scope: Scope
-    private lateinit var topLevelNode: ASTNode
+    private lateinit var topLevelNode: NodeWithScope
 
     fun analyze(script: ScriptNode) {
         topLevelScope = Scope(Scope.Type.ScriptScope, null)
@@ -46,18 +45,31 @@ class ScopeAnalyzer : ASTVisitor {
 
     override fun visitBindingIdentifier(node: BindingIdentifierNode) {
         val variable = scope.getVariable(node.identifierName)
-        node.source = variable?.source ?: topLevelNode
+        val source = variable?.source ?: topLevelNode
+        node.source = source
+
+        // TODO: Somehow make function parameters VariableSourceNodes
+        if (source is VariableSourceNode && scope.crossesVarBoundary(source.scope))
+            source.isInlineable = false
+
         super.visitBindingIdentifier(node)
     }
 
     override fun visitIdentifierReference(node: IdentifierReferenceNode) {
         val variable = scope.getVariable(node.identifierName)
-        node.source = variable?.source ?: topLevelNode
+        val source = variable?.source ?: topLevelNode
+        node.source = source
+
+        // TODO: Somehow make function parameters VariableSourceNodes
+        if (source is VariableSourceNode && scope.crossesVarBoundary(source.scope))
+            source.isInlineable = false
+
         super.visitIdentifierReference(node)
     }
 
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
         pushScope(Scope.Type.FunctionScope)
+        node.scope = scope
 
         val params = node.parameters
         params.functionParameters.parameters.forEach {
@@ -89,6 +101,7 @@ class ScopeAnalyzer : ASTVisitor {
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
         pushScope(Scope.Type.FunctionScope)
+        node.scope = scope
 
         val params = node.parameters
         params.functionParameters.parameters.forEach {
@@ -194,7 +207,7 @@ class ScopeAnalyzer : ASTVisitor {
                 name,
                 Variable.Mode.Var,
                 Variable.Kind.Normal,
-                node
+                node as NodeWithScope, // TODO: Let's avoid this cast somehow
             )
             scope.addVariable(name, variable)
         }
@@ -209,7 +222,7 @@ class ScopeAnalyzer : ASTVisitor {
                 name,
                 mode,
                 Variable.Kind.Normal,
-                node
+                node as NodeWithScope, // TODO: Let's avoid this cast somehow
             )
             scope.addVariable(name, variable)
         }
@@ -220,7 +233,7 @@ data class Variable(
     val name: String,
     var mode: Mode,
     val kind: Kind,
-    val source: ASTNode
+    val source: NodeWithScope,
 ) {
     lateinit var scope: Scope
     var isUsed = false
@@ -244,6 +257,7 @@ enum class LanguageMode {
 
 class Scope(val type: Type, val outer: Scope? = null) {
     private val variableMap = mutableMapOf<String, Variable>()
+    private var crossBoundaryScopeCache = mutableMapOf<Scope, Boolean>()
 
     fun hasVariable(name: String): Boolean = name in variableMap || outer?.hasVariable(name) == true
 
@@ -260,6 +274,26 @@ class Scope(val type: Type, val outer: Scope? = null) {
     }
 
     var languageMode = LanguageMode.Sloppy
+
+    // Determines if a scope in this scope's parent chain is linked
+    // across a var-binding boundary (i.e. function or class boundary)
+    fun crossesVarBoundary(parentScope: Scope): Boolean {
+        return crossBoundaryScopeCache.getOrPut(parentScope) {
+            var currScope: Scope? = this
+
+            while (currScope != null) {
+                if (currScope == parentScope)
+                    return@getOrPut false
+
+                if (currScope.type == Type.FunctionScope || currScope.type == Type.ClassScope)
+                    return@getOrPut true
+
+                currScope = currScope.outer
+            }
+
+            throw IllegalStateException("Scope $parentScope is not in the parent chain of scope $this")
+        }
+    }
 
     enum class Type {
         ClassScope,
