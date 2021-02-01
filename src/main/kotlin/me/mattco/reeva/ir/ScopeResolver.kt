@@ -4,19 +4,19 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.statements.BlockNode
 
 /**
- * The scope analyzer is responsible for "filling in" many of
+ * The scope resolver is responsible for "filling in" many of
  * the AST fields.
  *
  * First and foremost, it connects identifiers with their
  * source: either a function parameter, a variable declaration,
  * or a global variable.
  */
-class ScopeAnalyzer : ASTVisitor {
+class ScopeResolver : ASTVisitor {
     private lateinit var topLevelScope: Scope
     private lateinit var scope: Scope
     private lateinit var topLevelNode: NodeWithScope
 
-    fun analyze(script: ScriptNode) {
+    fun resolve(script: ScriptNode) {
         topLevelScope = Scope(Scope.Type.ScriptScope, null)
         scope = topLevelScope
         script.scope = scope

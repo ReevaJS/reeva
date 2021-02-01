@@ -13,7 +13,8 @@ fun main() {
         console.log(a);
     """.trimIndent()
     val parsed = Parser(source).parseScript()
-    ScopeAnalyzer().analyze(parsed)
+    ScopeResolver().resolve(parsed)
+
     println("")
 }
 
