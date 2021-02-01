@@ -5,7 +5,7 @@ import me.mattco.reeva.ast.*
 class LexicalDeclarationNode(
     val isConst: Boolean,
     val bindingList: BindingListNode
-) : VariableSourceNode(listOf(bindingList)), DeclarationNode {
+) : ASTNodeBase(listOf(bindingList)), DeclarationNode {
     override fun boundNames() = bindingList.boundNames()
 
     override fun containsDuplicateLabels(labelSet: Set<String>) = false
@@ -42,11 +42,11 @@ class BindingListNode(val lexicalBindings: List<LexicalBindingNode>) : ASTNodeBa
 class LexicalBindingNode(
     val identifier: BindingIdentifierNode,
     val initializer: InitializerNode?
-) : ASTNodeBase(listOfNotNull(identifier, initializer)), StatementNode {
+) : VariableSourceNode(listOfNotNull(identifier, initializer)), StatementNode {
     override fun boundNames() = identifier.boundNames()
 }
 
-class VariableStatementNode(val declarations: VariableDeclarationList) : VariableSourceNode(listOf(declarations)), StatementNode {
+class VariableStatementNode(val declarations: VariableDeclarationList) : ASTNodeBase(listOf(declarations)), StatementNode {
     override fun varDeclaredNames() = declarations.boundNames()
 
     override fun topLevelVarDeclaredNames() = varDeclaredNames()
@@ -61,7 +61,7 @@ class VariableDeclarationList(val declarations: List<VariableDeclarationNode>) :
 class VariableDeclarationNode(
     val identifier: BindingIdentifierNode,
     val initializer: InitializerNode?
-) : ASTNodeBase(listOfNotNull(identifier, initializer)), StatementNode {
+) : VariableSourceNode(listOfNotNull(identifier, initializer)), StatementNode {
     override fun boundNames() = identifier.boundNames()
 
     override fun varScopedDeclarations() = listOf(this)

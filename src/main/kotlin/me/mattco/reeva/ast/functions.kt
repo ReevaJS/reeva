@@ -39,7 +39,7 @@ open class GenericFunctionDeclarationNode(
     val identifier: BindingIdentifierNode?,
     val parameters: FormalParametersNode,
     val body: GenericFunctionStatementList,
-) : NodeWithScope(listOfNotNull(identifier, parameters, body)), DeclarationNode
+) : VariableSourceNode(listOfNotNull(identifier, parameters, body)), DeclarationNode
 
 class FunctionDeclarationNode(
     identifier: BindingIdentifierNode?,

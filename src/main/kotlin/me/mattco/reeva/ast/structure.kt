@@ -25,6 +25,7 @@ open class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWithScop
 
 open class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
     var isInlineable = true
+    var index = -1
 }
 
 interface ASTNode {

@@ -1,8 +1,8 @@
 package me.mattco.reeva.ast.literals
 
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
-import me.mattco.reeva.ast.LiteralNode
 import me.mattco.reeva.ast.ASTNodeBase
+import me.mattco.reeva.ast.LiteralNode
 import me.mattco.reeva.ast.PrimaryExpressionNode
 
 sealed class BooleanLiteralNode (val value: Boolean) : ASTNodeBase(), LiteralNode {
@@ -47,11 +47,11 @@ class BigIntLiteralNode(val value: String, val type: Type) : ASTNodeBase(), Lite
         append(")\n")
     }
 
-    enum class Type {
-        Normal,
-        Hex,
-        Octal,
-        Binary,
+    enum class Type(val radix: Int) {
+        Normal(10),
+        Hex(16),
+        Octal(8),
+        Binary(2),
     }
 }
 

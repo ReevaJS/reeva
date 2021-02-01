@@ -7,7 +7,6 @@ sealed class Opcode
  *************/
 
 object LdaZero: Opcode()
-class LdaInt(val number: Int) : Opcode()
 object LdaUndefined : Opcode()
 object LdaNull : Opcode()
 object LdaTrue : Opcode()
@@ -85,19 +84,6 @@ class ShiftLeft(val valueReg: Int) : Opcode()
 class ShiftRight(val valueReg: Int) : Opcode()
 class ShiftRightUnsigned(val valueReg: Int) : Opcode()
 
-class AddInt(val immediate: Int) : Opcode()
-class SubInt(val immediate: Int) : Opcode()
-class MulInt(val immediate: Int) : Opcode()
-class DivInt(val immediate: Int) : Opcode()
-class ModInt(val immediate: Int) : Opcode()
-class ExpInt(val immediate: Int) : Opcode()
-class BitwiseOrInt(val immediate: Int) : Opcode()
-class BitwiseXorInt(val immediate: Int) : Opcode()
-class BitwiseAndInt(val immediate: Int) : Opcode()
-class ShiftLeftInt(val immediate: Int) : Opcode()
-class ShiftRightInt(val immediate: Int) : Opcode()
-class ShiftRightUnsignedInt(val immediate: Int) : Opcode()
-
 object Inc : Opcode()
 object Dec : Opcode()
 object Negate : Opcode()
@@ -105,7 +91,7 @@ object BitwiseNot : Opcode()
 
 /**
  * Converts the accumulator to a boolean using the ToBoolean
- * operation, then inverted it.
+ * operation, then invertes it.
  */
 object ToBooleanLogicalNot : Opcode()
 
@@ -145,33 +131,23 @@ class DeletePropertySloppy(val targetReg: Int) : Opcode()
 class CallAnyReceiver(val callableReg: Int, val receiverReg: Int, val argCount: Int) : Opcode()
 
 /**
- * Calls a property in [propertyCpIndex] on the value in
- * [callableReg] with any (possibly undefined) receiver. The
- * receiver is in [receiverReg], and the [argCount] number of
- * arguments directly follow it.
+ * Calls a property on the value in [callableReg] with a non-nullish
+ * receiver. The receiver is in [receiverReg], and the [argCount] number
+ * of arguments directly follow it.
  */
-class CallProperty(val callableReg: Int, val receiverReg: Int, val argCount: Int, val propertyCpIndex: Int) : Opcode()
+class CallProperty(val callableReg: Int, val receiverReg: Int, val argCount: Int) : Opcode()
 
 /**
- * Calls a property in [propertyCpIndex] on the value in
- * [callableReg] with any (possibly undefined) receiver and
- * no arguments.
+ * Calls a property on the value in [callableReg] with a non-nullish
+ * receiver and no arguments. The receiver is in [receiverReg].
  */
-class CallProperty0(val callableReg: Int, val receiverReg: Int, val propertyCpIndex: Int) : Opcode()
+class CallProperty0(val callableReg: Int, val receiverReg: Int) : Opcode()
 
 /**
- * Calls a property in [propertyCpIndex] on the value in
- * [callableReg] with any (possibly undefined) receiver and
- * one argument.
+ * Calls a property on the value in [callableReg] with a non-nullish
+ * receiver and 1 argument. The receiver is in [receiverReg].
  */
 class CallProperty1(val callableReg: Int, val receiverReg: Int, val argReg: Int) : Opcode()
-
-/**
- * Calls a property in [propertyCpIndex] on the value in
- * [callableReg] with any (possibly undefined) receiver and
- * two arguments.
- */
-class CallProperty2(val callableReg: Int, val receiverReg: Int, val arg1Reg: Int, arg2Reg: Int) : Opcode()
 
 /**
  * Calls the value in [callableReg] with an undefined receiver.
@@ -191,12 +167,6 @@ class CallUndefinedReceiver0(val callableReg: Int) : Opcode()
  * and one argument.
  */
 class CallUndefinedReceiver1(val callableReg: Int, val argReg: Int) : Opcode()
-
-/**
- * Calls the value in [callableReg] with an undefined receiver
- * and two arguments.
- */
-class CallUndefinedReceiver2(val callableReg: Int, val arg1Reg: Int, arg2Reg: Int) : Opcode()
 
 /**
  * Calls the value in [callableReg] with any (possibly undefined)
@@ -219,6 +189,14 @@ class CallRuntime(val id: Int, val firstArgReg: Int, val argCount: Int) : Opcode
 /****************
  * CONSTRUCTION *
  ****************/
+
+/**
+ * Constructs the target with a given new.target and no arguments.
+ *
+ * accumulator: new.target
+ * [targetReg]: The target of the construct operation
+ */
+class Construct0(val targetReg: Int) : Opcode()
 
 /**
  * Constructs the target with a given new.target with the given arguments.
@@ -253,9 +231,19 @@ class ConstructWithSpread(val targetReg: Int, val firstArgReg: Int, val argCount
 class TestEqual(val targetReg: Int) : Opcode()
 
 /**
+ * Tests whether or not [targetReg] is equal to the accumulator.
+ */
+class TestNotEqual(val targetReg: Int) : Opcode()
+
+/**
  * Tests whether or not [targetReg] is strictly equals to the accumulator.
  */
 class TestEqualStrict(val targetReg: Int) : Opcode()
+
+/**
+ * Tests whether or not [targetReg] is strictly equals to the accumulator.
+ */
+class TestNotEqualStrict(val targetReg: Int) : Opcode()
 
 /**
  * Tests whether or not [targetReg] is less than to the accumulator.
@@ -311,6 +299,7 @@ object TestUndefined : Opcode()
  * CONVERSIONS *
  ***************/
 
+object ToBoolean : Opcode()
 object ToName : Opcode()
 object ToNumber : Opcode()
 object ToNumeric : Opcode()
@@ -327,60 +316,72 @@ object ToString : Opcode()
 class Jump(val offset: Int) : Opcode()
 
 /**
- * Jump by the number of bytes specified by [offset] if the
+ * Jump by the number of opcodes specified by [offset] if the
  * accumulator holds the value "true".
  */
 class JumpIfTrue(val offset: Int) : Opcode()
 
 /**
- * Jump by the number of bytes specified by [offset] if the
+ * Jump by the number of opcodes specified by [offset] if the
  * accumulator holds the value "false".
  */
 class JumpIfFalse(val offset: Int) : Opcode()
 
 /**
- * Jump by the number of bytes specified by [offset] if the
+ * Jump by the number of opcodes specified by [offset] if the
  * accumulator holds the value "true" after being cast to
  * a boolean value.
  */
 class JumpIfToBooleanTrue(val offset: Int) : Opcode()
 
 /**
- * Jump by the number of bytes specified by [offset] if the
+ * Jump by the number of opcodes specified by [offset] if the
  * accumulator holds the value "false" after being cast to
  * a boolean value.
  */
 class JumpIfToBooleanFalse(val offset: Int) : Opcode()
 
 /**
- * Jump by the number of bytes specified by [offset] if the
+ * Jump by the number of opcodes specified by [offset] if the
  * accumulator holds a null value.
  */
 class JumpIfNull(val offset: Int) : Opcode()
 
 /**
- * Jump by the number of bytes specified by [offset] if the
+ * Jump by the number of opcodes specified by [offset] if the
  * accumulator holds a non-null value.
  */
 class JumpIfNotNull(val offset: Int) : Opcode()
 
 /**
- * Jump by the number of bytes specified by [offset] if the
+ * Jump by the number of opcodes specified by [offset] if the
  * accumulator holds an undefined value.
  */
 class JumpIfUndefined(val offset: Int) : Opcode()
 
 /**
- * Jump by the number of bytes specified by [offset] if the
+ * Jump by the number of opcodes specified by [offset] if the
  * accumulator holds a non-undefined value.
  */
 class JumpIfNotUndefined(val offset: Int) : Opcode()
 
 /**
- * Jump by the number of bytes specified by [offset] if the
+ * Jump by the number of opcodes specified by [offset] if the
  * accumulator holds an object value.
  */
 class JumpIfObject(val offset: Int) : Opcode()
+
+/**
+ * Jump by the number of opcodes specified by offset if accumulator
+ * holds an nullish value.
+ */
+class JumpIfNullish(val offset: Int) : Opcode()
+
+/**
+ * Jump by the number of opcodes specified by offset if accumulator
+ * holds an nullish value.
+ */
+class JumpIfNotNullish(val offset: Int) : Opcode()
 
 object JumpPlaceholder : Opcode()
 
