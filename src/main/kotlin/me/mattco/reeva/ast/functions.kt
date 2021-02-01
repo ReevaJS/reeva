@@ -5,7 +5,7 @@ import me.mattco.reeva.ast.statements.ASTListNode
 import me.mattco.reeva.ast.statements.ReturnStatementNode
 import me.mattco.reeva.ast.statements.StatementList
 
-typealias ArgumentList = ASTListNode<Argument>
+typealias ArgumentList = ASTListNode<ArgumentNode>
 
 class ParameterList(parameters: List<Parameter> = emptyList()) : ASTListNode<Parameter>(parameters) {
     fun isSimple(): Boolean {
@@ -18,7 +18,10 @@ class ParameterList(parameters: List<Parameter> = emptyList()) : ASTListNode<Par
     }
 }
 
-class Argument(val expression: ExpressionNode, val isSpread: Boolean) : ASTNodeBase(listOf(expression)) {
+class ArgumentNode(
+    val expression: ExpressionNode,
+    val isSpread: Boolean
+) : ASTNodeBase(listOf(expression)), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -39,7 +42,7 @@ class Parameter(
             throw IllegalArgumentException()
     }
 
-    override fun boundNames() = listOf(identifier.identifierName)
+    override fun boundName() = identifier.identifierName
 }
 
 open class GenericFunctionDeclarationNode(
@@ -47,7 +50,7 @@ open class GenericFunctionDeclarationNode(
     val parameters: ParameterList,
     val body: StatementList,
 ) : VariableSourceNode(listOf(identifier) + body + parameters), StatementNode {
-    override fun boundNames() = listOf(identifier.identifierName)
+    override fun boundName() = identifier.identifierName
 }
 
 class FunctionDeclarationNode(

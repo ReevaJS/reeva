@@ -2,6 +2,8 @@ package me.mattco.reeva.ir
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.statements.BlockNode
+import me.mattco.reeva.ast.statements.LexicalDeclarationNode
+import me.mattco.reeva.ast.statements.VariableDeclarationNode
 
 /**
  * The scope resolver is responsible for "filling in" many of
@@ -14,7 +16,7 @@ import me.mattco.reeva.ast.statements.BlockNode
 class ScopeResolver : ASTVisitor {
     private lateinit var topLevelScope: Scope
     private lateinit var scope: Scope
-    private lateinit var topLevelNode: NodeWithScope
+    private lateinit var topLevelNode: VariableSourceNode
 
     fun resolve(script: ScriptNode) {
         topLevelScope = Scope(Scope.Type.ScriptScope, null)
@@ -25,7 +27,7 @@ class ScopeResolver : ASTVisitor {
         script.variableDeclarations().forEach(::handleVarDeclaration)
         script.lexicalDeclarations().forEach(::handleLexicalDeclaration)
 
-        visit(script.statementList)
+        visit(script.statements)
     }
 
     override fun visit(node: ASTNode) {
@@ -43,41 +45,62 @@ class ScopeResolver : ASTVisitor {
     }
 
     override fun visitBindingIdentifier(node: BindingIdentifierNode) {
-        val variable = scope.getVariable(node.identifierName)
-        val source = variable?.source ?: topLevelNode
-        node.source = source
+        val variable = getVariable(node.identifierName)
+        val source = variable.source
+        node.variable = variable
 
-        if (source is VariableSourceNode && scope.crossesVarBoundary(source.scope))
-            variable!!.isInlineable = false
+        if (scope.crossesVarBoundary(source.scope))
+            variable.isInlineable = false
 
         super.visitBindingIdentifier(node)
     }
 
     override fun visitIdentifierReference(node: IdentifierReferenceNode) {
-        val variable = scope.getVariable(node.identifierName)
-        val source = variable?.source ?: topLevelNode
-        node.source = source
+        val variable = getVariable(node.identifierName)
+        val source = variable.source
+        node.variable = variable
 
-        // TODO: Somehow make function parameters VariableSourceNodes
-        if (source is VariableSourceNode && scope.crossesVarBoundary(source.scope))
-            variable!!.isInlineable = false
+        if (scope.crossesVarBoundary(source.scope))
+            variable.isInlineable = false
 
         super.visitIdentifierReference(node)
     }
 
+    override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
+        node.declarations.forEach {
+            it.scope = scope
+            it.variable = getVariable(it.identifier.identifierName)
+        }
+        super.visitLexicalDeclaration(node)
+    }
+
+    override fun visitVariableDeclaration(node: VariableDeclarationNode) {
+        node.declarations.forEach {
+            it.scope = scope
+            it.variable = getVariable(it.identifier.identifierName)
+        }
+        super.visitVariableDeclaration(node)
+    }
+
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
+        scope.addVariable(node.identifier.identifierName, Variable(
+            node.identifier.identifierName,
+            Variable.Mode.Var,
+            Variable.Kind.Normal,
+            node
+        ))
+
         pushScope(Scope.Type.FunctionScope)
         node.scope = scope
 
         node.parameters.forEach {
-            it.boundNames().forEach { name ->
-                scope.addVariable(name, Variable(
-                    name,
-                    Variable.Mode.Var,
-                    Variable.Kind.FunctionParameter,
-                    node, // TODO: should this be the actual param itself?
-                ))
-            }
+            val name = it.boundName()
+            scope.addVariable(name, Variable(
+                name,
+                Variable.Mode.Var,
+                Variable.Kind.FunctionParameter,
+                it,
+            ))
         }
 
         visit(node.body)
@@ -90,14 +113,13 @@ class ScopeResolver : ASTVisitor {
         node.scope = scope
 
         node.parameters.forEach {
-            it.boundNames().forEach { name ->
-                scope.addVariable(name, Variable(
-                    name,
-                    Variable.Mode.Var,
-                    Variable.Kind.FunctionParameter,
-                    node, // TODO: should this be the actual param itself?
-                ))
-            }
+            val name = it.boundName()
+            scope.addVariable(name, Variable(
+                name,
+                Variable.Mode.Var,
+                Variable.Kind.FunctionParameter,
+                it,
+            ))
         }
 
         visit(node.body)
@@ -106,24 +128,16 @@ class ScopeResolver : ASTVisitor {
     }
 
     override fun visitArrowFunction(node: ArrowFunctionNode) {
-        scope.addVariable(node.name, Variable(
-            node.name,
-            Variable.Mode.Var,
-            Variable.Kind.Normal,
-            node
-        ))
-
         pushScope(Scope.Type.FunctionScope)
 
         node.parameters.forEach {
-            it.boundNames().forEach { name ->
-                scope.addVariable(name, Variable(
-                    name,
-                    Variable.Mode.Var,
-                    Variable.Kind.FunctionParameter,
-                    it, // TODO(BindingPattern): Narrow the source here (i.e. not just the entire binding node)
-                ))
-            }
+            val name = it.boundName()
+            scope.addVariable(name, Variable(
+                name,
+                Variable.Mode.Var,
+                Variable.Kind.FunctionParameter,
+                it, // TODO(BindingPattern): Narrow the source here (i.e. not just the entire binding node)
+            ))
         }
 
         visit(node.body)
@@ -148,29 +162,34 @@ class ScopeResolver : ASTVisitor {
     }
 
     private fun handleVarDeclaration(node: VariableSourceNode) {
-        node.boundNames().forEach { name ->
-            val variable = Variable(
-                name,
-                Variable.Mode.Var,
-                Variable.Kind.Normal,
-                node as NodeWithScope, // TODO: Let's avoid this cast somehow
-            )
-            scope.addVariable(name, variable)
-        }
+        val name = node.boundName()
+        scope.addVariable(name, Variable(
+            name,
+            Variable.Mode.Var,
+            Variable.Kind.Normal,
+            node,
+        ))
     }
 
     private fun handleLexicalDeclaration(node: VariableSourceNode) {
+        val name = node.boundName()
         val mode = if (node.isConst) Variable.Mode.Const else Variable.Mode.Let
 
-        node.boundNames().forEach { name ->
-            val variable = Variable(
-                name,
-                mode,
-                Variable.Kind.Normal,
-                node as NodeWithScope, // TODO: Let's avoid this cast somehow
-            )
-            scope.addVariable(name, variable)
-        }
+        scope.addVariable(name, Variable(
+            name,
+            mode,
+            Variable.Kind.Normal,
+            node,
+        ))
+    }
+
+    private fun getVariable(name: String) = scope.getVariable(name) ?: Variable(
+        name,
+        Variable.Mode.Var,
+        Variable.Kind.Global,
+        topLevelNode
+    ).also {
+        topLevelScope.addVariable(name, it)
     }
 }
 
@@ -178,12 +197,17 @@ data class Variable(
     val name: String,
     var mode: Mode,
     val kind: Kind,
-    val source: NodeWithScope,
+    val source: VariableSourceNode,
 ) {
     lateinit var scope: Scope
     var isUsed = false
     var isInlineable = true
     var index: Int = -1
+
+    init {
+        if (kind == Kind.Global)
+            isInlineable = false
+    }
 
     enum class Mode {
         Var,
@@ -193,6 +217,7 @@ data class Variable(
 
     enum class Kind {
         Normal,
+        Global,
         FunctionParameter,
     }
 }
@@ -203,21 +228,21 @@ enum class LanguageMode {
 }
 
 class Scope(val type: Type, val outer: Scope? = null) {
-    private val variableMap = mutableMapOf<String, Variable>()
+    val variables = mutableMapOf<String, Variable>()
     private var crossBoundaryScopeCache = mutableMapOf<Scope, Boolean>()
 
-    fun hasVariable(name: String): Boolean = name in variableMap || outer?.hasVariable(name) == true
+    fun hasVariable(name: String): Boolean = name in variables || outer?.hasVariable(name) == true
 
     fun getVariable(name: String): Variable? {
-        return if (name in variableMap) variableMap[name] else outer?.getVariable(name)
+        return if (name in variables) variables[name] else outer?.getVariable(name)
     }
 
     fun addVariable(name: String, value: Variable) {
-        if (name in variableMap)
+        if (name in variables)
             TODO("Isn't this not possible? Should it be handled?")
 
         value.scope = this
-        variableMap[name] = value
+        variables[name] = value
     }
 
     var languageMode = LanguageMode.Sloppy

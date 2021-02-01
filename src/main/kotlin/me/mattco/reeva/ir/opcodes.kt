@@ -119,6 +119,15 @@ class DeletePropertyStrict(val targetReg: Int) : Opcode()
  */
 class DeletePropertySloppy(val targetReg: Int) : Opcode()
 
+/*********
+ * SCOPE *
+ *********/
+
+/**
+ * Loads a global variable into the accumulator
+ */
+class LdaGlobal(val nameCpIndex: Int) : Opcode()
+
 /***********
  * CALLING *
  ***********/
@@ -398,3 +407,21 @@ object Throw : Opcode()
  * Returns the value in the accumulator
  */
 object Return : Opcode()
+
+/**********
+ * ERRORS *
+ **********/
+
+class ThrowStaticError(val errorId: Int) : Opcode()
+
+enum class StaticError {
+    ConstReassignment;
+
+    val errorId: Int get() = ordinal
+}
+
+/*********
+ * OTHER *
+ *********/
+
+object DebugBreakpoint : Opcode()

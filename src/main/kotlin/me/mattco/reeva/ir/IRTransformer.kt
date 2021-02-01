@@ -5,17 +5,28 @@ import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.parser.Parser
+import java.io.File
 import java.math.BigInteger
 
 fun main() {
-    val source = """
-        let log = 1;
-        console.log(a);
-    """.trimIndent()
-    val parsed = Parser(source).parseScript()
-    ScopeResolver().resolve(parsed)
+    val source = File("./demo/index.js").readText()
 
-    println("")
+    val parser = Parser(source)
+    val parsed = parser.parseScript()
+    if (parser.syntaxErrors.isNotEmpty()) {
+        println(parser.syntaxErrors.first())
+        return
+    }
+    ScopeResolver().resolve(parsed)
+    println(parsed.dump(0))
+    val infos = IRTransformer().transform(parsed)
+
+    println("\n\n")
+
+    infos.forEach {
+        OpcodePrinter.printFunctionInfo(it)
+        println()
+    }
 }
 
 class FunctionInfo(
@@ -38,19 +49,40 @@ class IRTransformer : ASTVisitor {
 
         builder = FunctionBuilder()
 
+        setupScope(node)
+        visit(node.statements)
+        +Return
+
         functionInfo.add(0, FunctionInfo(
             null,
             builder.opcodes.toTypedArray(),
             builder.constantPool.toTypedArray(),
-            0,
-            0,
+            builder.registerCount,
+            1,
             isTopLevelScript = true
         ))
+
         return functionInfo
     }
 
     override fun visitBlock(node: BlockNode) {
-        TODO()
+        setupScope(node)
+        super.visitBlock(node)
+    }
+
+    private fun setupScope(node: NodeWithScope) {
+        val varDecls = node.variableDeclarations()
+        val lexDecls = node.lexicalDeclarations()
+
+        varDecls.forEach { decl ->
+            if (!decl.variable.isInlineable)
+                TODO("Store in context")
+        }
+
+        lexDecls.forEach { decl ->
+            if (!decl.variable.isInlineable)
+                TODO("Store in context")
+        }
     }
 
     override fun visitExpressionStatement(node: ExpressionStatementNode) {
@@ -134,15 +166,47 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
+        node.declarations.forEach { decl ->
+            val variable = decl.variable
 
+            if (variable.isInlineable) {
+                // TODO: We never free this register. We need to figure out
+                // when we reference this variable for the final time so it
+                // can be freed
+
+                val reg = nextFreeReg()
+                variable.index = reg
+
+                if (decl.initializer != null) {
+                    visit(decl.initializer)
+                    +Star(reg)
+                }
+            } else TODO()
+        }
     }
 
     override fun visitVariableDeclaration(node: VariableDeclarationNode) {
-        TODO()
+        node.declarations.forEach { decl ->
+            val variable = decl.variable
+
+            if (variable.isInlineable) {
+                // TODO: We never free this register. We need to figure out
+                // when we reference this variable for the final time so it
+                // can be freed
+
+                val reg = nextFreeReg()
+                variable.index = reg
+
+                if (decl.initializer != null) {
+                    visit(decl.initializer)
+                    +Star(reg)
+                }
+            } else TODO()
+        }
     }
 
     override fun visitDebuggerStatement() {
-        TODO()
+        +DebugBreakpoint
     }
 
     override fun visitImportDeclaration(node: ImportDeclarationNode) {
@@ -158,7 +222,19 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitIdentifierReference(node: IdentifierReferenceNode) {
-        TODO()
+        if (checkForConstReassignment(node))
+            return
+
+        val variable = node.variable
+        if (variable.kind == Variable.Kind.Global) {
+            +LdaGlobal(loadConstant(node.identifierName))
+            return
+        }
+
+        if (!variable.isInlineable)
+            TODO()
+
+        +Ldar(variable.index)
     }
 
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
@@ -184,7 +260,6 @@ class IRTransformer : ASTVisitor {
     private fun visitBinaryExpression(node: BinaryExpression, op: (Int) -> Opcode) {
         visit(node.lhs)
         val reg = nextFreeReg()
-        markRegUsed(reg)
         +Star(reg)
         visit(node.rhs)
         +Add(reg)
@@ -218,7 +293,6 @@ class IRTransformer : ASTVisitor {
     override fun visitEqualityExpression(node: EqualityExpressionNode) {
         visit(node.lhs)
         val reg = nextFreeReg()
-        markRegUsed(reg)
         +Star(reg)
         visit(node.rhs)
 
@@ -312,7 +386,29 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitAssignmentExpression(node: AssignmentExpressionNode) {
+        val lhs = node.lhs
+        val rhs = node.rhs
+
+        if (lhs is IdentifierReferenceNode) {
+            if (checkForConstReassignment(lhs))
+                return
+
+            if (!lhs.variable.isInlineable)
+                TODO()
+
+            visit(rhs)
+            +Star(lhs.variable.index)
+            return
+        }
+
         TODO()
+    }
+
+    private fun checkForConstReassignment(node: VariableRefNode): Boolean {
+        return if (node.variable.mode == Variable.Mode.Const) {
+            +ThrowStaticError(StaticError.ConstReassignment.errorId)
+            true
+        } else false
     }
 
     override fun visitAwaitExpression(node: AwaitExpressionNode) {
@@ -322,32 +418,66 @@ class IRTransformer : ASTVisitor {
     override fun visitCallExpression(node: CallExpressionNode) {
         val args = node.arguments
 
-        if (node.target is MemberExpressionNode) {
-            val callableReg = nextFreeReg()
-            val receiverReg = nextFreeRegBlock(args.size + 1)
-            visit(node.target.lhs)
-            +Star(receiverReg)
+        val callableReg = nextFreeReg()
+        val receiverReg = nextFreeRegBlock(args.size + 1)
 
-            when (args.size) {
-                0 -> +CallProperty0(callableReg, receiverReg)
-                1 -> {
-                    visit(args[0])
-                    +Star(receiverReg + 1)
-                    +CallProperty1(callableReg, receiverReg, receiverReg + 1)
+        when (val target = node.target) {
+            is IdentifierReferenceNode -> {
+                visit(target)
+                +Star(callableReg)
+                +Mov(receiverReg(), receiverReg)
+                args.forEachIndexed { index, arg ->
+                    visit(arg)
+                    +Star(receiverReg + index + 1)
                 }
-                else -> {
-                    args.forEachIndexed { index, arg ->
-                        visit(arg)
-                        +Star(receiverReg + index + 1)
+                +CallAnyReceiver(callableReg, receiverReg, args.size)
+            }
+            is MemberExpressionNode -> {
+                visit(target.lhs)
+                +Star(receiverReg)
+
+                when (target.type) {
+                    MemberExpressionNode.Type.Computed -> {
+                        visit(target.rhs)
+                        +LdaKeyedProperty(receiverReg)
                     }
-                    +CallProperty(callableReg, receiverReg, args.size)
+                    MemberExpressionNode.Type.NonComputed -> {
+                        val cpIndex = loadConstant((target.rhs as IdentifierNode).identifierName)
+                        +LdaNamedProperty(receiverReg, cpIndex)
+                    }
+                    MemberExpressionNode.Type.Tagged -> TODO()
+                }
+
+                +Star(callableReg)
+
+                when (args.size) {
+                    0 -> +CallProperty0(callableReg, receiverReg)
+                    1 -> {
+                        visit(args[0])
+                        +Star(receiverReg + 1)
+                        +CallProperty1(callableReg, receiverReg, receiverReg + 1)
+                    }
+                    else -> {
+                        args.forEachIndexed { index, arg ->
+                            visit(arg)
+                            +Star(receiverReg + index + 1)
+                        }
+                        +CallProperty(callableReg, receiverReg, args.size)
+                    }
                 }
             }
-
-            markRegFree(callableReg)
-            for (i in args.indices)
-                markRegFree(receiverReg + i)
+            else -> TODO()
         }
+
+        markRegFree(callableReg)
+        for (i in args.indices)
+            markRegFree(receiverReg + i)
+    }
+
+    override fun visitArgument(node: ArgumentNode) {
+        if (node.isSpread)
+            TODO()
+        visit(node.expression)
     }
 
     override fun visitCommaExpression(node: CommaExpressionNode) {

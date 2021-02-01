@@ -8,7 +8,7 @@ import me.mattco.reeva.ast.statements.VariableDeclarationNode
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.newline
 
-class ModuleNode(val body: StatementList) : NodeWithScope(body)
+class ModuleNode(val body: StatementList) : GlobalScopeNode(body)
 
 // TODO: Make this a VariableSourceNode
 class ImportDeclarationNode(

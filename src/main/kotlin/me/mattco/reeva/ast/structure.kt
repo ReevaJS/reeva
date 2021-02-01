@@ -2,6 +2,7 @@ package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.literals.StringLiteralNode
 import me.mattco.reeva.ast.statements.ExpressionStatementNode
+import me.mattco.reeva.ast.statements.StatementList
 import me.mattco.reeva.ir.Scope
 import me.mattco.reeva.ir.Variable
 import me.mattco.reeva.utils.expect
@@ -19,16 +20,14 @@ open class NodeWithScope(children: List<ASTNode> = emptyList()) : ASTNodeBase(ch
 }
 
 open class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
-    // Either a function param, lexical decl, var decl, or
-    // Script/ModuleNode (for global declarations)
-    lateinit var source: ASTNode
+    lateinit var variable: Variable
 }
 
 abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
-    val variables = mutableMapOf<String, Variable>()
+    lateinit var variable: Variable
     open val isConst: Boolean = false
 
-    abstract fun boundNames(): List<String>
+    abstract fun boundName(): String
 }
 
 interface ASTNode {
@@ -81,9 +80,9 @@ interface ASTNode {
         return children.flatMap(ASTNode::lexicalDeclarations)
     }
 
-    fun declaredVarNames(): List<String> = variableDeclarations().flatMap(VariableSourceNode::boundNames)
+    fun declaredVarNames(): List<String> = variableDeclarations().map(VariableSourceNode::boundName)
 
-    fun declaredLexNames(): List<String> = lexicalDeclarations().flatMap(VariableSourceNode::boundNames)
+    fun declaredLexNames(): List<String> = lexicalDeclarations().map(VariableSourceNode::boundName)
 
     fun containsDirective(directive: String) = children.containsDirective(directive)
 
@@ -140,6 +139,12 @@ class ScriptOrModuleNode(private val value: Any) {
         else -> unreachable()
     }
 }
+
+open class GlobalScopeNode(val statements: StatementList) : VariableSourceNode(statements) {
+    override fun boundName() = unreachable()
+}
+
+class ScriptNode(statements: StatementList) : GlobalScopeNode(statements)
 
 interface StatementNode : ASTNode
 interface ExpressionNode : ASTNode

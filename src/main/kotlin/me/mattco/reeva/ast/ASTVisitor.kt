@@ -10,7 +10,7 @@ interface ASTVisitor {
             is StatementNode -> visitStatement(node)
             is ExpressionNode -> visitExpression(node)
             is ASTListNode<*> -> node.children.forEach(::visit)
-            else -> "Unrecognized ASTNode ${node.name}"
+            else -> throw IllegalArgumentException("Unrecognized ASTNode ${node.name}")
         }
     }
 
@@ -44,6 +44,7 @@ interface ASTVisitor {
 
     fun visitExpression(node: ExpressionNode) {
         when (node) {
+            is ArgumentNode -> visitArgument(node)
             is BindingIdentifierNode -> visitBindingIdentifier(node)
             is IdentifierReferenceNode -> visitIdentifierReference(node)
             is FunctionExpressionNode -> visitFunctionExpression(node)
@@ -184,6 +185,10 @@ interface ASTVisitor {
     fun visitImportDeclaration(node: ImportDeclarationNode) { }
 
     fun visitExport(node: ExportNode) { }
+
+    fun visitArgument(node: ArgumentNode) {
+        visit(node.expression)
+    }
 
     fun visitBindingIdentifier(node: BindingIdentifierNode) { }
 

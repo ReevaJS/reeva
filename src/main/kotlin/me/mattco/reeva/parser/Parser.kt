@@ -218,7 +218,7 @@ class Parser(text: String) {
             return null
         consume()
 
-        val list = withIn { parseDeclarationList() }
+        val list = withIn { parseDeclarationList(isConst = false) }
 
         if (list.isEmpty()) {
             expected("one or more variable declaration")
@@ -231,21 +231,21 @@ class Parser(text: String) {
         return VariableDeclarationNode(list)
     }
 
-    private fun parseDeclaration(): Declaration? {
+    private fun parseDeclaration(isConst: Boolean): Declaration? {
         // TODO(BindingPattern)
         val identifier = parseBindingIdentifier() ?: return null
         val initializer = parseInitializer()
-        return Declaration(identifier, initializer)
+        return Declaration(isConst, identifier, initializer)
     }
 
-    private fun parseDeclarationList(): List<Declaration> {
+    private fun parseDeclarationList(isConst: Boolean): List<Declaration> {
         val list = mutableListOf<Declaration>()
-        list.add(parseDeclaration() ?: return list)
+        list.add(parseDeclaration(isConst) ?: return list)
 
         while (tokenType == TokenType.Comma) {
             saveState()
             consume()
-            val decl = parseDeclaration()
+            val decl = parseDeclaration(isConst)
             if (decl == null) {
                 loadState()
                 break
@@ -1238,7 +1238,7 @@ class Parser(text: String) {
             else -> unreachable()
         }
 
-        val declarations = parseDeclarationList()
+        val declarations = parseDeclarationList(isConst)
         if (declarations.isEmpty()) {
             expected("one or more lexical declarations")
             consume()
@@ -1732,7 +1732,7 @@ class Parser(text: String) {
     }
 
     private fun parseArgumentsList(): ArgumentList? {
-        val arguments = mutableListOf<Argument>()
+        val arguments = mutableListOf<ArgumentNode>()
         var first = true
 
         do {
@@ -1754,13 +1754,13 @@ class Parser(text: String) {
                     discardState()
                     return null
                 }
-                arguments.add(Argument(expr, true))
+                arguments.add(ArgumentNode(expr, true))
             } else {
                 val expr = withIn { parseAssignmentExpression() } ?: run {
                     loadState()
                     return null
                 }
-                arguments.add(Argument(expr, false))
+                arguments.add(ArgumentNode(expr, false))
             }
 
             discardState()

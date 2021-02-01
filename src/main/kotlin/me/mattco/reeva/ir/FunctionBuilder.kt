@@ -12,6 +12,14 @@ class FunctionBuilder(val argCount: Int = 1) {
     // queue, and is "completed" when it is placed
     private val placeholders = mutableMapOf<Label, MutableList<Pair<Int, (Int) -> Opcode>>>()
 
+    val registerCount: Int
+        get() = registers.size
+
+    init {
+        for (i in 0 until argCount)
+            registers.add(RegState.USED)
+    }
+
     fun receiverReg() = 0
     fun argReg(index: Int) = index - 1
     fun reg(index: Int) = argCount - index
@@ -78,6 +86,8 @@ class FunctionBuilder(val argCount: Int = 1) {
     fun nextFreeRegBlock(count: Int): Int {
         // TODO: Improve
         for (i in registers.indices) {
+            if (i + count > registers.size)
+                break
             if (registers.subList(i, i + count).all { it == RegState.FREE }) {
                 for (j in i until (i + count))
                     registers[j] = RegState.USED
@@ -85,11 +95,13 @@ class FunctionBuilder(val argCount: Int = 1) {
             }
         }
 
-        return registers.lastIndex.also {
-            repeat(count) {
-                registers.add(RegState.USED)
-            }
+        val lastFree = registers.indexOfLast { it == RegState.FREE }.let {
+            if (it == -1) registers.size else it
         }
+        repeat(count - (registers.size - lastFree)) {
+            registers.add(RegState.USED)
+        }
+        return lastFree
     }
 
     fun markRegUsed(index: Int) {
