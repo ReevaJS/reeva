@@ -1,6 +1,5 @@
 package me.mattco.reeva.core
 
-import me.mattco.reeva.compiler.ReevaClassLoader
 import me.mattco.reeva.core.tasks.Microtask
 import me.mattco.reeva.core.tasks.Task
 import me.mattco.reeva.utils.expect
@@ -15,8 +14,6 @@ class Agent private constructor() {
     private val tasks = ConcurrentLinkedDeque<Task<*>>()
     private val microTasks = ConcurrentLinkedDeque<Microtask>()
     val runningContextStack = CopyOnWriteArrayList<ExecutionContext>()
-
-    internal val compilerClassLoader = ReevaClassLoader()
 
     val byteOrder = ByteOrder.nativeOrder()
     val isLittleEndian: Boolean

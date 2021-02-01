@@ -1,25 +1,20 @@
 package me.mattco.reeva.core.modules.records
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.ast.FunctionDeclarationNode
 import me.mattco.reeva.ast.ModuleNode
-import me.mattco.reeva.ast.statements.StatementListNode
-import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.environment.EnvRecord
-import me.mattco.reeva.core.environment.ModuleEnvRecord
 import me.mattco.reeva.core.modules.ExportEntryRecord
 import me.mattco.reeva.core.modules.ImportEntryRecord
 import me.mattco.reeva.core.modules.ResolvedBindingRecord
 import me.mattco.reeva.core.tasks.Task
 import me.mattco.reeva.interpreter.Interpreter
+import me.mattco.reeva.jvmcompat.JVMPackageModuleRecord
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.jvmcompat.JVMPackageModuleRecord
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.expect
 
 class SourceTextModuleRecord(
@@ -118,70 +113,70 @@ class SourceTextModuleRecord(
 
     @ECMAImpl("15.2.1.17.4")
     override fun initializeEnvironment() {
-        indirectExportEntries.forEach { e ->
-            val resolution = resolveExport(e.exportName!!)
-            if (resolution == null || resolution == ResolvedBindingRecord.AMBIGUOUS)
-                Errors.TODO("SourceTextModuleRecord initializeEnvironment 1").throwSyntaxError()
-        }
-
-        // TODO: "Assert: All named exports from module are resolvable."
-        val env = ModuleEnvRecord(realm.globalEnv)
-        environment = env
-
-        importEntries.forEach { ie ->
-            val importedModule = realm.moduleResolver!!.hostResolveImportedModule(this, ie.moduleRequest)
-            if (ie.importName == "*") {
-                env.createImmutableBinding(ie.localName, true)
-                env.initializeBinding(ie.localName, importedModule.namespaceObject)
-            } else {
-                val resolution = importedModule.resolveExport(ie.importName)
-                if (resolution == null || resolution == ResolvedBindingRecord.AMBIGUOUS)
-                    Errors.TODO("SourceTextModuleRecord initializeEnvironment 2").throwSyntaxError()
-                if (resolution.bindingName == "*namespace*") {
-                    env.createImmutableBinding(ie.localName, true)
-                    env.initializeBinding(ie.localName, resolution.module.namespaceObject)
-                } else {
-                    env.createImportBinding(ie.localName, resolution.module, resolution.bindingName)
-                }
-            }
-        }
-
-        val moduleContext = ExecutionContext(realm, null)
-        moduleContext.variableEnv = environment
-        moduleContext.lexicalEnv = environment
-        context = moduleContext
-        Agent.pushContext(moduleContext)
-
-        val varDeclarations = scriptCode.varScopedDeclarations()
-        val declaredVarNames = mutableListOf<String>()
-        varDeclarations.forEach { decl ->
-            decl.boundNames().forEach { name ->
-                if (name !in declaredVarNames) {
-                    env.createMutableBinding(name, false)
-                    env.initializeBinding(name, JSUndefined)
-                    declaredVarNames.add(name)
-                }
-            }
-        }
-
-        val interpreter = Interpreter(realm)
-
-        scriptCode.lexicallyScopedDeclarations().forEach { decl ->
-            decl.boundNames().forEach { name ->
-                if (decl.isConstantDeclaration()) {
-                    env.createImmutableBinding(name, true)
-                } else {
-                    env.createMutableBinding(name, false)
-                }
-
-                if (decl is FunctionDeclarationNode) {
-                    val function = interpreter.instantiateFunctionObject(decl, env)
-                    env.initializeBinding(name, function)
-                }
-            }
-        }
-
-        Agent.popContext()
+//        indirectExportEntries.forEach { e ->
+//            val resolution = resolveExport(e.exportName!!)
+//            if (resolution == null || resolution == ResolvedBindingRecord.AMBIGUOUS)
+//                Errors.TODO("SourceTextModuleRecord initializeEnvironment 1").throwSyntaxError()
+//        }
+//
+//        // TODO: "Assert: All named exports from module are resolvable."
+//        val env = ModuleEnvRecord(realm.globalEnv)
+//        environment = env
+//
+//        importEntries.forEach { ie ->
+//            val importedModule = realm.moduleResolver!!.hostResolveImportedModule(this, ie.moduleRequest)
+//            if (ie.importName == "*") {
+//                env.createImmutableBinding(ie.localName, true)
+//                env.initializeBinding(ie.localName, importedModule.namespaceObject)
+//            } else {
+//                val resolution = importedModule.resolveExport(ie.importName)
+//                if (resolution == null || resolution == ResolvedBindingRecord.AMBIGUOUS)
+//                    Errors.TODO("SourceTextModuleRecord initializeEnvironment 2").throwSyntaxError()
+//                if (resolution.bindingName == "*namespace*") {
+//                    env.createImmutableBinding(ie.localName, true)
+//                    env.initializeBinding(ie.localName, resolution.module.namespaceObject)
+//                } else {
+//                    env.createImportBinding(ie.localName, resolution.module, resolution.bindingName)
+//                }
+//            }
+//        }
+//
+//        val moduleContext = ExecutionContext(realm, null)
+//        moduleContext.variableEnv = environment
+//        moduleContext.lexicalEnv = environment
+//        context = moduleContext
+//        Agent.pushContext(moduleContext)
+//
+//        val varDeclarations = scriptCode.variableDeclarations()
+//        val declaredVarNames = mutableListOf<String>()
+//        varDeclarations.forEach { decl ->
+//            decl.boundNames().forEach { name ->
+//                if (name !in declaredVarNames) {
+//                    env.createMutableBinding(name, false)
+//                    env.initializeBinding(name, JSUndefined)
+//                    declaredVarNames.add(name)
+//                }
+//            }
+//        }
+//
+//        val interpreter = Interpreter(realm)
+//
+//        scriptCode.lexicallyScopedDeclarations().forEach { decl ->
+//            decl.boundNames().forEach { name ->
+//                if (decl.isConstantDeclaration()) {
+//                    env.createImmutableBinding(name, true)
+//                } else {
+//                    env.createMutableBinding(name, false)
+//                }
+//
+//                if (decl is FunctionDeclarationNode) {
+//                    val function = interpreter.instantiateFunctionObject(decl, env)
+//                    env.initializeBinding(name, function)
+//                }
+//            }
+//        }
+//
+//        Agent.popContext()
     }
 
     override fun executeModule(interpreter: Interpreter): JSValue {
@@ -189,7 +184,9 @@ class SourceTextModuleRecord(
             override fun makeContext() = context!!
 
             override fun execute(): JSValue {
-                return interpreter.interpretStatementList(StatementListNode(scriptCode.body))
+                // TODO
+                return JSUndefined
+//                return interpreter.interpretStatementList(StatementList(scriptCode.body))
             }
         })
     }

@@ -3,7 +3,6 @@
 package me.mattco.reeva.runtime
 
 import me.mattco.reeva.ast.ASTNode
-import me.mattco.reeva.ast.FormalParametersNode
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
@@ -13,13 +12,10 @@ import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.core.environment.ModuleEnvRecord
 import me.mattco.reeva.core.tasks.Microtask
-import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.jvmcompat.JSClassInstanceObject
 import me.mattco.reeva.jvmcompat.JSClassObject
-import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.arrays.JSArrayObject
-import me.mattco.reeva.runtime.builtins.JSMappedArgumentsObject
 import me.mattco.reeva.runtime.builtins.JSProxyObject
 import me.mattco.reeva.runtime.builtins.JSUnmappedArgumentsObject
 import me.mattco.reeva.runtime.builtins.promises.JSCapabilitiesExecutor
@@ -1840,49 +1836,50 @@ object Operations {
         return obj
     }
 
-    @JvmStatic @ECMAImpl("9.4.4.7")
-    fun createMappedArgumentsObject(
-        function: JSFunction,
-        formals: FormalParametersNode,
-        arguments: JSArguments,
-        env: EnvRecord
-    ): JSMappedArgumentsObject {
-        ecmaAssert(formals.restParameter == null)
-        // TODO
-//        ecmaAssert(formals.functionParameters.parameters.all { it.bindingElement.binding.initializer == null })
-
-        val realm = Agent.runningContext.realm
-        val obj = JSMappedArgumentsObject.create(realm)
-        val map = JSObject.create(realm)
-        obj.parameterMap = map
-
-        val parameterNames = formals.boundNames()
-        arguments.forEachIndexed { index, arg ->
-            createDataPropertyOrThrow(obj, index.key(), arg)
-        }
-
-        definePropertyOrThrow(obj, "length".key(), Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE))
-
-        val mappedNames = mutableListOf<String>()
-        parameterNames.reversed().forEachIndexed { index, name ->
-            if (name !in mappedNames) {
-                mappedNames.add(name)
-                if (index < arguments.size) {
-                    val getter = makeArgGetter(name, env)
-                    val setter = makeArgSetter(name, env)
-                    map.defineNativeAccessor(index.key(), Descriptor.CONFIGURABLE or Descriptor.HAS_ENUMERABLE, getter, setter)
-                }
-            }
-        }
-
-        definePropertyOrThrow(obj, Realm.`@@iterator`.key(), Descriptor(
-            realm.arrayProto.get("values"),
-            Descriptor.CONFIGURABLE or Descriptor.WRITABLE
-        ))
-        definePropertyOrThrow(obj, "callee".key(), Descriptor(function, Descriptor.CONFIGURABLE or Descriptor.WRITABLE))
-
-        return obj
-    }
+    //  TODO
+//    @JvmStatic @ECMAImpl("9.4.4.7")
+//    fun createMappedArgumentsObject(
+//        function: JSFunction,
+//        formals: FormalParametersNode,
+//        arguments: JSArguments,
+//        env: EnvRecord
+//    ): JSMappedArgumentsObject {
+//        ecmaAssert(formals.restParameter == null)
+//        // TODO
+////        ecmaAssert(formals.functionParameters.parameters.all { it.bindingElement.binding.initializer == null })
+//
+//        val realm = Agent.runningContext.realm
+//        val obj = JSMappedArgumentsObject.create(realm)
+//        val map = JSObject.create(realm)
+//        obj.parameterMap = map
+//
+//        val parameterNames = formals.boundNames()
+//        arguments.forEachIndexed { index, arg ->
+//            createDataPropertyOrThrow(obj, index.key(), arg)
+//        }
+//
+//        definePropertyOrThrow(obj, "length".key(), Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE))
+//
+//        val mappedNames = mutableListOf<String>()
+//        parameterNames.reversed().forEachIndexed { index, name ->
+//            if (name !in mappedNames) {
+//                mappedNames.add(name)
+//                if (index < arguments.size) {
+//                    val getter = makeArgGetter(name, env)
+//                    val setter = makeArgSetter(name, env)
+//                    map.defineNativeAccessor(index.key(), Descriptor.CONFIGURABLE or Descriptor.HAS_ENUMERABLE, getter, setter)
+//                }
+//            }
+//        }
+//
+//        definePropertyOrThrow(obj, Realm.`@@iterator`.key(), Descriptor(
+//            realm.arrayProto.get("values"),
+//            Descriptor.CONFIGURABLE or Descriptor.WRITABLE
+//        ))
+//        definePropertyOrThrow(obj, "callee".key(), Descriptor(function, Descriptor.CONFIGURABLE or Descriptor.WRITABLE))
+//
+//        return obj
+//    }
 
     @JvmStatic @ECMAImpl("9.4.5.9")
     fun isValidIntegerIndex(obj: JSValue, index: JSNumber): Boolean {
@@ -2168,7 +2165,10 @@ object Operations {
 
     @JvmStatic @ECMAImpl("14.1.12")
     fun isAnonymousFunctionDefinition(node: ASTNode): Boolean {
-        return node.isFunctionDefinition() && !node.hasName()
+        // TODO
+        return false
+
+//        return node.isFunctionDefinition() && !node.hasName()
     }
 
     @JvmStatic @ECMAImpl("18.2.1.2")
@@ -2179,60 +2179,63 @@ object Operations {
 
     @JvmStatic @ECMAImpl("19.2.1.1")
     fun createDynamicFunction(constructor: JSObject, newTarget_: JSValue, kind: FunctionKind, args: JSArguments): JSValue {
-        ecmaAssert(Agent.activeAgent.runningContextStack.size >= 2)
-        val callerContext = Agent.activeAgent.runningContextStack.let { it[it.lastIndex - 1] }
-        val callerRealm = callerContext.realm
-        val calleeRealm = Agent.runningContext.realm
-        if (!hostEnsureCanCompileStrings(callerRealm, calleeRealm))
-            Errors.CantCompileStrings.throwInternalError()
+        // TODO
+        return JSUndefined
 
-        val newTarget = newTarget_.ifUndefined(constructor)
-        val fallbackProto = when (kind) {
-            FunctionKind.Normal -> calleeRealm.functionProto
-            else -> TODO()
-        }
-
-        val bodyArg = if (args.isEmpty()) "" else toString(args.last()).string
-
-        val parameterString = if (args.size > 1) {
-            args.subList(0, args.lastIndex).joinToString(separator = ",") { toString(it).string }
-        } else ""
-
-        val bodyString = "\n$bodyArg\n"
-        val sourceString = "${kind.prefix} anonymous($parameterString\n) {$bodyString}"
-
-        val parser = Parser(sourceString)
-        val functionNode = parser.parseDynamicFunction(kind)
-        if (functionNode == null) {
-            expect(parser.syntaxErrors.isNotEmpty())
-            val error = parser.syntaxErrors.first()
-            Errors.Custom("${error.message} (${error.lineNumber}, ${error.columnNumber})").throwSyntaxError()
-        }
-
-        val proto = getPrototypeFromConstructor(newTarget, fallbackProto)
-        val functionRealm = Agent.runningContext.realm
-        val scope = functionRealm.globalEnv
-        val interpreter = Interpreter(calleeRealm)
-        val function = interpreter.ordinaryFunctionCreate(
-            proto,
-            sourceString,
-            functionNode.parameters,
-            functionNode.body,
-            JSFunction.ThisMode.NonLexical,
-            scope
-        )
-
-        setFunctionName(function, "anonymous".key())
-
-        if (kind == FunctionKind.Generator) {
-            TODO("19.2.1.1.1 step 26")
-        } else if (kind == FunctionKind.AsyncGenerator) {
-            TODO("19.2.1.1.1 step 27")
-        } else if (kind == FunctionKind.Normal) {
-            makeConstructor(function)
-        }
-
-        return function
+//        ecmaAssert(Agent.activeAgent.runningContextStack.size >= 2)
+//        val callerContext = Agent.activeAgent.runningContextStack.let { it[it.lastIndex - 1] }
+//        val callerRealm = callerContext.realm
+//        val calleeRealm = Agent.runningContext.realm
+//        if (!hostEnsureCanCompileStrings(callerRealm, calleeRealm))
+//            Errors.CantCompileStrings.throwInternalError()
+//
+//        val newTarget = newTarget_.ifUndefined(constructor)
+//        val fallbackProto = when (kind) {
+//            FunctionKind.Normal -> calleeRealm.functionProto
+//            else -> TODO()
+//        }
+//
+//        val bodyArg = if (args.isEmpty()) "" else toString(args.last()).string
+//
+//        val parameterString = if (args.size > 1) {
+//            args.subList(0, args.lastIndex).joinToString(separator = ",") { toString(it).string }
+//        } else ""
+//
+//        val bodyString = "\n$bodyArg\n"
+//        val sourceString = "${kind.prefix} anonymous($parameterString\n) {$bodyString}"
+//
+//        val parser = Parser(sourceString)
+//        val functionNode = parser.parseDynamicFunction(kind)
+//        if (functionNode == null) {
+//            expect(parser.syntaxErrors.isNotEmpty())
+//            val error = parser.syntaxErrors.first()
+//            Errors.Custom("${error.message} (${error.lineNumber}, ${error.columnNumber})").throwSyntaxError()
+//        }
+//
+//        val proto = getPrototypeFromConstructor(newTarget, fallbackProto)
+//        val functionRealm = Agent.runningContext.realm
+//        val scope = functionRealm.globalEnv
+//        val interpreter = Interpreter(calleeRealm)
+//        val function = interpreter.ordinaryFunctionCreate(
+//            proto,
+//            sourceString,
+//            functionNode.parameters,
+//            functionNode.body,
+//            JSFunction.ThisMode.NonLexical,
+//            scope
+//        )
+//
+//        setFunctionName(function, "anonymous".key())
+//
+//        if (kind == FunctionKind.Generator) {
+//            TODO("19.2.1.1.1 step 26")
+//        } else if (kind == FunctionKind.AsyncGenerator) {
+//            TODO("19.2.1.1.1 step 27")
+//        } else if (kind == FunctionKind.Normal) {
+//            makeConstructor(function)
+//        }
+//
+//        return function
     }
 
     @JvmStatic @ECMAImpl("20.4.1.11")
