@@ -2,9 +2,7 @@ package me.mattco.reeva.parser
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
-import me.mattco.reeva.ast.expressions.TemplateLiteralNode
 import me.mattco.reeva.ast.literals.*
-import me.mattco.reeva.ast.literals.PropertyNameNode
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.lexer.Lexer
 import me.mattco.reeva.lexer.SourceLocation
@@ -53,7 +51,7 @@ class Parser(text: String) {
 
     fun parseScript(): ScriptNode {
         goalSymbol = GoalSymbol.Script
-        val statementList = parseStatementList(setStrict = true) ?: StatementListNode(emptyList())
+        val statementList = parseStatementList(setStrict = true)
         if (!isDone)
             unexpected("token ${token.value}")
         if (stateStack.size != 1)
@@ -93,7 +91,7 @@ class Parser(text: String) {
         if (stateStack.size != 1)
             throw IllegalStateException("parseModule ended with ${stateStack.size - 1} extra states on the stack")
 
-        return ModuleNode(body)
+        return ModuleNode(StatementList(body))
     }
 
     fun parseDynamicFunction(kind: Operations.FunctionKind): GenericFunctionDeclarationNode? {
@@ -104,24 +102,24 @@ class Parser(text: String) {
             Operations.FunctionKind.AsyncGenerator -> parseAsyncGeneratorDeclaration()
         } ?: return null
 
-        if (result.body.containsUseStrict()) {
-            if (!result.parameters.isSimpleParameterList()) {
+        if (result.body.containsUseStrictDirective()) {
+            if (!result.parameters.isSimple()) {
                 syntaxError("dynamic strict Function must have a simple parameter list")
                 return null
             }
 
-            if (result.parameters.boundNames().let { it.distinct().size != it.size }) {
+            if (result.parameters.containsDuplicates()) {
                 syntaxError("dynamic strict Function cannot contain duplicate parameter bindings")
                 return null
             }
         }
 
-        if (result.parameters.contains("SuperCallExpressionNode") || result.body.contains("SuperCallExpressionNode")) {
+        if (result.parameters.containsAny<SuperCallExpressionNode>() || result.body.containsAny<SuperCallExpressionNode>()) {
             syntaxError("dynamic Function object cannot contain a super call")
             return null
         }
 
-        if (result.parameters.contains("SuperPropertyExpressionNode") || result.body.contains("SuperPropertyExpressionNode")) {
+        if (result.parameters.containsAny<SuperPropertyExpressionNode>() || result.body.containsAny<SuperPropertyExpressionNode>()) {
             syntaxError("dynamic Function object cannot contain a super property access")
             return null
         }
@@ -129,12 +127,12 @@ class Parser(text: String) {
         val isGenerator = kind == Operations.FunctionKind.Generator || kind == Operations.FunctionKind.AsyncGenerator
         val isAsync = kind == Operations.FunctionKind.Async || kind == Operations.FunctionKind.AsyncGenerator
 
-        if (isGenerator && result.parameters.contains("YieldExpressionNode")) {
+        if (isGenerator && result.parameters.containsAny<YieldExpressionNode>()) {
             syntaxError("dynamic generator Function cannot contain a yield expression in its parameters")
             return null
         }
 
-        if (isAsync && result.parameters.contains("AwaitExpressionNode")) {
+        if (isAsync && result.parameters.containsAny<AwaitExpressionNode>()) {
             syntaxError("dynamic async Function cannot contain an await expression in its parameters")
             return null
         }
@@ -142,10 +140,10 @@ class Parser(text: String) {
         return result
     }
 
-    private fun parseStatementList(setStrict: Boolean = false): StatementListNode? {
+    private fun parseStatementList(setStrict: Boolean = false): StatementList {
         val statements = mutableListOf<StatementNode>()
 
-        var statement = parseStatementListItem() ?: return null
+        var statement = parseStatementListItem() ?: return StatementList()
         statements.add(statement)
 
         if (setStrict && !isStrict && statement is ExpressionStatementNode &&
@@ -159,11 +157,11 @@ class Parser(text: String) {
             statements.add(statement)
         }
 
-        return StatementListNode(statements)
+        return StatementList(statements)
     }
 
     private fun parseStatementListItem(): StatementNode? {
-        return parseStatement() ?: parseDeclaration()
+        return parseStatement() ?: parseDeclarationNode()
     }
 
     private fun parseStatement(): StatementNode? {
@@ -195,9 +193,9 @@ class Parser(text: String) {
         val statements = parseStatementList()
         consume(TokenType.CloseCurly)
 
-        if (statements != null) {
-            val varNames = statements.varDeclaredNames()
-            val lexNames = statements.lexicallyDeclaredNames()
+        if (statements.isNotEmpty()) {
+            val varNames = statements.declaredVarNames()
+            val lexNames = statements.declaredLexNames()
 
             val lexDuplicates = lexNames.duplicates()
             if (lexDuplicates.isNotEmpty()) {
@@ -215,51 +213,51 @@ class Parser(text: String) {
         return BlockNode(statements)
     }
 
-    private fun parseVariableStatement(): VariableStatementNode? {
+    private fun parseVariableStatement(): VariableDeclarationNode? {
         if (tokenType != TokenType.Var)
             return null
         consume()
 
-        val list = withIn { parseVariableDeclarationList() } ?: run {
-            expected("identifier")
+        val list = withIn { parseDeclarationList() }
+
+        if (list.isEmpty()) {
+            expected("one or more variable declaration")
             consume()
             return null
         }
 
         automaticSemicolonInsertion()
 
-        return VariableStatementNode(list)
+        return VariableDeclarationNode(list)
     }
 
-    private fun parseVariableDeclarationList(): VariableDeclarationList? {
-        val declarations = mutableListOf<VariableDeclarationNode>()
+    private fun parseDeclaration(): Declaration? {
+        // TODO(BindingPattern)
+        val identifier = parseBindingIdentifier() ?: return null
+        val initializer = parseInitializer()
+        return Declaration(identifier, initializer)
+    }
 
-        val declaration = parseVariableDeclaration() ?: return null
-        declarations.add(declaration)
+    private fun parseDeclarationList(): List<Declaration> {
+        val list = mutableListOf<Declaration>()
+        list.add(parseDeclaration() ?: return list)
 
         while (tokenType == TokenType.Comma) {
             saveState()
             consume()
-            val declaration2 = parseVariableDeclaration()
-            if (declaration2 == null) {
+            val decl = parseDeclaration()
+            if (decl == null) {
                 loadState()
                 break
             }
             discardState()
-            declarations.add(declaration2)
+            list.add(decl)
         }
 
-        return VariableDeclarationList(declarations)
+        return list
     }
 
-    private fun parseVariableDeclaration(): VariableDeclarationNode? {
-        // TODO: Attempt the BindingPattern branch
-        val identifier = parseBindingIdentifier() ?: return null
-        val initializer = parseInitializer()
-        return VariableDeclarationNode(identifier, initializer)
-    }
-
-    private fun parseInitializer(): InitializerNode? {
+    private fun parseInitializer(): ExpressionNode? {
         if (tokenType != TokenType.Equals)
             return null
 
@@ -270,7 +268,7 @@ class Parser(text: String) {
             return null
         }
         discardState()
-        return InitializerNode(expr)
+        return expr
     }
 
     private fun parseEmptyStatement(): StatementNode? {
@@ -432,38 +430,11 @@ class Parser(text: String) {
     }
 
     private fun parseNormalForStatement(): StatementNode? {
-        val initializer = when (tokenType) {
-            TokenType.Semicolon -> {
-                consume()
-                null
-            }
-            TokenType.Var -> {
-                saveState()
-                consume()
-                val declList = parseVariableDeclarationList()
-                if (declList == null || tokenType != TokenType.Semicolon) {
-                    loadState()
-                    return null
-                } else {
-                    consume()
-                    discardState()
-                }
-                VariableStatementNode(declList)
-            }
-            TokenType.Let, TokenType.Const -> parseLexicalDeclaration(forceSemicolon = true, generateErrors = false)
-                ?: return null
-            else -> {
-                saveState()
-                val expr = parseExpression()
-                if (expr == null || tokenType != TokenType.Semicolon) {
-                    loadState()
-                    return null
-                } else {
-                    consume()
-                    discardState()
-                }
-                expr
-            }
+        val initializer = if (tokenType == TokenType.Semicolon) {
+            consume()
+            null
+        } else (parseStatement() ?: return null).also {
+            consume(TokenType.Semicolon)
         }
 
         val condition = withIn { parseExpression() }
@@ -481,8 +452,7 @@ class Parser(text: String) {
         restoreContinueContext()
 
         if (initializer is LexicalDeclarationNode) {
-            val lexicalNames = initializer.bindingList.lexicalBindings.map { it.identifier.identifierName }
-            val intersection = lexicalNames.intersect(body.varDeclaredNames())
+            val intersection = initializer.declaredLexNames().intersect(body.declaredVarNames())
             if (intersection.isNotEmpty()) {
                 syntaxError("for-loop initializer's lexical declaration of \"${intersection.first()}\" clashes with a " +
                     "variable declaration in the for-loop's body")
@@ -494,122 +464,98 @@ class Parser(text: String) {
     }
 
     private fun parseForInOfStatement(): StatementNode? {
-        val initializer = when (tokenType) {
-            TokenType.Var -> {
-                consume()
-                parseBindingIdentifier()?.let(::ForBindingNode) ?: run {
-                    expected("identifier")
-                    consume()
-                    return null
-                }
-            }
-            TokenType.Let, TokenType.Const -> {
-                val isConst = consume().type == TokenType.Const
-                val identifier = parseBindingIdentifier() ?: run {
-                    expected("identifier")
-                    consume()
-                    return null
-                }
-                ForDeclarationNode(isConst, ForBindingNode(identifier))
-            }
-            else -> {
-                saveState()
-                parseLeftHandSideExpression()?.also { discardState() } ?: run {
-                    loadState()
-                    return null
-                }
-            }
-        }
+        // TODO
+        return null
 
-        val isIn = when (tokenType) {
-            TokenType.In -> {
-                consume()
-                true
-            }
-            TokenType.Of -> {
-                consume()
-                false
-            }
-            else -> {
-                expected("'in' or 'of'")
-                consume()
-                return null
-            }
-        }
-
-        val expression = if (isIn) {
-            withIn { parseExpression() } ?: run {
-                expected("expression")
-                consume()
-                return null
-            }
-        } else {
-            withIn { parseAssignmentExpression() } ?: run {
-                expected("expression")
-                consume()
-                return null
-            }
-        }
-
-        consume(TokenType.CloseParen)
-        val restoreBreakContext = ::inBreakContext.temporaryChange(true)
-        val restoreContinueContext = ::inContinueContext.temporaryChange(true)
-        val body = parseStatement() ?: run {
-            expected("statement")
-            consume()
-            return null
-        }
-        restoreBreakContext()
-        restoreContinueContext()
-
-        if (initializer.let { it !is ObjectLiteralNode && it !is ArrayLiteralNode && it !is ForBindingNode &&
-                it !is ForDeclarationNode && it.assignmentTargetType() != ASTNode.AssignmentTargetType.Simple }
-        ) {
-            syntaxError("for-${if (isIn) "in" else "of"} loop has an invalid left-hand-side")
-            return null
-        }
-
-        return if (isIn) {
-            ForInNode(initializer, expression, body)
-        } else {
-            ForOfNode(initializer, expression, body)
-        }
-    }
-
-    private fun parseBindingList(): BindingListNode? {
-        val declarations = mutableListOf<LexicalBindingNode>()
-
-        val declaration = parseLexicalBinding() ?: return null
-        declarations.add(declaration)
-
-        while (tokenType == TokenType.Comma) {
-            saveState()
-            consume()
-            val declaration2 = parseLexicalBinding()
-            if (declaration2 == null) {
-                loadState()
-                break
-            }
-            discardState()
-            declarations.add(declaration2)
-        }
-
-        return BindingListNode(declarations)
-    }
-
-    private fun parseLexicalBinding(): LexicalBindingNode? {
-        // TODO: Attempt the BindingPattern branch
-        val identifier = parseBindingIdentifier() ?: return null
-        val initializer = parseInitializer()
-        return LexicalBindingNode(identifier, initializer)
+//        val initializer = when (tokenType) {
+//            TokenType.Var -> {
+//                consume()
+//                parseBindingIdentifier()?.let(::ForBindingNode) ?: run {
+//                    expected("identifier")
+//                    consume()
+//                    return null
+//                }
+//            }
+//            TokenType.Let, TokenType.Const -> {
+//                val isConst = consume().type == TokenType.Const
+//                val identifier = parseBindingIdentifier() ?: run {
+//                    expected("identifier")
+//                    consume()
+//                    return null
+//                }
+//                ForDeclarationNode(isConst, ForBindingNode(identifier))
+//            }
+//            else -> {
+//                saveState()
+//                parseLeftHandSideExpression()?.also { discardState() } ?: run {
+//                    loadState()
+//                    return null
+//                }
+//            }
+//        }
+//
+//        val isIn = when (tokenType) {
+//            TokenType.In -> {
+//                consume()
+//                true
+//            }
+//            TokenType.Of -> {
+//                consume()
+//                false
+//            }
+//            else -> {
+//                expected("'in' or 'of'")
+//                consume()
+//                return null
+//            }
+//        }
+//
+//        val expression = if (isIn) {
+//            withIn { parseExpression() } ?: run {
+//                expected("expression")
+//                consume()
+//                return null
+//            }
+//        } else {
+//            withIn { parseAssignmentExpression() } ?: run {
+//                expected("expression")
+//                consume()
+//                return null
+//            }
+//        }
+//
+//        consume(TokenType.CloseParen)
+//        val restoreBreakContext = ::inBreakContext.temporaryChange(true)
+//        val restoreContinueContext = ::inContinueContext.temporaryChange(true)
+//        val body = parseStatement() ?: run {
+//            expected("statement")
+//            consume()
+//            return null
+//        }
+//        restoreBreakContext()
+//        restoreContinueContext()
+//
+//        if (initializer.let { it !is ObjectLiteralNode && it !is ArrayLiteralNode && it !is ForBindingNode &&
+//                it !is ForDeclarationNode && it.assignmentTargetType() != ASTNode.AssignmentTargetType.Simple }
+//        ) {
+//            syntaxError("for-${if (isIn) "in" else "of"} loop has an invalid left-hand-side")
+//            return null
+//        }
+//
+//        return if (isIn) {
+//            ForInNode(initializer, expression, body)
+//        } else {
+//            ForOfNode(initializer, expression, body)
+//        }
     }
 
     private fun parseSwitchStatement(): StatementNode? {
         if (tokenType != TokenType.Switch)
             return null
-        consume()
 
+        consume()
         consume(TokenType.OpenParen)
+
         val target = withIn {
             parseExpression() ?: run {
                 expected("expression")
@@ -617,8 +563,8 @@ class Parser(text: String) {
                 return null
             }
         }
-        consume(TokenType.CloseParen)
 
+        consume(TokenType.CloseParen)
         consume(TokenType.OpenCurly)
 
         val clauses = mutableListOf<SwitchClause>()
@@ -646,15 +592,15 @@ class Parser(text: String) {
 
         consume(TokenType.CloseCurly)
 
-        val switchClauses = SwitchClauses(clauses)
-        val lexicalNames = switchClauses.lexicallyDeclaredNames()
+        val switchClauses = SwitchClauseList(clauses)
+        val lexicalNames = switchClauses.declaredLexNames()
         val lexicalDuplicates = lexicalNames.duplicates()
         if (lexicalDuplicates.isNotEmpty()) {
             syntaxError("cannot redeclare lexical declaration \"${lexicalDuplicates.first()}\"")
             return null
         }
 
-        val varNames = switchClauses.varDeclaredNames()
+        val varNames = switchClauses.declaredVarNames()
         val intersection = lexicalNames.intersect(varNames)
         if (intersection.isNotEmpty()) {
             syntaxError("cannot redeclare non-lexical declaration \"${intersection.first()}\" as lexical")
@@ -681,8 +627,8 @@ class Parser(text: String) {
 
         val label = parseLabelIdentifier()
         automaticSemicolonInsertion()
-        if (label != null && label.identifierName !in activeLabels) {
-            syntaxError("label \"${label.identifierName}\" not found in the current scope")
+        if (label != null && label !in activeLabels) {
+            syntaxError("label \"$label\" not found in the current scope")
             return null
         }
         return ContinueStatementNode(label)
@@ -705,8 +651,8 @@ class Parser(text: String) {
         }
         val label = parseLabelIdentifier()
         automaticSemicolonInsertion()
-        if (label != null && label.identifierName !in activeLabels) {
-            syntaxError("label \"${label.identifierName}\" not found in the current scope")
+        if (label != null && label !in activeLabels) {
+            syntaxError("label \"$label\" not found in the current scope")
             return null
         }
         return BreakStatementNode(label)
@@ -734,15 +680,15 @@ class Parser(text: String) {
         if (tokenType != TokenType.Identifier || !has(1) || peek(1).type != TokenType.Colon)
             return null
 
-        val label = parseBindingIdentifier()?.identifierName?.let(::LabelIdentifierNode) ?: return null
-        activeLabels.add(label.identifierName)
+        val label = parseBindingIdentifier()?.identifierName ?: return null
+        activeLabels.add(label)
         consume(TokenType.Colon)
         val statement = parseStatement() ?: run {
             expected("statement")
             consume()
             return null
         }
-        activeLabels.remove(label.identifierName)
+        activeLabels.remove(label)
         return LabelledStatementNode(label, statement)
     }
 
@@ -821,16 +767,10 @@ class Parser(text: String) {
         }
 
         if (parameter != null) {
-            val boundNames = parameter.boundNames()
-            val duplicates = boundNames.duplicates()
-            if (duplicates.isNotEmpty()) {
-                syntaxError("catch parameter contains duplicate bound names \"${duplicates.first()}\"")
-                return null
-            }
-
-            val intersection = boundNames.intersect(block.lexicallyDeclaredNames() + block.varDeclaredNames())
-            if (intersection.isNotEmpty()) {
-                syntaxError("catch block redefines the catch parameter name \"${intersection.first()}\"")
+            // TODO(BindingPattern): will require more static rules; check spec here
+            val blockNames = block.declaredVarNames() + block.declaredLexNames()
+            if (parameter.identifierName in blockNames) {
+                syntaxError("catch block redefines the catch parameter name \"${parameter.identifierName}\"")
                 return null
             }
         }
@@ -846,17 +786,13 @@ class Parser(text: String) {
         return DebuggerStatementNode
     }
 
-    private fun parseDeclaration(): DeclarationNode? {
-        return parseHoistableDeclaration() ?:
-            parseClassDeclaration() ?:
-            withIn { parseLexicalDeclaration() }
-    }
-
-    private fun parseHoistableDeclaration(): DeclarationNode? {
+    private fun parseDeclarationNode(): StatementNode? {
         return parseFunctionDeclaration() ?:
             parseGeneratorDeclaration() ?:
             parseAsyncFunctionDeclaration() ?:
-            parseAsyncGeneratorDeclaration()
+            parseAsyncGeneratorDeclaration() ?:
+            parseClassDeclaration() ?:
+            withIn { parseLexicalDeclaration() }
     }
 
     private fun parseFunctionDeclaration(): FunctionDeclarationNode? {
@@ -865,8 +801,10 @@ class Parser(text: String) {
 
         consume()
         val identifier = if (tokenType == TokenType.OpenParen) {
-            consume()
-            null
+            // TODO(Export): Function inside default exports are considered declarations,
+            // and do not have to have a name
+            expected("identifier")
+            return null
         } else {
             parseBindingIdentifier().also { consume(TokenType.OpenParen) } ?: run {
                 expected("identifier")
@@ -875,50 +813,64 @@ class Parser(text: String) {
             }
         }
 
-        // Null return value indicates an error
-        val parameters = parseFormalParameters() ?: return null
+        val parameters = parseFunctionParameters()
 
         consume(TokenType.CloseParen)
         consume(TokenType.OpenCurly)
         val body = functionBoundary(::parseFunctionBody)
         consume(TokenType.CloseCurly)
 
-        return FunctionDeclarationNode(identifier, parameters, FunctionStatementList(body))
+        return FunctionDeclarationNode(identifier, parameters, StatementList(body))
     }
 
-    private fun parseFormalParameters(): FormalParametersNode? {
+    private fun parseFunctionParameters(): ParameterList {
         if (tokenType == TokenType.CloseParen)
-            return FormalParametersNode(FormalParameterListNode(emptyList()), null)
+            return ParameterList()
 
-        val parameters = mutableListOf<FormalParameterNode>()
+        val parameters = mutableListOf<Parameter>()
 
-        parseFunctionRestParameter()?.also {
-            return FormalParametersNode(FormalParameterListNode(emptyList()), it)
-        }
-
-        var restNode: FunctionRestParameterNode? = null
-
-        parameters.add(FormalParameterNode(parseBindingElement() ?: return null))
-
-        while (tokenType == TokenType.Comma) {
+        while (true) {
+            val param = parseFunctionParameter() ?: break
+            parameters.add(param)
+            if (param.isRest)
+                break
+            if (tokenType != TokenType.Comma)
+                break
             consume()
-            parameters.add(FormalParameterNode(parseBindingElement() ?: break))
         }
 
-        if (tokenType == TokenType.TripleDot)
-            restNode = parseFunctionRestParameter()
-
-        return FormalParametersNode(FormalParameterListNode(parameters), restNode)
+        return ParameterList(parameters)
     }
 
-    private fun parseFunctionRestParameter(): FunctionRestParameterNode? {
-        if (tokenType != TokenType.TripleDot)
+    private fun parseFunctionParameter(): Parameter? {
+        val isRest = if (tokenType == TokenType.TripleDot) {
+            consume()
+            true
+        } else false
+
+        // TODO(BindingPattern)
+        val identifier = parseBindingIdentifier() ?: run {
+            if (isRest)
+                expected("identifier")
             return null
+        }
 
-        return FunctionRestParameterNode(parseBindingRestElement() ?: return null)
+        val initializer = if (tokenType == TokenType.Equals) {
+            if (isRest) {
+                syntaxError("function rest parameter cannot have initializer")
+                return null
+            }
+            consume()
+            parseExpression() ?: run {
+                expected("expression")
+                return null
+            }
+        } else null
+
+        return Parameter(identifier, initializer, isRest)
     }
 
-    private fun parseFunctionBody(): StatementListNode? {
+    private fun parseFunctionBody(): StatementList {
         return withReturn { parseStatementList(setStrict = true) }
     }
 
@@ -938,26 +890,22 @@ class Parser(text: String) {
     }
 
     private fun parseClassDeclaration(): ClassDeclarationNode? {
+        return ClassDeclarationNode(parseClassNode(isDeclaration = true) ?: return null)
+    }
+
+    private fun parseClassNode(isDeclaration: Boolean): ClassNode? {
         if (tokenType != TokenType.Class)
             return null
 
-        consume()
-
-        val identifier = if (!inDefaultContext) {
-            parseBindingIdentifier() ?: run {
+        val identifier = parseBindingIdentifier() ?: run {
+            if (!inDefaultContext || !isDeclaration) {
                 expected("identifier")
                 consume()
                 return null
             }
-        } else null
+            null
+        }
 
-        // Null indicates an error
-        val tail = parseClassTail() ?: return null
-
-        return ClassDeclarationNode(ClassNode(identifier, tail.heritage, tail.body))
-    }
-
-    private fun parseClassTail(): ClassTailNode? {
         val heritage = if (tokenType == TokenType.Extends) {
             consume()
             parseLeftHandSideExpression() ?: run {
@@ -972,20 +920,20 @@ class Parser(text: String) {
         val elements = mutableListOf<ClassElementNode>()
         while (tokenType != TokenType.CloseCurly) {
             val element = parseClassElement() ?: break
-            if (element.type == ClassElementNode.Type.Empty)
+            if (element == EmptyClassElementNode)
                 continue
             elements.add(element)
         }
 
         consume(TokenType.CloseCurly)
 
-        return ClassTailNode(heritage, ClassElementList(elements))
+        return ClassNode(identifier, heritage, elements)
     }
 
     private fun parseClassElement(): ClassElementNode? {
         if (tokenType == TokenType.Semicolon) {
             consume()
-            return ClassElementNode(null, null, false, ClassElementNode.Type.Empty)
+            return EmptyClassElementNode
         }
 
         val isStatic = tokenType == TokenType.Identifier && token.value == "static" && peek(1).type.let {
@@ -1001,10 +949,10 @@ class Parser(text: String) {
                 return null
             }
             val initializer = parseInitializer()
-            return ClassElementNode(name, initializer, isStatic, ClassElementNode.Type.Field)
+            return ClassFieldNode(name, initializer, isStatic)
         }
 
-        return ClassElementNode(method, null, isStatic, ClassElementNode.Type.Method)
+        return ClassMethodNode(method, isStatic)
     }
 
     private fun parseImportDeclaration(): ImportDeclarationNode? {
@@ -1014,14 +962,14 @@ class Parser(text: String) {
 
         if (tokenType == TokenType.StringLiteral) {
             return ImportDeclarationNode(
-                ImportClause(listOf(Import(null, null, Import.Type.OnlyFile))),
+                listOf(Import(null, null, Import.Type.OnlyFile)),
                 parseStringLiteral()
             ).also {
                 automaticSemicolonInsertion()
             }
         }
 
-        val clause = parseImportClause()
+        val clause = parseImports()
         if (clause != null) {
             if (tokenType != TokenType.Identifier || token.value != "from") {
                 expected("'from'")
@@ -1044,10 +992,10 @@ class Parser(text: String) {
             return null
         }
 
-        return ImportDeclarationNode(moduleSpecifier, null)
+        return ImportDeclarationNode(listOf(Import(null, null, Import.Type.OnlyFile)), moduleSpecifier)
     }
 
-    private fun parseImportClause(): ImportClause? {
+    private fun parseImports(): List<Import>? {
         val imports = mutableListOf<Import>()
 
         fun parseOtherImportTypes(): Boolean {
@@ -1078,7 +1026,7 @@ class Parser(text: String) {
             }
         } else if (!parseOtherImportTypes()) return null
 
-        return ImportClause(imports)
+        return imports
     }
 
     private fun parseNameSpaceImport(): Import? {
@@ -1150,7 +1098,7 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseExportDeclaration(): ExportDeclarationNode? {
+    private fun parseExportDeclaration(): ExportNode? {
         if (tokenType != TokenType.Export)
             return null
         consume()
@@ -1160,7 +1108,7 @@ class Parser(text: String) {
                 consume()
 
                 if (tokenType == TokenType.Class) {
-                    return parseClassDeclaration()?.let(::DefaultClassExport) ?: run {
+                    return parseClassDeclaration()?.let(::DefaultClassExportNode) ?: run {
                         expected("class declaration")
                         consume()
                         return null
@@ -1168,14 +1116,14 @@ class Parser(text: String) {
                 }
 
                 if (tokenType == TokenType.Function) {
-                    return parseFunctionDeclaration()?.let(::DefaultFunctionExport) ?: run {
+                    return parseFunctionDeclaration()?.let(::DefaultFunctionExportNode) ?: run {
                         expected("function declaration")
                         consume()
                         return null
                     }
                 }
 
-                parseAssignmentExpression()?.let(::DefaultExpressionExport) ?: run {
+                parseAssignmentExpression()?.let(::DefaultExpressionExportNode) ?: run {
                     expected("expression")
                     consume()
                     return null
@@ -1192,10 +1140,10 @@ class Parser(text: String) {
                         return null
                     }
 
-                    FromExport(parseFromClause() ?: return null, name, FromExport.Type.NamedWildcard).also {
+                    FromExportNode(parseFromClause() ?: return null, name, FromExportNode.Type.NamedWildcard).also {
                         automaticSemicolonInsertion()
                     }
-                } else FromExport(parseFromClause() ?: return null, null, FromExport.Type.Wildcard).also {
+                } else FromExportNode(parseFromClause() ?: return null, null, FromExportNode.Type.Wildcard).also {
                     automaticSemicolonInsertion()
                 }
             }
@@ -1205,19 +1153,19 @@ class Parser(text: String) {
                     consume()
                     return null
                 }
-                VariableExport(statement)
+                DeclarationExportNode(statement)
             }
             TokenType.OpenCurly -> {
                 val namedExports = parseNamedExports() ?: return null
 
                 if (tokenType == TokenType.Identifier && token.value == "from") {
-                    FromExport(parseFromClause() ?: return null, namedExports, FromExport.Type.NamedList)
+                    FromExportNode(parseFromClause() ?: return null, namedExports, FromExportNode.Type.NamedList)
                 } else namedExports.also {
                     automaticSemicolonInsertion()
                 }
             }
             else -> {
-                return parseDeclaration()?.let { DeclarationExport(it) } ?: run {
+                return parseDeclarationNode()?.let { DeclarationExportNode(it) } ?: run {
                     expected("valid export statement")
                     consume()
                     null
@@ -1243,7 +1191,7 @@ class Parser(text: String) {
 
     private fun parseNamedExports(): NamedExports? {
         consume(TokenType.OpenCurly)
-        val exports = mutableListOf<NamedExports.Export>()
+        val exports = mutableListOf<NamedExport>()
 
         while (tokenType != TokenType.CloseCurly) {
             val localName = parseIdentifierName() ?: run {
@@ -1260,9 +1208,9 @@ class Parser(text: String) {
                     return null
                 }
 
-                exports.add(NamedExports.Export(localName.identifierName, targetName.identifierName))
+                exports.add(NamedExport(localName.identifierName, targetName.identifierName))
             } else {
-                exports.add(NamedExports.Export(localName.identifierName, null))
+                exports.add(NamedExport(localName.identifierName, null))
             }
 
             if (tokenType != TokenType.Comma)
@@ -1275,7 +1223,10 @@ class Parser(text: String) {
         return NamedExports(exports)
     }
 
-    private fun parseLexicalDeclaration(forceSemicolon: Boolean = false, generateErrors: Boolean = true): DeclarationNode? {
+    private fun parseLexicalDeclaration(
+        forceSemicolon: Boolean = false,
+        generateErrors: Boolean = true
+    ): LexicalDeclarationNode? {
         if (!matchAny(TokenType.Let, TokenType.Const))
             return null
 
@@ -1287,14 +1238,14 @@ class Parser(text: String) {
             else -> unreachable()
         }
 
-        val list = parseBindingList() ?: run {
-            expected("identifier")
+        val declarations = parseDeclarationList()
+        if (declarations.isEmpty()) {
+            expected("one or more lexical declarations")
             consume()
-            discardState()
             return null
         }
 
-        val names = list.lexicalBindings.map { it.identifier.identifierName }
+        val names = declarations.map { it.identifier.identifierName }
         if (names.any { it == "let" }) {
             if (generateErrors) {
                 syntaxError("cannot use \"let\" as a binding in a lexical declaration")
@@ -1313,7 +1264,7 @@ class Parser(text: String) {
         }
 
         if (isConst) {
-            for (binding in list.lexicalBindings) {
+            for (binding in declarations) {
                 if (binding.initializer == null) {
                     if (generateErrors) {
                         syntaxError("const declaration must include an initializer")
@@ -1337,7 +1288,7 @@ class Parser(text: String) {
 
         discardState()
 
-        return LexicalDeclarationNode(isConst, list)
+        return LexicalDeclarationNode(isConst, declarations)
     }
 
     private fun parseIdentifierReference(): IdentifierReferenceNode? {
@@ -1389,8 +1340,8 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseLabelIdentifier(): LabelIdentifierNode? {
-        return parseIdentifierReference()?.let { LabelIdentifierNode(it.identifierName) }
+    private fun parseLabelIdentifier(): String? {
+        return parseIdentifierReference()?.let { it.identifierName }
     }
 
     private fun parseIdentifier(): IdentifierNode? {
@@ -1445,13 +1396,19 @@ class Parser(text: String) {
                 return null
             }
         }
-        return ArrowFunctionNode(parameters, body)
+
+        return if (body is ExpressionNode) {
+            ArrowFunctionNode.fromExpressionBody(parameters, body)
+        } else {
+            @Suppress("UNCHECKED_CAST")
+            ArrowFunctionNode(parameters, body as StatementList)
+        }
     }
 
-    private fun parseArrowParameters(): ASTNode? {
-        val identifier = parseBindingIdentifier()
-        if (identifier != null)
-            return identifier
+    private fun parseArrowParameters(): ParameterList? {
+        val singleParam = parseBindingIdentifier()
+        if (singleParam != null)
+            return ParameterList(listOf(Parameter(singleParam, null, isRest = false)))
 
         saveState()
 
@@ -1483,27 +1440,27 @@ class Parser(text: String) {
             if (it.node is CommaExpressionNode) {
                 it.node.expressions.map { expr -> CPEAPPLPart(expr, false) }
             } else listOf(it)
-        }.filterNot { it.isSpread }.map {
-            val (identifier, initializer) = if (it.node is AssignmentExpressionNode) {
-                expect(it.node.lhs is IdentifierReferenceNode)
-                BindingIdentifierNode(it.node.lhs.identifierName) to it.node.rhs
-            } else if (it.node is IdentifierReferenceNode) {
-                BindingIdentifierNode(it.node.identifierName) to null
-            } else {
-                loadState()
-                return null
+        }.map {
+            val (identifier, initializer) = when (it.node) {
+                is AssignmentExpressionNode -> {
+                    expect(it.node.lhs is IdentifierReferenceNode)
+                    BindingIdentifierNode(it.node.lhs.identifierName) to it.node.rhs
+                }
+                is IdentifierReferenceNode -> {
+                    BindingIdentifierNode(it.node.identifierName) to null
+                }
+                else -> {
+                    loadState()
+                    return null
+                }
             }
 
-            FormalParameterNode(SingleNameBindingElement(identifier, initializer?.let(::InitializerNode)))
+            Parameter(identifier, initializer, it.isSpread)
         }
 
         discardState()
 
-        val restParameter = elements.firstOrNull { it.isSpread }?.let {
-            FunctionRestParameterNode(BindingRestElement(it.node as BindingIdentifierNode))
-        }
-
-        return FormalParametersNode(FormalParameterListNode(parameters), restParameter)
+        return ParameterList(parameters)
     }
 
     private fun parseConciseBody(): ASTNode? {
@@ -1511,7 +1468,7 @@ class Parser(text: String) {
             consume()
             val body = withReturn { parseFunctionBody() }
             consume(TokenType.CloseCurly)
-            FunctionStatementList(body ?: StatementListNode(emptyList()))
+            StatementList(body)
         } else {
             parseExpression()
         }
@@ -1538,7 +1495,7 @@ class Parser(text: String) {
             consume()
             return null
         }
-        return NewExpressionNode(expr, null)
+        return NewExpressionNode(expr, ArgumentList())
     }
 
     private fun parseCallExpression(): ExpressionNode? {
@@ -1629,7 +1586,7 @@ class Parser(text: String) {
                 // Spec deviation: MemberExpression does not have any alternatives
                 // that involve arguments or new, as it makes the AST tree way more
                 // confusing
-                return NewExpressionNode(expr, args)
+                return NewExpressionNode(expr, args ?: ArgumentList())
             }
             return null
         }
@@ -1669,7 +1626,7 @@ class Parser(text: String) {
         return memberExpression ?: primaryExpression
     }
 
-    private fun parseMetaProperty(): MetaPropertyNode? {
+    private fun parseMetaProperty(): ExpressionNode? {
         return when (tokenType) {
             TokenType.New -> {
                 // TODO: Should we save? Or should we error if we don't find a period
@@ -1761,7 +1718,7 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseArguments(): ArgumentsNode? {
+    private fun parseArguments(): ArgumentList? {
         if (tokenType != TokenType.OpenParen)
             return null
         consume()
@@ -1771,11 +1728,11 @@ class Parser(text: String) {
             consume()
         }
         consume(TokenType.CloseParen)
-        return argumentsList?.let(::ArgumentsNode) ?: ArgumentsNode(ArgumentsListNode(emptyList()))
+        return argumentsList?.let(::ArgumentList) ?: ArgumentList()
     }
 
-    private fun parseArgumentsList(): ArgumentsListNode? {
-        val arguments = mutableListOf<ArgumentListEntry>()
+    private fun parseArgumentsList(): ArgumentList? {
+        val arguments = mutableListOf<Argument>()
         var first = true
 
         do {
@@ -1797,23 +1754,23 @@ class Parser(text: String) {
                     discardState()
                     return null
                 }
-                arguments.add(ArgumentListEntry(expr, true))
+                arguments.add(Argument(expr, true))
             } else {
                 val expr = withIn { parseAssignmentExpression() } ?: run {
                     loadState()
                     return null
                 }
-                arguments.add(ArgumentListEntry(expr, false))
+                arguments.add(Argument(expr, false))
             }
 
             discardState()
             first = false
         } while (true)
 
-        return ArgumentsListNode(arguments)
+        return ArgumentList(arguments)
     }
 
-    private fun parsePrimaryExpression(): PrimaryExpressionNode? {
+    private fun parsePrimaryExpression(): ExpressionNode? {
         if (tokenType == TokenType.This) {
             consume()
             return ThisLiteralNode
@@ -1849,7 +1806,7 @@ class Parser(text: String) {
         return ParenthesizedExpressionNode(cpeaapl.covered[0].node as ExpressionNode)
     }
 
-    private fun parseLiteral(): LiteralNode? {
+    private fun parseLiteral(): ExpressionNode? {
         return parseNullLiteral() ?:
             parseBooleanLiteral() ?:
             parseNumericLiteral() ?:
@@ -1901,7 +1858,7 @@ class Parser(text: String) {
         } else null
     }
 
-    private fun parseArrayLiteral(): PrimaryExpressionNode? {
+    private fun parseArrayLiteral(): ExpressionNode? {
         if (tokenType != TokenType.OpenBracket)
             return null
 
@@ -1966,142 +1923,6 @@ class Parser(text: String) {
         return ObjectLiteralNode(list)
     }
 
-    private fun parseBindingPattern(): BindingPattern? {
-        return when (tokenType) {
-            TokenType.OpenCurly -> parseObjectBindingPattern()
-            TokenType.OpenBracket -> parseArrayBindingPattern()
-            else -> null
-        }
-    }
-
-    private fun parseObjectBindingPattern(): ObjectBindingPattern? {
-        consume(TokenType.OpenCurly)
-
-        val properties = mutableListOf<BindingProperty>()
-        var restProperty: BindingRestProperty? = null
-
-        while (true) {
-            if (tokenType == TokenType.TripleDot) {
-                consume()
-                val identifier = parseBindingIdentifier() ?: run {
-                    expected("identifier")
-                    consume()
-                    return null
-                }
-                restProperty = BindingRestProperty(identifier)
-                break
-            }
-
-            val propertyName = parsePropertyNameNode()
-            if (propertyName != null && propertyName.expr is IdentifierNode && tokenType != TokenType.Colon) {
-                val initializer = parseInitializer()
-                properties.add(SingleNameBindingProperty(BindingIdentifierNode(propertyName.expr.identifierName), initializer))
-            } else if (propertyName != null && tokenType == TokenType.Colon) {
-                consume(TokenType.Colon)
-                val element = parseBindingElement() ?: run {
-                    expected("binding identifier or pattern")
-                    consume()
-                    return null
-                }
-                properties.add(ComplexBindingProperty(propertyName, element))
-            } else if (propertyName == null) {
-                val (identifier, initializer) = parseSingleNameBindingComponents() ?: run {
-                    expected("identifier")
-                    consume()
-                    return null
-                }
-                properties.add(SingleNameBindingProperty(identifier, initializer))
-            } else {
-                expected("colon followed by a binding element")
-                consume()
-                return null
-            }
-
-            if (tokenType != TokenType.Comma)
-                break
-            consume()
-        }
-
-        consume(TokenType.CloseCurly)
-
-        return ObjectBindingPattern(properties, restProperty)
-    }
-
-    private fun parseBindingElement(): BindingElementNode? {
-        if (tokenType == TokenType.OpenCurly || tokenType == TokenType.OpenBracket) {
-            val pattern = parseBindingPattern() ?: run {
-                expected("destructuring pattern")
-                consume()
-                return null
-            }
-            val initializer = parseInitializer()
-
-            return PatternBindingElement(pattern, initializer)
-        }
-
-        val (identifier, expr) = parseSingleNameBindingComponents() ?: run {
-            expected("identifier")
-            consume()
-            return null
-        }
-
-        return SingleNameBindingElement(identifier, expr)
-    }
-
-    private fun parseSingleNameBindingComponents(): Pair<BindingIdentifierNode, InitializerNode?>? {
-        val identifier = parseBindingIdentifier() ?: return null
-        val initializer = parseInitializer()
-        return identifier to initializer
-    }
-
-    private fun parseBindingRestElement(): BindingRestElement? {
-        if (tokenType != TokenType.TripleDot)
-            return null
-        consume()
-
-        val node = parseBindingPattern() ?: parseBindingIdentifier() ?: run {
-            expected("identifier or destructuring pattern")
-            consume()
-            return null
-        }
-
-        return BindingRestElement(node)
-    }
-
-    private fun parseArrayBindingPattern(): ArrayBindingPattern? {
-        consume(TokenType.OpenBracket)
-
-        val elements = mutableListOf<BindingElisionElement>()
-        var restElement: BindingRestElement? = null
-
-        while (true) {
-            if (tokenType == TokenType.Comma && has(1) && peek(1).type == TokenType.TripleDot) {
-                consume()
-                restElement = parseBindingRestElement() ?: return null
-                break
-            }
-
-            if (tokenType == TokenType.Comma)
-                elements.add(BindingElisionNode)
-
-            val element = parseBindingElement() ?: run {
-                expected("binding array destructuring element")
-                consume()
-                return null
-            }
-
-            elements.add(element)
-
-            if (tokenType != TokenType.Comma)
-                break
-            consume()
-        }
-
-        consume(TokenType.CloseBracket)
-
-        return ArrayBindingPattern(elements, restElement)
-    }
-
     private fun parsePropertyDefinitionList(): PropertyDefinitionListNode? {
         val properties = mutableListOf<PropertyDefinitionNode>()
 
@@ -2133,7 +1954,7 @@ class Parser(text: String) {
         } else {
             val method = parseMethodDefinition()
             if (method != null) {
-                if (method.hasDirectSuper()) {
+                if (method.containsSuperCall()) {
                     syntaxError("\"super\" can only be used in derived class constructors")
                     return null
                 }
@@ -2189,20 +2010,16 @@ class Parser(text: String) {
         consume()
         discardState()
 
-        val params = withoutYield { withoutAwait { parseFormalParameters() } } ?: run {
-            expected("parameters")
-            consume()
-            return null
-        }
+        val params = withoutYield { withoutAwait { parseFunctionParameters() } }
 
         consume(TokenType.CloseParen)
 
-        if (type == MethodDefinitionNode.Type.Getter && params.functionParameters.parameters.isNotEmpty()) {
+        if (type == MethodDefinitionNode.Type.Getter && params.isNotEmpty()) {
             syntaxError("expected object literal getter to have zero parameters")
             return null
         }
 
-        if (type == MethodDefinitionNode.Type.Setter && params.functionParameters.parameters.size != 1) {
+        if (type == MethodDefinitionNode.Type.Setter && params.size != 1) {
             syntaxError("expected object literal setter to have one parameter")
             return null
         }
@@ -2211,7 +2028,7 @@ class Parser(text: String) {
         val body = functionBoundary(::parseFunctionBody)
         consume(TokenType.CloseCurly)
 
-        return MethodDefinitionNode(name, params, FunctionStatementList(body), type)
+        return MethodDefinitionNode(name, params, StatementList(body), type)
     }
 
     private fun parsePropertyNameNode(): PropertyNameNode? {
@@ -2235,52 +2052,42 @@ class Parser(text: String) {
         }
     }
 
-    private fun parseFunctionExpression(): PrimaryExpressionNode? {
+    private fun parseFunctionExpression(): ExpressionNode? {
         if (tokenType != TokenType.Function)
             return null
 
         consume()
         val id = parseBindingIdentifier()
         consume(TokenType.OpenParen)
-        val args = parseFormalParameters() ?: return null
+        val args = parseFunctionParameters() ?: return null
         consume(TokenType.CloseParen)
         consume(TokenType.OpenCurly)
         val body = functionBoundary(::parseFunctionBody)
         consume(TokenType.CloseCurly)
 
-        return FunctionExpressionNode(id, args, FunctionStatementList(body))
+        return FunctionExpressionNode(id, args, StatementList(body))
     }
 
-    private fun parseClassExpression(): PrimaryExpressionNode? {
-        if (tokenType != TokenType.Class)
-            return null
-
-        consume()
-
-        val identifier = parseBindingIdentifier()
-
-        // Null indicates an error
-        val tail = parseClassTail() ?: return null
-
-        return ClassExpressionNode(ClassNode(identifier, tail.heritage, tail.body))
+    private fun parseClassExpression(): ExpressionNode? {
+        return ClassExpressionNode(parseClassNode(isDeclaration = false) ?: return null)
     }
 
-    private fun parseGeneratorExpression(): PrimaryExpressionNode? {
+    private fun parseGeneratorExpression(): ExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseAsyncFunctionExpression(): PrimaryExpressionNode? {
+    private fun parseAsyncFunctionExpression(): ExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseAsyncGeneratorExpression(): PrimaryExpressionNode? {
+    private fun parseAsyncGeneratorExpression(): ExpressionNode? {
         // TODO
         return null
     }
 
-    private fun parseRegularExpressionLiteral(): PrimaryExpressionNode? {
+    private fun parseRegularExpressionLiteral(): ExpressionNode? {
         if (tokenType == TokenType.UnterminatedRegexLiteral) {
             consume()
             unexpected("unterminated regex literal")
@@ -2306,7 +2113,7 @@ class Parser(text: String) {
         return RegExpLiteralNode(source, flags)
     }
 
-    private fun parseTemplateLiteral(): PrimaryExpressionNode? {
+    private fun parseTemplateLiteral(): ExpressionNode? {
         if (tokenType != TokenType.TemplateLiteralStart)
             return null
 
@@ -2432,9 +2239,7 @@ class Parser(text: String) {
 
             val lhs = node ?: expr
 
-            if (lhs !is ObjectLiteralNode && lhs !is ArrayLiteralNode &&
-                lhs.assignmentTargetType() != ASTNode.AssignmentTargetType.Simple
-            ) {
+            if (lhs !is ObjectLiteralNode && lhs !is ArrayLiteralNode && lhs.isInvalidAssignmentTarget) {
                 syntaxError("invalid left-hand-side assignment")
                 return null
             }
@@ -2731,7 +2536,7 @@ class Parser(text: String) {
             isIncrement = consume().type == TokenType.PlusPlus
         }
 
-        if (expr.assignmentTargetType() != ASTNode.AssignmentTargetType.Simple) {
+        if (expr.isInvalidAssignmentTarget) {
             syntaxError("invalid update operator target")
             return null
         }

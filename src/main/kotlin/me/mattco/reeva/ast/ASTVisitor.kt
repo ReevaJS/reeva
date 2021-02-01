@@ -9,13 +9,13 @@ interface ASTVisitor {
         when (node) {
             is StatementNode -> visitStatement(node)
             is ExpressionNode -> visitExpression(node)
+            is ASTListNode<*> -> node.children.forEach(::visit)
             else -> "Unrecognized ASTNode ${node.name}"
         }
     }
 
     fun visitStatement(node: StatementNode) {
         when (node) {
-            is StatementListNode -> node.statements.forEach(::visit)
             is BlockStatementNode -> visit(node.block)
             is BlockNode -> visitBlock(node)
             is ExpressionStatementNode -> visitExpressionStatement(node)
@@ -32,10 +32,10 @@ interface ASTVisitor {
             is BreakStatementNode -> visitBreakStatement(node)
             is ReturnStatementNode -> visitReturnStatement(node)
             is LexicalDeclarationNode -> visitLexicalDeclaration(node)
-            is VariableStatementNode -> visitVariableStatement(node)
+            is VariableDeclarationNode -> visitVariableDeclaration(node)
             is DebuggerStatementNode -> visitDebuggerStatement()
             is ImportDeclarationNode -> visitImportDeclaration(node)
-            is ExportDeclarationNode -> visitExportDeclaration(node)
+            is ExportNode -> visitExport(node)
             is FunctionDeclarationNode -> visitFunctionDeclaration(node)
             is ClassDeclarationNode -> visitClassDeclaration(node)
             else -> "Unrecognized StatementNode ${node.name}"
@@ -88,12 +88,12 @@ interface ASTVisitor {
             is BigIntLiteralNode -> visitBigIntLiteral(node)
             is NullLiteralNode -> visitNullLiteral()
             is ThisLiteralNode -> visitThisLiteral()
-            else -> "Inrecognized ExpressionNode ${node.name}"
+            else -> "Unrecognized ExpressionNode ${node.name}"
         }
     }
 
     fun visitBlock(node: BlockNode) {
-        node.statements?.statements?.forEach(::visit)
+        node.statements.forEach(::visit)
     }
 
     fun visitExpressionStatement(node: ExpressionStatementNode) {
@@ -166,16 +166,16 @@ interface ASTVisitor {
     }
 
     fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
-        node.bindingList.lexicalBindings.forEach { binding ->
+        node.declarations.forEach { binding ->
             visit(binding.identifier)
-            binding.initializer?.let { visit(it.expression) }
+            binding.initializer?.also(::visit)
         }
     }
 
-    fun visitVariableStatement(node: VariableStatementNode) {
-        node.declarations.declarations.forEach { declaration ->
+    fun visitVariableDeclaration(node: VariableDeclarationNode) {
+        node.declarations.forEach { declaration ->
             visit(declaration.identifier)
-            declaration.initializer?.let { visit(it.expression) }
+            declaration.initializer?.also(::visit)
         }
     }
 
@@ -183,9 +183,7 @@ interface ASTVisitor {
 
     fun visitImportDeclaration(node: ImportDeclarationNode) { }
 
-    fun visitExportDeclaration(node: ExportDeclarationNode) {
-        // TODO: Default handling
-    }
+    fun visitExport(node: ExportNode) { }
 
     fun visitBindingIdentifier(node: BindingIdentifierNode) { }
 
@@ -290,7 +288,7 @@ interface ASTVisitor {
 
     fun visitCallExpression(node: CallExpressionNode) {
         visit(node.target)
-        visitArguments(node.arguments)
+        node.arguments.forEach { visit(it.expression) }
     }
 
     fun visitCommaExpression(node: CommaExpressionNode) {
@@ -310,7 +308,7 @@ interface ASTVisitor {
 
     fun visitNewExpression(node: NewExpressionNode) {
         visit(node.target)
-        node.arguments?.also(::visitArguments)
+        node.arguments.forEach { visit(it.expression) }
     }
 
     fun visitOptionalExpression(node: OptionalExpressionNode) {
@@ -322,7 +320,7 @@ interface ASTVisitor {
     }
 
     fun visitSuperCallExpression(node: SuperCallExpressionNode) {
-        visit(node.arguments)
+        node.arguments.forEach { visit(it.expression) }
     }
 
     fun visitImportCallExpression(node: ImportCallExpressionNode) { 
@@ -374,8 +372,4 @@ interface ASTVisitor {
     fun visitNullLiteral() { }
 
     fun visitThisLiteral() { }
-
-    private fun visitArguments(node: ArgumentsNode) {
-        node.arguments.forEach { visit(it.expression) }
-    }
 }

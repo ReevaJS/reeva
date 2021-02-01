@@ -2,15 +2,12 @@ package me.mattco.reeva.ast.literals
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
-import me.mattco.reeva.utils.unreachable
+import me.mattco.reeva.ast.expressions.SuperCallExpressionNode
+import me.mattco.reeva.ast.statements.StatementList
 
-class ObjectLiteralNode(val list: PropertyDefinitionListNode?) : ASTNodeBase(listOfNotNull(list)), PrimaryExpressionNode
+class ObjectLiteralNode(val list: PropertyDefinitionListNode?) : ASTNodeBase(listOfNotNull(list)), ExpressionNode
 
-class PropertyDefinitionListNode(val properties: List<PropertyDefinitionNode>) : ASTNodeBase(properties) {
-    override fun propertyNameList(): List<String> {
-        return properties.mapNotNull(ASTNode::propName)
-    }
-}
+class PropertyDefinitionListNode(val properties: List<PropertyDefinitionNode>) : ASTNodeBase(properties)
 
 // "first" and "second" have different interpretations based on the type
 class PropertyDefinitionNode(
@@ -18,25 +15,6 @@ class PropertyDefinitionNode(
     val second: ExpressionNode?,
     val type: Type
 ) : ASTNodeBase(listOfNotNull(first, second)) {
-    override fun contains(nodeName: String): Boolean {
-        if (nodeName == "MethodDefinitionNode") {
-            if (type == Type.Method)
-                return true
-            return first.computedPropertyContains(nodeName)
-        }
-        return super.contains(nodeName)
-    }
-
-    override fun propName(): String? {
-        return when (type) {
-            Type.Shorthand -> (first as IdentifierNode).identifierName
-            Type.KeyValue -> first.propName()
-            Type.Method -> super.propName()
-            Type.Spread -> null
-            Type.Initializer -> unreachable()
-        }
-    }
-
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -56,48 +34,25 @@ class PropertyDefinitionNode(
     }
 }
 
-class PropertyNameNode(val expr: ExpressionNode, val isComputed: Boolean) : ASTNodeBase(listOf(expr)) {
-    override fun computedPropertyContains(nodeName: String): Boolean {
-        if (!isComputed)
-            return false
-        return expr.contains(nodeName)
-    }
-
-    override fun contains(nodeName: String): Boolean {
-        if (expr is IdentifierNode)
-            return false
-        return super.contains(nodeName)
-    }
-
-    override fun isComputedPropertyKey() = isComputed
-
-    override fun propName() = when {
-        isComputed -> null
-        expr is IdentifierNode -> expr.identifierName
-        expr is StringLiteralNode -> expr.value
-        // This is kinda scuffed
-        expr is NumericLiteralNode -> expr.value.toString()
-        else -> unreachable()
-    }
-}
+class PropertyNameNode(
+    val expr: ExpressionNode,
+    val isComputed: Boolean,
+) : ASTNodeBase(listOf(expr))
 
 class MethodDefinitionNode(
     val identifier: PropertyNameNode,
-    val parameters: FormalParametersNode,
-    val body: FunctionStatementList,
+    val parameters: ParameterList,
+    val body: StatementList,
     val type: Type
-) : ASTNodeBase(listOfNotNull(identifier, parameters, body)) {
-    override fun computedPropertyContains(nodeName: String) = identifier.computedPropertyContains(nodeName)
-
-    override fun hasDirectSuper(): Boolean {
-        return when (type) {
-            Type.Normal, Type.Setter -> parameters.contains("SuperCallExpressionNode") || body.contains("SuperCallExpressionNode")
-            Type.Getter -> body.contains("SuperCallExpressionNode")
-            Type.Generator, Type.Async, Type.AsyncGenerator -> TODO()
+) : ASTNodeBase(listOf(identifier) + parameters + body) {
+    fun isConstructor(): Boolean {
+        return !identifier.isComputed && identifier.expr.let {
+            it is BindingIdentifierNode && it.identifierName == "constructor"
         }
     }
 
-    override fun propName() = identifier.propName()
+    fun containsSuperCall() = parameters.any { it.containsAny<SuperCallExpressionNode>() } ||
+        body.containsAny<SuperCallExpressionNode>()
 
     enum class Type {
         Normal,

@@ -1,8 +1,9 @@
 package me.mattco.reeva.ast
 
-import me.mattco.reeva.core.modules.ExportEntryRecord
-import me.mattco.reeva.core.modules.ImportEntryRecord
+import me.mattco.reeva.ast.literals.StringLiteralNode
+import me.mattco.reeva.ast.statements.ExpressionStatementNode
 import me.mattco.reeva.ir.Scope
+import me.mattco.reeva.ir.Variable
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.newline
 import me.mattco.reeva.utils.unreachable
@@ -23,9 +24,11 @@ open class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWithScop
     lateinit var source: ASTNode
 }
 
-open class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
-    var isInlineable = true
-    var index = -1
+abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
+    val variables = mutableMapOf<String, Variable>()
+    open val isConst: Boolean = false
+
+    abstract fun boundNames(): List<String>
 }
 
 interface ASTNode {
@@ -47,16 +50,8 @@ interface ASTNode {
 
     fun StringBuilder.appendName() = append(name)
 
-    enum class Suffix {
-        Yield,
-        Await,
-        In,
-        Return,
-        Tagged,
-    }
-
     companion object {
-        private const val INDENT = "    "
+        private const val INDENT = "|   "
 
         fun makeIndent(indent: Int) = buildString {
             repeat(indent) {
@@ -67,292 +62,41 @@ interface ASTNode {
         fun StringBuilder.appendIndent(indent: Int) = append(makeIndent(indent))
     }
 
-    /**
-     * STATIC SEMANTICS
-     */
+    val isInvalidAssignmentTarget: Boolean
+        get() = true
 
-    enum class AssignmentTargetType {
-        Simple,
-        Invalid
+    fun scopedVariableDeclarations(): List<VariableSourceNode> {
+        return children.flatMap(ASTNode::scopedVariableDeclarations)
     }
 
-    fun assignmentTargetType(): AssignmentTargetType {
-        if (children.size != 1)
-            return AssignmentTargetType.Invalid
-        return children[0].assignmentTargetType()
+    fun scopedLexicalDeclarations(): List<VariableSourceNode> {
+        return children.flatMap(ASTNode::scopedLexicalDeclarations)
     }
 
-    fun boundNames(): List<String> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].boundNames()
+    fun variableDeclarations(): List<VariableSourceNode> {
+        return children.flatMap(ASTNode::variableDeclarations)
     }
 
-    fun classElementKind(): ClassElementKind {
-        if (children.size != 1)
-            throw Error("Node ${this::class.java.simpleName} has no implementation for " +
-                "classElementKind, and cannot be delegated")
-        return children[0].classElementKind()
+    fun lexicalDeclarations(): List<VariableSourceNode> {
+        return children.flatMap(ASTNode::lexicalDeclarations)
     }
 
-    fun computedPropertyContains(nodeName: String): Boolean {
-        if (children.size != 1)
-            throw Error("Node ${this::class.java.simpleName} has no implementation for " +
-                "computedPropertyContains, and cannot be delegated")
-        return children[0].computedPropertyContains(nodeName)
-    }
+    fun declaredVarNames(): List<String> = variableDeclarations().flatMap(VariableSourceNode::boundNames)
 
-    fun constructorMethod(): ASTNode? {
-        if (children.size != 1)
-            throw Error("Node ${this::class.java.simpleName} has no implementation for " +
-                "constructorMethod, and cannot be delegated")
-        return children[0].constructorMethod()
-    }
+    fun declaredLexNames(): List<String> = lexicalDeclarations().flatMap(VariableSourceNode::boundNames)
 
-    fun contains(nodeName: String): Boolean {
-        // This is the only SS that has a default implementation for every Nonterminal
-        for (child in children) {
-            if (child.name == nodeName)
-                return true
-            if (child.contains(nodeName))
-                return true
-        }
+    fun containsDirective(directive: String) = children.containsDirective(directive)
 
-        return false
-    }
+    fun containsUseStrictDirective() = children.containsUseStrictDirective()
+}
 
-    fun containsDuplicateLabels(labelSet: Set<String>): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].containsDuplicateLabels(labelSet)
-    }
-
-    fun containsExpression(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].containsExpression()
-    }
-
-    fun containsUndefinedBreakTarget(labelSet: Set<String>): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].containsUndefinedBreakTarget(labelSet)
-    }
-
-    fun containsUndefinedContinueTarget(iterationSet: Set<String>, labelSet: Set<String>): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].containsUndefinedContinueTarget(iterationSet, labelSet)
-    }
-
-    fun containsUseStrict(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].containsUseStrict()
-    }
-
-    fun coveredCallExpression(): ASTNodeBase {
-        if (children.size != 1)
-            throw Error("Node ${this::class.java.simpleName} has no implementation for " +
-                "coveredCallExpression, and cannot be delegated")
-        return children[0].coveredCallExpression()
-    }
-
-    fun coveredParenthesizedExpression(): ASTNodeBase {
-        if (children.size != 1)
-            throw Error("Node ${this::class.java.simpleName} has no implementation for " +
-                "coveredParenthesizedExpression, and cannot be delegated")
-        return children[0].coveredParenthesizedExpression()
-    }
-
-    fun declarationPart(): ASTNodeBase {
-        if (children.size != 1)
-            throw Error("Node ${this::class.java.simpleName} has no implementation for " +
-                "declarationPart, and cannot be delegated")
-        return children[0].declarationPart()
-    }
-
-    fun expectedArgumentCount(): Int {
-        if (children.size != 1)
-            return 0
-        return children[0].expectedArgumentCount()
-    }
-
-    fun exportEntries(): List<ExportEntryRecord> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].exportEntries()
-    }
-
-    fun exportedBindings(): List<String> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].exportedBindings()
-    }
-
-    fun exportedNames(): List<String> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].exportedNames()
-    }
-
-    fun hasDirectSuper(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].hasDirectSuper()
-    }
-
-    fun hasInitializer(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].hasInitializer()
-    }
-
-    fun hasName(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].hasName()
-    }
-
-    fun importEntries(): List<ImportEntryRecord> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].importEntries()
-    }
-
-    fun isComputedPropertyKey(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].isComputedPropertyKey()
-    }
-
-    fun isConstantDeclaration(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].isConstantDeclaration()
-    }
-
-    fun isDestructuring(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].isDestructuring()
-    }
-
-    fun isFunctionDefinition(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].isFunctionDefinition()
-    }
-
-    fun isIdentifierRef(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].isIdentifierRef()
-    }
-
-    fun isLabelledFunction(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].isLabelledFunction()
-    }
-
-    fun isSimpleParameterList(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].isSimpleParameterList()
-    }
-
-    fun isValidRegularExpressionLiteral(): Boolean {
-        if (children.size != 1)
-            return false
-        return children[0].isValidRegularExpressionLiteral()
-    }
-
-    fun lexicallyDeclaredNames(): List<String> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].lexicallyDeclaredNames()
-    }
-
-    fun lexicallyScopedDeclarations(): List<ASTNodeBase> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].lexicallyScopedDeclarations()
-    }
-
-    fun moduleRequests(): List<String> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].moduleRequests()
-    }
-
-    fun propertyNameList(): List<String> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].propertyNameList()
-    }
-
-    fun propName(): String? {
-        if (children.size != 1)
-            return null
-        return children[0].propName()
-    }
-
-    fun stringValue(): String {
-        if (children.size != 1)
-            throw Error("Node ${this::class.java.simpleName} has no implementation for " +
-                "String, and cannot be delegated")
-        return children[0].stringValue()
-    }
-
-    fun templateStrings(): List<String> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].templateStrings()
-    }
-
-    fun topLevelLexicallyDeclaredNames(): List<String> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].topLevelLexicallyDeclaredNames()
-    }
-
-    fun topLevelLexicallyScopedDeclarations(): List<ASTNodeBase> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].topLevelLexicallyScopedDeclarations()
-    }
-
-    fun topLevelVarDeclaredNames(): List<String> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].topLevelVarDeclaredNames()
-    }
-
-    fun topLevelVarScopedDeclarations(): List<ASTNodeBase> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].topLevelVarScopedDeclarations()
-    }
-
-    fun varDeclaredNames(): List<String> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].varDeclaredNames()
-    }
-
-    fun varScopedDeclarations(): List<ASTNodeBase> {
-        if (children.size != 1)
-            return emptyList()
-        return children[0].varScopedDeclarations()
-    }
-
-    enum class ClassElementKind {
-        ConstructorMethod,
-        NonConstructorMethod,
-        Empty,
+fun List<ASTNode>.containsDirective(directive: String) = isNotEmpty() && first().let { stmt ->
+    stmt is ExpressionStatementNode && stmt.node.let {
+        it is StringLiteralNode && it.value == directive
     }
 }
+
+fun List<ASTNode>.containsUseStrictDirective() = containsDirective("use strict")
 
 fun <T : Any> childrenOfTypeHelper(node: ASTNode, clazz: KClass<T>, list: MutableList<T>) {
     node.children.forEach {
@@ -367,6 +111,8 @@ fun <T : Any> childrenOfTypeHelper(node: ASTNode, clazz: KClass<T>, list: Mutabl
 inline fun <reified T : Any> ASTNode.childrenOfType(): List<T> {
     return mutableListOf<T>().also { childrenOfTypeHelper(this, T::class, it) }
 }
+
+inline fun <reified T : Any> ASTNode.containsAny() = childrenOfType<T>().isNotEmpty()
 
 class ScriptOrModuleNode(private val value: Any) {
     init {
@@ -386,7 +132,7 @@ class ScriptOrModuleNode(private val value: Any) {
         get() = value as ModuleNode
 
     val isStrict: Boolean
-        get() = isModule || asScript.statementList.hasUseStrictDirective()
+        get() = isModule || asScript.containsUseStrictDirective()
 
     fun dump(n: Int = 0) = when {
         isScript -> asScript.dump(n)
@@ -396,14 +142,4 @@ class ScriptOrModuleNode(private val value: Any) {
 }
 
 interface StatementNode : ASTNode
-interface HoistableDeclarationNode : DeclarationNode
-interface DeclarationNode : StatementNode
-interface BreakableStatement : StatementNode
-interface IterationStatement : BreakableStatement
-
 interface ExpressionNode : ASTNode
-interface LeftHandSideExpressionNode : ExpressionNode
-interface ShortCircuitExpressionNode : ExpressionNode
-interface MetaPropertyNode : LeftHandSideExpressionNode
-interface PrimaryExpressionNode : LeftHandSideExpressionNode
-interface LiteralNode : PrimaryExpressionNode

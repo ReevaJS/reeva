@@ -1,7 +1,10 @@
 package me.mattco.reeva.ast.expressions
 
-import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
+import me.mattco.reeva.ast.ASTNodeBase
+import me.mattco.reeva.ast.Argument
+import me.mattco.reeva.ast.ArgumentList
+import me.mattco.reeva.ast.ExpressionNode
 
 class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val op: Operator) : ASTNodeBase(listOf(lhs, rhs)), ExpressionNode {
     enum class Operator(val symbol: String) {
@@ -37,11 +40,10 @@ class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode,
 class AwaitExpressionNode(val expression: ExpressionNode) : ASTNodeBase(listOf(expression)), ExpressionNode
 
 // TODO: This isn't exactly to spec
-class CallExpressionNode(val target: ExpressionNode, val arguments: ArgumentsNode) : ASTNodeBase(listOf(target, arguments)), LeftHandSideExpressionNode {
-    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
-        return ASTNode.AssignmentTargetType.Invalid
-    }
-}
+class CallExpressionNode(
+    val target: ExpressionNode,
+    val arguments: ArgumentList,
+) : ASTNodeBase(listOf(target) + arguments), ExpressionNode
 
 // Note that this name deviates from the spec because I think this is
 // a much better name. It is not clear from the name "ExpressionNode"
@@ -53,21 +55,14 @@ class ConditionalExpressionNode(
     val predicate: ExpressionNode,
     val ifTrue: ExpressionNode,
     val ifFalse: ExpressionNode
-) : ASTNodeBase(listOf(predicate, ifTrue, ifFalse)), ExpressionNode {
-    override fun assignmentTargetType(): ASTNode.AssignmentTargetType {
-        return ASTNode.AssignmentTargetType.Invalid
-    }
-}
+) : ASTNodeBase(listOf(predicate, ifTrue, ifFalse)), ExpressionNode
 
-class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val type: Type) : ASTNodeBase(listOf(lhs, rhs)), LeftHandSideExpressionNode {
-    override fun assignmentTargetType() = when (type) {
-        Type.Computed, Type.NonComputed -> ASTNode.AssignmentTargetType.Simple
-        else -> ASTNode.AssignmentTargetType.Invalid
-    }
-
-    override fun contains(nodeName: String) = if (type == Type.NonComputed) {
-        lhs.contains(nodeName)
-    } else super<ASTNodeBase>.contains(nodeName)
+class MemberExpressionNode(
+    val lhs: ExpressionNode,
+    val rhs: ExpressionNode,
+    val type: Type,
+) : ASTNodeBase(listOf(lhs, rhs)), ExpressionNode {
+    override val isInvalidAssignmentTarget = false
 
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
@@ -88,15 +83,16 @@ class MemberExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val
 
 class NewExpressionNode(
     val target: ExpressionNode,
-    val arguments: ArgumentsNode?
-) : ASTNodeBase(listOfNotNull(target, arguments)), LeftHandSideExpressionNode
+    val arguments: ArgumentList,
+) : ASTNodeBase(listOfNotNull(target) + arguments), ExpressionNode
 
-class OptionalExpressionNode : ASTNodeBase(), LeftHandSideExpressionNode
+class OptionalExpressionNode : ASTNodeBase(), ExpressionNode
 
-class SuperPropertyExpressionNode(val target: ExpressionNode, val computed: Boolean) : ASTNodeBase(listOf(target)), LeftHandSideExpressionNode {
-    override fun assignmentTargetType() = ASTNode.AssignmentTargetType.Simple
-
-    override fun contains(nodeName: String) = nodeName == "super"
+class SuperPropertyExpressionNode(
+    val target: ExpressionNode,
+    val computed: Boolean,
+) : ASTNodeBase(listOf(target)), ExpressionNode {
+    override val isInvalidAssignmentTarget: Boolean = false
 
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
@@ -108,7 +104,7 @@ class SuperPropertyExpressionNode(val target: ExpressionNode, val computed: Bool
     }
 }
 
-class SuperCallExpressionNode(val arguments: ArgumentsNode) : ASTNodeBase(listOf(arguments)), ExpressionNode
+class SuperCallExpressionNode(val arguments: ArgumentList) : ASTNodeBase(arguments), ExpressionNode
 
 class ImportCallExpressionNode(val expression: ExpressionNode) : ASTNodeBase(listOf(expression)), ExpressionNode
 
@@ -131,8 +127,8 @@ class YieldExpressionNode(
     }
 }
 
-class ParenthesizedExpressionNode(val expression: ExpressionNode) : ASTNodeBase(listOf(expression)), PrimaryExpressionNode
+class ParenthesizedExpressionNode(val expression: ExpressionNode) : ASTNodeBase(listOf(expression)), ExpressionNode
 
-class TemplateLiteralNode(val parts: List<ExpressionNode>) : ASTNodeBase(parts), PrimaryExpressionNode
+class TemplateLiteralNode(val parts: List<ExpressionNode>) : ASTNodeBase(parts), ExpressionNode
 
-class RegExpLiteralNode(val source: String, val flags: String) : ASTNodeBase(listOf()), PrimaryExpressionNode
+class RegExpLiteralNode(val source: String, val flags: String) : ASTNodeBase(listOf()), ExpressionNode

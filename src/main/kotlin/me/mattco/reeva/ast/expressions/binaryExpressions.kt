@@ -2,7 +2,6 @@ package me.mattco.reeva.ast.expressions
 
 import me.mattco.reeva.ast.ExpressionNode
 import me.mattco.reeva.ast.ASTNodeBase
-import me.mattco.reeva.ast.ShortCircuitExpressionNode
 
 open class BinaryExpression(val lhs: ExpressionNode, val rhs: ExpressionNode) : ASTNodeBase(listOf(lhs, rhs)), ExpressionNode
 
@@ -14,7 +13,7 @@ class BitwiseORExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : Binary
 
 class BitwiseXORExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs)
 
-class CoalesceExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs), ShortCircuitExpressionNode
+class CoalesceExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs)
 
 class EqualityExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode, val op: Operator) : BinaryExpression(lhs, rhs) {
     enum class Operator(val symbol: String) {
@@ -29,7 +28,7 @@ class ExponentiationExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : B
 
 class LogicalANDExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs)
 
-class LogicalORExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs), ShortCircuitExpressionNode
+class LogicalORExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode) : BinaryExpression(lhs, rhs)
 
 class MultiplicativeExpressionNode(lhs: ExpressionNode, rhs: ExpressionNode, val op: Operator) : BinaryExpression(lhs, rhs) {
     enum class Operator(val symbol: String) {

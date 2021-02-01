@@ -2,7 +2,6 @@ package me.mattco.reeva.ir
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.statements.BlockNode
-import me.mattco.reeva.utils.unreachable
 
 /**
  * The scope analyzer is responsible for "filling in" many of
@@ -23,10 +22,10 @@ class ScopeAnalyzer : ASTVisitor {
         script.scope = scope
         topLevelNode = script
 
-        script.varScopedDeclarations().forEach(::handleVarDeclaration)
-        script.lexicallyScopedDeclarations().forEach(::handleLexicalDeclaration)
+        script.variableDeclarations().forEach(::handleVarDeclaration)
+        script.lexicalDeclarations().forEach(::handleLexicalDeclaration)
 
-        visitStatement(script.statementList)
+        visit(script.statementList)
     }
 
     override fun visit(node: ASTNode) {
@@ -38,7 +37,7 @@ class ScopeAnalyzer : ASTVisitor {
     override fun visitBlock(node: BlockNode) {
         pushScope(Scope.Type.BlockScope)
         node.scope = scope
-        node.lexicallyScopedDeclarations().forEach(::handleLexicalDeclaration)
+        node.scopedLexicalDeclarations().forEach(::handleLexicalDeclaration)
         super.visitBlock(node)
         popScope()
     }
@@ -48,9 +47,8 @@ class ScopeAnalyzer : ASTVisitor {
         val source = variable?.source ?: topLevelNode
         node.source = source
 
-        // TODO: Somehow make function parameters VariableSourceNodes
         if (source is VariableSourceNode && scope.crossesVarBoundary(source.scope))
-            source.isInlineable = false
+            variable!!.isInlineable = false
 
         super.visitBindingIdentifier(node)
     }
@@ -62,7 +60,7 @@ class ScopeAnalyzer : ASTVisitor {
 
         // TODO: Somehow make function parameters VariableSourceNodes
         if (source is VariableSourceNode && scope.crossesVarBoundary(source.scope))
-            source.isInlineable = false
+            variable!!.isInlineable = false
 
         super.visitIdentifierReference(node)
     }
@@ -71,9 +69,8 @@ class ScopeAnalyzer : ASTVisitor {
         pushScope(Scope.Type.FunctionScope)
         node.scope = scope
 
-        val params = node.parameters
-        params.functionParameters.parameters.forEach {
-            it.bindingElement.boundNames().forEach { name ->
+        node.parameters.forEach {
+            it.boundNames().forEach { name ->
                 scope.addVariable(name, Variable(
                     name,
                     Variable.Mode.Var,
@@ -83,18 +80,7 @@ class ScopeAnalyzer : ASTVisitor {
             }
         }
 
-        if (params.restParameter != null) {
-            params.restParameter.element.boundNames().forEach { name ->
-                scope.addVariable(name, Variable(
-                    name,
-                    Variable.Mode.Var,
-                    Variable.Kind.FunctionParameter,
-                    node, // TODO: should this be the actual param itself?
-                ))
-            }
-        }
-
-        node.body.statementList?.also(::visit)
+        visit(node.body)
 
         popScope()
     }
@@ -103,9 +89,8 @@ class ScopeAnalyzer : ASTVisitor {
         pushScope(Scope.Type.FunctionScope)
         node.scope = scope
 
-        val params = node.parameters
-        params.functionParameters.parameters.forEach {
-            it.bindingElement.boundNames().forEach { name ->
+        node.parameters.forEach {
+            it.boundNames().forEach { name ->
                 scope.addVariable(name, Variable(
                     name,
                     Variable.Mode.Var,
@@ -115,18 +100,7 @@ class ScopeAnalyzer : ASTVisitor {
             }
         }
 
-        if (params.restParameter != null) {
-            params.restParameter.element.boundNames().forEach { name ->
-                scope.addVariable(name, Variable(
-                    name,
-                    Variable.Mode.Var,
-                    Variable.Kind.FunctionParameter,
-                    node, // TODO: should this be the actual param itself?
-                ))
-            }
-        }
-
-        node.body.statementList?.also(::visit)
+        visit(node.body)
 
         popScope()
     }
@@ -141,46 +115,18 @@ class ScopeAnalyzer : ASTVisitor {
 
         pushScope(Scope.Type.FunctionScope)
 
-        when (val params = node.parameters) {
-            is FormalParametersNode -> {
-                params.functionParameters.parameters.forEach {
-                    it.bindingElement.boundNames().forEach { name ->
-                        scope.addVariable(name, Variable(
-                            name,
-                            Variable.Mode.Var,
-                            Variable.Kind.FunctionParameter,
-                            node, // TODO: should this be the actual param itself?
-                        ))
-                    }
-                }
-
-                if (params.restParameter != null) {
-                    params.restParameter.element.boundNames().forEach { name ->
-                        scope.addVariable(name, Variable(
-                            name,
-                            Variable.Mode.Var,
-                            Variable.Kind.FunctionParameter,
-                            node, // TODO: should this be the actual param itself?
-                        ))
-                    }
-                }
-            }
-            is SingleNameBindingElement -> {
-                val name = params.identifier.identifierName
+        node.parameters.forEach {
+            it.boundNames().forEach { name ->
                 scope.addVariable(name, Variable(
                     name,
                     Variable.Mode.Var,
                     Variable.Kind.FunctionParameter,
-                    node, // TODO: should this be the actual param itself?
+                    it, // TODO(BindingPattern): Narrow the source here (i.e. not just the entire binding node)
                 ))
             }
         }
 
-        when (val body = node.body) {
-            is ExpressionNode -> visit(body)
-            is FunctionStatementList -> body.statementList?.also(::visit)
-            else -> unreachable()
-        }
+        visit(node.body)
 
         popScope()
     }
@@ -201,7 +147,7 @@ class ScopeAnalyzer : ASTVisitor {
         scope = scope.outer!!
     }
 
-    private fun handleVarDeclaration(node: ASTNode) {
+    private fun handleVarDeclaration(node: VariableSourceNode) {
         node.boundNames().forEach { name ->
             val variable = Variable(
                 name,
@@ -213,9 +159,8 @@ class ScopeAnalyzer : ASTVisitor {
         }
     }
 
-    private fun handleLexicalDeclaration(node: ASTNode) {
-        val isConst = node.isConstantDeclaration()
-        val mode = if (isConst) Variable.Mode.Const else Variable.Mode.Let
+    private fun handleLexicalDeclaration(node: VariableSourceNode) {
+        val mode = if (node.isConst) Variable.Mode.Const else Variable.Mode.Let
 
         node.boundNames().forEach { name ->
             val variable = Variable(
@@ -237,6 +182,8 @@ data class Variable(
 ) {
     lateinit var scope: Scope
     var isUsed = false
+    var isInlineable = true
+    var index: Int = -1
 
     enum class Mode {
         Var,

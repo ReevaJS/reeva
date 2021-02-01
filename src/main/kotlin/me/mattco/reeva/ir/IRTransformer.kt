@@ -133,13 +133,10 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
-        val isInlineable = node.isInlineable
-        val isConst = node.isConst
-
 
     }
 
-    override fun visitVariableStatement(node: VariableStatementNode) {
+    override fun visitVariableDeclaration(node: VariableDeclarationNode) {
         TODO()
     }
 
@@ -151,7 +148,7 @@ class IRTransformer : ASTVisitor {
         TODO()
     }
 
-    override fun visitExportDeclaration(node: ExportDeclarationNode) {
+    override fun visitExport(node: ExportNode) {
         TODO()
     }
 
@@ -322,7 +319,7 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitCallExpression(node: CallExpressionNode) {
-        val args = node.arguments.arguments
+        val args = node.arguments
 
         if (node.target is MemberExpressionNode) {
             val callableReg = nextFreeReg()
@@ -397,7 +394,7 @@ class IRTransformer : ASTVisitor {
         visit(node.target)
         +Star(target)
 
-        val regList = if (node.arguments != null) {
+        val regList = if (node.arguments.isNotEmpty()) {
             loadArguments(node.arguments)
         } else null
 
@@ -412,16 +409,16 @@ class IRTransformer : ASTVisitor {
         regList?.markFree()
     }
 
-    private fun loadArguments(arguments: ArgumentsNode): RegList {
-        val firstReg = nextFreeRegBlock(arguments.arguments.size)
-        arguments.arguments.forEachIndexed { index, argument ->
+    private fun loadArguments(arguments: ArgumentList): RegList {
+        val firstReg = nextFreeRegBlock(arguments.size)
+        arguments.forEachIndexed { index, argument ->
             if (argument.isSpread)
                 TODO()
             visit(argument.expression)
             +Star(firstReg + index)
         }
 
-        return RegList(firstReg, arguments.arguments.size).also {
+        return RegList(firstReg, arguments.size).also {
             it.markUsed()
         }
     }
