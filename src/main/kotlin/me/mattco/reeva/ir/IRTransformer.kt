@@ -19,14 +19,11 @@ fun main() {
     }
     ScopeResolver().resolve(parsed)
     println(parsed.dump(0))
-    val infos = IRTransformer().transform(parsed)
+    val info = IRTransformer().transform(parsed)
 
     println("\n\n")
 
-    infos.forEach {
-        OpcodePrinter.printFunctionInfo(it)
-        println()
-    }
+    OpcodePrinter.printFunctionInfo(info)
 }
 
 class FunctionInfo(
@@ -41,9 +38,7 @@ class FunctionInfo(
 class IRTransformer : ASTVisitor {
     private lateinit var builder: FunctionBuilder
 
-    private val functionInfo = mutableListOf<FunctionInfo>()
-
-    fun transform(node: ScriptNode): List<FunctionInfo> {
+    fun transform(node: ScriptNode): FunctionInfo {
         if (::builder.isInitialized)
             throw IllegalStateException("Cannot re-use an IRTransformer")
 
@@ -53,16 +48,14 @@ class IRTransformer : ASTVisitor {
         visit(node.statements)
         +Return
 
-        functionInfo.add(0, FunctionInfo(
+        return FunctionInfo(
             null,
             builder.opcodes.toTypedArray(),
             builder.constantPool.toTypedArray(),
             builder.registerCount,
             1,
             isTopLevelScript = true
-        ))
-
-        return functionInfo
+        )
     }
 
     override fun visitBlock(node: BlockNode) {
@@ -162,7 +155,8 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitReturnStatement(node: ReturnStatementNode) {
-        TODO()
+        node.expression?.also(::visit)
+        +Return
     }
 
     override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
@@ -238,11 +232,53 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
-        TODO()
+        val prevBuilder = builder
+        builder = FunctionBuilder(node.parameters.size + 1)
+
+        node.parameters.forEachIndexed { index, parameter ->
+            parameter.variable.index = index + 1
+        }
+
+        visit(node.body)
+        if (builder.opcodes.last() != Return) {
+            +LdaUndefined
+            +Return
+        }
+
+        val info = FunctionInfo(
+            node.identifier.identifierName,
+            builder.opcodes.toTypedArray(),
+            builder.constantPool.toTypedArray(),
+            builder.registerCount,
+            node.parameters.size + 1,
+            isTopLevelScript = false
+        )
+
+        builder = prevBuilder
+        +CreateClosure(loadConstant(info))
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
-        TODO()
+        val prevBuilder = builder
+        builder = FunctionBuilder(node.parameters.size + 1)
+
+        visit(node.body)
+        if (builder.opcodes.last() != Return) {
+            +LdaUndefined
+            +Return
+        }
+
+        val info = FunctionInfo(
+            node.identifier?.identifierName ?: "<anonymous>",
+            builder.opcodes.toTypedArray(),
+            builder.constantPool.toTypedArray(),
+            builder.registerCount,
+            node.parameters.size + 1,
+            isTopLevelScript = false
+        )
+
+        builder = prevBuilder
+        +CreateClosure(loadConstant(info))
     }
 
     override fun visitArrowFunction(node: ArrowFunctionNode) {
@@ -262,7 +298,7 @@ class IRTransformer : ASTVisitor {
         val reg = nextFreeReg()
         +Star(reg)
         visit(node.rhs)
-        +Add(reg)
+        +op(reg)
         markRegFree(reg)
     }
 

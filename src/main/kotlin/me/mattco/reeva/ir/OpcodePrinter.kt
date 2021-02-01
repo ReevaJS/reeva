@@ -17,6 +17,8 @@ object OpcodePrinter {
             println("    " + stringifyOpcode(it, info.argCount))
         }
 
+        val childFunctions = mutableListOf<FunctionInfo>()
+
         println("Constant pool (size = ${info.constantPool.size})")
         info.constantPool.forEachIndexed { index, value ->
             print("    $index: ")
@@ -25,8 +27,17 @@ object OpcodePrinter {
                 is Int -> "Int $value"
                 is Double -> "Double $value"
                 is String -> "String \"$value\""
+                is FunctionInfo -> {
+                    childFunctions.add(value)
+                    "<FunctionInfo ${value.name}>"
+                }
                 else -> unreachable()
             }.also(::println)
+        }
+
+        childFunctions.forEach {
+            println()
+            printFunctionInfo(it)
         }
     }
 
@@ -46,9 +57,11 @@ object OpcodePrinter {
     private fun formatArgument(value: Int, fieldName: String, argCount: Int) = fieldName.toLowerCase().let {
         when {
             "cp" in it -> "[$value]"
-            "reg" in it -> if (value < argCount) {
-                "a${argCount - value - 1}"
-            } else "r${value - argCount}"
+            "reg" in it -> when {
+                value == 0 -> "<receiver>"
+                value < argCount -> "a${argCount - value - 1}"
+                else -> "r${value - argCount}"
+            }
             else -> "#$value"
         }
     }

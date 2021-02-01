@@ -90,17 +90,19 @@ class ScopeResolver : ASTVisitor {
             node
         ))
 
-        pushScope(Scope.Type.FunctionScope)
         node.scope = scope
+        pushScope(Scope.Type.FunctionScope)
 
         node.parameters.forEach {
             val name = it.boundName()
-            scope.addVariable(name, Variable(
+            it.scope = scope
+            it.variable = Variable(
                 name,
                 Variable.Mode.Var,
                 Variable.Kind.FunctionParameter,
                 it,
-            ))
+            )
+            scope.addVariable(name, it.variable)
         }
 
         visit(node.body)
@@ -109,17 +111,19 @@ class ScopeResolver : ASTVisitor {
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
-        pushScope(Scope.Type.FunctionScope)
         node.scope = scope
+        pushScope(Scope.Type.FunctionScope)
 
         node.parameters.forEach {
             val name = it.boundName()
-            scope.addVariable(name, Variable(
+            it.scope = scope
+            it.variable = Variable(
                 name,
                 Variable.Mode.Var,
                 Variable.Kind.FunctionParameter,
                 it,
-            ))
+            )
+            scope.addVariable(name, it.variable)
         }
 
         visit(node.body)

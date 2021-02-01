@@ -424,4 +424,10 @@ enum class StaticError {
  * OTHER *
  *********/
 
+/**
+ * Creates a function object, referencing a FunctionInfo object stored
+ * in the constant pool at [cpIndex].
+ */
+class CreateClosure(val cpIndex: Int) : Opcode()
+
 object DebugBreakpoint : Opcode()
