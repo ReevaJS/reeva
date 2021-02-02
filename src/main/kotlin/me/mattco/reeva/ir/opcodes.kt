@@ -309,7 +309,6 @@ object TestUndefined : Opcode()
  ***************/
 
 object ToBoolean : Opcode()
-object ToName : Opcode()
 object ToNumber : Opcode()
 object ToNumeric : Opcode()
 object ToObject : Opcode()

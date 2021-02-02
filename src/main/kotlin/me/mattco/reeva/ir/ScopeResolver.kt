@@ -83,12 +83,13 @@ class ScopeResolver : ASTVisitor {
     }
 
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
-        scope.addVariable(node.identifier.identifierName, Variable(
+        node.variable = Variable(
             node.identifier.identifierName,
             Variable.Mode.Var,
             Variable.Kind.Normal,
             node
-        ))
+        )
+        scope.addVariable(node.identifier.identifierName, node.variable)
 
         node.scope = scope
         pushScope(Scope.Type.FunctionScope)

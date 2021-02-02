@@ -8,24 +8,6 @@ import me.mattco.reeva.parser.Parser
 import java.io.File
 import java.math.BigInteger
 
-fun main() {
-    val source = File("./demo/index.js").readText()
-
-    val parser = Parser(source)
-    val parsed = parser.parseScript()
-    if (parser.syntaxErrors.isNotEmpty()) {
-        println(parser.syntaxErrors.first())
-        return
-    }
-    ScopeResolver().resolve(parsed)
-    println(parsed.dump(0))
-    val info = IRTransformer().transform(parsed)
-
-    println("\n\n")
-
-    OpcodePrinter.printFunctionInfo(info)
-}
-
 class FunctionInfo(
     val name: String?,
     val code: Array<Opcode>,
@@ -256,6 +238,14 @@ class IRTransformer : ASTVisitor {
 
         builder = prevBuilder
         +CreateClosure(loadConstant(info))
+
+        if (!node.variable.isInlineable)
+            TODO()
+
+        // TODO: Figure out how to free this register
+        val reg = nextFreeReg()
+        node.variable.index = reg
+        +Star(reg)
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
