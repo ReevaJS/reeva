@@ -1,5 +1,7 @@
 package me.mattco.reeva.interpreter
 
+import me.mattco.reeva.core.ThrowException
+import me.mattco.reeva.ir.FunctionInfo
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.primitives.JSEmpty
 import java.util.*
@@ -30,8 +32,18 @@ class InterpreterStack {
         return stack.pop().registers.accumulator
     }
 
-    class StackFrame(val name: String, registerCount: Int) {
-        val registers = Registers(registerCount)
+    class StackFrame(val functionInfo: FunctionInfo, arguments: List<JSValue> = emptyList()) {
+        val registers = Registers(functionInfo.registerCount)
+        var ip = 0
+        var isDone = false
+        var exception: ThrowException? = null
+        val mappedCPool = Array<JSValue?>(functionInfo.constantPool.size) { null }
+
+        init {
+            arguments.forEachIndexed { index, value ->
+                registers[index] = value
+            }
+        }
     }
 
     class Registers(size: Int) {

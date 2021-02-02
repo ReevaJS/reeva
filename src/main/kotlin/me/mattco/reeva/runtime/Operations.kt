@@ -1501,7 +1501,7 @@ object Operations {
         return when (val env = getThisEnvironment()) {
             is FunctionEnvRecord -> env.getThisBinding()
             is GlobalEnvRecord -> env.getThisBinding()
-             is ModuleEnvRecord -> env.getThisBinding()
+            is ModuleEnvRecord -> env.getThisBinding()
             else -> unreachable()
         }
     }

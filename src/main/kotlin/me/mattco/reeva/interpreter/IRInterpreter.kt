@@ -1,18 +1,17 @@
 package me.mattco.reeva.interpreter
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.core.ExecutionContext
-import me.mattco.reeva.core.IRConsumer
-import me.mattco.reeva.core.Realm
-import me.mattco.reeva.core.ThrowException
+import me.mattco.reeva.core.*
 import me.mattco.reeva.core.tasks.Task
 import me.mattco.reeva.ir.*
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.*
+import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.toValue
 import me.mattco.reeva.utils.unreachable
@@ -59,17 +58,28 @@ object IRInterpreter : IRConsumer {
     override fun consume(info: FunctionInfo, realm: Realm) = IRInterpreterTask(info, realm)
 }
 
-class IRInterpreterTask(val info: FunctionInfo, val realm: Realm) : Task<Reeva.Result>() {
+class IRInterpreterTask(topLevelInfo: FunctionInfo, val realm: Realm) : Task<Reeva.Result>() {
     private val stack = InterpreterStack()
-    private var ip = 0
-    private var isDone = false
-    private var exception: ThrowException? = null
 
-    private val mappedCPool = Array<JSValue?>(info.constantPool.size) { null }
+    private val mappedCPool
+        get() = stack.frame.mappedCPool
+    private var ip: Int
+        get() = stack.frame.ip
+        set(v) { stack.frame.ip = v }
+    private var isDone: Boolean
+        get() = stack.frame.isDone
+        set(v) { stack.frame.isDone = v }
+    private var exception: ThrowException?
+        get() = stack.frame.exception
+        set(v) { stack.frame.exception = v }
+    private val info: FunctionInfo
+        get() = stack.frame.functionInfo
 
     init {
-        expect(info.isTopLevelScript)
-        expect(info.argCount == 1)
+        expect(topLevelInfo.isTopLevelScript)
+        expect(topLevelInfo.argCount == 1)
+
+        stack.pushFrame(InterpreterStack.StackFrame(topLevelInfo))
     }
 
     override fun makeContext(): ExecutionContext {
@@ -87,12 +97,6 @@ class IRInterpreterTask(val info: FunctionInfo, val realm: Realm) : Task<Reeva.R
     }
 
     override fun execute(): Reeva.Result {
-        stack.pushFrame(
-            InterpreterStack.StackFrame(
-            info.name ?: "<anonymous>",
-            info.registerCount
-        ))
-
         while (!isDone) {
             try {
                 visit(info.code[ip++])
@@ -156,25 +160,31 @@ class IRInterpreterTask(val info: FunctionInfo, val realm: Realm) : Task<Reeva.R
                 val key = stack.getRegister(opcode.keyReg)
                 obj.set(Operations.toPropertyKey(key), obj)
             }
-            is Add -> TODO()
-            is Sub -> TODO()
-            is Mul -> TODO()
-            is Div -> TODO()
-            is Mod -> TODO()
-            is Exp -> TODO()
-            is BitwiseOr -> TODO()
-            is BitwiseXor -> TODO()
-            is BitwiseAnd -> TODO()
-            is ShiftLeft -> TODO()
-            is ShiftRight -> TODO()
-            is ShiftRightUnsigned -> TODO()
+            is Add -> binaryOp(opcode.valueReg, "+")
+            is Sub -> binaryOp(opcode.valueReg, "-")
+            is Mul -> binaryOp(opcode.valueReg, "*")
+            is Div -> binaryOp(opcode.valueReg, "/")
+            is Mod -> binaryOp(opcode.valueReg, "%")
+            is Exp -> binaryOp(opcode.valueReg, "**")
+            is BitwiseOr -> binaryOp(opcode.valueReg, "|")
+            is BitwiseXor -> binaryOp(opcode.valueReg, "^")
+            is BitwiseAnd -> binaryOp(opcode.valueReg, "&")
+            is ShiftLeft -> binaryOp(opcode.valueReg, "<<")
+            is ShiftRight -> binaryOp(opcode.valueReg, ">>")
+            is ShiftRightUnsigned -> binaryOp(opcode.valueReg, ">>>")
             Inc -> TODO()
             Dec -> TODO()
             Negate -> TODO()
             BitwiseNot -> TODO()
-            ToBooleanLogicalNot -> TODO()
-            LogicalNot -> TODO()
-            TypeOf -> TODO()
+            ToBooleanLogicalNot -> {
+                stack.accumulator = (!Operations.toBoolean(stack.accumulator)).toValue()
+            }
+            LogicalNot -> {
+                stack.accumulator = (!stack.accumulator.asBoolean).toValue()
+            }
+            TypeOf -> {
+                stack.accumulator = Operations.typeofOperator(stack.accumulator)
+            }
             is DeletePropertyStrict -> TODO()
             is DeletePropertySloppy -> TODO()
             is LdaGlobal -> {
@@ -190,8 +200,21 @@ class IRInterpreterTask(val info: FunctionInfo, val realm: Realm) : Task<Reeva.R
             is CallUndefinedReceiver1 -> call(opcode.callableReg, opcode.argReg, 1, CallMode.UndefinedReceiver)
             is CallWithSpread -> TODO()
             is CallRuntime -> TODO()
-            is Construct0 -> TODO()
-            is Construct -> TODO()
+            is Construct0 -> {
+                stack.accumulator = Operations.construct(
+                    stack.getRegister(opcode.targetReg),
+                    emptyList(),
+                    stack.accumulator
+                )
+            }
+            is Construct -> {
+
+                stack.accumulator = Operations.construct(
+                    stack.getRegister(opcode.targetReg),
+                    emptyList(),
+                    stack.accumulator
+                )
+            }
             is ConstructWithSpread -> TODO()
             is TestEqual -> TODO()
             is TestNotEqual -> TODO()
@@ -283,10 +306,19 @@ class IRInterpreterTask(val info: FunctionInfo, val realm: Realm) : Task<Reeva.R
                 isDone = true
             }
             is ThrowStaticError -> TODO()
-            is CreateClosure -> TODO()
+            is CreateClosure -> {
+                val newInfo = info.constantPool[opcode.cpIndex] as FunctionInfo
+                stack.accumulator = IRFunction(Agent.runningContext.realm, newInfo)
+            }
             DebugBreakpoint -> TODO()
             else -> TODO()
         }
+    }
+
+    private fun binaryOp(lhs: Int, op: String) {
+        stack.accumulator = Operations.applyStringOrNumericBinaryOperator(
+            stack.getRegister(lhs), stack.accumulator, op
+        )
     }
 
     private fun call(callableReg: Int, firstArgReg: Int, argCount: Int, mode: CallMode) {
@@ -301,9 +333,7 @@ class IRInterpreterTask(val info: FunctionInfo, val realm: Realm) : Task<Reeva.R
         } else JSUndefined
 
         val args = if (argCount > 0) {
-            val firstArg = firstArgReg + 1
-            val range = firstArg until (firstArg + argCount)
-            range.map { stack.getRegister(it) }
+            getRegisterBlock(firstArgReg + 1, argCount)
         } else emptyList()
 
         stack.accumulator = Operations.call(target, receiver, args)
@@ -317,6 +347,13 @@ class IRInterpreterTask(val info: FunctionInfo, val realm: Realm) : Task<Reeva.R
         Runtime
     }
 
+    private fun getRegisterBlock(reg: Int, argCount: Int): List<JSValue> {
+        val args = mutableListOf<JSValue>()
+        for (i in reg until (reg + argCount))
+            args.add(stack.getRegister(i))
+        return args
+    }
+
     private fun getMappedConstant(index: Int): JSValue {
         return mappedCPool[index] ?: when (val value = info.constantPool[index]) {
             is Int -> JSNumber(value)
@@ -325,5 +362,33 @@ class IRInterpreterTask(val info: FunctionInfo, val realm: Realm) : Task<Reeva.R
             is FunctionInfo -> TODO()
             else -> unreachable()
         }.also { mappedCPool[index] = it }
+    }
+
+    inner class IRFunction(
+        realm: Realm,
+        private val info: FunctionInfo,
+    ) : JSFunction(realm, ThisMode.Lexical) {
+        override fun evaluate(arguments: JSArguments): JSValue {
+            stack.pushFrame(InterpreterStack.StackFrame(info))
+
+            // TODO: Operations.resolveBinding() throws an NPE here
+            stack.setRegister(0, JSUndefined)
+            arguments.forEachIndexed { index, arg ->
+                stack.setRegister(index + 1, arg)
+            }
+
+            val result = execute()
+
+            return try {
+                // TODO: Actually use the error in a handleable way
+                if (result.isError) {
+                    exception = ThrowException(result.value)
+                    isDone = true
+                    JSUndefined
+                } else result.value
+            } finally {
+                stack.popFrame()
+            }
+        }
     }
 }
