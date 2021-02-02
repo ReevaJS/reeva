@@ -369,6 +369,10 @@ class IRInterpreterTask(topLevelInfo: FunctionInfo, val realm: Realm) : Task<Ree
         realm: Realm,
         private val info: FunctionInfo,
     ) : JSFunction(realm, ThisMode.Lexical, Agent.runningContext.variableEnv) {
+        init {
+            isConstructable = true
+        }
+
         override fun evaluate(arguments: JSArguments): JSValue {
             stack.pushFrame(InterpreterStack.StackFrame(info))
 

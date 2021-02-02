@@ -426,7 +426,29 @@ class IRTransformer : ASTVisitor {
             return
         }
 
-        TODO()
+        if (lhs is MemberExpressionNode) {
+            val objectReg = nextFreeReg()
+            visit(lhs.lhs)
+            +Star(objectReg)
+
+            when (lhs.type) {
+                MemberExpressionNode.Type.Computed -> {
+                    val keyReg = nextFreeReg()
+                    visit(lhs.rhs)
+                    +Star(keyReg)
+                    visit(rhs)
+                    +StaKeyedProperty(objectReg, keyReg)
+                    markRegFree(keyReg)
+                }
+                MemberExpressionNode.Type.NonComputed -> {
+                    visit(rhs)
+                    +StaNamedProperty(objectReg, loadConstant((lhs.rhs as IdentifierNode).identifierName))
+                }
+                MemberExpressionNode.Type.Tagged -> TODO()
+            }
+
+            markRegFree(objectReg)
+        }
     }
 
     private fun checkForConstReassignment(node: VariableRefNode): Boolean {
@@ -550,16 +572,17 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitNewExpression(node: NewExpressionNode) {
-        val target = nextFreeReg()
-        visit(node.target)
-        +Star(target)
-
         val regList = if (node.arguments.isNotEmpty()) {
             loadArguments(node.arguments)
         } else null
 
-        // TODO: Proper new.target
-        +LdaUndefined
+        val target = nextFreeReg()
+        visit(node.target)
+        +Star(target)
+
+        // At this point, the target is still in the accumulator,
+        // which is necessary as the target is also the new.target
+        // here
 
         if (regList != null) {
             +Construct(target, regList.firstReg, regList.count)
