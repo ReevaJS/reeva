@@ -367,12 +367,11 @@ class IRInterpreterTask(topLevelInfo: FunctionInfo, val realm: Realm) : Task<Ree
     inner class IRFunction(
         realm: Realm,
         private val info: FunctionInfo,
-    ) : JSFunction(realm, ThisMode.Lexical) {
+    ) : JSFunction(realm, ThisMode.Lexical, Agent.runningContext.variableEnv) {
         override fun evaluate(arguments: JSArguments): JSValue {
             stack.pushFrame(InterpreterStack.StackFrame(info))
 
-            // TODO: Operations.resolveBinding() throws an NPE here
-            stack.setRegister(0, JSUndefined)
+            stack.setRegister(0, Operations.resolveThisBinding())
             arguments.forEachIndexed { index, arg ->
                 stack.setRegister(index + 1, arg)
             }
