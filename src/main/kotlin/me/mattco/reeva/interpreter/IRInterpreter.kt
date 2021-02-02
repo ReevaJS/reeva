@@ -199,7 +199,10 @@ class IRInterpreterTask(topLevelInfo: FunctionInfo, val realm: Realm) : Task<Ree
             is CallUndefinedReceiver0 -> call(opcode.callableReg, -1, 0, CallMode.UndefinedReceiver)
             is CallUndefinedReceiver1 -> call(opcode.callableReg, opcode.argReg, 1, CallMode.UndefinedReceiver)
             is CallWithSpread -> TODO()
-            is CallRuntime -> TODO()
+            is CallRuntime -> {
+                val args = getRegisterBlock(opcode.firstArgReg, opcode.argCount)
+                stack.accumulator = InterpRuntime.values()[opcode.id].function(args)
+            }
             is Construct0 -> {
                 stack.accumulator = Operations.construct(
                     stack.getRegister(opcode.targetReg),
@@ -208,7 +211,6 @@ class IRInterpreterTask(topLevelInfo: FunctionInfo, val realm: Realm) : Task<Ree
                 )
             }
             is Construct -> {
-
                 stack.accumulator = Operations.construct(
                     stack.getRegister(opcode.targetReg),
                     emptyList(),
@@ -305,7 +307,6 @@ class IRInterpreterTask(topLevelInfo: FunctionInfo, val realm: Realm) : Task<Ree
             Return -> {
                 isDone = true
             }
-            is ThrowStaticError -> TODO()
             is CreateClosure -> {
                 val newInfo = info.constantPool[opcode.cpIndex] as FunctionInfo
                 stack.accumulator = IRFunction(Agent.runningContext.realm, newInfo)

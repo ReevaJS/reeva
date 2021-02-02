@@ -1,5 +1,7 @@
 package me.mattco.reeva.ir
 
+import me.mattco.reeva.interpreter.InterpRuntime
+
 sealed class Opcode
 
 /*************
@@ -193,7 +195,10 @@ class CallWithSpread(val callableReg: Int, val firstArgReg: Int, val argCount: I
  *
  * TODO: This opcode is not implemented
  */
-class CallRuntime(val id: Int, val firstArgReg: Int, val argCount: Int) : Opcode()
+class CallRuntime(val id: Int, val firstArgReg: Int, val argCount: Int) : Opcode() {
+    constructor(method: InterpRuntime, firstArgReg: Int, argCount: Int) :
+        this(method.ordinal, firstArgReg, argCount)
+}
 
 /****************
  * CONSTRUCTION *
@@ -406,18 +411,6 @@ object Throw : Opcode()
  * Returns the value in the accumulator
  */
 object Return : Opcode()
-
-/**********
- * ERRORS *
- **********/
-
-class ThrowStaticError(val errorId: Int) : Opcode()
-
-enum class StaticError {
-    ConstReassignment;
-
-    val errorId: Int get() = ordinal
-}
 
 /*********
  * OTHER *

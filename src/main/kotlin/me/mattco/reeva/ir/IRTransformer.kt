@@ -4,8 +4,7 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
-import me.mattco.reeva.parser.Parser
-import java.io.File
+import me.mattco.reeva.interpreter.InterpRuntime
 import java.math.BigInteger
 
 class FunctionInfo(
@@ -432,7 +431,11 @@ class IRTransformer : ASTVisitor {
 
     private fun checkForConstReassignment(node: VariableRefNode): Boolean {
         return if (node.variable.mode == Variable.Mode.Const) {
-            +ThrowStaticError(StaticError.ConstReassignment.errorId)
+            +LdaConstant(loadConstant(node.variable.name))
+            val reg = nextFreeReg()
+            +Star(reg)
+            +CallRuntime(InterpRuntime.ThrowConstReassignment, reg, 1)
+            markRegFree(reg)
             true
         } else false
     }
