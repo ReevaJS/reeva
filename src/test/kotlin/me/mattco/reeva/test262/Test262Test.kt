@@ -1,10 +1,12 @@
 package me.mattco.reeva.test262
 
 import me.mattco.reeva.Reeva
+import me.mattco.reeva.core.IRConsumer
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.modules.resolver.DefaultModuleResolver
 import me.mattco.reeva.runtime.Operations
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assumptions
 import org.opentest4j.AssertionFailedError
 import org.opentest4j.TestAbortedException
 import java.io.File
@@ -13,7 +15,8 @@ class Test262Test(
     private val name: String,
     private val file: File,
     private val script: String,
-    private val metadata: Test262Metadata
+    private val metadata: Test262Metadata,
+    private val backend: IRConsumer,
 ) {
     // TODO: Split these phases up
     private val shouldErrorDuringParse = metadata.negative?.phase.let { it == Negative.Phase.Parse || it == Negative.Phase.Early }
@@ -107,7 +110,7 @@ class Test262Test(
             "'use strict'; $script"
         } else script
 
-        val task = Test262EvaluationTask(theScript, realm, isModule)
+        val task = Test262EvaluationTask(theScript, realm, isModule, backend)
         val testResult = Reeva.getAgent().runTask(task)
 
         if (shouldErrorDuringParse || shouldErrorDuringRuntime) {

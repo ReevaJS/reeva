@@ -5,11 +5,14 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import me.mattco.reeva.Reeva
+import me.mattco.reeva.interpreter.IRInterpreter
 import me.mattco.reeva.utils.expect
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.DynamicTest
+import org.junit.jupiter.api.TestFactory
 import java.io.File
 import java.time.LocalDateTime
-import java.time.ZonedDateTime
 
 class Test262Runner {
     @TestFactory
@@ -30,10 +33,12 @@ class Test262Runner {
             val yaml = contents.substring(yamlStart + 5, yamlEnd)
             val metadata = Yaml.default.decodeFromString(Test262Metadata.serializer(), yaml)
 
-            DynamicTest.dynamicTest(name) {
-                Test262Test(name, file, contents, metadata).test()
+            backends.map { backend ->
+                DynamicTest.dynamicTest("${backend::class.simpleName} $name") {
+                    Test262Test(name, file, contents, metadata, backend).test()
+                }
             }
-        }
+        }.flatten()
     }
 
     @Serializable
@@ -50,6 +55,7 @@ class Test262Runner {
     }
 
     companion object {
+        val backends = listOf(IRInterpreter)
         val test262Directory = File("./src/test/resources/test262/")
         val testDirectory = File(test262Directory, "test")
         val testDirectoryStr = testDirectory.absolutePath
