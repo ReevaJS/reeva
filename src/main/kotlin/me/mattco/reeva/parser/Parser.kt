@@ -56,6 +56,7 @@ class Parser(text: String) {
             unexpected("token ${token.value}")
         if (stateStack.size != 1)
             throw IllegalStateException("parseScript ended with ${stateStack.size - 1} extra states on the stack")
+        checkConflictingDeclarations(statementList)
         return ScriptNode(statementList)
     }
 
@@ -91,7 +92,7 @@ class Parser(text: String) {
         if (stateStack.size != 1)
             throw IllegalStateException("parseModule ended with ${stateStack.size - 1} extra states on the stack")
 
-        return ModuleNode(StatementList(body))
+        return ModuleNode(StatementList(body).also(::checkConflictingDeclarations))
     }
 
     fun parseDynamicFunction(kind: Operations.FunctionKind): GenericFunctionDeclarationNode? {
@@ -193,22 +194,8 @@ class Parser(text: String) {
         val statements = parseStatementList()
         consume(TokenType.CloseCurly)
 
-        if (statements.isNotEmpty()) {
-            val varNames = statements.declaredVarNames()
-            val lexNames = statements.declaredLexNames()
-
-            val lexDuplicates = lexNames.duplicates()
-            if (lexDuplicates.isNotEmpty()) {
-                syntaxError("cannot redeclare lexical declaration \"${lexDuplicates.first()}\"")
-                return null
-            }
-
-            val intersection = lexDuplicates.intersect(varNames)
-            if (intersection.isNotEmpty()) {
-                syntaxError("cannot redeclare non-lexical declaration \"${intersection.first()}\" as lexical")
-                return null
-            }
-        }
+        if (checkConflictingDeclarations(statements))
+            return null
 
         return BlockNode(statements)
     }
@@ -2555,6 +2542,27 @@ class Parser(text: String) {
             consume()
             return null
         } else AwaitExpressionNode(expr)
+    }
+
+    private fun checkConflictingDeclarations(statements: StatementList): Boolean {
+        if (statements.isNotEmpty()) {
+            val varNames = statements.declaredVarNames()
+            val lexNames = statements.declaredLexNames()
+
+            val lexDuplicates = lexNames.duplicates()
+            if (lexDuplicates.isNotEmpty()) {
+                syntaxError("cannot redeclare lexical declaration \"${lexDuplicates.first()}\"")
+                return true
+            }
+
+            val intersection = lexNames.intersect(varNames)
+            if (intersection.isNotEmpty()) {
+                syntaxError("cannot redeclare non-lexical declaration \"${intersection.first()}\" as lexical")
+                return true
+            }
+        }
+
+        return false
     }
 
     private inline fun <T> functionBoundary(block: () -> T): T {
