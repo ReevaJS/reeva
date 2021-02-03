@@ -126,9 +126,38 @@ class DeletePropertySloppy(val targetReg: Int) : Opcode()
  *********/
 
 /**
+ * Declare variable names for the current local environment
+ * using a [DeclarationsArray] at [cpIndex] in the constant pool.
+ * Note that this opcode may also influence global environments,
+ * despite the name.
+ */
+class DeclareLocals(val cpIndex: Int) : Opcode()
+
+/**
  * Loads a global variable into the accumulator
  */
 class LdaGlobal(val nameCpIndex: Int) : Opcode()
+
+/**
+ * Load the named property [nameCpIndex] from the environment
+ */
+class LdaEnv(val nameCpIndex: Int) : Opcode()
+
+/**
+ * Store the value in the accumulator into the named property
+ * [nameCpIndex] in the environment as a 'let' binding
+ */
+class StaEnv(val nameCpIndex: Int) : Opcode()
+
+/**
+ * Create and immediately start using a new DeclarativeEnvRecord
+ */
+object PushBlockEnv : Opcode()
+
+/**
+ * Sets the current lexicalEnv to it's outer env
+ */
+object PopBlockEnv : Opcode()
 
 /***********
  * CALLING *
@@ -192,8 +221,6 @@ class CallWithSpread(val callableReg: Int, val firstArgReg: Int, val argCount: I
 /**
  * Call the runtime function specified by [id] with [argCount] number
  * of arguments, starting in [firstArgReg].
- *
- * TODO: This opcode is not implemented
  */
 class CallRuntime(val id: Int, val firstArgReg: Int, val argCount: Int) : Opcode() {
     constructor(method: InterpRuntime, firstArgReg: Int, argCount: Int) :

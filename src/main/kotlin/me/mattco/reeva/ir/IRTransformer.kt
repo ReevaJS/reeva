@@ -41,23 +41,52 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitBlock(node: BlockNode) {
-        setupScope(node)
+        val requiresEnv = setupScope(node)
+        if (requiresEnv)
+            +PushBlockEnv
+
         super.visitBlock(node)
+
+        node.scope.variables.values.forEach {
+            if (it.isInlineable)
+                markRegFree(it.index)
+        }
+
+        if (requiresEnv)
+            +PopBlockEnv
     }
 
-    private fun setupScope(node: NodeWithScope) {
+    /**
+     * @return true if the scope requires an EnvRecord (i.e. has
+     *         non-inlineable variables).
+     */
+    private fun setupScope(node: NodeWithScope): Boolean {
         val varDecls = node.variableDeclarations()
         val lexDecls = node.lexicalDeclarations()
 
+        val varNames = mutableListOf<String>()
+        val lexNames = mutableListOf<String>()
+        val constNames = mutableListOf<String>()
+
         varDecls.forEach { decl ->
             if (!decl.variable.isInlineable)
-                TODO("Store in context")
+                varNames.add(decl.boundName())
         }
 
         lexDecls.forEach { decl ->
-            if (!decl.variable.isInlineable)
-                TODO("Store in context")
+            if (!decl.variable.isInlineable) {
+                if (decl.isConst) {
+                    constNames.add(decl.boundName())
+                } else lexNames.add(decl.boundName())
+            }
         }
+
+        if (varNames.isEmpty() && lexNames.isEmpty())
+            return false
+
+        val index = loadConstant(DeclarationsArray(varNames, lexNames, constNames))
+        +DeclareLocals(index)
+        return true
     }
 
     override fun visitExpressionStatement(node: ExpressionStatementNode) {
@@ -146,10 +175,6 @@ class IRTransformer : ASTVisitor {
             val variable = decl.variable
 
             if (variable.isInlineable) {
-                // TODO: We never free this register. We need to figure out
-                // when we reference this variable for the final time so it
-                // can be freed
-
                 val reg = nextFreeReg()
                 variable.index = reg
 
@@ -157,7 +182,13 @@ class IRTransformer : ASTVisitor {
                     visit(decl.initializer)
                     +Star(reg)
                 }
-            } else TODO()
+            } else {
+                if (decl.initializer != null) {
+                    visit(decl.initializer)
+                } else +LdaUndefined
+
+                +StaEnv(loadConstant(variable.name))
+            }
         }
     }
 
@@ -166,10 +197,6 @@ class IRTransformer : ASTVisitor {
             val variable = decl.variable
 
             if (variable.isInlineable) {
-                // TODO: We never free this register. We need to figure out
-                // when we reference this variable for the final time so it
-                // can be freed
-
                 val reg = nextFreeReg()
                 variable.index = reg
 
@@ -177,7 +204,13 @@ class IRTransformer : ASTVisitor {
                     visit(decl.initializer)
                     +Star(reg)
                 }
-            } else TODO()
+            } else {
+                if (decl.initializer != null) {
+                    visit(decl.initializer)
+                } else +LdaUndefined
+
+                +StaEnv(loadConstant(variable.name))
+            }
         }
     }
 
@@ -207,10 +240,11 @@ class IRTransformer : ASTVisitor {
             return
         }
 
-        if (!variable.isInlineable)
-            TODO()
-
-        +Ldar(variable.index)
+        if (variable.isInlineable) {
+            +Ldar(variable.index)
+        } else {
+            +LdaEnv(loadConstant(variable.name))
+        }
     }
 
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
@@ -467,11 +501,14 @@ class IRTransformer : ASTVisitor {
             if (checkForConstReassignment(lhs))
                 return
 
-            if (!lhs.variable.isInlineable)
-                TODO()
-
             loadRhsIntoAcc()
-            +Star(lhs.variable.index)
+
+            if (lhs.variable.isInlineable) {
+                +Star(lhs.variable.index)
+            } else {
+                +StaEnv(loadConstant(lhs.variable.name))
+            }
+
             return
         } else if (lhs is MemberExpressionNode) {
             val objectReg = nextFreeReg()

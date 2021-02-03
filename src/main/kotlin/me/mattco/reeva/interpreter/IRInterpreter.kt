@@ -2,6 +2,7 @@ package me.mattco.reeva.interpreter
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.*
+import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.tasks.Task
 import me.mattco.reeva.ir.*
 import me.mattco.reeva.parser.Parser
@@ -187,9 +188,26 @@ class IRInterpreterTask(topLevelInfo: FunctionInfo, val realm: Realm) : Task<Ree
             }
             is DeletePropertyStrict -> TODO()
             is DeletePropertySloppy -> TODO()
+            is DeclareLocals -> declareLocals(opcode.cpIndex)
             is LdaGlobal -> {
                 val name = info.constantPool[opcode.nameCpIndex] as String
                 stack.accumulator = realm.globalEnv.getBindingValue(name, throwOnNotFound = true)
+            }
+            is LdaEnv -> {
+                val name = info.constantPool[opcode.nameCpIndex] as String
+                stack.accumulator = Operations.getValue(Operations.resolveBinding(name))
+            }
+            is StaEnv -> {
+                val name = info.constantPool[opcode.nameCpIndex] as String
+                val ref = Operations.resolveBinding(name)
+                Operations.putValue(ref, stack.accumulator)
+            }
+            is PushBlockEnv -> {
+                val newEnv = DeclarativeEnvRecord.create(Agent.runningContext.lexicalEnv)
+                Agent.runningContext.lexicalEnv = newEnv
+            }
+            is PopBlockEnv -> {
+                Agent.runningContext.lexicalEnv = Agent.runningContext.lexicalEnv!!.outerEnv
             }
             is CallAnyReceiver -> call(opcode.callableReg, opcode.receiverReg, opcode.argCount, CallMode.AnyReceiver)
             is CallProperty -> call(opcode.callableReg, opcode.receiverReg, opcode.argCount, CallMode.Property)
@@ -336,7 +354,26 @@ class IRInterpreterTask(topLevelInfo: FunctionInfo, val realm: Realm) : Task<Ree
                 stack.accumulator = IRFunction(Agent.runningContext.realm, newInfo)
             }
             DebugBreakpoint -> TODO()
-            else -> TODO()
+            else -> TODO("Unrecognized opcode: ${opcode::class.simpleName}")
+        }
+    }
+
+    private fun declareLocals(declarationsArrIndex: Int) {
+        val declarationsArray = info.constantPool[declarationsArrIndex] as DeclarationsArray
+        val varEnv = Agent.runningContext.variableEnv!!
+        val lexEnv = Agent.runningContext.lexicalEnv!!
+
+        declarationsArray.varIterator().forEach {
+            varEnv.createMutableBinding(it, false)
+            varEnv.initializeBinding(it, JSUndefined)
+        }
+
+        declarationsArray.letIterator().forEach {
+            lexEnv.createMutableBinding(it, false)
+        }
+
+        declarationsArray.constIterator().forEach {
+            lexEnv.createImmutableBinding(it, false)
         }
     }
 

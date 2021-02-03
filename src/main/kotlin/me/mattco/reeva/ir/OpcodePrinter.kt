@@ -31,6 +31,30 @@ object OpcodePrinter {
                     childFunctions.add(value)
                     "<FunctionInfo ${value.name}>"
                 }
+                is DeclarationsArray -> buildString {
+                    append("DeclarationsArray ")
+                    val vars = value.varIterator().joinToString(", ")
+                    val lets = value.letIterator().joinToString(", ")
+                    val consts = value.constIterator().joinToString(", ")
+
+                    if (vars.isNotBlank()) {
+                        append("vars={")
+                        append(vars)
+                        append("}")
+                    }
+
+                    if (lets.isNotBlank()) {
+                        append("lets={")
+                        append(lets)
+                        append("}")
+                    }
+
+                    if (consts.isNotBlank()) {
+                        append("consts={")
+                        append(consts)
+                        append("}")
+                    }
+                }
                 else -> unreachable()
             }.also(::println)
         }
