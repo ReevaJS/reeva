@@ -5,6 +5,7 @@ import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.interpreter.InterpRuntime
+import me.mattco.reeva.utils.unreachable
 import java.math.BigInteger
 
 class FunctionInfo(
@@ -311,7 +312,7 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitAdditiveExpression(node: AdditiveExpressionNode) {
-        visitBinaryExpression(node, ::Add)
+        visitBinaryExpression(node, if (node.isSubtraction) ::Sub else ::Add)
     }
 
     override fun visitBitwiseANDExpression(node: BitwiseANDExpressionNode) {
@@ -433,6 +434,35 @@ class IRTransformer : ASTVisitor {
         val lhs = node.lhs
         val rhs = node.rhs
 
+        fun loadRhsIntoAcc() {
+            if (node.op != AssignmentExpressionNode.Operator.Equals) {
+                // First figure out the new value
+                val op = when (node.op) {
+                    AssignmentExpressionNode.Operator.Multiply -> ::Mul
+                    AssignmentExpressionNode.Operator.Divide -> ::Div
+                    AssignmentExpressionNode.Operator.Mod -> ::Mod
+                    AssignmentExpressionNode.Operator.Plus -> ::Add
+                    AssignmentExpressionNode.Operator.Minus -> ::Sub
+                    AssignmentExpressionNode.Operator.ShiftLeft -> ::ShiftLeft
+                    AssignmentExpressionNode.Operator.ShiftRight -> ::ShiftRight
+                    AssignmentExpressionNode.Operator.UnsignedShiftRight -> ::ShiftRightUnsigned
+                    AssignmentExpressionNode.Operator.BitwiseAnd -> ::BitwiseAnd
+                    AssignmentExpressionNode.Operator.BitwiseOr -> ::BitwiseOr
+                    AssignmentExpressionNode.Operator.BitwiseXor -> ::BitwiseXor
+                    AssignmentExpressionNode.Operator.Power -> ::Exp
+                    AssignmentExpressionNode.Operator.Equals -> unreachable()
+                    AssignmentExpressionNode.Operator.And ->
+                        return visitLogicalANDExpression(LogicalANDExpressionNode(lhs, rhs))
+                    AssignmentExpressionNode.Operator.Or ->
+                        return visitLogicalORExpression(LogicalORExpressionNode(lhs, rhs))
+                    AssignmentExpressionNode.Operator.Nullish -> TODO()
+                }
+                visitBinaryExpression(BinaryExpression(lhs, rhs), op)
+            } else {
+                visit(rhs)
+            }
+        }
+
         if (lhs is IdentifierReferenceNode) {
             if (checkForConstReassignment(lhs))
                 return
@@ -440,12 +470,10 @@ class IRTransformer : ASTVisitor {
             if (!lhs.variable.isInlineable)
                 TODO()
 
-            visit(rhs)
+            loadRhsIntoAcc()
             +Star(lhs.variable.index)
             return
-        }
-
-        if (lhs is MemberExpressionNode) {
+        } else if (lhs is MemberExpressionNode) {
             val objectReg = nextFreeReg()
             visit(lhs.lhs)
             +Star(objectReg)
@@ -455,12 +483,12 @@ class IRTransformer : ASTVisitor {
                     val keyReg = nextFreeReg()
                     visit(lhs.rhs)
                     +Star(keyReg)
-                    visit(rhs)
+                    loadRhsIntoAcc()
                     +StaKeyedProperty(objectReg, keyReg)
                     markRegFree(keyReg)
                 }
                 MemberExpressionNode.Type.NonComputed -> {
-                    visit(rhs)
+                    loadRhsIntoAcc()
                     +StaNamedProperty(objectReg, loadConstant((lhs.rhs as IdentifierNode).identifierName))
                 }
                 MemberExpressionNode.Type.Tagged -> TODO()
@@ -674,7 +702,7 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitBooleanLiteral(node: BooleanLiteralNode) {
-        +LdaConstant(loadConstant(node.value))
+        if (node.value) +LdaTrue else +LdaFalse
     }
 
     override fun visitStringLiteral(node: StringLiteralNode) {

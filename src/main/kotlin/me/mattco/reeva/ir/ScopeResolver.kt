@@ -133,6 +133,7 @@ class ScopeResolver : ASTVisitor {
     }
 
     override fun visitArrowFunction(node: ArrowFunctionNode) {
+        node.scope = scope
         pushScope(Scope.Type.FunctionScope)
 
         node.parameters.forEach {

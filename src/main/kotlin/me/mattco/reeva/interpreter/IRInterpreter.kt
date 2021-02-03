@@ -222,12 +222,36 @@ class IRInterpreterTask(topLevelInfo: FunctionInfo, val realm: Realm) : Task<Ree
             is TestNotEqual -> TODO()
             is TestEqualStrict -> TODO()
             is TestNotEqualStrict -> TODO()
-            is TestLessThan -> TODO()
-            is TestGreaterThan -> TODO()
-            is TestLessThanOrEqual -> TODO()
-            is TestGreaterThanOrEqual -> TODO()
-            is TestReferenceEqual -> TODO()
-            is TestInstanceOf -> TODO()
+            is TestLessThan -> {
+                val lhs = stack.getRegister(opcode.targetReg)
+                val rhs = stack.accumulator
+                val result = Operations.abstractRelationalComparison(lhs, rhs, true)
+                stack.accumulator = if (result == JSUndefined) JSFalse else result
+            }
+            is TestGreaterThan -> {
+                val lhs = stack.getRegister(opcode.targetReg)
+                val rhs = stack.accumulator
+                val result = Operations.abstractRelationalComparison(rhs, lhs, false)
+                stack.accumulator = if (result == JSUndefined) JSFalse else result
+            }
+            is TestLessThanOrEqual -> {
+                val lhs = stack.getRegister(opcode.targetReg)
+                val rhs = stack.accumulator
+                val result = Operations.abstractRelationalComparison(rhs, lhs, false)
+                stack.accumulator = if (result == JSFalse) JSTrue else JSFalse
+            }
+            is TestGreaterThanOrEqual -> {
+                val lhs = stack.getRegister(opcode.targetReg)
+                val rhs = stack.accumulator
+                val result = Operations.abstractRelationalComparison(lhs, rhs, true)
+                stack.accumulator = if (result == JSFalse) JSTrue else JSFalse
+            }
+            is TestReferenceEqual -> {
+                stack.accumulator = (stack.accumulator == stack.getRegister(opcode.targetReg)).toValue()
+            }
+            is TestInstanceOf -> {
+                stack.accumulator = Operations.instanceofOperator(stack.getRegister(opcode.targetReg), stack.accumulator)
+            }
             is TestIn -> TODO()
             TestNullish -> {
                 stack.accumulator = stack.accumulator.let {
