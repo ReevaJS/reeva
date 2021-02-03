@@ -137,12 +137,14 @@ class ScopeResolver : ASTVisitor {
 
         node.parameters.forEach {
             val name = it.boundName()
-            scope.addVariable(name, Variable(
+            it.scope = scope
+            it.variable = Variable(
                 name,
                 Variable.Mode.Var,
                 Variable.Kind.FunctionParameter,
-                it, // TODO(BindingPattern): Narrow the source here (i.e. not just the entire binding node)
-            ))
+                it,
+            )
+            scope.addVariable(name, it.variable)
         }
 
         visit(node.body)

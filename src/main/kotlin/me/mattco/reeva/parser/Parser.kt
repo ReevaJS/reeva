@@ -1446,7 +1446,7 @@ class Parser(text: String) {
                     expect(it.node.lhs is IdentifierReferenceNode)
                     BindingIdentifierNode(it.node.lhs.identifierName) to it.node.rhs
                 }
-                is IdentifierReferenceNode -> {
+                is BindingIdentifierNode -> {
                     BindingIdentifierNode(it.node.identifierName) to null
                 }
                 else -> {

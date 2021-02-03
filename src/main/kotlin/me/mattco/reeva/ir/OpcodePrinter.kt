@@ -13,15 +13,15 @@ object OpcodePrinter {
         println("Register count: ${info.registerCount}")
 
         println("Bytecode:")
-        info.code.forEach {
-            println("    " + stringifyOpcode(it, info.argCount))
+        info.code.forEachIndexed { index, opcode ->
+            println("\t$index.   ${stringifyOpcode(opcode, info.argCount)}")
         }
 
         val childFunctions = mutableListOf<FunctionInfo>()
 
         println("Constant pool (size = ${info.constantPool.size})")
         info.constantPool.forEachIndexed { index, value ->
-            print("    $index: ")
+            print("\t$index.   ")
 
             when (value) {
                 is Int -> "Int $value"

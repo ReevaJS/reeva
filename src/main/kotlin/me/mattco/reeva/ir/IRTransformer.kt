@@ -271,7 +271,26 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitArrowFunction(node: ArrowFunctionNode) {
-        TODO()
+        val prevBuilder = builder
+        builder = FunctionBuilder(node.parameters.size + 1)
+
+        visit(node.body)
+        if (builder.opcodes.last() != Return) {
+            +LdaUndefined
+            +Return
+        }
+
+        val info = FunctionInfo(
+            "<anonymous>",
+            builder.opcodes.toTypedArray(),
+            builder.constantPool.toTypedArray(),
+            builder.registerCount,
+            node.parameters.size + 1,
+            isTopLevelScript = false
+        )
+
+        builder = prevBuilder
+        +CreateClosure(loadConstant(info))
     }
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {
