@@ -64,8 +64,7 @@ fun main() {
             Parser(source).parseScript()
 //        }
     } catch (e: Parser.ParsingException) {
-        println("ERROR (${e.start.line + 1}:${e.start.column + 1} - ${e.end.line + 1}:${e.end.column + 1}) ${e.message}")
-        e.printStackTrace()
+        ErrorReporter.prettyPrintError(source, e)
     } finally {
         Reeva.teardown()
     }

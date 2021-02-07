@@ -1,6 +1,7 @@
 package me.mattco.reeva.parser
 
 import me.mattco.reeva.ast.ASTNode
+import me.mattco.reeva.utils.expect
 
 abstract class Reporter {
     protected abstract val start: TokenLocation
@@ -58,5 +59,59 @@ class ErrorReporter(private val parser: Parser) : Reporter() {
     fun at(node: ASTNode) = object : Reporter() {
         override val start = node.sourceStart
         override val end = node.sourceEnd
+    }
+
+    companion object {
+        fun prettyPrintError(sourceCode: String, error: Parser.ParsingException) {
+            val (_, lineIndex, lineColumnStart) = error.start
+            val (_, endLine, endColumn) = error.end
+
+            val lines = sourceCode.lines()
+            val lineColumnEnd = if (lineIndex == endLine) endColumn else lines[lineIndex].length - 1
+            expect(lineColumnEnd < lines[lineIndex].length)
+
+            val linesToPrint = (lineIndex - 3)..(lineIndex + 3)
+            val lineWidth = linesToPrint.maxOf { it.toString().length }
+
+            println("\u001b[31mSyntaxError: ${error.message}\u001B[0m\n")
+
+            for ((index, line) in lines.withIndex()) {
+                if (index !in linesToPrint)
+                    continue
+
+                print("\u001B[38;5;240m")
+                print(index.toString().padStart(lineWidth))
+                print(".    ")
+                print("\u001B[0m")
+
+                if (index != lineIndex) {
+                    println(line)
+                    continue
+                }
+
+                buildString {
+                    append(line)
+                    append("\n")
+                    repeat(lineColumnStart + lineWidth + 5) {
+                        append(' ')
+                    }
+                    append("\u001B[31m")
+                    repeat(lineColumnEnd - lineColumnStart) {
+                        append('^')
+                    }
+                    append("\u001B[0m")
+                }.also(::println)
+            }
+
+            // TODO: Eventually remove the stack trace
+            println()
+            val trace = error.stackTrace.toMutableList().drop(0)
+            for (part in trace) {
+                print("\u001B[31m")
+                print("\tat ")
+                print(part)
+                println("\u001B[0m")
+            }
+        }
     }
 }
