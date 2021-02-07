@@ -2,7 +2,6 @@ package me.mattco.reeva.ast.statements
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
-import me.mattco.reeva.ast.literals.StringLiteralNode
 
 typealias StatementList = ASTListNode<StatementNode>
 typealias SwitchClauseList = ASTListNode<SwitchClause>
@@ -13,20 +12,9 @@ open class ASTListNode<T : ASTNode>(
 
 class BlockStatementNode(val block: BlockNode) : ASTNodeBase(listOf(block)), StatementNode
 
-class BlockNode(val statements: StatementList) : NodeWithScope(statements), StatementNode {
-    override fun containsDirective(directive: String): Boolean {
-        if (statements.isEmpty())
-            return false
+class BlockNode(val statements: StatementList) : NodeWithScope(statements), StatementNode
 
-        val statement = statements.first()
-        if (statement !is ExpressionStatementNode)
-            return false
-
-        return statement.node.let { it is StringLiteralNode && it.value == directive }
-    }
-}
-
-object EmptyStatementNode : ASTNodeBase(), StatementNode
+class EmptyStatementNode : ASTNodeBase(), StatementNode
 
 class ExpressionStatementNode(val node: ExpressionNode): ASTNodeBase(listOf(node)), StatementNode
 
@@ -46,6 +34,11 @@ class WhileStatementNode(
     val body: StatementNode
 ) : ASTNodeBase(listOf(condition, body)), StatementNode
 
+class WithStatementNode(
+    val expression: ExpressionNode,
+    val body: StatementNode,
+) : ASTNodeBase(listOf(expression, body)), StatementNode
+
 class SwitchStatementNode(
     val target: ExpressionNode,
     val clauses: SwitchClauseList,
@@ -54,8 +47,8 @@ class SwitchStatementNode(
 class SwitchClause(
     // null target indicates the default case
     val target: ExpressionNode?,
-    val body: StatementList,
-) : ASTNodeBase(listOfNotNull(target) + body), StatementNode
+    val body: StatementList?,
+) : ASTNodeBase(listOfNotNull(target) + (body ?: emptyList())), StatementNode
 
 class ForStatementNode(
     val initializer: StatementNode?,
@@ -84,27 +77,36 @@ class ForStatementNode(
 }
 
 class ForInNode(
-    val decl: StatementNode,
+    val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
 ) : ASTNodeBase(listOf(decl, expression, body)), StatementNode
 
 class ForOfNode(
-    val decl: StatementNode,
+    val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
 ) : ASTNodeBase(listOf(decl, expression, body)), StatementNode
 
 class ForAwaitOfNode(
-    val decl: StatementNode,
+    val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
 ) : ASTNodeBase(listOf(decl, expression, body)), StatementNode
 
 class LabelledStatementNode(
-    val label: String,
+    val labels: List<String>,
     val item: StatementNode
-) : ASTNodeBase(listOf(item)), StatementNode
+) : ASTNodeBase(listOf(item)), StatementNode {
+    override fun dump(indent: Int) = buildString {
+        appendIndent(indent)
+        appendName()
+        append(" (labels=")
+        append(labels.joinToString(separator = " "))
+        append(")\n")
+        item.dump(indent + 1)
+    }
+}
 
 class ThrowStatementNode(val expr: ExpressionNode) : ASTNodeBase(listOf(expr)), StatementNode
 

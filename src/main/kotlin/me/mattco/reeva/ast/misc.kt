@@ -4,6 +4,9 @@ package me.mattco.reeva.ast
 class CCEAAAHNode(val node: ExpressionNode) : ASTNodeBase(listOf(node)), ExpressionNode
 
 // CoverParenthesizedExpressionAndArrowParameterList
-class CPEAAPLNode(val covered: List<CPEAPPLPart>)
+class CPEAAPLNode(
+    val covered: List<CPEAAPLPart>,
+    val endsWithComma: Boolean,
+) : ASTNodeBase()
 
-class CPEAPPLPart(val node: ASTNode, val isSpread: Boolean)
+data class CPEAAPLPart(val node: ASTNode, val isSpread: Boolean) : ASTNodeBase()

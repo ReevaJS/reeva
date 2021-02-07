@@ -7,15 +7,16 @@ import me.mattco.reeva.ast.ExpressionNode
 sealed class BooleanLiteralNode (val value: Boolean) : ASTNodeBase(), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
+        appendName()
         append(" (value=")
         append(value)
         append(")\n")
     }
 }
 
-object TrueNode : BooleanLiteralNode (true)
+class TrueNode : BooleanLiteralNode (true)
 
-object FalseNode : BooleanLiteralNode (false)
+class FalseNode : BooleanLiteralNode (false)
 
 class StringLiteralNode(val value: String) : ASTNodeBase(), ExpressionNode {
     override fun dump(indent: Int) = buildString {
@@ -54,6 +55,6 @@ class BigIntLiteralNode(val value: String, val type: Type) : ASTNodeBase(), Expr
     }
 }
 
-object NullLiteralNode : ASTNodeBase(), ExpressionNode
+class NullLiteralNode : ASTNodeBase(), ExpressionNode
 
-object ThisLiteralNode : ASTNodeBase(), ExpressionNode
+class ThisLiteralNode : ASTNodeBase(), ExpressionNode

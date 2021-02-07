@@ -5,26 +5,11 @@ import me.mattco.reeva.ast.ASTNodeBase
 import me.mattco.reeva.ast.ArgumentList
 import me.mattco.reeva.ast.ExpressionNode
 
-class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode, val op: Operator) : ASTNodeBase(listOf(lhs, rhs)), ExpressionNode {
-    enum class Operator(val symbol: String) {
-        Equals("="),
-        Multiply("*="),
-        Divide("/="),
-        Mod("%="),
-        Plus("+="),
-        Minus("-="),
-        ShiftLeft("<<="),
-        ShiftRight(">>="),
-        UnsignedShiftRight(">>>="),
-        BitwiseAnd("&="),
-        BitwiseOr("|="),
-        BitwiseXor("^="),
-        Power("**="),
-        And("&&="),
-        Or("||="),
-        Nullish("??=")
-    }
-
+class AssignmentExpressionNode(
+    val lhs: ExpressionNode,
+    val rhs: ExpressionNode,
+    val op: AssignmentOperator,
+) : ASTNodeBase(listOf(lhs, rhs)), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -34,6 +19,25 @@ class AssignmentExpressionNode(val lhs: ExpressionNode, val rhs: ExpressionNode,
         append(lhs.dump(indent + 1))
         append(rhs.dump(indent + 1))
     }
+}
+
+enum class AssignmentOperator(val symbol: String) {
+    Equals("="),
+    Mul("*="),
+    Div("/="),
+    Mod("%="),
+    Add("+="),
+    Sub("-="),
+    Shl("<<="),
+    Shr(">>="),
+    UShr(">>>="),
+    BitwiseAnd("&="),
+    BitwiseOr("|="),
+    BitwiseXor("^="),
+    Exp("**="),
+    And("&&="),
+    Or("||="),
+    Coalesce("??=")
 }
 
 class AwaitExpressionNode(val expression: ExpressionNode) : ASTNodeBase(listOf(expression)), ExpressionNode

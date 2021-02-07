@@ -2,7 +2,7 @@ package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 
-class BindingIdentifierNode(val identifierName: String) : VariableRefNode(), ExpressionNode {
+class BindingIdentifierNode(val identifierName: String) : ASTNodeBase(), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -24,6 +24,8 @@ class IdentifierNode(val identifierName: String) : ASTNodeBase(), ExpressionNode
 
 class IdentifierReferenceNode(val identifierName: String) : VariableRefNode(), ExpressionNode {
     override val isInvalidAssignmentTarget = false
+
+    override fun boundName() = identifierName
 
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)

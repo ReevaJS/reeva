@@ -2,8 +2,7 @@ package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.statements.ASTListNode
-import me.mattco.reeva.ast.statements.ReturnStatementNode
-import me.mattco.reeva.ast.statements.StatementList
+import me.mattco.reeva.ast.statements.BlockNode
 
 typealias ArgumentList = ASTListNode<ArgumentNode>
 
@@ -41,36 +40,27 @@ class Parameter(
         if (isRest && initializer != null)
             throw IllegalArgumentException()
     }
-
-    override fun boundName() = identifier.identifierName
 }
 
 open class GenericFunctionDeclarationNode(
-    val identifier: BindingIdentifierNode,
+    val identifier: BindingIdentifierNode?, // Null if in a default export
     val parameters: ParameterList,
-    val body: StatementList,
-) : VariableSourceNode(listOf(identifier) + body + parameters), StatementNode {
-    override fun boundName() = identifier.identifierName
-}
+    val body: BlockNode,
+) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), StatementNode
 
 class FunctionDeclarationNode(
-    identifier: BindingIdentifierNode,
+    identifier: BindingIdentifierNode?,
     parameters: ParameterList,
-    body: StatementList,
+    body: BlockNode,
 ) : GenericFunctionDeclarationNode(identifier, parameters, body)
 
 class FunctionExpressionNode(
     val identifier: BindingIdentifierNode?,
     val parameters: ParameterList,
-    val body: StatementList,
+    val body: BlockNode,
 ) : NodeWithScope(listOfNotNull(identifier) + parameters + body), ExpressionNode
 
 class ArrowFunctionNode(
     val parameters: ParameterList,
-    val body: StatementList
-) : NodeWithScope(parameters + body), ExpressionNode {
-    companion object {
-        fun fromExpressionBody(parameters: ParameterList, expr: ExpressionNode) =
-            ArrowFunctionNode(parameters, StatementList(listOf(ReturnStatementNode(expr))))
-    }
-}
+    val body: ASTNode, // BlockNode or ExpressionNode
+) : NodeWithScope(parameters + body), ExpressionNode

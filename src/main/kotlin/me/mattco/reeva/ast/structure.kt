@@ -1,10 +1,9 @@
 package me.mattco.reeva.ast
 
-import me.mattco.reeva.ast.literals.StringLiteralNode
-import me.mattco.reeva.ast.statements.ExpressionStatementNode
 import me.mattco.reeva.ast.statements.StatementList
-import me.mattco.reeva.ir.Scope
-import me.mattco.reeva.ir.Variable
+import me.mattco.reeva.parser.Scope
+import me.mattco.reeva.parser.TokenLocation
+import me.mattco.reeva.parser.Variable
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.newline
 import me.mattco.reeva.utils.unreachable
@@ -13,26 +12,69 @@ import kotlin.reflect.KClass
 open class ASTNodeBase(override val children: List<ASTNode> = emptyList()) : ASTNode {
     override val name: String
         get() = this::class.java.simpleName
+
+    override var sourceStart: TokenLocation = TokenLocation.EMPTY
+    override var sourceEnd: TokenLocation = TokenLocation.EMPTY
+}
+
+fun <T : ASTNode> T.withPosition(start: TokenLocation, end: TokenLocation) = apply {
+    sourceStart = start
+    sourceEnd = end
 }
 
 open class NodeWithScope(children: List<ASTNode> = emptyList()) : ASTNodeBase(children) {
     lateinit var scope: Scope
 }
 
-open class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
+abstract class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
     lateinit var variable: Variable
+
+    abstract fun boundName(): String
 }
 
 abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
     lateinit var variable: Variable
-    open val isConst: Boolean = false
-
-    abstract fun boundName(): String
 }
 
 interface ASTNode {
     val name: String
     val children: List<ASTNode>
+
+    var sourceStart: TokenLocation
+    var sourceEnd: TokenLocation
+
+    // Nicely removes the extra indentation lines
+    fun debugPrint(): String {
+        val string = dump()
+        val lines = string.lines().dropLastWhile { it.isBlank() }
+        val lastLine = lines.last()
+
+        val indicesToCheck = mutableListOf<Int>()
+        val newLines = mutableListOf<String>()
+
+        for ((index, ch) in lastLine.withIndex()) {
+            if (ch == '|') {
+                indicesToCheck.add(index)
+            } else if (ch == ' ') {
+                continue
+            } else break
+        }
+
+        lines.asReversed().forEach { line ->
+            indicesToCheck.toList().forEach { index ->
+                if (line[index] != '|')
+                    indicesToCheck.remove(index)
+            }
+
+            val mappedLine = line.indices.map {
+                if (it in indicesToCheck) ' ' else line[it]
+            }.joinToString(separator = "")
+
+            newLines.add(0, mappedLine)
+        }
+
+        return newLines.joinToString(separator = "\n")
+    }
 
     fun dump(indent: Int = 0): String = buildString {
         dumpSelf(indent)
@@ -50,7 +92,7 @@ interface ASTNode {
     fun StringBuilder.appendName() = append(name)
 
     companion object {
-        private const val INDENT = "|   "
+        private const val INDENT = "| "
 
         fun makeIndent(indent: Int) = buildString {
             repeat(indent) {
@@ -63,39 +105,7 @@ interface ASTNode {
 
     val isInvalidAssignmentTarget: Boolean
         get() = true
-
-    fun scopedVariableDeclarations(): List<VariableSourceNode> {
-        return children.flatMap(ASTNode::scopedVariableDeclarations)
-    }
-
-    fun scopedLexicalDeclarations(): List<VariableSourceNode> {
-        return children.flatMap(ASTNode::scopedLexicalDeclarations)
-    }
-
-    fun variableDeclarations(): List<VariableSourceNode> {
-        return children.flatMap(ASTNode::variableDeclarations)
-    }
-
-    fun lexicalDeclarations(): List<VariableSourceNode> {
-        return children.flatMap(ASTNode::lexicalDeclarations)
-    }
-
-    fun declaredVarNames(): List<String> = variableDeclarations().map(VariableSourceNode::boundName)
-
-    fun declaredLexNames(): List<String> = lexicalDeclarations().map(VariableSourceNode::boundName)
-
-    fun containsDirective(directive: String) = children.containsDirective(directive)
-
-    fun containsUseStrictDirective() = children.containsUseStrictDirective()
 }
-
-fun List<ASTNode>.containsDirective(directive: String) = isNotEmpty() && first().let { stmt ->
-    stmt is ExpressionStatementNode && stmt.node.let {
-        it is StringLiteralNode && it.value == directive
-    }
-}
-
-fun List<ASTNode>.containsUseStrictDirective() = containsDirective("use strict")
 
 fun <T : Any> childrenOfTypeHelper(node: ASTNode, clazz: KClass<T>, list: MutableList<T>) {
     node.children.forEach {
@@ -113,6 +123,15 @@ inline fun <reified T : Any> ASTNode.childrenOfType(): List<T> {
 
 inline fun <reified T : Any> ASTNode.containsAny() = childrenOfType<T>().isNotEmpty()
 
+class ScriptNode(val statements: StatementList) : NodeWithScope(statements)
+
+class ModuleNode(val body: StatementList) : NodeWithScope(body)
+
+interface StatementNode : ASTNode
+interface ExpressionNode : ASTNode
+
+
+// TODO: Remove
 class ScriptOrModuleNode(private val value: Any) {
     init {
         expect(value is ScriptNode || value is ModuleNode)
@@ -131,7 +150,7 @@ class ScriptOrModuleNode(private val value: Any) {
         get() = value as ModuleNode
 
     val isStrict: Boolean
-        get() = isModule || asScript.containsUseStrictDirective()
+        get() = isModule
 
     fun dump(n: Int = 0) = when {
         isScript -> asScript.dump(n)
@@ -139,12 +158,3 @@ class ScriptOrModuleNode(private val value: Any) {
         else -> unreachable()
     }
 }
-
-open class GlobalScopeNode(val statements: StatementList) : VariableSourceNode(statements) {
-    override fun boundName() = unreachable()
-}
-
-class ScriptNode(statements: StatementList) : GlobalScopeNode(statements)
-
-interface StatementNode : ASTNode
-interface ExpressionNode : ASTNode

@@ -5,6 +5,7 @@ import me.mattco.reeva.ast.ScriptOrModuleNode
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
+import me.mattco.reeva.parser.Parser.ParsingException
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.JSGlobalObject
@@ -31,11 +32,11 @@ class EvaluationTask(
 
     override fun execute(): Reeva.Result {
         val parser = Parser(script)
-        val scriptOrModule = ScriptOrModuleNode(if (isModule) parser.parseModule() else parser.parseScript())
-        if (parser.syntaxErrors.isNotEmpty()) {
-            val error = parser.syntaxErrors.first()
+        val scriptOrModule = try {
+            ScriptOrModuleNode(if (isModule) parser.parseModule() else parser.parseScript())
+        } catch (e: ParsingException) {
             return Reeva.Result(
-                JSSyntaxErrorObject.create(realm, "(${error.lineNumber}, ${error.columnNumber}) ${error.message}"),
+                JSSyntaxErrorObject.create(realm, "(${e.start.line}, ${e.start.column}) ${e.message}"),
                 true
             )
         }

@@ -1,52 +1,45 @@
 package me.mattco.reeva.ast.literals
 
 import me.mattco.reeva.ast.*
-import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.expressions.SuperCallExpressionNode
-import me.mattco.reeva.ast.statements.StatementList
+import me.mattco.reeva.ast.statements.ASTListNode
+import me.mattco.reeva.ast.statements.BlockNode
 
-class ObjectLiteralNode(val list: PropertyDefinitionListNode?) : ASTNodeBase(listOfNotNull(list)), ExpressionNode
+typealias PropertyDefinitionList = ASTListNode<Property>
 
-class PropertyDefinitionListNode(val properties: List<PropertyDefinitionNode>) : ASTNodeBase(properties)
+class ObjectLiteralNode(val list: PropertyDefinitionList) : ASTNodeBase(listOfNotNull(list)), ExpressionNode
 
-// "first" and "second" have different interpretations based on the type
-class PropertyDefinitionNode(
-    val first: ASTNode,
-    val second: ExpressionNode?,
-    val type: Type
-) : ASTNodeBase(listOfNotNull(first, second)) {
-    override fun dump(indent: Int) = buildString {
-        appendIndent(indent)
-        appendName()
-        append(" (type=")
-        append(type.name)
-        append(")\n")
-        append(first.dump(indent + 1))
-        second?.dump(indent + 1)?.also(::append)
-    }
+sealed class Property(children: List<ASTNode>) : ASTNodeBase(children)
 
-    enum class Type {
-        KeyValue,
-        Shorthand,
-        Method,
-        Spread,
-        Initializer,
-    }
-}
+class KeyValueProperty(
+    val key: PropertyName,
+    val value: ExpressionNode,
+) : Property(listOf(key, value))
 
-class PropertyNameNode(
-    val expr: ExpressionNode,
+class ShorthandProperty(val key: IdentifierReferenceNode) : Property(listOf(key))
+
+class MethodProperty(val method: MethodDefinitionNode) : Property(listOf(method))
+
+class SpreadProperty(val target: ExpressionNode) : Property(listOf(target))
+
+class CoveredInitializerProperty(
+    val target: IdentifierReferenceNode,
+    val initializer: ExpressionNode,
+) : Property(listOf(target, initializer))
+
+class PropertyName(
+    val expression: ExpressionNode, // IdentifierReferenceNode if isComputed == true
     val isComputed: Boolean,
-) : ASTNodeBase(listOf(expr))
+) : ASTNodeBase(listOf(expression))
 
 class MethodDefinitionNode(
-    val identifier: PropertyNameNode,
+    val identifier: PropertyName,
     val parameters: ParameterList,
-    val body: StatementList,
+    val body: BlockNode,
     val type: Type
 ) : ASTNodeBase(listOf(identifier) + parameters + body) {
     fun isConstructor(): Boolean {
-        return !identifier.isComputed && identifier.expr.let {
+        return !identifier.isComputed && identifier.expression.let {
             it is BindingIdentifierNode && it.identifierName == "constructor"
         }
     }

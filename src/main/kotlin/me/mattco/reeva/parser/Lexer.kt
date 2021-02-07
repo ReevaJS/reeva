@@ -1,38 +1,46 @@
-package me.mattco.reeva.lexer
+package me.mattco.reeva.parser
 
-import me.mattco.reeva.utils.allIndexed
 import me.mattco.reeva.utils.isHexDigit
+import me.mattco.reeva.utils.isIdContinue
+import me.mattco.reeva.utils.isIdStart
+import java.io.File
 
-class Lexer(private val source: String) : Iterable<Token> {
+fun main() {
+//    val source = File("./demo/test262.js").readText()
+//    val lexer = Lexer(source)
+//    runBlocking {
+//        val p = lexer.tokens()
+//
+//        p.collect { println(it) }
+//    }
+
+//     222.2
+    val source = File("./demo/test262.js").readText()
+    simpleMeasureTest(30, 20, 10) {
+
+    }
+}
+
+class Lexer(private val source: String) {
     private var lineNum = 0
     private var columnNum = 0
     private var cursor = 0
-    private var lastToken = Token(TokenType.Eof, "", "", SourceLocation(-1, -1), SourceLocation(-1, -1))
+    private var lastToken = Token.INVALID
     private val templateStates = mutableListOf<TemplateState>()
     private var regexIsInCharClass = false
 
-    override fun iterator() = object : Iterator<Token> {
-        private val lexer = this@Lexer
-        private var lastToken = lexer.nextToken()
+    var isDone = cursor >= source.length
+    private var char = if (isDone) 0.toChar() else source[cursor]
 
-        override fun hasNext() = lastToken.type != TokenType.Eof
-
-        override fun next(): Token {
-            val toReturn = lastToken
-            lastToken = lexer.nextToken()
-            return toReturn
-        }
+    fun getTokens(): List<Token> {
+        val list = mutableListOf<Token>()
+        while (!isDone)
+            list.add(nextToken())
+        return list
     }
-
-    private val isDone: Boolean
-        get() = cursor >= source.length
-
-    private val char: Char
-        get() = if (isDone) 0.toChar() else source[cursor]
 
     fun nextToken(): Token {
         val triviaStartCursor = cursor
-        val triviaStartLocation = SourceLocation(lineNum, columnNum)
         val inTemplate = templateStates.isNotEmpty()
 
         if (!inTemplate || templateStates.last().inExpr) {
@@ -47,11 +55,11 @@ class Lexer(private val source: String) : Iterable<Token> {
                     do {
                         consume()
                     } while (!isDone && char != '\n')
-                } else if (match('/', '*')) {
+                } else if (match(multilineCommentStart)) {
                     consume()
                     do {
                         consume()
-                    } while (!isDone && !match('*', '/'))
+                    } while (!isDone && !match(multilineCommentEnd))
 
                     if (!isDone)
                         consume(2)
@@ -59,13 +67,15 @@ class Lexer(private val source: String) : Iterable<Token> {
             }
         }
 
+        val afterNewline = '\n' in source.substring(triviaStartCursor, cursor)
+
         val valueStartCursor = cursor
-        val valueStartLocation = SourceLocation(lineNum, columnNum)
+        val valueStartLocation = TokenLocation(cursor, lineNum, columnNum)
         var tokenType = TokenType.Invalid
 
         if (isDone) {
             tokenType = TokenType.Eof
-        } else if (lastToken.type == TokenType.RegexLiteral && !isDone && char.isLetter() && '\n' !in source.substring(triviaStartCursor, valueStartCursor)) {
+        } else if (lastToken.type == TokenType.RegexLiteral && !isDone && char.isLetter() && !afterNewline) {
             tokenType = TokenType.RegexFlags
             while (!isDone && char.isLetter())
                 consume()
@@ -94,14 +104,14 @@ class Lexer(private val source: String) : Iterable<Token> {
                     tokenType = TokenType.UnterminatedTemplateLiteral
                     templateStates.removeLast()
                 }
-                match('$', '{') -> {
+                match(templateExprStart) -> {
                     tokenType = TokenType.TemplateLiteralExprStart
                     consume(2)
                     templateStates.last().inExpr = true
                 }
                 else -> {
-                    while (!match('$', '{') && char != '`' && !isDone) {
-                        if (match('\\', '$') || match('\\', '`'))
+                    while (!match(templateExprStart) && char != '`' && !isDone) {
+                        if (match(escapedDollar) || match(escapedGrave))
                             consume()
                         consume()
                     }
@@ -113,22 +123,21 @@ class Lexer(private val source: String) : Iterable<Token> {
                 consumeIdentChar()
             } while (isIdentMiddle())
 
-            val value = source.substring(valueStartCursor, cursor)
-            tokenType = TokenType.keywords.firstOrNull { it.meta == value } ?: TokenType.Identifier
+            tokenType = keywordFromStr(source.substring(valueStartCursor, cursor))
         } else if (isNumberLiteralStart()) {
             tokenType = TokenType.NumericLiteral
             if (char == '0') {
                 consume()
-                when {
-                    char == '.' -> {
+                when (char) {
+                    '.' -> {
                         consume()
                         while (char.isDigit())
                             consume()
                         if (char == 'e' || char == 'E')
                             consumeExponent()
                     }
-                    char == 'e' || char == 'E' -> consumeExponent()
-                    char == 'o' || char == 'O' -> {
+                    'e', 'E' -> consumeExponent()
+                    'o', 'O' -> {
                         consume()
                         while (char in '0'..'7')
                             consume()
@@ -137,7 +146,7 @@ class Lexer(private val source: String) : Iterable<Token> {
                             tokenType = TokenType.BigIntLiteral
                         }
                     }
-                    char == 'b' || char == 'B' -> {
+                    'b', 'B' -> {
                         consume()
                         while (char == '0' || char == '1')
                             consume()
@@ -146,7 +155,7 @@ class Lexer(private val source: String) : Iterable<Token> {
                             tokenType = TokenType.BigIntLiteral
                         }
                     }
-                    char == 'x' || char == 'X' -> {
+                    'x', 'X' -> {
                         consume()
                         while (char.isHexDigit())
                             consume()
@@ -155,16 +164,18 @@ class Lexer(private val source: String) : Iterable<Token> {
                             tokenType = TokenType.BigIntLiteral
                         }
                     }
-                    char == 'n' -> {
+                    'n' -> {
                         consume()
                         tokenType = TokenType.BigIntLiteral
                     }
-                    char.isDigit() -> {
-                        // Octal without 'O' prefix
-                        // TODO: Prevent in strict mode
-                        do {
-                            consume()
-                        } while (char in '0'..'7')
+                    else -> {
+                        if (char.isDigit()) {
+                            // Octal without 'O' prefix
+                            // TODO: Prevent in strict mode
+                            do {
+                                consume()
+                            } while (char in '0'..'7')
+                        }
                     }
                 }
             } else {
@@ -191,11 +202,11 @@ class Lexer(private val source: String) : Iterable<Token> {
                     consume()
                 consume()
             }
-            if (char != stopChar) {
-                tokenType == TokenType.UnterminatedStringLiteral
+            tokenType = if (char != stopChar) {
+                TokenType.UnterminatedStringLiteral
             } else {
                 consume()
-                tokenType = TokenType.StringLiteral
+                TokenType.StringLiteral
             }
         } else if (char == '/' && lastToken.type !in slashMeansDivision) {
             consume()
@@ -210,7 +221,7 @@ class Lexer(private val source: String) : Iterable<Token> {
                     break
                 }
 
-                if (match('\\', '/') || match('\\', '[') || match('\\', '\\') || (regexIsInCharClass && match('\\', ']')))
+                if (match(escapedSlash) || match(escapedOpenBracket) || match(escapedBackslash) || (regexIsInCharClass && match(escapedCloseBracket)))
                     consume()
                 consume()
             }
@@ -224,15 +235,15 @@ class Lexer(private val source: String) : Iterable<Token> {
             var matched = false
 
             // Only four length token
-            if (match(">>>=")) {
+            if (match(shrEquals)) {
                 consume(4)
-                tokenType = TokenType.UnsignedShiftRightEquals
+                tokenType = TokenType.UShrEquals
                 matched = true
             }
 
             if (!matched) {
-                matched = TokenType.tripleCharTokens.firstOrNull {
-                    it.meta?.let(::match) == true
+                matched = TokenType.threeCharTokens.firstOrNull {
+                    match(it.string)
                 }?.also {
                     tokenType = it
                     consume(3)
@@ -240,8 +251,8 @@ class Lexer(private val source: String) : Iterable<Token> {
             }
 
             if (!matched) {
-                matched = TokenType.doubleCharTokens.firstOrNull {
-                    it.meta?.let(::match) == true
+                matched = TokenType.twoCharTokens.firstOrNull {
+                    match(it.string)
                 }?.also {
                     tokenType = it
                     consume(2)
@@ -249,8 +260,8 @@ class Lexer(private val source: String) : Iterable<Token> {
             }
 
             if (!matched) {
-                matched = TokenType.singleCharTokens.firstOrNull {
-                    it.meta?.let(::match) == true
+                matched = TokenType.oneCharTokens.firstOrNull {
+                    match(it.string)
                 }?.also {
                     tokenType = it
                     consume()
@@ -271,23 +282,25 @@ class Lexer(private val source: String) : Iterable<Token> {
             }
         }
 
+        val value = source.substring(valueStartCursor, cursor)
         lastToken = Token(
             tokenType,
-            source.substring(triviaStartCursor, valueStartCursor),
-            source.substring(valueStartCursor, cursor),
-            triviaStartLocation,
             valueStartLocation,
+            TokenLocation(cursor, lineNum, columnNum),
+            afterNewline,
+            value,
+            value, // TODO: Raw strings
         )
 
         return lastToken
     }
 
-    private fun isIdentStart() = char.isLetter() || char == '_' || char == '$' || match('\\', 'u')
+    private fun isIdentStart() = char.isIdStart() || char == '_' || char == '$' || match(charArrayOf('\\', 'u'))
 
     private fun consumeIdentChar() {
-        if (match('\\', 'u')) {
+        if (match(charArrayOf('\\', 'u'))) {
             consume(2)
-            if (match('{')) {
+            if (match(charArrayOf('{'))) {
                 consume()
                 for (i in 0 until 5) {
                     if (!has(1))
@@ -314,9 +327,101 @@ class Lexer(private val source: String) : Iterable<Token> {
         }
     }
 
-    private fun isIdentMiddle() = isIdentStart() || char.isDigit()
+    private fun keywordFromStr(str: String): TokenType {
+        val maybeKeyword: TokenType = when (str[0]) {
+            'a' -> if (str.length > 1 && str[1] == 's') TokenType.Async else TokenType.Await
+            'b' -> TokenType.Break
+            'c' -> when (str.length) {
+                4 -> TokenType.Case
+                5 -> when (str[1]) {
+                    'a' -> TokenType.Catch
+                    'l' -> TokenType.Class
+                    'o' -> TokenType.Const
+                    else -> return TokenType.Identifier
+                }
+                8 -> TokenType.Continue
+                else -> return TokenType.Identifier
+            }
+            'd' -> when (str.length) {
+                2 -> TokenType.Do
+                6 -> TokenType.Delete
+                7 -> TokenType.Default
+                8 -> TokenType.Debugger
+                else -> return TokenType.Identifier
+            }
+            'e' -> when (str.length) {
+                4 -> if (str[1] == 'l') TokenType.Else else TokenType.Enum
+                6 -> TokenType.Export
+                7 -> TokenType.Extends
+                else -> return TokenType.Identifier
+            }
+            'f' -> when (str.length) {
+                3 -> TokenType.For
+                5 -> TokenType.False
+                7 -> TokenType.Finally
+                8 -> TokenType.Function
+                else -> return TokenType.Identifier
+            }
+            'i' -> when (str.length) {
+                2 -> when (str[1]) {
+                    'f' -> TokenType.If
+                    'n' -> TokenType.In
+                    else -> TokenType.Identifier
+                }
+                6 -> TokenType.Import
+                9 -> TokenType.Interface
+                10 -> if (str[1] == 'm') TokenType.Implements else TokenType.Instanceof
+                else -> TokenType.Identifier
+            }
+            'l' -> TokenType.Let
+            'n' -> when (str.length) {
+                3 -> TokenType.New
+                4 -> TokenType.NullLiteral
+                else -> return TokenType.Identifier
+            }
+            'p' -> when (str.length) {
+                6 -> TokenType.Public
+                7 -> when (str[2]) {
+                    'c' -> TokenType.Package
+                    'i' -> TokenType.Private
+                    else -> return TokenType.Identifier
+                }
+                9 -> TokenType.Protected
+                else -> return TokenType.Identifier
+            }
+            'r' -> TokenType.Return
+            's' -> when (str.length) {
+                5 -> TokenType.Super
+                6 -> if (str[1] == 't') TokenType.Static else TokenType.Switch
+                else -> return TokenType.Identifier
+            }
+            't' -> when (str.length) {
+                3 -> TokenType.Try
+                4 -> if (str[1] == 'h') TokenType.This else TokenType.True
+                5 -> TokenType.Throw
+                6 -> TokenType.Typeof
+                else -> return TokenType.Identifier
+            }
+            'v' -> when (str.length) {
+                3 -> TokenType.Var
+                4 -> TokenType.Void
+                else -> return TokenType.Identifier
+            }
+            'w' -> when (str.length) {
+                4 -> TokenType.With
+                5 -> TokenType.While
+                else -> return TokenType.Identifier
+            }
+            'y' -> TokenType.Yield
+            else -> return TokenType.Identifier
+        }
 
-    private fun isCommentStart() = match('/', '/') || match('<', '!', '-', '-') || match('-', '-', '>')
+        return if (maybeKeyword.string == str) maybeKeyword else TokenType.Identifier
+    }
+
+    private fun isIdentMiddle() = isIdentStart() || char.isIdContinue()
+
+    private fun isCommentStart() = match(charArrayOf('/', '/')) || match(charArrayOf('<', '!', '-', '-')) || match(charArrayOf('-', '-', '>'))
 
     private fun isNumberLiteralStart() = char.isDigit() || (cursor + 1 < source.length && char == '.' && peek(1).isDigit())
 
@@ -329,11 +434,29 @@ class Lexer(private val source: String) : Iterable<Token> {
 
     private fun has(n: Int): Boolean = cursor + n < source.length
 
-    private fun match(vararg ch: Char) = ch.allIndexed { i, char ->
-        cursor + i < source.length && source[cursor + i] == char
+    private fun match(chars: CharArray): Boolean {
+        if (!has(chars.size))
+            return false
+
+        for ((i, char) in chars.withIndex()) {
+            if (source[cursor + i] != char)
+                return false
+        }
+
+        return true
     }
 
-    private fun match(string: String) = match(*string.toCharArray())
+    private fun match(string: String): Boolean {
+        if (!has(string.length))
+            return false
+
+        for ((index, char) in string.withIndex()) {
+            if (source[cursor + index] != char)
+                return false
+        }
+
+        return true
+    }
 
     private fun consume(times: Int = 1) = repeat(times) {
         if (isDone)
@@ -347,6 +470,8 @@ class Lexer(private val source: String) : Iterable<Token> {
         }
 
         cursor++
+        isDone = cursor >= source.length
+        char = if (isDone) 0.toChar() else source[cursor]
     }
 
     private fun consumeExponent() {
@@ -360,12 +485,23 @@ class Lexer(private val source: String) : Iterable<Token> {
     data class TemplateState(var inExpr: Boolean = false, var openBracketCount: Int = 0)
 
     companion object {
+        private val multilineCommentStart = charArrayOf('/', '*')
+        private val multilineCommentEnd = charArrayOf('*', '/')
+        private val templateExprStart = charArrayOf('$', '{')
+        private val escapedDollar = charArrayOf('\\', '$')
+        private val escapedGrave = charArrayOf('\\', '`')
+        private val escapedSlash = charArrayOf('\\', '/')
+        private val escapedBackslash = charArrayOf('\\', '\\')
+        private val escapedOpenBracket = charArrayOf('\\', '[')
+        private val escapedCloseBracket = charArrayOf('\\', ']')
+        private val shrEquals = charArrayOf('>', '>', '>', '=')
+
         private val slashMeansDivision = listOf(
             TokenType.BigIntLiteral,
-            TokenType.BooleanLiteral,
             TokenType.CloseBracket,
             TokenType.CloseCurly,
             TokenType.CloseParen,
+            TokenType.False,
             TokenType.Identifier,
             TokenType.NullLiteral,
             TokenType.NumericLiteral,
@@ -373,6 +509,7 @@ class Lexer(private val source: String) : Iterable<Token> {
             TokenType.StringLiteral,
             TokenType.TemplateLiteralEnd,
             TokenType.This,
+            TokenType.True,
         )
 
         val lineTerminators = listOf('\n', '\u000d', '\u2028', '\u2029')

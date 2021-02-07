@@ -8,8 +8,11 @@ import me.mattco.reeva.core.modules.resolver.ModuleResolver
 import me.mattco.reeva.core.tasks.EvaluationTask
 import me.mattco.reeva.runtime.JSValue
 import java.io.File
+import java.util.concurrent.Executors
 
 object Reeva {
+    val threadPool = Executors.newFixedThreadPool(10)
+
     val PRINT_PARSE_NODES = System.getProperty("reeva.debugParseNodes")?.toBoolean() ?: false
     var EMIT_CLASS_FILES = true
         internal set
@@ -73,6 +76,7 @@ object Reeva {
 
     @JvmStatic
     fun teardown() {
+        threadPool.shutdownNow()
         Agent.activeAgentList.forEach(Agent::teardown)
     }
 

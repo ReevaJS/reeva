@@ -4,10 +4,10 @@ import me.mattco.reeva.ast.ScriptNode
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.core.modules.resolver.ModuleResolver
+import me.mattco.reeva.parser.Parser.ParsingException
 import me.mattco.reeva.jvmcompat.JSClassProto
 import me.mattco.reeva.jvmcompat.JSPackageObject
 import me.mattco.reeva.jvmcompat.JSPackageProto
-import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.arrays.JSArrayCtor
 import me.mattco.reeva.runtime.arrays.JSArrayProto
 import me.mattco.reeva.runtime.builtins.*
@@ -200,7 +200,7 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
         val realm: Realm,
         var env: EnvRecord?,
         val scriptOrModule: ScriptNode,
-        val errors: List<Parser.SyntaxError> = emptyList()
+        val errors: List<ParsingException> = emptyList()
     )
 
     internal companion object {

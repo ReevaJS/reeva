@@ -16,44 +16,6 @@ import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.toValue
 import me.mattco.reeva.utils.unreachable
-import java.io.File
-
-fun main() {
-    val source = File("./demo/index.js").readText()
-
-    val parser = Parser(source)
-    val parsed = parser.parseScript()
-    if (parser.syntaxErrors.isNotEmpty()) {
-        println(parser.syntaxErrors.first())
-        return
-    }
-    ScopeResolver().resolve(parsed)
-    println(parsed.dump(0))
-    val info = IRTransformer().transform(parsed)
-
-    println("\n\n")
-
-    OpcodePrinter.printFunctionInfo(info)
-
-    println("\n\n")
-
-    Reeva.setup()
-
-    val realm = Reeva.makeRealm()
-    val task = IRInterpreter.consume(info, realm)
-    val result = Reeva.getAgent().runTask(task)
-
-    Reeva.with(realm) {
-        val str = Operations.toPrintableString(result.value)
-        if (result.isError) {
-            println("\u001b[31m${Operations.toString(result.value).string}\u001B[0m")
-        } else {
-            println(str)
-        }
-    }
-
-    Reeva.teardown()
-}
 
 object IRInterpreter : IRConsumer {
     override fun consume(info: FunctionInfo, realm: Realm) = IRInterpreterTask(info, realm)

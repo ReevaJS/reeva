@@ -3,6 +3,7 @@ package me.mattco.reeva.ast
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
+import me.mattco.reeva.utils.unreachable
 
 interface ASTVisitor {
     fun visit(node: ASTNode) {
@@ -50,18 +51,7 @@ interface ASTVisitor {
             is FunctionExpressionNode -> visitFunctionExpression(node)
             is ArrowFunctionNode -> visitArrowFunction(node)
             is ClassExpressionNode -> visitClassExpression(node)
-            is AdditiveExpressionNode -> visitAdditiveExpression(node)
-            is BitwiseANDExpressionNode -> visitBitwiseANDExpression(node)
-            is BitwiseORExpressionNode -> visitBitwiseORExpression(node)
-            is BitwiseXORExpressionNode -> visitBitwiseXORExpression(node)
-            is CoalesceExpressionNode -> visitCoalesceExpression(node)
-            is EqualityExpressionNode -> visitEqualityExpression(node)
-            is ExponentiationExpressionNode -> visitExponentiationExpression(node)
-            is LogicalANDExpressionNode -> visitLogicalANDExpression(node)
-            is LogicalORExpressionNode -> visitLogicalORExpression(node)
-            is MultiplicativeExpressionNode -> visitMultiplicativeExpression(node)
-            is RelationalExpressionNode -> visitRelationalExpression(node)
-            is ShiftExpressionNode -> visitShiftExpression(node)
+            is BinaryExpressionNode -> visitBinaryExpression(node)
             is UnaryExpressionNode -> visitUnaryExpression(node)
             is UpdateExpressionNode -> visitUpdateExpression(node)
             is AssignmentExpressionNode -> visitAssignmentExpression(node)
@@ -214,62 +204,7 @@ interface ASTVisitor {
         // TODO: Default handling
     }
 
-    fun visitAdditiveExpression(node: AdditiveExpressionNode) {
-        visit(node.lhs)
-        visit(node.rhs)
-    }
-
-    fun visitBitwiseANDExpression(node: BitwiseANDExpressionNode) {
-        visit(node.lhs)
-        visit(node.rhs)
-    }
-
-    fun visitBitwiseORExpression(node: BitwiseORExpressionNode) {
-        visit(node.lhs)
-        visit(node.rhs)
-    }
-
-    fun visitBitwiseXORExpression(node: BitwiseXORExpressionNode) {
-        visit(node.lhs)
-        visit(node.rhs)
-    }
-
-    fun visitCoalesceExpression(node: CoalesceExpressionNode) {
-        visit(node.lhs)
-        visit(node.rhs)
-    }
-
-    fun visitEqualityExpression(node: EqualityExpressionNode) {
-        visit(node.lhs)
-        visit(node.rhs)
-    }
-
-    fun visitExponentiationExpression(node: ExponentiationExpressionNode) {
-        visit(node.lhs)
-        visit(node.rhs)
-    }
-
-    fun visitLogicalANDExpression(node: LogicalANDExpressionNode) {
-        visit(node.lhs)
-        visit(node.rhs)
-    }
-
-    fun visitLogicalORExpression(node: LogicalORExpressionNode) {
-        visit(node.lhs)
-        visit(node.rhs)
-    }
-
-    fun visitMultiplicativeExpression(node: MultiplicativeExpressionNode) {
-        visit(node.lhs)
-        visit(node.rhs)
-    }
-
-    fun visitRelationalExpression(node: RelationalExpressionNode) {
-        visit(node.lhs)
-        visit(node.rhs)
-    }
-
-    fun visitShiftExpression(node: ShiftExpressionNode) {
+    fun visitBinaryExpression(node: BinaryExpressionNode) {
         visit(node.lhs)
         visit(node.rhs)
     }
@@ -357,12 +292,19 @@ interface ASTVisitor {
     }
 
     fun visitObjectLiteral(node: ObjectLiteralNode) {
-        if (node.list == null)
-            return
-
-        node.list.properties.forEach {
-            visit(it.first)
-            it.second?.also(::visit)
+        node.list.forEach {
+            when (it) {
+                is CoveredInitializerProperty -> unreachable()
+                is KeyValueProperty -> {
+                    visit(it.key.expression)
+                    visit(it.value)
+                }
+                is MethodProperty -> {
+                    // TODO
+                }
+                is ShorthandProperty -> visit(it.key)
+                is SpreadProperty -> visit(it.target)
+            }
         }
     }
 

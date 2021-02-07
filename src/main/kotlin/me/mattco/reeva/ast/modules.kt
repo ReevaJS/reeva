@@ -2,13 +2,8 @@ package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.literals.StringLiteralNode
-import me.mattco.reeva.ast.statements.LexicalDeclarationNode
-import me.mattco.reeva.ast.statements.StatementList
-import me.mattco.reeva.ast.statements.VariableDeclarationNode
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.newline
-
-class ModuleNode(val body: StatementList) : GlobalScopeNode(body)
 
 // TODO: Make this a VariableSourceNode
 class ImportDeclarationNode(

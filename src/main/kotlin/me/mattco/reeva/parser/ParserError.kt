@@ -1,0 +1,30 @@
+package me.mattco.reeva.parser
+
+open class ParserError(val message: String)
+
+object ParserErrors {
+    class Expected(expected: String, actual: String) : ParserError("expected \"$expected\", found \"$actual\"")
+    class ExpectedToken(expected: TokenType, actual: TokenType) : ParserError("expected token \"$expected\", found \"$actual\"")
+    object InvalidLhsInAssignment : ParserError("invalid left hand expression in assignment")
+    object StrictAssignToEval : ParserError("cannot assign to eval in strict mode")
+    object StrictAssignToArguments : ParserError("cannot assign to arguments in strict mode")
+    class UnexpectedToken(token: TokenType) : ParserError("unexpected token \"$token\"")
+    object FunctionStatementNoName : ParserError("function statement requires a name")
+    object FunctionInExpressionContext : ParserError("function declarations are not allowed in single-statement contexts")
+    object ThrowStatementNewLine : ParserError("throw keyword cannot be separated from its expression by a line terminator")
+    object ArrowFunctionNewLine : ParserError("arrow function cannot be separated from its arrow by a line terminator")
+    object ClassDeclarationNoName : ParserError("class declaration must have an identifier")
+    object ParamAfterRest : ParserError("rest parameter must be the last parameter")
+    object StrictImplicitOctal : ParserError("implicit octal literals are not allowed in strict mode")
+    object IdentifierAfterNumericLiteral : ParserError("numeric literal cannot be directly followed by an identifier")
+    class InvalidBreakTarget(target: String) : ParserError("invalid break target \"$target\"")
+    class InvalidContinueTarget(target: String) : ParserError("invalid continue target \"$target\"")
+    object FunctionMissingParameter : ParserError("missing function parameter")
+    object ConstMissingInitializer : ParserError("const variable missing initializer")
+    object ContinueOutsideOfLoop : ParserError("invalid continue statement outside of a loop")
+    object BreakOutsideOfLoopOrSwitch : ParserError("invalid break statement outside of a loop or switch statement")
+    object ForEachMultipleDeclarations : ParserError("for-in/of statement cannot contain multiple variable statements")
+    object EmptyTemplateLiteralExpr : ParserError("empty template literal expression")
+    object UnterminatedTemplateLiteralExpr : ParserError("unterminated template literal expression")
+    object UnterminatedTemplateLiteral : ParserError("unterminated template literal")
+}
