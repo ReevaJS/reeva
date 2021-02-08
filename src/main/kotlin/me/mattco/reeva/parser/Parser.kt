@@ -104,10 +104,14 @@ class Parser(val source: String) {
 
     private fun initLexer() {
         Reeva.threadPool.submit {
-            val lexer = Lexer(source)
-            while (!lexer.isDone)
-                tokenQueue.add(lexer.nextToken())
-            tokenQueue.add(Token.EOF)
+            try {
+                val lexer = Lexer(source)
+                while (!lexer.isDone)
+                    tokenQueue.add(lexer.nextToken())
+                tokenQueue.add(Token.EOF)
+            } catch (e: Throwable) {
+                e.printStackTrace()
+            }
         }
         consume()
     }

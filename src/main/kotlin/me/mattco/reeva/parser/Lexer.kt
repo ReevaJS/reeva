@@ -55,11 +55,11 @@ class Lexer(private val source: String) {
                     do {
                         consume()
                     } while (!isDone && char != '\n')
-                } else if (match(multilineCommentStart)) {
+                } else if (has(2) && match(multilineCommentStart)) {
                     consume()
                     do {
                         consume()
-                    } while (!isDone && !match(multilineCommentEnd))
+                    } while (has(2) && !match(multilineCommentEnd))
 
                     if (!isDone)
                         consume(2)
@@ -104,13 +104,13 @@ class Lexer(private val source: String) {
                     tokenType = TokenType.UnterminatedTemplateLiteral
                     templateStates.removeLast()
                 }
-                match(templateExprStart) -> {
+                has(2) && match(templateExprStart) -> {
                     tokenType = TokenType.TemplateLiteralExprStart
                     consume(2)
                     templateStates.last().inExpr = true
                 }
                 else -> {
-                    while (!match(templateExprStart) && char != '`' && !isDone) {
+                    while (has(2) && !match(templateExprStart) && char != '`') {
                         if (match(escapedDollar) || match(escapedGrave))
                             consume()
                         consume()
@@ -221,8 +221,11 @@ class Lexer(private val source: String) {
                     break
                 }
 
-                if (match(escapedSlash) || match(escapedOpenBracket) || match(escapedBackslash) || (regexIsInCharClass && match(escapedCloseBracket)))
+                if (has(2) && (match(escapedSlash) || match(escapedOpenBracket) ||
+                        match(escapedBackslash) || (regexIsInCharClass && match(escapedCloseBracket)))
+                ) {
                     consume()
+                }
                 consume()
             }
 
@@ -235,13 +238,13 @@ class Lexer(private val source: String) {
             var matched = false
 
             // Only four length token
-            if (match(shrEquals)) {
+            if (has(4) && match(shrEquals)) {
                 consume(4)
                 tokenType = TokenType.UShrEquals
                 matched = true
             }
 
-            if (!matched) {
+            if (!matched && has(3)) {
                 matched = TokenType.threeCharTokens.firstOrNull {
                     match(it.string)
                 }?.also {
@@ -250,7 +253,7 @@ class Lexer(private val source: String) {
                 } != null
             }
 
-            if (!matched) {
+            if (!matched && has(2)) {
                 matched = TokenType.twoCharTokens.firstOrNull {
                     match(it.string)
                 }?.also {
@@ -259,7 +262,7 @@ class Lexer(private val source: String) {
                 } != null
             }
 
-            if (!matched) {
+            if (!matched && has(1)) {
                 matched = TokenType.oneCharTokens.firstOrNull {
                     match(it.string)
                 }?.also {
@@ -295,12 +298,12 @@ class Lexer(private val source: String) {
         return lastToken
     }
 
-    private fun isIdentStart() = char.isIdStart() || char == '_' || char == '$' || match(charArrayOf('\\', 'u'))
+    private fun isIdentStart() = char.isIdStart() || char == '_' || char == '$' || (has(2) && match(charArrayOf('\\', 'u')))
 
     private fun consumeIdentChar() {
-        if (match(charArrayOf('\\', 'u'))) {
+        if (has(2) && match(charArrayOf('\\', 'u'))) {
             consume(2)
-            if (match(charArrayOf('{'))) {
+            if (has(1) && match(charArrayOf('{'))) {
                 consume()
                 for (i in 0 until 5) {
                     if (!has(1))
@@ -421,9 +424,12 @@ class Lexer(private val source: String) {
 
     private fun isIdentMiddle() = isIdentStart() || char.isIdContinue()
 
-    private fun isCommentStart() = match(charArrayOf('/', '/')) || match(charArrayOf('<', '!', '-', '-')) || match(charArrayOf('-', '-', '>'))
+    private fun isCommentStart() =
+        (has(2) && match(charArrayOf('/', '/'))) ||
+        (has(4) && match(charArrayOf('<', '!', '-', '-')))
 
-    private fun isNumberLiteralStart() = char.isDigit() || (cursor + 1 < source.length && char == '.' && peek(1).isDigit())
+    private fun isNumberLiteralStart() =
+        char.isDigit() || (has(1) && char == '.' && peek(1).isDigit())
 
     private fun peek(n: Int): Char {
         if (cursor + n >= source.length)
@@ -435,9 +441,6 @@ class Lexer(private val source: String) {
     private fun has(n: Int): Boolean = cursor + n < source.length
 
     private fun match(chars: CharArray): Boolean {
-        if (!has(chars.size))
-            return false
-
         for ((i, char) in chars.withIndex()) {
             if (source[cursor + i] != char)
                 return false
@@ -447,9 +450,6 @@ class Lexer(private val source: String) {
     }
 
     private fun match(string: String): Boolean {
-        if (!has(string.length))
-            return false
-
         for ((index, char) in string.withIndex()) {
             if (source[cursor + index] != char)
                 return false
@@ -458,18 +458,21 @@ class Lexer(private val source: String) {
         return true
     }
 
-    private fun consume(times: Int = 1) = repeat(times) {
-        if (isDone)
+    private fun consume(times: Int = 1) {
+        if (cursor + times > source.length)
             throw IllegalStateException("Attempt to consume character from exhausted Lexer")
 
-        if (char == '\n') {
-            lineNum++
-            columnNum = 0
-        } else {
-            columnNum++
+        repeat(times) {
+            if (source[cursor] == '\n') {
+                lineNum++
+                columnNum = 0
+            } else {
+                columnNum++
+            }
+
+            cursor++
         }
 
-        cursor++
         isDone = cursor >= source.length
         char = if (isDone) 0.toChar() else source[cursor]
     }
