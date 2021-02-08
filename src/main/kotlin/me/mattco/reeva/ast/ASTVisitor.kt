@@ -48,6 +48,7 @@ interface ASTVisitor {
             is ArgumentNode -> visitArgument(node)
             is BindingIdentifierNode -> visitBindingIdentifier(node)
             is IdentifierReferenceNode -> visitIdentifierReference(node)
+            is IdentifierNode -> visitIdentifier(node)
             is FunctionExpressionNode -> visitFunctionExpression(node)
             is ArrowFunctionNode -> visitArrowFunction(node)
             is ClassExpressionNode -> visitClassExpression(node)
@@ -183,6 +184,9 @@ interface ASTVisitor {
     fun visitBindingIdentifier(node: BindingIdentifierNode) { }
 
     fun visitIdentifierReference(node: IdentifierReferenceNode) { }
+
+    // Should only ever happen in CPEAAPL nodes
+    fun visitIdentifier(node: IdentifierNode) { }
 
     fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
         // TODO: Default handling

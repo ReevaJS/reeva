@@ -16,7 +16,7 @@ fun simpleMeasureTest(
     ITERATIONS: Int = 1000,
     TEST_COUNT: Int = 10,
     WARM_COUNT: Int = 2,
-    callback: ()->Unit
+    callback: () -> Unit
 ) {
     val results = ArrayList<Long>()
     var totalTime = 0L
@@ -57,12 +57,14 @@ fun simpleMeasureTest(
 private val PRINT_REFIX = "[TimeTest]"
 
 fun main() {
-    val source = File("./demo/test262.js").readText()
+    val source = File("./demo/index.js").readText()
 
     try {
 //        simpleMeasureTest(30, 20, 10) {
             Parser(source).parseScript()
 //        }
+        val ast = Parser(source).parseScript()
+        ast.debugPrint()
     } catch (e: Parser.ParsingException) {
         ErrorReporter.prettyPrintError(source, e)
     } finally {
@@ -75,12 +77,13 @@ class Parser(val source: String) {
     private var inFunctionContext = false
     private var inYieldContext = false
     private var inAsyncContext = false
+    private var disableAutoScoping = false
 
     private var inContinueContext = false
     private var inBreakContext = false
     private val labelStack = LabelStack()
 
-    private val reporter = ErrorReporter(this)
+    val reporter = ErrorReporter(this)
 
     private val tokenQueue = LinkedBlockingQueue<Token>()
     private val receivedTokenList = LinkedList<Token>()
@@ -97,7 +100,7 @@ class Parser(val source: String) {
     val sourceEnd: TokenLocation
         get() = token.end
 
-    private lateinit var scope: Scope
+    lateinit var scope: Scope
 
     private fun initLexer() {
         Reeva.threadPool.submit {
@@ -293,7 +296,8 @@ class Parser(val source: String) {
             if (match(TokenType.OpenCurly))
                 TODO()
 
-            val identifier = parseBindingIdentifier()
+            val identifier = parseBindingIdentifier(varType = type)
+
             if (match(TokenType.Equals)) {
                 consume()
                 declarations.add(Declaration(identifier, parseExpression(2)))
@@ -541,12 +545,16 @@ class Parser(val source: String) {
         val catchBlock = if (match(TokenType.Catch)) {
             consume()
             val catchParam = if (match(TokenType.OpenParen)) {
+                scope = Scope(scope)
                 consume()
-                parseBindingIdentifier().also {
+                parseBindingIdentifier(varMode = Variable.Mode.Parameter).also {
                     consume(TokenType.CloseParen)
                 }
             } else null
-            CatchNode(catchParam, parseBlock())
+            CatchNode(catchParam, parseBlock(pushNewScope = catchParam != null)).also {
+                if (catchParam != null)
+                    scope = scope.outer!!
+            }
         } else null
 
         val finallyBlock = if (match(TokenType.Finally)) {
@@ -642,7 +650,10 @@ class Parser(val source: String) {
                 }
                 initializer = parseVariableDeclaration(isForEachLoop = true)
                 if (matchForEach())
-                    return parseForEachStatement(initializer).also { scope = scope.outer!! }
+                    return parseForEachStatement(initializer).also {
+                        if (initRequiresOwnScope)
+                            scope = scope.outer!!
+                    }
             } else {
                 reporter.unexpectedToken(tokenType)
             }
@@ -697,8 +708,10 @@ class Parser(val source: String) {
      *     [+Default] function ( FormalParameters ) { FunctionBody }
      */
     private fun parseFunctionDeclaration(): StatementNode = nps {
-        val (identifier, params, body) = parseFunctionHelper(isDeclaration = true)
-        FunctionDeclarationNode(identifier, params, body)
+        val (identifier, params, body, scope) = parseFunctionHelper(isDeclaration = true)
+        FunctionDeclarationNode(identifier, params, body).also {
+            it.scope = scope
+        }
     }
 
     /*
@@ -706,14 +719,17 @@ class Parser(val source: String) {
      *     function BindingIdentifier? ( FormalParameters ) { FunctionBody }
      */
     private fun parseFunctionExpression(): ExpressionNode = nps {
-        val (identifier, params, body) = parseFunctionHelper(isDeclaration = false)
-        FunctionExpressionNode(identifier, params, body)
+        val (identifier, params, body, scope) = parseFunctionHelper(isDeclaration = false)
+        FunctionExpressionNode(identifier, params, body).also {
+            it.scope = scope
+        }
     }
 
     private data class FunctionTemp(
         val identifier: BindingIdentifierNode?,
         val params: ParameterList,
         val body: BlockNode,
+        val scope: Scope,
     ) : ASTNodeBase()
 
     private fun parseFunctionHelper(isDeclaration: Boolean): FunctionTemp = nps {
@@ -746,10 +762,12 @@ class Parser(val source: String) {
         // TODO: Check params initializers for possible direct eval call
 
         val body = functionBoundary(isAsync, isGenerator) {
-            parseBlock(isFunctionBlock = true)
+            parseBlock(pushNewScope = false)
         }
 
-        FunctionTemp(identifier, params, body)
+        FunctionTemp(identifier, params, body, scope).also {
+            scope = scope.outer!!
+        }
     }
 
     /*
@@ -763,7 +781,7 @@ class Parser(val source: String) {
             if (!inDefaultContext)
                 reporter.classDeclarationNoName()
             null
-        } else parseBindingIdentifier()
+        } else parseBindingIdentifier(varType = Variable.Type.Let)
 
         ClassDeclarationNode(identifier, parseClassNode())
     }
@@ -775,7 +793,7 @@ class Parser(val source: String) {
     private fun parseClassExpression(): ExpressionNode = nps {
         consume(TokenType.Class)
         val identifier = if (matchIdentifier()) {
-            parseBindingIdentifier()
+            parseBindingIdentifier(addVar = false)
         } else null
         ClassExpressionNode(identifier, parseClassNode())
     }
@@ -887,7 +905,7 @@ class Parser(val source: String) {
             if (match(TokenType.TriplePeriod)) {
                 nps {
                     consume()
-                    val identifier = parseBindingIdentifier()
+                    val identifier = parseBindingIdentifier(varMode = Variable.Mode.Parameter)
                     if (!match(TokenType.CloseParen))
                         reporter.paramAfterRest()
                     Parameter(identifier, null, true)
@@ -897,7 +915,7 @@ class Parser(val source: String) {
                 reporter.expected("expression", tokenType)
             } else {
                 nps {
-                    val identifier = parseBindingIdentifier()
+                    val identifier = parseBindingIdentifier(varMode = Variable.Mode.Parameter)
                     val initializer = if (match(TokenType.Equals)) {
                         consume()
                         parseExpression(0)
@@ -928,12 +946,25 @@ class Parser(val source: String) {
 
     private fun parseIdentifierReference(): IdentifierReferenceNode = nps {
         IdentifierReferenceNode(parseIdentifier()).also {
-            scope.addReference(it)
+            if (!disableAutoScoping)
+                scope.addReference(it)
         }
     }
 
-    private fun parseBindingIdentifier(): BindingIdentifierNode = nps {
-        BindingIdentifierNode(parseIdentifier())
+    private fun parseBindingIdentifier(
+        varType: Variable.Type = Variable.Type.Var,
+        varMode: Variable.Mode = Variable.Mode.Declared,
+        addVar: Boolean = true,
+    ): BindingIdentifierNode = nps {
+        BindingIdentifierNode(parseIdentifier()).also {
+            if (addVar && !disableAutoScoping) {
+                scope.addDeclaredVariable(Variable(
+                    it.identifierName,
+                    varType,
+                    varMode,
+                ))
+            }
+        }
     }
 
     private fun checkForAndConsumeUseStrict(): Boolean {
@@ -943,15 +974,15 @@ class Parser(val source: String) {
         } else false
     }
 
-    private fun parseBlock(isFunctionBlock: Boolean = false): BlockNode = nps {
+    private fun parseBlock(pushNewScope: Boolean = true): BlockNode = nps {
         consume(TokenType.OpenCurly)
-        if (!isFunctionBlock)
+        if (pushNewScope)
             scope = Scope(scope)
 
         val statements = parseStatementList()
         consume(TokenType.CloseCurly)
         BlockNode(statements).also {
-            if (!isFunctionBlock)
+            if (pushNewScope)
                 scope = scope.outer!!
         }
     }
@@ -1131,7 +1162,10 @@ class Parser(val source: String) {
         when (tokenType) {
             TokenType.OpenParen -> {
                 val cpeaapl = parseCPEAAPLNode()
-                tryParseArrowFunction(cpeaapl) ?: cpeaaplToParenthesizedExpression(cpeaapl)
+                val arrow = tryParseArrowFunction(cpeaapl)
+                if (arrow != null)
+                    return@nps arrow
+                return CPEAAPLVisitor(this, cpeaapl).parseAsParenthesizedExpression()
             }
             TokenType.This -> {
                 consume()
@@ -1209,6 +1243,7 @@ class Parser(val source: String) {
 
         TemplateLiteralNode(expressions)
     }
+
     private fun parseObjectLiteral(): ExpressionNode = nps {
         val coveredObject = parseCoveredObjectLiteral()
         for (property in coveredObject.list) {
@@ -1260,20 +1295,37 @@ class Parser(val source: String) {
 
         val name = parsePropertyName()
 
-        if (match(TokenType.Colon)) {
-            consume()
-            KeyValueProperty(name, parseExpression(2))
-        } else if (match(TokenType.Comma) || match(TokenType.CloseCurly)) {
-            if (name.isComputed || name.expression !is IdentifierReferenceNode)
-                reporter.unexpectedToken(tokenType)
-            consume()
-            ShorthandProperty(name.expression)
-        } else if (match(TokenType.Equals)) {
-            if (name.isComputed || name.expression !is IdentifierReferenceNode)
-                reporter.unexpectedToken(tokenType)
-            consume()
-            CoveredInitializerProperty(name.expression, parseExpression(2))
-        } else MethodProperty(parseMethodDefinition(name))
+        val canBeShorthand = !name.isComputed && name.expression.let {
+            it is IdentifierReferenceNode || it is IdentifierNode
+        }
+
+        val shorthandName = if (canBeShorthand) {
+            if (name.expression is IdentifierReferenceNode) {
+                name.expression.identifierName
+            } else (name.expression as IdentifierNode).identifierName
+        } else null
+
+        when {
+            match(TokenType.Colon) -> {
+                consume()
+                KeyValueProperty(name, parseExpression(2))
+            }
+            match(TokenType.Comma) -> {
+                if (!canBeShorthand)
+                    reporter.unexpectedToken(TokenType.Comma)
+                consume()
+                ShorthandProperty(IdentifierNode(shorthandName!!))
+            }
+            match(TokenType.Equals) -> {
+                if (!canBeShorthand)
+                    reporter.unexpectedToken(tokenType)
+                consume()
+                CoveredInitializerProperty(IdentifierNode(shorthandName!!), parseExpression(2))
+            }
+            match(TokenType.Identifier) || match(TokenType.OpenParen) -> MethodProperty(parseMethodDefinition(name))
+            canBeShorthand -> ShorthandProperty(IdentifierNode(shorthandName!!))
+            else -> reporter.unexpectedToken(tokenType)
+        }
     }
 
     private fun parseMethodDefinition(propertyName: PropertyName): MethodDefinitionNode = nps {
@@ -1289,7 +1341,7 @@ class Parser(val source: String) {
         // TODO: These are unique parameters
         val parameters = parseFunctionParameters()
         val block = functionBoundary {
-            parseBlock(isFunctionBlock = true)
+            parseBlock(pushNewScope = false)
         }
 
         val type = when {
@@ -1413,7 +1465,10 @@ class Parser(val source: String) {
         return NumericLiteralNode(numericToken.doubleValue())
     }
 
-    private fun parseCPEAAPLNode(): CPEAAPLNode = nps {
+    private fun  parseCPEAAPLNode(): CPEAAPLNode = nps {
+        val prevDisableScoping = disableAutoScoping
+        disableAutoScoping = true
+
         consume(TokenType.OpenParen)
         val parts = mutableListOf<CPEAAPLPart>()
         var endsWithComma = true
@@ -1443,6 +1498,7 @@ class Parser(val source: String) {
         }
 
         consume(TokenType.CloseParen)
+        disableAutoScoping = prevDisableScoping
 
         return CPEAAPLNode(parts, endsWithComma)
     }
@@ -1454,63 +1510,15 @@ class Parser(val source: String) {
         if (token.afterNewline)
             reporter.arrowFunctionNewLine()
 
-        // General note: because we initially parse all of the CPEAAPL parts
-        // in a regular expression context, any identifier will be
-        // IdentifierReferenceNodes instead of BindingIdentifierNodes.
-
-        for (part in node.covered) {
-            // TODO: Relax this to ExpressionNode when we add destructuring support
-            if (part.node !is IdentifierReferenceNode)
-                reporter.at(part.node).expected("identifier")
-        }
-
-        val indexOfSpread = node.covered.indexOfFirst { it.isSpread }
-        if (indexOfSpread != -1 && indexOfSpread != node.covered.size - 1)
-            reporter.at(node.covered[indexOfSpread].node).paramAfterRest()
-
-
-        // TODO: Validate object cover grammar when that becomes necessary
-        val parameters = ParameterList(node.covered.map { (node, isSpread) ->
-            val (identifier, initializer) = if (node is AssignmentExpressionNode) {
-                if (isSpread)
-                    reporter.at(node).restParamInitializer()
-
-                if (node.op != AssignmentOperator.Equals)
-                    reporter.at(node).expected("equals sign in initializer", node.op.symbol)
-
-                node.lhs to node.rhs
-            } else node to null
-
-            // TODO: Relax when we support destructuring
-            if (identifier !is IdentifierReferenceNode)
-                reporter.at(node).expected("identifier")
-
-            Parameter(BindingIdentifierNode(identifier.identifierName), initializer, isSpread)
-        })
+        scope = HoistingScope(scope)
 
         consume()
+        val parameters = CPEAAPLVisitor(this, node).parseAsParameterList()
         val body = parseStatement()
 
-        ArrowFunctionNode(parameters, body)
-    }
-
-    private fun cpeaaplToParenthesizedExpression(node: CPEAAPLNode): ParenthesizedExpressionNode = nps {
-        if (node.endsWithComma)
-            reporter.at(node.sourceEnd.shiftColumn(-1), node.sourceEnd).unexpectedToken(TokenType.Comma)
-
-        val parts = node.covered
-        for (part in parts) {
-            if (part.node !is ExpressionNode)
-                reporter.at(part.node).expected("expression")
-
-            if (part.isSpread)
-                reporter.at(part.node).unexpectedToken(TokenType.TriplePeriod)
-        }
-
-        if (parts.size == 1) {
-            ParenthesizedExpressionNode(parts[0].node as ExpressionNode)
-        } else {
-            ParenthesizedExpressionNode(CommaExpressionNode(parts.map { it.node as ExpressionNode }))
+        ArrowFunctionNode(parameters, body).also {
+            it.scope = scope
+            scope = scope.outer!!
         }
     }
 

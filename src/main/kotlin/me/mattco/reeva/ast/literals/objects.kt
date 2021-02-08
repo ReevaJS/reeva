@@ -16,19 +16,19 @@ class KeyValueProperty(
     val value: ExpressionNode,
 ) : Property(listOf(key, value))
 
-class ShorthandProperty(val key: IdentifierReferenceNode) : Property(listOf(key))
+class ShorthandProperty(val key: IdentifierNode) : Property(listOf(key))
 
 class MethodProperty(val method: MethodDefinitionNode) : Property(listOf(method))
 
 class SpreadProperty(val target: ExpressionNode) : Property(listOf(target))
 
 class CoveredInitializerProperty(
-    val target: IdentifierReferenceNode,
+    val target: IdentifierNode,
     val initializer: ExpressionNode,
 ) : Property(listOf(target, initializer))
 
 class PropertyName(
-    val expression: ExpressionNode, // IdentifierReferenceNode if isComputed == true
+    val expression: ExpressionNode,
     val isComputed: Boolean,
 ) : ASTNodeBase(listOf(expression))
 

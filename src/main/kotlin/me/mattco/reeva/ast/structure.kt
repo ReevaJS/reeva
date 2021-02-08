@@ -9,18 +9,30 @@ import me.mattco.reeva.utils.newline
 import me.mattco.reeva.utils.unreachable
 import kotlin.reflect.KClass
 
-open class ASTNodeBase(override val children: List<ASTNode> = emptyList()) : ASTNode {
+open class ASTNodeBase(children: List<ASTNode> = emptyList()) : ASTNode {
+    override lateinit var parent: ASTNode
+
+    final override val children: MutableList<ASTNode> = if (children is ArrayList<*>) {
+        children as MutableList<ASTNode>
+    } else children.toMutableList()
+
     override val name: String
         get() = this::class.java.simpleName
 
     override var sourceStart: TokenLocation = TokenLocation.EMPTY
     override var sourceEnd: TokenLocation = TokenLocation.EMPTY
+
+    init {
+        children.forEach { it.parent = this }
+    }
 }
 
 fun <T : ASTNode> T.withPosition(start: TokenLocation, end: TokenLocation) = apply {
     sourceStart = start
     sourceEnd = end
 }
+
+fun <T : ASTNode> T.withPosition(node: ASTNode) = withPosition(node.sourceStart, node.sourceEnd)
 
 open class NodeWithScope(children: List<ASTNode> = emptyList()) : ASTNodeBase(children) {
     lateinit var scope: Scope
@@ -38,13 +50,15 @@ abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeW
 
 interface ASTNode {
     val name: String
-    val children: List<ASTNode>
+    val children: MutableList<ASTNode>
 
     var sourceStart: TokenLocation
     var sourceEnd: TokenLocation
 
+    var parent: ASTNode
+
     // Nicely removes the extra indentation lines
-    fun debugPrint(): String {
+    fun debugPrint() {
         val string = dump()
         val lines = string.lines().dropLastWhile { it.isBlank() }
         val lastLine = lines.last()
@@ -73,7 +87,7 @@ interface ASTNode {
             newLines.add(0, mappedLine)
         }
 
-        return newLines.joinToString(separator = "\n")
+        println(newLines.joinToString(separator = "\n"))
     }
 
     fun dump(indent: Int = 0): String = buildString {

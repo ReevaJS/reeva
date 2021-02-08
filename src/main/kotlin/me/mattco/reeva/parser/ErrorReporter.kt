@@ -1,7 +1,6 @@
 package me.mattco.reeva.parser
 
 import me.mattco.reeva.ast.ASTNode
-import me.mattco.reeva.utils.expect
 
 abstract class Reporter {
     protected abstract val start: TokenLocation
@@ -13,29 +12,30 @@ abstract class Reporter {
         } else error("expected $expected")
     }
 
-    fun unexpectedToken(token: TokenType): Nothing = error("unexpected token \"$token\"")
-    fun invalidLhsInAssignment(): Nothing = error("invalid left-hand-side in assignment expression")
-    fun strictAssignToEval(): Nothing = error("cannot assign to \"eval\" in strict-mode code")
-    fun strictAssignToArguments(): Nothing = error("cannot assign to \"arguments\" in strict-mode code")
-    fun functionStatementNoName(): Nothing = error("function statement requires a name")
-    fun functionInExpressionContext(): Nothing = error("function declarations are not allowed in single-statement contexts")
-    fun throwStatementNewLine(): Nothing = error("throw keyword cannot be separated from it's expression by a line terminator")
     fun arrowFunctionNewLine(): Nothing = error("arrow function cannot be separated from it's arrow by a line terminator")
+    fun breakOutsideOfLoopOrSwitch(): Nothing = error("break statement must be inside of a loop or switch statement")
     fun classDeclarationNoName(): Nothing = error("class declaration must have an identifier")
-    fun paramAfterRest(): Nothing = error("function rest parameter must be the last parameter")
-    fun strictImplicitOctal(): Nothing = error("implicit octal literals are not allowed in strict-mode code")
+    fun constMissingInitializer(): Nothing = error("const variable declaration must have an initializer")
+    fun continueOutsideOfLoop(): Nothing = error("continue statement must be inside of a loop")
+    fun emptyTemplateLiteralExpr(): Nothing = error("empty template literal expression")
+    fun emptyParenthesizedExpression(): Nothing = error("parenthesized expression cannot be empty")
+    fun forEachMultipleDeclarations(): Nothing = error("for-in/of statement cannot contain multiple variable declarations")
+    fun functionInExpressionContext(): Nothing = error("function declarations are not allowed in single-statement contexts")
+    fun functionMissingParameter(): Nothing = error("missing function parameter")
+    fun functionStatementNoName(): Nothing = error("function statement requires a name")
     fun identifierAfterNumericLiteral(): Nothing = error("numeric literal cannot be directly followed by an identifier")
     fun invalidBreakTarget(target: String): Nothing = error("invalid break target \"$target\"")
     fun invalidContinueTarget(target: String): Nothing = error("invalid continue target \"$target\"")
-    fun functionMissingParameter(): Nothing = error("missing function parameter")
-    fun constMissingInitializer(): Nothing = error("const variable declaration must have an initializer")
-    fun continueOutsideOfLoop(): Nothing = error("continue statement must be inside of a loop")
-    fun breakOutsideOfLoopOrSwitch(): Nothing = error("break statement must be inside of a loop or switch statement")
-    fun forEachMultipleDeclarations(): Nothing = error("for-in/of statement cannot contain multiple variable declarations")
-    fun emptyTemplateLiteralExpr(): Nothing = error("empty template literal expression")
-    fun unterminatedTemplateLiteralExpr(): Nothing = error("unterminated template literal expression")
-    fun unterminatedTemplateLiteral(): Nothing = error("unterminated template literal")
+    fun invalidLhsInAssignment(): Nothing = error("invalid left-hand-side in assignment expression")
+    fun paramAfterRest(): Nothing = error("function rest parameter must be the last parameter")
     fun restParamInitializer(): Nothing = error("rest parameter cannot have an initializer")
+    fun strictAssignToArguments(): Nothing = error("cannot assign to \"arguments\" in strict-mode code")
+    fun strictAssignToEval(): Nothing = error("cannot assign to \"eval\" in strict-mode code")
+    fun strictImplicitOctal(): Nothing = error("implicit octal literals are not allowed in strict-mode code")
+    fun throwStatementNewLine(): Nothing = error("throw keyword cannot be separated from it's expression by a line terminator")
+    fun unexpectedToken(token: TokenType): Nothing = error("unexpected token \"$token\"")
+    fun unterminatedTemplateLiteral(): Nothing = error("unterminated template literal")
+    fun unterminatedTemplateLiteralExpr(): Nothing = error("unterminated template literal expression")
 
     fun error(message: String): Nothing {
         throw Parser.ParsingException(message, start, end)
@@ -68,7 +68,12 @@ class ErrorReporter(private val parser: Parser) : Reporter() {
 
             val lines = sourceCode.lines()
             val lineColumnEnd = if (lineIndex == endLine) endColumn else lines[lineIndex].length - 1
-            expect(lineColumnEnd < lines[lineIndex].length)
+            if (lineColumnEnd >= lines[lineIndex].length) {
+                // TODO: Eventually make this impossible
+                println("malformed error")
+                error.printStackTrace()
+                return
+            }
 
             val linesToPrint = (lineIndex - 3)..(lineIndex + 3)
             val lineWidth = linesToPrint.maxOf { it.toString().length }

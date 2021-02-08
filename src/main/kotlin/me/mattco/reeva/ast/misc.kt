@@ -1,12 +1,14 @@
 package me.mattco.reeva.ast
 
+import me.mattco.reeva.ast.statements.ASTListNode
+
 // CoverCallExpressionAndAsyncArrowHead
 class CCEAAAHNode(val node: ExpressionNode) : ASTNodeBase(listOf(node)), ExpressionNode
 
 // CoverParenthesizedExpressionAndArrowParameterList
 class CPEAAPLNode(
-    val covered: List<CPEAAPLPart>,
+    val parts: List<CPEAAPLPart>,
     val endsWithComma: Boolean,
-) : ASTNodeBase()
+) : ASTListNode<CPEAAPLPart>(parts)
 
-data class CPEAAPLPart(val node: ASTNode, val isSpread: Boolean) : ASTNodeBase()
+data class CPEAAPLPart(val node: ExpressionNode, val isSpread: Boolean) : ASTNodeBase(listOf(node))
