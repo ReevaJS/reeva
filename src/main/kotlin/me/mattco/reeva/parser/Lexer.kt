@@ -75,7 +75,7 @@ class Lexer(private val source: String) {
 
         if (isDone) {
             tokenType = TokenType.Eof
-        } else if (lastToken.type == TokenType.RegexLiteral && !isDone && char.isLetter() && !afterNewline) {
+        } else if (lastToken.type == TokenType.RegExpLiteral && !isDone && char.isLetter() && !afterNewline) {
             tokenType = TokenType.RegexFlags
             while (!isDone && char.isLetter())
                 consume()
@@ -210,7 +210,7 @@ class Lexer(private val source: String) {
             }
         } else if (char == '/' && lastToken.type !in slashMeansDivision) {
             consume()
-            tokenType = TokenType.RegexLiteral
+            tokenType = TokenType.RegExpLiteral
 
             while (!isDone) {
                 if (char == '[') {
@@ -235,45 +235,13 @@ class Lexer(private val source: String) {
                 consume()
             }
         } else {
-            var matched = false
+            val type = matchSymbolicToken()
+            tokenType = type
 
-            // Only four length token
-            if (has(4) && match(shrEquals)) {
-                consume(4)
-                tokenType = TokenType.UShrEquals
-                matched = true
-            }
-
-            if (!matched && has(3)) {
-                matched = TokenType.threeCharTokens.firstOrNull {
-                    match(it.string)
-                }?.also {
-                    tokenType = it
-                    consume(3)
-                } != null
-            }
-
-            if (!matched && has(2)) {
-                matched = TokenType.twoCharTokens.firstOrNull {
-                    match(it.string)
-                }?.also {
-                    tokenType = it
-                    consume(2)
-                } != null
-            }
-
-            if (!matched && has(1)) {
-                matched = TokenType.oneCharTokens.firstOrNull {
-                    match(it.string)
-                }?.also {
-                    tokenType = it
-                    consume()
-                } != null
-            }
-
-            if (!matched) {
+            if (type == TokenType.Invalid) {
                 consume()
-                tokenType = TokenType.Invalid
+            } else {
+                consume(type.string.length)
             }
         }
 
@@ -422,6 +390,102 @@ class Lexer(private val source: String) {
         return if (maybeKeyword.string == str) maybeKeyword else TokenType.Identifier
     }
 
+    private fun matchSymbolicToken(): TokenType {
+        return when (char) {
+            ']' -> TokenType.CloseBracket
+            '}' -> TokenType.CloseCurly
+            ')' -> TokenType.CloseParen
+            ':' -> TokenType.Colon
+            ',' -> TokenType.Comma
+            '[' -> TokenType.OpenBracket
+            '{' -> TokenType.OpenCurly
+            '(' -> TokenType.OpenParen
+            ';' -> TokenType.Semicolon
+            '+' -> if (has(1)) {
+                when (peek(1)) {
+                    '=' -> TokenType.AddEquals
+                    '+' -> TokenType.Inc
+                    else -> return TokenType.Add
+                }
+            } else TokenType.Add
+            '-' -> if (has(1)) {
+                when (peek(1)) {
+                    '=' -> TokenType.SubEquals
+                    '-' -> TokenType.Dec
+                    else -> return TokenType.Sub
+                }
+            } else TokenType.Sub
+            '*' -> if (has(1)) {
+                when (peek(1)) {
+                    '=' -> TokenType.MulEquals
+                    '*' -> if (has(2) && peek(2) == '=') TokenType.ExpEquals else TokenType.Exp
+                    else -> TokenType.Mul
+                }
+            } else TokenType.Mul
+            // we've already checked for regex before this function
+            '/' -> if (has(1) && peek(1) == '=') TokenType.DivEquals else TokenType.Div
+            '%' -> if (has(1) && peek(1) == '=') TokenType.ModEquals else TokenType.Mod
+            '&' -> if (has(1)) {
+                when (peek(1)) {
+                    '=' -> TokenType.BitwiseAndEquals
+                    '&' -> if (has(2) && peek(2) == '=') TokenType.AndEquals else TokenType.And
+                    else -> TokenType.BitwiseAnd
+                }
+            } else TokenType.BitwiseAnd
+            '|' -> if (has(1)) {
+                when (peek(1)) {
+                    '=' -> TokenType.BitwiseOrEquals
+                    '|' -> if (has(2) && peek(2) == '=') TokenType.OrEquals else TokenType.Or
+                    else -> TokenType.BitwiseOr
+                }
+            } else TokenType.BitwiseOr
+            '^' -> if (has(1) && peek(1) == '=') TokenType.BitwiseXorEquals else TokenType.BitwiseXor
+            '~' -> TokenType.BitwiseNot
+            '!' -> if (has(1) && peek(1) == '=') {
+                if (has(2) && peek(2) == '=') TokenType.StrictNotEquals else TokenType.SloppyNotEquals
+            } else TokenType.Not
+            '=' -> if (has(1)) {
+                when (peek(1)) {
+                    '>' -> TokenType.Arrow
+                    '=' -> if (has(2) && peek(2) == '=') TokenType.StrictEquals else TokenType.SloppyEquals
+                    else -> TokenType.Equals
+                }
+            } else TokenType.Equals
+            '<' -> if (has(1)) {
+                when (peek(1)) {
+                    '=' -> TokenType.LessThanEquals
+                    '<' -> if (has(2) && peek(2) == '=') TokenType.ShlEquals else TokenType.Shl
+                    else -> TokenType.LessThan
+                }
+            } else TokenType.LessThan
+            '>' -> if (has(1)) {
+                when (peek(1)) {
+                    '=' -> TokenType.GreaterThanEquals
+                    '>' -> if (has(2)) {
+                        when (peek(2)) {
+                            '=' -> TokenType.ShrEquals
+                            '>' -> if (has(3) && peek(3) == '=') TokenType.UShrEquals else TokenType.UShr
+                            else -> TokenType.Shr
+                        }
+                    } else TokenType.Shr
+                    else -> TokenType.GreaterThan
+                }
+            } else TokenType.GreaterThan
+            '.' -> if (has(2) && peek(1) == '.' && peek(2) == '.') {
+                TokenType.TriplePeriod
+            } else TokenType.Period
+            '?' -> if (has(1)) {
+                when (peek(1)) {
+                    '.' -> TokenType.OptionalChain
+                    '?' -> if (has(2) && peek(2) == '=') TokenType.CoalesceEquals else TokenType.Coalesce
+                    else -> TokenType.QuestionMark
+                }
+            } else TokenType.QuestionMark
+            '#' -> TokenType.Hash
+            else -> TokenType.Invalid
+        }
+    }
+
     private fun isIdentMiddle() = isIdentStart() || char.isIdContinue()
 
     private fun isCommentStart() =
@@ -508,7 +572,7 @@ class Lexer(private val source: String) {
             TokenType.Identifier,
             TokenType.NullLiteral,
             TokenType.NumericLiteral,
-            TokenType.RegexLiteral,
+            TokenType.RegExpLiteral,
             TokenType.StringLiteral,
             TokenType.TemplateLiteralEnd,
             TokenType.This,

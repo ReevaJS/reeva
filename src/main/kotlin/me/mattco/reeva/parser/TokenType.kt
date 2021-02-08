@@ -119,7 +119,7 @@ enum class TokenType(val string: String, val category: Category = Category.None)
     TemplateLiteralString("THIS SHOULD NEVER BE USED"),
 
     RegexFlags("THIS SHOULD NEVER BE USED"),
-    RegexLiteral("regex literal"),
+    RegExpLiteral("regex literal"),
     StringLiteral("string literal"),
     UnterminatedStringLiteral("THIS SHOULD NEVER BE USED"),
     UnterminatedTemplateLiteral("THIS SHOULD NEVER BE USED"),
@@ -161,17 +161,6 @@ enum class TokenType(val string: String, val category: Category = Category.None)
     }
 
     companion object {
-        val keywords = values().filter { it.category == Category.Keyword }
-        val threeCharTokens = values().filter {
-            it.string.length == 3 && (it.category == Category.Operator || it.category == Category.Symbol)
-        }
-        val twoCharTokens = values().filter {
-            it.string.length == 2 && (it.category == Category.Operator || it.category == Category.Symbol)
-        }
-        val oneCharTokens = values().filter {
-            it.string.length == 1 && (it.category == Category.Operator || it.category == Category.Symbol)
-        }
-
         private val unaryPrefixTokens = setOf(
             Inc,
             Dec,
@@ -200,7 +189,7 @@ enum class TokenType(val string: String, val category: Category = Category.None)
             Function,
             This,
             Super,
-            RegexLiteral,
+            RegExpLiteral,
             *unaryPrefixTokens.toTypedArray(),
         )
 
