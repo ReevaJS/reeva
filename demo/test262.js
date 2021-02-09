@@ -6,7 +6,6 @@ description: |
 defines: [assert]
 ---*/
 
-
 function assert(mustBeTrue, message) {
     if (mustBeTrue === true) {
         return;
@@ -455,7 +454,9 @@ function  assertRelativeDateMs(date, expectedMs) {
 }
 
 
-function buildString({ loneCodePoints, ranges }) {
+function buildString(o) {
+    var loneCodePoints = o.loneCodePoints;
+    var ranges = o.ranges;
     const CHUNK_SIZE = 10000;
     let result = Reflect.apply(String.fromCodePoint, null, loneCodePoints);
     for (let i = 0; i < ranges.length; i++) {
