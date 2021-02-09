@@ -57,11 +57,11 @@ fun simpleMeasureTest(
 private val PRINT_REFIX = "[TimeTest]"
 
 fun main() {
-    val source = File("./demo/index.js").readText()
+    val source = File("./demo/test262.js").readText()
 
     try {
-//        simpleMeasureTest(30, 20, 10) {
-            Parser(source).parseScript()
+//        simpleMeasureTest(1, 20, 10) {
+//            Parser(source).parseScript()
 //        }
         val ast = Parser(source).parseScript()
         ast.debugPrint()
@@ -667,7 +667,7 @@ class Parser(val source: String) {
         val condition = if (match(TokenType.Semicolon)) null else parseExpression(0)
 
         consume(TokenType.Semicolon)
-        val update = if (match(TokenType.Semicolon)) null else parseExpression(0)
+        val update = if (match(TokenType.CloseParen)) null else parseExpression(0)
 
         consume(TokenType.CloseParen)
 
@@ -1015,8 +1015,10 @@ class Parser(val source: String) {
 
         if (match(TokenType.Comma) && minPrecedence <= 1) {
             val expressions = mutableListOf(expression)
-            while (match(TokenType.Comma))
+            while (match(TokenType.Comma)) {
+                consume()
                 expressions.add(parseExpression(2))
+            }
             return CommaExpressionNode(expressions)
         }
 
@@ -1096,9 +1098,9 @@ class Parser(val source: String) {
             TokenType.CoalesceEquals -> makeAssignExpr(AssignmentOperator.Coalesce)
             TokenType.Period -> {
                 consume()
-                if (!matchIdentifier())
+                if (!matchIdentifierName())
                     reporter.expected("identifier", tokenType)
-                MemberExpressionNode(lhs, IdentifierNode(parseIdentifier()), MemberExpressionNode.Type.NonComputed)
+                MemberExpressionNode(lhs, nps { parseIdentifierName() }, MemberExpressionNode.Type.NonComputed)
             }
             TokenType.OpenBracket -> {
                 consume()
@@ -1200,11 +1202,22 @@ class Parser(val source: String) {
             }
             TokenType.OpenCurly -> parseObjectLiteral()
             TokenType.OpenBracket -> parseArrayLiteral()
-            TokenType.RegexLiteral -> TODO()
+            TokenType.RegExpLiteral -> parseRegExpLiteral()
             TokenType.TemplateLiteralStart -> parseTemplateLiteral()
             TokenType.New -> parseNewExpression()
             else -> reporter.expected("primary expression", tokenType)
         }
+    }
+
+    private fun parseRegExpLiteral(): RegExpLiteralNode = nps {
+        val source = token.literals
+        consume(TokenType.RegExpLiteral)
+
+        val flags = if (match(TokenType.RegexFlags)) {
+            token.literals.also { consume() }
+        } else ""
+
+        RegExpLiteralNode(source, flags)
     }
 
     private fun parseTemplateLiteral(): ExpressionNode = nps {
@@ -1382,9 +1395,19 @@ class Parser(val source: String) {
                 PropertyName(StringLiteralNode(token.literals), false).also { consume() }
             }
             match(TokenType.NumericLiteral) -> PropertyName(parseNumericLiteral(), false)
-            match(TokenType.Identifier) -> PropertyName(IdentifierNode(parseIdentifier()), false)
+            matchIdentifierName() -> PropertyName(parseIdentifierName(), false)
             else -> reporter.unexpectedToken(tokenType)
         }
+    }
+
+    private fun matchIdentifierName(): Boolean {
+        return match(TokenType.Identifier) || tokenType.category == TokenType.Category.Keyword
+    }
+
+    private fun parseIdentifierName(): IdentifierNode = nps {
+        val identifier = token.literals
+        consume()
+        return IdentifierNode(identifier)
     }
 
     /*

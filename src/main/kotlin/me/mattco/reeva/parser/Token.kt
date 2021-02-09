@@ -34,6 +34,8 @@ data class Token(
 data class TokenLocation(val index: Int, val line: Int, val column: Int) {
     fun shiftColumn(n: Int) = TokenLocation(index, line, column + n)
 
+    override fun toString() = "$line:$column"
+
     companion object {
         val EMPTY = TokenLocation(-1, -1, -1)
     }
