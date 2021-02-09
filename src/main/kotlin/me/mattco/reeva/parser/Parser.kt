@@ -92,19 +92,21 @@ class Parser(val source: String) {
     var token: Token = Token.INVALID
 
     val tokenType: TokenType
-        get() = token.type
+        inline get() = token.type
     val isDone: Boolean
-        get() = token === Token.INVALID
+        inline get() = token === Token.INVALID
 
     val sourceStart: TokenLocation
-        get() = token.start
+        inline get() = token.start
     val sourceEnd: TokenLocation
-        get() = token.end
+        inline get() = token.end
 
     lateinit var scope: Scope
 
     private fun initLexer() {
+        Thread.currentThread().name = "Parser Thread"
         Reeva.threadPool.submit {
+            Thread.currentThread().name = "Lexer Thread"
             try {
                 val lexer = Lexer(source)
                 while (!lexer.isDone)
@@ -571,7 +573,7 @@ class Parser(val source: String) {
             parseBlock()
         } else null
 
-        if (catchBlock != null && finallyBlock != null)
+        if (catchBlock == null && finallyBlock == null)
             reporter.expected(TokenType.Finally, tokenType)
 
         TryStatementNode(tryBlock, catchBlock, finallyBlock)
