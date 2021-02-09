@@ -1,6 +1,7 @@
 package me.mattco.reeva.parser
 
 import me.mattco.reeva.ast.ASTNode
+import me.mattco.reeva.utils.expect
 
 abstract class Reporter {
     protected abstract val start: TokenLocation
@@ -68,12 +69,7 @@ class ErrorReporter(private val parser: Parser) : Reporter() {
 
             val lines = sourceCode.lines()
             val lineColumnEnd = if (lineIndex == endLine) endColumn else lines[lineIndex].length - 1
-            if (lineColumnEnd >= lines[lineIndex].length) {
-                // TODO: Eventually make this impossible
-                println("malformed error")
-                error.printStackTrace()
-                return
-            }
+            expect(lineColumnEnd <= lines[lineIndex].length)
 
             val linesToPrint = (lineIndex - 3)..(lineIndex + 3)
             val lineWidth = linesToPrint.maxOf { it.toString().length }
