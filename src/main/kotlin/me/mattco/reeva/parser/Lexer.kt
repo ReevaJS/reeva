@@ -71,7 +71,7 @@ class Lexer(private val source: String) {
 
         val valueStartCursor = cursor
         val valueStartLocation = TokenLocation(cursor, lineNum, columnNum)
-        var tokenType = TokenType.Invalid
+        var tokenType: TokenType
 
         if (isDone) {
             tokenType = TokenType.Eof

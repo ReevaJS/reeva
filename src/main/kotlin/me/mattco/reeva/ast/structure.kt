@@ -99,11 +99,18 @@ interface ASTNode {
 
     fun StringBuilder.dumpSelf(indent: Int) {
         appendIndent(indent)
-        append(name)
+        appendName()
         newline()
     }
 
-    fun StringBuilder.appendName() = append(name)
+    fun StringBuilder.appendName() {
+        append(name)
+        append(" (")
+        append(sourceStart)
+        append(" - ")
+        append(sourceEnd)
+        append(")")
+    }
 
     companion object {
         private const val INDENT = "| "
