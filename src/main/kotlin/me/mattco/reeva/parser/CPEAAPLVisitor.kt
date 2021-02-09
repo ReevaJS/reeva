@@ -1,10 +1,7 @@
 package me.mattco.reeva.parser
 
 import me.mattco.reeva.ast.*
-import me.mattco.reeva.ast.expressions.AssignmentExpressionNode
-import me.mattco.reeva.ast.expressions.AssignmentOperator
-import me.mattco.reeva.ast.expressions.CommaExpressionNode
-import me.mattco.reeva.ast.expressions.ParenthesizedExpressionNode
+import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.utils.expect
 
 class CPEAAPLVisitor(
@@ -44,15 +41,18 @@ class CPEAAPLVisitor(
             return ParenthesizedExpressionNode(inner).withPosition(node)
         }
 
-        override fun visitBindingIdentifier(node: BindingIdentifierNode) {
-            // Should never have binding identifiers
-            expect(false)
+        override fun visitMemberExpression(node: MemberExpressionNode) {
+            visit(node.lhs)
+            if (node.rhs !is IdentifierNode)
+                visit(node.rhs)
         }
 
         override fun visitIdentifier(node: IdentifierNode) {
             val index = node.parent.children.indexOf(node)
-            expect(index >= 0)
-            node.parent.children[index] = IdentifierReferenceNode(node.identifierName).withPosition(node)
+            expect(index >= 0, node.sourceStart.toString())
+            node.parent.children[index] = IdentifierReferenceNode(node.identifierName)
+                .withPosition(node)
+                .also { it.parent = node.parent }
         }
     }
 
@@ -106,12 +106,6 @@ class CPEAAPLVisitor(
 
                 Parameter(BindingIdentifierNode(identifier.identifierName), initializer, isSpread)
             })
-        }
-
-        override fun visitIdentifier(node: IdentifierNode) {
-            val index = node.parent.children.indexOf(node)
-            expect(index >= 0)
-            node.parent.children[index] = IdentifierReferenceNode(node.identifierName).withPosition(node)
         }
     }
 }
