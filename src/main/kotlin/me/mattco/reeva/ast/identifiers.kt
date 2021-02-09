@@ -10,6 +10,8 @@ class BindingIdentifierNode(val identifierName: String) : VariableSourceNode(), 
         append(identifierName)
         append(")\n")
     }
+
+    override fun toString() = identifierName
 }
 
 class IdentifierNode(val identifierName: String) : ASTNodeBase(), ExpressionNode {
@@ -20,6 +22,8 @@ class IdentifierNode(val identifierName: String) : ASTNodeBase(), ExpressionNode
         append(identifierName)
         append(")\n")
     }
+
+    override fun toString() = identifierName
 }
 
 class IdentifierReferenceNode(val identifierName: String) : VariableRefNode(), ExpressionNode {
@@ -34,4 +38,6 @@ class IdentifierReferenceNode(val identifierName: String) : VariableRefNode(), E
         append(identifierName)
         append(")\n")
     }
+
+    override fun toString() = identifierName
 }

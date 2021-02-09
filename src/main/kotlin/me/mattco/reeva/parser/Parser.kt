@@ -60,7 +60,7 @@ fun main() {
     val source = File("./demo/test262.js").readText()
 
     try {
-//        simpleMeasureTest(1, 20, 10) {
+//        simpleMeasureTest(30, 20, 10) {
 //            Parser(source).parseScript()
 //        }
         val ast = Parser(source).parseScript()
@@ -130,6 +130,8 @@ class Parser(val source: String) {
 
         val script = parseScriptImpl()
         script.scope = globalScope
+
+        globalScope.onFinish()
 
         return script
     }
@@ -327,9 +329,11 @@ class Parser(val source: String) {
             asi()
 
         if (type == Variable.Type.Var) {
-            VariableDeclarationNode(declarations)
+            VariableDeclarationNode(declarations).also { it.scope = scope }
         } else {
-            LexicalDeclarationNode(isConst = type == Variable.Type.Const, declarations)
+            LexicalDeclarationNode(isConst = type == Variable.Type.Const, declarations).also {
+                it.scope = scope
+            }
         }
     }
 
@@ -870,18 +874,6 @@ class Parser(val source: String) {
 //
 //    }
 
-    private fun initializeParamVariables(parameters: ParameterList) {
-        for (parameter in parameters) {
-            val variable = Variable(
-                parameter.identifier.identifierName,
-                Variable.Type.Var,
-                Variable.Mode.Parameter
-            )
-            parameter.variable = variable
-            scope.addDeclaredVariable(variable)
-        }
-    }
-
     /*
      * FormalParameters :
      *     [empty]
@@ -941,7 +933,7 @@ class Parser(val source: String) {
         }
 
         consume(TokenType.CloseParen)
-        ParameterList(parameters).also(::initializeParamVariables)
+        ParameterList(parameters)
     }
 
     private fun matchIdentifier() = match(TokenType.Identifier) ||
@@ -993,6 +985,7 @@ class Parser(val source: String) {
         val statements = parseStatementList()
         consume(TokenType.CloseCurly)
         BlockNode(statements).also {
+            it.scope = scope
             if (pushNewScope)
                 scope = scope.outer!!
         }

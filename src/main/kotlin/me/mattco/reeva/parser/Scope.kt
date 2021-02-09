@@ -3,12 +3,23 @@ package me.mattco.reeva.parser
 import me.mattco.reeva.ast.VariableRefNode
 
 open class Scope(val outer: Scope? = null) {
+    private val childScopes = mutableListOf<Scope>()
+
     private val _declaredVariables = mutableListOf<Variable>()
     val declaredVariables: List<Variable>
         get() = _declaredVariables
 
     // Variables that have yet to be connected to their source
-    private val variableRefQueue = mutableListOf<VariableRefNode>()
+    private val unlinkedRefNodes = mutableListOf<VariableRefNode>()
+
+    val isStrict: Boolean by lazy {
+        firstParentOfType<HoistingScope>().hasUseStrictDirective
+    }
+
+    init {
+        @Suppress("LeakingThis")
+        outer?.childScopes?.add(this)
+    }
 
     fun addDeclaredVariable(variable: Variable) {
         _declaredVariables.add(variable)
@@ -19,7 +30,7 @@ open class Scope(val outer: Scope? = null) {
         val name = node.boundName()
 
         node.variable = findDeclaredVariable(name) ?: let {
-            variableRefQueue.add(node)
+            unlinkedRefNodes.add(node)
             Variable(name, Variable.Type.Var, Variable.Mode.Global)
         }
     }
@@ -31,15 +42,19 @@ open class Scope(val outer: Scope? = null) {
     }
 
     private fun addDeclaredVariableHelper(variable: Variable) {
-        variableRefQueue.removeIf {
+        unlinkedRefNodes.removeIf {
             if (it.variable.name == variable.name) {
                 it.variable = variable
                 true
             } else false
         }
+
+        // Non-var declarations aren't hoisted out of any scope
         if (variable.type != Variable.Type.Var)
             return
 
+        // If this scope is a HoistingScope, any var-declarations
+        // will reside in this scope, not in an upper scope
         if (this is HoistingScope)
             return
 
@@ -53,7 +68,17 @@ open class Scope(val outer: Scope? = null) {
         return scope
     }
 
-    val isStrict: Boolean by lazy { firstParentOfType<HoistingScope>().hasUseStrictDirective }
+    open fun onFinish() {
+        // Attempt to connect any remaining global var references
+        for (node in unlinkedRefNodes) {
+            val source = findDeclaredVariable(node.variable.name)
+            if (source != null)
+                node.variable = source
+        }
+        unlinkedRefNodes.clear()
+
+        childScopes.forEach(Scope::onFinish)
+    }
 }
 
 open class HoistingScope(outer: Scope? = null) : Scope(outer) {
