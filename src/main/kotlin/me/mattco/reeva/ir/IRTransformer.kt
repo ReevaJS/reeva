@@ -338,22 +338,53 @@ class IRTransformer : ASTVisitor {
 
     override fun visitBinaryExpression(node: BinaryExpressionNode) {
         val opcode = when (node.operator) {
-            BinaryOperator.Mul -> ::Mul
-            BinaryOperator.Div -> ::Div
-            BinaryOperator.Mod -> ::Mod
             BinaryOperator.Add -> ::Add
             BinaryOperator.Sub -> ::Sub
-            BinaryOperator.Shl -> ::ShiftLeft
-            BinaryOperator.Shr -> ::ShiftRight
-            BinaryOperator.UShr -> ::ShiftRightUnsigned
+            BinaryOperator.Mul -> ::Mul
+            BinaryOperator.Div -> ::Div
+            BinaryOperator.Exp -> ::Exp
+            BinaryOperator.Mod -> ::Mod
+            BinaryOperator.And -> {
+                visit(node.lhs)
+                +ToBoolean
+                val skip = label()
+                jump(skip, ::JumpIfFalse)
+                visit(node.rhs)
+                place(skip)
+                return
+            }
+            BinaryOperator.Or -> {
+                visit(node.lhs)
+                val skip = label()
+                jump(skip, ::JumpIfToBooleanTrue)
+                visit(node.rhs)
+                place(skip)
+                return
+            }
+            BinaryOperator.Coalesce -> {
+                visit(node.lhs)
+                val skip = label()
+                jump(skip, ::JumpIfNotNullish)
+                visit(node.rhs)
+                place(skip)
+                return
+            }
             BinaryOperator.BitwiseAnd -> ::BitwiseAnd
             BinaryOperator.BitwiseOr -> ::BitwiseOr
             BinaryOperator.BitwiseXor -> ::BitwiseXor
-            BinaryOperator.Exp -> ::Exp
-            BinaryOperator.And -> TODO()
-            BinaryOperator.Or -> TODO()
-            BinaryOperator.Coalesce -> TODO()
-            else -> unreachable()
+            BinaryOperator.Shl -> ::ShiftLeft
+            BinaryOperator.Shr -> ::ShiftRight
+            BinaryOperator.UShr -> ::ShiftRightUnsigned
+            BinaryOperator.StrictEquals -> ::TestEqualStrict
+            BinaryOperator.StrictNotEquals -> ::TestNotEqualStrict
+            BinaryOperator.SloppyEquals -> ::TestEqual
+            BinaryOperator.SloppyNotEquals -> ::TestNotEqual
+            BinaryOperator.LessThan -> ::TestLessThan
+            BinaryOperator.LessThanEquals -> ::TestLessThanOrEqual
+            BinaryOperator.GreaterThan -> ::TestGreaterThan
+            BinaryOperator.GreaterThanEquals -> ::TestGreaterThanOrEqual
+            BinaryOperator.Instanceof -> ::TestInstanceOf
+            BinaryOperator.In -> ::TestIn
         }
 
         visit(node.lhs)
