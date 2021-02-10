@@ -83,10 +83,11 @@ class IRTransformer : ASTVisitor {
     }
 
     /**
-     * @return true if the scope requires an EnvRecord (i.e. has
-     *         non-inlineable variables).
+     * @return The index of the DeclarationsArray in the constant pool,
+     *         or null if no DeclarationsArray is needed (i.e. if there
+     *         are no non-inlineable variables)
      */
-    private fun loadDeclarations(node: NodeWithScope): Int {
+    private fun loadDeclarations(node: NodeWithScope): Int? {
         val scope = node.scope
 
         val varNames = mutableListOf<String>()
@@ -101,11 +102,14 @@ class IRTransformer : ASTVisitor {
             }
         }
 
+        if (varNames.isEmpty() && lexNames.isEmpty() && constNames.isEmpty())
+            return null
+
         return loadConstant(DeclarationsArray(varNames, lexNames, constNames))
     }
 
     private fun setupGlobalScope(node: NodeWithScope) {
-        +DeclareGlobals(loadDeclarations(node))
+        +DeclareGlobals(loadDeclarations(node) ?: return)
     }
 
     override fun visitExpressionStatement(node: ExpressionStatementNode) {
