@@ -9,7 +9,6 @@ import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
 import me.mattco.reeva.utils.expect
-import me.mattco.reeva.utils.unreachable
 import java.io.File
 import java.math.BigInteger
 
@@ -62,6 +61,7 @@ class IRTransformer : ASTVisitor {
 
     override fun visitBlock(node: BlockNode) {
         if (node.scope.requiresEnv) {
+            builder.nestedContexts++
             +PushEnv(node.scope.numSlots)
             node.scope.envVariables.forEachIndexed { index, variable ->
                 variable.slot = index
@@ -78,8 +78,10 @@ class IRTransformer : ASTVisitor {
             markRegFree(it.slot)
         }
 
-        if (node.scope.requiresEnv)
+        if (node.scope.requiresEnv) {
+            builder.nestedContexts--
             +PopEnv
+        }
     }
 
     /**
@@ -157,7 +159,46 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitForStatement(node: ForStatementNode) {
-        TODO()
+        if (node.scope.requiresEnv) {
+            +PushEnv(node.scope.numSlots)
+            builder.nestedContexts++
+            node.scope.envVariables.forEachIndexed { index, variable ->
+                variable.slot = index
+            }
+        }
+
+        node.scope.inlineableVariables.forEach {
+            it.slot = nextFreeReg()
+        }
+
+        if (node.initializer != null)
+            visit(node.initializer)
+
+        val loopStart = label()
+        val loopEnd = label()
+        place(loopStart)
+
+        if (node.condition != null) {
+            visit(node.condition)
+            jump(loopEnd, ::JumpIfToBooleanFalse)
+        }
+
+        visit(node.body)
+        if (node.incrementer != null)
+            visit(node.incrementer)
+
+        jump(loopStart)
+
+        place(loopEnd)
+
+        node.scope.inlineableVariables.forEach {
+            markRegFree(it.slot)
+        }
+
+        if (node.scope.requiresEnv) {
+            builder.nestedContexts--
+            +PopEnv
+        }
     }
 
     override fun visitForIn(node: ForInNode) {
@@ -190,6 +231,9 @@ class IRTransformer : ASTVisitor {
 
     override fun visitReturnStatement(node: ReturnStatementNode) {
         node.expression?.also(::visit)
+        repeat(builder.nestedContexts) {
+            +PopEnv
+        }
         +Return
     }
 

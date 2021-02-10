@@ -1,10 +1,14 @@
 package me.mattco.reeva.ir
 
 class FunctionBuilder(val argCount: Int = 1) {
+    private val registers = mutableListOf<RegState>()
+
     val opcodes = mutableListOf<Opcode>()
     val constantPool = mutableListOf<Any>()
 
-    private val registers = mutableListOf<RegState>()
+    // Stores how deep we currently are in the context tree from the
+    // scope we started with (this function's HoistingScope)
+    var nestedContexts = 0
 
     enum class RegState { USED, FREE }
 

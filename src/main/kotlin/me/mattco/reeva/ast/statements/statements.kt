@@ -55,7 +55,7 @@ class ForStatementNode(
     val condition: ExpressionNode?,
     val incrementer: ExpressionNode?,
     val body: StatementNode,
-) : ASTNodeBase(listOfNotNull(initializer, condition, incrementer, body)), StatementNode {
+) : NodeWithScope(listOfNotNull(initializer, condition, incrementer, body)), StatementNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -80,19 +80,19 @@ class ForInNode(
     val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
-) : ASTNodeBase(listOf(decl, expression, body)), StatementNode
+) : NodeWithScope(listOf(decl, expression, body)), StatementNode
 
 class ForOfNode(
     val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
-) : ASTNodeBase(listOf(decl, expression, body)), StatementNode
+) : NodeWithScope(listOf(decl, expression, body)), StatementNode
 
 class ForAwaitOfNode(
     val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
-) : ASTNodeBase(listOf(decl, expression, body)), StatementNode
+) : NodeWithScope(listOf(decl, expression, body)), StatementNode
 
 class LabelledStatementNode(
     val labels: List<String>,

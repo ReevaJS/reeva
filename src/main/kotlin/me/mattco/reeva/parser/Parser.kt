@@ -658,9 +658,9 @@ class Parser(val source: String) {
                 if (matchForEach())
                     return@nps parseForEachStatement(initializer)
             } else if (tokenType.isVariableDeclarationToken) {
-                if (match(TokenType.Var)) {
+                if (matchAny(TokenType.Let, TokenType.Const)) {
                     initRequiresOwnScope = true
-                    scope = HoistingScope(scope)
+                    scope = Scope(scope)
                 }
                 initializer = parseVariableDeclaration(isForEachLoop = true)
                 if (matchForEach())
@@ -685,10 +685,11 @@ class Parser(val source: String) {
             parseStatement()
         }
 
+        val forScope = scope
         if (initRequiresOwnScope)
             scope = scope.outer!!
 
-        ForStatementNode(initializer, condition, update, body)
+        ForStatementNode(initializer, condition, update, body).also { it.scope = forScope }
     }
 
     private fun parseForEachStatement(initializer: ASTNode): StatementNode = nps {
@@ -711,7 +712,7 @@ class Parser(val source: String) {
             ForInNode(initializer, rhs, body)
         } else {
             ForOfNode(initializer, rhs, body)
-        }
+        }.also { it.scope = scope }
     }
 
     private fun matchForEach() = match(TokenType.In) || (match(TokenType.Identifier) && token.literals == "of")
