@@ -137,6 +137,11 @@ class DeclareGlobals(val cpIndex: Int) : Opcode()
 class LdaGlobal(val nameCpIndex: Int) : Opcode()
 
 /**
+ * Stores the value in the accumulator into the global env
+ */
+class StaGlobal(val nameCpIndex: Int) : Opcode()
+
+/**
  * Load the named property [nameCpIndex] from the environment
  */
 class LdaCurrentEnv(val slot: Int) : Opcode()

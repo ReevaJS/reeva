@@ -4,6 +4,7 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
+import me.mattco.reeva.parser.GlobalSourceNode
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
@@ -399,10 +400,10 @@ class IRTransformer : ASTVisitor {
 
                 loadRhsIntoAcc()
 
-                if (lhs.targetVar.isInlineable) {
-                    +Star(lhs.targetVar.slot)
-                } else {
-                    loadEnvVariableRef(lhs.targetVar, lhs.scope)
+                when {
+                    lhs.targetVar.isInlineable -> +Star(lhs.targetVar.slot)
+                    lhs.targetVar.source !is GlobalSourceNode -> loadEnvVariableRef(lhs.targetVar, lhs.scope)
+                    else -> +StaGlobal(loadConstant(lhs.targetVar.name))
                 }
 
                 return
