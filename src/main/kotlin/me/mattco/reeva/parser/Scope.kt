@@ -2,6 +2,7 @@ package me.mattco.reeva.parser
 
 import me.mattco.reeva.ast.VariableRefNode
 import me.mattco.reeva.ast.VariableSourceNode
+import me.mattco.reeva.utils.expect
 
 open class Scope(val outer: Scope? = null) {
     private val childScopes = mutableListOf<Scope>()
@@ -39,8 +40,20 @@ open class Scope(val outer: Scope? = null) {
     }
 
     fun addDeclaredVariable(variable: Variable) {
-        _declaredVariables.add(variable)
-        addDeclaredVariableHelper(variable)
+        expect(variable.mode != Variable.Mode.Global)
+
+        unlinkedRefNodes.removeIf {
+            if (it.targetVar.name == variable.name) {
+                it.targetVar = variable
+                true
+            } else false
+        }
+
+        if (variable.type != Variable.Type.Var || this is HoistingScope) {
+           _declaredVariables.add(variable)
+        } else {
+            outer!!.addDeclaredVariable(variable)
+        }
     }
 
     fun addReference(node: VariableRefNode) {
@@ -64,26 +77,6 @@ open class Scope(val outer: Scope? = null) {
         return _declaredVariables.firstOrNull {
             it.name == name
         } ?: outer?.findDeclaredVariable(name)
-    }
-
-    private fun addDeclaredVariableHelper(variable: Variable) {
-        unlinkedRefNodes.removeIf {
-            if (it.targetVar.name == variable.name) {
-                it.targetVar = variable
-                true
-            } else false
-        }
-
-        // Non-var declarations aren't hoisted out of any scope
-        if (variable.type != Variable.Type.Var)
-            return
-
-        // If this scope is a HoistingScope, any var-declarations
-        // will reside in this scope, not in an upper scope
-        if (this is HoistingScope)
-            return
-
-        outer?.addDeclaredVariableHelper(variable)
     }
 
     inline fun <reified T : Scope> firstParentOfType(): T {
