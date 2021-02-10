@@ -10,7 +10,8 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.isRadixDigit
+import me.mattco.reeva.utils.toValue
 
 open class JSGlobalObject protected constructor(
     realm: Realm,
@@ -74,19 +75,20 @@ open class JSGlobalObject protected constructor(
         defineNativeFunction("jvm", 1, ::jvm)
 
         // Debug method
-        defineNativeFunction("isStrict".key(), 0, 0) { _, _ -> Operations.isStrict().toValue() }
+        // TODO
+//        defineNativeFunction("isStrict".key(), 0, 0) { Operations.isStrict().toValue() }
     }
 
-    private fun id(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun id(arguments: JSArguments): JSValue {
         val o = arguments.argument(0)
         return "${o::class.java.simpleName}@${Integer.toHexString(o.hashCode())}".toValue()
     }
 
-    private fun eval(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun eval(arguments: JSArguments): JSValue {
         return performEval(arguments.argument(0), Agent.runningContext.realm, strictCaller = false, direct = false)
     }
 
-    private fun parseInt(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun parseInt(arguments: JSArguments): JSValue {
         var inputString = Operations.trimString(Operations.toString(arguments.argument(0)), Operations.TrimType.Start)
         val sign = when {
             inputString.startsWith("-") -> {
@@ -124,7 +126,7 @@ open class JSGlobalObject protected constructor(
         return JSNumber(numericValue * sign)
     }
 
-    private fun jvm(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun jvm(arguments: JSArguments): JSValue {
         // TODO
         return JSUndefined
 

@@ -81,7 +81,7 @@ object Reeva {
     }
 
     fun <T> with(realm: Realm = makeRealm(), block: () -> T): T {
-        val context = ExecutionContext(realm, null)
+        val context = ExecutionContext(realm)
         Agent.pushContext(context)
         val result = block()
         Agent.popContext()

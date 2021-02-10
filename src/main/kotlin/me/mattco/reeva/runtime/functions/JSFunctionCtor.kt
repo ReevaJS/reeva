@@ -2,10 +2,11 @@ package me.mattco.reeva.runtime.functions
 
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.primitives.JSNumber
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.attrs
+import me.mattco.reeva.utils.toValue
 
 class JSFunctionCtor private constructor(realm: Realm) : JSNativeFunction(realm, "FunctionConstructor", 1) {
     init {
@@ -19,12 +20,13 @@ class JSFunctionCtor private constructor(realm: Realm) : JSNativeFunction(realm,
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        return Operations.createDynamicFunction(
-            Agent.runningContext.function!!,
-            newTarget,
-            Operations.FunctionKind.Normal,
-            arguments
-        )
+        TODO()
+//        return Operations.createDynamicFunction(
+//            Agent.runningContext.function!!,
+//            arguments.newTarget,
+//            Operations.FunctionKind.Normal,
+//            arguments
+//        )
     }
 
     companion object {

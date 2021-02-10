@@ -1,48 +1,48 @@
 package me.mattco.reeva.core.environment
 
+import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.Ref
-import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.runtime.objects.JSObject
+import me.mattco.reeva.runtime.primitives.JSEmpty
+import me.mattco.reeva.utils.expect
 
-abstract class EnvRecord(@JvmField var outerEnv: EnvRecord?) : Ref {
-    abstract val isStrict: Boolean
+/**
+ * The runtime-equivalent of the Parser's Scope objects
+ */
+abstract class EnvRecord(
+    protected val outer: EnvRecord?,
+    val isStrict: Boolean,
+    size: Int,
+) {
+    private val bindings: Array<JSValue> = Array(size) { JSEmpty }
 
-    @ECMAImpl("HasBinding")
-    abstract fun hasBinding(name: String): Boolean
+    fun getBinding(index: Int): JSValue {
+        val value = bindings[index]
+        if (value == JSEmpty)
+            TODO("throw access before init error")
+        return value
+    }
 
-    @ECMAImpl("CreateMutableBinding")
-    abstract fun createMutableBinding(name: String, canBeDeleted: Boolean)
+    fun setBinding(index: Int, value: JSValue) {
+        expect(value != JSEmpty)
+        bindings[index] = value
+    }
 
-    @ECMAImpl("CreateImmutableBinding")
-    abstract fun createImmutableBinding(name: String, throwOnRepeatInitialization: Boolean)
+    fun getExtensionBinding(name: String) = extension().get(name)
 
-    @ECMAImpl("InitializeBinding")
-    abstract fun initializeBinding(name: String, value: JSValue)
+    fun setExtensionBinding(name: String, value: JSValue) = extension().set(name, value)
 
-    @ECMAImpl("SetMutableBinding")
-    abstract fun setMutableBinding(name: String, value: JSValue, throwOnFailure: Boolean)
+    open fun hasExtension() = false
 
-    @ECMAImpl("GetBindingValue")
-    abstract fun getBindingValue(name: String, throwOnNotFound: Boolean): JSValue
+    open fun extension(): JSObject = throw NotImplementedError()
+}
 
-    @ECMAImpl("DeleteBinding")
-    abstract fun deleteBinding(name: String): Boolean
+class GlobalEnvRecord(
+    private val realm: Realm,
+    isStrict: Boolean,
+    size: Int,
+) : EnvRecord(null, isStrict, size) {
+    override fun hasExtension() = true
 
-    @ECMAImpl("HasThisBinding")
-    abstract fun hasThisBinding(): Boolean
-
-    @ECMAImpl("HasSuperBinding")
-    abstract fun hasSuperBinding(): Boolean
-
-    @ECMAImpl("WithBaseObject")
-    abstract fun withBaseObject(): JSValue
-
-    open class Binding(
-        val immutable: Boolean,
-        val deletable: Boolean = false,
-        var value: JSValue = JSUndefined,
-        var initialized: Boolean = false,
-        var strict: Boolean = false,
-    )
+    override fun extension() = realm.globalObject
 }

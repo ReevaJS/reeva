@@ -1,14 +1,15 @@
 package me.mattco.reeva.runtime.builtins
 
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.errors.JSTypeErrorObject
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.toValue
 
 class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {
@@ -29,7 +30,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         defineNativeFunction("setPrototypeOf", 2, ::setPrototypeOf)
     }
 
-    fun apply(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun apply(arguments: JSArguments): JSValue {
         val (target, thisArg, argumentsList) = arguments.takeArgs(0..2)
 
         if (!Operations.isCallable(target))
@@ -39,7 +40,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return Operations.call(target, thisArg, args)
     }
 
-    fun construct(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun construct(arguments: JSArguments): JSValue {
         val (target, argumentsList) = arguments.takeArgs(0..1)
         val newTarget = if (arguments.size <= 2) {
             target
@@ -55,7 +56,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return Operations.construct(target, args, newTarget)
     }
 
-    fun defineProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun defineProperty(arguments: JSArguments): JSValue {
         val (target, propertyKey, attributes) = arguments.takeArgs(0..2)
         if (target !is JSObject)
             Errors.Reflect.FirstArgNotCallable("defineProperty").throwTypeError()
@@ -64,7 +65,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.defineOwnProperty(key, desc).toValue()
     }
 
-    fun deleteProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun deleteProperty(arguments: JSArguments): JSValue {
         val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject)
             Errors.Reflect.FirstArgNotCallable("deleteProperty").throwTypeError()
@@ -72,7 +73,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.delete(key).toValue()
     }
 
-    fun get(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun get(arguments: JSArguments): JSValue {
         val (target, propertyKey, receiver) = arguments.takeArgs(0..2)
         if (target !is JSObject)
             Errors.Reflect.FirstArgNotCallable("get").throwTypeError()
@@ -80,7 +81,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.get(key, receiver.ifUndefined(target))
     }
 
-    fun getOwnPropertyDescriptor(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun getOwnPropertyDescriptor(arguments: JSArguments): JSValue {
         val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject)
             Errors.Reflect.FirstArgNotCallable("getOwnPropertyDescriptor").throwTypeError()
@@ -88,14 +89,14 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.getOwnPropertyDescriptor(key)?.toObject(realm, JSUndefined) ?: JSUndefined
     }
 
-    fun getPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun getPrototypeOf(arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
             Errors.Reflect.FirstArgNotCallable("getPrototypeOf").throwTypeError()
         return target.getPrototype()
     }
 
-    fun has(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun has(arguments: JSArguments): JSValue {
         val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject)
             Errors.Reflect.FirstArgNotCallable("has").throwTypeError()
@@ -103,14 +104,14 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.hasProperty(key).toValue()
     }
 
-    fun isExtensible(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun isExtensible(arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
             Errors.Reflect.FirstArgNotCallable("isExtensible").throwTypeError()
         return target.isExtensible().toValue()
     }
 
-    fun ownKeys(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun ownKeys(arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
             Errors.Reflect.FirstArgNotCallable("ownKeys").throwTypeError()
@@ -118,14 +119,14 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return Operations.createArrayFromList(keys.map { it.asValue })
     }
 
-    fun preventExtensions(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun preventExtensions(arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
             Errors.Reflect.FirstArgNotCallable("preventExtensions").throwTypeError()
         return target.preventExtensions().toValue()
     }
 
-    fun set(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun set(arguments: JSArguments): JSValue {
         val (target, propertyKey, value, receiver) = arguments.takeArgs(0..3)
         if (target !is JSObject)
             Errors.Reflect.FirstArgNotCallable("set").throwTypeError()
@@ -133,7 +134,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         return target.set(key, value, receiver.ifUndefined(target)).toValue()
     }
 
-    fun setPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setPrototypeOf(arguments: JSArguments): JSValue {
         val (target, proto) = arguments.takeArgs(0..1)
         if (target !is JSObject)
             Errors.Reflect.FirstArgNotCallable("setPrototypeOf").throwTypeError()

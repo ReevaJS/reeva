@@ -10,8 +10,7 @@ import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Error
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
+import me.mattco.reeva.runtime.JSArguments
 
 class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(realm) {
     override fun init() {
@@ -31,7 +30,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
             defineNativeFunction("gc", 0, ::gc)
         }
 
-        fun createRealm(thisValue: JSValue, arguments: JSArguments): JSValue {
+        fun createRealm(arguments: JSArguments): JSValue {
             val newRealm = Reeva.makeRealm()
             newRealm.initObjects()
             val newGlobal = Test262GlobalObject.create(newRealm)
@@ -39,12 +38,12 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
             return newGlobal.get("$262")
         }
 
-        fun detachArrayBuffer(thisValue: JSValue, arguments: JSArguments): JSValue {
+        fun detachArrayBuffer(arguments: JSArguments): JSValue {
             Operations.detachArrayBuffer(arguments.argument(0))
             return JSUndefined
         }
 
-        fun gc(thisValue: JSValue, arguments: JSArguments): JSValue {
+        fun gc(arguments: JSArguments): JSValue {
             Error("unable to force JVM garbage collection").throwTypeError()
         }
     }
@@ -52,7 +51,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
     // TODO
     class JS262AgentObject(realm: Realm) : JSObject(realm, realm.objectProto) {
 //        @JSMethod("start", 1)
-//        fun start(thisValue: JSValue, arguments: JSArguments): JSValue {
+//        fun start(arguments: JSArguments): JSValue {
 //            val script = Operations.toString(arguments.argument(0))
 //            val hasStarted = AtomicBoolean(false)
 //

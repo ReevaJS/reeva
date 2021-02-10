@@ -20,30 +20,30 @@ class BinaryExpressionNode(
     }
 }
 
-enum class BinaryOperator(val symbol: String) {
+enum class BinaryOperator(val symbol: String, val isAssignable: Boolean = true) {
     Add("+"),
     Sub("-"),
     BitwiseAnd("&"),
     BitwiseOr("|"),
     BitwiseXor("^"),
     Coalesce("??"),
-    StrictEquals("==="),
-    StrictNotEquals("!=="),
-    SloppyEquals("=="),
-    SloppyNotEquals("!="),
     Exp("**"),
     And("&&"),
     Or("||"),
     Mul("*"),
     Div("/"),
     Mod("%"),
-    LessThan("<"),
-    GreaterThan(">"),
-    LessThanEquals("<="),
-    GreaterThanEquals(">="),
-    Instanceof("instanceof"),
-    In("in"),
     Shl("<<"),
     Shr(">>"),
-    UShr(">>>")
+    UShr(">>>"),
+    StrictEquals("===", isAssignable = false),
+    StrictNotEquals("!==", isAssignable = false),
+    SloppyEquals("==", isAssignable = false),
+    SloppyNotEquals("!=", isAssignable = false),
+    LessThan("<", isAssignable = false),
+    GreaterThan(">", isAssignable = false),
+    LessThanEquals("<=", isAssignable = false),
+    GreaterThanEquals(">=", isAssignable = false),
+    Instanceof("instanceof", isAssignable = false),
+    In("in", isAssignable = false),
 }

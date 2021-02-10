@@ -1,15 +1,15 @@
 package me.mattco.reeva.runtime.memory
 
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.SlotName
+import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.runtime.toIndex
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.ecmaAssert
+import me.mattco.reeva.utils.key
+import me.mattco.reeva.utils.toValue
 
 open class JSGenericTypedArrayCtor protected constructor(
     realm: Realm,
@@ -28,7 +28,7 @@ open class JSGenericTypedArrayCtor protected constructor(
 
     @ECMAImpl("22.2.5.1")
     override fun evaluate(arguments: JSArguments): JSValue {
-        val newTarget = super.newTarget
+        val newTarget = arguments.newTarget
         if (newTarget == JSUndefined)
             Errors.CtorCallWithoutNew("${kind.name}Array").throwTypeError()
         ecmaAssert(newTarget is JSObject)

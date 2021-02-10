@@ -1,13 +1,15 @@
 package me.mattco.reeva.runtime.wrappers
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSBigInt
 import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.toValue
 import java.math.BigInteger
 
 class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "BigInt", 1) {
@@ -23,7 +25,7 @@ class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        if (newTarget != JSUndefined)
+        if (arguments.newTarget != JSUndefined)
             Errors.BigInt.CtorCalledWithNew.throwTypeError()
         val prim = Operations.toPrimitive(arguments.argument(0), Operations.ToPrimitiveHint.AsNumber)
         if (prim is JSNumber) {
@@ -34,7 +36,7 @@ class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return Operations.toBigInt(prim)
     }
 
-    fun asIntN(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun asIntN(arguments: JSArguments): JSValue {
         val bits = Operations.toIndex(arguments.argument(0))
         val bigint = Operations.toBigInt(arguments.argument(1))
         if (bits == 0)
@@ -46,7 +48,7 @@ class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return mod.toValue()
     }
 
-    fun asUintN(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun asUintN(arguments: JSArguments): JSValue {
         val bits = Operations.toIndex(arguments.argument(0))
         val bigint = Operations.toBigInt(arguments.argument(1))
         return bigint.number.mod(BigInteger.valueOf(2L).shiftLeft(bits - 1)).toValue()

@@ -1,12 +1,14 @@
 package me.mattco.reeva.runtime.wrappers
 
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.toValue
 
 class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Symbol", 0) {
     init {
@@ -34,7 +36,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineNativeFunction("keyFor", 1, ::keyFor)
     }
 
-    fun `for`(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun `for`(arguments: JSArguments): JSValue {
         val key = arguments.argument(0).asString
         for ((globalKey, globalSymbol) in Realm.globalSymbolRegistry) {
             if (globalKey == key)
@@ -45,7 +47,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return newSymbol
     }
 
-    fun keyFor(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun keyFor(arguments: JSArguments): JSValue {
         val sym = arguments.argument(0)
         if (!sym.isSymbol)
             Errors.Symbol.KeyForBadArg.throwTypeError()
@@ -57,7 +59,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        if (newTarget != JSUndefined)
+        if (arguments.newTarget != JSUndefined)
             Errors.NotACtor("Symbol").throwTypeError()
 
         val description = arguments.argument(0).let {

@@ -1,13 +1,17 @@
 package me.mattco.reeva.runtime.wrappers
 
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.attrs
+import me.mattco.reeva.utils.key
+import me.mattco.reeva.utils.toValue
 
 class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {
@@ -26,16 +30,16 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
     fun `get@@toStringTag`(thisValue: JSValue) = "Symbol".toValue()
 
-    fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisSymbolValue(thisValue, "toString").descriptiveString().toValue()
+    fun toString(arguments: JSArguments): JSValue {
+        return thisSymbolValue(arguments.thisValue, "toString").descriptiveString().toValue()
     }
 
-    fun toValue(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisSymbolValue(thisValue, "toValue")
+    fun toValue(arguments: JSArguments): JSValue {
+        return thisSymbolValue(arguments.thisValue, "toValue")
     }
 
-    fun `@@toPrimitive`(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisSymbolValue(thisValue, "@@toPrimitive")
+    fun `@@toPrimitive`(arguments: JSArguments): JSValue {
+        return thisSymbolValue(arguments.thisValue, "@@toPrimitive")
     }
 
     companion object {

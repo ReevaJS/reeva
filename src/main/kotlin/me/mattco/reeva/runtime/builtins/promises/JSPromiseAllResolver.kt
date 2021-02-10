@@ -1,12 +1,11 @@
 package me.mattco.reeva.runtime.builtins.promises
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
 
 class JSPromiseAllResolver private constructor(
     realm: Realm,
@@ -18,7 +17,7 @@ class JSPromiseAllResolver private constructor(
     private var alreadyCalled: Boolean = false
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        if (newTarget != JSUndefined)
+        if (arguments.newTarget != JSUndefined)
             throw IllegalStateException("Unexpected construction of JSPromiseAllResolver")
         if (alreadyCalled)
             return JSUndefined

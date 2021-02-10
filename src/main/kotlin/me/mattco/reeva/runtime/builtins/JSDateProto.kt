@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.builtins
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.SlotName
@@ -65,107 +66,109 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         defineNativeFunction(Realm.`@@toPrimitive`.key(), 0, function = ::`@@toPrimitive`)
     }
 
-    fun getDate(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisTimeValue(thisValue, "getDate")?.dayOfMonth?.toValue() ?: return JSNumber.NaN
+    fun getDate(arguments: JSArguments): JSValue {
+        return thisTimeValue(arguments.thisValue, "getDate")?.dayOfMonth?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getDay(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisTimeValue(thisValue, "getDay")?.dayOfWeek?.value?.minus(1)?.toValue() ?: return JSNumber.NaN
+    fun getDay(arguments: JSArguments): JSValue {
+        return thisTimeValue(arguments.thisValue, "getDay")?.dayOfWeek?.value?.minus(1)?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getFullYear(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisTimeValue(thisValue, "getFullYear")?.year?.toValue() ?: return JSNumber.NaN
+    fun getFullYear(arguments: JSArguments): JSValue {
+        return thisTimeValue(arguments.thisValue, "getFullYear")?.year?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getHours(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisTimeValue(thisValue, "getHours")?.hour?.toValue() ?: return JSNumber.NaN
+    fun getHours(arguments: JSArguments): JSValue {
+        return thisTimeValue(arguments.thisValue, "getHours")?.hour?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getMilliseconds(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisTimeValue(thisValue, "getMilliseconds")?.nano?.div(1_000_000L)?.toValue() ?: return JSNumber.NaN
+    fun getMilliseconds(arguments: JSArguments): JSValue {
+        return thisTimeValue(arguments.thisValue, "getMilliseconds")?.nano?.div(1_000_000L)?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getMinutes(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisTimeValue(thisValue, "getMinutes")?.minute?.toValue() ?: return JSNumber.NaN
+    fun getMinutes(arguments: JSArguments): JSValue {
+        return thisTimeValue(arguments.thisValue, "getMinutes")?.minute?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getMonth(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisTimeValue(thisValue, "getMonth")?.monthValue?.toValue() ?: return JSNumber.NaN
+    fun getMonth(arguments: JSArguments): JSValue {
+        return thisTimeValue(arguments.thisValue, "getMonth")?.monthValue?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getSeconds(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisTimeValue(thisValue, "getSeconds")?.second?.toValue() ?: return JSNumber.NaN
+    fun getSeconds(arguments: JSArguments): JSValue {
+        return thisTimeValue(arguments.thisValue, "getSeconds")?.second?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getTime(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisTimeValue(thisValue, "getTime")?.toInstant()?.toEpochMilli()?.toValue() ?: JSNumber.NaN
+    fun getTime(arguments: JSArguments): JSValue {
+        return thisTimeValue(arguments.thisValue, "getTime")?.toInstant()?.toEpochMilli()?.toValue() ?: JSNumber.NaN
     }
 
-    fun getTimezoneOffset(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisTimeValue(thisValue, "getTimezoneOffset")?.offset?.totalSeconds?.toValue() ?: return JSNumber.NaN
+    fun getTimezoneOffset(arguments: JSArguments): JSValue {
+        return thisTimeValue(arguments.thisValue, "getTimezoneOffset")?.offset?.totalSeconds?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getUTCDate(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisUTCTimeValue(thisValue, "getUTCDate")?.dayOfMonth?.toValue() ?: return JSNumber.NaN
+    fun getUTCDate(arguments: JSArguments): JSValue {
+        return thisUTCTimeValue(arguments.thisValue, "getUTCDate")?.dayOfMonth?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getUTCDay(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisUTCTimeValue(thisValue, "getUTCDay")?.dayOfWeek?.value?.minus(1)?.toValue() ?: return JSNumber.NaN
+    fun getUTCDay(arguments: JSArguments): JSValue {
+        return thisUTCTimeValue(arguments.thisValue, "getUTCDay")?.dayOfWeek?.value?.minus(1)?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getUTCFullYear(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisUTCTimeValue(thisValue, "getUTCFullYear")?.year?.toValue() ?: return JSNumber.NaN
+    fun getUTCFullYear(arguments: JSArguments): JSValue {
+        return thisUTCTimeValue(arguments.thisValue, "getUTCFullYear")?.year?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getUTCHours(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisUTCTimeValue(thisValue, "getUTCHours")?.hour?.toValue() ?: return JSNumber.NaN
+    fun getUTCHours(arguments: JSArguments): JSValue {
+        return thisUTCTimeValue(arguments.thisValue, "getUTCHours")?.hour?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getUTCMilliseconds(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisUTCTimeValue(thisValue, "getUTCMilliseconds")?.nano?.div(1_000_000L)?.toValue() ?: return JSNumber.NaN
+    fun getUTCMilliseconds(arguments: JSArguments): JSValue {
+        return thisUTCTimeValue(arguments.thisValue, "getUTCMilliseconds")?.nano?.div(1_000_000L)?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getUTCMinutes(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisUTCTimeValue(thisValue, "getUTCMinutes")?.minute?.toValue() ?: return JSNumber.NaN
+    fun getUTCMinutes(arguments: JSArguments): JSValue {
+        return thisUTCTimeValue(arguments.thisValue, "getUTCMinutes")?.minute?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getUTCMonth(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisUTCTimeValue(thisValue, "getUTCMonth")?.monthValue?.toValue() ?: return JSNumber.NaN
+    fun getUTCMonth(arguments: JSArguments): JSValue {
+        return thisUTCTimeValue(arguments.thisValue, "getUTCMonth")?.monthValue?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getUTCSeconds(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisUTCTimeValue(thisValue, "getUTCSeconds")?.second?.toValue() ?: return JSNumber.NaN
+    fun getUTCSeconds(arguments: JSArguments): JSValue {
+        return thisUTCTimeValue(arguments.thisValue, "getUTCSeconds")?.second?.toValue() ?: return JSNumber.NaN
     }
 
-    fun getUTCTime(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisUTCTimeValue(thisValue, "getUTCTime")?.toInstant()?.toEpochMilli()?.toValue() ?: return JSNumber.NaN
+    fun getUTCTime(arguments: JSArguments): JSValue {
+        return thisUTCTimeValue(arguments.thisValue, "getUTCTime")?.toInstant()?.toEpochMilli()?.toValue() ?: return JSNumber.NaN
     }
 
-    fun setDate(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val zdt = thisTimeValue(thisValue, "setDate") ?: return JSNumber.NaN
+    fun setDate(arguments: JSArguments): JSValue {
+        val zdt = thisTimeValue(arguments.thisValue, "setDate") ?: return JSNumber.NaN
         val days = Operations.toNumber(arguments.argument(0))
-        ifAnyNotFinite(thisValue, days) { return it }
-        return dateValueSetHelper(thisValue, zdt.plusDays(days.asLong))
+        ifAnyNotFinite(arguments.thisValue, days) { return it }
+        return dateValueSetHelper(arguments.thisValue, zdt.plusDays(days.asLong))
     }
 
-    fun setFullYear(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setFullYear(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val zdt = thisTimeValue(thisValue, "setFullYear") ?: ZonedDateTime.ofInstant(Instant.EPOCH, Operations.defaultZone)
         expect(thisValue is JSDateObject)
         val year = Operations.toNumber(arguments.argument(0))
-        val month = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMonth(thisValue, emptyList())
-        val date = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getDate(thisValue, emptyList())
+        val month = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMonth(arguments)
+        val date = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getDate(arguments)
         ifAnyNotFinite(thisValue, year, month, date) { return it }
 
         return dateValueSetHelper(thisValue, zdt.withYear(year.asInt).withMonth(month.asInt).withDayOfMonth(date.asInt))
     }
 
-    fun setHours(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setHours(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val zdt = thisTimeValue(thisValue, "setHours") ?: ZonedDateTime.ofInstant(Instant.EPOCH, Operations.defaultZone)
         expect(thisValue is JSDateObject)
         val hour = Operations.toNumber(arguments.argument(0))
-        val minute = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMinutes(thisValue, emptyList())
-        val second = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getSeconds(thisValue, emptyList())
-        val milli = if (arguments.size > 3) Operations.toNumber(arguments[3]) else getMilliseconds(thisValue, emptyList())
+        val minute = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMinutes(arguments)
+        val second = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getSeconds(arguments)
+        val milli = if (arguments.size > 3) Operations.toNumber(arguments[3]) else getMilliseconds(arguments)
         ifAnyNotFinite(thisValue, minute, second, milli) { return it }
 
         return dateValueSetHelper(
@@ -174,7 +177,8 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         )
     }
 
-    fun setMilliseconds(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setMilliseconds(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val zdt = thisTimeValue(thisValue, "setMilliseconds") ?: ZonedDateTime.ofInstant(Instant.EPOCH, Operations.defaultZone)
         expect(thisValue is JSDateObject)
         val ms = Operations.toNumber(arguments.argument(0))
@@ -183,12 +187,13 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         return dateValueSetHelper(thisValue, zdt.withNano(ms.asInt))
     }
 
-    fun setMinutes(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setMinutes(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val zdt = thisTimeValue(thisValue, "setMinutes") ?: ZonedDateTime.ofInstant(Instant.EPOCH, Operations.defaultZone)
         expect(thisValue is JSDateObject)
         val minute = Operations.toNumber(arguments.argument(0))
-        val second = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getSeconds(thisValue, emptyList())
-        val milli = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getMilliseconds(thisValue, emptyList())
+        val second = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getSeconds(arguments)
+        val milli = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getMilliseconds(arguments)
         ifAnyNotFinite(thisValue, minute, second, milli) { return it }
 
         return dateValueSetHelper(
@@ -197,21 +202,23 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         )
     }
 
-    fun setMonth(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setMonth(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val zdt = thisTimeValue(thisValue, "setMonth") ?: ZonedDateTime.ofInstant(Instant.EPOCH, Operations.defaultZone)
         expect(thisValue is JSDateObject)
         val month = Operations.toNumber(arguments.argument(0))
-        val date = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getDate(thisValue, emptyList())
+        val date = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getDate(arguments)
         ifAnyNotFinite(thisValue, month, date) { return it }
 
         return dateValueSetHelper(thisValue, zdt.withMonth(month.asInt).withDayOfMonth(date.asInt))
     }
 
-    fun setSeconds(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setSeconds(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val zdt = thisTimeValue(thisValue, "setSeconds") ?: ZonedDateTime.ofInstant(Instant.EPOCH, Operations.defaultZone)
         expect(thisValue is JSDateObject)
         val second = Operations.toNumber(arguments.argument(0))
-        val milli = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMilliseconds(thisValue, emptyList())
+        val milli = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMilliseconds(arguments)
         ifAnyNotFinite(thisValue, second, milli) { return it }
 
         return dateValueSetHelper(
@@ -220,7 +227,8 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         )
     }
 
-    fun setTime(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setTime(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         thisTimeValue(thisValue, "setTime")
         expect(thisValue is JSDateObject)
         val time = Operations.toNumber(arguments.argument(0))
@@ -230,7 +238,8 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         return dateValueSetHelper(thisValue, tv)
     }
 
-    fun setUTCDate(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setUTCDate(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         thisUTCTimeValue(thisValue, "setUTCDate")
         expect(thisValue is JSDateObject)
         val date = Operations.toNumber(arguments.argument(0))
@@ -238,24 +247,26 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         return dateValueSetHelper(thisValue, ZonedDateTime.ofInstant(Instant.ofEpochMilli(date.asLong), ZoneOffset.UTC))
     }
 
-    fun setUTCFullYear(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setUTCFullYear(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val zdt = thisUTCTimeValue(thisValue, "setUTCFullYear") ?: ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC)
         expect(thisValue is JSDateObject)
         val year = Operations.toNumber(arguments.argument(0))
-        val month = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMonth(thisValue, emptyList())
-        val date = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getDate(thisValue, emptyList())
+        val month = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMonth(arguments)
+        val date = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getDate(arguments)
         ifAnyNotFinite(thisValue, year, month, date) { return it }
 
         return dateValueSetHelper(thisValue, zdt.withYear(year.asInt).withMonth(month.asInt).withDayOfMonth(date.asInt))
     }
 
-    fun setUTCHours(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setUTCHours(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val zdt = thisUTCTimeValue(thisValue, "setUTCHours") ?: ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC)
         expect(thisValue is JSDateObject)
         val hour = Operations.toNumber(arguments.argument(0))
-        val minute = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMinutes(thisValue, emptyList())
-        val second = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getSeconds(thisValue, emptyList())
-        val milli = if (arguments.size > 3) Operations.toNumber(arguments[3]) else getMilliseconds(thisValue, emptyList())
+        val minute = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMinutes(arguments)
+        val second = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getSeconds(arguments)
+        val milli = if (arguments.size > 3) Operations.toNumber(arguments[3]) else getMilliseconds(arguments)
         ifAnyNotFinite(thisValue, hour, minute, second, milli) { return it }
 
         return dateValueSetHelper(
@@ -264,7 +275,8 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         )
     }
 
-    fun setUTCMilliseconds(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setUTCMilliseconds(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val zdt = thisUTCTimeValue(thisValue, "setUTCMilliseconds") ?: ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC)
         expect(thisValue is JSDateObject)
         val ms = Operations.toNumber(arguments.argument(0))
@@ -273,12 +285,13 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         return dateValueSetHelper(thisValue, zdt.withNano(ms.asInt))
     }
 
-    fun setUTCMinutes(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setUTCMinutes(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val zdt = thisUTCTimeValue(thisValue, "setUTCMinutes") ?: ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC)
         expect(thisValue is JSDateObject)
         val minute = Operations.toNumber(arguments.argument(0))
-        val second = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getSeconds(thisValue, emptyList())
-        val milli = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getMilliseconds(thisValue, emptyList())
+        val second = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getSeconds(arguments)
+        val milli = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getMilliseconds(arguments)
         ifAnyNotFinite(thisValue, minute, second, milli) { return it }
 
         return dateValueSetHelper(
@@ -287,21 +300,23 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         )
     }
 
-    fun setUTCMonth(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setUTCMonth(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val zdt = thisUTCTimeValue(thisValue, "setUTCMonth") ?: ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC)
         expect(thisValue is JSDateObject)
         val month = Operations.toNumber(arguments.argument(0))
-        val date = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getDate(thisValue, emptyList())
+        val date = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getDate(arguments)
         ifAnyNotFinite(thisValue, month, date) { return it }
 
         return dateValueSetHelper(thisValue, zdt.withMonth(month.asInt).withDayOfMonth(date.asInt))
     }
 
-    fun setUTCSeconds(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setUTCSeconds(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val zdt = thisUTCTimeValue(thisValue, "setUTCSeconds") ?: ZonedDateTime.ofInstant(Instant.EPOCH, ZoneOffset.UTC)
         expect(thisValue is JSDateObject)
         val second = Operations.toNumber(arguments.argument(0))
-        val milli = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMilliseconds(thisValue, emptyList())
+        val milli = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMilliseconds(arguments)
         ifAnyNotFinite(thisValue, second, milli) { return it }
 
         return dateValueSetHelper(
@@ -310,13 +325,13 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         )
     }
 
-    fun toDateString(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val zdt = thisTimeValue(thisValue, "toDateString") ?: return "Invalid Date".toValue()
+    fun toDateString(arguments: JSArguments): JSValue {
+        val zdt = thisTimeValue(arguments.thisValue, "toDateString") ?: return "Invalid Date".toValue()
         return Operations.dateString(zdt).toValue()
     }
 
-    fun toISOString(thisValue: JSValue, arguments: JSArguments): JSValue {
-        var ztd = thisTimeValue(thisValue, "toISOString")?.toOffsetDateTime()?.atZoneSameInstant(ZoneOffset.UTC)
+    fun toISOString(arguments: JSArguments): JSValue {
+        var ztd = thisTimeValue(arguments.thisValue, "toISOString")?.toOffsetDateTime()?.atZoneSameInstant(ZoneOffset.UTC)
             ?: Errors.TODO("Date.prototype.toISOString").throwTypeError()
         val year = ztd.year
         if (year < 0) {
@@ -332,25 +347,25 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         return (sign + ztd.format(JSDateCtor.dateTimeStringFormatter)).toValue()
     }
 
-    fun toJSON(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(thisValue)
+    fun toJSON(arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(arguments.thisValue)
         val tv = Operations.toPrimitive(obj, Operations.ToPrimitiveHint.AsNumber)
         if (tv is JSNumber && !tv.isFinite)
             return JSNull
         return Operations.invoke(obj, "toISOString".toValue())
     }
 
-    fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return Operations.toDateString(thisTimeValue(thisValue, "toString") ?: return "Invalid Date".toValue()).toValue()
+    fun toString(arguments: JSArguments): JSValue {
+        return Operations.toDateString(thisTimeValue(arguments.thisValue, "toString") ?: return "Invalid Date".toValue()).toValue()
     }
 
-    fun toTimeString(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val zdt = thisTimeValue(thisValue, "toTimeString") ?: return "Invalid Date".toValue()
+    fun toTimeString(arguments: JSArguments): JSValue {
+        val zdt = thisTimeValue(arguments.thisValue, "toTimeString") ?: return "Invalid Date".toValue()
         return (Operations.timeString(zdt) + Operations.timeZoneString(zdt)).toValue()
     }
 
-    fun toUTCString(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val zdt = thisTimeValue(thisValue, "toUTCString") ?: return "Invalid Date".toValue()
+    fun toUTCString(arguments: JSArguments): JSValue {
+        val zdt = thisTimeValue(arguments.thisValue, "toUTCString") ?: return "Invalid Date".toValue()
         val weekday = zdt.dayOfWeek.getDisplayName(TextStyle.SHORT, Operations.defaultLocale)
         val month = zdt.month.getDisplayName(TextStyle.SHORT, Operations.defaultLocale)
         val day = "%02d".format(zdt.dayOfMonth)
@@ -360,19 +375,19 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         return "$weekday, $day $month $yearSign$paddedYear ${Operations.timeString(zdt)}".toValue()
     }
 
-    fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisTimeValue(thisValue, "valueOf")?.toInstant()?.toEpochMilli()?.toValue() ?: JSNumber.NaN
+    fun valueOf(arguments: JSArguments): JSValue {
+        return thisTimeValue(arguments.thisValue, "valueOf")?.toInstant()?.toEpochMilli()?.toValue() ?: JSNumber.NaN
     }
 
-    fun `@@toPrimitive`(thisValue: JSValue, arguments: JSArguments): JSValue {
-        if (thisValue !is JSObject)
+    fun `@@toPrimitive`(arguments: JSArguments): JSValue {
+        if (arguments.thisValue !is JSObject)
             Errors.IncompatibleMethodCall("Date.prototype[Symbol.toPrimitive]").throwTypeError()
 
         val hint = Operations.toString(arguments.argument(0)).string
 
         return when (hint) {
-            "string", "default" -> Operations.ordinaryToPrimitive(thisValue, Operations.ToPrimitiveHint.AsString)
-            "number" -> Operations.ordinaryToPrimitive(thisValue, Operations.ToPrimitiveHint.AsNumber)
+            "string", "default" -> Operations.ordinaryToPrimitive(arguments.thisValue, Operations.ToPrimitiveHint.AsString)
+            "number" -> Operations.ordinaryToPrimitive(arguments.thisValue, Operations.ToPrimitiveHint.AsNumber)
             else -> Errors.InvalidToPrimitiveHint(hint).throwTypeError()
         }
     }

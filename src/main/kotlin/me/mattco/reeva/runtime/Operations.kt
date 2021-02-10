@@ -4,13 +4,8 @@ package me.mattco.reeva.runtime
 
 import me.mattco.reeva.ast.ASTNode
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
-import me.mattco.reeva.core.environment.EnvRecord
-import me.mattco.reeva.core.environment.FunctionEnvRecord
-import me.mattco.reeva.core.environment.GlobalEnvRecord
-import me.mattco.reeva.core.environment.ModuleEnvRecord
 import me.mattco.reeva.core.tasks.Microtask
 import me.mattco.reeva.jvmcompat.JSClassInstanceObject
 import me.mattco.reeva.jvmcompat.JSClassObject
@@ -93,9 +88,6 @@ object Operations {
     fun isNullish(value: JSValue): Boolean {
         return value == JSUndefined || value == JSNull
     }
-
-    @JvmStatic
-    fun isStrict() = Agent.runningContext.lexicalEnv?.isStrict ?: false
 
     @JvmStatic
     fun mapWrappedArrayIndex(index: JSNumber, arrayLength: Long): Long = when {
@@ -466,92 +458,92 @@ object Operations {
         toBlock.copyFrom(fromBlock, fromIndex, toIndex, count)
     }
 
-    @JvmStatic @ECMAImpl("6.2.4.4")
-    fun getValue(reference: JSValue): JSValue {
-        if (reference !is JSReference)
-            return reference
-        if (reference.isUnresolvableReference)
-            Errors.UnknownReference(reference.name).throwReferenceError()
-        var base = reference.baseValue
-        if (reference.isPropertyReference) {
-            if (reference.hasPrimitiveBase) {
-                expect(base != JSUndefined && base != JSNull)
+//    @JvmStatic @ECMAImpl("6.2.4.4")
+//    fun getValue(reference: JSValue): JSValue {
+//        if (reference !is JSReference)
+//            return reference
+//        if (reference.isUnresolvableReference)
+//            Errors.UnknownReference(reference.name).throwReferenceError()
+//        var base = reference.baseValue
+//        if (reference.isPropertyReference) {
+//            if (reference.hasPrimitiveBase) {
+//                expect(base != JSUndefined && base != JSNull)
+//
+//                val fastPathResult = resolvePrimitiveReference(base as JSValue, reference.name)
+//                if (fastPathResult != null)
+//                    return fastPathResult
+//
+//                base = toObject(base)
+//            }
+//            val value = (base as JSObject).get(reference.name, reference.getThisValue())
+//            if (value is JSNativeProperty)
+//                return value.get(base)
+//            if (value is JSAccessor)
+//                return value.callGetter(base)
+//            return value
+//        }
+//
+//        expect(base is EnvRecord)
+//        expect(reference.name.isString)
+//        return base.getBindingValue(reference.name.asString, reference.isStrict)
+//    }
 
-                val fastPathResult = resolvePrimitiveReference(base as JSValue, reference.name)
-                if (fastPathResult != null)
-                    return fastPathResult
+//    // A fast-path for common primitive reference operations. If this
+//    // is able to complete successfully and return a non-null value, it
+//    // avoid an object boxing operation
+//    private fun resolvePrimitiveReference(base: JSValue, key: PropertyKey): JSValue? {
+//        if (base is JSString) {
+//            val str = base.string
+//            if (key.isInt) {
+//                val index = key.asInt
+//                if (index < 0 || index > str.lastIndex)
+//                    return JSUndefined
+//                return str[index].toValue()
+//            }
+//
+//            if (key.isLong) {
+//                val index = key.asLong.toInt()
+//                if (index < 0 || index > str.lastIndex)
+//                    return JSUndefined
+//                return str[index].toValue()
+//            }
+//        }
+//
+//        return null
+//    }
 
-                base = toObject(base)
-            }
-            val value = (base as JSObject).get(reference.name, reference.getThisValue())
-            if (value is JSNativeProperty)
-                return value.get(base)
-            if (value is JSAccessor)
-                return value.callGetter(base)
-            return value
-        }
+//    @JvmStatic @ECMAImpl("6.2.4.5")
+//    fun putValue(reference: JSValue, value: JSValue) {
+//        if (reference !is JSReference)
+//            Errors.InvalidLHSAssignment(toPrintableString(reference)).throwReferenceError()
+//        var base = reference.baseValue
+//        if (reference.isUnresolvableReference) {
+//            if (reference.isStrict)
+//                Errors.UnresolvableReference(reference.name).throwReferenceError()
+//            Agent.runningContext.realm.globalObject.set(reference.name, value)
+//        } else if (reference.isPropertyReference) {
+//            if (reference.hasPrimitiveBase) {
+//                ecmaAssert(base != JSUndefined && base != JSNull)
+//                base = toObject(base as JSValue)
+//            }
+//            val succeeded = (base as JSObject).set(reference.name, value, reference.getThisValue())
+//            if (!succeeded && reference.isStrict)
+//                Errors.StrictModeFailedSet(reference.name, toPrintableString(base)).throwTypeError()
+//        } else {
+//            ecmaAssert(base is EnvRecord)
+//            expect(reference.name.isString)
+//            base.setBinding(reference.name.asString, value, reference.isStrict)
+//        }
+//    }
 
-        expect(base is EnvRecord)
-        expect(reference.name.isString)
-        return base.getBindingValue(reference.name.asString, reference.isStrict)
-    }
-
-    // A fast-path for common primitive reference operations. If this
-    // is able to complete successfully and return a non-null value, it
-    // avoid an object boxing operation
-    private fun resolvePrimitiveReference(base: JSValue, key: PropertyKey): JSValue? {
-        if (base is JSString) {
-            val str = base.string
-            if (key.isInt) {
-                val index = key.asInt
-                if (index < 0 || index > str.lastIndex)
-                    return JSUndefined
-                return str[index].toValue()
-            }
-
-            if (key.isLong) {
-                val index = key.asLong.toInt()
-                if (index < 0 || index > str.lastIndex)
-                    return JSUndefined
-                return str[index].toValue()
-            }
-        }
-
-        return null
-    }
-
-    @JvmStatic @ECMAImpl("6.2.4.5")
-    fun putValue(reference: JSValue, value: JSValue) {
-        if (reference !is JSReference)
-            Errors.InvalidLHSAssignment(toPrintableString(reference)).throwReferenceError()
-        var base = reference.baseValue
-        if (reference.isUnresolvableReference) {
-            if (reference.isStrict)
-                Errors.UnresolvableReference(reference.name).throwReferenceError()
-            Agent.runningContext.realm.globalObject.set(reference.name, value)
-        } else if (reference.isPropertyReference) {
-            if (reference.hasPrimitiveBase) {
-                ecmaAssert(base != JSUndefined && base != JSNull)
-                base = toObject(base as JSValue)
-            }
-            val succeeded = (base as JSObject).set(reference.name, value, reference.getThisValue())
-            if (!succeeded && reference.isStrict)
-                Errors.StrictModeFailedSet(reference.name, toPrintableString(base)).throwTypeError()
-        } else {
-            ecmaAssert(base is EnvRecord)
-            expect(reference.name.isString)
-            base.setMutableBinding(reference.name.asString, value, reference.isStrict)
-        }
-    }
-
-    @JvmStatic @ECMAImpl("6.2.4.11")
-    fun initializeReferencedBinding(reference: JSReference, value: JSValue) {
-        ecmaAssert(!reference.isUnresolvableReference, "Unknown reference with identifier ${reference.name}")
-        val base = reference.baseValue
-        ecmaAssert(base is EnvRecord)
-        expect(reference.name.isString)
-        base.initializeBinding(reference.name.asString, value)
-    }
+//    @JvmStatic @ECMAImpl("6.2.4.11")
+//    fun initializeReferencedBinding(reference: JSReference, value: JSValue) {
+//        ecmaAssert(!reference.isUnresolvableReference, "Unknown reference with identifier ${reference.name}")
+//        val base = reference.baseValue
+//        ecmaAssert(base is EnvRecord)
+//        expect(reference.name.isString)
+//        base.initializeBinding(reference.name.asString, value)
+//    }
 
     @JvmStatic @ECMAImpl("7.1.1")
     fun toPrimitive(value: JSValue, type: ToPrimitiveHint? = null): JSValue {
@@ -856,7 +848,6 @@ object Operations {
             is JSObject -> "[object <${value::class.java.simpleName}>]"
             is JSAccessor -> "<accessor>"
             is JSNativeProperty -> "<native-property>"
-            is JSReference -> "<ref ${value.name}>"
             else -> toString(value).string
         }
     }
@@ -1202,21 +1193,29 @@ object Operations {
     @JvmStatic @JvmOverloads
     @ECMAImpl("7.3.13")
     fun call(function: JSValue, thisValue: JSValue, arguments: List<JSValue> = emptyList()): JSValue {
+        return call(function, JSArguments(arguments, thisValue))
+    }
+
+    fun call(function: JSValue, arguments: JSArguments): JSValue {
         if (!isCallable(function))
             Errors.FailedCall(toPrintableString(function)).throwTypeError()
         if (function is JSProxyObject)
-            return function.call(thisValue, arguments)
-        return (function as JSFunction).call(thisValue, arguments)
+            return function.call(arguments)
+        return (function as JSFunction).call(arguments)
     }
 
     @JvmStatic @JvmOverloads
     @ECMAImpl("7.3.14")
     fun construct(constructor: JSValue, arguments: List<JSValue> = emptyList(), newTarget: JSValue = constructor): JSValue {
+        return construct(constructor, JSArguments(arguments, newTarget = newTarget))
+    }
+
+    fun construct(constructor: JSValue, arguments: JSArguments): JSValue {
         ecmaAssert(isConstructor(constructor))
-        ecmaAssert(isConstructor(newTarget))
+        ecmaAssert(isConstructor(arguments.newTarget))
         if (constructor is JSProxyObject)
-            return constructor.construct(arguments, newTarget)
-        return (constructor as JSFunction).construct(arguments, newTarget)
+            return constructor.construct(arguments)
+        return (constructor as JSFunction).construct(arguments)
     }
 
     @JvmStatic @ECMAImpl("7.3.15")
@@ -1289,11 +1288,11 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("7.3.20")
-    fun invoke(value: JSValue, property: PropertyKey, arguments: JSArguments = emptyList()): JSValue {
+    fun invoke(value: JSValue, property: PropertyKey, arguments: List<JSValue> = emptyList()): JSValue {
         return call(getV(value, property), value, arguments)
     }
 
-    fun invoke(value: JSValue, property: JSValue, arguments: JSArguments = emptyList()): JSValue {
+    fun invoke(value: JSValue, property: JSValue, arguments: List<JSValue> = emptyList()): JSValue {
         return invoke(value, toPropertyKey(property), arguments)
     }
 
@@ -1463,55 +1462,55 @@ object Operations {
         return values
     }
 
-    @JvmStatic @ECMAImpl("8.1.2.1")
-    fun getIdentifierReference(env: EnvRecord?, name: String, isStrict: Boolean): JSReference {
-        return when {
-            env == null -> JSReference(JSUndefined, PropertyKey(name), isStrict)
-            env.hasBinding(name) -> JSReference(env, PropertyKey(name), isStrict)
-            else -> getIdentifierReference(env.outerEnv, name, isStrict)
-        }
-    }
+//    @JvmStatic @ECMAImpl("8.1.2.1")
+//    fun getIdentifierReference(env: EnvRecord?, name: String, isStrict: Boolean): JSReference {
+//        return when {
+//            env == null -> JSReference(JSUndefined, PropertyKey(name), isStrict)
+//            env.hasBinding(name) -> JSReference(env, PropertyKey(name), isStrict)
+//            else -> getIdentifierReference(env.outerEnv, name, isStrict)
+//        }
+//    }
+//
+//    @JvmStatic @ECMAImpl("8.3.1")
+//    fun getActiveScriptOrModule() {
+//        TODO()
+//    }
 
-    @JvmStatic @ECMAImpl("8.3.1")
-    fun getActiveScriptOrModule() {
-        TODO()
-    }
-
-    @JvmStatic @JvmOverloads
-    @ECMAImpl("8.3.2")
-    fun resolveBinding(name: String, env: EnvRecord? = null): JSReference {
-        val actualEnv = env ?: Agent.runningContext.lexicalEnv!!
-        // TODO: Strict mode checking
-        return getIdentifierReference(actualEnv, name, isStrict())
-    }
-
-    @JvmStatic @ECMAImpl("8.3.3")
-    fun getThisEnvironment(): EnvRecord {
-        // As the spec states, this is guaranteed to resolve without
-        // any NPEs as there is always at least a global environment
-        // with a this-binding
-        var env = Agent.runningContext.lexicalEnv!!
-        while (!env.hasThisBinding())
-            env = env.outerEnv!!
-        return env
-    }
-
-    @JvmStatic @ECMAImpl("8.3.4")
-    fun resolveThisBinding(): JSValue {
-        return when (val env = getThisEnvironment()) {
-            is FunctionEnvRecord -> env.getThisBinding()
-            is GlobalEnvRecord -> env.getThisBinding()
-            is ModuleEnvRecord -> env.getThisBinding()
-            else -> unreachable()
-        }
-    }
-
-    @JvmStatic @ECMAImpl("8.3.5")
-    fun getNewTarget(): JSValue {
-        val env = getThisEnvironment()
-        ecmaAssert(env is FunctionEnvRecord)
-        return env.newTarget
-    }
+//    @JvmStatic @JvmOverloads
+//    @ECMAImpl("8.3.2")
+//    fun resolveBinding(name: String, env: EnvRecord? = null): JSReference {
+//        val actualEnv = env ?: Agent.runningContext.lexicalEnv!!
+//        // TODO: Strict mode checking
+//        return getIdentifierReference(actualEnv, name, isStrict())
+//    }
+//
+//    @JvmStatic @ECMAImpl("8.3.3")
+//    fun getThisEnvironment(): EnvRecord {
+//        // As the spec states, this is guaranteed to resolve without
+//        // any NPEs as there is always at least a global environment
+//        // with a this-binding
+//        var env = Agent.runningContext.lexicalEnv!!
+//        while (!env.hasThisBinding())
+//            env = env.outerEnv!!
+//        return env
+//    }
+//
+//    @JvmStatic @ECMAImpl("8.3.4")
+//    fun resolveThisBinding(): JSValue {
+//        return when (val env = getThisEnvironment()) {
+//            is FunctionEnvRecord -> env.getThisBinding()
+//            is GlobalEnvRecord -> env.getThisBinding()
+//            is ModuleEnvRecord -> env.getThisBinding()
+//            else -> unreachable()
+//        }
+//    }
+//
+//    @JvmStatic @ECMAImpl("8.3.5")
+//    fun getNewTarget(): JSValue {
+//        val env = getThisEnvironment()
+//        ecmaAssert(env is FunctionEnvRecord)
+//        return env.newTarget
+//    }
 
     @JvmStatic @ECMAImpl("8.3.6")
     fun getGlobalObject(): JSObject {
@@ -1655,64 +1654,64 @@ object Operations {
         return obj is JSObject && obj.hasSlot(slot)
     }
 
-    @JvmStatic @ECMAImpl("9.2.1.1")
-    fun prepareForOrdinaryCall(function: JSFunction, newTarget: JSValue): ExecutionContext {
-        ecmaAssert(newTarget is JSUndefined || newTarget is JSObject)
-        val calleeContext = ExecutionContext(function.realm, function)
-        val localEnv = FunctionEnvRecord.create(function, newTarget)
-        calleeContext.lexicalEnv = localEnv
-        calleeContext.variableEnv = localEnv
-        Agent.pushContext(calleeContext)
-        return calleeContext
-    }
+//    @JvmStatic @ECMAImpl("9.2.1.1")
+//    fun prepareForOrdinaryCall(function: JSFunction, newTarget: JSValue): ExecutionContext {
+//        ecmaAssert(newTarget is JSUndefined || newTarget is JSObject)
+//        val calleeContext = ExecutionContext(function.realm, function)
+//        val localEnv = FunctionEnvRecord.create(function, newTarget)
+//        calleeContext.lexicalEnv = localEnv
+//        calleeContext.variableEnv = localEnv
+//        Agent.pushContext(calleeContext)
+//        return calleeContext
+//    }
 
     // TODO: Do we really need the calleeContext here?
     // prepareForOrdinaryCall will have just set it as the running
     // execution context
-    @JvmStatic @ECMAImpl("9.2.1.2")
-    fun ordinaryCallBindThis(function: JSFunction, calleeContext: ExecutionContext, thisArgument: JSValue): JSValue {
-        if (function.thisMode == JSFunction.ThisMode.Lexical)
-            return JSUndefined
-        val thisValue = if (function.thisMode == JSFunction.ThisMode.Strict) {
-            thisArgument
-        } else if (thisArgument == JSUndefined || thisArgument == JSNull) {
-            function.realm.globalEnv.globalThis
-        } else toObject(thisArgument)
+//    @JvmStatic @ECMAImpl("9.2.1.2")
+//    fun ordinaryCallBindThis(function: JSFunction, calleeContext: ExecutionContext, thisArgument: JSValue): JSValue {
+//        if (function.thisMode == JSFunction.ThisMode.Lexical)
+//            return JSUndefined
+//        val thisValue = if (function.thisMode == JSFunction.ThisMode.Strict) {
+//            thisArgument
+//        } else if (thisArgument == JSUndefined || thisArgument == JSNull) {
+//            function.realm.globalEnv.globalThis
+//        } else toObject(thisArgument)
+//
+//        val localEnv = calleeContext.lexicalEnv
+//        ecmaAssert(localEnv is FunctionEnvRecord)
+//        return localEnv.bindThisValue(thisValue)
+//    }
 
-        val localEnv = calleeContext.lexicalEnv
-        ecmaAssert(localEnv is FunctionEnvRecord)
-        return localEnv.bindThisValue(thisValue)
-    }
+//    @JvmStatic @JvmOverloads
+//    @ECMAImpl("9.2.5")
+//    fun makeConstructor(function: JSFunction, writablePrototype: Boolean = true, prototype: JSObject? = null) {
+//        ecmaAssert(!hasOwnProperty(function, "prototype".key()))
+//        ecmaAssert(!function.isConstructable)
+//        ecmaAssert(function.isExtensible())
+//
+//        function.constructorKind = JSFunction.ConstructorKind.Base
+//        function.isConstructable = true
+//
+//        val realProto = prototype ?: run {
+//            val proto = JSObject.create(function.realm)
+//            var attrs = Descriptor.HAS_BASIC or Descriptor.CONFIGURABLE
+//            if (writablePrototype)
+//                attrs = attrs or Descriptor.WRITABLE
+//            definePropertyOrThrow(proto, "constructor".key(), Descriptor(function, attrs))
+//            proto
+//        }
+//        var attrs = Descriptor.HAS_BASIC
+//        if (writablePrototype)
+//            attrs = attrs or Descriptor.WRITABLE
+//        definePropertyOrThrow(function, "prototype".key(), Descriptor(realProto, attrs))
+//    }
 
-    @JvmStatic @JvmOverloads
-    @ECMAImpl("9.2.5")
-    fun makeConstructor(function: JSFunction, writablePrototype: Boolean = true, prototype: JSObject? = null) {
-        ecmaAssert(!hasOwnProperty(function, "prototype".key()))
-        ecmaAssert(!function.isConstructable)
-        ecmaAssert(function.isExtensible())
-
-        function.constructorKind = JSFunction.ConstructorKind.Base
-        function.isConstructable = true
-
-        val realProto = prototype ?: run {
-            val proto = JSObject.create(function.realm)
-            var attrs = Descriptor.HAS_BASIC or Descriptor.CONFIGURABLE
-            if (writablePrototype)
-                attrs = attrs or Descriptor.WRITABLE
-            definePropertyOrThrow(proto, "constructor".key(), Descriptor(function, attrs))
-            proto
-        }
-        var attrs = Descriptor.HAS_BASIC
-        if (writablePrototype)
-            attrs = attrs or Descriptor.WRITABLE
-        definePropertyOrThrow(function, "prototype".key(), Descriptor(realProto, attrs))
-    }
-
-    @JvmStatic @ECMAImpl("9.2.7")
-    fun makeMethod(function: JSFunction, homeObject: JSObject): JSValue {
-        function.homeObject = homeObject
-        return JSUndefined
-    }
+//    @JvmStatic @ECMAImpl("9.2.7")
+//    fun makeMethod(function: JSFunction, homeObject: JSObject): JSValue {
+//        function.homeObject = homeObject
+//        return JSUndefined
+//    }
 
     @JvmStatic @JvmOverloads
     @ECMAImpl("9.2.8")
@@ -1734,9 +1733,9 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("9.4.1.3")
-    fun boundFunctionCreate(targetFunction: JSFunction, boundThis: JSValue, boundArgs: JSArguments): JSFunction {
+    fun boundFunctionCreate(targetFunction: JSFunction, arguments: JSArguments): JSFunction {
         val proto = targetFunction.getPrototype()
-        return JSBoundFunction.create(Agent.runningContext.realm, targetFunction, boundThis, boundArgs, proto)
+        return JSBoundFunction.create(Agent.runningContext.realm, targetFunction, arguments, proto)
     }
 
     /**
@@ -1823,7 +1822,7 @@ object Operations {
 
         val throwTypeError = object : JSNativeFunction(realm, "", 0) {
             override fun evaluate(arguments: JSArguments): JSValue {
-                expect(newTarget == JSUndefined)
+                expect(arguments.newTarget == JSUndefined)
                 Errors.CalleePropertyAccess.throwTypeError()
             }
         }
@@ -1936,23 +1935,23 @@ object Operations {
         )
     }
 
-    @JvmStatic @ECMAImpl("9.4.4.7.1")
-    fun makeArgGetter(name: String, env: EnvRecord): NativeGetterSignature {
-        return { _ ->
-            val function = Agent.runningContext.function
-            expect(function != null)
-            env.getBindingValue(name, false)
-        }
-    }
+//    @JvmStatic @ECMAImpl("9.4.4.7.1")
+//    fun makeArgGetter(name: String, env: EnvRecord): NativeGetterSignature {
+//        return { _ ->
+//            val function = Agent.runningContext.function
+//            expect(function != null)
+//            env.getBindingValue(name, false)
+//        }
+//    }
 
-    @JvmStatic @ECMAImpl("9.4.4.7.2")
-    fun makeArgSetter(name: String, env: EnvRecord): NativeSetterSignature {
-        return { _, newValue ->
-            val function = Agent.runningContext.function
-            expect(function != null)
-            env.setMutableBinding(name, newValue, false)
-        }
-    }
+//    @JvmStatic @ECMAImpl("9.4.4.7.2")
+//    fun makeArgSetter(name: String, env: EnvRecord): NativeSetterSignature {
+//        return { _, newValue ->
+//            val function = Agent.runningContext.function
+//            expect(function != null)
+//            env.setBinding(name, newValue, false)
+//        }
+//    }
 
     @JvmStatic @ECMAImpl("9.4.7.2")
     fun setImmutablePrototype(obj: JSObject, proto: JSValue): Boolean {
@@ -1992,95 +1991,90 @@ object Operations {
         return codepoints
     }
 
-    @JvmStatic @ECMAImpl("12.3.3")
-    fun evaluatePropertyAccessWithExpressionKey(baseValue: JSValue, property: JSValue, isStrict: Boolean): JSValue {
-        val propertyValue = getValue(property)
-        val bv = requireObjectCoercible(baseValue)
-        val propertyKey = toPropertyKey(propertyValue)
-        return JSReference(bv, propertyKey, isStrict)
-    }
+//    @JvmStatic @ECMAImpl("12.3.3")
+//    fun evaluatePropertyAccessWithExpressionKey(baseValue: JSValue, property: JSValue, isStrict: Boolean): JSValue {
+//        val propertyValue = getValue(property)
+//        val bv = requireObjectCoercible(baseValue)
+//        val propertyKey = toPropertyKey(propertyValue)
+//        return JSReference(bv, propertyKey, isStrict)
+//    }
 
-    @JvmStatic @ECMAImpl("12.3.4")
-    fun evaluatePropertyAccessWithIdentifierKey(baseValue: JSValue, property: String, isStrict: Boolean): JSValue {
-        val bv = requireObjectCoercible(baseValue)
-        return JSReference(bv, PropertyKey(property), isStrict)
-    }
+//    @JvmStatic @ECMAImpl("12.3.4")
+//    fun evaluatePropertyAccessWithIdentifierKey(baseValue: JSValue, property: String, isStrict: Boolean): JSValue {
+//        val bv = requireObjectCoercible(baseValue)
+//        return JSReference(bv, PropertyKey(property), isStrict)
+//    }
 
-    @JvmStatic @ECMAImpl("12.3.5.1.1")
-    fun evaluateNew(target: JSValue, arguments: Array<JSValue>): JSValue {
-        val constructor = getValue(target)
-        if (!isConstructor(constructor))
-            Errors.NotACtor(toPrintableString(target)).throwTypeError()
-        return construct(constructor, arguments.toList())
-    }
+//    @JvmStatic @ECMAImpl("12.3.5.1.1")
+//    fun evaluateNew(target: JSValue, arguments: Array<JSValue>): JSValue {
+//        val constructor = getValue(target)
+//        if (!isConstructor(constructor))
+//            Errors.NotACtor(toPrintableString(target)).throwTypeError()
+//        return construct(constructor, arguments.toList())
+//    }
 
-    @JvmStatic @ECMAImpl("12.3.6.2")
-    fun evaluateCall(target: JSValue, reference: JSValue, arguments: List<JSValue>, tailPosition: Boolean): JSValue {
-        val thisValue = if (reference is JSReference) {
-            if (reference.isPropertyReference) {
-                reference.getThisValue()
-            } else {
-                ecmaAssert(reference.baseValue is EnvRecord)
-                reference.baseValue.withBaseObject()
-            }
-        } else JSUndefined
+//    @JvmStatic @ECMAImpl("12.3.6.2")
+//    fun evaluateCall(target: JSValue, reference: JSValue, arguments: List<JSValue>, tailPosition: Boolean): JSValue {
+//        val thisValue = if (reference is JSReference) {
+//            if (reference.isPropertyReference) {
+//                reference.getThisValue()
+//            } else {
+//                ecmaAssert(reference.baseValue is EnvRecord)
+//                reference.baseValue.withBaseObject()
+//            }
+//        } else JSUndefined
+//
+//        if (!isCallable(target))
+//            Errors.NotCallable(toPrintableString(target)).throwTypeError()
+//        if (tailPosition)
+//            TODO()
+//        return call(target, thisValue, arguments.toList())
+//    }
+//
+//    @JvmStatic @ECMAImpl("12.3.7.2")
+//    fun getSuperConstructor(): JSValue {
+//        val env = getThisEnvironment()
+//        ecmaAssert(env is FunctionEnvRecord)
+//        val activeFunction = env.function
+//        return activeFunction.getPrototype()
+//    }
+//
+//    @JvmStatic @ECMAImpl("12.3.7.3")
+//    fun makeSuperPropertyReference(thisValue: JSValue, key: PropertyKey, isStrict: Boolean): JSReference {
+//        val env = getThisEnvironment()
+//        ecmaAssert(env.hasSuperBinding())
+//        val baseValue = (env as FunctionEnvRecord).getSuperBase()
+//        requireObjectCoercible(baseValue)
+//        return JSSuperReference(baseValue, key, isStrict, thisValue)
+//    }
 
-        if (!isCallable(target))
-            Errors.NotCallable(toPrintableString(target)).throwTypeError()
-        if (tailPosition)
-            TODO()
-        return call(target, thisValue, arguments.toList())
-    }
-
-    @JvmStatic @ECMAImpl("12.3.7.2")
-    fun getSuperConstructor(): JSValue {
-        val env = getThisEnvironment()
-        ecmaAssert(env is FunctionEnvRecord)
-        val activeFunction = env.function
-        return activeFunction.getPrototype()
-    }
-
-    @JvmStatic @ECMAImpl("12.3.7.3")
-    fun makeSuperPropertyReference(thisValue: JSValue, key: PropertyKey, isStrict: Boolean): JSReference {
-        val env = getThisEnvironment()
-        ecmaAssert(env.hasSuperBinding())
-        val baseValue = (env as FunctionEnvRecord).getSuperBase()
-        requireObjectCoercible(baseValue)
-        return JSSuperReference(baseValue, key, isStrict, thisValue)
-    }
-
-    @JvmStatic @ECMAImpl("12.5.3")
-    fun deleteOperator(value: JSValue): JSValue {
-        if (value !is JSReference)
-            return JSTrue
-        if (value.isUnresolvableReference) {
-            ecmaAssert(!value.isStrict)
-            return JSTrue
-        }
-        return if (value.isPropertyReference) {
-            if (value.isSuperReference)
-                TODO()
-            expect(value.baseValue is JSValue)
-            val baseObj = toObject(value.baseValue)
-            val deleteStatus = baseObj.delete(value.name)
-            if (!deleteStatus && value.isStrict)
-                TODO()
-            deleteStatus.toValue()
-        } else {
-            ecmaAssert(value.baseValue is EnvRecord)
-            expect(value.name.isString)
-            value.baseValue.deleteBinding(value.name.asString).toValue()
-        }
-    }
+//    @JvmStatic @ECMAImpl("12.5.3")
+//    fun deleteOperator(value: JSValue): JSValue {
+//        if (value !is JSReference)
+//            return JSTrue
+//        if (value.isUnresolvableReference) {
+//            ecmaAssert(!value.isStrict)
+//            return JSTrue
+//        }
+//        return if (value.isPropertyReference) {
+//            if (value.isSuperReference)
+//                TODO()
+//            expect(value.baseValue is JSValue)
+//            val baseObj = toObject(value.baseValue)
+//            val deleteStatus = baseObj.delete(value.name)
+//            if (!deleteStatus && value.isStrict)
+//                TODO()
+//            deleteStatus.toValue()
+//        } else {
+//            ecmaAssert(value.baseValue is EnvRecord)
+//            expect(value.name.isString)
+//            value.baseValue.deleteBinding(value.name.asString).toValue()
+//        }
+//    }
 
     @JvmStatic @ECMAImpl("12.5.5")
     fun typeofOperator(value: JSValue): JSValue {
-        if (value is JSReference) {
-            if (value.isUnresolvableReference)
-                return "undefined".toValue()
-        }
-        val v = getValue(value)
-        return when (v) {
+        return when (value) {
             JSUndefined -> "undefined"
             JSNull -> "object"
             is JSBoolean -> "boolean"
@@ -2089,7 +2083,7 @@ object Operations {
             is JSSymbol -> "symbol"
             is JSBigInt -> "bigint"
             is JSFunction -> "function"
-            is JSProxyObject -> return typeofOperator(v.target)
+            is JSProxyObject -> return typeofOperator(value.target)
             is JSObject -> "object"
             else -> unreachable()
         }.toValue()

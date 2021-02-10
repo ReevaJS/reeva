@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.builtins.regexp
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.SlotName
@@ -87,7 +88,8 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         return getFlagHelper(thisValue, "unicode", JSRegExpObject.Flag.Unicode)
     }
 
-    fun `@@match`(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun `@@match`(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("RegExp.prototype[@@match]").throwTypeError()
 
@@ -116,7 +118,8 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         }
     }
 
-    fun `@@matchAll`(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun `@@matchAll`(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("RegExp.prototype[@@matchAll]").throwTypeError()
 
@@ -133,13 +136,14 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         return JSRegExpStringIterator.create(realm, thisValue as JSRegExpObject, string, global, fullUnicode)
     }
 
-    fun `@@replace`(thisValue: JSValue, arguments: JSArguments): JSValue {
-        if (thisValue !is JSObject)
+    fun `@@replace`(arguments: JSArguments): JSValue {
+        if (arguments.thisValue !is JSObject)
             Errors.IncompatibleMethodCall("RegExp.prototype[@@replace]").throwTypeError()
         TODO()
     }
 
-    fun `@@search`(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun `@@search`(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         if (thisValue !is JSObject)
             Errors.IncompatibleMethodCall("RegExp.prototype[@@search]").throwTypeError()
 
@@ -159,19 +163,20 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         return result.get("index")
     }
 
-    fun `@@split`(thisValue: JSValue, arguments: JSArguments): JSValue {
-        if (thisValue !is JSObject)
+    fun `@@split`(arguments: JSArguments): JSValue {
+        if (arguments.thisValue !is JSObject)
             Errors.IncompatibleMethodCall("RegExp.prototype[@@split]").throwTypeError()
         TODO()
     }
 
-    fun exec(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun exec(arguments: JSArguments): JSValue {
         // Handled by the regExpBuiltinExec function
 //        Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher)
-        return Operations.regExpBuiltinExec(realm, thisValue, Operations.toString(arguments.argument(0)))
+        return Operations.regExpBuiltinExec(realm, arguments.thisValue, Operations.toString(arguments.argument(0)))
     }
 
-    fun test(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun test(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
             Errors.IncompatibleMethodCall("RegExp.prototype.test").throwTypeError()
         val string = Operations.toString(arguments.argument(0))
@@ -179,7 +184,8 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         return (match != JSNull).toValue()
     }
 
-    fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun toString(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
             Errors.IncompatibleMethodCall("RegExp.prototype.toString").throwTypeError()
         val pattern = Operations.toString(thisValue.get("source"))

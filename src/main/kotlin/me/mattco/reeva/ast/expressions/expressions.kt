@@ -4,40 +4,22 @@ import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.ASTNodeBase
 import me.mattco.reeva.ast.ArgumentList
 import me.mattco.reeva.ast.ExpressionNode
+import me.mattco.reeva.ast.NodeWithScope
 
 class AssignmentExpressionNode(
     val lhs: ExpressionNode,
     val rhs: ExpressionNode,
-    val op: AssignmentOperator,
-) : ASTNodeBase(listOf(lhs, rhs)), ExpressionNode {
+    val op: BinaryOperator?, // Null indicates regular assignment
+) : NodeWithScope(listOf(lhs, rhs)), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (")
-        append(op.symbol)
+        append("${op?.symbol ?: ""}=")
         append(")\n")
         append(lhs.dump(indent + 1))
         append(rhs.dump(indent + 1))
     }
-}
-
-enum class AssignmentOperator(val symbol: String) {
-    Equals("="),
-    Mul("*="),
-    Div("/="),
-    Mod("%="),
-    Add("+="),
-    Sub("-="),
-    Shl("<<="),
-    Shr(">>="),
-    UShr(">>>="),
-    BitwiseAnd("&="),
-    BitwiseOr("|="),
-    BitwiseXor("^="),
-    Exp("**="),
-    And("&&="),
-    Or("||="),
-    Coalesce("??=")
 }
 
 class AwaitExpressionNode(val expression: ExpressionNode) : ASTNodeBase(listOf(expression)), ExpressionNode

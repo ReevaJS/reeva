@@ -5,10 +5,9 @@ import me.mattco.reeva.ast.ScriptOrModuleNode
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
-import me.mattco.reeva.parser.Parser.ParsingException
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.parser.Parser
-import me.mattco.reeva.runtime.JSGlobalObject
+import me.mattco.reeva.parser.Parser.ParsingException
 import me.mattco.reeva.runtime.errors.JSSyntaxErrorObject
 
 class EvaluationTask(
@@ -17,17 +16,8 @@ class EvaluationTask(
     private val isModule: Boolean,
 ) : Task<Reeva.Result>() {
     override fun makeContext(): ExecutionContext {
-        val context = ExecutionContext(realm, null)
-
-        if (!realm.isGloballyInitialized) {
-            realm.initObjects()
-            realm.setGlobalObject(JSGlobalObject.create(realm))
-        }
-
-        context.variableEnv = realm.globalEnv
-        context.lexicalEnv = realm.globalEnv
-
-        return context
+        realm.ensureGloballyInitialized()
+        return ExecutionContext(realm)
     }
 
     override fun execute(): Reeva.Result {

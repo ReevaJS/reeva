@@ -1,13 +1,12 @@
 package me.mattco.reeva.runtime.wrappers
 
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
 import me.mattco.reeva.utils.toValue
 
 class JSBooleanCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Boolean", 1) {
@@ -17,7 +16,7 @@ class JSBooleanCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
 
     override fun evaluate(arguments: JSArguments): JSValue {
         val bool = Operations.toBoolean(arguments.argument(0)).toValue()
-        val newTarget = super.newTarget
+        val newTarget = arguments.newTarget
         if (newTarget == JSUndefined)
             return bool
         if (newTarget == realm.booleanCtor)

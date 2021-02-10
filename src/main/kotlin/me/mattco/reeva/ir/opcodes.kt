@@ -126,12 +126,10 @@ class DeletePropertySloppy(val targetReg: Int) : Opcode()
  *********/
 
 /**
- * Declare variable names for the current local environment
- * using a [DeclarationsArray] at [cpIndex] in the constant pool.
- * Note that this opcode may also influence global environments,
- * despite the name.
+ * Declare declarations for the global environment using a
+ * [DeclarationsArray] at [cpIndex] in the constant pool.
  */
-class DeclareLocals(val cpIndex: Int) : Opcode()
+class DeclareGlobals(val cpIndex: Int) : Opcode()
 
 /**
  * Loads a global variable into the accumulator
@@ -141,23 +139,27 @@ class LdaGlobal(val nameCpIndex: Int) : Opcode()
 /**
  * Load the named property [nameCpIndex] from the environment
  */
-class LdaEnv(val nameCpIndex: Int) : Opcode()
+class LdaCurrentEnv(val slot: Int) : Opcode()
 
 /**
  * Store the value in the accumulator into the named property
  * [nameCpIndex] in the environment as a 'let' binding
  */
-class StaEnv(val nameCpIndex: Int) : Opcode()
+class StaCurrentEnv(val slot: Int) : Opcode()
+
+class LdaEnv(val slot: Int, val depthOffset: Int) : Opcode()
+
+class StaEnv(val slot: Int, val depthOffset: Int) : Opcode()
 
 /**
  * Create and immediately start using a new DeclarativeEnvRecord
  */
-object PushBlockEnv : Opcode()
+class PushEnv(val numSlots: Int) : Opcode()
 
 /**
  * Sets the current lexicalEnv to it's outer env
  */
-object PopBlockEnv : Opcode()
+object PopEnv : Opcode()
 
 /***********
  * CALLING *
@@ -430,14 +432,23 @@ object JumpPlaceholder : Opcode()
  ************************/
 
 /**
+ * Returns the value in the accumulator
+ */
+object Return : Opcode()
+
+/**
  * Throws the value in the accumulator
  */
 object Throw : Opcode()
 
+class ThrowConstReassignment(val nameCpIndex: Int) : Opcode()
+
 /**
- * Returns the value in the accumulator
+ * Throws a reference error if the value in the accumulator is empty.
+ * This is used for checking if a variable declared in an EnvRecord
+ * has already been initialized
  */
-object Return : Opcode()
+class ThrowUseBeforeInitIfEmpty(val nameCpIndex: Int) : Opcode()
 
 /*********
  * OTHER *

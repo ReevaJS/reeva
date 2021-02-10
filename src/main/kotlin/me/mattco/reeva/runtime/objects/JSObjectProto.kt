@@ -1,21 +1,16 @@
 package me.mattco.reeva.runtime.objects
 
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.SlotName
-import me.mattco.reeva.runtime.annotations.*
-import me.mattco.reeva.runtime.arrays.JSArrayObject
-import me.mattco.reeva.runtime.builtins.JSDateObject
-import me.mattco.reeva.runtime.builtins.JSMappedArgumentsObject
-import me.mattco.reeva.runtime.builtins.JSUnmappedArgumentsObject
-import me.mattco.reeva.runtime.errors.JSErrorObject
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.runtime.wrappers.JSBooleanObject
-import me.mattco.reeva.runtime.wrappers.JSNumberObject
-import me.mattco.reeva.runtime.wrappers.JSStringObject
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.attrs
+import me.mattco.reeva.utils.toValue
 
 class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) {
     override fun init() {
@@ -51,8 +46,8 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("B.2.2.2")
-    fun defineGetter(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(thisValue)
+    fun defineGetter(arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(arguments.thisValue)
         val getter = arguments.argument(1)
         if (!Operations.isCallable(getter))
             Errors.Object.DefineGetterBadArgType.throwTypeError()
@@ -63,8 +58,8 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("B.2.2.2")
-    fun defineSetter(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(thisValue)
+    fun defineSetter(arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(arguments.thisValue)
         val setter = arguments.argument(1)
         if (!Operations.isCallable(setter))
             Errors.Object.DefineSetterBadArgType.throwTypeError()
@@ -75,8 +70,8 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("B.2.2.4")
-    fun lookupGetter(thisValue: JSValue, arguments: JSArguments): JSValue {
-        var obj = Operations.toObject(thisValue)
+    fun lookupGetter(arguments: JSArguments): JSValue {
+        var obj = Operations.toObject(arguments.thisValue)
         val key = Operations.toPropertyKey(arguments.argument(0))
         while (true) {
             val desc = obj.getOwnPropertyDescriptor(key)
@@ -90,8 +85,8 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("B.2.2.4")
-    fun lookupSetter(thisValue: JSValue, arguments: JSArguments): JSValue {
-        var obj = Operations.toObject(thisValue)
+    fun lookupSetter(arguments: JSArguments): JSValue {
+        var obj = Operations.toObject(arguments.thisValue)
         val key = Operations.toPropertyKey(arguments.argument(0))
         while (true) {
             val desc = obj.getOwnPropertyDescriptor(key)
@@ -105,18 +100,18 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("19.1.3.2")
-    fun hasOwnProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun hasOwnProperty(arguments: JSArguments): JSValue {
         val key = Operations.toPropertyKey(arguments.argument(0))
-        val o = Operations.toObject(thisValue)
+        val o = Operations.toObject(arguments.thisValue)
         return Operations.hasOwnProperty(o, key).toValue()
     }
 
     @ECMAImpl("19.1.3.3")
-    fun isPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun isPrototypeOf(arguments: JSArguments): JSValue {
         var arg = arguments.argument(0)
         if (arg !is JSObject)
             return JSFalse
-        val thisObj = Operations.toObject(thisValue)
+        val thisObj = Operations.toObject(arguments.thisValue)
         while (true) {
             arg = (arg as JSObject).getPrototype()
             if (arg == JSNull)
@@ -127,26 +122,26 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("19.1.3.4")
-    fun propertyIsEnumerable(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun propertyIsEnumerable(arguments: JSArguments): JSValue {
         val key = Operations.toPropertyKey(arguments.argument(0))
-        val thisObj = Operations.toObject(thisValue)
+        val thisObj = Operations.toObject(arguments.thisValue)
         val desc = thisObj.getOwnPropertyDescriptor(key) ?: return JSFalse
         return desc.isEnumerable.toValue()
     }
 
     @ECMAImpl("19.1.3.5")
-    fun toLocaleString(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val thisObj = Operations.toObject(thisValue)
+    fun toLocaleString(arguments: JSArguments): JSValue {
+        val thisObj = Operations.toObject(arguments.thisValue)
         return Operations.invoke(thisObj, "toString".toValue())
     }
 
-    fun toString(thisValue: JSValue, arguments: List<JSValue>): JSValue {
-        if (thisValue == JSUndefined)
+    fun toString(arguments: JSArguments): JSValue {
+        if (arguments.thisValue == JSUndefined)
             return "[object Undefined]".toValue()
-        if (thisValue == JSNull)
+        if (arguments.thisValue == JSNull)
             return "[object Null]".toValue()
 
-        val obj = Operations.toObject(thisValue)
+        val obj = Operations.toObject(arguments.thisValue)
         val tag = obj.get(Realm.`@@toStringTag`).let {
             if (it is JSString) {
                 it.string
@@ -170,8 +165,8 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         return "[object $tag]".toValue()
     }
 
-    fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return Operations.toObject(thisValue)
+    fun valueOf(arguments: JSArguments): JSValue {
+        return Operations.toObject(arguments.thisValue)
     }
 
     companion object {

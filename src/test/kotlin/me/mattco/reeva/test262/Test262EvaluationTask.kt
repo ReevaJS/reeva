@@ -23,17 +23,8 @@ class Test262EvaluationTask(
     var phaseFailed: Negative.Phase? = null
 
     override fun makeContext(): ExecutionContext {
-        val context = ExecutionContext(realm, null)
-
-        if (!realm.isGloballyInitialized) {
-            realm.initObjects()
-            realm.setGlobalObject(JSGlobalObject.create(realm))
-        }
-
-        context.variableEnv = realm.globalEnv
-        context.lexicalEnv = realm.globalEnv
-
-        return context
+        realm.ensureGloballyInitialized()
+        return ExecutionContext(realm)
     }
 
     override fun execute(): Reeva.Result {

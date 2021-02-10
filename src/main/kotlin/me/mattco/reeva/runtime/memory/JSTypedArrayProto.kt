@@ -57,7 +57,8 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         return (thisValue as JSObject).getSlotAs<Int>(SlotName.ArrayLength).toValue()
     }
 
-    private fun copyWithin(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun copyWithin(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val buffer = Operations.validateTypedArray(thisValue)
         expect(thisValue is JSObject)
 
@@ -100,16 +101,17 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         return thisValue
     }
 
-    private fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
-        Operations.validateTypedArray(thisValue)
+    private fun entries(arguments: JSArguments): JSValue {
+        Operations.validateTypedArray(arguments.thisValue)
         return Operations.createArrayIterator(realm, this, PropertyKind.KeyValue)
     }
 
-    private fun every(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayEvery(thisValue, arguments, lengthProducer, indicesProducer)
+    private fun every(arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayEvery(arguments, lengthProducer, indicesProducer)
     }
 
-    private fun fill(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun fill(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         val buffer = Operations.validateTypedArray(thisValue)
         expect(thisValue is JSObject)
 
@@ -131,7 +133,8 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         return thisValue
     }
 
-    private fun filter(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun filter(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         Operations.validateTypedArray(thisValue)
         expect(thisValue is JSObject)
 
@@ -150,7 +153,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             k++
         }
 
-        val newArr = Operations.typedArraySpeciesCreate(thisValue, listOf(kept.size.toValue()))
+        val newArr = Operations.typedArraySpeciesCreate(thisValue, JSArguments(listOf(kept.size.toValue())))
         kept.forEachIndexed { index, value ->
             Operations.set(thisValue, index.key(), value, true)
         }
@@ -158,48 +161,48 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         return newArr
     }
 
-    private fun find(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayFind(thisValue, arguments, lengthProducer, indicesProducer)
+    private fun find(arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayFind(arguments, lengthProducer, indicesProducer)
     }
 
-    private fun findIndex(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayFindIndex(thisValue, arguments, lengthProducer, indicesProducer)
+    private fun findIndex(arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayFindIndex(arguments, lengthProducer, indicesProducer)
     }
 
-    private fun forEach(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayForEach(thisValue, arguments, lengthProducer, indicesProducer)
+    private fun forEach(arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayForEach(arguments, lengthProducer, indicesProducer)
     }
 
-    private fun includes(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayIncludes(thisValue, arguments, lengthProducer, indicesProducer)
+    private fun includes(arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayIncludes(arguments, lengthProducer, indicesProducer)
     }
 
-//    private fun indexOf(thisValue: JSValue, arguments: JSArguments): JSValue {
+//    private fun indexOf(arguments: JSArguments): JSValue {
 //        return JSArrayProto.genericArrayIndexOf(thisValue, arguments, lengthProducer, indicesProducer)
 //    }
 
-    private fun join(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayJoin(thisValue, arguments, lengthProducer)
+    private fun join(arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayJoin(arguments, lengthProducer)
     }
 
-    private fun lastIndexOf(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayLastIndexOf(thisValue, arguments, lengthProducer, indicesProducer)
+    private fun lastIndexOf(arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayLastIndexOf(arguments, lengthProducer, indicesProducer)
     }
 
-    private fun reduce(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayReduce(thisValue, arguments, lengthProducer, indicesProducer, false)
+    private fun reduce(arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayReduce(arguments, lengthProducer, indicesProducer, false)
     }
 
-    private fun reduceRight(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayReduce(thisValue, arguments, lengthProducer, indicesProducer, true)
+    private fun reduceRight(arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayReduce(arguments, lengthProducer, indicesProducer, true)
     }
 
-    private fun reverse(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayReverse(thisValue, arguments, lengthProducer, indicesProducer)
+    private fun reverse(arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayReverse(arguments, lengthProducer, indicesProducer)
     }
 
-    private fun some(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArraySome(thisValue, arguments, lengthProducer, indicesProducer)
+    private fun some(arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArraySome(arguments, lengthProducer, indicesProducer)
     }
 
     companion object {

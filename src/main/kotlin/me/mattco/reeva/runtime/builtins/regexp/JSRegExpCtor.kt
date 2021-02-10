@@ -1,13 +1,15 @@
 package me.mattco.reeva.runtime.builtins.regexp
 
-import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.attrs
+import me.mattco.reeva.utils.key
+import me.mattco.reeva.utils.toValue
 
 class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "RegExp", 2) {
     init {
@@ -29,9 +31,10 @@ class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val flags = arguments.argument(1)
         val patternIsRegExp = Operations.isRegExp(pattern)
 
-        val currentNewTarget = super.newTarget
+        val currentNewTarget = arguments.newTarget
         val newTarget = if (currentNewTarget == JSUndefined) {
-            val temp = Agent.runningContext.function ?: JSUndefined
+            // TODO: "Let newTarget be the active function object."
+            val temp = JSUndefined
             if (patternIsRegExp && flags == JSUndefined) {
                 val patternCtor = (pattern as JSObject).get("constructor")
                 if (temp.sameValue(patternCtor))

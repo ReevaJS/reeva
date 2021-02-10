@@ -1,10 +1,11 @@
 package me.mattco.reeva.runtime.objects
 
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSNull
@@ -45,15 +46,16 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
     override fun evaluate(arguments: JSArguments): JSValue {
         val value = arguments.argument(0)
-        val newTarget = super.newTarget
-        if (newTarget != JSUndefined && newTarget != Agent.runningContext.function)
+        val newTarget = arguments.newTarget
+        // TODO: "If NewTarget is neither undefined nor the active function, then..."
+        if (newTarget != JSUndefined /*&& newTarget != Agent.runningContext.function*/)
             return Operations.ordinaryCreateFromConstructor(newTarget, realm.objectProto)
         if (value.isUndefined || value.isNull)
             return JSObject.create(realm)
         return Operations.toObject(value)
     }
 
-    fun assign(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun assign(arguments: JSArguments): JSValue {
         val target = Operations.toObject(arguments.argument(0))
         if (arguments.size == 1)
             return target
@@ -74,7 +76,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return target
     }
 
-    fun create(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun create(arguments: JSArguments): JSValue {
         val obj = arguments.argument(0)
         if (obj !is JSObject && obj != JSNull)
             Errors.Object.CreateBadArgType.throwTypeError()
@@ -85,14 +87,14 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return newObj
     }
 
-    fun defineProperties(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun defineProperties(arguments: JSArguments): JSValue {
         val obj = arguments.argument(0)
         if (obj !is JSObject)
             Errors.Object.DefinePropertiesBadArgType.throwTypeError()
         return objectDefineProperties(obj, arguments.argument(1))
     }
 
-    fun defineProperty(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun defineProperty(arguments: JSArguments): JSValue {
         val obj = arguments.argument(0)
         if (obj !is JSObject)
             Errors.Object.DefinePropertyBadArgType.throwTypeError()
@@ -102,13 +104,13 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return obj
     }
 
-    fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun entries(arguments: JSArguments): JSValue {
         val obj = Operations.toObject(arguments.argument(0))
         val names = Operations.enumerableOwnPropertyNames(obj, PropertyKind.KeyValue)
         return Operations.createArrayFromList(names)
     }
 
-    fun freeze(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun freeze(arguments: JSArguments): JSValue {
         val obj = arguments.argument(0)
         if (obj !is JSObject)
             return obj
@@ -119,28 +121,28 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return obj
     }
 
-    fun fromEntries(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun fromEntries(arguments: JSArguments): JSValue {
         val iterable = arguments.argument(0)
         Operations.requireObjectCoercible(iterable)
         val obj = JSObject.create(realm)
-        val adder = fromLambda(realm, "", 0) { tv, args ->
+        val adder = fromLambda(realm, "", 0) { args ->
             val key = args.argument(0)
             val value = args.argument(1)
-            ecmaAssert(tv is JSObject)
-            Operations.createDataPropertyOrThrow(tv, key, value)
+            ecmaAssert(args.thisValue is JSObject)
+            Operations.createDataPropertyOrThrow(args.thisValue, key, value)
             return@fromLambda JSUndefined
         }
         return Operations.addEntriesFromIterable(obj, iterable, adder)
     }
 
-    fun getOwnPropertyDescriptor(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun getOwnPropertyDescriptor(arguments: JSArguments): JSValue {
         val obj = Operations.toObject(arguments.argument(0))
         val key = Operations.toPropertyKey(arguments.argument(1))
         val desc = obj.getOwnPropertyDescriptor(key) ?: return JSUndefined
         return desc.toObject(realm, obj)
     }
 
-    fun getOwnPropertyDescriptors(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun getOwnPropertyDescriptors(arguments: JSArguments): JSValue {
         val obj = Operations.toObject(arguments.argument(0))
         val descriptors = JSObject.create(realm)
         obj.ownPropertyKeys().forEach { key ->
@@ -151,51 +153,51 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return descriptors
     }
 
-    fun getOwnPropertyNames(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun getOwnPropertyNames(arguments: JSArguments): JSValue {
         return getOwnPropertyKeys(arguments.argument(0), false)
     }
 
-    fun getOwnPropertySymbols(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun getOwnPropertySymbols(arguments: JSArguments): JSValue {
         return getOwnPropertyKeys(arguments.argument(0), true)
     }
 
-    fun getPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun getPrototypeOf(arguments: JSArguments): JSValue {
         val obj = Operations.toObject(arguments.argument(0))
         return obj.getPrototype()
     }
 
-    fun `is`(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun `is`(arguments: JSArguments): JSValue {
         return arguments.argument(0).sameValue(arguments.argument(1)).toValue()
     }
 
-    fun isExtensible(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun isExtensible(arguments: JSArguments): JSValue {
         val obj = arguments.argument(0)
         if (obj !is JSObject)
             return JSFalse
         return obj.isExtensible().toValue()
     }
 
-    fun isFrozen(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun isFrozen(arguments: JSArguments): JSValue {
         val obj = arguments.argument(0)
         if (obj !is JSObject)
             return JSTrue
         return obj.isFrozen.toValue()
     }
 
-    fun isSealed(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun isSealed(arguments: JSArguments): JSValue {
         val obj = arguments.argument(0)
         if (obj !is JSObject)
             return JSTrue
         return obj.isSealed.toValue()
     }
 
-    fun keys(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun keys(arguments: JSArguments): JSValue {
         val obj = Operations.toObject(arguments.argument(0))
         val nameList = Operations.enumerableOwnPropertyNames(obj, PropertyKind.Key)
         return Operations.createArrayFromList(nameList)
     }
 
-    fun preventExtensions(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun preventExtensions(arguments: JSArguments): JSValue {
         val obj = arguments.argument(0)
         if (obj !is JSObject)
             return obj
@@ -206,7 +208,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return obj
     }
 
-    fun seal(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun seal(arguments: JSArguments): JSValue {
         val obj = arguments.argument(0)
         if (obj !is JSObject)
             return obj
@@ -217,7 +219,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return obj
     }
 
-    fun setPrototypeOf(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun setPrototypeOf(arguments: JSArguments): JSValue {
         val obj = arguments.argument(0)
         Operations.requireObjectCoercible(obj)
         val proto = arguments.argument(1)
@@ -230,7 +232,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return obj
     }
 
-    fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun values(arguments: JSArguments): JSValue {
         val obj = Operations.toObject(arguments.argument(0))
         val nameList = Operations.enumerableOwnPropertyNames(obj, JSObject.PropertyKind.Value)
         return Operations.createArrayFromList(nameList)

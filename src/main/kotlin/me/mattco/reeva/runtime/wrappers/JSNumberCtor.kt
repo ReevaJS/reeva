@@ -1,17 +1,14 @@
 package me.mattco.reeva.runtime.wrappers
 
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.SlotName
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.runtime.toNumeric
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
 import me.mattco.reeva.utils.toValue
-import java.math.BigInteger
 import kotlin.math.abs
 
 class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Number", 1) {
@@ -39,7 +36,7 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @ECMAImpl("20.1.2.2")
-    fun isFinite(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun isFinite(arguments: JSArguments): JSValue {
         val number = arguments.argument(0)
         if (!number.isNumber)
             return JSFalse
@@ -49,34 +46,34 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @ECMAImpl("20.1.2.3")
-    fun isInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun isInteger(arguments: JSArguments): JSValue {
         return Operations.isIntegralNumber(arguments.argument(0)).toValue()
     }
 
     @ECMAImpl("20.1.2.4")
-    fun isNaN(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun isNaN(arguments: JSArguments): JSValue {
         return arguments.argument(0).isNaN.toValue()
     }
 
     @ECMAImpl("20.1.2.5")
-    fun isSafeInteger(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun isSafeInteger(arguments: JSArguments): JSValue {
         if (!Operations.isIntegralNumber(arguments.argument(0)))
             return JSFalse
         return (abs(arguments.argument(0).asDouble) <= Operations.MAX_SAFE_INTEGER).toValue()
     }
 
     @ECMAImpl("20.1.2.12")
-    fun parseFloat(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun parseFloat(arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.2.13")
-    fun parseInt(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun parseInt(arguments: JSArguments): JSValue {
         TODO()
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        val newTarget = super.newTarget
+        val newTarget = arguments.newTarget
         val value = arguments.argument(0)
         val n = if (value != JSUndefined) {
             numberFromArg(value).toValue()

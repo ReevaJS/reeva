@@ -1,21 +1,20 @@
 package me.mattco.reeva.runtime.builtins.promises
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
 
 class JSCapabilitiesExecutor private constructor(
     realm: Realm,
     private val capability: Operations.PromiseCapability
 ) : JSNativeFunction(realm, "", 2) {
     override fun evaluate(arguments: JSArguments): JSValue {
-        if (newTarget != JSUndefined)
+        if (arguments.newTarget != JSUndefined)
             throw IllegalStateException("Unexpected construction of JSCapabilitiesExecutor")
         if (capability.resolve != null)
             Errors.TODO("JSCapabilitiesExecutor 1").throwTypeError()

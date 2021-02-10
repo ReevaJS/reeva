@@ -1,10 +1,11 @@
 package me.mattco.reeva.runtime.arrays
 
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
@@ -29,9 +30,11 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        val realNewTarget = newTarget.let {
+        val realNewTarget = arguments.newTarget.let {
             if (it is JSUndefined) {
-                Agent.runningContext.function ?: JSUndefined
+                // TODO: "If NewTarget is undefined, let newTarget be the active function
+                //  object; else let newTarget be NewTarget."
+                JSUndefined
             } else it
         }
 
@@ -72,11 +75,11 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         return thisValue
     }
 
-    fun isArray(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun isArray(arguments: JSArguments): JSValue {
         return Operations.isArray(arguments.argument(0)).toValue()
     }
 
-    fun from(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun from(arguments: JSArguments): JSValue {
         val items = arguments.argument(0)
         val mapFn = arguments.argument(1)
         val thisArg = arguments.argument(2)
@@ -89,8 +92,8 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
 
         val usingIterator = Operations.getMethod(items, Realm.`@@iterator`)
         if (usingIterator != JSUndefined) {
-            val array = (if (Operations.isConstructor(thisValue)) {
-                Operations.construct(thisValue)
+            val array = (if (Operations.isConstructor(arguments.thisValue)) {
+                Operations.construct(arguments.thisValue)
             } else Operations.arrayCreate(0)) as JSObject
 
             val iteratorRecord = Operations.getIterator(items, Operations.IteratorHint.Sync, usingIterator as JSFunction)
@@ -133,8 +136,8 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
 
         val arrayLike = Operations.toObject(items)
         val len = Operations.lengthOfArrayLike(arrayLike)
-        val array = (if (Operations.isConstructor(thisValue)) {
-            Operations.construct(thisValue, listOf(len.toValue()))
+        val array = (if (Operations.isConstructor(arguments.thisValue)) {
+            Operations.construct(arguments.thisValue, listOf(len.toValue()))
         } else Operations.arrayCreate(len)) as JSObject
 
         var k = 0
@@ -151,9 +154,9 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         return array
     }
 
-    fun of(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val array = (if (Operations.isConstructor(thisValue)) {
-            Operations.construct(thisValue, listOf(arguments.size.toValue()))
+    fun of(arguments: JSArguments): JSValue {
+        val array = (if (Operations.isConstructor(arguments.thisValue)) {
+            Operations.construct(arguments.thisValue, listOf(arguments.size.toValue()))
         } else Operations.arrayCreate(arguments.size)) as JSObject
 
         arguments.forEachIndexed { index, value ->

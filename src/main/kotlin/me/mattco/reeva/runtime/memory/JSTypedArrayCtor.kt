@@ -5,7 +5,9 @@ import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.key
+import me.mattco.reeva.utils.toValue
 
 class JSTypedArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "TypedArray", 0) {
     // To be used by the inherited typed array ctors, such as Int8Array
@@ -14,7 +16,8 @@ class JSTypedArrayCtor private constructor(realm: Realm) : JSNativeFunction(real
         obj.defineNativeFunction("of", 0, ::of)
     }
 
-    private fun from(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun from(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         if (!thisValue.isConstructor)
             Errors.IncompatibleMethodCall("%TypedArray%.from").throwTypeError()
 
@@ -29,7 +32,7 @@ class JSTypedArrayCtor private constructor(realm: Realm) : JSNativeFunction(real
         val usingIterator = Operations.getMethod(source, Realm.`@@iterator`)
         if (usingIterator != JSUndefined) {
             val values = Operations.iterableToList(source, usingIterator)
-            val targetObj = Operations.typedArrayCreate(thisValue, listOf(values.size.toValue()))
+            val targetObj = Operations.typedArrayCreate(thisValue, JSArguments(listOf(values.size.toValue())))
             values.forEachIndexed { index, value ->
                 val mappedValue = if (mapping) {
                     Operations.call(mapfn, thisArg, listOf(value, index.toValue()))
@@ -41,7 +44,7 @@ class JSTypedArrayCtor private constructor(realm: Realm) : JSNativeFunction(real
 
         val arrayLike = source.toObject()
         val len = arrayLike.lengthOfArrayLike()
-        val targetObj = Operations.typedArrayCreate(thisValue, listOf(len.toValue()))
+        val targetObj = Operations.typedArrayCreate(thisValue, JSArguments(listOf(len.toValue())))
         for (index in 0 until len) {
             val value = arrayLike.get(index)
             val mappedValue = if (mapping) {
@@ -53,11 +56,11 @@ class JSTypedArrayCtor private constructor(realm: Realm) : JSNativeFunction(real
         return targetObj
     }
 
-    private fun of(thisValue: JSValue, arguments: JSArguments): JSValue {
-        if (!thisValue.isConstructor)
+    private fun of(arguments: JSArguments): JSValue {
+        if (!arguments.thisValue.isConstructor)
             Errors.IncompatibleMethodCall("%TypedArray%.of").throwTypeError()
 
-        val newObj = Operations.typedArrayCreate(thisValue, listOf(arguments.size.toValue()))
+        val newObj = Operations.typedArrayCreate(arguments.thisValue, JSArguments(listOf(arguments.size.toValue())))
         arguments.forEachIndexed { index, value ->
             Operations.set(newObj, index.key(), value, true)
         }
@@ -65,7 +68,7 @@ class JSTypedArrayCtor private constructor(realm: Realm) : JSNativeFunction(real
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        if (super.newTarget == JSUndefined) {
+        if (arguments.newTarget == JSUndefined) {
             Errors.NotCallable("TypedArray").throwTypeError()
         } else Errors.NotACtor("TypedArray").throwTypeError()
     }

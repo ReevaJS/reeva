@@ -1,13 +1,16 @@
 package me.mattco.reeva.runtime.builtins
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.attrs
+import me.mattco.reeva.utils.key
 
 class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map", 0) {
     init {
@@ -24,11 +27,10 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        val newTarget = super.newTarget
-        if (newTarget == JSUndefined)
+        if (arguments.newTarget == JSUndefined)
             Errors.CtorCallWithoutNew("Map").throwTypeError()
 
-        val map = Operations.ordinaryCreateFromConstructor(newTarget, realm.mapProto, listOf(SlotName.MapData))
+        val map = Operations.ordinaryCreateFromConstructor(arguments.newTarget, realm.mapProto, listOf(SlotName.MapData))
         map.setSlot(SlotName.MapData, JSMapObject.MapData())
         val iterable = arguments.argument(0)
         if (iterable == JSUndefined || iterable == JSNull)

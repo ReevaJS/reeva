@@ -2,6 +2,7 @@ package me.mattco.reeva.runtime.builtins.promises
 
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.SlotName
@@ -11,7 +12,9 @@ import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.ecmaAssert
+import me.mattco.reeva.utils.toValue
 
 class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Promise", 2) {
     init {
@@ -28,8 +31,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        val newTarget = super.newTarget
-        if (newTarget == JSUndefined)
+        if (arguments.newTarget == JSUndefined)
             Errors.CtorCallWithoutNew("Promise").throwTypeError()
 
         val executor = arguments.argument(0)
@@ -37,7 +39,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             Errors.Promise.CtorFirstArgCallable.throwTypeError()
 
         val promise = Operations.ordinaryCreateFromConstructor(
-            newTarget,
+            arguments.newTarget,
             realm.promiseProto,
             listOf(
                 SlotName.PromiseState,
@@ -65,17 +67,17 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
 
     @ECMAImpl("26.6.4.1")
     @ECMAImpl("26.6.4.1.2", name = "PerformPromiseAll")
-    fun all(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val capability = Operations.newPromiseCapability(thisValue)
+    fun all(arguments: JSArguments): JSValue {
+        val capability = Operations.newPromiseCapability(arguments.thisValue)
         val resolve = ifAbruptRejectPromise(capability, { return it }) {
-            Operations.getPromiseResolve(thisValue)
+            Operations.getPromiseResolve(arguments.thisValue)
         }
         val iteratorRecord = ifAbruptRejectPromise(capability, { return it }) {
             Operations.getIterator(arguments.argument(0))
         }
 
         return try {
-            performPromiseAll(iteratorRecord, thisValue, capability, resolve)
+            performPromiseAll(iteratorRecord, arguments.thisValue, capability, resolve)
         } catch (e: ThrowException) {
             try {
                 if (!iteratorRecord.isDone)
@@ -136,17 +138,17 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         }
     }
 
-    fun allSettled(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val capability = Operations.newPromiseCapability(thisValue)
+    fun allSettled(arguments: JSArguments): JSValue {
+        val capability = Operations.newPromiseCapability(arguments.thisValue)
         val resolve = ifAbruptRejectPromise(capability, { return it }) {
-            Operations.getPromiseResolve(thisValue)
+            Operations.getPromiseResolve(arguments.thisValue)
         }
         val iteratorRecord = ifAbruptRejectPromise(capability, { return it }) {
             Operations.getIterator(arguments.argument(0))
         }
 
         return try {
-            performPromiseAllSettled(iteratorRecord, thisValue, capability, resolve)
+            performPromiseAllSettled(iteratorRecord, arguments.thisValue, capability, resolve)
         } catch (e: ThrowException) {
             try {
                 if (!iteratorRecord.isDone)
@@ -207,16 +209,16 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         }
     }
 
-    fun reject(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val capability = Operations.newPromiseCapability(thisValue)
+    fun reject(arguments: JSArguments): JSValue {
+        val capability = Operations.newPromiseCapability(arguments.thisValue)
         Operations.call(capability.reject!!, JSUndefined, listOf(arguments.argument(0)))
         return capability.promise
     }
 
-    fun resolve(thisValue: JSValue, arguments: JSArguments): JSValue {
-        if (thisValue !is JSObject)
+    fun resolve(arguments: JSArguments): JSValue {
+        if (arguments.thisValue !is JSObject)
             Errors.IncompatibleMethodCall("Promise.resolve").throwTypeError()
-        return Operations.promiseResolve(thisValue, arguments.argument(0))
+        return Operations.promiseResolve(arguments.thisValue, arguments.argument(0))
     }
 
     private inline fun <T> ifAbruptRejectPromise(

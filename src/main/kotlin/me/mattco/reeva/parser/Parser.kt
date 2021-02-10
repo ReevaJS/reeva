@@ -960,11 +960,13 @@ class Parser(val source: String) {
         addVar: Boolean = true,
     ): BindingIdentifierNode = nps {
         BindingIdentifierNode(parseIdentifier()).also {
+            it.scope = scope
             if (addVar && !disableAutoScoping) {
                 scope.addDeclaredVariable(Variable(
                     it.identifierName,
                     varType,
                     varMode,
+                    it,
                 ))
             }
         }
@@ -1034,7 +1036,7 @@ class Parser(val source: String) {
                 .withPosition(lhs.sourceStart, lastConsumedToken.end)
         }
 
-        fun makeAssignExpr(op: AssignmentOperator): ExpressionNode {
+        fun makeAssignExpr(op: BinaryOperator?): ExpressionNode {
             consume()
             if (lhs !is IdentifierReferenceNode && lhs !is MemberExpressionNode && lhs !is CallExpressionNode)
                 reporter.at(lhs).invalidLhsInAssignment()
@@ -1079,22 +1081,22 @@ class Parser(val source: String) {
             TokenType.Shl -> makeBinaryExpr(BinaryOperator.Shl)
             TokenType.Shr -> makeBinaryExpr(BinaryOperator.Shr)
             TokenType.UShr -> makeBinaryExpr(BinaryOperator.UShr)
-            TokenType.Equals -> makeAssignExpr(AssignmentOperator.Equals)
-            TokenType.MulEquals -> makeAssignExpr(AssignmentOperator.Mul)
-            TokenType.DivEquals -> makeAssignExpr(AssignmentOperator.Div)
-            TokenType.ModEquals -> makeAssignExpr(AssignmentOperator.Mod)
-            TokenType.AddEquals -> makeAssignExpr(AssignmentOperator.Add)
-            TokenType.SubEquals -> makeAssignExpr(AssignmentOperator.Sub)
-            TokenType.ShlEquals -> makeAssignExpr(AssignmentOperator.Shl)
-            TokenType.ShrEquals -> makeAssignExpr(AssignmentOperator.Shr)
-            TokenType.UShrEquals -> makeAssignExpr(AssignmentOperator.UShr)
-            TokenType.BitwiseAndEquals -> makeAssignExpr(AssignmentOperator.BitwiseAnd)
-            TokenType.BitwiseOrEquals -> makeAssignExpr(AssignmentOperator.BitwiseOr)
-            TokenType.BitwiseXorEquals -> makeAssignExpr(AssignmentOperator.BitwiseXor)
-            TokenType.ExpEquals -> makeAssignExpr(AssignmentOperator.Exp)
-            TokenType.AndEquals -> makeAssignExpr(AssignmentOperator.And)
-            TokenType.OrEquals -> makeAssignExpr(AssignmentOperator.Or)
-            TokenType.CoalesceEquals -> makeAssignExpr(AssignmentOperator.Coalesce)
+            TokenType.Equals -> makeAssignExpr(null)
+            TokenType.MulEquals -> makeAssignExpr(BinaryOperator.Mul)
+            TokenType.DivEquals -> makeAssignExpr(BinaryOperator.Div)
+            TokenType.ModEquals -> makeAssignExpr(BinaryOperator.Mod)
+            TokenType.AddEquals -> makeAssignExpr(BinaryOperator.Add)
+            TokenType.SubEquals -> makeAssignExpr(BinaryOperator.Sub)
+            TokenType.ShlEquals -> makeAssignExpr(BinaryOperator.Shl)
+            TokenType.ShrEquals -> makeAssignExpr(BinaryOperator.Shr)
+            TokenType.UShrEquals -> makeAssignExpr(BinaryOperator.UShr)
+            TokenType.BitwiseAndEquals -> makeAssignExpr(BinaryOperator.BitwiseAnd)
+            TokenType.BitwiseOrEquals -> makeAssignExpr(BinaryOperator.BitwiseOr)
+            TokenType.BitwiseXorEquals -> makeAssignExpr(BinaryOperator.BitwiseXor)
+            TokenType.ExpEquals -> makeAssignExpr(BinaryOperator.Exp)
+            TokenType.AndEquals -> makeAssignExpr(BinaryOperator.And)
+            TokenType.OrEquals -> makeAssignExpr(BinaryOperator.Or)
+            TokenType.CoalesceEquals -> makeAssignExpr(BinaryOperator.Coalesce)
             TokenType.Period -> {
                 consume()
                 if (!matchIdentifierName())

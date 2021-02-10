@@ -28,19 +28,6 @@ class Interpreter(private val realm: Realm) {
 
     @ECMAImpl("15.2.1.17.1")
     internal fun setupModule(module: ModuleNode): SourceTextModuleRecord {
-        val globalEnv = realm.globalEnv
-        globalEnv.isStrict = true
-        return SourceTextModuleRecord(
-            realm,
-            null,
-            emptyList(),
-            module,
-            null,
-            null,
-            emptyList(),
-            emptyList(),
-            emptyList(),
-            emptyList()
-        )
+        TODO()
     }
 }

@@ -1,13 +1,12 @@
 package me.mattco.reeva.runtime.iterators
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.ecmaAssert
-import me.mattco.reeva.utils.key
 
 class JSListIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
     override fun init() {
@@ -16,7 +15,8 @@ class JSListIteratorProto private constructor(realm: Realm) : JSObject(realm, re
     }
 
     // TODO: Spec doesn't say this is an actual method
-    fun next(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun next(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         ecmaAssert(thisValue is JSListIterator)
         if (thisValue.nextIndex >= thisValue.iteratorList.size)
             return Operations.createIterResultObject(JSUndefined, true)

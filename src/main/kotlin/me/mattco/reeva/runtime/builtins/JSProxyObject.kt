@@ -2,6 +2,7 @@ package me.mattco.reeva.runtime.builtins
 
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.SlotName
@@ -261,22 +262,22 @@ class JSProxyObject private constructor(
         return trapResult
     }
 
-    fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun call(arguments: JSArguments): JSValue {
         expect(isCallable)
         val (_, trap) = getTrapAndHandler("apply") {
-            return Operations.call(target, thisValue, arguments)
+            return Operations.call(target, arguments)
         }
         val argArray = Operations.createArrayFromList(arguments)
-        return Operations.call(trap, thisValue, listOf(target, thisValue, argArray))
+        return Operations.call(trap, arguments.thisValue, listOf(target, arguments.thisValue, argArray))
     }
 
-    fun construct(arguments: JSArguments, newTarget: JSValue): JSValue {
+    fun construct(arguments: JSArguments): JSValue {
         expect(isConstructor)
         val (handler, trap) = getTrapAndHandler("construct") {
-            return Operations.construct(target, arguments, newTarget)
+            return Operations.construct(target, arguments, arguments.newTarget)
         }
         val argArray = Operations.createArrayFromList(arguments)
-        val newObj = Operations.call(trap, handler, listOf(target, argArray, newTarget))
+        val newObj = Operations.call(trap, handler, listOf(target, argArray, arguments.newTarget))
         if (newObj !is JSObject)
             Errors.Proxy.Construct.NonObject.throwTypeError()
         return newObj

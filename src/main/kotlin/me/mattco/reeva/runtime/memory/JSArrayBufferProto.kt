@@ -5,7 +5,9 @@ import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.attrs
+import me.mattco.reeva.utils.toValue
 import kotlin.math.max
 import kotlin.math.min
 
@@ -30,7 +32,8 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
         return thisValue.getSlotAs<Int>(SlotName.ArrayBufferByteLength).toValue()
     }
 
-    private fun slice(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun slice(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         if (!Operations.requireInternalSlot(thisValue, SlotName.ArrayBufferData))
             Errors.IncompatibleMethodCall("ArrayBuffer.prototype.slice").throwTypeError()
         if (Operations.isSharedArrayBuffer(thisValue))

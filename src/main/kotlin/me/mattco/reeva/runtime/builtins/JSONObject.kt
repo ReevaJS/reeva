@@ -1,10 +1,8 @@
 package me.mattco.reeva.runtime.builtins
 
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.runtime.primitives.JSTrue
@@ -12,7 +10,6 @@ import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.JSBigInt
-import me.mattco.reeva.runtime.toNumber
 import me.mattco.reeva.runtime.wrappers.JSBigIntObject
 import me.mattco.reeva.runtime.wrappers.JSBooleanObject
 import me.mattco.reeva.runtime.wrappers.JSNumberObject
@@ -34,12 +31,12 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     }
 
     @ECMAImpl("24.5.1")
-    fun parse(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun parse(arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("24.5.2")
-    fun stringify(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun stringify(arguments: JSArguments): JSValue {
         // TODO: ReplacerFunction
 
         val value = arguments.argument(0)

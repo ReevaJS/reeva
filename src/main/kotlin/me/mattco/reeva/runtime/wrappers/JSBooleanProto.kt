@@ -1,15 +1,15 @@
 package me.mattco.reeva.runtime.wrappers
 
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.SlotName
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSBoolean
 import me.mattco.reeva.runtime.primitives.JSFalse
 import me.mattco.reeva.utils.Errors
-import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.toValue
 
 class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, JSFalse) {
@@ -22,14 +22,14 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
     }
 
     @ECMAImpl("19.3.3.2")
-    fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val b = thisBooleanValue(thisValue, "toString")
+    fun toString(arguments: JSArguments): JSValue {
+        val b = thisBooleanValue(arguments.thisValue, "toString")
         return if (b.boolean) "true".toValue() else "false".toValue()
     }
 
     @ECMAImpl("19.3.3.2")
-    fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisBooleanValue(thisValue, "valueOf")
+    fun valueOf(arguments: JSArguments): JSValue {
+        return thisBooleanValue(arguments.thisValue, "valueOf")
     }
 
     companion object {

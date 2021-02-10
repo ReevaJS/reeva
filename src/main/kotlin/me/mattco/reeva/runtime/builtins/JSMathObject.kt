@@ -2,6 +2,7 @@ package me.mattco.reeva.runtime.builtins
 
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -63,48 +64,48 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         defineNativeFunction("trunc", 1, ::trunc)
     }
 
-    fun abs(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun abs(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.abs(x.asDouble).toValue()
     }
 
-    fun acos(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun acos(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.acos(x.asDouble).toValue()
     }
 
-    fun acosh(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun acosh(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.acosh(x.asDouble).toValue()
     }
 
-    fun asin(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun asin(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.asin(x.asDouble).toValue()
     }
 
-    fun asinh(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun asinh(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.asinh(x.asDouble).toValue()
     }
 
-    fun atan(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun atan(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.atan(x.asDouble).toValue()
     }
 
-    fun atanh(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun atanh(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.atanh(x.asDouble).toValue()
     }
 
-    fun atan2(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun atan2(arguments: JSArguments): JSValue {
         val y = Operations.toNumber(arguments.argument(0))
         val x = Operations.toNumber(arguments.argument(1))
         return kotlin.math.atan2(y.asDouble, x.asDouble).toValue()
     }
 
-    fun cbrt(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun cbrt(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         val doubleVal = x.asDouble
         if (doubleVal.isNaN() || doubleVal == 0.0 || doubleVal.isInfinite())
@@ -112,47 +113,47 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         return doubleVal.pow(1.0 / 3.0).toValue()
     }
 
-    fun ceil(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun ceil(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.ceil(x.asDouble).toValue()
     }
 
-    fun clz32(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun clz32(arguments: JSArguments): JSValue {
         val x = Operations.toUint32(arguments.argument(0))
         return x.asInt.toUInt().countLeadingZeroBits().toValue()
     }
 
-    fun cos(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun cos(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.cos(x.asDouble).toValue()
     }
 
-    fun cosh(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun cosh(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.cosh(x.asDouble).toValue()
     }
 
-    fun exp(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun exp(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.exp(x.asDouble).toValue()
     }
 
-    fun expm1(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun expm1(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.expm1(x.asDouble).toValue()
     }
 
-    fun floor(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun floor(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.floor(x.asDouble).toValue()
     }
 
-    fun fround(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun fround(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return x.asDouble.toFloat().toDouble().toValue()
     }
 
-    fun hypot(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun hypot(arguments: JSArguments): JSValue {
         val coerced = arguments.map(Operations::toNumber)
         var onlyZero = true
 
@@ -174,7 +175,7 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         return kotlin.math.sqrt(coerced.sumByDouble { it.asDouble.pow(2.0) }).toValue()
     }
 
-    fun imul(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun imul(arguments: JSArguments): JSValue {
         val a = Operations.toUint32(arguments.argument(0))
         val b = Operations.toUint32(arguments.argument(1))
         val product = (a.asInt * b.asInt) % Operations.MAX_32BIT_INT
@@ -183,51 +184,51 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         return product.toValue()
     }
 
-    fun log(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun log(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.ln(x.asDouble).toValue()
     }
 
-    fun log1p(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun log1p(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.ln1p(x.asDouble).toValue()
     }
 
-    fun log10(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun log10(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.log10(x.asDouble).toValue()
     }
 
-    fun log2(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun log2(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.log2(x.asDouble).toValue()
     }
 
-    fun max(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun max(arguments: JSArguments): JSValue {
         if (arguments.isEmpty())
             return JSNumber.NEGATIVE_INFINITY
         val coerced = arguments.map(Operations::toNumber)
         return coerced.map { it.asDouble }.maxOrNull()!!.toValue()
     }
 
-    fun min(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun min(arguments: JSArguments): JSValue {
         if (arguments.isEmpty())
             return JSNumber.POSITIVE_INFINITY
         val coerced = arguments.map(Operations::toNumber)
         return coerced.map { it.asDouble }.minOrNull()!!.toValue()
     }
 
-    fun pow(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun pow(arguments: JSArguments): JSValue {
         val base = Operations.toNumber(arguments.argument(0))
         val exp = Operations.toNumber(arguments.argument(1))
         return base.asDouble.pow(exp.asDouble).toValue()
     }
 
-    fun random(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun random(arguments: JSArguments): JSValue {
         return Random.nextDouble().toValue()
     }
 
-    fun round(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun round(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         val doubleVal = x.asDouble
         if (doubleVal < 0.0 && doubleVal >= -0.5)
@@ -238,37 +239,37 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         return kotlin.math.round(doubleVal).toValue()
     }
 
-    fun sign(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun sign(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.sign(x.asDouble).toValue()
     }
 
-    fun sin(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun sin(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.sin(x.asDouble).toValue()
     }
 
-    fun sinh(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun sinh(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.sinh(x.asDouble).toValue()
     }
 
-    fun sqrt(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun sqrt(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.sqrt(x.asDouble).toValue()
     }
 
-    fun tan(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun tan(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.tan(x.asDouble).toValue()
     }
 
-    fun tanh(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun tanh(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.tanh(x.asDouble).toValue()
     }
 
-    fun trunc(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun trunc(arguments: JSArguments): JSValue {
         val x = Operations.toNumber(arguments.argument(0))
         return kotlin.math.truncate(x.asDouble).toValue()
     }

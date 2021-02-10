@@ -2,12 +2,12 @@ package me.mattco.reeva.core
 
 import me.mattco.reeva.ast.ScriptNode
 import me.mattco.reeva.core.environment.EnvRecord
-import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.core.modules.resolver.ModuleResolver
-import me.mattco.reeva.parser.Parser.ParsingException
 import me.mattco.reeva.jvmcompat.JSClassProto
 import me.mattco.reeva.jvmcompat.JSPackageObject
 import me.mattco.reeva.jvmcompat.JSPackageProto
+import me.mattco.reeva.parser.Parser.ParsingException
+import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.arrays.JSArrayCtor
 import me.mattco.reeva.runtime.arrays.JSArrayProto
 import me.mattco.reeva.runtime.builtins.*
@@ -31,12 +31,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 @Suppress("ObjectPropertyName")
 class Realm(var moduleResolver: ModuleResolver? = null) {
-    internal val isGloballyInitialized: Boolean
-        get() = ::globalObject.isInitialized && ::globalEnv.isInitialized
-
     lateinit var globalObject: JSObject
-        private set
-    lateinit var globalEnv: GlobalEnvRecord
         private set
 
     // Special objects that have to be handled manually
@@ -138,9 +133,11 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     val emptyShape = Shape(this)
     val newObjectShape = Shape(this)
 
-    fun setGlobalObject(obj: JSObject) {
-        globalObject = obj
-        globalEnv = GlobalEnvRecord.create(globalObject)
+    fun ensureGloballyInitialized() {
+        if (!::globalObject.isInitialized) {
+            initObjects()
+            globalObject = JSGlobalObject.create(this)
+        }
     }
 
     fun initObjects() {

@@ -7,8 +7,7 @@ import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.utils.toValue
 
 class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "String", 1) {
@@ -24,7 +23,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        val newTarget = super.newTarget
+        val newTarget = arguments.newTarget
 
         val theString = if (arguments.isEmpty()) {
             "".toValue()
@@ -43,7 +42,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         }
     }
 
-    fun fromCharCode(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun fromCharCode(arguments: JSArguments): JSValue {
         return buildString {
             arguments.forEach {
                 appendCodePoint(Operations.toUint16(it).asInt)
@@ -51,7 +50,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         }.toValue()
     }
 
-    fun fromCodePoint(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun fromCodePoint(arguments: JSArguments): JSValue {
         return buildString {
             arguments.forEach {
                 val nextCP = Operations.toNumber(it)

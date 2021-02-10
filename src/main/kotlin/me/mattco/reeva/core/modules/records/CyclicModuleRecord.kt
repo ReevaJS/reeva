@@ -41,7 +41,8 @@ abstract class CyclicModuleRecord(
     abstract fun executeModule(interpreter: Interpreter): JSValue
 
     override fun resolveBinding(importName: String): JSValue {
-        return environment!!.getBindingValue(importName, throwOnNotFound = true)
+        TODO()
+//        return environment!!.getBindingValue(importName, throwOnNotFound = true)
     }
 
     override fun link() {

@@ -78,7 +78,7 @@ class CPEAAPLVisitor(
                     if (isSpread)
                         reporter.at(node).restParamInitializer()
 
-                    if (node.op != AssignmentOperator.Equals)
+                    if (node.op != null)
                         reporter.at(node).expected("equals sign in initializer", node.op.symbol)
 
                     node.lhs to node.rhs
@@ -92,6 +92,7 @@ class CPEAAPLVisitor(
                     identifier.identifierName,
                     Variable.Type.Var,
                     Variable.Mode.Parameter,
+                    GlobalSourceNode,
                 )
                 parser.scope.addDeclaredVariable(variable)
 
@@ -104,7 +105,10 @@ class CPEAAPLVisitor(
                     it.variable = variable
                 }
 
-                Parameter(BindingIdentifierNode(identifier.identifierName), initializer, isSpread)
+                Parameter(BindingIdentifierNode(identifier.identifierName), initializer, isSpread).also {
+                    it.variable = variable
+                    variable.source = it
+                }
             })
         }
     }

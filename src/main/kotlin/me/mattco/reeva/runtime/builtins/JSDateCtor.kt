@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.builtins
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.SlotName
@@ -9,9 +10,6 @@ import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.runtime.primitives.JSString
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
-import me.mattco.reeva.utils.key
 import me.mattco.reeva.utils.toValue
 import java.time.Instant
 import java.time.LocalDateTime
@@ -39,8 +37,7 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        val newTarget = super.newTarget
-        if (newTarget == JSUndefined)
+        if (arguments.newTarget == JSUndefined)
             return Operations.toDateString(ZonedDateTime.now()).toValue()
 
         val zdt = when (arguments.size) {
@@ -97,16 +94,18 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
             }
         }
 
-        return Operations.ordinaryCreateFromConstructor(newTarget, realm.dateProto, listOf(SlotName.DateValue)).also {
-            it.setSlot(SlotName.DateValue, zdt)
-        }
+        return Operations.ordinaryCreateFromConstructor(
+            arguments.newTarget,
+            realm.dateProto,
+            listOf(SlotName.DateValue)
+        ).also { it.setSlot(SlotName.DateValue, zdt) }
     }
 
-    fun now(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun now(arguments: JSArguments): JSValue {
         return Instant.now().toEpochMilli().toValue()
     }
 
-    fun parse(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun parse(arguments: JSArguments): JSValue {
         return JSDateObject.create(realm, parseHelper(arguments) ?: return JSNumber.NaN)
     }
 
@@ -135,7 +134,7 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
         return if (isSupported(field)) get(field) else default
     }
 
-    fun utc(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun utc(arguments: JSArguments): JSValue {
         fun getArg(index: Int, offset: Int = 0): Long? {
             if (arguments.size <= index)
                 return 0L

@@ -11,7 +11,7 @@ import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.expect
 import kotlin.math.floor
 
-abstract class JSValue : Ref {
+abstract class JSValue {
     val type: Type
         get() = when (this) {
             is JSEmpty -> Type.Empty

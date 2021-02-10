@@ -1,6 +1,7 @@
 package me.mattco.reeva.jvmcompat
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.functions.JSNativeFunction
@@ -26,7 +27,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
     }
 
     override fun evaluate(_arguments: JSArguments): JSValue {
-        val newTarget = super.newTarget
+        val newTarget = _arguments.newTarget
         if (newTarget == JSUndefined)
             Errors.JVMClass.InvalidCall.throwTypeError()
 
@@ -57,7 +58,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
         )
     }
 
-    private fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun toString(arguments: JSArguments): JSValue {
         return "Class(${clazz.name})".toValue()
     }
 
@@ -122,7 +123,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
                 return@forEach
             }
 
-            val nativeMethod: NativeFunctionSignature = { thisValue, arguments ->
+            val nativeMethod: NativeFunctionSignature = { (arguments, thisValue) ->
                 val instance = if (isStatic) {
                     if (thisValue != this)
                         Errors.JVMClass.IncompatibleStaticMethodCall(className, name).throwTypeError()

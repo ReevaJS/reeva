@@ -1,16 +1,15 @@
 package me.mattco.reeva.runtime.functions
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.ecmaAssert
 
 class JSBoundFunction private constructor(
     realm: Realm,
     private val boundTargetFunction: JSFunction,
-    private val boundThis: JSValue,
     private val boundArguments: JSArguments,
     prototype: JSValue,
 ) : JSFunction(
@@ -27,13 +26,14 @@ class JSBoundFunction private constructor(
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        val newTarget = super.newTarget
+        val newArguments = JSArguments(boundArguments + arguments, boundArguments.thisValue)
+        val newTarget = arguments.newTarget
         if (newTarget == JSUndefined)
-            return Operations.call(boundTargetFunction, boundThis, boundArguments + arguments)
+            return Operations.call(boundTargetFunction, newArguments)
         ecmaAssert(Operations.isConstructor(boundTargetFunction))
         return Operations.construct(
             boundTargetFunction,
-            boundArguments + arguments,
+            newArguments,
             if (sameValue(newTarget)) boundTargetFunction else newTarget
         )
     }
@@ -42,9 +42,8 @@ class JSBoundFunction private constructor(
         fun create(
             realm: Realm,
             boundTargetFunction: JSFunction,
-            boundThis: JSValue,
-            boundArguments: JSArguments,
+            arguments: JSArguments,
             prototype: JSValue,
-        ) = JSBoundFunction(realm, boundTargetFunction, boundThis, boundArguments, prototype).initialize()
+        ) = JSBoundFunction(realm, boundTargetFunction, arguments, prototype).initialize()
     }
 }

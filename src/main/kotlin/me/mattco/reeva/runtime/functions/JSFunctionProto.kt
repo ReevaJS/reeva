@@ -1,19 +1,23 @@
 package me.mattco.reeva.runtime.functions
 
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.ecmaAssert
+import me.mattco.reeva.utils.key
+import me.mattco.reeva.utils.toValue
 import kotlin.math.max
 
 class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {
         super.init()
 
-        val thrower = JSNativeFunction.fromLambda(realm, "", 0) { _, _ ->
+        val thrower = JSNativeFunction.fromLambda(realm, "", 0) { _ ->
             Errors.Function.CallerArgumentsAccess.throwTypeError()
         }
 
@@ -26,12 +30,13 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
         defineNativeFunction("apply", 2, ::apply)
     }
 
-    private fun bind(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun bind(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         if (!Operations.isCallable(thisValue))
             Errors.Function.BindNonFunction.throwTypeError()
 
         val args = if (arguments.size > 1) arguments.takeArgs(1 until arguments.size) else emptyList()
-        val function = Operations.boundFunctionCreate(thisValue as JSFunction, arguments.argument(0), args)
+        val function = Operations.boundFunctionCreate(thisValue as JSFunction, JSArguments(args, arguments.argument(0)))
 
         var length = JSNumber.ZERO
 
@@ -60,13 +65,14 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
         return function
     }
 
-    private fun call(thisValue: JSValue, arguments: JSArguments): JSValue {
-        if (!Operations.isCallable(thisValue))
+    private fun call(arguments: JSArguments): JSValue {
+        if (!Operations.isCallable(arguments.thisValue))
             Errors.Function.NonCallable("call").throwTypeError()
-        return Operations.call(thisValue, arguments.argument(0), arguments.subList(1, arguments.size))
+        return Operations.call(arguments.thisValue, arguments.argument(0), arguments.subList(1, arguments.size))
     }
 
-    private fun apply(thisValue: JSValue, arguments: JSArguments): JSValue {
+    private fun apply(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         if (!Operations.isCallable(thisValue))
             Errors.Function.NonCallable("apply").throwTypeError()
         val array = arguments.argument(1)

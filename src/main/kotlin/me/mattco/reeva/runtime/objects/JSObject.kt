@@ -1,16 +1,16 @@
 package me.mattco.reeva.runtime.objects
 
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.*
+import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.SlotName
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
-import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.objects.index.IndexedProperties
 import me.mattco.reeva.runtime.objects.index.IndexedStorage
+import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.*
 import java.util.*
 import kotlin.properties.ReadWriteProperty
@@ -257,13 +257,13 @@ open class JSObject protected constructor(
         name: String? = null
     ) {
         val getterFunc = getter?.let { f ->
-            JSNativeFunction.fromLambda(realm, "get ${name ?: key}", 0) { thisValue, _ -> f(thisValue) }
+            JSNativeFunction.fromLambda(realm, "get ${name ?: key}", 0) { args -> f(args.thisValue) }
         }
         val setterFunc = setter?.let { f ->
-            JSNativeFunction.fromLambda(realm, "set ${name ?: key}", 0) { thisValue, args ->
+            JSNativeFunction.fromLambda(realm, "set ${name ?: key}", 0) { args ->
                 if (args.size != 1)
                     TODO()
-                f(thisValue, args[0])
+                f(args.thisValue, args.argument(0))
                 JSUndefined
             }
         }

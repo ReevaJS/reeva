@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.builtins
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.SlotName
@@ -9,7 +10,10 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.attrs
+import me.mattco.reeva.utils.key
+import me.mattco.reeva.utils.toValue
 
 class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {
@@ -37,15 +41,15 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return thisSetObject(thisValue, "getSize").set.size.toValue()
     }
 
-    fun add(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val data = thisSetObject(thisValue, "add")
+    fun add(arguments: JSArguments): JSValue {
+        val data = thisSetObject(arguments.thisValue, "add")
         data.set.add(arguments.argument(0))
         data.insertionOrder.add(arguments.argument(0))
-        return thisValue
+        return arguments.thisValue
     }
 
-    fun clear(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val data = thisSetObject(thisValue, "clear")
+    fun clear(arguments: JSArguments): JSValue {
+        val data = thisSetObject(arguments.thisValue, "clear")
         data.set.clear()
         if (data.iterationCount == 0) {
             data.insertionOrder.clear()
@@ -57,8 +61,8 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return JSUndefined
     }
 
-    fun delete(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val data = thisSetObject(thisValue, "delete")
+    fun delete(arguments: JSArguments): JSValue {
+        val data = thisSetObject(arguments.thisValue, "delete")
         val value = arguments.argument(0)
         if (data.iterationCount == 0) {
             data.insertionOrder.remove(value)
@@ -71,13 +75,13 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return data.set.remove(value).toValue()
     }
 
-    fun entries(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val data = thisSetObject(thisValue, "entries")
+    fun entries(arguments: JSArguments): JSValue {
+        val data = thisSetObject(arguments.thisValue, "entries")
         return JSSetIterator.create(realm, data, PropertyKind.KeyValue)
     }
 
-    fun forEach(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val data = thisSetObject(thisValue, "forEach")
+    fun forEach(arguments: JSArguments): JSValue {
+        val data = thisSetObject(arguments.thisValue, "forEach")
         val (callback, thisArg) = arguments.takeArgs(0..1)
         if (!Operations.isCallable(callback))
             Errors.Set.FirstArgNotCallable("forEach").throwTypeError()
@@ -88,7 +92,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         while (index < data.insertionOrder.size) {
             val value = data.insertionOrder[index]
             if (value != JSEmpty)
-                Operations.call(callback, thisArg, listOf(value, value, thisValue))
+                Operations.call(callback, thisArg, listOf(value, value, arguments.thisValue))
 
             index++
         }
@@ -98,13 +102,13 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return JSUndefined
     }
 
-    fun has(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val data = thisSetObject(thisValue, "has")
+    fun has(arguments: JSArguments): JSValue {
+        val data = thisSetObject(arguments.thisValue, "has")
         return (arguments.argument(0) in data.set).toValue()
     }
 
-    fun values(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val data = thisSetObject(thisValue, "values")
+    fun values(arguments: JSArguments): JSValue {
+        val data = thisSetObject(arguments.thisValue, "values")
         return JSSetIterator.create(realm, data, PropertyKind.Value)
     }
 

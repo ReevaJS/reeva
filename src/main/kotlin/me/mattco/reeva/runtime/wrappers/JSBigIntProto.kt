@@ -1,6 +1,7 @@
 package me.mattco.reeva.runtime.wrappers
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.SlotName
@@ -9,8 +10,6 @@ import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSBigInt
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
 import me.mattco.reeva.utils.toValue
 
 class JSBigIntProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
@@ -23,8 +22,8 @@ class JSBigIntProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         defineNativeFunction("valueOf", 0, ::valueOf)
     }
 
-    fun toString(thisValue: JSValue, arguments: JSArguments): JSValue {
-        val bigInt = thisBigIntValue(thisValue, "toString")
+    fun toString(arguments: JSArguments): JSValue {
+        val bigInt = thisBigIntValue(arguments.thisValue, "toString")
         val radixArg = arguments.argument(0)
         val radix = if (radixArg != JSUndefined) {
             Operations.toIntegerOrInfinity(arguments.argument(0)).asInt
@@ -34,8 +33,8 @@ class JSBigIntProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         return bigInt.number.toString(radix).toValue()
     }
 
-    fun valueOf(thisValue: JSValue, arguments: JSArguments): JSValue {
-        return thisBigIntValue(thisValue, "valueOf")
+    fun valueOf(arguments: JSArguments): JSValue {
+        return thisBigIntValue(arguments.thisValue, "valueOf")
     }
 
     companion object {

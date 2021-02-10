@@ -9,7 +9,6 @@ import me.mattco.reeva.runtime.builtins.JSSetObject
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.Errors
-import me.mattco.reeva.utils.JSArguments
 import me.mattco.reeva.utils.toValue
 import java.lang.reflect.Executable
 import java.lang.reflect.ParameterizedType
@@ -242,7 +241,7 @@ object JVMValueMapper {
         else -> Errors.JVMCompat.InconvertibleType(value, type).throwTypeError()
     }
 
-    fun <T : Executable> findMatchingSignature(executables: List<T>, arguments: JSArguments): List<T> {
+    fun <T : Executable> findMatchingSignature(executables: List<T>, arguments: List<JSValue>): List<T> {
         val weightedExecutables = executables.filter { it.parameterCount == arguments.size }.groupBy {
             val weights = it.parameterTypes.withIndex().map { (i, type) -> getConversionWeight(arguments[i], type) }
 
@@ -256,7 +255,7 @@ object JVMValueMapper {
         return weightedExecutables.getValue(minWeight)
     }
 
-    fun coerceArgumentsToSignature(signature: Executable, arguments: JSArguments): List<Any?> {
+    fun coerceArgumentsToSignature(signature: Executable, arguments: List<JSValue>): List<Any?> {
         val genericTypes = signature.genericParameterTypes
 
         return arguments.mapIndexed { index, jsValue ->

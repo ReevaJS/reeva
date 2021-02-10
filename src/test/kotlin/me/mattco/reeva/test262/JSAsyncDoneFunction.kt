@@ -4,8 +4,7 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.JSArguments
-import me.mattco.reeva.utils.argument
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.utils.expect
 
 class JSAsyncDoneFunction private constructor(realm: Realm) : JSNativeFunction(realm, "\$DONE", 1) {

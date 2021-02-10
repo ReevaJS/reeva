@@ -1,13 +1,17 @@
 package me.mattco.reeva.runtime.builtins.regexp
 
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.expect
+import me.mattco.reeva.utils.key
+import me.mattco.reeva.utils.toValue
 
 class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
     override fun init() {
@@ -17,7 +21,8 @@ class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(r
         defineNativeFunction("next", 0, ::next)
     }
 
-    fun next(thisValue: JSValue, arguments: JSArguments): JSValue {
+    fun next(arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
         if (thisValue !is JSRegExpStringIterator)
             Errors.IncompatibleMethodCall("%RegExpStringIterator%.prototype.next").throwTypeError()
         if (thisValue.done)
@@ -31,7 +36,7 @@ class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(r
 
         expect(match is JSObject)
 
-        if (thisValue.global) {
+        return if (thisValue.global) {
             val matchStr = Operations.toString(match.get(0)).string
             if (matchStr == "") {
                 val thisIndex = Operations.toLength(thisValue.get("lastIndex")).asInt
@@ -39,10 +44,10 @@ class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(r
                 val nextIndex = thisIndex + 1
                 Operations.set(thisValue, "lastIndex".key(), nextIndex.toValue(), true)
             }
-            return Operations.createIterResultObject(match, false)
+            Operations.createIterResultObject(match, false)
         } else {
             thisValue.done = true
-            return Operations.createIterResultObject(match, false)
+            Operations.createIterResultObject(match, false)
         }
     }
 
