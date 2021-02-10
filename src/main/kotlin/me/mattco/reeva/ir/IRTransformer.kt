@@ -406,7 +406,7 @@ class IRTransformer : ASTVisitor {
 
                 when {
                     lhs.targetVar.isInlineable -> +Star(lhs.targetVar.slot)
-                    lhs.targetVar.source !is GlobalSourceNode -> loadEnvVariableRef(lhs.targetVar, lhs.scope)
+                    lhs.targetVar.source !is GlobalSourceNode -> storeEnvVariableRef(lhs.targetVar, lhs.scope)
                     else -> +StaGlobal(loadConstant(lhs.targetVar.name))
                 }
 
@@ -445,6 +445,15 @@ class IRTransformer : ASTVisitor {
             +LdaCurrentEnv(variable.slot)
         } else {
             +LdaEnv(variable.slot, distance)
+        }
+    }
+
+    private fun storeEnvVariableRef(variable: Variable, currentScope: Scope) {
+        val distance = currentScope.distanceFrom(variable.source.scope)
+        if (distance == 0) {
+            +StaCurrentEnv(variable.slot)
+        } else {
+            +StaEnv(variable.slot, distance)
         }
     }
 

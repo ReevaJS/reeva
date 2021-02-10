@@ -116,9 +116,12 @@ open class Scope(val outer: Scope? = null) {
     open fun onFinish() {
         // Attempt to connect any remaining global var references
         for (node in unlinkedRefNodes) {
-            val source = findDeclaredVariable(node.targetVar.name)
-            if (source != null)
-                node.targetVar = source
+            val variable = findDeclaredVariable(node.targetVar.name)
+            if (variable != null) {
+                node.targetVar = variable
+                if (node.scope.crossesFunctionBoundary(variable.source.scope))
+                    variable.isInlineable = false
+            }
         }
         unlinkedRefNodes.clear()
 
