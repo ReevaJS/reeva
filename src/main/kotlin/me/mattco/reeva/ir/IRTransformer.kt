@@ -37,6 +37,10 @@ class IRTransformer : ASTVisitor {
 
         builder = FunctionBuilder()
 
+        node.scope.inlineableVariables.forEach {
+            it.slot = nextFreeReg()
+        }
+
         setupGlobalScope(node)
         visit(node.statements)
         +Return
@@ -233,7 +237,7 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitIdentifierReference(node: IdentifierReferenceNode) {
-        val variable = node.variable
+        val variable = node.targetVar
         if (variable.mode == Variable.Mode.Global) {
             +LdaGlobal(loadConstant(node.identifierName))
             return
@@ -243,7 +247,7 @@ class IRTransformer : ASTVisitor {
             +Ldar(variable.slot)
         } else loadEnvVariableRef(variable, node.scope)
 
-        val declarationStart = node.variable.source.sourceStart
+        val declarationStart = node.targetVar.source.sourceStart
         val useStart = node.sourceStart
         if (useStart.index < declarationStart.index) {
             // We need to check if the variable has been initialized
@@ -396,56 +400,60 @@ class IRTransformer : ASTVisitor {
             }
         }
 
-        if (lhs is IdentifierReferenceNode) {
-            if (checkForConstReassignment(lhs))
+        when (lhs) {
+            is IdentifierReferenceNode -> {
+                if (checkForConstReassignment(lhs))
+                    return
+
+                loadRhsIntoAcc()
+
+                if (lhs.targetVar.isInlineable) {
+                    +Star(lhs.targetVar.slot)
+                } else {
+                    loadEnvVariableRef(lhs.targetVar, lhs.scope)
+                }
+
                 return
-
-            loadRhsIntoAcc()
-
-            if (lhs.variable.isInlineable) {
-                +Star(lhs.variable.slot)
-            } else {
-                loadEnvVariableRef(lhs.variable, node.scope)
             }
+            is MemberExpressionNode -> {
+                val objectReg = nextFreeReg()
+                visit(lhs.lhs)
+                +Star(objectReg)
 
-            return
-        } else if (lhs is MemberExpressionNode) {
-            val objectReg = nextFreeReg()
-            visit(lhs.lhs)
-            +Star(objectReg)
+                when (lhs.type) {
+                    MemberExpressionNode.Type.Computed -> {
+                        val keyReg = nextFreeReg()
+                        visit(lhs.rhs)
+                        +Star(keyReg)
+                        loadRhsIntoAcc()
+                        +StaKeyedProperty(objectReg, keyReg)
+                        markRegFree(keyReg)
+                    }
+                    MemberExpressionNode.Type.NonComputed -> {
+                        loadRhsIntoAcc()
+                        +StaNamedProperty(objectReg, loadConstant((lhs.rhs as IdentifierNode).identifierName))
+                    }
+                    MemberExpressionNode.Type.Tagged -> TODO()
+                }
 
-            when (lhs.type) {
-                MemberExpressionNode.Type.Computed -> {
-                    val keyReg = nextFreeReg()
-                    visit(lhs.rhs)
-                    +Star(keyReg)
-                    loadRhsIntoAcc()
-                    +StaKeyedProperty(objectReg, keyReg)
-                    markRegFree(keyReg)
-                }
-                MemberExpressionNode.Type.NonComputed -> {
-                    loadRhsIntoAcc()
-                    +StaNamedProperty(objectReg, loadConstant((lhs.rhs as IdentifierNode).identifierName))
-                }
-                MemberExpressionNode.Type.Tagged -> TODO()
+                markRegFree(objectReg)
             }
-
-            markRegFree(objectReg)
-        } else TODO()
+            else -> TODO()
+        }
     }
 
     private fun loadEnvVariableRef(variable: Variable, currentScope: Scope) {
         val distance = currentScope.distanceFrom(variable.source.scope)
         if (distance == 0) {
-            +StaCurrentEnv(variable.slot)
+            +LdaCurrentEnv(variable.slot)
         } else {
-            +StaEnv(variable.slot, distance)
+            +LdaEnv(variable.slot, distance)
         }
     }
 
     private fun checkForConstReassignment(node: VariableRefNode): Boolean {
-        return if (node.variable.type == Variable.Type.Const) {
-            +ThrowConstReassignment(loadConstant(node.variable.name))
+        return if (node.targetVar.type == Variable.Type.Const) {
+            +ThrowConstReassignment(loadConstant(node.targetVar.name))
             true
         } else false
     }

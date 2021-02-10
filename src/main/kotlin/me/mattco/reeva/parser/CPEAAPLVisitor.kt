@@ -1,7 +1,10 @@
 package me.mattco.reeva.parser
 
 import me.mattco.reeva.ast.*
-import me.mattco.reeva.ast.expressions.*
+import me.mattco.reeva.ast.expressions.AssignmentExpressionNode
+import me.mattco.reeva.ast.expressions.CommaExpressionNode
+import me.mattco.reeva.ast.expressions.MemberExpressionNode
+import me.mattco.reeva.ast.expressions.ParenthesizedExpressionNode
 import me.mattco.reeva.utils.expect
 
 class CPEAAPLVisitor(
@@ -92,7 +95,7 @@ class CPEAAPLVisitor(
                     identifier.identifierName,
                     Variable.Type.Var,
                     Variable.Mode.Parameter,
-                    GlobalSourceNode,
+                    GlobalSourceNode(),
                 )
                 parser.scope.addDeclaredVariable(variable)
 

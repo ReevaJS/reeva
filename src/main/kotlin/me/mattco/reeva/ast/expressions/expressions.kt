@@ -10,7 +10,7 @@ class AssignmentExpressionNode(
     val lhs: ExpressionNode,
     val rhs: ExpressionNode,
     val op: BinaryOperator?, // Null indicates regular assignment
-) : NodeWithScope(listOf(lhs, rhs)), ExpressionNode {
+) : ASTNodeBase(listOf(lhs, rhs)), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()

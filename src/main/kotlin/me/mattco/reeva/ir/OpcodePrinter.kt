@@ -1,5 +1,6 @@
 package me.mattco.reeva.ir
 
+import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 
 object OpcodePrinter {
@@ -79,6 +80,9 @@ object OpcodePrinter {
     }
 
     private fun formatArgument(value: Int, fieldName: String, argCount: Int) = fieldName.toLowerCase().let {
+        // Many bugs were and are caused by this... so let's just throw here
+        expect(value != -1)
+
         when {
             "cp" in it -> "[$value]"
             "reg" in it -> when {

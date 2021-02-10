@@ -36,6 +36,8 @@ class Parameter(
     val initializer: ExpressionNode?,
     val isRest: Boolean
 ) : VariableSourceNode(listOfNotNull(identifier, initializer)) {
+    override var variable by identifier::variable
+
     init {
         if (isRest && initializer != null)
             throw IllegalArgumentException()
@@ -43,13 +45,15 @@ class Parameter(
 }
 
 open class GenericFunctionDeclarationNode(
-    val identifier: BindingIdentifierNode?, // Null if in a default export
+    val identifier: BindingIdentifierNode,
     val parameters: ParameterList,
     val body: BlockNode,
-) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), StatementNode
+) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), StatementNode {
+    override var variable by identifier::variable
+}
 
 class FunctionDeclarationNode(
-    identifier: BindingIdentifierNode?,
+    identifier: BindingIdentifierNode,
     parameters: ParameterList,
     body: BlockNode,
 ) : GenericFunctionDeclarationNode(identifier, parameters, body)

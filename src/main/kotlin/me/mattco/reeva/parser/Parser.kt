@@ -57,7 +57,7 @@ fun simpleMeasureTest(
 private val PRINT_REFIX = "[TimeTest]"
 
 fun main() {
-    val source = File("./demo/test262.js").readText()
+    val source = File("./demo/index.js").readText()
 
     try {
 //        simpleMeasureTest(30, 20, 10) {
@@ -125,6 +125,7 @@ class Parser(val source: String) {
 
         val globalScope = HoistingScope()
         scope = globalScope
+        scope.globalScope = scope
 
         globalScope.hasUseStrictDirective = checkForAndConsumeUseStrict()
 
@@ -329,11 +330,9 @@ class Parser(val source: String) {
             asi()
 
         if (type == Variable.Type.Var) {
-            VariableDeclarationNode(declarations).also { it.scope = scope }
+            VariableDeclarationNode(declarations)
         } else {
-            LexicalDeclarationNode(isConst = type == Variable.Type.Const, declarations).also {
-                it.scope = scope
-            }
+            LexicalDeclarationNode(isConst = type == Variable.Type.Const, declarations)
         }
     }
 
@@ -741,7 +740,7 @@ class Parser(val source: String) {
     }
 
     private data class FunctionTemp(
-        val identifier: BindingIdentifierNode?,
+        val identifier: BindingIdentifierNode,
         val params: ParameterList,
         val body: BlockNode,
         val scope: Scope,
@@ -763,11 +762,10 @@ class Parser(val source: String) {
         if (isGenerator || isAsync)
             TODO()
 
-        val identifier = when {
-            matchIdentifier() -> parseBindingIdentifier()
-            isDeclaration && !inDefaultContext -> reporter.functionStatementNoName()
-            else -> null
-        }
+        // TODO: Allow no identifier in default export
+        val identifier = if (matchIdentifier()) {
+            parseBindingIdentifier()
+        } else reporter.functionStatementNoName()
 
         val newScope = HoistingScope(scope)
         scope = newScope
@@ -949,6 +947,7 @@ class Parser(val source: String) {
 
     private fun parseIdentifierReference(): IdentifierReferenceNode = nps {
         IdentifierReferenceNode(parseIdentifier()).also {
+            it.scope = scope
             if (!disableAutoScoping)
                 scope.addReference(it)
         }
@@ -962,12 +961,14 @@ class Parser(val source: String) {
         BindingIdentifierNode(parseIdentifier()).also {
             it.scope = scope
             if (addVar && !disableAutoScoping) {
-                scope.addDeclaredVariable(Variable(
+                val variable = Variable(
                     it.identifierName,
                     varType,
                     varMode,
                     it,
-                ))
+                )
+                it.variable = variable
+                scope.addDeclaredVariable(variable)
             }
         }
     }

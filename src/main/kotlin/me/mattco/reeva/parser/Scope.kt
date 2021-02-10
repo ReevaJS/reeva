@@ -5,6 +5,7 @@ import me.mattco.reeva.ast.VariableSourceNode
 
 open class Scope(val outer: Scope? = null) {
     private val childScopes = mutableListOf<Scope>()
+    var globalScope: Scope? = null
 
     private val _declaredVariables = mutableListOf<Variable>()
     val declaredVariables: List<Variable>
@@ -33,6 +34,8 @@ open class Scope(val outer: Scope? = null) {
     init {
         @Suppress("LeakingThis")
         outer?.childScopes?.add(this)
+
+        globalScope = outer?.globalScope
     }
 
     fun addDeclaredVariable(variable: Variable) {
@@ -43,13 +46,18 @@ open class Scope(val outer: Scope? = null) {
     fun addReference(node: VariableRefNode) {
         val name = node.boundName()
 
-        node.variable = findDeclaredVariable(name) ?: let {
+        node.targetVar = findDeclaredVariable(name) ?: let {
             unlinkedRefNodes.add(node)
-            Variable(name, Variable.Type.Var, Variable.Mode.Global, GlobalSourceNode)
+            Variable(
+                name,
+                Variable.Type.Var,
+                Variable.Mode.Global,
+                GlobalSourceNode().also { it.scope = globalScope!! },
+            )
         }
 
-        if (crossesFunctionBoundary(node.variable.source.scope))
-            node.variable.isInlineable = false
+        if (crossesFunctionBoundary(node.targetVar.source.scope))
+            node.targetVar.isInlineable = false
     }
 
     private fun findDeclaredVariable(name: String): Variable? {
@@ -60,8 +68,8 @@ open class Scope(val outer: Scope? = null) {
 
     private fun addDeclaredVariableHelper(variable: Variable) {
         unlinkedRefNodes.removeIf {
-            if (it.variable.name == variable.name) {
-                it.variable = variable
+            if (it.targetVar.name == variable.name) {
+                it.targetVar = variable
                 true
             } else false
         }
@@ -108,9 +116,9 @@ open class Scope(val outer: Scope? = null) {
     open fun onFinish() {
         // Attempt to connect any remaining global var references
         for (node in unlinkedRefNodes) {
-            val source = findDeclaredVariable(node.variable.name)
+            val source = findDeclaredVariable(node.targetVar.name)
             if (source != null)
-                node.variable = source
+                node.targetVar = source
         }
         unlinkedRefNodes.clear()
 
@@ -166,4 +174,4 @@ data class Variable(
     }
 }
 
-object GlobalSourceNode : VariableSourceNode()
+class GlobalSourceNode : VariableSourceNode()

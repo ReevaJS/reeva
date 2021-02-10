@@ -39,13 +39,13 @@ open class NodeWithScope(children: List<ASTNode> = emptyList()) : ASTNodeBase(ch
 }
 
 abstract class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
-    lateinit var variable: Variable
+    open lateinit var targetVar: Variable
 
     abstract fun boundName(): String
 }
 
 abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
-    lateinit var variable: Variable
+    open lateinit var variable: Variable
 }
 
 interface ASTNode {
