@@ -185,38 +185,26 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
-        node.declarations.forEach { decl ->
-            val variable = decl.variable
-
-            if (decl.initializer != null) {
-                visit(decl.initializer)
-            } else {
-                +LdaUndefined
-            }
-
-            if (variable.isInlineable) {
-                +Star(variable.slot)
-            } else {
-                +StaCurrentEnv(variable.slot)
-            }
-        }
+        node.declarations.forEach(::visitDeclaration)
     }
 
     override fun visitVariableDeclaration(node: VariableDeclarationNode) {
-        node.declarations.forEach { decl ->
-            val variable = decl.variable
+        node.declarations.forEach(::visitDeclaration)
+    }
 
-            if (decl.initializer != null) {
-                visit(decl.initializer)
-            } else {
-                +LdaUndefined
-            }
+    private fun visitDeclaration(declaration: Declaration) {
+        val variable = declaration.variable
 
-            if (variable.isInlineable) {
-                +Star(variable.slot)
-            } else {
-                +StaCurrentEnv(variable.slot)
-            }
+        if (declaration.initializer != null) {
+            visit(declaration.initializer)
+        } else {
+            +LdaUndefined
+        }
+
+        if (variable.isInlineable) {
+            +Star(variable.slot)
+        } else {
+            +StaCurrentEnv(variable.slot)
         }
     }
 
