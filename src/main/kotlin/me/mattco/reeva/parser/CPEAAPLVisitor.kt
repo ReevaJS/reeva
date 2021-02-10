@@ -111,6 +111,10 @@ class CPEAAPLVisitor(
                 Parameter(BindingIdentifierNode(identifier.identifierName), initializer, isSpread).also {
                     it.variable = variable
                     variable.source = it
+
+                    // isInlineable will have been set to false due to the GlobalSourceNode
+                    // placeholder above
+                    variable.isInlineable = true
                 }
             })
         }

@@ -152,7 +152,7 @@ data class Variable(
     val mode: Mode,
     var source: VariableSourceNode,
 ) {
-    var isInlineable = true
+    var isInlineable = source !is GlobalSourceNode
 
     /**
      * If isInlineable is true, then this is the register that

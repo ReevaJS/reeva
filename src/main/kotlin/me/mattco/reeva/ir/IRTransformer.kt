@@ -37,6 +37,10 @@ class IRTransformer : ASTVisitor {
 
         builder = FunctionBuilder()
 
+        node.scope.envVariables.forEachIndexed { index, variable ->
+            variable.slot = index
+        }
+
         node.scope.inlineableVariables.forEach {
             it.slot = nextFreeReg()
         }
