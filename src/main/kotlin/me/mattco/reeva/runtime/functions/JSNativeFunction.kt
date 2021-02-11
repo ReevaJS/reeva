@@ -15,7 +15,7 @@ abstract class JSNativeFunction protected constructor(
     private val name: String,
     private val length: Int,
     prototype: JSValue = realm.functionProto
-) : JSFunction(realm, ThisMode.Strict, prototype = prototype) {
+) : JSFunction(realm, prototype = prototype) {
     override fun init() {
         super.init()
 

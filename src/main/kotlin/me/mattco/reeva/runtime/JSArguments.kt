@@ -11,6 +11,9 @@ class JSArguments(
 
     fun takeArgs(range: IntRange) = range.map(::argument)
 
+    fun withThisValue(newThisValue: JSValue) = JSArguments(this, newThisValue, newTarget)
+    fun withNewTarget(newNewTarget: JSValue) = JSArguments(this, thisValue, newNewTarget)
+
     operator fun component1() = this.toList()
     operator fun component2() = thisValue
     operator fun component3() = newTarget

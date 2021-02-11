@@ -14,9 +14,6 @@ class JSBoundFunction private constructor(
     prototype: JSValue,
 ) : JSFunction(
     realm,
-    boundTargetFunction.thisMode,
-    boundTargetFunction.envRecord,
-    boundTargetFunction.homeObject,
     boundTargetFunction.isStrict,
     prototype,
 ) {

@@ -9,11 +9,7 @@ import me.mattco.reeva.utils.expect
 /**
  * The runtime-equivalent of the Parser's Scope objects
  */
-abstract class EnvRecord(
-    protected val outer: EnvRecord?,
-    val isStrict: Boolean,
-    size: Int,
-) {
+open class EnvRecord(val outer: EnvRecord?, val isStrict: Boolean, size: Int) {
     private val bindings: Array<JSValue> = Array(size) { JSEmpty }
 
     fun getBinding(index: Int): JSValue {
@@ -37,11 +33,7 @@ abstract class EnvRecord(
     open fun extension(): JSObject = throw NotImplementedError()
 }
 
-class GlobalEnvRecord(
-    private val realm: Realm,
-    isStrict: Boolean,
-    size: Int,
-) : EnvRecord(null, isStrict, size) {
+class GlobalEnvRecord(private val realm: Realm, isStrict: Boolean, size: Int) : EnvRecord(null, isStrict, size) {
     override fun hasExtension() = true
 
     override fun extension() = realm.globalObject

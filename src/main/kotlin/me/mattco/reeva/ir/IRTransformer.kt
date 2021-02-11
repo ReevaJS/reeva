@@ -25,6 +25,8 @@ class FunctionInfo(
     val constantPool: Array<Any>,
     val registerCount: Int, // includes argCount
     val argCount: Int,
+    val globalSlots: Int,
+    val isStrict: Boolean,
     val isTopLevelScript: Boolean = false,
 )
 
@@ -45,7 +47,6 @@ class IRTransformer : ASTVisitor {
             it.slot = nextFreeReg()
         }
 
-        setupGlobalScope(node)
         visit(node.statements)
         +Return
 
@@ -53,8 +54,10 @@ class IRTransformer : ASTVisitor {
             null,
             builder.opcodes.toTypedArray(),
             builder.constantPool.toTypedArray(),
+            node.scope.numSlots,
             builder.registerCount,
             1,
+            node.scope.isStrict,
             isTopLevelScript = true
         )
     }
@@ -108,10 +111,6 @@ class IRTransformer : ASTVisitor {
             return null
 
         return loadConstant(DeclarationsArray(varNames, lexNames, constNames))
-    }
-
-    private fun setupGlobalScope(node: NodeWithScope) {
-        +DeclareGlobals(loadDeclarations(node) ?: return)
     }
 
     override fun visitExpressionStatement(node: ExpressionStatementNode) {
@@ -218,7 +217,8 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitThrowStatement(node: ThrowStatementNode) {
-        TODO()
+        visit(node.expr)
+        +Throw
     }
 
     override fun visitTryStatement(node: TryStatementNode) {
@@ -307,12 +307,14 @@ class IRTransformer : ASTVisitor {
         }
 
         val info = FunctionInfo(
-            node.identifier?.identifierName ?: "TODO: Function name inferring",
+            node.identifier.identifierName ?: "TODO: Function name inferring",
             builder.opcodes.toTypedArray(),
             builder.constantPool.toTypedArray(),
             builder.registerCount,
             node.parameters.size + 1,
-            isTopLevelScript = false
+            node.scope.numSlots,
+            node.scope.isStrict,
+            isTopLevelScript = false,
         )
 
         builder = prevBuilder
@@ -342,7 +344,9 @@ class IRTransformer : ASTVisitor {
             builder.constantPool.toTypedArray(),
             builder.registerCount,
             node.parameters.size + 1,
-            isTopLevelScript = false
+            node.scope.numSlots,
+            node.scope.isStrict,
+            isTopLevelScript = false,
         )
 
         builder = prevBuilder
@@ -365,7 +369,9 @@ class IRTransformer : ASTVisitor {
             builder.constantPool.toTypedArray(),
             builder.registerCount,
             node.parameters.size + 1,
-            isTopLevelScript = false
+            node.scope.numSlots,
+            node.scope.isStrict,
+            isTopLevelScript = false,
         )
 
         builder = prevBuilder

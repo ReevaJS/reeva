@@ -1,7 +1,5 @@
 package me.mattco.reeva.ir
 
-import me.mattco.reeva.interpreter.InterpRuntime
-
 sealed class Opcode
 
 /*************
@@ -126,12 +124,6 @@ class DeletePropertySloppy(val targetReg: Int) : Opcode()
  *********/
 
 /**
- * Declare declarations for the global environment using a
- * [DeclarationsArray] at [cpIndex] in the constant pool.
- */
-class DeclareGlobals(val cpIndex: Int) : Opcode()
-
-/**
  * Loads a global variable into the accumulator
  */
 class LdaGlobal(val nameCpIndex: Int) : Opcode()
@@ -229,10 +221,10 @@ class CallWithSpread(val callableReg: Int, val firstArgReg: Int, val argCount: I
  * Call the runtime function specified by [id] with [argCount] number
  * of arguments, starting in [firstArgReg].
  */
-class CallRuntime(val id: Int, val firstArgReg: Int, val argCount: Int) : Opcode() {
-    constructor(method: InterpRuntime, firstArgReg: Int, argCount: Int) :
-        this(method.ordinal, firstArgReg, argCount)
-}
+//class CallRuntime(val id: Int, val firstArgReg: Int, val argCount: Int) : Opcode() {
+//    constructor(method: InterpRuntime, firstArgReg: Int, argCount: Int) :
+//        this(method.ordinal, firstArgReg, argCount)
+//}
 
 /****************
  * CONSTRUCTION *
