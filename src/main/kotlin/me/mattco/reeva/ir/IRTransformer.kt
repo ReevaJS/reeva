@@ -9,6 +9,7 @@ import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
 import me.mattco.reeva.utils.expect
+import me.mattco.reeva.utils.unreachable
 import java.io.File
 import java.math.BigInteger
 
@@ -704,7 +705,21 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitArrayLiteral(node: ArrayLiteralNode) {
-        TODO()
+        +CreateArrayLiteral
+        val arrayReg = nextFreeReg()
+        +Star(arrayReg)
+        for ((index, element) in node.elements.withIndex()) {
+            when (element.type) {
+                ArrayElementNode.Type.Elision -> continue
+                ArrayElementNode.Type.Spread -> TODO()
+                ArrayElementNode.Type.Normal -> {
+                    visit(element.expression!!)
+                    +SetArrayLiteralIndex(arrayReg, index)
+                }
+            }
+        }
+        +Ldar(arrayReg)
+        markRegFree(arrayReg)
     }
 
     override fun visitObjectLiteral(node: ObjectLiteralNode) {

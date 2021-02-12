@@ -10,6 +10,7 @@ import me.mattco.reeva.ir.*
 import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.*
@@ -124,6 +125,16 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                 val obj = registers[opcode.objectReg] as JSObject
                 val key = registers[opcode.keyReg]
                 obj.set(Operations.toPropertyKey(key), obj)
+            }
+            CreateArrayLiteral -> {
+                accumulator = JSArrayObject.create(function.realm)
+            }
+            is SetArrayLiteralIndex -> {
+                val array = registers[opcode.arrayReg] as JSObject
+                array.indexedProperties.set(array, opcode.arrayIndex, accumulator)
+            }
+            is CreateObjectLiteral -> {
+                accumulator = JSObject.create(function.realm)
             }
             is Add -> binaryOp(opcode.valueReg, "+")
             is Sub -> binaryOp(opcode.valueReg, "-")

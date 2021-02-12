@@ -63,6 +63,14 @@ class StaNamedProperty(val objectReg: Int, val nameCpIndex: Int) : Opcode()
  */
 class StaKeyedProperty(val objectReg: Int, val keyReg: Int) : Opcode()
 
+/*************************
+ * OBJECT/ARRAY LITERALS *
+ *************************/
+
+object CreateArrayLiteral : Opcode()
+class SetArrayLiteralIndex(val arrayReg: Int, val arrayIndex: Int) : Opcode()
+object CreateObjectLiteral : Opcode()
+
 /*********************
  * BINARY OPERATIONS *
  *********************/
