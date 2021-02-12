@@ -253,7 +253,10 @@ class Lexer(private val source: String) {
             }
         }
 
-        val value = source.substring(valueStartCursor, cursor)
+        val value = if (tokenType == TokenType.StringLiteral) {
+            source.substring(valueStartCursor + 1, cursor - 1)
+        } else source.substring(valueStartCursor, cursor)
+
         lastToken = Token(
             tokenType,
             valueStartLocation,
