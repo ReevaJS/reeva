@@ -71,7 +71,9 @@ class IRTransformer : ASTVisitor {
             }
         }
 
-        node.scope.inlineableVariables.forEach {
+        node.scope.inlineableVariables.filter {
+            it.mode != Variable.Mode.Parameter
+        }.forEach {
             it.slot = nextFreeReg()
         }
 
@@ -297,28 +299,7 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
-        val prevBuilder = builder
-        builder = FunctionBuilder(node.parameters.size + 1)
-
-        visit(node.body)
-        if (builder.opcodes.last() != Return) {
-            +LdaUndefined
-            +Return
-        }
-
-        val info = FunctionInfo(
-            node.identifier.identifierName ?: "TODO: Function name inferring",
-            builder.opcodes.toTypedArray(),
-            builder.constantPool.toTypedArray(),
-            builder.registerCount,
-            node.parameters.size + 1,
-            node.scope.numSlots,
-            node.scope.isStrict,
-            isTopLevelScript = false,
-        )
-
-        builder = prevBuilder
-        +CreateClosure(loadConstant(info))
+        visitFunctionHelper(node.identifier.identifierName, node.parameters, node.body, node.scope)
 
         if (!node.variable.isInlineable) {
             // TODO This needs to be hoisted?
@@ -329,48 +310,41 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
-        val prevBuilder = builder
-        builder = FunctionBuilder(node.parameters.size + 1)
-
-        visit(node.body)
-        if (builder.opcodes.last() != Return) {
-            +LdaUndefined
-            +Return
-        }
-
-        val info = FunctionInfo(
-            node.identifier?.identifierName ?: "<anonymous>",
-            builder.opcodes.toTypedArray(),
-            builder.constantPool.toTypedArray(),
-            builder.registerCount,
-            node.parameters.size + 1,
-            node.scope.numSlots,
-            node.scope.isStrict,
-            isTopLevelScript = false,
-        )
-
-        builder = prevBuilder
-        +CreateClosure(loadConstant(info))
+        visitFunctionHelper(node.identifier?.identifierName ?: "<anonymous>", node.parameters, node.body, node.scope)
     }
 
     override fun visitArrowFunction(node: ArrowFunctionNode) {
-        val prevBuilder = builder
-        builder = FunctionBuilder(node.parameters.size + 1)
+        visitFunctionHelper("<anonymous>", node.parameters, node.body, node.scope)
+    }
 
-        visit(node.body)
+    private fun visitFunctionHelper(name: String, parameters: ParameterList, body: ASTNode, scope: Scope) {
+        val prevBuilder = builder
+        builder = FunctionBuilder(parameters.size + 1)
+
+        var inlineableIndex = 1
+        parameters.forEachIndexed { index, param ->
+            if (param.variable.isInlineable) {
+                param.variable.slot = inlineableIndex++
+            } else {
+                +StaCurrentEnv(param.variable.slot)
+                markRegFree(index)
+            }
+        }
+
+        visit(body)
         if (builder.opcodes.last() != Return) {
             +LdaUndefined
             +Return
         }
 
         val info = FunctionInfo(
-            "<anonymous>",
+            name,
             builder.opcodes.toTypedArray(),
             builder.constantPool.toTypedArray(),
             builder.registerCount,
-            node.parameters.size + 1,
-            node.scope.numSlots,
-            node.scope.isStrict,
+            parameters.size + 1,
+            scope.numSlots,
+            scope.isStrict,
             isTopLevelScript = false,
         )
 
