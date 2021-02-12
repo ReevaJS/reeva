@@ -724,7 +724,7 @@ class Parser(val source: String) {
      */
     private fun parseFunctionDeclaration(): StatementNode = nps {
         val (identifier, params, body, scope) = parseFunctionHelper(isDeclaration = true)
-        FunctionDeclarationNode(identifier, params, body).also {
+        FunctionDeclarationNode(identifier!!, params, body).also {
             it.scope = scope
         }
     }
@@ -741,7 +741,7 @@ class Parser(val source: String) {
     }
 
     private data class FunctionTemp(
-        val identifier: BindingIdentifierNode,
+        val identifier: BindingIdentifierNode?,
         val params: ParameterList,
         val body: BlockNode,
         val scope: Scope,
@@ -764,9 +764,11 @@ class Parser(val source: String) {
             TODO()
 
         // TODO: Allow no identifier in default export
-        val identifier = if (matchIdentifier()) {
-            parseBindingIdentifier()
-        } else reporter.functionStatementNoName()
+        val identifier = when {
+            matchIdentifier() -> parseBindingIdentifier()
+            isDeclaration -> reporter.functionStatementNoName()
+            else -> null
+        }
 
         val newScope = HoistingScope(scope)
         scope = newScope
