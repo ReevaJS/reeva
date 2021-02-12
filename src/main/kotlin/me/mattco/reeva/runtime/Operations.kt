@@ -847,6 +847,7 @@ object Operations {
             is JSObject -> "[object <${value::class.java.simpleName}>]"
             is JSAccessor -> "<accessor>"
             is JSNativeProperty -> "<native-property>"
+            is JSEmpty -> "<empty>"
             else -> toString(value).string
         }
     }
