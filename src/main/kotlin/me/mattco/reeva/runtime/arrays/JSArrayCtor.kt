@@ -1,6 +1,6 @@
 package me.mattco.reeva.runtime.arrays
 
-import me.mattco.reeva.core.Agent
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.runtime.JSArguments
@@ -103,7 +103,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                     return Operations.iteratorClose(
                         iteratorRecord,
                         JSTypeErrorObject.create(
-                            Agent.runningContext.realm,
+                            Reeva.activeAgent.runningContext.realm,
                             "array length ${Long.MAX_VALUE} is too large"
                         )
                     )

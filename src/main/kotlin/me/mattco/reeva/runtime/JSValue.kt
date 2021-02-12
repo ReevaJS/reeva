@@ -2,11 +2,8 @@ package me.mattco.reeva.runtime
 
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.arrays.JSArrayObject
-import me.mattco.reeva.runtime.functions.JSFunction
-import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.runtime.primitives.JSNativeProperty
-import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.objects.JSObject
+import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.expect
 import kotlin.math.floor
@@ -211,6 +208,7 @@ fun JSValue.toPrimitive(hint: Operations.ToPrimitiveHint? = null) = Operations.t
 fun JSValue.toBoolean() = Operations.toBoolean(this)
 fun JSValue.toNumeric() = Operations.toNumeric(this)
 fun JSValue.toNumber() = Operations.toNumber(this)
+fun JSValue.toJSString() = Operations.toString(this)
 fun JSValue.toIntegerOrInfinity() = Operations.toIntegerOrInfinity(this)
 fun JSValue.toInt32() = Operations.toInt32(this)
 fun JSValue.toUint32() = Operations.toUint32(this)

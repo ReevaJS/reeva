@@ -1,7 +1,7 @@
 package me.mattco.reeva.runtime
 
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.statements.StatementList
-import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.interpreter.Interpreter
@@ -85,7 +85,7 @@ open class JSGlobalObject protected constructor(
     }
 
     private fun eval(arguments: JSArguments): JSValue {
-        return performEval(arguments.argument(0), Agent.runningContext.realm, strictCaller = false, direct = false)
+        return performEval(arguments.argument(0), Reeva.activeAgent.runningContext.realm, strictCaller = false, direct = false)
     }
 
     private fun parseInt(arguments: JSArguments): JSValue {

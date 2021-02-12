@@ -25,7 +25,7 @@ class FunctionInfo(
     val constantPool: Array<Any>,
     val registerCount: Int, // includes argCount
     val argCount: Int,
-    val globalSlots: Int,
+    val topLevelSlots: Int,
     val isStrict: Boolean,
     val isTopLevelScript: Boolean = false,
 )
@@ -54,9 +54,9 @@ class IRTransformer : ASTVisitor {
             null,
             builder.opcodes.toTypedArray(),
             builder.constantPool.toTypedArray(),
-            node.scope.numSlots,
             builder.registerCount,
             1,
+            node.scope.numSlots,
             node.scope.isStrict,
             isTopLevelScript = true
         )

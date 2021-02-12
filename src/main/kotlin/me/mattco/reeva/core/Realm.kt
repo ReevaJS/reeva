@@ -1,13 +1,9 @@
 package me.mattco.reeva.core
 
-import me.mattco.reeva.ast.ScriptNode
-import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.modules.resolver.ModuleResolver
 import me.mattco.reeva.jvmcompat.JSClassProto
 import me.mattco.reeva.jvmcompat.JSPackageObject
 import me.mattco.reeva.jvmcompat.JSPackageProto
-import me.mattco.reeva.parser.Parser.ParsingException
-import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.arrays.JSArrayCtor
 import me.mattco.reeva.runtime.arrays.JSArrayProto
 import me.mattco.reeva.runtime.builtins.*
@@ -133,11 +129,14 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
     val emptyShape = Shape(this)
     val newObjectShape = Shape(this)
 
-    fun ensureGloballyInitialized() {
+    fun ensureGloballyInitialized() = apply {
         if (!::globalObject.isInitialized) {
             initObjects()
-            globalObject = JSGlobalObject.create(this)
         }
+    }
+
+    fun setGlobalObject(obj: JSObject) = apply {
+        globalObject = obj
     }
 
     fun initObjects() {
@@ -192,13 +191,6 @@ class Realm(var moduleResolver: ModuleResolver? = null) {
 
         newObjectShape.setPrototypeWithoutTransition(objectProto)
     }
-
-    data class ScriptRecord(
-        val realm: Realm,
-        var env: EnvRecord?,
-        val scriptOrModule: ScriptNode,
-        val errors: List<ParsingException> = emptyList()
-    )
 
     internal companion object {
         val EMPTY_REALM = Realm()

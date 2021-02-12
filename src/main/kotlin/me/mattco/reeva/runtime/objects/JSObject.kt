@@ -1,5 +1,6 @@
 package me.mattco.reeva.runtime.objects
 
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
@@ -538,7 +539,7 @@ open class JSObject protected constructor(
     }
 
     companion object {
-        val INVALID_OBJECT by lazy { JSObject(Agent.runningContext.realm) }
+        val INVALID_OBJECT by lazy { JSObject(Reeva.activeAgent.runningContext.realm) }
 
         @JvmStatic
         @JvmOverloads

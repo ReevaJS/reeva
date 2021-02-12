@@ -1,6 +1,5 @@
 package me.mattco.reeva.core.modules.records
 
-import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.ModuleNode
 import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
@@ -8,13 +7,11 @@ import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.modules.ExportEntryRecord
 import me.mattco.reeva.core.modules.ImportEntryRecord
 import me.mattco.reeva.core.modules.ResolvedBindingRecord
-import me.mattco.reeva.core.tasks.Task
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.jvmcompat.JVMPackageModuleRecord
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.objects.JSObject
-import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.expect
 
 class SourceTextModuleRecord(
@@ -180,14 +177,15 @@ class SourceTextModuleRecord(
     }
 
     override fun executeModule(interpreter: Interpreter): JSValue {
-        return Reeva.getAgent().runTask(object : Task<JSValue>() {
-            override fun makeContext() = context!!
-
-            override fun execute(): JSValue {
-                // TODO
-                return JSUndefined
-//                return interpreter.interpretStatementList(StatementList(scriptCode.body))
-            }
-        })
+        TODO()
+//        return Reeva.getAgent().runTask(object : Task<JSValue>() {
+//            override fun makeContext() = context!!
+//
+//            override fun execute(): JSValue {
+//                // TODO
+//                return JSUndefined
+////                return interpreter.interpretStatementList(StatementList(scriptCode.body))
+//            }
+//        })
     }
 }

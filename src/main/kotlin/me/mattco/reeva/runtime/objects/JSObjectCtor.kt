@@ -1,5 +1,6 @@
 package me.mattco.reeva.runtime.objects
 
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSArguments
@@ -80,7 +81,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val obj = arguments.argument(0)
         if (obj !is JSObject && obj != JSNull)
             Errors.Object.CreateBadArgType.throwTypeError()
-        val newObj = create(Agent.runningContext.realm, obj)
+        val newObj = create(Reeva.activeAgent.runningContext.realm, obj)
         val properties = arguments.argument(1)
         if (properties != JSUndefined)
             objectDefineProperties(newObj, properties)

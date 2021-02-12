@@ -1,19 +1,20 @@
 package me.mattco.reeva.core
 
-import me.mattco.reeva.core.tasks.Microtask
-import me.mattco.reeva.core.tasks.Task
+import me.mattco.reeva.Reeva
+import me.mattco.reeva.interpreter.IRInterpreter
+import me.mattco.reeva.ir.IRTransformer
+import me.mattco.reeva.ir.OpcodePrinter
+import me.mattco.reeva.parser.Parser
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.utils.expect
 import java.nio.ByteOrder
-import java.util.concurrent.ConcurrentLinkedDeque
-import java.util.concurrent.CopyOnWriteArrayList
+import java.util.*
+import kotlin.collections.ArrayDeque
 
-class Agent private constructor() {
+class Agent {
+    // Used to ensure names of various things are unique
     @Volatile
-    internal var shouldLoop = false
-
-    private val tasks = ConcurrentLinkedDeque<Task<*>>()
-    private val microTasks = ConcurrentLinkedDeque<Microtask>()
-    val runningContextStack = CopyOnWriteArrayList<ExecutionContext>()
+    private var uniqueId = 0
 
     val byteOrder = ByteOrder.nativeOrder()
     val isLittleEndian: Boolean
@@ -21,79 +22,56 @@ class Agent private constructor() {
     val isBigEndian: Boolean
         get() = byteOrder == ByteOrder.BIG_ENDIAN
 
+    private val contextStack = Stack<ExecutionContext>()
+    internal val runningContext: ExecutionContext
+        get() = contextStack.peek()
+
+    internal val pendingMicrotasks = ArrayDeque<() -> Unit>()
+
     init {
-        activeAgentList.add(this)
+        Reeva.allAgents.add(this)
     }
 
-    internal inline fun <reified T> runTask(task: Task<T>): T {
-        tasks.add(task)
-        val result = runTasks()
-        expect(result is T)
-        return result
-    }
+    fun run(script: String, realm: Realm): Reeva.Result {
+        val ast = Parser(script).parseScript()
+        val info = IRTransformer().transform(ast)
+        OpcodePrinter.printFunctionInfo(info)
+        println("\n")
 
-    internal fun submitTask(task: Task<*>) {
-        tasks.add(task)
-    }
-
-    internal fun submitMicrotask(microTask: Microtask) {
-        microTasks.add(microTask)
-    }
-
-    private fun runTasks(): Any? {
-        expect(tasks.isNotEmpty())
-
-        val result = runTaskLoop()
-        while (tasks.isNotEmpty() || shouldLoop) {
-            if (tasks.isNotEmpty())
-                runTaskLoop()
+        val function = IRInterpreter.wrap(info, realm)
+        val context = ExecutionContext(function)
+        contextStack.push(context)
+        val result = try {
+            function.call(JSArguments(emptyList(), realm.globalObject))
+        } catch (e: ThrowException) {
+            return Reeva.Result(e.value, true)
         }
-
-        return result
+        contextStack.pop()
+        expect(contextStack.isEmpty())
+        return Reeva.Result(result, false)
     }
 
-    private fun runTaskLoop(): Any? {
-        val task = tasks.removeFirst()
-        val context = task.makeContext()
-        runningContextStack.add(context)
-        val result = task.execute()
-
-        while (microTasks.isNotEmpty())
-            microTasks.removeFirst().execute()
-
-        runningContextStack.remove(context)
-        return result
+    internal fun addMicrotask(task: () -> Unit) {
+        pendingMicrotasks.addFirst(task)
     }
 
-    internal fun teardown() {
-        shouldLoop = false
-        tasks.clear()
-        microTasks.clear()
+    internal fun pushContext(context: ExecutionContext) = apply {
+        contextStack.push(context)
     }
 
-    companion object {
-        internal val activeAgentList = mutableListOf<Agent>()
-
-        private val activeAgents = object : ThreadLocal<Agent>() {
-            override fun initialValue() = Agent()
-        }
-
-        val activeAgent: Agent
-            get() = activeAgents.get()
-
-        @JvmStatic
-        val runningContext: ExecutionContext
-            get() = activeAgent.runningContextStack.last()
-
-
-        @JvmStatic
-        fun pushContext(context: ExecutionContext) {
-            activeAgent.runningContextStack.add(context)
-        }
-
-        @JvmStatic
-        fun popContext() {
-            activeAgent.runningContextStack.removeLast()
-        }
+    internal fun popContext() = apply {
+        contextStack.pop()
     }
+
+    internal fun processMicrotasks() {
+        while (pendingMicrotasks.isNotEmpty() && Reeva.running)
+            pendingMicrotasks.removeLast()()
+    }
+
+    internal fun <T> withContext(context: ExecutionContext, block: () -> T): T {
+        pushContext(context)
+        return block().also { popContext() }
+    }
+
+    internal fun nextId() = uniqueId++
 }

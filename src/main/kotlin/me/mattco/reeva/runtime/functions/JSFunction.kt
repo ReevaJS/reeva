@@ -1,7 +1,8 @@
 package me.mattco.reeva.runtime.functions
 
+import me.mattco.reeva.Reeva
+import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
@@ -28,12 +29,14 @@ abstract class JSFunction(
         }
     }
 
-    open fun call(arguments: JSArguments): JSValue {
+    fun call(arguments: JSArguments): JSValue {
         val newThis = getNewThisValue(arguments.thisValue)
-        return evaluate(arguments.withThisValue(newThis))
+        return Reeva.activeAgent.withContext(ExecutionContext(this)) {
+            evaluate(arguments.withThisValue(newThis))
+        }
     }
 
-    open fun construct(arguments: JSArguments): JSValue {
+    fun construct(arguments: JSArguments): JSValue {
         ecmaAssert(arguments.newTarget is JSObject)
 
         val thisValue = Operations.ordinaryCreateFromConstructor(
@@ -41,7 +44,9 @@ abstract class JSFunction(
             realm.objectProto,
         )
 
-        val result = evaluate(arguments.withThisValue(thisValue))
+        val result = Reeva.activeAgent.withContext(ExecutionContext(this)) {
+            evaluate(arguments.withThisValue(thisValue))
+        }
         if (result is JSObject)
             return result
 

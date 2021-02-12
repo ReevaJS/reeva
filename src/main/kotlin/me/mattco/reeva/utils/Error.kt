@@ -1,5 +1,6 @@
 package me.mattco.reeva.utils
 
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.runtime.JSValue
@@ -9,31 +10,31 @@ import me.mattco.reeva.runtime.objects.PropertyKey
 
 open class Error(private val message: String) {
     fun throwEvalError(): Nothing {
-        throw ThrowException(JSEvalErrorObject.create(Agent.runningContext.realm, message))
+        throw ThrowException(JSEvalErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
     }
 
     fun throwInternalError(): Nothing {
-        throw ThrowException(JSInternalErrorObject.create(Agent.runningContext.realm, message))
+        throw ThrowException(JSInternalErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
     }
 
     fun throwTypeError(): Nothing {
-        throw ThrowException(JSTypeErrorObject.create(Agent.runningContext.realm, message))
+        throw ThrowException(JSTypeErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
     }
 
     fun throwRangeError(): Nothing {
-        throw ThrowException(JSRangeErrorObject.create(Agent.runningContext.realm, message))
+        throw ThrowException(JSRangeErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
     }
 
     fun throwReferenceError(): Nothing {
-        throw ThrowException(JSReferenceErrorObject.create(Agent.runningContext.realm, message))
+        throw ThrowException(JSReferenceErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
     }
 
     fun throwSyntaxError(): Nothing {
-        throw ThrowException(JSSyntaxErrorObject.create(Agent.runningContext.realm, message))
+        throw ThrowException(JSSyntaxErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
     }
 
     fun throwURIError(): Nothing {
-        throw ThrowException(JSURIErrorObject.create(Agent.runningContext.realm, message))
+        throw ThrowException(JSURIErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
     }
 }
 

@@ -2,12 +2,10 @@ package me.mattco.reeva.interpreter
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
-import me.mattco.reeva.core.tasks.Task
 import me.mattco.reeva.ir.*
 import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
@@ -18,78 +16,52 @@ import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.toValue
 import me.mattco.reeva.utils.unreachable
+import java.io.File
 
-class IRInterpreterTask(private val realm: Realm, private val functionInfo: FunctionInfo) : Task<Reeva.Result>() {
-    override fun makeContext(): ExecutionContext {
-        realm.ensureGloballyInitialized()
-        return ExecutionContext(realm)
+fun main() {
+    val script = File("./demo/index.js").readText()
+
+    Reeva.setup()
+
+    val agent = Agent().apply {
+        // settings here
     }
 
-    override fun execute(): Reeva.Result {
-        return IRInterpreter(functionInfo, realm).interpretTopLevel()
-    }
+    Reeva.setAgent(agent)
+    val realm = Reeva.makeRealm()
+    agent.run(script, realm)
+
+    Reeva.teardown()
 }
 
-class IRInterpreter(private val topLevelInfo: FunctionInfo, val realm: Realm) {
-    private val stack = InterpreterStack()
-    private lateinit var globalEnv: GlobalEnvRecord
-
-    private val frame by stack::frame
-    private val mappedCPool
-        get() = stack.frame.mappedCPool
-    private var ip: Int
-        get() = stack.frame.ip
-        set(v) { stack.frame.ip = v }
-    private var isDone: Boolean
-        get() = stack.frame.isDone
-        set(v) { stack.frame.isDone = v }
-    private var exception: ThrowException?
-        get() = stack.frame.exception
-        set(v) { stack.frame.exception = v }
-    private val info: FunctionInfo
-        get() = stack.frame.functionInfo
+class IRInterpreter(private val function: IRFunction, private val arguments: List<JSValue>) {
+    private val globalEnv: GlobalEnvRecord
+    
+    private val info = function.info
+    
+    private var accumulator: JSValue = JSEmpty
+    private val registers = Registers(info.registerCount)
+    private var ip = 0
+    private var isDone = false
+    private var exception: ThrowException? = null
+    private val mappedCPool = Array<JSValue?>(info.constantPool.size) { null }
+    
+    private val envStack = mutableListOf<EnvRecord>()
+    private var currentEnv = function.envRecord
 
     init {
-        expect(topLevelInfo.isTopLevelScript)
-        expect(topLevelInfo.argCount == 1)
-
-    }
-
-    fun interpretTopLevel(): Reeva.Result {
-        globalEnv = GlobalEnvRecord(realm, topLevelInfo.isStrict, topLevelInfo.globalSlots)
-        stack.pushFrame(InterpreterStack.StackFrame(globalEnv, topLevelInfo))
-
-        return run()
-    }
-
-    fun interpretFunction(functionEnv: EnvRecord): Reeva.Result {
-        val envChain = mutableListOf<EnvRecord>()
-        var env: EnvRecord? = functionEnv
-        do {
-            envChain.add(env!!)
+        var env: EnvRecord? = currentEnv
+        while (env != null) {
+            envStack.add(env)
             env = env.outer
-        } while (env != null)
-
-        envChain.reverse()
-
-        val firstEnv = envChain.first()
-        expect(firstEnv is GlobalEnvRecord)
-        globalEnv = firstEnv
-
-        stack.pushFrame(InterpreterStack.StackFrame(globalEnv, topLevelInfo))
-
-
-        for (env in envChain) {
-
         }
-
-
-
-
-        return run()
+        envStack.reverse()
+        val topEnv = envStack.first()
+        expect(topEnv is GlobalEnvRecord)
+        globalEnv = topEnv
     }
 
-    private fun run(): Reeva.Result {
+    fun interpret(): Reeva.Result {
         while (!isDone) {
             try {
                 visit(info.code[ip++])
@@ -99,61 +71,58 @@ class IRInterpreter(private val topLevelInfo: FunctionInfo, val realm: Realm) {
             }
         }
 
-        stack.popFrame()
-        expect(stack.frameSize == 0)
-
         return if (exception != null) {
             Reeva.Result(exception!!.value, isError = true)
-        } else Reeva.Result(stack.accumulator, isError = false)
+        } else Reeva.Result(accumulator, isError = false)
     }
 
     private fun visit(opcode: Opcode) {
         @Suppress("REDUNDANT_ELSE_IN_WHEN")
         when (opcode) {
             LdaZero -> {
-                stack.accumulator = JSNumber.ZERO
+                accumulator = JSNumber.ZERO
             }
             LdaUndefined -> {
-                stack.accumulator = JSUndefined
+                accumulator = JSUndefined
             }
             LdaNull -> {
-                stack.accumulator = JSNull
+                accumulator = JSNull
             }
             LdaTrue -> {
-                stack.accumulator = JSTrue
+                accumulator = JSTrue
             }
             LdaFalse -> {
-                stack.accumulator = JSFalse
+                accumulator = JSFalse
             }
             is LdaConstant -> {
-                stack.accumulator = getMappedConstant(opcode.cpIndex)
+                accumulator = getMappedConstant(opcode.cpIndex)
             }
             is Ldar -> {
-                stack.accumulator = stack.getRegister(opcode.reg)
+                accumulator = registers[opcode.reg]
             }
             is Star -> {
-                stack.setRegister(opcode.reg, stack.accumulator)
+                registers[opcode.reg] = accumulator
             }
             is Mov -> {
-                stack.setRegister(opcode.toReg, stack.getRegister(opcode.fromReg))
+                registers[opcode.toReg] = registers[opcode.fromReg]
             }
             is LdaNamedProperty -> {
                 val name = info.constantPool[opcode.nameCpIndex] as String
-                val obj = stack.getRegister(opcode.objectReg) as JSObject
-                stack.accumulator = obj.get(name)
+                val obj = registers[opcode.objectReg] as JSObject
+                accumulator = obj.get(name)
             }
             is LdaKeyedProperty -> {
-                val obj = stack.getRegister(opcode.objectReg) as JSObject
-                stack.accumulator = obj.get(Operations.toPropertyKey(stack.accumulator))
+                val obj = registers[opcode.objectReg] as JSObject
+                accumulator = obj.get(Operations.toPropertyKey(accumulator))
             }
             is StaNamedProperty -> {
                 val name = info.constantPool[opcode.nameCpIndex] as String
-                val obj = stack.getRegister(opcode.objectReg) as JSObject
-                obj.set(name, stack.accumulator)
+                val obj = registers[opcode.objectReg] as JSObject
+                obj.set(name, accumulator)
             }
             is StaKeyedProperty -> {
-                val obj = stack.getRegister(opcode.objectReg) as JSObject
-                val key = stack.getRegister(opcode.keyReg)
+                val obj = registers[opcode.objectReg] as JSObject
+                val key = registers[opcode.keyReg]
                 obj.set(Operations.toPropertyKey(key), obj)
             }
             is Add -> binaryOp(opcode.valueReg, "+")
@@ -173,46 +142,41 @@ class IRInterpreter(private val topLevelInfo: FunctionInfo, val realm: Realm) {
             Negate -> TODO()
             BitwiseNot -> TODO()
             ToBooleanLogicalNot -> {
-                stack.accumulator = (!Operations.toBoolean(stack.accumulator)).toValue()
+                accumulator = (!Operations.toBoolean(accumulator)).toValue()
             }
             LogicalNot -> {
-                stack.accumulator = (!stack.accumulator.asBoolean).toValue()
+                accumulator = (!accumulator.asBoolean).toValue()
             }
             TypeOf -> {
-                stack.accumulator = Operations.typeofOperator(stack.accumulator)
+                accumulator = Operations.typeofOperator(accumulator)
             }
             is DeletePropertyStrict -> TODO()
             is DeletePropertySloppy -> TODO()
             is LdaGlobal -> {
                 val name = info.constantPool[opcode.nameCpIndex] as String
-                stack.accumulator = globalEnv.extension().get(name)
+                accumulator = globalEnv.extension().get(name)
             }
             is LdaCurrentEnv -> {
-                stack.accumulator = stack.frame.currentEnv.getBinding(opcode.slot)
+                accumulator = currentEnv.getBinding(opcode.slot)
             }
             is StaCurrentEnv -> {
-                stack.frame.currentEnv.setBinding(opcode.slot, stack.accumulator)
+                currentEnv.setBinding(opcode.slot, accumulator)
             }
             is LdaEnv -> {
-                var env = stack.frame.currentEnv
-                repeat(opcode.depthOffset) {
-                    env = env.outer!!
-                }
-                stack.accumulator = env.getBinding(opcode.slot)
+                val envIndex = envStack.lastIndex - opcode.depthOffset
+                accumulator = envStack[envIndex].getBinding(opcode.slot)
             }
             is StaEnv -> {
-                var env = stack.frame.currentEnv
-                repeat(opcode.depthOffset) {
-                    env = env.outer!!
-                }
-                env.setBinding(opcode.slot, stack.accumulator)
+                val envIndex = envStack.lastIndex - opcode.depthOffset
+                envStack[envIndex].setBinding(opcode.slot, accumulator)
             }
             is PushEnv -> {
-                val newEnv = EnvRecord(frame.currentEnv, frame.currentEnv.isStrict, opcode.numSlots)
-                frame.pushEnv(newEnv)
+                val newEnv = EnvRecord(currentEnv, currentEnv.isStrict, opcode.numSlots)
+                envStack.add(newEnv)
+                currentEnv = newEnv
             }
             is PopEnv -> {
-                frame.popEnv()
+                currentEnv = envStack.removeLast()
             }
             is CallAnyReceiver -> call(opcode.callableReg, opcode.receiverReg, opcode.argCount, CallMode.AnyReceiver)
             is CallProperty -> call(opcode.callableReg, opcode.receiverReg, opcode.argCount, CallMode.Property)
@@ -224,20 +188,20 @@ class IRInterpreter(private val topLevelInfo: FunctionInfo, val realm: Realm) {
             is CallWithSpread -> TODO()
 //            is CallRuntime -> {
 //                val args = getRegisterBlock(opcode.firstArgReg, opcode.argCount)
-//                stack.accumulator = InterpRuntime.values()[opcode.id].function(args)
+//                accumulator = InterpRuntime.values()[opcode.id].function(args)
 //            }
             is Construct0 -> {
-                stack.accumulator = Operations.construct(
-                    stack.getRegister(opcode.targetReg),
+                accumulator = Operations.construct(
+                    registers[opcode.targetReg],
                     emptyList(),
-                    stack.accumulator
+                    accumulator
                 )
             }
             is Construct -> {
-                stack.accumulator = Operations.construct(
-                    stack.getRegister(opcode.targetReg),
+                accumulator = Operations.construct(
+                    registers[opcode.targetReg],
                     emptyList(),
-                    stack.accumulator
+                    accumulator
                 )
             }
             is ConstructWithSpread -> TODO()
@@ -246,107 +210,107 @@ class IRInterpreter(private val topLevelInfo: FunctionInfo, val realm: Realm) {
             is TestEqualStrict -> TODO()
             is TestNotEqualStrict -> TODO()
             is TestLessThan -> {
-                val lhs = stack.getRegister(opcode.targetReg)
-                val rhs = stack.accumulator
+                val lhs = registers[opcode.targetReg]
+                val rhs = accumulator
                 val result = Operations.abstractRelationalComparison(lhs, rhs, true)
-                stack.accumulator = if (result == JSUndefined) JSFalse else result
+                accumulator = if (result == JSUndefined) JSFalse else result
             }
             is TestGreaterThan -> {
-                val lhs = stack.getRegister(opcode.targetReg)
-                val rhs = stack.accumulator
+                val lhs = registers[opcode.targetReg]
+                val rhs = accumulator
                 val result = Operations.abstractRelationalComparison(rhs, lhs, false)
-                stack.accumulator = if (result == JSUndefined) JSFalse else result
+                accumulator = if (result == JSUndefined) JSFalse else result
             }
             is TestLessThanOrEqual -> {
-                val lhs = stack.getRegister(opcode.targetReg)
-                val rhs = stack.accumulator
+                val lhs = registers[opcode.targetReg]
+                val rhs = accumulator
                 val result = Operations.abstractRelationalComparison(rhs, lhs, false)
-                stack.accumulator = if (result == JSFalse) JSTrue else JSFalse
+                accumulator = if (result == JSFalse) JSTrue else JSFalse
             }
             is TestGreaterThanOrEqual -> {
-                val lhs = stack.getRegister(opcode.targetReg)
-                val rhs = stack.accumulator
+                val lhs = registers[opcode.targetReg]
+                val rhs = accumulator
                 val result = Operations.abstractRelationalComparison(lhs, rhs, true)
-                stack.accumulator = if (result == JSFalse) JSTrue else JSFalse
+                accumulator = if (result == JSFalse) JSTrue else JSFalse
             }
             is TestReferenceEqual -> {
-                stack.accumulator = (stack.accumulator == stack.getRegister(opcode.targetReg)).toValue()
+                accumulator = (accumulator == registers[opcode.targetReg]).toValue()
             }
             is TestInstanceOf -> {
-                stack.accumulator = Operations.instanceofOperator(stack.getRegister(opcode.targetReg), stack.accumulator)
+                accumulator = Operations.instanceofOperator(registers[opcode.targetReg], accumulator)
             }
             is TestIn -> TODO()
             TestNullish -> {
-                stack.accumulator = stack.accumulator.let {
+                accumulator = accumulator.let {
                     it == JSNull || it == JSUndefined
                 }.toValue()
             }
             TestNull -> {
-                stack.accumulator = (stack.accumulator == JSNull).toValue()
+                accumulator = (accumulator == JSNull).toValue()
             }
             TestUndefined -> {
-                stack.accumulator = (stack.accumulator == JSUndefined).toValue()
+                accumulator = (accumulator == JSUndefined).toValue()
             }
             ToBoolean -> {
-                stack.accumulator = Operations.toBoolean(stack.accumulator).toValue()
+                accumulator = Operations.toBoolean(accumulator).toValue()
             }
             ToNumber -> {
-                stack.accumulator = Operations.toNumber(stack.accumulator)
+                accumulator = Operations.toNumber(accumulator)
             }
             ToNumeric -> {
-                stack.accumulator = Operations.toNumeric(stack.accumulator)
+                accumulator = Operations.toNumeric(accumulator)
             }
             ToObject -> {
-                stack.accumulator = Operations.toObject(stack.accumulator)
+                accumulator = Operations.toObject(accumulator)
             }
             ToString -> {
-                stack.accumulator = Operations.toString(stack.accumulator)
+                accumulator = Operations.toString(accumulator)
             }
             is Jump -> {
                 ip = opcode.offset
             }
             is JumpIfTrue -> {
-                if (stack.accumulator == JSTrue)
+                if (accumulator == JSTrue)
                     ip = opcode.offset
             }
             is JumpIfFalse -> {
-                if (stack.accumulator == JSFalse)
+                if (accumulator == JSFalse)
                     ip = opcode.offset
             }
             is JumpIfToBooleanTrue -> {
-                if (Operations.toBoolean(stack.accumulator))
+                if (Operations.toBoolean(accumulator))
                     ip = opcode.offset
             }
             is JumpIfToBooleanFalse -> {
-                if (!Operations.toBoolean(stack.accumulator))
+                if (!Operations.toBoolean(accumulator))
                     ip = opcode.offset
             }
             is JumpIfNull -> {
-                if (stack.accumulator == JSNull)
+                if (accumulator == JSNull)
                     ip = opcode.offset
             }
             is JumpIfNotNull -> {
-                if (stack.accumulator != JSNull)
+                if (accumulator != JSNull)
                     ip = opcode.offset
             }
             is JumpIfUndefined -> {
-                if (stack.accumulator == JSUndefined)
+                if (accumulator == JSUndefined)
                     ip = opcode.offset
             }
             is JumpIfNotUndefined -> {
-                if (stack.accumulator != JSUndefined)
+                if (accumulator != JSUndefined)
                     ip = opcode.offset
             }
             is JumpIfObject -> {
-                if (stack.accumulator is JSObject)
+                if (accumulator is JSObject)
                     ip = opcode.offset
             }
             is JumpIfNullish -> {
-                if (stack.accumulator.let { it == JSNull || it == JSUndefined })
+                if (accumulator.let { it == JSNull || it == JSUndefined })
                     ip = opcode.offset
             }
             is JumpIfNotNullish -> {
-                if (!stack.accumulator.let { it == JSNull || it == JSUndefined })
+                if (!accumulator.let { it == JSNull || it == JSUndefined })
                     ip = opcode.offset
             }
             JumpPlaceholder -> throw IllegalStateException("Illegal opcode: JumpPlaceholder")
@@ -356,7 +320,8 @@ class IRInterpreter(private val topLevelInfo: FunctionInfo, val realm: Realm) {
             }
             is CreateClosure -> {
                 val newInfo = info.constantPool[opcode.cpIndex] as FunctionInfo
-                stack.accumulator = IRFunction(Agent.runningContext.realm, newInfo)
+                val newEnv = EnvRecord(currentEnv, currentEnv.isStrict || newInfo.isStrict, newInfo.topLevelSlots)
+                accumulator = IRFunction(function.realm, newInfo, newEnv)
             }
             DebugBreakpoint -> TODO()
             else -> TODO("Unrecognized opcode: ${opcode::class.simpleName}")
@@ -364,8 +329,8 @@ class IRInterpreter(private val topLevelInfo: FunctionInfo, val realm: Realm) {
     }
 
     private fun binaryOp(lhs: Int, op: String) {
-        stack.accumulator = Operations.applyStringOrNumericBinaryOperator(
-            stack.getRegister(lhs), stack.accumulator, op
+        accumulator = Operations.applyStringOrNumericBinaryOperator(
+            registers[lhs], accumulator, op
         )
     }
 
@@ -375,16 +340,16 @@ class IRInterpreter(private val topLevelInfo: FunctionInfo, val realm: Realm) {
 
         // TODO: Treat AnyReceiver differently than Property?
 
-        val target = stack.getRegister(callableReg)
+        val target = registers[callableReg]
         val receiver = if (mode != CallMode.UndefinedReceiver) {
-            stack.getRegister(firstArgReg)
+            registers[firstArgReg]
         } else JSUndefined
 
         val args = if (argCount > 0) {
             getRegisterBlock(firstArgReg + 1, argCount)
         } else emptyList()
 
-        stack.accumulator = Operations.call(target, receiver, args)
+        accumulator = Operations.call(target, receiver, args)
     }
 
     enum class CallMode {
@@ -398,7 +363,7 @@ class IRInterpreter(private val topLevelInfo: FunctionInfo, val realm: Realm) {
     private fun getRegisterBlock(reg: Int, argCount: Int): List<JSValue> {
         val args = mutableListOf<JSValue>()
         for (i in reg until (reg + argCount))
-            args.add(stack.getRegister(i))
+            args.add(registers[i])
         return args
     }
 
@@ -412,21 +377,48 @@ class IRInterpreter(private val topLevelInfo: FunctionInfo, val realm: Realm) {
         }.also { mappedCPool[index] = it }
     }
 
+    inner class Registers(size: Int) {
+        var accumulator: JSValue = JSEmpty
+        private val registers = Array<JSValue>(size) { JSEmpty }
+
+        init {
+            arguments.forEachIndexed { index, value ->
+                registers[index] = value
+            }
+        }
+
+        operator fun get(index: Int) = registers[index]
+
+        operator fun set(index: Int, value: JSValue) {
+            registers[index] = value
+        }
+    }
+
     class IRFunction(
         realm: Realm,
-        private val info: FunctionInfo,
-        private val globalEnv: GlobalEnvRecord,
-        private val functionEnv: EnvRecord,
+        val info: FunctionInfo,
+        val envRecord: EnvRecord,
     ) : JSFunction(realm, info.isStrict) {
         init {
             isConstructable = true
         }
 
         override fun evaluate(arguments: JSArguments): JSValue {
-            val result = IRInterpreter(info, realm).interpretTopLevel()
+            val args = listOf(arguments.thisValue) + arguments
+            val result = IRInterpreter(this, args).interpret()
             if (result.isError)
                 throw ThrowException(result.value)
             return result.value
+        }
+    }
+
+    companion object {
+        fun wrap(info: FunctionInfo, realm: Realm): JSFunction {
+            return IRFunction(
+                realm,
+                info,
+                GlobalEnvRecord(realm, info.isStrict, info.topLevelSlots)
+            )
         }
     }
 }

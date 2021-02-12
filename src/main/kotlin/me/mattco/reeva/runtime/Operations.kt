@@ -2,11 +2,10 @@
 
 package me.mattco.reeva.runtime
 
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.ASTNode
-import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
-import me.mattco.reeva.core.tasks.Microtask
 import me.mattco.reeva.jvmcompat.JSClassInstanceObject
 import me.mattco.reeva.jvmcompat.JSClassObject
 import me.mattco.reeva.runtime.annotations.ECMAImpl
@@ -520,7 +519,7 @@ object Operations {
 //        if (reference.isUnresolvableReference) {
 //            if (reference.isStrict)
 //                Errors.UnresolvableReference(reference.name).throwReferenceError()
-//            Agent.runningContext.realm.globalObject.set(reference.name, value)
+//            Reeva.activeAgent.runningContext.realm.globalObject.set(reference.name, value)
 //        } else if (reference.isPropertyReference) {
 //            if (reference.hasPrimitiveBase) {
 //                ecmaAssert(base != JSUndefined && base != JSNull)
@@ -857,11 +856,11 @@ object Operations {
         return when (value) {
             is JSObject -> value
             is JSUndefined, JSNull -> Errors.FailedToObject(value.type).throwTypeError()
-            is JSBoolean -> JSBooleanObject.create(Agent.runningContext.realm, value)
-            is JSNumber -> JSNumberObject.create(Agent.runningContext.realm, value)
-            is JSString -> JSStringObject.create(Agent.runningContext.realm, value)
-            is JSSymbol -> JSSymbolObject.create(Agent.runningContext.realm, value)
-            is JSBigInt -> JSBigIntObject.create(Agent.runningContext.realm, value)
+            is JSBoolean -> JSBooleanObject.create(Reeva.activeAgent.runningContext.realm, value)
+            is JSNumber -> JSNumberObject.create(Reeva.activeAgent.runningContext.realm, value)
+            is JSString -> JSStringObject.create(Reeva.activeAgent.runningContext.realm, value)
+            is JSSymbol -> JSSymbolObject.create(Reeva.activeAgent.runningContext.realm, value)
+            is JSBigInt -> JSBigIntObject.create(Reeva.activeAgent.runningContext.realm, value)
             else -> TODO()
         }
     }
@@ -1443,7 +1442,7 @@ object Operations {
 
     @JvmStatic @ECMAImpl("7.4.8")
     fun createIterResultObject(value: JSValue, done: Boolean): JSValue {
-        val obj = JSObject.create(Agent.runningContext.realm)
+        val obj = JSObject.create(Reeva.activeAgent.runningContext.realm)
         createDataPropertyOrThrow(obj, "value".toValue(), value)
         createDataPropertyOrThrow(obj, "done".toValue(), done.toValue())
         return obj
@@ -1479,7 +1478,7 @@ object Operations {
 //    @JvmStatic @JvmOverloads
 //    @ECMAImpl("8.3.2")
 //    fun resolveBinding(name: String, env: EnvRecord? = null): JSReference {
-//        val actualEnv = env ?: Agent.runningContext.lexicalEnv!!
+//        val actualEnv = env ?: Reeva.activeAgent.runningContext.lexicalEnv!!
 //        // TODO: Strict mode checking
 //        return getIdentifierReference(actualEnv, name, isStrict())
 //    }
@@ -1489,7 +1488,7 @@ object Operations {
 //        // As the spec states, this is guaranteed to resolve without
 //        // any NPEs as there is always at least a global environment
 //        // with a this-binding
-//        var env = Agent.runningContext.lexicalEnv!!
+//        var env = Reeva.activeAgent.runningContext.lexicalEnv!!
 //        while (!env.hasThisBinding())
 //            env = env.outerEnv!!
 //        return env
@@ -1514,7 +1513,7 @@ object Operations {
 
     @JvmStatic @ECMAImpl("8.3.6")
     fun getGlobalObject(): JSObject {
-        return Agent.runningContext.realm.globalObject
+        return Reeva.activeAgent.runningContext.realm.globalObject
     }
 
     @JvmStatic @ECMAImpl("9.1.6.2")
@@ -1735,7 +1734,7 @@ object Operations {
     @JvmStatic @ECMAImpl("9.4.1.3")
     fun boundFunctionCreate(targetFunction: JSFunction, arguments: JSArguments): JSFunction {
         val proto = targetFunction.getPrototype()
-        return JSBoundFunction.create(Agent.runningContext.realm, targetFunction, arguments, proto)
+        return JSBoundFunction.create(Reeva.activeAgent.runningContext.realm, targetFunction, arguments, proto)
     }
 
     /**
@@ -1767,15 +1766,15 @@ object Operations {
         return indices
     }
 
-    fun arrayCreate(length: Int, proto: JSValue = Agent.runningContext.realm.arrayProto): JSObject {
+    fun arrayCreate(length: Int, proto: JSValue = Reeva.activeAgent.runningContext.realm.arrayProto): JSObject {
         return arrayCreate(length.toLong(), proto)
     }
 
     @JvmStatic @JvmOverloads @ECMAImpl("9.4.2.2")
-    fun arrayCreate(length: Long, proto: JSValue = Agent.runningContext.realm.arrayProto): JSObject {
+    fun arrayCreate(length: Long, proto: JSValue = Reeva.activeAgent.runningContext.realm.arrayProto): JSObject {
         if (length >= MAX_32BIT_INT - 1)
             Errors.InvalidArrayLength(length).throwRangeError()
-        val array = JSArrayObject.create(Agent.runningContext.realm, proto)
+        val array = JSArrayObject.create(Reeva.activeAgent.runningContext.realm, proto)
         array.indexedProperties.setArrayLikeSize(length)
         return array
     }
@@ -1790,7 +1789,7 @@ object Operations {
         var ctor = originalArray.get("constructor")
         if (isConstructor(ctor)) {
             val ctorRealm = (ctor as JSObject).realm
-            if (Agent.runningContext.realm != ctorRealm && ctor.sameValue(ctorRealm.arrayCtor)) {
+            if (Reeva.activeAgent.runningContext.realm != ctorRealm && ctor.sameValue(ctorRealm.arrayCtor)) {
                 ctor = JSUndefined
             }
         }
@@ -1808,7 +1807,7 @@ object Operations {
 
     @JvmStatic @ECMAImpl("9.4.4.6")
     fun createUnmappedArgumentsObject(arguments: JSArguments): JSValue {
-        var realm = Agent.runningContext.realm
+        var realm = Reeva.activeAgent.runningContext.realm
         val obj = JSUnmappedArgumentsObject.create(realm)
         definePropertyOrThrow(obj, "length".key(), Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE))
         arguments.forEachIndexed { index, value ->
@@ -1847,7 +1846,7 @@ object Operations {
 //        // TODO
 ////        ecmaAssert(formals.functionParameters.parameters.all { it.bindingElement.binding.initializer == null })
 //
-//        val realm = Agent.runningContext.realm
+//        val realm = Reeva.activeAgent.runningContext.realm
 //        val obj = JSMappedArgumentsObject.create(realm)
 //        val map = JSObject.create(realm)
 //        obj.parameterMap = map
@@ -1938,7 +1937,7 @@ object Operations {
 //    @JvmStatic @ECMAImpl("9.4.4.7.1")
 //    fun makeArgGetter(name: String, env: EnvRecord): NativeGetterSignature {
 //        return { _ ->
-//            val function = Agent.runningContext.function
+//            val function = Reeva.activeAgent.runningContext.function
 //            expect(function != null)
 //            env.getBindingValue(name, false)
 //        }
@@ -1947,7 +1946,7 @@ object Operations {
 //    @JvmStatic @ECMAImpl("9.4.4.7.2")
 //    fun makeArgSetter(name: String, env: EnvRecord): NativeSetterSignature {
 //        return { _, newValue ->
-//            val function = Agent.runningContext.function
+//            val function = Reeva.activeAgent.runningContext.function
 //            expect(function != null)
 //            env.setBinding(name, newValue, false)
 //        }
@@ -2176,10 +2175,10 @@ object Operations {
         // TODO
         return JSUndefined
 
-//        ecmaAssert(Agent.activeAgent.runningContextStack.size >= 2)
-//        val callerContext = Agent.activeAgent.runningContextStack.let { it[it.lastIndex - 1] }
+//        ecmaAssert(Agent.activeReeva.activeAgent.runningContextStack.size >= 2)
+//        val callerContext = Agent.activeReeva.activeAgent.runningContextStack.let { it[it.lastIndex - 1] }
 //        val callerRealm = callerContext.realm
-//        val calleeRealm = Agent.runningContext.realm
+//        val calleeRealm = Reeva.activeAgent.runningContext.realm
 //        if (!hostEnsureCanCompileStrings(callerRealm, calleeRealm))
 //            Errors.CantCompileStrings.throwInternalError()
 //
@@ -2207,7 +2206,7 @@ object Operations {
 //        }
 //
 //        val proto = getPrototypeFromConstructor(newTarget, fallbackProto)
-//        val functionRealm = Agent.runningContext.realm
+//        val functionRealm = Reeva.activeAgent.runningContext.realm
 //        val scope = functionRealm.globalEnv
 //        val interpreter = Interpreter(calleeRealm)
 //        val function = interpreter.ordinaryFunctionCreate(
@@ -2665,7 +2664,7 @@ object Operations {
         kind: TypedArrayKind,
         isTypedArray: Boolean,
         order: TypedArrayOrder,
-        isLittleEndian: Boolean = Agent.activeAgent.isLittleEndian
+        isLittleEndian: Boolean = Reeva.activeAgent.isLittleEndian
     ): JSValue {
         ecmaAssert(arrayBuffer is JSObject)
         ecmaAssert(!isDetachedBuffer(arrayBuffer))
@@ -2740,7 +2739,7 @@ object Operations {
         value: JSValue,
         isTypedArray: Boolean,
         order: TypedArrayOrder,
-        isLittleEndian: Boolean = Agent.activeAgent.isLittleEndian
+        isLittleEndian: Boolean = Reeva.activeAgent.isLittleEndian
     ) {
         ecmaAssert(arrayBuffer is JSObject)
         ecmaAssert(!isDetachedBuffer(arrayBuffer))
@@ -2870,70 +2869,59 @@ object Operations {
     @JvmStatic @ECMAImpl("26.6.1.9")
     fun hostPromiseRejectionTracker(promise: JSObject, operation: String) {
         if (operation == "reject") {
-            val unhandledRejectionTask = object : Microtask() {
-                override fun execute(): JSValue {
-                    // If promise does not have any handlers by the time this microtask is ran, it
-                    // will not have any handlers, and we can print a warning
-                    if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled)) {
-                        val result = promise.getSlotAs<JSValue>(SlotName.PromiseResult)
-                        println("\u001b[31mUnhandled promise rejection: ${toString(result)}\u001B[0m")
-                    }
-                    return JSEmpty
+            Reeva.activeAgent.addMicrotask {
+                // If promise does not have any handlers by the time this microtask is ran, it
+                // will not have any handlers, and we can print a warning
+                if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled)) {
+                    val result = promise.getSlotAs<JSValue>(SlotName.PromiseResult)
+                    println("\u001b[31mUnhandled promise rejection: ${toString(result)}\u001B[0m")
                 }
             }
-            Agent.activeAgent.submitMicrotask(unhandledRejectionTask)
         }
     }
 
     @JvmStatic @ECMAImpl("26.6.2.1")
     fun newPromiseReactionJob(reaction: PromiseReaction, argument: JSValue): PromiseReactionJob {
-        val task = object : Microtask() {
-            override fun execute(): JSValue {
-                val handlerResult: Any = if (reaction.handler == null) {
-                    if (reaction.type == PromiseReaction.Type.Fulfill) {
-                        argument
-                    } else {
-                        ThrowException(argument)
-                    }
-                } else try {
-                    call(reaction.handler, JSUndefined, listOf(argument))
-                } catch (e: ThrowException) {
-                    e
-                }
+        val handlerRealm = if (reaction.handler != null) reaction.handler.realm else null
 
-                if (reaction.capability == null) {
-                    ecmaAssert(handlerResult !is ThrowException)
-                    return JSEmpty
-                }
-
-                return if (handlerResult is ThrowException) {
-                    call(reaction.capability.reject!!, JSUndefined, listOf(handlerResult.value))
+        return PromiseReactionJob(handlerRealm) job@ {
+            val handlerResult: Any = if (reaction.handler == null) {
+                if (reaction.type == PromiseReaction.Type.Fulfill) {
+                    argument
                 } else {
-                    call(reaction.capability.resolve!!, JSUndefined, listOf(handlerResult as JSValue))
+                    ThrowException(argument)
                 }
+            } else try {
+                call(reaction.handler, JSUndefined, listOf(argument))
+            } catch (e: ThrowException) {
+                e
+            }
+
+            if (reaction.capability == null) {
+                ecmaAssert(handlerResult !is ThrowException)
+                return@job
+            }
+
+            if (handlerResult is ThrowException) {
+                call(reaction.capability.reject!!, JSUndefined, listOf(handlerResult.value))
+            } else {
+                call(reaction.capability.resolve!!, JSUndefined, listOf(handlerResult as JSValue))
             }
         }
-
-        val handlerRealm = if (reaction.handler != null) reaction.handler.realm else null
-        return PromiseReactionJob(task, handlerRealm)
     }
 
     @JvmStatic @ECMAImpl("26.6.2.2")
     fun newPromiseResolveThenableJob(promise: JSObject, thenable: JSValue, then: JSValue): PromiseReactionJob {
-        val job = object : Microtask() {
-            override fun execute(): JSValue {
-                val (resolveFunction, rejectFunction) = createResolvingFunctions(promise)
-                return try {
-                    call(then, thenable, listOf(resolveFunction, rejectFunction))
-                } catch (e: ThrowException) {
-                    call(rejectFunction, JSUndefined, listOf(e.value))
-                }
+        // TODO: then is always an object?
+        val thenRealm = if (then is JSObject) then.realm else Reeva.activeAgent.runningContext.realm
+        return PromiseReactionJob(thenRealm) {
+            val (resolveFunction, rejectFunction) = createResolvingFunctions(promise)
+            try {
+                call(then, thenable, listOf(resolveFunction, rejectFunction))
+            } catch (e: ThrowException) {
+                call(rejectFunction, JSUndefined, listOf(e.value))
             }
         }
-
-        // TODO: then is always an object?
-        val thenRealm = if (then is JSObject) then.realm else Agent.runningContext.realm
-        return PromiseReactionJob(job, thenRealm)
     }
 
     @JvmStatic @ECMAImpl("26.6.4.1.1")
@@ -2948,7 +2936,7 @@ object Operations {
     @JvmStatic @ECMAImpl("26.6.4.7")
     fun promiseResolve(constructor: JSObject, value: JSValue): JSValue {
         if (isPromise(value)) {
-            val valueCtor = (value as JSObject).get("constructor")
+            val valueCtor = value.get("constructor")
             if (valueCtor.sameValue(constructor))
                 return value
         }
@@ -2993,9 +2981,9 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("8.4.4")
-    fun hostEnqueuePromiseJob(job: Microtask, realm: Realm?) {
+    fun hostEnqueuePromiseJob(job: () -> Unit, realm: Realm?) {
         // TODO: Use realm?
-        Agent.activeAgent.submitMicrotask(job)
+        Reeva.activeAgent.addMicrotask(job)
     }
 
     enum class ToPrimitiveHint(private val _text: String) {
@@ -3100,7 +3088,7 @@ object Operations {
 
     data class Wrapper<T>(var value: T)
 
-    data class PromiseReactionJob(val job: Microtask, val realm: Realm?)
+    data class PromiseReactionJob(val realm: Realm?, val job: () -> Unit)
 
     data class PromiseCapability(
         var promise: JSValue,
