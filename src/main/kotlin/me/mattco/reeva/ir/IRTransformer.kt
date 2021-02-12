@@ -333,7 +333,7 @@ class IRTransformer : ASTVisitor {
         }
 
         visit(body)
-        if (builder.opcodes.last() != Return) {
+        if (builder.opcodes.lastOrNull() != Return) {
             +LdaUndefined
             +Return
         }
@@ -723,7 +723,66 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitObjectLiteral(node: ObjectLiteralNode) {
-        TODO()
+        +CreateObjectLiteral
+        val objectReg = nextFreeReg()
+        +Star(objectReg)
+
+        for (property in node.list) {
+            when (property) {
+                is SpreadProperty -> TODO()
+                is MethodProperty -> {
+                    val method = property.method
+
+                    storeObjectProperty(objectReg, method.propName) {
+                        // TODO: This probably isn't correct
+                        val functionNode = FunctionExpressionNode(
+                            null,
+                            method.parameters,
+                            method.body
+                        )
+                        functionNode.scope = method.scope
+                        visitFunctionExpression(functionNode)
+                    }
+                }
+                is ShorthandProperty -> {
+                    visit(property.key)
+                    +StaNamedProperty(objectReg, loadConstant(property.key.identifierName))
+                }
+                is KeyValueProperty -> {
+                    storeObjectProperty(objectReg, property.key) {
+                        visit(property.value)
+                    }
+                }
+            }
+        }
+
+        +Ldar(objectReg)
+        markRegFree(objectReg)
+    }
+
+    private fun storeObjectProperty(objectReg: Int, property: PropertyName, valueProducer: () -> Unit) {
+        if (property.type == PropertyName.Type.Identifier) {
+            valueProducer()
+            val name = (property.expression as IdentifierNode).identifierName
+            +StaNamedProperty(objectReg, loadConstant(name))
+            return
+        }
+
+        when (property.type) {
+            PropertyName.Type.String -> visit(property.expression)
+            PropertyName.Type.Number -> visit(property.expression)
+            PropertyName.Type.Computed -> {
+                visit(property.expression)
+                +ToString
+            }
+            PropertyName.Type.Identifier -> unreachable()
+        }
+
+        val keyReg = nextFreeReg()
+        +Star(keyReg)
+        valueProducer()
+        +StaKeyedProperty(objectReg, keyReg)
+        markRegFree(keyReg)
     }
 
     override fun visitBooleanLiteral(node: BooleanLiteralNode) {

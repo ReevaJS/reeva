@@ -1345,9 +1345,19 @@ class Parser(val source: String) {
             } else MethodDefinitionNode.Type.Normal to false
 
             val methodName = if (needsNewName) parsePropertyName() else name
+
+            val newScope = HoistingScope(scope)
+            scope = newScope
+
             val params = parseFunctionParameters()
-            val body = parseBlock()
-            return@nps MethodProperty(MethodDefinitionNode(methodName, params, body, type))
+            val body = functionBoundary {
+                parseBlock(pushNewScope = false)
+            }
+            val methodNode = MethodDefinitionNode(methodName, params, body, type).also {
+                it.scope = scope
+                scope = scope.outer!!
+            }
+            return@nps MethodProperty(methodNode)
         }
 
         if (matchAny(TokenType.Comma, TokenType.CloseCurly)) {
@@ -1355,7 +1365,7 @@ class Parser(val source: String) {
                 reporter.at(name).invalidShorthandProperty()
 
             val identifier = (name.expression as IdentifierNode).identifierName
-            val node = IdentifierReferenceNode(identifier).also {
+            val node = IdentifierReferenceNode(identifier).withPosition(name).also {
                 it.scope = scope
                 if (!disableAutoScoping)
                     scope.addReference(it)

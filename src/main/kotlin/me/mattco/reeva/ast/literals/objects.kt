@@ -39,7 +39,7 @@ class MethodDefinitionNode(
     val parameters: ParameterList,
     val body: BlockNode,
     val type: Type
-) : ASTNodeBase(listOf(propName) + parameters + body) {
+) : NodeWithScope(listOf(propName) + parameters + body) {
     fun isConstructor(): Boolean {
         return propName.type == PropertyName.Type.Identifier && propName.expression.let {
             (it as IdentifierNode).identifierName == "constructor"
