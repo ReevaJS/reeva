@@ -1043,7 +1043,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("7.2.14")
-    fun abstractEqualityComparison(lhs: JSValue, rhs: JSValue): JSValue {
+    fun abstractEqualityComparison(lhs: JSValue, rhs: JSValue): JSBoolean {
         if (lhs.type == rhs.type)
             return strictEqualityComparison(lhs, rhs)
 
@@ -1096,7 +1096,7 @@ object Operations {
     }
 
     @JvmStatic @ECMAImpl("7.2.15")
-    fun strictEqualityComparison(lhs: JSValue, rhs: JSValue): JSValue {
+    fun strictEqualityComparison(lhs: JSValue, rhs: JSValue): JSBoolean {
         if (lhs.type != rhs.type)
             return JSFalse
         if (lhs is JSNumber)

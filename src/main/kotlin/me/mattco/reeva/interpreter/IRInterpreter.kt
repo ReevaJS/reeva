@@ -205,10 +205,18 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                 )
             }
             is ConstructWithSpread -> TODO()
-            is TestEqual -> TODO()
-            is TestNotEqual -> TODO()
-            is TestEqualStrict -> TODO()
-            is TestNotEqualStrict -> TODO()
+            is TestEqual -> {
+                accumulator = Operations.abstractEqualityComparison(registers[opcode.targetReg], accumulator)
+            }
+            is TestNotEqual -> {
+                accumulator = Operations.abstractEqualityComparison(registers[opcode.targetReg], accumulator).inv()
+            }
+            is TestEqualStrict -> {
+                accumulator = Operations.strictEqualityComparison(registers[opcode.targetReg], accumulator)
+            }
+            is TestNotEqualStrict -> {
+                accumulator = Operations.strictEqualityComparison(registers[opcode.targetReg], accumulator).inv()
+            }
             is TestLessThan -> {
                 val lhs = registers[opcode.targetReg]
                 val rhs = accumulator
