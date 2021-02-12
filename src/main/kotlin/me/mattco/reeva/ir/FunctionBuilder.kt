@@ -84,6 +84,7 @@ class FunctionBuilder(val argCount: Int = 1) {
             registers.add(RegState.USED)
             return registers.lastIndex
         }
+        registers[index] = RegState.USED
         return index
     }
 
