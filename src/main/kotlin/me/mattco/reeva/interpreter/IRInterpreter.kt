@@ -124,7 +124,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             is StaKeyedProperty -> {
                 val obj = registers[opcode.objectReg] as JSObject
                 val key = registers[opcode.keyReg]
-                obj.set(Operations.toPropertyKey(key), obj)
+                obj.set(Operations.toPropertyKey(key), accumulator)
             }
             CreateArrayLiteral -> {
                 accumulator = JSArrayObject.create(function.realm)
