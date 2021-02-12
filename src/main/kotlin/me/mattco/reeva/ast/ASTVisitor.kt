@@ -3,7 +3,6 @@ package me.mattco.reeva.ast
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
-import me.mattco.reeva.utils.unreachable
 
 interface ASTVisitor {
     fun visit(node: ASTNode) {
@@ -298,7 +297,6 @@ interface ASTVisitor {
     fun visitObjectLiteral(node: ObjectLiteralNode) {
         node.list.forEach {
             when (it) {
-                is CoveredInitializerProperty -> unreachable()
                 is KeyValueProperty -> {
                     visit(it.key.expression)
                     visit(it.value)

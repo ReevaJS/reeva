@@ -28,6 +28,7 @@ abstract class Reporter {
     fun invalidBreakTarget(target: String): Nothing = error("invalid break target \"$target\"")
     fun invalidContinueTarget(target: String): Nothing = error("invalid continue target \"$target\"")
     fun invalidLhsInAssignment(): Nothing = error("invalid left-hand-side in assignment expression")
+    fun invalidShorthandProperty(): Nothing = error("object shorthand property must be an identifier name")
     fun paramAfterRest(): Nothing = error("function rest parameter must be the last parameter")
     fun restParamInitializer(): Nothing = error("rest parameter cannot have an initializer")
     fun strictAssignToArguments(): Nothing = error("cannot assign to \"arguments\" in strict-mode code")

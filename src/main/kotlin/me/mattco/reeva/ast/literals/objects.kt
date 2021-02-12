@@ -16,31 +16,33 @@ class KeyValueProperty(
     val value: ExpressionNode,
 ) : Property(listOf(key, value))
 
-class ShorthandProperty(val key: IdentifierNode) : Property(listOf(key))
+class ShorthandProperty(val key: IdentifierReferenceNode) : Property(listOf(key))
 
 class MethodProperty(val method: MethodDefinitionNode) : Property(listOf(method))
 
 class SpreadProperty(val target: ExpressionNode) : Property(listOf(target))
 
-class CoveredInitializerProperty(
-    val target: IdentifierNode,
-    val initializer: ExpressionNode,
-) : Property(listOf(target, initializer))
-
 class PropertyName(
     val expression: ExpressionNode,
-    val isComputed: Boolean,
-) : ASTNodeBase(listOf(expression))
+    val type: Type,
+) : ASTNodeBase(listOf(expression)) {
+    enum class Type {
+        Identifier, // expression is IdentifierNode
+        String,     // expression is StringLiteralNode
+        Number,     // expresion is NumericLiteralNode
+        Computed,   // expression is any ExpressionNode
+    }
+}
 
 class MethodDefinitionNode(
-    val identifier: PropertyName,
+    val propName: PropertyName,
     val parameters: ParameterList,
     val body: BlockNode,
     val type: Type
-) : ASTNodeBase(listOf(identifier) + parameters + body) {
+) : ASTNodeBase(listOf(propName) + parameters + body) {
     fun isConstructor(): Boolean {
-        return !identifier.isComputed && identifier.expression.let {
-            it is BindingIdentifierNode && it.identifierName == "constructor"
+        return propName.type == PropertyName.Type.Identifier && propName.expression.let {
+            (it as IdentifierNode).identifierName == "constructor"
         }
     }
 

@@ -1276,16 +1276,6 @@ class Parser(val source: String) {
         TemplateLiteralNode(expressions)
     }
 
-    private fun parseObjectLiteral(): ExpressionNode = nps {
-        val coveredObject = parseCoveredObjectLiteral()
-        for (property in coveredObject.list) {
-            if (property is CoveredInitializerProperty)
-                reporter.at(property).unexpectedToken(TokenType.Equals)
-        }
-
-        coveredObject
-    }
-
     /*
      * ObjectLiteral :
      *     { }
@@ -1295,8 +1285,12 @@ class Parser(val source: String) {
      * PropertyDefinitionList :
      *     PropertyDefinition
      *     PropertyDefinitionList , PropertyDefinition
+     *
+     * Note that this is NOT a covered object literal. I.e., this will
+     * not work for parsing destructured parameters in the future. This
+     * is only for contexts where we know it is an object literal.
      */
-    private fun parseCoveredObjectLiteral(): ObjectLiteralNode {
+    private fun parseObjectLiteral(): ExpressionNode = nps {
         val objectStart = sourceStart
         consume(TokenType.OpenCurly)
 
@@ -1304,7 +1298,7 @@ class Parser(val source: String) {
         val properties = mutableListOf<Property>()
 
         while (!match(TokenType.CloseCurly)) {
-            properties.add(parseProperty())
+            properties.add(parseObjectProperty())
             if (match(TokenType.Comma)) {
                 consume()
             } else break
@@ -1324,7 +1318,7 @@ class Parser(val source: String) {
      *     MethodDefinition
      *     ... AssignmentExpression
      */
-    private fun parseProperty(): Property = nps {
+    private fun parseObjectProperty(): Property = nps {
         if (match(TokenType.TriplePeriod)) {
             consume()
             return@nps SpreadProperty(parseExpression(2))
@@ -1332,63 +1326,50 @@ class Parser(val source: String) {
 
         val name = parsePropertyName()
 
-        val canBeShorthand = !name.isComputed && name.expression.let {
-            it is IdentifierReferenceNode || it is IdentifierNode
-        }
-
-        val shorthandName = if (canBeShorthand) {
-            if (name.expression is IdentifierReferenceNode) {
-                name.expression.identifierName
-            } else (name.expression as IdentifierNode).identifierName
-        } else null
-
-        when {
-            match(TokenType.Colon) -> {
-                consume()
-                KeyValueProperty(name, parseExpression(2))
-            }
-            match(TokenType.Comma) -> {
-                if (!canBeShorthand)
-                    reporter.unexpectedToken(TokenType.Comma)
-                consume()
-                ShorthandProperty(IdentifierNode(shorthandName!!))
-            }
-            match(TokenType.Equals) -> {
-                if (!canBeShorthand)
+        if (matchPropertyName() || match(TokenType.OpenParen)) {
+            val (type, needsNewName) = if (matchPropertyName()) {
+                if (name.type != PropertyName.Type.Identifier)
                     reporter.unexpectedToken(tokenType)
-                consume()
-                CoveredInitializerProperty(IdentifierNode(shorthandName!!), parseExpression(2))
+
+                val identifier = (name.expression as IdentifierNode).identifierName
+                if (identifier != "get" && identifier != "set")
+                    reporter.unexpectedToken(tokenType)
+
+                val type = if (identifier == "get") {
+                    MethodDefinitionNode.Type.Getter
+                } else MethodDefinitionNode.Type.Setter
+
+                type to true
+            } else MethodDefinitionNode.Type.Normal to false
+
+            val methodName = if (needsNewName) parsePropertyName() else name
+            val params = parseFunctionParameters()
+            val body = parseBlock()
+            return@nps MethodProperty(MethodDefinitionNode(methodName, params, body, type))
+        }
+
+        if (matchAny(TokenType.Comma, TokenType.CloseCurly)) {
+            if (name.type != PropertyName.Type.Identifier)
+                reporter.at(name).invalidShorthandProperty()
+
+            val identifier = (name.expression as IdentifierNode).identifierName
+            val node = IdentifierReferenceNode(identifier).also {
+                it.scope = scope
+                if (!disableAutoScoping)
+                    scope.addReference(it)
             }
-            match(TokenType.Identifier) || match(TokenType.OpenParen) -> MethodProperty(parseMethodDefinition(name))
-            canBeShorthand -> ShorthandProperty(IdentifierNode(shorthandName!!))
-            else -> reporter.unexpectedToken(tokenType)
+
+            return@nps ShorthandProperty(node)
         }
+
+        consume(TokenType.Colon)
+        val expression = parseExpression(2)
+
+        KeyValueProperty(name, expression)
     }
 
-    private fun parseMethodDefinition(propertyName: PropertyName): MethodDefinitionNode = nps {
-        val expression = propertyName.expression
-        val (isGet, isSet) = if (match(TokenType.Identifier) && !propertyName.isComputed && expression is IdentifierNode) {
-            (expression.identifierName == "get") to (expression.identifierName == "set")
-        } else false to false
-
-        val name = if (isGet || isSet) {
-            parsePropertyName()
-        } else propertyName
-
-        // TODO: These are unique parameters
-        val parameters = parseFunctionParameters()
-        val block = functionBoundary {
-            parseBlock(pushNewScope = false)
-        }
-
-        val type = when {
-            isGet -> MethodDefinitionNode.Type.Getter
-            isSet -> MethodDefinitionNode.Type.Setter
-            else -> MethodDefinitionNode.Type.Normal
-        }
-
-        MethodDefinitionNode(name, parameters, block, type)
-    }
+    private fun matchPropertyName() = matchIdentifierName() ||
+        matchAny(TokenType.OpenBracket, TokenType.StringLiteral, TokenType.NumericLiteral)
 
     /*
      * PropertyName :
@@ -1409,13 +1390,19 @@ class Parser(val source: String) {
                 consume()
                 val expr = parseExpression(0)
                 consume(TokenType.CloseBracket)
-                return@nps PropertyName(expr, true)
+                return@nps PropertyName(expr, PropertyName.Type.Computed)
             }
             match(TokenType.StringLiteral) -> {
-                PropertyName(StringLiteralNode(token.literals), false).also { consume() }
+                PropertyName(nps {
+                    StringLiteralNode(token.literals).also { consume() }
+                }, PropertyName.Type.String)
             }
-            match(TokenType.NumericLiteral) -> PropertyName(parseNumericLiteral(), false)
-            matchIdentifierName() -> PropertyName(parseIdentifierName(), false)
+            match(TokenType.NumericLiteral) -> {
+                PropertyName(parseNumericLiteral(), PropertyName.Type.Number)
+            }
+            matchIdentifierName() -> {
+                PropertyName(parseIdentifierName(), PropertyName.Type.Identifier)
+            }
             else -> reporter.unexpectedToken(tokenType)
         }
     }
