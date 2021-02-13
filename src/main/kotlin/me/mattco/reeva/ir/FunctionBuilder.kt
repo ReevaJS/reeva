@@ -127,5 +127,5 @@ class FunctionBuilder(val argCount: Int = 1) {
         return constantPool.lastIndex
     }
 
-    data class Label(var opIndex: Int?)
+    class Label(var opIndex: Int?)
 }
