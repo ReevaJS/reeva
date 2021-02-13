@@ -143,10 +143,19 @@ class IRTransformer : ASTVisitor {
 
     override fun visitDoWhileStatement(node: DoWhileStatementNode) {
         val loopHead = label()
+        val breakTarget = label()
+
         place(loopHead)
+
+        builder.breakLocations.add(breakTarget)
+        builder.continuableLocation.add(loopHead)
         visit(node.body)
+        builder.breakLocations.removeLast()
+        builder.continuableLocation.removeLast()
+
         visit(node.condition)
         jump(loopHead, ::JumpIfToBooleanTrue)
+        place(breakTarget)
     }
 
     override fun visitWhileStatement(node: WhileStatementNode) {
@@ -156,7 +165,13 @@ class IRTransformer : ASTVisitor {
         place(loopHead)
         visit(node.condition)
         jump(loopEnd, ::JumpIfToBooleanFalse)
+
+        builder.breakLocations.add(loopEnd)
+        builder.continuableLocation.add(loopHead)
         visit(node.body)
+        builder.breakLocations.removeLast()
+        builder.continuableLocation.removeLast()
+
         jump(loopHead)
         place(loopEnd)
     }
