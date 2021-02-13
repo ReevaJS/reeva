@@ -98,6 +98,12 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             is LdaConstant -> {
                 accumulator = getMappedConstant(opcode.cpIndex)
             }
+            is LdaInt -> {
+                accumulator = JSNumber(opcode.int)
+            }
+            is LdaDouble -> {
+                accumulator = JSNumber(opcode.double)
+            }
             is Ldar -> {
                 accumulator = registers[opcode.reg]
             }

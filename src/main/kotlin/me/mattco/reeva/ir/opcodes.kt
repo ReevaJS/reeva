@@ -12,6 +12,8 @@ object LdaNull : Opcode()
 object LdaTrue : Opcode()
 object LdaFalse : Opcode()
 class LdaConstant(val cpIndex: Int) : Opcode()
+class LdaInt(val int: Int) : Opcode()
+class LdaDouble(val double: Double) : Opcode()
 
 /***********************
  * REGISTER OPERATIONS *

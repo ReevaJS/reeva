@@ -12,6 +12,7 @@ import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 import java.io.File
 import java.math.BigInteger
+import kotlin.math.floor
 
 fun main() {
     val source = File("./demo/index.js").readText()
@@ -794,7 +795,12 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitNumericLiteral(node: NumericLiteralNode) {
-        +LdaConstant(loadConstant(node.value))
+        val value = node.value
+        if (value.isFinite() && floor(value) == value && value in Int.MIN_VALUE.toDouble()..Int.MAX_VALUE.toDouble()) {
+            +LdaInt(value.toInt())
+        } else {
+            +LdaDouble(value)
+        }
     }
 
     override fun visitBigIntLiteral(node: BigIntLiteralNode) {

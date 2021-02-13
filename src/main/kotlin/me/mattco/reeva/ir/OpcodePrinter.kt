@@ -74,7 +74,12 @@ object OpcodePrinter {
             }.forEach {
                 it.isAccessible = true
                 append(' ')
-                append(formatArgument(it.get(opcode) as Int, it.name, argCount))
+                val value = it.get(opcode)
+                if (value is Int) {
+                    append(formatArgument(it.get(opcode) as Int, it.name, argCount))
+                } else {
+                    append(value as Double)
+                }
             }
         }
     }
