@@ -4,6 +4,7 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
+import me.mattco.reeva.interpreter.InterpRuntime
 import me.mattco.reeva.parser.GlobalSourceNode
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.parser.Scope
@@ -234,7 +235,86 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitForOf(node: ForOfNode) {
-        TODO()
+        visit(node.expression)
+        +GetIterator
+        val iter = nextFreeReg()
+        +Star(iter)
+
+        val next = nextFreeReg()
+        +LdaNamedProperty(iter, loadConstant("next"))
+        +Star(next)
+        +CallRuntime(InterpRuntime.ThrowIfIteratorNextNotCallable, next, 1)
+
+        if (node.scope.requiresEnv) {
+            node.scope.envVariables.forEachIndexed { index, variable ->
+                variable.slot = index
+            }
+            builder.nestedContexts++
+        }
+
+        node.scope.inlineableVariables.forEach {
+            it.slot = nextFreeReg()
+        }
+
+        val loopStart = label()
+        val loopEnd = label()
+
+        place(loopStart)
+
+        if (node.scope.requiresEnv)
+            +PushEnv(node.scope.numSlots)
+
+        +CallProperty0(next, iter)
+        val nextResult = nextFreeReg()
+        +Star(nextResult)
+        +CallRuntime(InterpRuntime.ThrowIfIteratorReturnNotObject, nextResult, 1)
+        +LdaNamedProperty(nextResult, loadConstant("done"))
+        jump(loopEnd, ::JumpIfToBooleanTrue)
+
+        +LdaNamedProperty(nextResult, loadConstant("value"))
+
+        when (node.decl) {
+            is VariableDeclarationNode -> {
+                val decl = node.decl.declarations[0]
+                val variable = decl.identifier.variable
+                if (variable.isInlineable) {
+                    +Star(variable.slot)
+                } else {
+                    storeEnvVariableRef(variable, node.scope)
+                }
+            }
+            is LexicalDeclarationNode -> {
+                val decl = node.decl.declarations[0]
+                val variable = decl.identifier.variable
+                if (variable.isInlineable) {
+                    +Star(variable.slot)
+                } else {
+                    storeEnvVariableRef(variable, node.scope)
+                }
+            }
+            is BindingIdentifierNode -> {
+                val variable = node.decl.variable
+                if (variable.isInlineable) {
+                    +Star(variable.slot)
+                } else {
+                    storeEnvVariableRef(variable, node.scope)
+                }
+            }
+        }
+
+        visit(node.body)
+
+        if (node.scope.requiresEnv) {
+            builder.nestedContexts--
+            +PopEnv
+        }
+
+        jump(loopStart)
+        place(loopEnd)
+
+        node.scope.inlineableVariables.forEach {
+            markRegFree(it.slot)
+        }
     }
 
     override fun visitForAwaitOf(node: ForAwaitOfNode) {

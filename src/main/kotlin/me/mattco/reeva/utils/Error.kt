@@ -65,6 +65,7 @@ object Errors {
     object SpeciesNotCtor : Error("non-nullish value returned from Symbol.species method is not a constructor")
     class NotIterable(value: String) : Error("$value is not iterable")
     object NonObjectIterator : Error("iterator must be an object")
+    object IterableBadNext : Error("iterator must have a callable \"next\" method")
     object NonObjectIteratorReturn : Error("result of <iterator>.next() must be an object")
     class InvalidArrayLength(length: Any) : Error("array length $length is too large")
     object CalleePropertyAccess : Error("\"callee\" property may not be accessed on unmapped arguments object")

@@ -1,5 +1,7 @@
 package me.mattco.reeva.ir
 
+import me.mattco.reeva.interpreter.InterpRuntime
+
 sealed class Opcode
 
 /*************
@@ -231,10 +233,10 @@ class CallWithSpread(val callableReg: Int, val firstArgReg: Int, val argCount: I
  * Call the runtime function specified by [id] with [argCount] number
  * of arguments, starting in [firstArgReg].
  */
-//class CallRuntime(val id: Int, val firstArgReg: Int, val argCount: Int) : Opcode() {
-//    constructor(method: InterpRuntime, firstArgReg: Int, argCount: Int) :
-//        this(method.ordinal, firstArgReg, argCount)
-//}
+class CallRuntime(val id: Int, val firstArgReg: Int, val argCount: Int) : Opcode() {
+    constructor(method: InterpRuntime, firstArgReg: Int, argCount: Int) :
+        this(method.ordinal, firstArgReg, argCount)
+}
 
 /****************
  * CONSTRUCTION *
@@ -460,6 +462,12 @@ class ThrowUseBeforeInitIfEmpty(val nameCpIndex: Int) : Opcode()
 /*********
  * OTHER *
  *********/
+
+/**
+ * Sets the accumulator to the result of calling
+ * <accumulator>[Symbol.iterator]
+ */
+object GetIterator : Opcode()
 
 /**
  * Creates a function object, referencing a FunctionInfo object stored

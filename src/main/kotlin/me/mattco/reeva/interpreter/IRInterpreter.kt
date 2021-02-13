@@ -14,6 +14,7 @@ import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.*
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.toValue
 import me.mattco.reeva.utils.unreachable
@@ -203,10 +204,10 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             is CallUndefinedReceiver0 -> call(opcode.callableReg, -1, 0, CallMode.UndefinedReceiver)
             is CallUndefinedReceiver1 -> call(opcode.callableReg, opcode.argReg, 1, CallMode.UndefinedReceiver)
             is CallWithSpread -> TODO()
-//            is CallRuntime -> {
-//                val args = getRegisterBlock(opcode.firstArgReg, opcode.argCount)
-//                accumulator = InterpRuntime.values()[opcode.id].function(args)
-//            }
+            is CallRuntime -> {
+                val args = getRegisterBlock(opcode.firstArgReg, opcode.argCount)
+                accumulator = InterpRuntime.values()[opcode.id].function(args)
+            }
             is Construct0 -> {
                 accumulator = Operations.construct(
                     registers[opcode.targetReg],
@@ -342,6 +343,11 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             Throw -> TODO()
             Return -> {
                 isDone = true
+            }
+            GetIterator -> {
+                accumulator = Operations.getIterator(accumulator).iterator
+                if (accumulator !is JSObject)
+                    Errors.NonObjectIterator.throwTypeError()
             }
             is CreateClosure -> {
                 val newInfo = info.constantPool[opcode.cpIndex] as FunctionInfo
