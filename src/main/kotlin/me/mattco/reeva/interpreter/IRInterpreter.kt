@@ -345,7 +345,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                 isDone = true
             }
             GetIterator -> {
-                accumulator = Operations.getIterator(accumulator).iterator
+                accumulator = Operations.getIterator(Operations.toObject(accumulator)).iterator
                 if (accumulator !is JSObject)
                     Errors.NonObjectIterator.throwTypeError()
             }
