@@ -218,7 +218,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             is Construct -> {
                 accumulator = Operations.construct(
                     registers[opcode.targetReg],
-                    emptyList(),
+                    getRegisterBlock(opcode.firstArgReg, opcode.argCount),
                     accumulator
                 )
             }
