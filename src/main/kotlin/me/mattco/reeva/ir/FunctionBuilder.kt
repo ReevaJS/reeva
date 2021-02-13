@@ -48,9 +48,9 @@ class FunctionBuilder(val argCount: Int = 1) {
         if (label.opIndex != null) {
             // the label has already been placed, so we can directly insert
             // a jump instruction
-            opcodes.add(Jump(label.opIndex!!))
+            opcodes.add(jumpOp(label.opIndex!!))
         } else {
-            // the label has yet to be replaced, so we have to place a marker
+            // the label has yet to be placed, so we have to place a marker
             // and wait for the label to be placed
             opcodes.add(JumpPlaceholder)
             val placeholderIndex = opcodes.lastIndex
