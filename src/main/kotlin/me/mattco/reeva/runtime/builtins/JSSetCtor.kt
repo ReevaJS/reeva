@@ -29,7 +29,7 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        if (arguments.newTarget != JSUndefined)
+        if (arguments.newTarget == JSUndefined)
             Errors.CtorCallWithoutNew("Set").throwTypeError()
 
         val set = Operations.ordinaryCreateFromConstructor(arguments.newTarget, realm.setProto, listOf(SlotName.SetData))
