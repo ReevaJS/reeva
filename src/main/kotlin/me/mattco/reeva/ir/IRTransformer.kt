@@ -179,6 +179,7 @@ class IRTransformer : ASTVisitor {
 
         val loopStart = label()
         val loopEnd = label()
+        val continueTarget = label()
         place(loopStart)
 
         if (node.condition != null) {
@@ -186,7 +187,16 @@ class IRTransformer : ASTVisitor {
             jump(loopEnd, ::JumpIfToBooleanFalse)
         }
 
+        builder.breakLocations.add(loopEnd)
+        builder.continuableLocation.add(continueTarget)
+
         visit(node.body)
+
+        builder.breakLocations.removeLast()
+        builder.continuableLocation.removeLast()
+
+        place(continueTarget)
+
         if (node.incrementer != null)
             visit(node.incrementer)
 
@@ -230,7 +240,17 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitBreakStatement(node: BreakStatementNode) {
-        TODO()
+        if (node.label != null)
+            TODO()
+
+        jump(builder.breakLocations.last())
+    }
+
+    override fun visitContinueStatement(node: ContinueStatementNode) {
+        if (node.label != null)
+            TODO()
+
+        jump(builder.continuableLocation.last())
     }
 
     override fun visitReturnStatement(node: ReturnStatementNode) {

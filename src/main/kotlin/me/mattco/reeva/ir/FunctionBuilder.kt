@@ -5,6 +5,8 @@ class FunctionBuilder(val argCount: Int = 1) {
 
     val opcodes = mutableListOf<Opcode>()
     val constantPool = mutableListOf<Any>()
+    val breakLocations = mutableListOf<Label>()
+    val continuableLocation = mutableListOf<Label>()
 
     // Stores how deep we currently are in the context tree from the
     // scope we started with (this function's HoistingScope)

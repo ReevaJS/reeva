@@ -30,6 +30,7 @@ interface ASTVisitor {
             is ThrowStatementNode -> visitThrowStatement(node)
             is TryStatementNode -> visitTryStatement(node)
             is BreakStatementNode -> visitBreakStatement(node)
+            is ContinueStatementNode -> visitContinueStatement(node)
             is ReturnStatementNode -> visitReturnStatement(node)
             is LexicalDeclarationNode -> visitLexicalDeclaration(node)
             is VariableDeclarationNode -> visitVariableDeclaration(node)
@@ -151,6 +152,8 @@ interface ASTVisitor {
     }
 
     fun visitBreakStatement(node: BreakStatementNode) { }
+
+    fun visitContinueStatement(node: ContinueStatementNode) { }
 
     fun visitReturnStatement(node: ReturnStatementNode) {
         node.expression?.also(::visit)
