@@ -103,7 +103,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                     return Operations.iteratorClose(
                         iteratorRecord,
                         JSTypeErrorObject.create(
-                            Reeva.activeAgent.runningContext.realm,
+                            Reeva.activeAgent.activeRealm,
                             "array length ${Long.MAX_VALUE} is too large"
                         )
                     )

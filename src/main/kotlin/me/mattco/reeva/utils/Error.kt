@@ -10,31 +10,31 @@ import me.mattco.reeva.runtime.objects.PropertyKey
 
 open class Error(private val message: String) {
     fun throwEvalError(): Nothing {
-        throw ThrowException(JSEvalErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
+        throw ThrowException(JSEvalErrorObject.create(Reeva.activeAgent.activeRealm, message))
     }
 
     fun throwInternalError(): Nothing {
-        throw ThrowException(JSInternalErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
+        throw ThrowException(JSInternalErrorObject.create(Reeva.activeAgent.activeRealm, message))
     }
 
     fun throwTypeError(): Nothing {
-        throw ThrowException(JSTypeErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
+        throw ThrowException(JSTypeErrorObject.create(Reeva.activeAgent.activeRealm, message))
     }
 
     fun throwRangeError(): Nothing {
-        throw ThrowException(JSRangeErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
+        throw ThrowException(JSRangeErrorObject.create(Reeva.activeAgent.activeRealm, message))
     }
 
     fun throwReferenceError(): Nothing {
-        throw ThrowException(JSReferenceErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
+        throw ThrowException(JSReferenceErrorObject.create(Reeva.activeAgent.activeRealm, message))
     }
 
     fun throwSyntaxError(): Nothing {
-        throw ThrowException(JSSyntaxErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
+        throw ThrowException(JSSyntaxErrorObject.create(Reeva.activeAgent.activeRealm, message))
     }
 
     fun throwURIError(): Nothing {
-        throw ThrowException(JSURIErrorObject.create(Reeva.activeAgent.runningContext.realm, message))
+        throw ThrowException(JSURIErrorObject.create(Reeva.activeAgent.activeRealm, message))
     }
 }
 

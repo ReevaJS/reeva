@@ -81,7 +81,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val obj = arguments.argument(0)
         if (obj !is JSObject && obj != JSNull)
             Errors.Object.CreateBadArgType.throwTypeError()
-        val newObj = create(Reeva.activeAgent.runningContext.realm, obj)
+        val newObj = create(Reeva.activeAgent.activeRealm, obj)
         val properties = arguments.argument(1)
         if (properties != JSUndefined)
             objectDefineProperties(newObj, properties)

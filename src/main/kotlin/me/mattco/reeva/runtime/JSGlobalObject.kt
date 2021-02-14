@@ -85,7 +85,7 @@ open class JSGlobalObject protected constructor(
     }
 
     private fun eval(arguments: JSArguments): JSValue {
-        return performEval(arguments.argument(0), Reeva.activeAgent.runningContext.realm, strictCaller = false, direct = false)
+        return performEval(arguments.argument(0), Reeva.activeAgent.activeRealm, strictCaller = false, direct = false)
     }
 
     private fun parseInt(arguments: JSArguments): JSValue {

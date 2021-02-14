@@ -519,7 +519,7 @@ object Operations {
 //        if (reference.isUnresolvableReference) {
 //            if (reference.isStrict)
 //                Errors.UnresolvableReference(reference.name).throwReferenceError()
-//            Reeva.activeAgent.runningContext.realm.globalObject.set(reference.name, value)
+//            Reeva.activeAgent.activeRealm.globalObject.set(reference.name, value)
 //        } else if (reference.isPropertyReference) {
 //            if (reference.hasPrimitiveBase) {
 //                ecmaAssert(base != JSUndefined && base != JSNull)
@@ -857,11 +857,11 @@ object Operations {
         return when (value) {
             is JSObject -> value
             is JSUndefined, JSNull -> Errors.FailedToObject(value.type).throwTypeError()
-            is JSBoolean -> JSBooleanObject.create(Reeva.activeAgent.runningContext.realm, value)
-            is JSNumber -> JSNumberObject.create(Reeva.activeAgent.runningContext.realm, value)
-            is JSString -> JSStringObject.create(Reeva.activeAgent.runningContext.realm, value)
-            is JSSymbol -> JSSymbolObject.create(Reeva.activeAgent.runningContext.realm, value)
-            is JSBigInt -> JSBigIntObject.create(Reeva.activeAgent.runningContext.realm, value)
+            is JSBoolean -> JSBooleanObject.create(Reeva.activeAgent.activeRealm, value)
+            is JSNumber -> JSNumberObject.create(Reeva.activeAgent.activeRealm, value)
+            is JSString -> JSStringObject.create(Reeva.activeAgent.activeRealm, value)
+            is JSSymbol -> JSSymbolObject.create(Reeva.activeAgent.activeRealm, value)
+            is JSBigInt -> JSBigIntObject.create(Reeva.activeAgent.activeRealm, value)
             else -> TODO()
         }
     }
@@ -1443,7 +1443,7 @@ object Operations {
 
     @JvmStatic @ECMAImpl("7.4.8")
     fun createIterResultObject(value: JSValue, done: Boolean): JSValue {
-        val obj = JSObject.create(Reeva.activeAgent.runningContext.realm)
+        val obj = JSObject.create(Reeva.activeAgent.activeRealm)
         createDataPropertyOrThrow(obj, "value".toValue(), value)
         createDataPropertyOrThrow(obj, "done".toValue(), done.toValue())
         return obj
@@ -1514,7 +1514,7 @@ object Operations {
 
     @JvmStatic @ECMAImpl("8.3.6")
     fun getGlobalObject(): JSObject {
-        return Reeva.activeAgent.runningContext.realm.globalObject
+        return Reeva.activeAgent.activeRealm.globalObject
     }
 
     @JvmStatic @ECMAImpl("9.1.6.2")
@@ -1735,7 +1735,7 @@ object Operations {
     @JvmStatic @ECMAImpl("9.4.1.3")
     fun boundFunctionCreate(targetFunction: JSFunction, arguments: JSArguments): JSFunction {
         val proto = targetFunction.getPrototype()
-        return JSBoundFunction.create(Reeva.activeAgent.runningContext.realm, targetFunction, arguments, proto)
+        return JSBoundFunction.create(Reeva.activeAgent.activeRealm, targetFunction, arguments, proto)
     }
 
     /**
@@ -1767,15 +1767,15 @@ object Operations {
         return indices
     }
 
-    fun arrayCreate(length: Int, proto: JSValue = Reeva.activeAgent.runningContext.realm.arrayProto): JSObject {
+    fun arrayCreate(length: Int, proto: JSValue = Reeva.activeAgent.activeRealm.arrayProto): JSObject {
         return arrayCreate(length.toLong(), proto)
     }
 
     @JvmStatic @JvmOverloads @ECMAImpl("9.4.2.2")
-    fun arrayCreate(length: Long, proto: JSValue = Reeva.activeAgent.runningContext.realm.arrayProto): JSObject {
+    fun arrayCreate(length: Long, proto: JSValue = Reeva.activeAgent.activeRealm.arrayProto): JSObject {
         if (length >= MAX_32BIT_INT - 1)
             Errors.InvalidArrayLength(length).throwRangeError()
-        val array = JSArrayObject.create(Reeva.activeAgent.runningContext.realm, proto)
+        val array = JSArrayObject.create(Reeva.activeAgent.activeRealm, proto)
         array.indexedProperties.setArrayLikeSize(length)
         return array
     }
@@ -1790,7 +1790,7 @@ object Operations {
         var ctor = originalArray.get("constructor")
         if (isConstructor(ctor)) {
             val ctorRealm = (ctor as JSObject).realm
-            if (Reeva.activeAgent.runningContext.realm != ctorRealm && ctor.sameValue(ctorRealm.arrayCtor)) {
+            if (Reeva.activeAgent.activeRealm != ctorRealm && ctor.sameValue(ctorRealm.arrayCtor)) {
                 ctor = JSUndefined
             }
         }
@@ -1808,7 +1808,7 @@ object Operations {
 
     @JvmStatic @ECMAImpl("9.4.4.6")
     fun createUnmappedArgumentsObject(arguments: JSArguments): JSValue {
-        var realm = Reeva.activeAgent.runningContext.realm
+        var realm = Reeva.activeAgent.activeRealm
         val obj = JSUnmappedArgumentsObject.create(realm)
         definePropertyOrThrow(obj, "length".key(), Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE))
         arguments.forEachIndexed { index, value ->
@@ -1847,7 +1847,7 @@ object Operations {
 //        // TODO
 ////        ecmaAssert(formals.functionParameters.parameters.all { it.bindingElement.binding.initializer == null })
 //
-//        val realm = Reeva.activeAgent.runningContext.realm
+//        val realm = Reeva.activeAgent.activeRealm
 //        val obj = JSMappedArgumentsObject.create(realm)
 //        val map = JSObject.create(realm)
 //        obj.parameterMap = map
@@ -2179,7 +2179,7 @@ object Operations {
 //        ecmaAssert(Agent.activeReeva.activeAgent.runningContextStack.size >= 2)
 //        val callerContext = Agent.activeReeva.activeAgent.runningContextStack.let { it[it.lastIndex - 1] }
 //        val callerRealm = callerContext.realm
-//        val calleeRealm = Reeva.activeAgent.runningContext.realm
+//        val calleeRealm = Reeva.activeAgent.activeRealm
 //        if (!hostEnsureCanCompileStrings(callerRealm, calleeRealm))
 //            Errors.CantCompileStrings.throwInternalError()
 //
@@ -2207,7 +2207,7 @@ object Operations {
 //        }
 //
 //        val proto = getPrototypeFromConstructor(newTarget, fallbackProto)
-//        val functionRealm = Reeva.activeAgent.runningContext.realm
+//        val functionRealm = Reeva.activeAgent.activeRealm
 //        val scope = functionRealm.globalEnv
 //        val interpreter = Interpreter(calleeRealm)
 //        val function = interpreter.ordinaryFunctionCreate(
@@ -2914,7 +2914,7 @@ object Operations {
     @JvmStatic @ECMAImpl("26.6.2.2")
     fun newPromiseResolveThenableJob(promise: JSObject, thenable: JSValue, then: JSValue): PromiseReactionJob {
         // TODO: then is always an object?
-        val thenRealm = if (then is JSObject) then.realm else Reeva.activeAgent.runningContext.realm
+        val thenRealm = if (then is JSObject) then.realm else Reeva.activeAgent.activeRealm
         return PromiseReactionJob(thenRealm) {
             val (resolveFunction, rejectFunction) = createResolvingFunctions(promise)
             try {

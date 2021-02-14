@@ -539,7 +539,7 @@ open class JSObject protected constructor(
     }
 
     companion object {
-        val INVALID_OBJECT by lazy { JSObject(Reeva.activeAgent.runningContext.realm) }
+        val INVALID_OBJECT by lazy { JSObject(Reeva.activeAgent.activeRealm) }
 
         @JvmStatic
         @JvmOverloads

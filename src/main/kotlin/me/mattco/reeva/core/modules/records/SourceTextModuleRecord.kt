@@ -1,7 +1,6 @@
 package me.mattco.reeva.core.modules.records
 
 import me.mattco.reeva.ast.ModuleNode
-import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.modules.ExportEntryRecord
@@ -19,7 +18,6 @@ class SourceTextModuleRecord(
     environment: EnvRecord?,
     requestedModules: List<String>,
     val scriptCode: ModuleNode,
-    var context: ExecutionContext?,
     val importMeta: JSObject?,
     val importEntries: List<ImportEntryRecord>,
     val localExportEntries: List<ExportEntryRecord>,

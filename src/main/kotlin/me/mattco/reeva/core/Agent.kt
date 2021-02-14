@@ -22,9 +22,9 @@ class Agent {
     val isBigEndian: Boolean
         get() = byteOrder == ByteOrder.BIG_ENDIAN
 
-    private val contextStack = Stack<ExecutionContext>()
-    internal val runningContext: ExecutionContext
-        get() = contextStack.peek()
+    private val activeRealms = Stack<Realm>()
+    val activeRealm: Realm
+        get() = activeRealms.peek()
 
     internal val pendingMicrotasks = ArrayDeque<() -> Unit>()
 
@@ -39,15 +39,14 @@ class Agent {
         println("\n")
 
         val function = IRInterpreter.wrap(info, realm)
-        val context = ExecutionContext(function)
-        contextStack.push(context)
+        activeRealms.add(realm)
         val result = try {
             function.call(JSArguments(emptyList(), realm.globalObject))
         } catch (e: ThrowException) {
             return Reeva.Result(e.value, true)
         }
-        contextStack.pop()
-        expect(contextStack.isEmpty())
+        activeRealms.pop()
+        expect(activeRealms.isEmpty())
         return Reeva.Result(result, false)
     }
 
@@ -55,12 +54,12 @@ class Agent {
         pendingMicrotasks.addFirst(task)
     }
 
-    internal fun pushContext(context: ExecutionContext) = apply {
-        contextStack.push(context)
+    internal fun pushRealm(realm: Realm) = apply {
+        activeRealms.push(realm)
     }
 
-    internal fun popContext() = apply {
-        contextStack.pop()
+    internal fun popRealm() = apply {
+        activeRealms.pop()
     }
 
     internal fun processMicrotasks() {
@@ -68,9 +67,9 @@ class Agent {
             pendingMicrotasks.removeLast()()
     }
 
-    internal fun <T> withContext(context: ExecutionContext, block: () -> T): T {
-        pushContext(context)
-        return block().also { popContext() }
+    fun <T> withRealm(realm: Realm, block: () -> T): T {
+        pushRealm(realm)
+        return block().also { popRealm() }
     }
 
     internal fun nextId() = uniqueId++

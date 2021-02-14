@@ -1,7 +1,6 @@
 package me.mattco.reeva.runtime.functions
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.core.ExecutionContext
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
@@ -31,9 +30,13 @@ abstract class JSFunction(
 
     fun call(arguments: JSArguments): JSValue {
         val newThis = getNewThisValue(arguments.thisValue)
-        return Reeva.activeAgent.withContext(ExecutionContext(this)) {
+        return Reeva.activeAgent.withRealm(realm) {
             evaluate(arguments.withThisValue(newThis))
         }
+    }
+
+    fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
+        return call(JSArguments(arguments, thisValue))
     }
 
     fun construct(arguments: JSArguments): JSValue {
@@ -44,13 +47,17 @@ abstract class JSFunction(
             realm.objectProto,
         )
 
-        val result = Reeva.activeAgent.withContext(ExecutionContext(this)) {
+        val result = Reeva.activeAgent.withRealm(realm) {
             evaluate(arguments.withThisValue(thisValue))
         }
         if (result is JSObject)
             return result
 
         return thisValue
+    }
+
+    fun construct(newTarget: JSValue, arguments: List<JSValue>): JSValue {
+        return construct(JSArguments(arguments, newTarget = newTarget))
     }
 
     enum class ThisMode {
