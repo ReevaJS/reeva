@@ -193,7 +193,13 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                 envStack.add(newEnv)
                 currentEnv = newEnv
             }
-            is PopEnv -> {
+            is PopCurrentEnv -> {
+                currentEnv = envStack.removeLast()
+            }
+            is PopEnvs -> {
+                repeat(opcode.count - 1) {
+                    envStack.removeLast()
+                }
                 currentEnv = envStack.removeLast()
             }
             is CallAnyReceiver -> call(opcode.callableReg, opcode.receiverReg, opcode.argCount, CallMode.AnyReceiver)

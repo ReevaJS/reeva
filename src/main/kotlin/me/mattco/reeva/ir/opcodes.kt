@@ -168,7 +168,9 @@ class PushEnv(val numSlots: Int) : Opcode()
 /**
  * Sets the current lexicalEnv to it's outer env
  */
-object PopEnv : Opcode()
+object PopCurrentEnv  : Opcode()
+
+class PopEnvs(val count: Int) : Opcode()
 
 /***********
  * CALLING *

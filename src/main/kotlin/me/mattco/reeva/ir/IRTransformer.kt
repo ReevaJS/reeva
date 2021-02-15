@@ -88,7 +88,7 @@ class IRTransformer : ASTVisitor {
 
         if (node.scope.requiresEnv) {
             builder.nestedContexts--
-            +PopEnv
+            +PopCurrentEnv
         }
     }
 
@@ -226,7 +226,7 @@ class IRTransformer : ASTVisitor {
 
         if (node.scope.requiresEnv) {
             builder.nestedContexts--
-            +PopEnv
+            +PopCurrentEnv
         }
     }
 
@@ -306,7 +306,7 @@ class IRTransformer : ASTVisitor {
 
         if (node.scope.requiresEnv) {
             builder.nestedContexts--
-            +PopEnv
+            +PopCurrentEnv
         }
 
         jump(loopStart)
@@ -350,8 +350,10 @@ class IRTransformer : ASTVisitor {
 
     override fun visitReturnStatement(node: ReturnStatementNode) {
         node.expression?.also(::visit)
-        repeat(builder.nestedContexts) {
-            +PopEnv
+        if (builder.nestedContexts == 1) {
+            +PopCurrentEnv
+        } else if (builder.nestedContexts != 0) {
+            +PopEnvs(builder.nestedContexts)
         }
         +Return
     }
