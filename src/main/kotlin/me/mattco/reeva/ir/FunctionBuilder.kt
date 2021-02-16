@@ -5,8 +5,8 @@ class FunctionBuilder(val argCount: Int = 1) {
 
     val opcodes = mutableListOf<Opcode>()
     val constantPool = mutableListOf<Any>()
-    val breakLocations = mutableListOf<Label>()
-    val continuableLocation = mutableListOf<Label>()
+    val breakLocations = mutableListOf<Location>()
+    val continuableLocation = mutableListOf<Location>()
 
     // Stores how deep we currently are in the context tree from the
     // scope we started with (this function's HoistingScope)
@@ -128,6 +128,19 @@ class FunctionBuilder(val argCount: Int = 1) {
         constantPool.add(value)
         return constantPool.lastIndex
     }
+
+    fun gotoLocation(location: Location) {
+        if (location.contextDepth == nestedContexts - 1) {
+            opcodes.add(PopCurrentEnv)
+        } else {
+            opcodes.add(PopEnvs(nestedContexts - location.contextDepth))
+        }
+        jump(location.label)
+    }
+
+    fun location(label: Label) = Location(label, nestedContexts)
+
+    data class Location(val label: Label, val contextDepth: Int)
 
     class Label(var opIndex: Int?)
 }

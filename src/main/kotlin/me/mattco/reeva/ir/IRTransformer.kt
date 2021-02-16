@@ -148,8 +148,8 @@ class IRTransformer : ASTVisitor {
 
         place(loopHead)
 
-        builder.breakLocations.add(breakTarget)
-        builder.continuableLocation.add(loopHead)
+        builder.breakLocations.add(builder.location(breakTarget))
+        builder.continuableLocation.add(builder.location(loopHead))
         visit(node.body)
         builder.breakLocations.removeLast()
         builder.continuableLocation.removeLast()
@@ -167,8 +167,8 @@ class IRTransformer : ASTVisitor {
         visit(node.condition)
         jump(loopEnd, ::JumpIfToBooleanFalse)
 
-        builder.breakLocations.add(loopEnd)
-        builder.continuableLocation.add(loopHead)
+        builder.breakLocations.add(builder.location(loopEnd))
+        builder.continuableLocation.add(builder.location(loopHead))
         visit(node.body)
         builder.breakLocations.removeLast()
         builder.continuableLocation.removeLast()
@@ -203,8 +203,8 @@ class IRTransformer : ASTVisitor {
             jump(loopEnd, ::JumpIfToBooleanFalse)
         }
 
-        builder.breakLocations.add(loopEnd)
-        builder.continuableLocation.add(continueTarget)
+        builder.breakLocations.add(builder.location(loopEnd))
+        builder.continuableLocation.add(builder.location(continueTarget))
 
         visit(node.body)
 
@@ -338,14 +338,14 @@ class IRTransformer : ASTVisitor {
         if (node.label != null)
             TODO()
 
-        jump(builder.breakLocations.last())
+        builder.gotoLocation(builder.breakLocations.last())
     }
 
     override fun visitContinueStatement(node: ContinueStatementNode) {
         if (node.label != null)
             TODO()
 
-        jump(builder.continuableLocation.last())
+        builder.gotoLocation(builder.continuableLocation.last())
     }
 
     override fun visitReturnStatement(node: ReturnStatementNode) {
