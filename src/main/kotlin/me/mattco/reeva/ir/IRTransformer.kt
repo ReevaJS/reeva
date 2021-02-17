@@ -5,6 +5,7 @@ import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.interpreter.InterpRuntime
+import me.mattco.reeva.ir.FunctionBuilder.*
 import me.mattco.reeva.parser.GlobalSourceNode
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.parser.Scope
@@ -26,6 +27,7 @@ class FunctionInfo(
     val name: String?,
     val code: Array<Opcode>,
     val constantPool: Array<Any>,
+    val handlers: Array<Handler>,
     val registerCount: Int, // includes argCount
     val argCount: Int,
     val topLevelSlots: Int,
@@ -57,6 +59,7 @@ class IRTransformer : ASTVisitor {
             null,
             builder.opcodes.toTypedArray(),
             builder.constantPool.toTypedArray(),
+            builder.handlers.map(IRHandler::toHandler).toTypedArray(),
             builder.registerCount,
             1,
             node.scope.numSlots,
@@ -143,37 +146,33 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitDoWhileStatement(node: DoWhileStatementNode) {
-        val loopHead = label()
-        val breakTarget = label()
+        val loopStart = label()
+        val loopEnd = label()
 
-        place(loopHead)
+        place(loopStart)
 
-        builder.breakLocations.add(builder.location(breakTarget))
-        builder.continuableLocation.add(builder.location(loopHead))
+        builder.pushBlock(LoopBlock(loopStart, loopEnd))
         visit(node.body)
-        builder.breakLocations.removeLast()
-        builder.continuableLocation.removeLast()
+        builder.popBlock()
 
         visit(node.condition)
-        jump(loopHead, ::JumpIfToBooleanTrue)
-        place(breakTarget)
+        jump(loopStart, ::JumpIfToBooleanTrue)
+        place(loopEnd)
     }
 
     override fun visitWhileStatement(node: WhileStatementNode) {
-        val loopHead = label()
+        val loopStart = label()
         val loopEnd = label()
 
-        place(loopHead)
+        place(loopStart)
         visit(node.condition)
         jump(loopEnd, ::JumpIfToBooleanFalse)
 
-        builder.breakLocations.add(builder.location(loopEnd))
-        builder.continuableLocation.add(builder.location(loopHead))
+        builder.pushBlock(LoopBlock(loopStart, loopEnd))
         visit(node.body)
-        builder.breakLocations.removeLast()
-        builder.continuableLocation.removeLast()
+        builder.popBlock()
 
-        jump(loopHead)
+        jump(loopStart)
         place(loopEnd)
     }
 
@@ -203,13 +202,9 @@ class IRTransformer : ASTVisitor {
             jump(loopEnd, ::JumpIfToBooleanFalse)
         }
 
-        builder.breakLocations.add(builder.location(loopEnd))
-        builder.continuableLocation.add(builder.location(continueTarget))
-
+        builder.pushBlock(LoopBlock(continueTarget, loopEnd))
         visit(node.body)
-
-        builder.breakLocations.removeLast()
-        builder.continuableLocation.removeLast()
+        builder.popBlock()
 
         place(continueTarget)
 
@@ -331,31 +326,126 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitTryStatement(node: TryStatementNode) {
-        TODO()
+        val tryStart = label()
+        val tryEnd = label()
+        val finallyStart = label()
+
+        val block = TryCatchBlock(tryStart, tryEnd, finallyStart, node.finallyBlock)
+        builder.pushBlock(block)
+
+        place(tryStart)
+        visit(node.tryBlock)
+        place(tryEnd)
+
+        if (node.catchNode != null) {
+            TODO()
+        }
+
+        if (node.finallyBlock != null) {
+            val afterThrowVariant = label()
+
+            // Non-throw variant of finally block
+            visit(node.finallyBlock)
+            jump(afterThrowVariant)
+
+            // Throw variant of finally block
+            val exceptionReg = nextFreeReg()
+
+            place(finallyStart)
+            +Star(exceptionReg)
+            visit(node.finallyBlock)
+            +Ldar(exceptionReg)
+            +Throw
+            markRegFree(exceptionReg)
+
+            place(afterThrowVariant)
+            builder.addHandler(block.lastCoveredOpcode, Label(tryEnd.opIndex!! - 1), finallyStart)
+
+            val parentTry = builder.blocks.dropLast(1).lastOrNull { it is TryCatchBlock } as TryCatchBlock?
+            if (parentTry != null) {
+                parentTry.lastCoveredOpcode = Label(tryEnd.opIndex!!)
+            }
+        }
+
+        builder.popBlock()
     }
 
     override fun visitBreakStatement(node: BreakStatementNode) {
         if (node.label != null)
             TODO()
 
-        builder.gotoLocation(builder.breakLocations.last())
+        val (targetIndex, targetLabel) = getLoopFlowTarget(true)
+        visitScopedFinallyBlocks(targetIndex)
+
+        builder.goto(targetLabel, builder.blocks[targetIndex].contextDepth)
+        updateTryLastCoveredOpcodes()
     }
 
     override fun visitContinueStatement(node: ContinueStatementNode) {
         if (node.label != null)
             TODO()
 
-        builder.gotoLocation(builder.continuableLocation.last())
+        val (targetIndex, targetLabel) = getLoopFlowTarget(false)
+        visitScopedFinallyBlocks(targetIndex)
+
+        builder.goto(targetLabel, builder.blocks[targetIndex].contextDepth)
+        updateTryLastCoveredOpcodes()
     }
 
     override fun visitReturnStatement(node: ReturnStatementNode) {
         node.expression?.also(::visit)
-        if (builder.nestedContexts == 1) {
-            +PopCurrentEnv
-        } else if (builder.nestedContexts != 0) {
-            +PopEnvs(builder.nestedContexts)
-        }
+        val resultReg = nextFreeReg()
+        +Star(resultReg)
+
+        visitScopedFinallyBlocks()
+
+        +Ldar(resultReg)
         +Return
+
+        updateTryLastCoveredOpcodes()
+    }
+
+    private fun getLoopFlowTarget(isBreak: Boolean): Pair<Int, Label> {
+        val targetIndex = builder.blocks.indexOfLast {
+            it is LoopBlock || (isBreak && it is SwitchBlock)
+        }
+        expect(targetIndex >= 0)
+        val targetBlock = builder.blocks[targetIndex]
+        return targetIndex to if (isBreak) {
+            if (targetBlock is SwitchBlock) {
+                targetBlock.breakTarget
+            } else (targetBlock as LoopBlock).breakTarget
+        } else (targetBlock as LoopBlock).continueTarget
+    }
+
+    private fun visitScopedFinallyBlocks(blockStartIndex: Int = 0) {
+        val tryCatchBlocks = builder.blocks.subList(blockStartIndex, builder.blocks.size)
+            .filterIsInstance<TryCatchBlock>()
+
+        val lastTry = tryCatchBlocks.lastOrNull()
+        if (lastTry != null) {
+            val temp = Label(builder.opcodeCount() - 1)
+            builder.addHandler(lastTry.lastCoveredOpcode, temp, lastTry.finallyStart)
+        }
+
+        val reversed = tryCatchBlocks.asReversed()
+        for ((index, block) in reversed.withIndex()) {
+            val start = label()
+            place(start)
+            visit(block.finallyNode!!)
+            if (index != reversed.lastIndex)
+                builder.addHandler(start, Label(builder.opcodeCount() - 1), reversed[index + 1].finallyStart)
+        }
+    }
+
+    private fun updateTryLastCoveredOpcodes() {
+        // TODO: This doesn't seem right, but it has generated the correct
+        // handler ranges for double-nested try-finally statements. We should
+        // test triple-nested try-finally statements to verify this actually
+        // works
+        builder.blocks.filterIsInstance<TryCatchBlock>().forEach {
+            it.lastCoveredOpcode = Label(builder.opcodeCount())
+        }
     }
 
     override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
@@ -460,6 +550,7 @@ class IRTransformer : ASTVisitor {
             name,
             builder.opcodes.toTypedArray(),
             builder.constantPool.toTypedArray(),
+            builder.handlers.map(IRHandler::toHandler).toTypedArray(),
             builder.registerCount,
             parameters.size + 1,
             scope.numSlots,

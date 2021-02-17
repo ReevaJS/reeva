@@ -1,12 +1,15 @@
 package me.mattco.reeva.ir
 
+import me.mattco.reeva.ast.statements.BlockNode
+import java.util.*
+
 class FunctionBuilder(val argCount: Int = 1) {
     private val registers = mutableListOf<RegState>()
 
     val opcodes = mutableListOf<Opcode>()
     val constantPool = mutableListOf<Any>()
-    val breakLocations = mutableListOf<Location>()
-    val continuableLocation = mutableListOf<Location>()
+    val handlers = mutableListOf<IRHandler>()
+    val blocks = Stack<Block>()
 
     // Stores how deep we currently are in the context tree from the
     // scope we started with (this function's HoistingScope)
@@ -129,18 +132,60 @@ class FunctionBuilder(val argCount: Int = 1) {
         return constantPool.lastIndex
     }
 
-    fun gotoLocation(location: Location) {
-        if (location.contextDepth == nestedContexts - 1) {
+    fun goto(label: Label, contextDepth: Int) {
+        if (contextDepth == nestedContexts - 1) {
             opcodes.add(PopCurrentEnv)
         } else {
-            opcodes.add(PopEnvs(nestedContexts - location.contextDepth))
+            opcodes.add(PopEnvs(nestedContexts - contextDepth))
         }
-        jump(location.label)
+        jump(label)
     }
 
-    fun location(label: Label) = Location(label, nestedContexts)
+    fun pushBlock(block: Block) {
+        block.contextDepth = nestedContexts
+        blocks.push(block)
+    }
 
-    data class Location(val label: Label, val contextDepth: Int)
+    fun popBlock() {
+        blocks.pop()
+    }
 
-    class Label(var opIndex: Int?)
+    fun addHandler(start: Label, end: Label, handler: Label) {
+        handlers.add(IRHandler(start, end, handler))
+    }
+
+    class Label(var opIndex: Int?) {
+        override fun toString() = "Label @${opIndex ?: "<null>"}"
+    }
+
+    data class IRHandler(val start: Label, val end: Label, val handler: Label) {
+        fun toHandler() = Handler(start.opIndex!!, end.opIndex!!, handler.opIndex!!)
+    }
+
+    data class Handler(val start: Int, val end: Int, val handler: Int)
+
+    abstract class Block {
+        open val jsLabel: String? = null
+        var contextDepth = -1
+    }
+
+    class LoopBlock(
+        val continueTarget: Label,
+        val breakTarget: Label,
+        override val jsLabel: String? = null,
+    ) : Block()
+
+    class SwitchBlock(
+        val breakTarget: Label,
+        override val jsLabel: String? = null,
+    ) : Block()
+
+    class TryCatchBlock(
+        val tryStart: Label,
+        val tryEnd: Label,
+        val finallyStart: Label,
+        val finallyNode: BlockNode?,
+    ) : Block() {
+        var lastCoveredOpcode: Label = tryStart
+    }
 }
