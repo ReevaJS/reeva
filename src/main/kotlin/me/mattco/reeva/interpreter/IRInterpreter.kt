@@ -31,7 +31,12 @@ fun main() {
 
     Reeva.setAgent(agent)
     val realm = Reeva.makeRealm()
-    agent.run(script, realm)
+    val result = agent.run(script, realm)
+    if (result.isError) {
+        println("\u001b[31m[test262] Error: ${Operations.toPrintableString(result.value)}\u001B[0m")
+    } else {
+        println(Operations.toPrintableString(result.value))
+    }
 
     Reeva.teardown()
 }
@@ -346,7 +351,13 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                     ip = opcode.offset
             }
             JumpPlaceholder -> throw IllegalStateException("Illegal opcode: JumpPlaceholder")
-            Throw -> TODO()
+            Throw -> {
+                val handler = info.handlers.firstOrNull { ip - 1 in it.start..it.end } ?: throw ThrowException(accumulator)
+                repeat(envStack.size - handler.contextDepth) {
+                    currentEnv = envStack.removeLast()
+                }
+                ip = handler.handler
+            }
             Return -> {
                 isDone = true
             }
