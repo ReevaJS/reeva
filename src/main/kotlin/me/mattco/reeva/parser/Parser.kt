@@ -563,7 +563,8 @@ class Parser(val source: String) {
                     consume(TokenType.CloseParen)
                 }
             } else null
-            CatchNode(catchParam, parseBlock(pushNewScope = catchParam != null)).also {
+            CatchNode(catchParam, parseBlock()).also {
+                it.scope = scope
                 if (catchParam != null)
                     scope = scope.outer!!
             }

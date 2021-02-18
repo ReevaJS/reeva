@@ -124,7 +124,7 @@ class TryStatementNode(
 class CatchNode(
     val catchParameter: BindingIdentifierNode?,
     val block: BlockNode
-) : ASTNodeBase(listOfNotNull(catchParameter, block))
+) : NodeWithScope(listOfNotNull(catchParameter, block))
 
 class BreakStatementNode(val label: String?) : ASTNodeBase(), StatementNode
 

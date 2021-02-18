@@ -346,15 +346,39 @@ class IRTransformer : ASTVisitor {
         }
 
         if (node.catchNode != null) {
-            if (node.catchNode.catchParameter != null)
-                TODO()
-
             if (finallyStart == null)
                 jump(blockEnd)
 
             place(catchStart!!)
+            var mustPopEnv = false
+
+            if (node.catchNode.catchParameter != null) {
+                if (node.catchNode.scope.requiresEnv) {
+                    builder.nestedContexts++
+                    +PushEnv(node.catchNode.scope.numSlots)
+                    node.catchNode.scope.envVariables.forEachIndexed { index, variable ->
+                        variable.slot = index
+                    }
+                    mustPopEnv = true
+                }
+
+                val param = node.catchNode.catchParameter
+                if (param.variable.isInlineable) {
+                    param.variable.slot = nextFreeReg()
+                    +Star(param.variable.slot)
+                } else {
+                    storeEnvVariableRef(param.variable, node.catchNode.scope)
+                }
+            }
+
             visit(node.catchNode.block)
             place(catchEnd!!)
+
+            if (mustPopEnv)
+                +PopCurrentEnv
+
+            if (node.catchNode.catchParameter?.variable?.isInlineable == true)
+                markRegFree(node.catchNode.catchParameter.variable.slot)
 
             if (node.finallyBlock != null) {
                 visit(node.finallyBlock)
