@@ -78,7 +78,8 @@ object OpcodePrinter {
                 val fmtString = "\t%${indexWidth}d.    [%${startWidth}d, %${endWidth}d] -> %${handlerWidth}d"
 
                 for ((index, handler) in info.handlers.withIndex()) {
-                    println(fmtString.format(index, handler.start, handler.end, handler.handler))
+                    print(fmtString.format(index, handler.start, handler.end, handler.handler))
+                    println(" (${if (handler.isCatch) "catch" else "finally"})")
                 }
             }
         }

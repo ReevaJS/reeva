@@ -326,46 +326,69 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitTryStatement(node: TryStatementNode) {
-        val tryStart = label()
-        val tryEnd = label()
-        val finallyStart = label()
+        val (tryStart, tryEnd) = label() to label()
+        val (catchStart, catchEnd) = if (node.catchNode != null) {
+            label() to label()
+        } else null to null
+        val finallyStart = if (node.finallyBlock != null) label() else null
+        val blockEnd = label()
 
-        val block = TryCatchBlock(tryStart, tryEnd, finallyStart, node.finallyBlock)
+        val block = TryCatchBlock(tryStart, tryEnd, catchStart, finallyStart, node.finallyBlock)
         builder.pushBlock(block)
 
         place(tryStart)
         visit(node.tryBlock)
         place(tryEnd)
 
+        if (node.finallyBlock != null) {
+            visit(node.finallyBlock)
+            jump(blockEnd)
+        }
+
         if (node.catchNode != null) {
-            TODO()
+            if (node.catchNode.catchParameter != null)
+                TODO()
+
+            if (finallyStart == null)
+                jump(blockEnd)
+
+            place(catchStart!!)
+            visit(node.catchNode.block)
+            place(catchEnd!!)
+
+            if (node.finallyBlock != null) {
+                visit(node.finallyBlock)
+                jump(blockEnd)
+            }
+
+            val handlers = block.getHandlersForRegion(
+                IRHandler(tryStart, tryEnd.shift(-1), catchStart, isCatch = true),
+            )
+            builder.handlers.addAll(handlers)
         }
 
         if (node.finallyBlock != null) {
-            val afterThrowVariant = label()
-
-            // Non-throw variant of finally block
-            visit(node.finallyBlock)
-            jump(afterThrowVariant)
-
             // Throw variant of finally block
             val exceptionReg = nextFreeReg()
 
-            place(finallyStart)
+            place(finallyStart!!)
             +Star(exceptionReg)
             visit(node.finallyBlock)
             +Ldar(exceptionReg)
             +Throw
             markRegFree(exceptionReg)
 
-            place(afterThrowVariant)
-            builder.addHandler(block.lastCoveredOpcode, Label(tryEnd.opIndex!! - 1), finallyStart)
-
-            val parentTry = builder.blocks.dropLast(1).lastOrNull { it is TryCatchBlock } as TryCatchBlock?
-            if (parentTry != null) {
-                parentTry.lastCoveredOpcode = Label(tryEnd.opIndex!!)
+            if (node.catchNode != null) {
+                builder.addHandler(catchStart!!, catchEnd!!.shift(-1), finallyStart, isCatch = false)
+            } else {
+                val handlers = block.getHandlersForRegion(
+                    IRHandler(tryStart, tryEnd, finallyStart, isCatch = false),
+                )
+                builder.handlers.addAll(handlers)
             }
         }
+
+        place(blockEnd)
 
         builder.popBlock()
     }
@@ -375,10 +398,9 @@ class IRTransformer : ASTVisitor {
             TODO()
 
         val (targetIndex, targetLabel) = getLoopFlowTarget(true)
-        visitScopedFinallyBlocks(targetIndex)
-
-        builder.goto(targetLabel, builder.blocks[targetIndex].contextDepth)
-        updateTryLastCoveredOpcodes()
+        visitScopedFinallyBlocks(targetIndex) {
+            builder.goto(targetLabel, builder.blocks[targetIndex].contextDepth)
+        }
     }
 
     override fun visitContinueStatement(node: ContinueStatementNode) {
@@ -386,10 +408,9 @@ class IRTransformer : ASTVisitor {
             TODO()
 
         val (targetIndex, targetLabel) = getLoopFlowTarget(false)
-        visitScopedFinallyBlocks(targetIndex)
-
-        builder.goto(targetLabel, builder.blocks[targetIndex].contextDepth)
-        updateTryLastCoveredOpcodes()
+        visitScopedFinallyBlocks(targetIndex) {
+            builder.goto(targetLabel, builder.blocks[targetIndex].contextDepth)
+        }
     }
 
     override fun visitReturnStatement(node: ReturnStatementNode) {
@@ -397,12 +418,10 @@ class IRTransformer : ASTVisitor {
         val resultReg = nextFreeReg()
         +Star(resultReg)
 
-        visitScopedFinallyBlocks()
-
-        +Ldar(resultReg)
-        +Return
-
-        updateTryLastCoveredOpcodes()
+        visitScopedFinallyBlocks {
+            +Ldar(resultReg)
+            +Return
+        }
     }
 
     private fun getLoopFlowTarget(isBreak: Boolean): Pair<Int, Label> {
@@ -418,34 +437,26 @@ class IRTransformer : ASTVisitor {
         } else (targetBlock as LoopBlock).continueTarget
     }
 
-    private fun visitScopedFinallyBlocks(blockStartIndex: Int = 0) {
+    private fun visitScopedFinallyBlocks(blockStartIndex: Int = 0, cleanupBlock: () -> Unit) {
         val tryCatchBlocks = builder.blocks.subList(blockStartIndex, builder.blocks.size)
             .filterIsInstance<TryCatchBlock>()
+            .asReversed()
 
-        val lastTry = tryCatchBlocks.lastOrNull()
-        if (lastTry != null) {
-            val temp = Label(builder.opcodeCount() - 1)
-            builder.addHandler(lastTry.lastCoveredOpcode, temp, lastTry.finallyStart)
+        val blockStartLabels = mutableMapOf<TryCatchBlock, Label>()
+
+        for (block in tryCatchBlocks) {
+            if (block.finallyNode == null)
+                continue
+            blockStartLabels[block] = place(label())
+            visit(block.finallyNode)
         }
 
-        val reversed = tryCatchBlocks.asReversed()
-        for ((index, block) in reversed.withIndex()) {
-            val start = label()
-            place(start)
-            visit(block.finallyNode!!)
-            if (index != reversed.lastIndex)
-                builder.addHandler(start, Label(builder.opcodeCount() - 1), reversed[index + 1].finallyStart)
-        }
-    }
+        cleanupBlock()
 
-    private fun updateTryLastCoveredOpcodes() {
-        // TODO: This doesn't seem right, but it has generated the correct
-        // handler ranges for double-nested try-finally statements. We should
-        // test triple-nested try-finally statements to verify this actually
-        // works
-        builder.blocks.filterIsInstance<TryCatchBlock>().forEach {
-            it.lastCoveredOpcode = Label(builder.opcodeCount())
-        }
+        val end = place(label()).shift(-1)
+
+        for ((block, start) in blockStartLabels)
+            block.excludedRegions.add(start to end)
     }
 
     override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
@@ -1027,8 +1038,8 @@ class IRTransformer : ASTVisitor {
     private fun getOpcode(index: Int) = builder.getOpcode(index)
     private fun setOpcode(index: Int, value: Opcode) = builder.setOpcode(index, value)
     private fun label() = builder.label()
-    private fun jump(label: FunctionBuilder.Label, op: (Int) -> Opcode = ::Jump) = builder.jumpHelper(label, op)
-    private fun place(label: FunctionBuilder.Label) = builder.place(label)
+    private fun jump(label: Label, op: (Int) -> Opcode = ::Jump) = builder.jumpHelper(label, op)
+    private fun place(label: Label) = builder.place(label)
     private fun loadConstant(constant: Any) = builder.loadConstant(constant)
     private fun nextFreeReg() = builder.nextFreeReg()
     private fun nextFreeRegBlock(count: Int) = builder.nextFreeRegBlock(count)

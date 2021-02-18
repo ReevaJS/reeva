@@ -64,7 +64,7 @@ class FunctionBuilder(val argCount: Int = 1) {
         }
     }
 
-    fun place(label: Label) {
+    fun place(label: Label): Label {
         val targetIndex = opcodes.lastIndex + 1
 
         placeholders.forEach {
@@ -81,6 +81,7 @@ class FunctionBuilder(val argCount: Int = 1) {
         }
 
         label.opIndex = targetIndex
+        return label
     }
 
     fun nextFreeReg(): Int {
@@ -150,19 +151,22 @@ class FunctionBuilder(val argCount: Int = 1) {
         blocks.pop()
     }
 
-    fun addHandler(start: Label, end: Label, handler: Label) {
-        handlers.add(IRHandler(start, end, handler))
+    fun addHandler(start: Label, end: Label, handler: Label, isCatch: Boolean) {
+        handlers.add(IRHandler(start, end, handler, isCatch))
     }
 
     class Label(var opIndex: Int?) {
+        fun shift(n: Int) = Label(opIndex!! + n)
+
         override fun toString() = "Label @${opIndex ?: "<null>"}"
     }
 
-    data class IRHandler(val start: Label, val end: Label, val handler: Label) {
-        fun toHandler() = Handler(start.opIndex!!, end.opIndex!!, handler.opIndex!!)
+    data class IRHandler(val start: Label, val end: Label, val handler: Label, val isCatch: Boolean
+    ) {
+        fun toHandler() = Handler(start.opIndex!!, end.opIndex!!, handler.opIndex!!, isCatch)
     }
 
-    data class Handler(val start: Int, val end: Int, val handler: Int)
+    data class Handler(val start: Int, val end: Int, val handler: Int, val isCatch: Boolean)
 
     abstract class Block {
         open val jsLabel: String? = null
@@ -183,9 +187,105 @@ class FunctionBuilder(val argCount: Int = 1) {
     class TryCatchBlock(
         val tryStart: Label,
         val tryEnd: Label,
-        val finallyStart: Label,
+        val catchStart: Label?,
+        val finallyStart: Label?,
         val finallyNode: BlockNode?,
     ) : Block() {
-        var lastCoveredOpcode: Label = tryStart
+        /**
+         * Regions which should not be handled by this block's catch
+         * or finally statement. These regions are finally blocks
+         * which do not fall under the catch or finally block's
+         * protection
+         */
+        val excludedRegions = mutableListOf<Pair<Label, Label>>()
+
+        fun getHandlersForRegion(handler: IRHandler): List<IRHandler> {
+            return getHandlersForRegion(listOf(handler), handler.isCatch)
+        }
+
+        private fun getHandlersForRegion(handlers: List<IRHandler>, isCatch: Boolean): List<IRHandler> {
+            val newHandlers = mutableListOf<IRHandler>()
+            var split = false
+
+            for (excludedRegion in excludedRegions) {
+                val exclStart = excludedRegion.first.opIndex!!
+                val exclEnd = excludedRegion.second.opIndex!!
+
+                for (handler in handlers) {
+                    val start = handler.start.opIndex!!
+                    val end = handler.end.opIndex!!
+
+                    /*
+                     * There are five possible scenarios for region overlap:
+                     *
+                     * 1.
+                     * |------------------------------|
+                     * ^         |------------|       ^
+                     * start     ^            ^      end
+                     *        exclStart    exclEnd
+                     *
+                     * We have to split the current handler into two
+                     * regions: [start, exclStart) and (exclEnd, end]
+                     *
+                     * 2.
+                     *
+                     * |----------------------------|
+                     * ^            |--------|      ^
+                     * exclStart    ^        ^   exclEnd
+                     *            start     end
+                     *
+                     * The current handler is discarded
+                     *
+                     * 3.
+                     * |----------------| < end
+                     * ^         |-------------|
+                     * start     ^             ^
+                     *       exclStart      exclEnd
+                     *
+                     * We have to truncate the current handler into
+                     * [start, exclStart)
+                     *
+                     * 4.
+                     *    start > |--------------|
+                     * |------------------|      ^
+                     * ^                  ^     end
+                     * exclStart         exclEnd
+                     *
+                     * We have to truncate the current handler into
+                     * (exclEnd, end]
+                     *
+                     * 5.
+                     * |----------|
+                     * ^          ^   |------------|
+                     * start     end  ^            ^
+                     *            exclStart     exclEnd
+                     *
+                     * (...or vice-versa, with start > exclEnd)
+                     *
+                     * The current handler is fine
+                     */
+
+                    when {
+                        start < exclStart && end > exclEnd -> {
+                            split = true
+                            newHandlers.add(IRHandler(handler.start, Label(exclStart - 1), handler.handler, isCatch))
+                            newHandlers.add(IRHandler(Label(exclEnd + 1), handler.end, handler.handler, isCatch))
+                        }
+                        exclStart <= start && exclEnd >= end -> { /* nop */ }
+                        exclStart in (start + 1)..end && end <= exclEnd -> {
+                            split = true
+                            newHandlers.add(IRHandler(handler.start, Label(exclStart - 1), handler.handler, isCatch))
+                        }
+                        start in exclStart..exclEnd && exclEnd < end -> {
+                            split = true
+                            newHandlers.add(IRHandler(Label(exclEnd + 1), handler.end, handler.handler, isCatch))
+                        }
+                        start > exclEnd || end < exclStart -> newHandlers.add(handler)
+                    }
+                }
+            }
+
+            return if (split) getHandlersForRegion(newHandlers, isCatch) else newHandlers
+        }
     }
 }
