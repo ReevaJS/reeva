@@ -152,7 +152,7 @@ class FunctionBuilder(val argCount: Int = 1) {
     }
 
     fun addHandler(start: Label, end: Label, handler: Label, isCatch: Boolean) {
-        handlers.add(IRHandler(start, end, handler, isCatch))
+        handlers.add(IRHandler(start, end, handler, isCatch, nestedContexts))
     }
 
     class Label(var opIndex: Int?) {
@@ -161,12 +161,23 @@ class FunctionBuilder(val argCount: Int = 1) {
         override fun toString() = "Label @${opIndex ?: "<null>"}"
     }
 
-    data class IRHandler(val start: Label, val end: Label, val handler: Label, val isCatch: Boolean
+    data class IRHandler(
+        val start: Label,
+        val end: Label,
+        val handler: Label,
+        val isCatch: Boolean,
+        val contextDepth: Int,
     ) {
-        fun toHandler() = Handler(start.opIndex!!, end.opIndex!!, handler.opIndex!!, isCatch)
+        fun toHandler() = Handler(start.opIndex!!, end.opIndex!!, handler.opIndex!!, isCatch, contextDepth)
     }
 
-    data class Handler(val start: Int, val end: Int, val handler: Int, val isCatch: Boolean)
+    data class Handler(
+        val start: Int,
+        val end: Int,
+        val handler: Int,
+        val isCatch: Boolean,
+        val contextDepth: Int,
+    )
 
     abstract class Block {
         open val jsLabel: String? = null
@@ -204,6 +215,9 @@ class FunctionBuilder(val argCount: Int = 1) {
         }
 
         private fun getHandlersForRegion(handlers: List<IRHandler>, isCatch: Boolean): List<IRHandler> {
+            if (excludedRegions.isEmpty())
+                return handlers
+
             val newHandlers = mutableListOf<IRHandler>()
             var split = false
 
@@ -268,17 +282,17 @@ class FunctionBuilder(val argCount: Int = 1) {
                     when {
                         start < exclStart && end > exclEnd -> {
                             split = true
-                            newHandlers.add(IRHandler(handler.start, Label(exclStart - 1), handler.handler, isCatch))
-                            newHandlers.add(IRHandler(Label(exclEnd + 1), handler.end, handler.handler, isCatch))
+                            newHandlers.add(IRHandler(handler.start, Label(exclStart - 1), handler.handler, isCatch, handler.contextDepth))
+                            newHandlers.add(IRHandler(Label(exclEnd + 1), handler.end, handler.handler, isCatch, handler.contextDepth))
                         }
                         exclStart <= start && exclEnd >= end -> { /* nop */ }
                         exclStart in (start + 1)..end && end <= exclEnd -> {
                             split = true
-                            newHandlers.add(IRHandler(handler.start, Label(exclStart - 1), handler.handler, isCatch))
+                            newHandlers.add(IRHandler(handler.start, Label(exclStart - 1), handler.handler, isCatch, handler.contextDepth))
                         }
                         start in exclStart..exclEnd && exclEnd < end -> {
                             split = true
-                            newHandlers.add(IRHandler(Label(exclEnd + 1), handler.end, handler.handler, isCatch))
+                            newHandlers.add(IRHandler(Label(exclEnd + 1), handler.end, handler.handler, isCatch, handler.contextDepth))
                         }
                         start > exclEnd || end < exclStart -> newHandlers.add(handler)
                     }

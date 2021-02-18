@@ -362,7 +362,7 @@ class IRTransformer : ASTVisitor {
             }
 
             val handlers = block.getHandlersForRegion(
-                IRHandler(tryStart, tryEnd.shift(-1), catchStart, isCatch = true),
+                IRHandler(tryStart, tryEnd.shift(-1), catchStart, isCatch = true, builder.nestedContexts),
             )
             builder.handlers.addAll(handlers)
         }
@@ -382,7 +382,7 @@ class IRTransformer : ASTVisitor {
                 builder.addHandler(catchStart!!, catchEnd!!.shift(-1), finallyStart, isCatch = false)
             } else {
                 val handlers = block.getHandlersForRegion(
-                    IRHandler(tryStart, tryEnd, finallyStart, isCatch = false),
+                    IRHandler(tryStart, tryEnd, finallyStart, isCatch = false, builder.nestedContexts),
                 )
                 builder.handlers.addAll(handlers)
             }
