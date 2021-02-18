@@ -1164,8 +1164,10 @@ class Parser(val source: String) {
                 consume()
                 true
             } else false
-            val node = ArgumentNode(parseExpression(2), isSpread)
-                .withPosition(start, lastConsumedToken.end)
+            val node = nps {
+                ArgumentNode(parseExpression(2), isSpread)
+                    .withPosition(start, lastConsumedToken.end)
+            }
             arguments.add(node)
             if (!match(TokenType.Comma))
                 break

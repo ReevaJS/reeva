@@ -259,7 +259,7 @@ class IRTransformer : ASTVisitor {
         if (node.scope.requiresEnv)
             +PushEnv(node.scope.numSlots)
 
-        +CallProperty0(next, iter)
+        +Call0(next, iter)
         val nextResult = nextFreeReg()
         +Star(nextResult)
         +CallRuntime(InterpRuntime.ThrowIfIteratorReturnNotObject, nextResult, 1)
@@ -768,65 +768,6 @@ class IRTransformer : ASTVisitor {
         TODO()
     }
 
-    override fun visitCallExpression(node: CallExpressionNode) {
-        val args = node.arguments
-
-        val callableReg = nextFreeReg()
-        val receiverReg = nextFreeRegBlock(args.size + 1)
-
-        when (val target = node.target) {
-            is IdentifierReferenceNode -> {
-                visit(target)
-                +Star(callableReg)
-                +Mov(receiverReg(), receiverReg)
-                args.forEachIndexed { index, arg ->
-                    visit(arg)
-                    +Star(receiverReg + index + 1)
-                }
-                +CallAnyReceiver(callableReg, receiverReg, args.size)
-            }
-            is MemberExpressionNode -> {
-                visit(target.lhs)
-                +Star(receiverReg)
-
-                when (target.type) {
-                    MemberExpressionNode.Type.Computed -> {
-                        visit(target.rhs)
-                        +LdaKeyedProperty(receiverReg)
-                    }
-                    MemberExpressionNode.Type.NonComputed -> {
-                        val cpIndex = loadConstant((target.rhs as IdentifierNode).identifierName)
-                        +LdaNamedProperty(receiverReg, cpIndex)
-                    }
-                    MemberExpressionNode.Type.Tagged -> TODO()
-                }
-
-                +Star(callableReg)
-
-                when (args.size) {
-                    0 -> +CallProperty0(callableReg, receiverReg)
-                    1 -> {
-                        visit(args[0])
-                        +Star(receiverReg + 1)
-                        +CallProperty1(callableReg, receiverReg, receiverReg + 1)
-                    }
-                    else -> {
-                        args.forEachIndexed { index, arg ->
-                            visit(arg)
-                            +Star(receiverReg + index + 1)
-                        }
-                        +CallProperty(callableReg, receiverReg, args.size)
-                    }
-                }
-            }
-            else -> TODO()
-        }
-
-        markRegFree(callableReg)
-        for (i in args.indices)
-            markRegFree(receiverReg + i)
-    }
-
     override fun visitArgument(node: ArgumentNode) {
         if (node.isSpread)
             TODO()
@@ -873,37 +814,185 @@ class IRTransformer : ASTVisitor {
         markRegFree(objectReg)
     }
 
-    override fun visitNewExpression(node: NewExpressionNode) {
-        val regList = if (node.arguments.isNotEmpty()) {
-            loadArguments(node.arguments)
-        } else null
+    private fun argumentsMode(arguments: ArgumentList): ArgumentsMode {
+        return when {
+            arguments.isEmpty() -> ArgumentsMode.Normal
+            arguments.last().isSpread && arguments.dropLast(1).none { it.isSpread } -> ArgumentsMode.LastSpread
+            arguments.any { it.isSpread } -> ArgumentsMode.Spread
+            else -> ArgumentsMode.Normal
+        }
+    }
 
+    private fun requiredRegisters(arguments: ArgumentList): Int {
+        return if (argumentsMode(arguments) == ArgumentsMode.Spread) 1 else arguments.size
+    }
+
+    override fun visitCallExpression(node: CallExpressionNode) {
+        val args = node.arguments
+        val callableReg = nextFreeReg()
+        val argRegCount = requiredRegisters(args)
+        val receiverReg = nextFreeRegBlock(argRegCount + 1)
+
+        when (val target = node.target) {
+            is IdentifierReferenceNode -> {
+                visit(target)
+                +Star(callableReg)
+                +Mov(receiverReg(), receiverReg)
+            }
+            is MemberExpressionNode -> {
+                visit(target.lhs)
+                +Star(receiverReg)
+
+                when (target.type) {
+                    MemberExpressionNode.Type.Computed -> {
+                        visit(target.rhs)
+                        +LdaKeyedProperty(receiverReg)
+                    }
+                    MemberExpressionNode.Type.NonComputed -> {
+                        val cpIndex = loadConstant((target.rhs as IdentifierNode).identifierName)
+                        +LdaNamedProperty(receiverReg, cpIndex)
+                    }
+                    MemberExpressionNode.Type.Tagged -> TODO()
+                }
+
+                +Star(callableReg)
+            }
+        }
+
+        when {
+            args.isEmpty() -> +Call0(callableReg, receiverReg)
+            args.size == 1 && !args[0].isSpread -> {
+                visit(args[0].expression)
+                +Call1(callableReg, receiverReg)
+            }
+            else -> {
+                val (registers, mode) = loadArguments(args, receiverReg + 1)
+                when (mode) {
+                    ArgumentsMode.Normal -> +Call(callableReg, receiverReg, registers.count)
+                    ArgumentsMode.LastSpread -> +CallLastSpread(callableReg, receiverReg, registers.count)
+                    ArgumentsMode.Spread -> +CallFromArray(callableReg, receiverReg)
+                }
+                registers.markFree()
+            }
+        }
+
+        markRegFree(callableReg)
+        for (i in 0..argRegCount)
+            markRegFree(receiverReg + i)
+    }
+
+    override fun visitNewExpression(node: NewExpressionNode) {
         val target = nextFreeReg()
         visit(node.target)
         +Star(target)
 
-        // At this point, the target is still in the accumulator,
-        // which is necessary as the target is also the new.target
-        // here
+        val argumentReg = nextFreeRegBlock(requiredRegisters(node.arguments))
 
-        if (regList != null) {
-            +Construct(target, regList.firstReg, regList.count)
-        } else +Construct0(target)
+        val (arguments, mode) = if (node.arguments.isNotEmpty()) {
+            loadArguments(node.arguments, argumentReg)
+        } else null to null
 
-        markRegFree(target)
-        regList?.markFree()
-    }
+        +Star(target)
 
-    private fun loadArguments(arguments: ArgumentList): RegList {
-        val firstReg = nextFreeRegBlock(arguments.size)
-        arguments.forEachIndexed { index, argument ->
-            if (argument.isSpread)
-                TODO()
-            visit(argument.expression)
-            +Star(firstReg + index)
+        when (mode) {
+            ArgumentsMode.Spread -> ConstructFromArray(target, arguments!!.firstReg)
+            ArgumentsMode.LastSpread -> ConstructLastSpread(target, arguments!!.firstReg, arguments.count)
+            ArgumentsMode.Normal -> Construct(target, arguments!!.firstReg, arguments.count)
+            null -> Construct0(target)
         }
 
-        return RegList(firstReg, arguments.size).also {
+        markRegFree(target)
+        arguments?.markFree()
+    }
+
+    private fun loadArguments(arguments: ArgumentList, firstReg: Int): Pair<RegList, ArgumentsMode> {
+        val mode = argumentsMode(arguments)
+
+        return if (mode == ArgumentsMode.Spread) {
+            loadArgumentsWithSpread(arguments, firstReg) to mode
+        } else {
+            for ((index, argument) in arguments.withIndex()) {
+                visit(argument.expression)
+                +Star(firstReg + index)
+            }
+
+            RegList(firstReg, arguments.size).also {
+                it.markUsed()
+            } to mode
+        }
+    }
+
+    enum class ArgumentsMode {
+        Normal,
+        LastSpread,
+        Spread,
+    }
+
+    private fun iterateValues(action: () -> Unit) {
+        +GetIterator
+        val iter = nextFreeReg()
+        +Star(iter)
+
+        val next = nextFreeReg()
+        +LdaNamedProperty(iter, loadConstant("next"))
+        +Star(next)
+        +CallRuntime(InterpRuntime.ThrowIfIteratorNextNotCallable, next, 1)
+
+        val done = label()
+        val head = place(label())
+
+        +Call0(next, iter)
+        val nextResult = nextFreeReg()
+        +Star(nextResult)
+        +CallRuntime(InterpRuntime.ThrowIfIteratorReturnNotObject, nextResult, 1)
+        +LdaNamedProperty(nextResult, loadConstant("done"))
+        jump(done, ::JumpIfToBooleanTrue)
+
+        +LdaNamedProperty(nextResult, loadConstant("value"))
+        action()
+        jump(head)
+
+        place(done)
+
+        markRegFree(iter)
+        markRegFree(next)
+    }
+
+    private fun loadArgumentsWithSpread(arguments: ArgumentList, arrayReg: Int): RegList {
+        +CreateArrayLiteral
+        +Star(arrayReg)
+        var indexReg = -1
+        var indexUsable = true
+
+        for ((index, argument) in arguments.withIndex()) {
+            if (argument.isSpread) {
+                indexUsable = false
+                indexReg = nextFreeReg()
+                +LdaInt(index)
+                +Star(indexReg)
+
+                visit(argument.expression)
+                iterateValues {
+                    +StaArrayLiteral(arrayReg, indexReg)
+                    +Ldar(indexReg)
+                    +Inc
+                    +Star(indexReg)
+                }
+            } else {
+                visit(argument.expression)
+                if (indexUsable) {
+                    +StaArrayLiteralIndex(arrayReg, index)
+                } else {
+                    +StaArrayLiteral(arrayReg, indexReg)
+                    +Ldar(indexReg)
+                    +Inc
+                    +Star(indexReg)
+                }
+            }
+        }
+
+        markRegFree(indexReg)
+        return RegList(arrayReg, 1).also {
             it.markUsed()
         }
     }
@@ -958,7 +1047,7 @@ class IRTransformer : ASTVisitor {
                 ArrayElementNode.Type.Spread -> TODO()
                 ArrayElementNode.Type.Normal -> {
                     visit(element.expression!!)
-                    +SetArrayLiteralIndex(arrayReg, index)
+                    +StaArrayLiteralIndex(arrayReg, index)
                 }
             }
         }

@@ -109,6 +109,7 @@ class CPEAAPLVisitor(
                 }
 
                 Parameter(BindingIdentifierNode(identifier.identifierName), initializer, isSpread).also {
+                    it.scope = parser.scope
                     it.variable = variable
                     variable.source = it
 

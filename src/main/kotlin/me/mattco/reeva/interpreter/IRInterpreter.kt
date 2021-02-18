@@ -46,8 +46,8 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
     
     private val info = function.info
     
-    private var accumulator: JSValue = JSEmpty
     private val registers = Registers(info.registerCount)
+    private var accumulator by registers::accumulator
     private var ip = 0
     private var isDone = false
     private var exception: ThrowException? = null
@@ -141,7 +141,12 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             CreateArrayLiteral -> {
                 accumulator = JSArrayObject.create(function.realm)
             }
-            is SetArrayLiteralIndex -> {
+            is StaArrayLiteral -> {
+                val array = registers[opcode.arrayReg] as JSObject
+                val index = (registers[opcode.indexReg] as JSNumber).asInt
+                array.indexedProperties.set(array, index, accumulator)
+            }
+            is StaArrayLiteralIndex -> {
                 val array = registers[opcode.arrayReg] as JSObject
                 array.indexedProperties.set(array, opcode.arrayIndex, accumulator)
             }
@@ -160,8 +165,12 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             is ShiftLeft -> binaryOp(opcode.valueReg, "<<")
             is ShiftRight -> binaryOp(opcode.valueReg, ">>")
             is ShiftRightUnsigned -> binaryOp(opcode.valueReg, ">>>")
-            Inc -> TODO()
-            Dec -> TODO()
+            Inc -> {
+                accumulator = JSNumber(accumulator.asInt + 1)
+            }
+            Dec -> {
+                accumulator = JSNumber(accumulator.asInt - 1)
+            }
             Negate -> TODO()
             BitwiseNot -> TODO()
             ToBooleanLogicalNot -> {
@@ -207,14 +216,11 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                 }
                 currentEnv = envStack.removeLast()
             }
-            is CallAnyReceiver -> call(opcode.callableReg, opcode.receiverReg, opcode.argCount, CallMode.AnyReceiver)
-            is CallProperty -> call(opcode.callableReg, opcode.receiverReg, opcode.argCount, CallMode.Property)
-            is CallProperty0 -> call(opcode.callableReg, opcode.receiverReg, 0, CallMode.Property)
-            is CallProperty1 -> call(opcode.callableReg, opcode.receiverReg, 1, CallMode.Property)
-            is CallUndefinedReceiver -> call(opcode.callableReg, opcode.firstArgReg, opcode.argCount, CallMode.UndefinedReceiver)
-            is CallUndefinedReceiver0 -> call(opcode.callableReg, -1, 0, CallMode.UndefinedReceiver)
-            is CallUndefinedReceiver1 -> call(opcode.callableReg, opcode.argReg, 1, CallMode.UndefinedReceiver)
-            is CallWithSpread -> TODO()
+            is Call -> call(opcode.callableReg, opcode.receiverReg, opcode.argCount, CallMode.Normal)
+            is Call0 -> call(opcode.callableReg, opcode.receiverReg, 0, CallMode.Normal)
+            is Call1 -> call(opcode.callableReg, opcode.receiverReg, -1, CallMode.OneArg)
+            is CallLastSpread -> call(opcode.callableReg, opcode.receiverReg, opcode.argCount, CallMode.LastSpread)
+            is CallFromArray -> call(opcode.callableReg, opcode.receiverReg, 1, CallMode.Spread)
             is CallRuntime -> {
                 val args = getRegisterBlock(opcode.firstArgReg, opcode.argCount)
                 accumulator = InterpRuntime.values()[opcode.id].function(args)
@@ -233,7 +239,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                     accumulator
                 )
             }
-            is ConstructWithSpread -> TODO()
+            is ConstructLastSpread -> TODO()
             is TestEqual -> {
                 accumulator = Operations.abstractEqualityComparison(registers[opcode.targetReg], accumulator)
             }
@@ -383,29 +389,45 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
     }
 
     private fun call(callableReg: Int, firstArgReg: Int, argCount: Int, mode: CallMode) {
-        if (mode == CallMode.Spread || mode == CallMode.Runtime)
-            TODO()
-
-        // TODO: Treat AnyReceiver differently than Property?
-
         val target = registers[callableReg]
-        val receiver = if (mode != CallMode.UndefinedReceiver) {
-            registers[firstArgReg]
-        } else JSUndefined
+        val receiver = registers[firstArgReg]
 
-        val args = if (argCount > 0) {
-            getRegisterBlock(firstArgReg + 1, argCount)
-        } else emptyList()
+        accumulator = when (mode) {
+            CallMode.Normal -> {
+                val args = if (argCount > 0) {
+                    getRegisterBlock(firstArgReg + 1, argCount)
+                } else emptyList()
 
-        accumulator = Operations.call(target, receiver, args)
+                Operations.call(target, receiver, args)
+            }
+            CallMode.OneArg -> {
+                Operations.call(target, receiver, listOf(accumulator))
+            }
+            CallMode.LastSpread -> {
+                val nonSpreadArgs = if (argCount > 0) {
+                    getRegisterBlock(firstArgReg + 1, argCount - 1)
+                } else emptyList()
+
+                val spreadValues = Operations.iterableToList(registers[firstArgReg + argCount + 1])
+
+                Operations.call(target, receiver, nonSpreadArgs + spreadValues)
+            }
+            CallMode.Spread -> {
+                val argArray = registers[firstArgReg + 1] as JSArrayObject
+                val args = (0 until argArray.indexedProperties.arrayLikeSize).map {
+                    argArray.indexedProperties.get(argArray, it.toInt())
+                }
+
+                Operations.call(target, receiver, args)
+            }
+        }
     }
 
     enum class CallMode {
-        AnyReceiver,
-        Property,
-        UndefinedReceiver,
+        Normal,
+        OneArg,
+        LastSpread,
         Spread,
-        Runtime
     }
 
     private fun getRegisterBlock(reg: Int, argCount: Int): List<JSValue> {

@@ -72,7 +72,16 @@ class StaKeyedProperty(val objectReg: Int, val keyReg: Int) : Opcode()
  *************************/
 
 object CreateArrayLiteral : Opcode()
-class SetArrayLiteralIndex(val arrayReg: Int, val arrayIndex: Int) : Opcode()
+
+class StaArrayLiteralIndex(val arrayReg: Int, val arrayIndex: Int) : Opcode()
+
+/**
+ * Store a value into an object in [arrayReg] which is known to be an
+ * array (generally one created by the transformer, not the user) at
+ * index [indexReg].
+ */
+class StaArrayLiteral(val arrayReg: Int, val indexReg: Int) : Opcode()
+
 object CreateObjectLiteral : Opcode()
 
 /*********************
@@ -181,55 +190,35 @@ class PopEnvs(val count: Int) : Opcode()
  * receiver. The receiver is in [receiverReg], and the [argCount]
  * number of arguments directly follow it.
  */
-class CallAnyReceiver(val callableReg: Int, val receiverReg: Int, val argCount: Int) : Opcode()
+class Call(val callableReg: Int, val receiverReg: Int, val argCount: Int) : Opcode()
 
 /**
- * Calls a property on the value in [callableReg] with a non-nullish
- * receiver. The receiver is in [receiverReg], and the [argCount] number
- * of arguments directly follow it.
+ * Calls the value in [callableReg] with any (possibly undefined) receiver
+ * and no arguments. The receiver is in [receiverReg].
  */
-class CallProperty(val callableReg: Int, val receiverReg: Int, val argCount: Int) : Opcode()
+class Call0(val callableReg: Int, val receiverReg: Int) : Opcode()
 
 /**
- * Calls a property on the value in [callableReg] with a non-nullish
- * receiver and no arguments. The receiver is in [receiverReg].
+ * Calls the value in [callableReg] with any (possibly undefined) receiver
+ * and one argument. The receiver is in [receiverReg]. The argument is in
+ * the accumulator
  */
-class CallProperty0(val callableReg: Int, val receiverReg: Int) : Opcode()
-
-/**
- * Calls a property on the value in [callableReg] with a non-nullish
- * receiver and 1 argument. The receiver is in [receiverReg].
- */
-class CallProperty1(val callableReg: Int, val receiverReg: Int, val argReg: Int) : Opcode()
-
-/**
- * Calls the value in [callableReg] with an undefined receiver.
- * The receiver is in [receiverReg], and the [argCount] number
- * of arguments directly follow it.
- */
-class CallUndefinedReceiver(val callableReg: Int, val firstArgReg: Int, val argCount: Int) : Opcode()
-
-/**
- * Calls the value in [callableReg] with an undefined receiver
- * and no arguments.
- */
-class CallUndefinedReceiver0(val callableReg: Int) : Opcode()
-
-/**
- * Calls the value in [callableReg] with an undefined receiver
- * and one argument.
- */
-class CallUndefinedReceiver1(val callableReg: Int, val argReg: Int) : Opcode()
+class Call1(val callableReg: Int, val receiverReg: Int) : Opcode()
 
 /**
  * Calls the value in [callableReg] with any (possibly undefined)
  * receiver. The receiver is in [receiverReg], and the [argCount]
  * number of arguments directly follow it. The last argument must
  * be a spread value.
- *
- * TODO: This opcode is not implemented
  */
-class CallWithSpread(val callableReg: Int, val firstArgReg: Int, val argCount: Int) : Opcode()
+class CallLastSpread(val callableReg: Int, val receiverReg: Int, val argCount: Int) : Opcode()
+
+/**
+ * Calls the value in [callableReg] with any (possibly undefined)
+ * receiver. The receiver in in [receiverReg], and the arguments
+ * are in register [[receiverReg] + 1]
+ */
+class CallFromArray(val callableReg: Int, val receiverReg: Int) : Opcode()
 
 /**
  * Call the runtime function specified by [id] with [argCount] number
@@ -245,14 +234,6 @@ class CallRuntime(val id: Int, val firstArgReg: Int, val argCount: Int) : Opcode
  ****************/
 
 /**
- * Constructs the target with a given new.target and no arguments.
- *
- * accumulator: new.target
- * [targetReg]: The target of the construct operation
- */
-class Construct0(val targetReg: Int) : Opcode()
-
-/**
  * Constructs the target with a given new.target with the given arguments.
  *
  * accumulator: new.target
@@ -261,6 +242,14 @@ class Construct0(val targetReg: Int) : Opcode()
  * [argCount]: The number of args (including firstArgReg)
  */
 class Construct(val targetReg: Int, val firstArgReg: Int, val argCount: Int) : Opcode()
+
+/**
+ * Constructs the target with a given new.target and no arguments.
+ *
+ * accumulator: new.target
+ * [targetReg]: The target of the construct operation
+ */
+class Construct0(val targetReg: Int) : Opcode()
 
 /**
  * Constructs the target with a given new.target with the given arguments. The
@@ -273,7 +262,14 @@ class Construct(val targetReg: Int, val firstArgReg: Int, val argCount: Int) : O
  * [firstArgReg]: The register containing the first argument
  * [argCount]: The number of args (including firstArgReg)
  */
-class ConstructWithSpread(val targetReg: Int, val firstArgReg: Int, val argCount: Int) : Opcode()
+class ConstructLastSpread(val targetReg: Int, val firstArgReg: Int, val argCount: Int) : Opcode()
+
+/**
+ * Constructs the target in [targetReg] with a given new.target in the
+ * accumulator, and the arguments in an array in [argumentsReg]. Used
+ * with complex spread calls.
+ */
+class ConstructFromArray(val targetReg: Int, val argumentsReg: Int) : Opcode()
 
 /***********
  * TESTING *
