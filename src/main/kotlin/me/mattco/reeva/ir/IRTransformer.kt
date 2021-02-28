@@ -895,10 +895,10 @@ class IRTransformer : ASTVisitor {
         +Star(target)
 
         when (mode) {
-            ArgumentsMode.Spread -> ConstructFromArray(target, arguments!!.firstReg)
-            ArgumentsMode.LastSpread -> ConstructLastSpread(target, arguments!!.firstReg, arguments.count)
-            ArgumentsMode.Normal -> Construct(target, arguments!!.firstReg, arguments.count)
-            null -> Construct0(target)
+            ArgumentsMode.Spread -> +ConstructFromArray(target, arguments!!.firstReg)
+            ArgumentsMode.LastSpread -> +ConstructLastSpread(target, arguments!!.firstReg, arguments.count)
+            ArgumentsMode.Normal -> +Construct(target, arguments!!.firstReg, arguments.count)
+            null -> +Construct0(target)
         }
 
         markRegFree(target)
