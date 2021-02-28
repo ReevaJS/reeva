@@ -13,6 +13,7 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.JSObject
+import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.expect
@@ -375,7 +376,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             is CreateClosure -> {
                 val newInfo = info.constantPool[opcode.cpIndex] as FunctionInfo
                 val newEnv = EnvRecord(currentEnv, currentEnv.isStrict || newInfo.isStrict, newInfo.topLevelSlots)
-                accumulator = IRFunction(function.realm, newInfo, newEnv)
+                accumulator = IRFunction(function.realm, newInfo, newEnv).initialize()
             }
             DebugBreakpoint -> TODO()
             else -> TODO("Unrecognized opcode: ${opcode::class.simpleName}")
@@ -473,6 +474,12 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             isConstructable = true
         }
 
+        override fun init() {
+            super.init()
+
+            defineOwnProperty("prototype", realm.functionProto)
+        }
+
         override fun evaluate(arguments: JSArguments): JSValue {
             val args = listOf(arguments.thisValue) + arguments
             val result = IRInterpreter(this, args).interpret()
@@ -488,7 +495,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                 realm,
                 info,
                 GlobalEnvRecord(realm, info.isStrict, info.topLevelSlots)
-            )
+            ).initialize()
         }
     }
 }
