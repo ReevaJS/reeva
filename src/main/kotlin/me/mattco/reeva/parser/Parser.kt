@@ -1251,10 +1251,8 @@ class Parser(val source: String) {
 
         while (!isDone && !matchAny(TokenType.TemplateLiteralEnd, TokenType.UnterminatedTemplateLiteral)) {
             if (match(TokenType.TemplateLiteralString)) {
-                // TODO: This probably isn't correct
                 nps {
-                    consume()
-                    StringLiteralNode(token.literals)
+                    StringLiteralNode(token.literals).also { consume() }
                 }.also(expressions::add)
             } else if (match(TokenType.TemplateLiteralExprStart)) {
                 consume()

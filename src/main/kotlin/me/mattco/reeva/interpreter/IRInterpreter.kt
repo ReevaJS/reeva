@@ -181,6 +181,12 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             }
             Negate -> TODO()
             BitwiseNot -> TODO()
+            is TemplateAppend -> {
+                val template = registers[opcode.templateReg] as JSString
+                registers[opcode.templateReg] = JSString(
+                    template.string + (accumulator as JSString).string
+                )
+            }
             ToBooleanLogicalNot -> {
                 accumulator = (!Operations.toBoolean(accumulator)).toValue()
             }

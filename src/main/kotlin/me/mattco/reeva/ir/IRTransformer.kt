@@ -1022,7 +1022,25 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitTemplateLiteral(node: TemplateLiteralNode) {
-        TODO()
+        val templateLiteral = nextFreeReg()
+
+        for ((index, part) in node.parts.withIndex()) {
+            if (part is StringLiteralNode) {
+                val reg = loadConstant(part.value)
+                +LdaConstant(reg)
+            } else {
+                visit(part)
+                +ToString
+            }
+
+            if (index != 0) {
+                +TemplateAppend(templateLiteral)
+            } else {
+                +Star(templateLiteral)
+            }
+        }
+
+        +Ldar(templateLiteral)
     }
 
     override fun visitRegExpLiteral(node: RegExpLiteralNode) {

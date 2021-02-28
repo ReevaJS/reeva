@@ -111,6 +111,12 @@ object Negate : Opcode()
 object BitwiseNot : Opcode()
 
 /**
+ * Appends the string in the accumulator to the string stored in
+ * [templateReg].
+ */
+class TemplateAppend(val templateReg: Int) : Opcode()
+
+/**
  * Converts the accumulator to a boolean using the ToBoolean
  * operation, then invertes it.
  */
