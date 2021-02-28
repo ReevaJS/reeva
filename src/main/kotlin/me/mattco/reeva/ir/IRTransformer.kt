@@ -892,7 +892,7 @@ class IRTransformer : ASTVisitor {
             loadArguments(node.arguments, argumentReg)
         } else null to null
 
-        +Star(target)
+        +Ldar(target)
 
         when (mode) {
             ArgumentsMode.Spread -> +ConstructFromArray(target, arguments!!.firstReg)
