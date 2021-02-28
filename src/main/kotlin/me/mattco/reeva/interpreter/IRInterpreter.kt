@@ -20,6 +20,7 @@ import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.toValue
 import me.mattco.reeva.utils.unreachable
 import java.io.File
+import kotlin.system.exitProcess
 
 fun main() {
     val script = File("./demo/index.js").readText()
@@ -70,13 +71,19 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
     }
 
     fun interpret(): Reeva.Result {
-        while (!isDone) {
-            try {
-                visit(info.code[ip++])
-            } catch (e: ThrowException) {
-                exception = e
-                isDone = true
+        try {
+            while (!isDone) {
+                try {
+                    visit(info.code[ip++])
+                } catch (e: ThrowException) {
+                    exception = e
+                    isDone = true
+                }
             }
+        } catch (e: Throwable) {
+            println("Exception in FunctionInfo ${info.name} (length=${info.code.size}), opcode ${ip - 1}")
+            e.printStackTrace()
+            exitProcess(1)
         }
 
         return if (exception != null) {
