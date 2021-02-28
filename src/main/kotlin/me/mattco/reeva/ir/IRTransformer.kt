@@ -740,7 +740,7 @@ class IRTransformer : ASTVisitor {
     }
 
     private fun loadEnvVariableRef(variable: Variable, currentScope: Scope) {
-        val distance = currentScope.distanceFrom(variable.source.scope)
+        val distance = currentScope.envDistanceFrom(variable.source.scope)
         if (distance == 0) {
             +LdaCurrentEnv(variable.slot)
         } else {

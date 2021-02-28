@@ -96,6 +96,20 @@ open class Scope(val outer: Scope? = null) {
         return i
     }
 
+    fun envDistanceFrom(ancestorScope: Scope): Int {
+        if (ancestorScope == this)
+            return 0
+
+        var scope = this
+        var i = 0
+        while (scope != ancestorScope) {
+            if (scope.requiresEnv)
+                i++
+            scope = scope.outer!!
+        }
+        return i + if (ancestorScope.requiresEnv) 1 else 0
+    }
+
     fun crossesFunctionBoundary(other: Scope): Boolean {
         var scope = this
         while (scope != other) {
