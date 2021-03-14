@@ -50,6 +50,7 @@ object Errors {
     class AssignmentBeforeInitialization(propertyName: String) : Error("cannot assign to variable \"$propertyName\" " +
         "before it is initialized")
     class AssignmentToConstant(propertyName: String) : Error("cannot assign to constant variable \"$propertyName\"")
+    class AccessBeforeInitialization(propertyName: String) : Error("cannot access lexical variable \"$propertyName\" before initialization")
     object NoThisBinding : Error("current context has no \"this\" property binding")
 
     class FailedToPrimitive(value: String) : Error("cannot convert $value to primitive value")

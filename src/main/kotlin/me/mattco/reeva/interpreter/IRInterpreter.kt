@@ -128,7 +128,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                 registers[opcode.toReg] = registers[opcode.fromReg]
             }
             is LdaNamedProperty -> {
-                val name = info.constantPool[opcode.nameCpIndex] as String
+                val name = loadConstant<String>(opcode.nameCpIndex)
                 val obj = registers[opcode.objectReg] as JSObject
                 accumulator = obj.get(name)
             }
@@ -137,7 +137,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                 accumulator = obj.get(Operations.toPropertyKey(accumulator))
             }
             is StaNamedProperty -> {
-                val name = info.constantPool[opcode.nameCpIndex] as String
+                val name = loadConstant<String>(opcode.nameCpIndex)
                 val obj = registers[opcode.objectReg] as JSObject
                 obj.set(name, accumulator)
             }
@@ -199,7 +199,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             is DeletePropertyStrict -> TODO()
             is DeletePropertySloppy -> TODO()
             is LdaGlobal -> {
-                val name = info.constantPool[opcode.nameCpIndex] as String
+                val name = loadConstant<String>(opcode.nameCpIndex)
                 accumulator = globalEnv.extension().get(name)
             }
             is LdaCurrentEnv -> {
@@ -378,6 +378,13 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                 }
                 ip = handler.handler
             }
+            is ThrowConstReassignment -> {
+                Errors.AssignmentToConstant(loadConstant(opcode.nameCpIndex)).throwTypeError()
+            }
+            is ThrowUseBeforeInitIfEmpty -> {
+                if (accumulator == JSEmpty)
+                    Errors.AccessBeforeInitialization(loadConstant(opcode.nameCpIndex)).throwTypeError()
+            }
             Return -> {
                 isDone = true
             }
@@ -387,7 +394,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                     Errors.NonObjectIterator.throwTypeError()
             }
             is CreateClosure -> {
-                val newInfo = info.constantPool[opcode.cpIndex] as FunctionInfo
+                val newInfo = loadConstant<FunctionInfo>(opcode.cpIndex)
                 val newEnv = EnvRecord(currentEnv, currentEnv.isStrict || newInfo.isStrict, newInfo.topLevelSlots)
                 accumulator = IRFunction(function.realm, newInfo, newEnv).initialize()
             }
@@ -459,6 +466,10 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             is FunctionInfo -> TODO()
             else -> unreachable()
         }.also { mappedCPool[index] = it }
+    }
+
+    private inline fun <reified T> loadConstant(index: Int): T {
+        return info.constantPool[index] as T
     }
 
     inner class Registers(size: Int) {
