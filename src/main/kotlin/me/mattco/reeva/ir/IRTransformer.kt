@@ -573,10 +573,29 @@ class IRTransformer : ASTVisitor {
 
         enterScope(scope) {
             parameters.forEachIndexed { index, param ->
-                if (param.variable.isInlineable) {
-                    param.variable.slot = index + 1
-                } else {
-                    +Ldar(index + 1)
+                val register = index + 1
+                val isInlineable = param.variable.isInlineable
+
+                if (isInlineable)
+                    param.variable.slot = register
+
+                if (param.initializer != null) {
+                    // Check if the parameter is undefined
+                    val skipDefault = label()
+
+                    +Ldar(register)
+                    jump(skipDefault, ::JumpIfNotUndefined)
+
+                    visit(param.initializer)
+                    if (isInlineable) {
+                        +Star(register)
+                    } else {
+                        +StaCurrentEnv(param.variable.slot)
+                    }
+
+                    place(skipDefault)
+                } else if (!isInlineable) {
+                    +Ldar(register)
                     +StaCurrentEnv(param.variable.slot)
                 }
             }
