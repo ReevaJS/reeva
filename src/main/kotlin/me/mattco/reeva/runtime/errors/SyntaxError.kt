@@ -11,7 +11,9 @@ class JSSyntaxErrorObject private constructor(realm: Realm, message: String? = n
     }
 }
 
-class JSSyntaxErrorProto private constructor(realm: Realm) : JSObject(realm, realm.errorProto) {
+class JSSyntaxErrorProto private constructor(realm: Realm) : JSErrorProto(
+    realm, realm.syntaxErrorCtor, realm.errorProto, "SyntaxError"
+) {
     override fun init() {
         super.init()
         defineOwnProperty("constructor", realm.syntaxErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)

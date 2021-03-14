@@ -11,7 +11,9 @@ class JSReferenceErrorObject private constructor(realm: Realm, message: String? 
     }
 }
 
-class JSReferenceErrorProto private constructor(realm: Realm) : JSObject(realm, realm.errorProto) {
+class JSReferenceErrorProto private constructor(realm: Realm) : JSErrorProto(
+    realm, realm.referenceErrorCtor, realm.errorProto, "ReferenceError"
+) {
     override fun init() {
         super.init()
         defineOwnProperty("constructor", realm.referenceErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)

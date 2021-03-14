@@ -7,9 +7,7 @@ import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.ir.*
-import me.mattco.reeva.runtime.JSArguments
-import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.JSObject
@@ -35,9 +33,11 @@ fun main() {
     val realm = Reeva.makeRealm()
     val result = agent.run(script, realm)
     if (result.isError) {
-        println("\u001b[31m[test262] Error: ${Operations.toPrintableString(result.value)}\u001B[0m")
+        agent.withRealm(realm) {
+            println("\u001b[31m[test262] ${result.value.toJSString()}\u001B[0m")
+        }
     } else {
-        println(Operations.toPrintableString(result.value))
+        println(result.value.toPrintableString())
     }
 
     Reeva.teardown()
@@ -45,16 +45,16 @@ fun main() {
 
 class IRInterpreter(private val function: IRFunction, private val arguments: List<JSValue>) {
     private val globalEnv: GlobalEnvRecord
-    
+
     private val info = function.info
-    
+
     private val registers = Registers(info.registerCount)
     private var accumulator by registers::accumulator
     private var ip = 0
     private var isDone = false
     private var exception: ThrowException? = null
     private val mappedCPool = Array<JSValue?>(info.constantPool.size) { null }
-    
+
     private val envStack = mutableListOf<EnvRecord>()
     private var currentEnv = function.envRecord
 
@@ -372,7 +372,8 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             }
             JumpPlaceholder -> throw IllegalStateException("Illegal opcode: JumpPlaceholder")
             Throw -> {
-                val handler = info.handlers.firstOrNull { ip - 1 in it.start..it.end } ?: throw ThrowException(accumulator)
+                val handler = info.handlers.firstOrNull { ip - 1 in it.start..it.end }
+                    ?: throw ThrowException(accumulator)
                 repeat(envStack.size - handler.contextDepth) {
                     currentEnv = envStack.removeLast()
                 }

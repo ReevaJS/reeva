@@ -12,12 +12,14 @@ import me.mattco.reeva.utils.toValue
 
 open class JSErrorProto protected constructor(
     realm: Realm,
+    val errorCtor: JSObject,
+    val proto: JSObject,
     val name: String = "Error"
-) : JSObject(realm, realm.objectProto) {
+) : JSObject(realm, proto) {
     override fun init() {
         super.init()
 
-        defineOwnProperty("constructor", realm.errorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        defineOwnProperty("constructor", errorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty("name", name.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineNativeFunction("toString", 0, ::toString)
     }
@@ -47,6 +49,6 @@ open class JSErrorProto protected constructor(
     }
 
     companion object {
-        fun create(realm: Realm) = JSErrorProto(realm).initialize()
+        fun create(realm: Realm) = JSErrorProto(realm, realm.errorCtor, realm.objectProto).initialize()
     }
 }

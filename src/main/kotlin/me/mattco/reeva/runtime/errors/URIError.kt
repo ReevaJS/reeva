@@ -11,7 +11,9 @@ class JSURIErrorObject private constructor(realm: Realm, message: String? = null
     }
 }
 
-class JSURIErrorProto private constructor(realm: Realm) : JSObject(realm, realm.errorProto) {
+class JSURIErrorProto private constructor(realm: Realm) : JSErrorProto(
+    realm, realm.uriErrorCtor, realm.errorProto, "URIError"
+) {
     override fun init() {
         super.init()
         defineOwnProperty("constructor", realm.uriErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)

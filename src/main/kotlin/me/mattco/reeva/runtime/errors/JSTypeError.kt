@@ -12,7 +12,9 @@ class JSTypeErrorObject private constructor(realm: Realm, message: String? = nul
     }
 }
 
-class JSTypeErrorProto private constructor(realm: Realm) : JSObject(realm, realm.errorProto) {
+class JSTypeErrorProto private constructor(realm: Realm) : JSErrorProto(
+    realm, realm.typeErrorCtor, realm.errorProto, "TypeError"
+) {
     override fun init() {
         super.init()
         defineOwnProperty("constructor", realm.typeErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)

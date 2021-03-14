@@ -11,7 +11,9 @@ class JSRangeErrorObject private constructor(realm: Realm, message: String? = nu
     }
 }
 
-class JSRangeErrorProto private constructor(realm: Realm) : JSObject(realm, realm.errorProto) {
+class JSRangeErrorProto private constructor(realm: Realm) : JSErrorProto(
+    realm, realm.rangeErrorCtor, realm.errorProto, "RangeError"
+) {
     override fun init() {
         super.init()
         defineOwnProperty("constructor", realm.rangeErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)

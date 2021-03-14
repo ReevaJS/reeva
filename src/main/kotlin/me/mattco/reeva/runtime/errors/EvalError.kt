@@ -11,7 +11,9 @@ class JSEvalErrorObject private constructor(realm: Realm, message: String? = nul
     }
 }
 
-class JSEvalErrorProto private constructor(realm: Realm) : JSObject(realm, realm.errorProto) {
+class JSEvalErrorProto private constructor(realm: Realm) : JSErrorProto(
+    realm, realm.evalErrorCtor, realm.errorProto, "EvalError"
+) {
     override fun init() {
         super.init()
         defineOwnProperty("constructor", realm.evalErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
