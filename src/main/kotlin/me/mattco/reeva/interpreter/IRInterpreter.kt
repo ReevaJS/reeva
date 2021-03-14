@@ -463,7 +463,9 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
 
     inner class Registers(size: Int) {
         var accumulator: JSValue = JSEmpty
-        private val registers = Array<JSValue>(size) { JSEmpty }
+        private val registers = Array(size) {
+            if (it < info.argCount) JSUndefined else JSEmpty
+        }
 
         init {
             arguments.forEachIndexed { index, value ->
