@@ -11,6 +11,9 @@ class FunctionBuilder(val argCount: Int = 1) {
     val handlers = mutableListOf<IRHandler>()
     val blocks = Stack<Block>()
 
+    // Count of env variables in current scope
+    var envVarCount = 0
+
     // Stores how deep we currently are in the context tree from the
     // scope we started with (this function's HoistingScope)
     var nestedContexts = 0

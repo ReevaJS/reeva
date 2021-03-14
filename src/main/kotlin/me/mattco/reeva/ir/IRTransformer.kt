@@ -68,30 +68,36 @@ class IRTransformer : ASTVisitor {
         )
     }
 
-    override fun visitBlock(node: BlockNode) {
-        if (node.scope.requiresEnv) {
+    private fun enterScope(scope: Scope, block: () -> Unit) {
+        if (scope.requiresEnv) {
             builder.nestedContexts++
-            +PushEnv(node.scope.numSlots)
-            node.scope.envVariables.forEachIndexed { index, variable ->
-                variable.slot = index
+            +PushEnv(scope.numSlots)
+            scope.envVariables.forEach { variable ->
+                variable.slot = builder.envVarCount++
             }
         }
 
-        node.scope.inlineableVariables.filter {
+        scope.inlineableVariables.filter {
             it.mode != Variable.Mode.Parameter
         }.forEach {
             it.slot = nextFreeReg()
         }
 
-        super.visitBlock(node)
+        block()
 
-        node.scope.inlineableVariables.forEach {
+        scope.inlineableVariables.forEach {
             markRegFree(it.slot)
         }
 
-        if (node.scope.requiresEnv) {
+        if (scope.requiresEnv) {
             builder.nestedContexts--
             +PopCurrentEnv
+        }
+    }
+
+    override fun visitBlock(node: BlockNode) {
+        enterScope(node.scope) {
+            super.visitBlock(node)
         }
     }
 
@@ -565,17 +571,27 @@ class IRTransformer : ASTVisitor {
         val prevBuilder = builder
         builder = FunctionBuilder(parameters.size + 1)
 
-        var inlineableIndex = 1
-        parameters.forEachIndexed { index, param ->
-            if (param.variable.isInlineable) {
-                param.variable.slot = inlineableIndex++
-            } else {
-                +StaCurrentEnv(param.variable.slot)
-                markRegFree(index)
+        enterScope(scope) {
+            parameters.forEachIndexed { index, param ->
+                if (param.variable.isInlineable) {
+                    param.variable.slot = index + 1
+                } else {
+                    +Ldar(index + 1)
+                    +StaCurrentEnv(param.variable.slot)
+                }
             }
+
+            // body's scope is the same as the function's scope (the scope we receive
+            // as a parameter). We don't want to re-enter the same scope, so we explicitly
+            // call super.visitBlock if necessary.
+            if (body is BlockNode) {
+                super.visitBlock(body)
+            } else visit(body)
         }
 
-        visit(body)
+        // TODO: Does it matter if we pop the env before we return? Might we a bit more
+        // efficient if we don't have to worry about maintaining the env tree before a
+        // return
         if (builder.opcodes.lastOrNull() != Return) {
             +LdaUndefined
             +Return
