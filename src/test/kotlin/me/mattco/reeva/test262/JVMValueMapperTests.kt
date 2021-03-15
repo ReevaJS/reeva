@@ -1,10 +1,10 @@
 package me.mattco.reeva.test262
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.jvmcompat.JSClassObject
 import me.mattco.reeva.jvmcompat.JVMValueMapper
+import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.toValue
 import org.junit.jupiter.api.AfterAll
@@ -180,10 +180,10 @@ class JVMValueMapperTests {
     @Nested
     inner class `JS JVM values map correctly to JVM types` {
         val testClass = JSClassObject.create(realm, TestClass::class.java)
-        val testClassInstance = testClass.construct(emptyList(), testClass)
+        val testClassInstance = testClass.construct(testClass, emptyList())
 
         val numberLikeClass = JSClassObject.create(realm, NumberLikeClass::class.java)
-        val numberLikeInstance = numberLikeClass.construct(emptyList(), numberLikeClass)
+        val numberLikeInstance = numberLikeClass.construct(numberLikeClass, emptyList())
 
         @Test
         fun `JSClassObject maps correctly to JVM types`() {

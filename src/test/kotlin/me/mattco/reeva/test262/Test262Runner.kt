@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import me.mattco.reeva.Reeva
+import me.mattco.reeva.core.Agent
 import me.mattco.reeva.interpreter.IRInterpreter
 import me.mattco.reeva.utils.expect
 import org.junit.jupiter.api.AfterAll
@@ -33,12 +34,10 @@ class Test262Runner {
             val yaml = contents.substring(yamlStart + 5, yamlEnd)
             val metadata = Yaml.default.decodeFromString(Test262Metadata.serializer(), yaml)
 
-            backends.map { backend ->
-                DynamicTest.dynamicTest("${backend::class.simpleName} $name") {
-                    Test262Test(name, file, contents, metadata, backend).test()
-                }
+            DynamicTest.dynamicTest(name) {
+                Test262Test(name, file, contents, metadata).test()
             }
-        }.flatten()
+        }
     }
 
     @Serializable
@@ -60,8 +59,8 @@ class Test262Runner {
         val testDirectory = File(test262Directory, "test")
         val testDirectoryStr = testDirectory.absolutePath
         val harnessDirectory = File(test262Directory, "harness")
-        val targetDirectory: File? = File(testDirectory, "language/statements/break")
-//        val targetDirectory: File? = null
+//        val targetDirectory: File? = File(testDirectory, "language/statements/break")
+        val targetDirectory: File? = null
         lateinit var pretestScript: String
 
         val testResults = mutableListOf<TestResult>()
@@ -79,6 +78,9 @@ class Test262Runner {
             pretestScript = "$assertText\n$staText\n"
 
             Reeva.setup()
+
+            val agent = Agent()
+            Reeva.setAgent(agent)
         }
 
         @AfterAll

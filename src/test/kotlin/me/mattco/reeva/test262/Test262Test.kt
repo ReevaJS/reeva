@@ -1,7 +1,8 @@
 package me.mattco.reeva.test262
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.core.IRConsumer
+import me.mattco.reeva.core.Agent
+import me.mattco.reeva.core.EvaluationResult
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.modules.resolver.DefaultModuleResolver
 import me.mattco.reeva.runtime.Operations
@@ -16,13 +17,14 @@ class Test262Test(
     private val file: File,
     private val script: String,
     private val metadata: Test262Metadata,
-    private val backend: IRConsumer,
 ) {
     // TODO: Split these phases up
     private val shouldErrorDuringParse = metadata.negative?.phase.let { it == Negative.Phase.Parse || it == Negative.Phase.Early }
     private val shouldErrorDuringRuntime = metadata.negative?.phase.let { it == Negative.Phase.Resolution || it == Negative.Phase.Runtime }
 
     fun test() {
+        val agent = Reeva.activeAgent
+
         try {
             Assumptions.assumeTrue(metadata.features?.any { "intl" in it.toLowerCase() } != true)
             Assumptions.assumeTrue(metadata.features?.any { it in excludedFeatures } != true)
@@ -50,18 +52,18 @@ class Test262Test(
             if (isModule)
                 realm.moduleResolver = DefaultModuleResolver(realm, file.parentFile)
 
-            val pretestResult = Reeva.evaluateScript("$requiredScript\n\n", realm)
+            val pretestResult = agent.run("$requiredScript\n\n", realm)
 
             Assertions.assertTrue(!pretestResult.isError) {
-                Reeva.with(realm) {
+                agent.withRealm(realm) {
                     Operations.toString(pretestResult.value).string
                 }
             }
 
             if (metadata.flags != null && Flag.Async in metadata.flags) {
-                runAsyncTest(realm, isModule)
+                runAsyncTest(agent, realm, isModule)
             } else {
-                runSyncTest(realm, isModule)
+                runSyncTest(agent, realm, isModule)
             }
         } catch (e: AssertionFailedError) {
             Test262Runner.testResults.add(Test262Runner.TestResult(
@@ -80,15 +82,15 @@ class Test262Test(
         ))
     }
 
-    private fun runSyncTest(realm: Realm, isModule: Boolean) {
-        runTestCommon(realm, isModule)
+    private fun runSyncTest(agent: Agent, realm: Realm, isModule: Boolean) {
+        runTestCommon(agent, realm, isModule)
     }
 
-    private fun runAsyncTest(realm: Realm, isModule: Boolean) {
+    private fun runAsyncTest(agent: Agent, realm: Realm, isModule: Boolean) {
         val doneFunction = JSAsyncDoneFunction.create(realm)
         realm.globalObject.set("\$DONE", doneFunction)
 
-        runTestCommon(realm, isModule)
+        runTestCommon(agent, realm, isModule)
 
         Assertions.assertTrue(doneFunction.invocationCount == 1) {
             if (doneFunction.invocationCount == 0) {
@@ -98,40 +100,43 @@ class Test262Test(
             }
         }
 
-        Reeva.with(realm) {
+        agent.withRealm(realm) {
             Assertions.assertTrue(!Operations.toBoolean(doneFunction.result)) {
                 "Expected \$DONE to be called with falsy value, received ${Operations.toString(doneFunction.result)}"
             }
         }
     }
 
-    private fun runTestCommon(realm: Realm, isModule: Boolean) {
+    private fun runTestCommon(agent: Agent, realm: Realm, isModule: Boolean) {
+        if (isModule)
+            TODO()
+
         val theScript = if (metadata.flags?.contains(Flag.OnlyStrict) == true) {
             "'use strict'; $script"
         } else script
 
-        val task = Test262EvaluationTask(theScript, realm, isModule, backend)
-        val testResult = Reeva.getAgent().runTask(task)
+        val testResult = agent.run(theScript, realm)
 
         if (shouldErrorDuringParse || shouldErrorDuringRuntime) {
-            val expectedPhase = if (shouldErrorDuringParse) Negative.Phase.Parse else Negative.Phase.Runtime
-            val phaseName = expectedPhase.name.toLowerCase()
-
-            Assertions.assertTrue(testResult.isError && task.phaseFailed == expectedPhase) {
-                "Expected failure during $phaseName, but parsing succeeded"
+            if (shouldErrorDuringParse) {
+                Assertions.assertTrue(testResult is EvaluationResult.ParseFailure) {
+                    "Expected EvaluationResult.ParseFailure, but received EvaluationResult.${testResult::class.simpleName}{$testResult}"
+                }
+            } else {
+                Assertions.assertTrue(testResult is EvaluationResult.RuntimeError) {
+                    "Expected EvaluationResult.RuntimeError, but received EvaluationResult.${testResult::class.simpleName}{$testResult}"
+                }
             }
 
             val expectedClass = "JS${metadata.negative!!.type}Object"
             val actualClass = testResult.value::class.simpleName
 
             Assertions.assertTrue(actualClass == expectedClass) {
-                "Expected $expectedClass to be thrown at $phaseName time, but found $actualClass"
+                "Expected $expectedClass to be thrown, but found $actualClass"
             }
         } else {
-            Assertions.assertTrue(!testResult.isError) {
-                Reeva.with(realm) {
-                    Operations.toString(testResult.value).string
-                }
+            Assertions.assertTrue(testResult is EvaluationResult.Success) {
+                "Expected EvaluationResult.Success, but received EvaluationResult.${testResult::class.simpleName}{$testResult}"
             }
         }
     }

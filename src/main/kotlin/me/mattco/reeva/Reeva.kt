@@ -3,7 +3,6 @@ package me.mattco.reeva
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSGlobalObject
-import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.JSObject
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -54,6 +53,4 @@ object Reeva {
         Realm.setupSymbols()
         running = true
     }
-
-    data class Result(val value: JSValue, val isError: Boolean)
 }

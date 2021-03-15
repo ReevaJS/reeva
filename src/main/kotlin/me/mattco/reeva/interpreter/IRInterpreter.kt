@@ -2,17 +2,21 @@ package me.mattco.reeva.interpreter
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
+import me.mattco.reeva.core.EvaluationResult
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.ir.*
-import me.mattco.reeva.runtime.*
+import me.mattco.reeva.runtime.JSArguments
+import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.primitives.*
+import me.mattco.reeva.runtime.toJSString
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.toValue
@@ -31,13 +35,11 @@ fun main() {
 
     Reeva.setAgent(agent)
     val realm = Reeva.makeRealm()
-    val result = agent.run(script, realm)
-    if (result.isError) {
-        agent.withRealm(realm) {
-            println("\u001b[31m[test262] ${result.value.toJSString()}\u001B[0m")
-        }
-    } else {
-        println(result.value.toPrintableString())
+
+    when (val result = agent.run(script, realm)) {
+        is EvaluationResult.ParseFailure -> println("\u001b[31mParse failure: ${result.value}\u001B[0m")
+        is EvaluationResult.RuntimeError -> println("\u001b[31m${result.value.toJSString()}\u001B[0m")
+        else -> println(result.value.toJSString())
     }
 
     Reeva.teardown()
@@ -70,7 +72,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
         globalEnv = topEnv
     }
 
-    fun interpret(): Reeva.Result {
+    fun interpret(): EvaluationResult {
         try {
             while (!isDone) {
                 try {
@@ -87,8 +89,8 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
         }
 
         return if (exception != null) {
-            Reeva.Result(exception!!.value, isError = true)
-        } else Reeva.Result(accumulator, isError = false)
+            EvaluationResult.Success(exception!!.value)
+        } else EvaluationResult.RuntimeError(accumulator)
     }
 
     private fun visit(opcode: Opcode) {
@@ -510,7 +512,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
         override fun evaluate(arguments: JSArguments): JSValue {
             val args = listOf(arguments.thisValue) + arguments
             val result = IRInterpreter(this, args).interpret()
-            if (result.isError)
+            if (result is EvaluationResult.RuntimeError)
                 throw ThrowException(result.value)
             return result.value
         }
