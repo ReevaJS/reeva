@@ -724,7 +724,7 @@ class Parser(val source: String) {
     private fun parseFunctionDeclaration(): StatementNode = nps {
         val (identifier, params, body, scope) = parseFunctionHelper(isDeclaration = true)
         FunctionDeclarationNode(identifier!!, params, body).also {
-            it.scope = scope
+            it.scope = scope.hoistingScope()
         }
     }
 
@@ -961,7 +961,8 @@ class Parser(val source: String) {
         addVar: Boolean = true,
     ): BindingIdentifierNode = nps {
         BindingIdentifierNode(parseIdentifier()).also {
-            it.scope = scope
+            it.scope = if (varType == Variable.Type.Var) scope.hoistingScope() else scope
+
             if (addVar && !disableAutoScoping) {
                 val variable = Variable(
                     it.identifierName,

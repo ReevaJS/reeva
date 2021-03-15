@@ -25,8 +25,7 @@ open class Scope(val outer: Scope? = null) {
     var numSlots: Int = 0
         private set
 
-    var requiresEnv = false
-        private set
+    val requiresEnv: Boolean get() = numSlots > 0
 
     val isStrict: Boolean by lazy {
         firstParentOfType<HoistingScope>().hasUseStrictDirective
@@ -37,6 +36,10 @@ open class Scope(val outer: Scope? = null) {
         outer?.childScopes?.add(this)
 
         globalScope = outer?.globalScope
+    }
+
+    fun hoistingScope(): HoistingScope {
+        return if (this is HoistingScope) this else outer!!.hoistingScope()
     }
 
     fun addDeclaredVariable(variable: Variable) {
@@ -121,16 +124,10 @@ open class Scope(val outer: Scope? = null) {
     }
 
     open fun onFinish() {
-        // Attempt to connect any remaining global var references
-        for (node in unlinkedRefNodes) {
-            val variable = findDeclaredVariable(node.targetVar.name)
-            if (variable != null) {
-                node.targetVar = variable
-                if (node.scope.crossesFunctionBoundary(variable.source.scope))
-                    variable.isInlineable = false
-            }
-        }
-        unlinkedRefNodes.clear()
+        // Process unlinked nodes before we do any slot assignment
+
+        processUnlinkedNodes()
+        childScopes.forEach(Scope::processUnlinkedNodes)
 
         // Assign each non-inlineable variable their own slot index.
         // Inlineable variables are handled during the IR phase
@@ -141,10 +138,21 @@ open class Scope(val outer: Scope? = null) {
             numSlots++
         }
 
-        if (numSlots > 0)
-            requiresEnv = true
-
         childScopes.forEach(Scope::onFinish)
+    }
+
+    private fun processUnlinkedNodes() {
+        // Attempt to connect any remaining global var references
+        for (node in unlinkedRefNodes) {
+            val variable = findDeclaredVariable(node.targetVar.name)
+            if (variable != null) {
+                node.targetVar = variable
+                if (node.scope.crossesFunctionBoundary(variable.source.scope)) {
+                    variable.isInlineable = false
+                }
+            }
+        }
+        unlinkedRefNodes.clear()
     }
 }
 
