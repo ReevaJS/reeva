@@ -30,15 +30,8 @@ fun expect(condition: Boolean, message: String? = null) {
         returns() implies condition
     }
 
-    if (!condition) {
-        throw ExpectationError(buildString {
-            append("Expectation failed")
-            if (message != null) {
-                append(": ")
-                append(message)
-            }
-        })
-    }
+    if (!condition)
+        throw ExpectationError(message ?: "Expectation failed")
 }
 
 class ECMAError(message: String) : Exception(message)

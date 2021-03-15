@@ -69,11 +69,11 @@ class Agent {
         pendingMicrotasks.addFirst(task)
     }
 
-    internal fun pushRealm(realm: Realm) = apply {
+    fun pushRealm(realm: Realm) = apply {
         activeRealms.push(realm)
     }
 
-    internal fun popRealm() = apply {
+    fun popRealm() = apply {
         activeRealms.pop()
     }
 

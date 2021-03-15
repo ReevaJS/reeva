@@ -3,6 +3,7 @@ package me.mattco.reeva.ast
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.statements.ASTListNode
 import me.mattco.reeva.ast.statements.BlockNode
+import me.mattco.reeva.parser.Scope
 
 typealias ArgumentList = ASTListNode<ArgumentNode>
 
@@ -48,6 +49,8 @@ open class GenericFunctionDeclarationNode(
     val identifier: BindingIdentifierNode,
     val parameters: ParameterList,
     val body: BlockNode,
+    val parameterScope: Scope,
+    val bodyScope: Scope,
 ) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), StatementNode {
     override var variable by identifier::variable
 }
@@ -56,15 +59,21 @@ class FunctionDeclarationNode(
     identifier: BindingIdentifierNode,
     parameters: ParameterList,
     body: BlockNode,
-) : GenericFunctionDeclarationNode(identifier, parameters, body)
+    parameterScope: Scope,
+    bodyScope: Scope
+) : GenericFunctionDeclarationNode(identifier, parameters, body, parameterScope, bodyScope)
 
 class FunctionExpressionNode(
     val identifier: BindingIdentifierNode?,
     val parameters: ParameterList,
     val body: BlockNode,
+    val parameterScope: Scope,
+    val bodyScope: Scope,
 ) : NodeWithScope(listOfNotNull(identifier) + parameters + body), ExpressionNode
 
 class ArrowFunctionNode(
     val parameters: ParameterList,
     val body: ASTNode, // BlockNode or ExpressionNode
+    val parameterScope: Scope,
+    val bodyScope: Scope,
 ) : NodeWithScope(parameters + body), ExpressionNode

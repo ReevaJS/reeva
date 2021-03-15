@@ -44,16 +44,10 @@ class IRTransformer : ASTVisitor {
 
         builder = FunctionBuilder()
 
-        node.scope.envVariables.forEachIndexed { index, variable ->
-            variable.slot = index
+        globalDeclarationInstantiation(node.scope) {
+            visit(node.statements)
+            +Return
         }
-
-        node.scope.inlineableVariables.forEach {
-            it.slot = nextFreeReg()
-        }
-
-        visit(node.statements)
-        +Return
 
         return FunctionInfo(
             null,
@@ -68,7 +62,7 @@ class IRTransformer : ASTVisitor {
         )
     }
 
-    private fun enterScope(scope: Scope, block: () -> Unit) {
+    private fun enterScope(scope: Scope) {
         if (scope.requiresEnv) {
             builder.nestedContexts++
             +PushEnv(scope.numSlots)
@@ -82,10 +76,12 @@ class IRTransformer : ASTVisitor {
         }.forEach {
             it.slot = nextFreeReg()
         }
+    }
 
-        block()
-
-        scope.inlineableVariables.forEach {
+    private fun exitScope(scope: Scope) {
+        scope.inlineableVariables.filter {
+            it.mode != Variable.Mode.Parameter
+        }.forEach {
             markRegFree(it.slot)
         }
 
@@ -96,35 +92,9 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitBlock(node: BlockNode) {
-        enterScope(node.scope) {
-            super.visitBlock(node)
-        }
-    }
-
-    /**
-     * @return The index of the DeclarationsArray in the constant pool,
-     *         or null if no DeclarationsArray is needed (i.e. if there
-     *         are no non-inlineable variables)
-     */
-    private fun loadDeclarations(node: NodeWithScope): Int? {
-        val scope = node.scope
-
-        val varNames = mutableListOf<String>()
-        val lexNames = mutableListOf<String>()
-        val constNames = mutableListOf<String>()
-
-        scope.envVariables.forEach {
-            when (it.type) {
-                Variable.Type.Var -> varNames.add(it.name)
-                Variable.Type.Let -> lexNames.add(it.name)
-                Variable.Type.Const -> constNames.add(it.name)
-            }
-        }
-
-        if (varNames.isEmpty() && lexNames.isEmpty() && constNames.isEmpty())
-            return null
-
-        return loadConstant(DeclarationsArray(varNames, lexNames, constNames))
+        enterScope(node.scope)
+        super.visitBlock(node)
+        exitScope(node.scope)
     }
 
     override fun visitExpressionStatement(node: ExpressionStatementNode) {
@@ -549,14 +519,7 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
-        visitFunctionHelper(node.identifier.identifierName, node.parameters, node.body, node.scope, false)
-
-        if (!node.variable.isInlineable) {
-            // TODO This needs to be hoisted?
-            +StaCurrentEnv(node.variable.slot)
-        } else {
-            +Star(node.variable.slot)
-        }
+        // nop
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
@@ -564,116 +527,224 @@ class IRTransformer : ASTVisitor {
             node.identifier?.identifierName ?: "<anonymous>",
             node.parameters,
             node.body,
-            node.scope,
-            false
+            node.parameterScope,
+            node.bodyScope,
+            node.scope.isStrict,
+            false,
         )
     }
 
     override fun visitArrowFunction(node: ArrowFunctionNode) {
-        visitFunctionHelper("<anonymous>", node.parameters, node.body, node.scope, true)
+        visitFunctionHelper(
+            "<anonymous>",
+            node.parameters,
+            node.body,
+            node.parameterScope,
+            node.bodyScope,
+            node.scope.isStrict,
+            true,
+        )
+    }
+
+    private fun globalDeclarationInstantiation(
+        scope: Scope,
+        evaluationBlock: () -> Unit
+    ) {
+        enterScope(scope)
+
+        val varDecls = scope.declaredVariables.filter { it.type == Variable.Type.Var }.map { it.source }
+        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
+        val declaredFunctionNames = mutableSetOf<String>()
+
+        for (varDecl in varDecls.asReversed()) {
+            if (varDecl !is FunctionDeclarationNode || varDecl.identifier.identifierName in declaredFunctionNames)
+                continue
+
+            functionsToInitialize.add(0, varDecl)
+            declaredFunctionNames.add(varDecl.identifier.identifierName)
+        }
+
+        val declaredVarNames = mutableSetOf<String>()
+
+        for (varDecl in varDecls) {
+            if (varDecl is FunctionDeclarationNode)
+                continue
+
+            val name = varDecl.variable.name
+            if (name !in declaredFunctionNames && name !in declaredVarNames) {
+                declaredVarNames.add(name)
+            }
+        }
+
+        val lexNames = scope.declaredVariables.filter { it.type != Variable.Type.Var }.map { it.name }
+
+        val array = DeclarationsArray(declaredVarNames.toList(), lexNames, declaredFunctionNames.toList())
+        +DeclareGlobals(loadConstant(array))
+
+        commonInstantiation(varDecls, declaredFunctionNames, functionsToInitialize)
+
+        evaluationBlock()
+
+        exitScope(scope)
+    }
+
+    private fun functionDeclarationInstantiation(
+        parameters: ParameterList,
+        parameterScope: Scope,
+        bodyScope: Scope,
+        isLexical: Boolean,
+        isStrict: Boolean,
+        evaluationBlock: () -> Unit,
+    ) {
+        val parameterNames = parameters.map { it.name }
+        val simpleParameterList = parameters.isSimple()
+        val hasParameterExpressions = parameters.any { it.initializer != null }
+
+        val varDecls = bodyScope.declaredVariables.filter { it.type == Variable.Type.Var }.map { it.source }
+        val lexNames = bodyScope.declaredVariables.filter { it.type != Variable.Type.Var }.map { it.name }
+
+        val functionNames = mutableSetOf<String>()
+        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
+
+        for (decl in varDecls.asReversed()) {
+            if (decl !is FunctionDeclarationNode || decl.identifier.identifierName in functionNames)
+                continue
+
+            functionsToInitialize.add(0, decl)
+            functionNames.add(decl.identifier.identifierName)
+        }
+
+        val argumentsObjectNeeded = when {
+            isLexical -> false
+            "arguments" in parameterNames -> false
+            !hasParameterExpressions && ("arguments" in functionNames || "arguments" in lexNames) -> false
+            else -> true
+        }
+
+        if (argumentsObjectNeeded) {
+            if (isStrict || !simpleParameterList) {
+                +CreateUnmappedArgumentsObject
+            } else {
+                +CreateMappedArgumentsObject
+            }
+        }
+
+        enterScope(parameterScope)
+
+        parameters.distinctBy { it.identifier.identifierName }.forEachIndexed { index, param ->
+            val register = index + 1
+            val isInlineable = param.variable.isInlineable
+
+            if (isInlineable)
+                param.variable.slot = register
+
+            if (param.initializer != null) {
+                // Check if the parameter is undefined
+                val skipDefault = label()
+
+                +Ldar(register)
+                jump(skipDefault, ::JumpIfNotUndefined)
+
+                visit(param.initializer)
+                if (isInlineable) {
+                    +Star(register)
+                } else {
+                    +StaCurrentEnv(param.variable.slot)
+                }
+
+                place(skipDefault)
+            } else if (!isInlineable) {
+                +Ldar(register)
+                +StaCurrentEnv(param.variable.slot)
+            }
+        }
+
+        if (bodyScope != parameterScope)
+            enterScope(bodyScope)
+
+        commonInstantiation(varDecls, functionNames, functionsToInitialize)
+
+        evaluationBlock()
+
+        if (bodyScope != parameterScope)
+            exitScope(bodyScope)
+        exitScope(parameterScope)
+    }
+
+    private fun commonInstantiation(
+        varDecls: List<VariableSourceNode>,
+        functionNames: Set<String>,
+        functions: List<FunctionDeclarationNode>,
+    ) {
+        val instantiatedVarNames = functionNames.toMutableSet()
+
+        for (varDecl in varDecls) {
+            if (varDecl is FunctionDeclarationNode || varDecl.name in instantiatedVarNames)
+                continue
+
+            instantiatedVarNames.add(varDecl.name)
+            val variable = varDecl.variable
+
+            if (variable.name !in instantiatedVarNames) {
+                instantiatedVarNames.add(variable.name)
+                +LdaUndefined
+                if (variable.isInlineable) {
+                    +Star(variable.slot)
+                } else {
+                    +StaCurrentEnv(variable.slot)
+                }
+            }
+        }
+
+        for (function in functions) {
+            visitFunctionHelper(
+                function.name,
+                function.parameters,
+                function.body,
+                function.parameterScope,
+                function.bodyScope,
+                function.scope.isStrict || function.parameterScope.isStrict || function.bodyScope.isStrict,
+                false, // TODO
+            )
+
+            if (function.variable.isInlineable) {
+                +Star(function.variable.slot)
+            } else {
+                +StaCurrentEnv(function.variable.slot)
+            }
+        }
     }
 
     private fun visitFunctionHelper(
         name: String,
         parameters: ParameterList,
         body: ASTNode,
-        scope: Scope,
-        isLexical: Boolean
+        parameterScope: Scope,
+        bodyScope: Scope,
+        isStrict: Boolean,
+        isLexical: Boolean,
     ) {
         val prevBuilder = builder
         builder = FunctionBuilder(parameters.size + 1)
 
-        // FunctionDeclarationInstantiation
-        val parameterNames = parameters.map { it.identifier.identifierName }
-        val hasDuplicates = parameters.containsDuplicates()
-        val simpleParameterList = parameters.isSimple()
-        val hasParameterExpressions = parameters.any { it.initializer != null }
-
-        val varNames = scope.declaredVariables.filter { it.type == Variable.Type.Var }.map { it.name }
-        val varDecls = scope.declaredVariables.filter { it.type == Variable.Type.Var }.map { it.source }
-        val lexicalNames = scope.declaredVariables.filter { it.type != Variable.Type.Var }.map { it.name }
-        val lexicalDecls = scope.declaredVariables.filter { it.type != Variable.Type.Var }.map { it.source }
-
-        val functionNames = mutableListOf<String>()
-        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
-
-        varDecls.asReversed().forEach { decl ->
-            // TODO: generator/async functions
-            if (decl !is FunctionDeclarationNode)
-                return@forEach
-
-            val fn = decl.name
-            if (fn !in functionNames) {
-                functionNames.add(0, fn)
-                functionsToInitialize.add(decl)
-            }
-        }
-
-        // TODO: Use this
-        val argumentsObjectNeeded = when {
-            isLexical -> false
-            "arguments" in parameterNames -> false
-            !hasParameterExpressions && ("arguments" in functionNames || "arguments" in lexicalNames) -> false
-            else -> true
-        }
-
-        enterScope(scope) {
-            parameters.forEachIndexed { index, param ->
-                val register = index + 1
-                val isInlineable = param.variable.isInlineable
-
-                if (isInlineable)
-                    param.variable.slot = register
-
-                if (param.initializer != null) {
-                    // Check if the parameter is undefined
-                    val skipDefault = label()
-
-                    +Ldar(register)
-                    jump(skipDefault, ::JumpIfNotUndefined)
-
-                    visit(param.initializer)
-                    if (isInlineable) {
-                        +Star(register)
-                    } else {
-                        +StaCurrentEnv(param.variable.slot)
-                    }
-
-                    place(skipDefault)
-                } else if (!isInlineable) {
-                    +Ldar(register)
-                    +StaCurrentEnv(param.variable.slot)
-                }
-            }
-
-            val instantiatedVarNames = parameterNames.toMutableSet()
-            for (varDecl in varDecls) {
-                val variable = varDecl.variable
-                if (variable.name !in instantiatedVarNames) {
-                    instantiatedVarNames.add(variable.name)
-                    +LdaUndefined
-                    if (variable.isInlineable) {
-                        +Star(variable.slot)
-                    } else {
-                        +StaCurrentEnv(variable.slot)
-                    }
-                }
-            }
-
+        functionDeclarationInstantiation(
+            parameters,
+            parameterScope,
+            bodyScope,
+            isLexical,
+            isStrict
+        ) {
             // body's scope is the same as the function's scope (the scope we receive
             // as a parameter). We don't want to re-enter the same scope, so we explicitly
             // call super.visitBlock if necessary.
             if (body is BlockNode) {
                 super.visitBlock(body)
             } else visit(body)
-        }
 
-        // TODO: Does it matter if we pop the env before we return? Might we a bit more
-        // efficient if we don't have to worry about maintaining the env tree before a
-        // return
-        if (builder.opcodes.lastOrNull() != Return) {
-            +LdaUndefined
-            +Return
+            if (builder.opcodes.lastOrNull() != Return) {
+                +LdaUndefined
+                +Return
+            }
         }
 
         val info = FunctionInfo(
@@ -683,8 +754,8 @@ class IRTransformer : ASTVisitor {
             builder.handlers.map(IRHandler::toHandler).toTypedArray(),
             builder.registerCount,
             parameters.size + 1,
-            scope.numSlots,
-            scope.isStrict,
+            parameterScope.numSlots,
+            isStrict,
             isTopLevelScript = false,
         )
 
@@ -1184,7 +1255,9 @@ class IRTransformer : ASTVisitor {
                         val functionNode = FunctionExpressionNode(
                             null,
                             method.parameters,
-                            method.body
+                            method.body,
+                            method.parameterScope,
+                            method.bodyScope,
                         )
                         functionNode.scope = method.scope
                         visitFunctionExpression(functionNode)

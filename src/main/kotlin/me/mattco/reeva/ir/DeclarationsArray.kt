@@ -1,28 +1,22 @@
 package me.mattco.reeva.ir
 
 class DeclarationsArray(
-    varDecls: Collection<String>,
-    letDecls: Collection<String>,
-    constDecls: Collection<String>,
+    varDecls: List<String>,
+    lexDecls: List<String>,
+    funcDecls: List<String>,
 ) : Iterable<String> {
-    private val values = varDecls.toTypedArray() + letDecls.toTypedArray() + constDecls.toTypedArray()
-    private val firstLet = varDecls.size
-    private val firstConst = firstLet + letDecls.size
+    private val values = varDecls.toTypedArray() + lexDecls.toTypedArray() + funcDecls.toTypedArray()
+    private val firstLex = varDecls.size
+    private val firstFunc = firstLex + lexDecls.size
 
     val size: Int
         get() = values.size
 
-    fun declarationAt(index: Int) = values[index]
-
-    fun isVar(index: Int) = index < firstLet
-    fun isLet(index: Int) = !isVar(index) && index < firstConst
-    fun isConst(index: Int) = index >= firstConst
-
     override fun iterator() = values.iterator()
 
-    fun varIterator() = getValuesIterator(0, firstLet)
-    fun letIterator() = getValuesIterator(firstLet, firstConst)
-    fun constIterator() = getValuesIterator(firstConst, values.size)
+    fun varIterator() = getValuesIterator(0, firstLex)
+    fun lexIterator() = getValuesIterator(firstLex, firstFunc)
+    fun funcIterator() = getValuesIterator(firstFunc, values.size)
 
     private fun getValuesIterator(start: Int, end: Int) = object : Iterable<String> {
         override fun iterator() = object : Iterator<String> {

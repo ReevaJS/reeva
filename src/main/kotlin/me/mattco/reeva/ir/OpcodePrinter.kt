@@ -43,24 +43,24 @@ object OpcodePrinter {
                     is DeclarationsArray -> buildString {
                         append("DeclarationsArray ")
                         val vars = value.varIterator().joinToString(", ")
-                        val lets = value.letIterator().joinToString(", ")
-                        val consts = value.constIterator().joinToString(", ")
+                        val lexs = value.lexIterator().joinToString(", ")
+                        val funcs = value.funcIterator().joinToString(", ")
 
                         if (vars.isNotBlank()) {
-                            append("vars={")
+                            append("var={")
                             append(vars)
                             append("}")
                         }
 
-                        if (lets.isNotBlank()) {
-                            append("lets={")
-                            append(lets)
+                        if (lexs.isNotBlank()) {
+                            append("lex={")
+                            append(lexs)
                             append("}")
                         }
 
-                        if (consts.isNotBlank()) {
-                            append("consts={")
-                            append(consts)
+                        if (funcs.isNotBlank()) {
+                            append("func={")
+                            append(funcs)
                             append("}")
                         }
                     }
@@ -110,7 +110,7 @@ object OpcodePrinter {
 
     private fun formatArgument(value: Int, fieldName: String, argCount: Int) = fieldName.toLowerCase().let {
         // Many bugs were and are caused by this... so let's just throw here
-        expect(value != -1)
+        expect(value >= 0, "Expected register value to be >= 0")
 
         when {
             "cp" in it -> "[$value]"

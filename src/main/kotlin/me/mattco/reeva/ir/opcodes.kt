@@ -468,6 +468,21 @@ class ThrowUseBeforeInitIfEmpty(val nameCpIndex: Int) : Opcode()
  *********/
 
 /**
+ * Declare globals names
+ */
+class DeclareGlobals(val declarationCpIndex: Int) : Opcode()
+
+/**
+ * Creates a mapped arguments object and "installs" it into the current function
+ */
+object CreateMappedArgumentsObject : Opcode()
+
+/**
+ * Creates an unmapped arguments object and "installs" it into the current function
+ */
+object CreateUnmappedArgumentsObject : Opcode()
+
+/**
  * Sets the accumulator to the result of calling
  * <accumulator>[Symbol.iterator]
  */

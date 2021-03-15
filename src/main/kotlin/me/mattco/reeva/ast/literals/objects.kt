@@ -4,6 +4,7 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.SuperCallExpressionNode
 import me.mattco.reeva.ast.statements.ASTListNode
 import me.mattco.reeva.ast.statements.BlockNode
+import me.mattco.reeva.parser.Scope
 
 typealias PropertyDefinitionList = ASTListNode<Property>
 
@@ -38,6 +39,8 @@ class MethodDefinitionNode(
     val propName: PropertyName,
     val parameters: ParameterList,
     val body: BlockNode,
+    val parameterScope: Scope,
+    val bodyScope: Scope,
     val type: Type
 ) : NodeWithScope(listOf(propName) + parameters + body) {
     fun isConstructor(): Boolean {

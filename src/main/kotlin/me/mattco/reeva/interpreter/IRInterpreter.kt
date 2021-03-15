@@ -8,15 +8,12 @@ import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.ir.*
-import me.mattco.reeva.runtime.JSArguments
-import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.runtime.toPrintableString
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.toValue
@@ -38,7 +35,9 @@ fun main() {
 
     when (val result = agent.run(script, realm)) {
         is EvaluationResult.ParseFailure -> println("\u001b[31mParse failure: ${result.value}\u001B[0m")
-        is EvaluationResult.RuntimeError -> println("\u001b[31m${result.value.toPrintableString()}\u001B[0m")
+        is EvaluationResult.RuntimeError -> agent.withRealm(realm) {
+            println("\u001b[31m${result.value.toJSString()}\u001B[0m")
+        }
         else -> println(result.value.toPrintableString())
     }
 
