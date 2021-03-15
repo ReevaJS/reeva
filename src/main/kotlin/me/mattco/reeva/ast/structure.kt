@@ -112,6 +112,9 @@ interface ASTNode {
         append(")")
     }
 
+    val isInvalidAssignmentTarget: Boolean
+        get() = true
+
     companion object {
         private const val INDENT = "| "
 
@@ -123,9 +126,6 @@ interface ASTNode {
 
         fun StringBuilder.appendIndent(indent: Int) = append(makeIndent(indent))
     }
-
-    val isInvalidAssignmentTarget: Boolean
-        get() = true
 }
 
 fun <T : Any> childrenOfTypeHelper(node: ASTNode, clazz: KClass<T>, list: MutableList<T>) {

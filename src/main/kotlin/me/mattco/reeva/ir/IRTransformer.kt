@@ -549,7 +549,7 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
-        visitFunctionHelper(node.identifier.identifierName, node.parameters, node.body, node.scope)
+        visitFunctionHelper(node.identifier.identifierName, node.parameters, node.body, node.scope, false)
 
         if (!node.variable.isInlineable) {
             // TODO This needs to be hoisted?
@@ -560,16 +560,62 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
-        visitFunctionHelper(node.identifier?.identifierName ?: "<anonymous>", node.parameters, node.body, node.scope)
+        visitFunctionHelper(
+            node.identifier?.identifierName ?: "<anonymous>",
+            node.parameters,
+            node.body,
+            node.scope,
+            false
+        )
     }
 
     override fun visitArrowFunction(node: ArrowFunctionNode) {
-        visitFunctionHelper("<anonymous>", node.parameters, node.body, node.scope)
+        visitFunctionHelper("<anonymous>", node.parameters, node.body, node.scope, true)
     }
 
-    private fun visitFunctionHelper(name: String, parameters: ParameterList, body: ASTNode, scope: Scope) {
+    private fun visitFunctionHelper(
+        name: String,
+        parameters: ParameterList,
+        body: ASTNode,
+        scope: Scope,
+        isLexical: Boolean
+    ) {
         val prevBuilder = builder
         builder = FunctionBuilder(parameters.size + 1)
+
+        // FunctionDeclarationInstantiation
+        val parameterNames = parameters.map { it.identifier.identifierName }
+        val hasDuplicates = parameters.containsDuplicates()
+        val simpleParameterList = parameters.isSimple()
+        val hasParameterExpressions = parameters.any { it.initializer != null }
+
+        val varNames = scope.declaredVariables.filter { it.type == Variable.Type.Var }.map { it.name }
+        val varDecls = scope.declaredVariables.filter { it.type == Variable.Type.Var }.map { it.source }
+        val lexicalNames = scope.declaredVariables.filter { it.type != Variable.Type.Var }.map { it.name }
+        val lexicalDecls = scope.declaredVariables.filter { it.type != Variable.Type.Var }.map { it.source }
+
+        val functionNames = mutableListOf<String>()
+        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
+
+        varDecls.asReversed().forEach { decl ->
+            // TODO: generator/async functions
+            if (decl !is FunctionDeclarationNode)
+                return@forEach
+
+            val fn = decl.name
+            if (fn !in functionNames) {
+                functionNames.add(0, fn)
+                functionsToInitialize.add(decl)
+            }
+        }
+
+        // TODO: Use this
+        val argumentsObjectNeeded = when {
+            isLexical -> false
+            "arguments" in parameterNames -> false
+            !hasParameterExpressions && ("arguments" in functionNames || "arguments" in lexicalNames) -> false
+            else -> true
+        }
 
         enterScope(scope) {
             parameters.forEachIndexed { index, param ->
@@ -597,6 +643,20 @@ class IRTransformer : ASTVisitor {
                 } else if (!isInlineable) {
                     +Ldar(register)
                     +StaCurrentEnv(param.variable.slot)
+                }
+            }
+
+            val instantiatedVarNames = parameterNames.toMutableSet()
+            for (varDecl in varDecls) {
+                val variable = varDecl.variable
+                if (variable.name !in instantiatedVarNames) {
+                    instantiatedVarNames.add(variable.name)
+                    +LdaUndefined
+                    if (variable.isInlineable) {
+                        +Star(variable.slot)
+                    } else {
+                        +StaCurrentEnv(variable.slot)
+                    }
                 }
             }
 
