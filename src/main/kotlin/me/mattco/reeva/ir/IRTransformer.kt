@@ -542,7 +542,7 @@ class IRTransformer : ASTVisitor {
 
         val declarationStart = node.targetVar.source.sourceStart
         val useStart = node.sourceStart
-        if (useStart.index < declarationStart.index) {
+        if (useStart.index < declarationStart.index && variable.type != Variable.Type.Var) {
             // We need to check if the variable has been initialized
             +ThrowUseBeforeInitIfEmpty(loadConstant(node.identifierName))
         }
