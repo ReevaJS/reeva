@@ -16,7 +16,7 @@ import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.runtime.toJSString
+import me.mattco.reeva.runtime.toPrintableString
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.toValue
@@ -30,7 +30,7 @@ fun main() {
     Reeva.setup()
 
     val agent = Agent().apply {
-        // settings here
+        printIR = true
     }
 
     Reeva.setAgent(agent)
@@ -38,8 +38,8 @@ fun main() {
 
     when (val result = agent.run(script, realm)) {
         is EvaluationResult.ParseFailure -> println("\u001b[31mParse failure: ${result.value}\u001B[0m")
-        is EvaluationResult.RuntimeError -> println("\u001b[31m${result.value.toJSString()}\u001B[0m")
-        else -> println(result.value.toJSString())
+        is EvaluationResult.RuntimeError -> println("\u001b[31m${result.value.toPrintableString()}\u001B[0m")
+        else -> println(result.value.toPrintableString())
     }
 
     Reeva.teardown()
@@ -89,8 +89,8 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
         }
 
         return if (exception != null) {
-            EvaluationResult.Success(exception!!.value)
-        } else EvaluationResult.RuntimeError(accumulator)
+            EvaluationResult.RuntimeError(exception!!.value)
+        } else EvaluationResult.Success(accumulator)
     }
 
     private fun visit(opcode: Opcode) {

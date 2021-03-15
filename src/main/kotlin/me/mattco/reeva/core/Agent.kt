@@ -58,8 +58,9 @@ class Agent {
             function.call(JSArguments(emptyList(), realm.globalObject))
         } catch (e: ThrowException) {
             return EvaluationResult.RuntimeError(e.value)
+        } finally {
+            activeRealms.pop()
         }
-        activeRealms.pop()
         expect(activeRealms.isEmpty())
         return EvaluationResult.Success(result)
     }
