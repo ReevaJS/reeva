@@ -174,6 +174,7 @@ data class Variable(
     enum class Mode {
         Declared,
         Parameter,
+        CatchParameter,
         Global,
     }
 

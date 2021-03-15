@@ -559,7 +559,7 @@ class Parser(val source: String) {
             val catchParam = if (match(TokenType.OpenParen)) {
                 scope = Scope(scope)
                 consume()
-                parseBindingIdentifier(varMode = Variable.Mode.Parameter).also {
+                parseBindingIdentifier(varMode = Variable.Mode.CatchParameter).also {
                     consume(TokenType.CloseParen)
                 }
             } else null
