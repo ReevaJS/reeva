@@ -390,6 +390,16 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             Return -> {
                 isDone = true
             }
+            is DeclareGlobals -> {
+                val array = loadConstant<DeclarationsArray>(opcode.declarationCpIndex)
+                declareGlobals(array)
+            }
+            CreateMappedArgumentsObject -> {
+                // TODO
+            }
+            CreateUnmappedArgumentsObject -> {
+
+            }
             GetIterator -> {
                 accumulator = Operations.getIterator(Operations.toObject(accumulator)).iterator
                 if (accumulator !is JSObject)
@@ -443,6 +453,27 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
 
                 Operations.call(target, receiver, args)
             }
+        }
+    }
+
+    private fun declareGlobals(array: DeclarationsArray) {
+        val varNames = array.varIterator().toList()
+        val lexNames = array.lexIterator().toList()
+        val funcNames = array.funcIterator().toList()
+
+        for (name in lexNames) {
+            if (globalEnv.hasRestrictedGlobalProperty(name))
+                Errors.RestrictedGlobalPropertyName(name).throwSyntaxError()
+        }
+
+        for (name in funcNames) {
+            if (!globalEnv.canDeclareGlobalFunction(name))
+                Errors.InvalidGlobalFunction(name).throwTypeError()
+        }
+
+        for (name in varNames) {
+            if (!globalEnv.canDeclareGlobalVar(name))
+                Errors.InvalidGlobalVar(name).throwTypeError()
         }
     }
 

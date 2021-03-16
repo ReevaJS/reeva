@@ -1,7 +1,6 @@
 package me.mattco.reeva.utils
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
@@ -81,6 +80,10 @@ object Errors {
     class InvalidToPrimitiveHint(hint: String) : Error("invalid @@toPrimitive hint \"$hint\". Valid values are \"string\", " +
         "\"number\", and \"default\"")
     class CtorCallWithoutNew(name: String) : Error("$name constructor cannot be called without \"new\" keyword")
+
+    class RestrictedGlobalPropertyName(name: String) : Error("cannot redefine restricted global lexical property name $name")
+    class InvalidGlobalFunction(name: String) : Error("cannot declare global function $name")
+    class InvalidGlobalVar(name: String) : Error("cannot declare global variable $name")
 
     object DescriptorGetType : Error("descriptor's \"get\" property must be undefined or callable")
     object DescriptorSetType : Error("descriptor's \"set\" property must be undefined or callable")
