@@ -48,8 +48,17 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                 try {
                     visit(info.code[ip++])
                 } catch (e: ThrowException) {
-                    exception = e
-                    isDone = true
+                    val handler = info.handlers.firstOrNull { ip - 1 in it.start..it.end }
+
+                    if (handler == null) {
+                        exception = e
+                        isDone = true
+                    } else {
+                        repeat(envStack.size - handler.contextDepth) {
+                            currentEnv = envStack.removeLast()
+                        }
+                        ip = handler.handler
+                    }
                 }
             }
         } catch (e: Throwable) {

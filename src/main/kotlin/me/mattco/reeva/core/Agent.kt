@@ -88,7 +88,11 @@ class Agent {
 
     fun <T> withRealm(realm: Realm, block: () -> T): T {
         pushRealm(realm)
-        return block().also { popRealm() }
+        return try {
+            block()
+        } finally {
+            popRealm()
+        }
     }
 
     internal fun nextId() = uniqueId++
