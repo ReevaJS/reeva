@@ -45,13 +45,6 @@ open class Scope(val outer: Scope? = null) {
     fun addDeclaredVariable(variable: Variable) {
         expect(variable.mode != Variable.Mode.Global)
 
-        unlinkedRefNodes.removeIf {
-            if (it.targetVar.name == variable.name) {
-                it.targetVar = variable
-                true
-            } else false
-        }
-
         if (variable.type != Variable.Type.Var || this is HoistingScope) {
            _declaredVariables.add(variable)
         } else {
@@ -62,18 +55,14 @@ open class Scope(val outer: Scope? = null) {
     fun addReference(node: VariableRefNode) {
         val name = node.boundName()
 
-        node.targetVar = findDeclaredVariable(name) ?: let {
-            unlinkedRefNodes.add(node)
-            Variable(
-                name,
-                Variable.Type.Var,
-                Variable.Mode.Global,
-                GlobalSourceNode().also { it.scope = globalScope!! },
-            )
-        }
+        unlinkedRefNodes.add(node)
 
-        if (crossesFunctionBoundary(node.targetVar.source.scope))
-            node.targetVar.isInlineable = false
+        node.targetVar = Variable(
+            name,
+            Variable.Type.Var,
+            Variable.Mode.Global,
+            GlobalSourceNode().also { it.scope = globalScope!! },
+        )
     }
 
     private fun findDeclaredVariable(name: String): Variable? {
