@@ -10,6 +10,7 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.isRadixDigit
 import me.mattco.reeva.utils.toValue
 
@@ -159,7 +160,7 @@ open class JSGlobalObject protected constructor(
         @ECMAImpl("18.2.1.1")
         fun performEval(argument: JSValue, callerRealm: Realm, strictCaller: Boolean, direct: Boolean): JSValue {
             // TODO
-            return JSUndefined
+            Errors.Custom("eval is not yet implemented in Reeva").throwInternalError()
 
 //            if (!direct)
 //                ecmaAssert(!strictCaller)
