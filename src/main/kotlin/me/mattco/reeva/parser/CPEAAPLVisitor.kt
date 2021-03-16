@@ -57,6 +57,10 @@ class CPEAAPLVisitor(
                 .withPosition(node)
                 .also { it.parent = node.parent }
         }
+
+        override fun visitIdentifierReference(node: IdentifierReferenceNode) {
+            node.scope.addReference(node)
+        }
     }
 
     private inner class CPEAAPLToParameterList : ASTVisitor {
