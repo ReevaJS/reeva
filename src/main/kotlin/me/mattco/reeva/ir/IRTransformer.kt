@@ -860,7 +860,64 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitUpdateExpression(node: UpdateExpressionNode) {
-        TODO()
+        val op = if (node.isIncrement) Inc else Dec
+
+        fun postfixGuard(action: () -> Unit) {
+            val originalValue = if (node.isPostfix) {
+                nextFreeReg().also { +Star(it) }
+            } else -1
+
+            action()
+
+            if (node.isPostfix) {
+                +Ldar(originalValue)
+                markRegFree(originalValue)
+            }
+        }
+
+        when (val target = node.target) {
+            is IdentifierReferenceNode -> {
+                visit(target)
+                +ToNumeric
+
+                postfixGuard {
+                    +op
+                    storeVariable(target.targetVar, target.scope)
+                }
+            }
+            is MemberExpressionNode -> {
+                val objectReg = nextFreeReg()
+                visit(target.lhs)
+                +Star(objectReg)
+
+                when (target.type) {
+                    MemberExpressionNode.Type.Computed -> {
+                        val keyReg = nextFreeReg()
+                        visit(target.rhs)
+                        +Star(keyReg)
+                        +LdaKeyedProperty(objectReg)
+                        postfixGuard {
+                            +ToNumeric
+                            +op
+                            +StaKeyedProperty(objectReg, keyReg)
+                        }
+                        markRegFree(keyReg)
+                    }
+                    MemberExpressionNode.Type.NonComputed -> {
+                        +LdaNamedProperty(objectReg, loadConstant((target.rhs as IdentifierNode).identifierName))
+                        postfixGuard {
+                            +ToNumeric
+                            +op
+                            +StaNamedProperty(objectReg, loadConstant(target.rhs.identifierName))
+                        }
+                    }
+                    MemberExpressionNode.Type.Tagged -> TODO()
+                }
+
+                markRegFree(objectReg)
+            }
+            else -> TODO()
+        }
     }
 
     override fun visitAssignmentExpression(node: AssignmentExpressionNode) {
