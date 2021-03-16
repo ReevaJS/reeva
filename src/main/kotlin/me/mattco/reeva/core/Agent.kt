@@ -53,7 +53,9 @@ class Agent {
         }
 
         val function = IRInterpreter.wrap(info, realm)
-        activeRealms.add(realm)
+        val initialSize = activeRealms.size
+        activeRealms.push(realm)
+
         val result = try {
             function.call(JSArguments(emptyList(), realm.globalObject))
         } catch (e: ThrowException) {
@@ -61,7 +63,9 @@ class Agent {
         } finally {
             activeRealms.pop()
         }
-        expect(activeRealms.isEmpty())
+
+        expect(activeRealms.size == initialSize)
+
         return EvaluationResult.Success(result)
     }
 
