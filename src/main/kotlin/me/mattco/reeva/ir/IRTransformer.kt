@@ -689,11 +689,14 @@ class IRTransformer : ASTVisitor {
 
             if (variable.name !in instantiatedVarNames) {
                 instantiatedVarNames.add(variable.name)
-                +LdaUndefined
-                if (variable.isInlineable) {
-                    +Star(variable.slot)
-                } else {
-                    +StaCurrentEnv(variable.slot)
+
+                if (variable.possiblyUsedBeforeDecl) {
+                    +LdaUndefined
+                    if (variable.isInlineable) {
+                        +Star(variable.slot)
+                    } else {
+                        +StaCurrentEnv(variable.slot)
+                    }
                 }
             }
         }

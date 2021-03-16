@@ -19,7 +19,7 @@ open class Scope(val outer: Scope? = null) {
         get() = declaredVariables.filterNot { it.isInlineable }
 
     // Variables that have yet to be connected to their source
-    private val unlinkedRefNodes = mutableListOf<VariableRefNode>()
+    private val refNodes = mutableListOf<VariableRefNode>()
 
     // How many slots the EnvRecord associated with this Scope requires
     var numSlots: Int = 0
@@ -55,7 +55,7 @@ open class Scope(val outer: Scope? = null) {
     fun addReference(node: VariableRefNode) {
         val name = node.boundName()
 
-        unlinkedRefNodes.add(node)
+        refNodes.add(node)
 
         node.targetVar = Variable(
             name,
@@ -113,12 +113,41 @@ open class Scope(val outer: Scope? = null) {
     }
 
     open fun onFinish() {
-        // Process unlinked nodes before we do any slot assignment in onFinishImpl
         processUnlinkedNodes()
-
+        searchForUseBeforeDecl()
+        refNodes.clear()
         onFinishImpl()
     }
-    
+
+    private fun processUnlinkedNodes() {
+        // Attempt to connect any remaining global var references
+        for (node in refNodes) {
+            val variable = findDeclaredVariable(node.targetVar.name)
+            if (variable != null) {
+                node.targetVar = variable
+                if (node.scope.crossesFunctionBoundary(variable.source.scope)) {
+                    variable.isInlineable = false
+                }
+            }
+        }
+
+        childScopes.forEach(Scope::processUnlinkedNodes)
+    }
+
+    private fun searchForUseBeforeDecl() {
+        // TODO: Improving this is not trivial, but it would be nice
+
+        for (node in refNodes) {
+            val refStart = node.sourceStart.index
+            val varStart = node.targetVar.source.sourceStart.index
+
+            if (refStart < varStart)
+                node.targetVar.possiblyUsedBeforeDecl = true
+        }
+
+        childScopes.forEach(Scope::searchForUseBeforeDecl)
+    }
+
     private fun onFinishImpl() {
         // Assign each non-inlineable variable their own slot index.
         // Inlineable variables are handled during the IR phase
@@ -130,22 +159,6 @@ open class Scope(val outer: Scope? = null) {
         }
 
         childScopes.forEach(Scope::onFinishImpl)
-    }
-
-    private fun processUnlinkedNodes() {
-        // Attempt to connect any remaining global var references
-        for (node in unlinkedRefNodes) {
-            val variable = findDeclaredVariable(node.targetVar.name)
-            if (variable != null) {
-                node.targetVar = variable
-                if (node.scope.crossesFunctionBoundary(variable.source.scope)) {
-                    variable.isInlineable = false
-                }
-            }
-        }
-        unlinkedRefNodes.clear()
-
-        childScopes.forEach(Scope::processUnlinkedNodes)
     }
 }
 
@@ -171,6 +184,8 @@ data class Variable(
      * this is the slot index in its context.
      */
     var slot = -1
+
+    var possiblyUsedBeforeDecl = false
 
     enum class Mode {
         Declared,
