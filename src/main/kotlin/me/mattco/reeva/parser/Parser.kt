@@ -316,7 +316,9 @@ class Parser(val source: String) {
             } else null
 
             declarations.add(
-                Declaration(identifier, initializer).withPosition(start, lastConsumedToken.end)
+                Declaration(identifier, initializer)
+                    .withPosition(start, lastConsumedToken.end)
+                    .also { it.scope = scope }
             )
 
             if (match(TokenType.Comma)) {

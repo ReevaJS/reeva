@@ -6,7 +6,6 @@ import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.interpreter.InterpRuntime
 import me.mattco.reeva.ir.FunctionBuilder.*
-import me.mattco.reeva.parser.GlobalSourceNode
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
@@ -476,11 +475,7 @@ class IRTransformer : ASTVisitor {
             +LdaUndefined
         }
 
-        if (variable.isInlineable) {
-            +Star(variable.slot)
-        } else {
-            +StaCurrentEnv(variable.slot)
-        }
+        storeVariable(variable, declaration.scope)
     }
 
     override fun visitDebuggerStatement() {
@@ -501,14 +496,9 @@ class IRTransformer : ASTVisitor {
 
     override fun visitIdentifierReference(node: IdentifierReferenceNode) {
         val variable = node.targetVar
-        if (variable.mode == Variable.Mode.Global) {
-            +LdaGlobal(loadConstant(node.identifierName))
+        loadVariable(node.targetVar, node.scope)
+        if (node.targetVar.mode == Variable.Mode.Global)
             return
-        }
-
-        if (variable.isInlineable) {
-            +Ldar(variable.slot)
-        } else loadEnvVariableRef(variable, node.scope)
 
         val declarationStart = node.targetVar.source.sourceStart
         val useStart = node.sourceStart
@@ -692,11 +682,7 @@ class IRTransformer : ASTVisitor {
 
                 if (variable.possiblyUsedBeforeDecl) {
                     +LdaUndefined
-                    if (variable.isInlineable) {
-                        +Star(variable.slot)
-                    } else {
-                        +StaCurrentEnv(variable.slot)
-                    }
+                    storeVariable(variable, varDecl.scope)
                 }
             }
         }
@@ -712,11 +698,7 @@ class IRTransformer : ASTVisitor {
                 false, // TODO
             )
 
-            if (function.variable.isInlineable) {
-                +Star(function.variable.slot)
-            } else {
-                +StaCurrentEnv(function.variable.slot)
-            }
+            storeVariable(function.variable, function.scope)
         }
     }
 
@@ -902,12 +884,7 @@ class IRTransformer : ASTVisitor {
                     return
 
                 loadRhsIntoAcc()
-
-                when {
-                    lhs.targetVar.isInlineable -> +Star(lhs.targetVar.slot)
-                    lhs.targetVar.source !is GlobalSourceNode -> storeEnvVariableRef(lhs.targetVar, lhs.scope)
-                    else -> +StaGlobal(loadConstant(lhs.targetVar.name))
-                }
+                storeVariable(lhs.targetVar, lhs.scope)
 
                 return
             }
@@ -935,6 +912,22 @@ class IRTransformer : ASTVisitor {
                 markRegFree(objectReg)
             }
             else -> TODO()
+        }
+    }
+
+    private fun loadVariable(variable: Variable, currentScope: Scope) {
+        when {
+            variable.mode == Variable.Mode.Global -> +LdaGlobal(loadConstant(variable.name))
+            variable.isInlineable -> +Ldar(variable.slot)
+            else -> loadEnvVariableRef(variable, currentScope)
+        }
+    }
+
+    private fun storeVariable(variable: Variable, currentScope: Scope) {
+        when {
+            variable.mode == Variable.Mode.Global -> +StaGlobal(loadConstant(variable.name))
+            variable.isInlineable -> +Star(variable.slot)
+            else -> storeEnvVariableRef(variable, currentScope)
         }
     }
 

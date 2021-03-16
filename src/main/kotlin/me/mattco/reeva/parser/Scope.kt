@@ -184,7 +184,7 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
 
 class ClassScope(outer: Scope? = null) : Scope(outer)
 
-class ModuleScope(outer: Scope? = null) : HoistingScope(outer)
+class ModuleScope : HoistingScope(null)
 
 data class Variable(
     val name: String,
@@ -202,6 +202,8 @@ data class Variable(
     var slot = -1
 
     var possiblyUsedBeforeDecl = false
+
+    val scope: Scope get() = source.scope
 
     enum class Mode {
         Declared,
