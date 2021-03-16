@@ -326,7 +326,10 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             is TestInstanceOf -> {
                 accumulator = Operations.instanceofOperator(registers[opcode.targetReg], accumulator)
             }
-            is TestIn -> TODO()
+            is TestIn -> {
+                val rval = registers[opcode.targetReg].toPropertyKey()
+                accumulator = Operations.hasProperty(accumulator, rval).toValue()
+            }
             TestNullish -> {
                 accumulator = accumulator.let {
                     it == JSNull || it == JSUndefined
