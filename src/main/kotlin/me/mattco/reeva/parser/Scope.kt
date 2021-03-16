@@ -113,11 +113,13 @@ open class Scope(val outer: Scope? = null) {
     }
 
     open fun onFinish() {
-        // Process unlinked nodes before we do any slot assignment
-
+        // Process unlinked nodes before we do any slot assignment in onFinishImpl
         processUnlinkedNodes()
-        childScopes.forEach(Scope::processUnlinkedNodes)
 
+        onFinishImpl()
+    }
+    
+    private fun onFinishImpl() {
         // Assign each non-inlineable variable their own slot index.
         // Inlineable variables are handled during the IR phase
         declaredVariables.filter {
@@ -127,7 +129,7 @@ open class Scope(val outer: Scope? = null) {
             numSlots++
         }
 
-        childScopes.forEach(Scope::onFinish)
+        childScopes.forEach(Scope::onFinishImpl)
     }
 
     private fun processUnlinkedNodes() {
@@ -142,6 +144,8 @@ open class Scope(val outer: Scope? = null) {
             }
         }
         unlinkedRefNodes.clear()
+
+        childScopes.forEach(Scope::processUnlinkedNodes)
     }
 }
 
