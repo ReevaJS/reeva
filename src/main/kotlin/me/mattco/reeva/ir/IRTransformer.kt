@@ -917,7 +917,11 @@ class IRTransformer : ASTVisitor {
 
     private fun loadVariable(variable: Variable, currentScope: Scope) {
         when {
-            variable.mode == Variable.Mode.Global -> +LdaGlobal(loadConstant(variable.name))
+            variable.mode == Variable.Mode.Global -> {
+                if (variable.name == "undefined") {
+                    +LdaUndefined
+                } else +LdaGlobal(loadConstant(variable.name))
+            }
             variable.isInlineable -> +Ldar(variable.slot)
             else -> loadEnvVariableRef(variable, currentScope)
         }
