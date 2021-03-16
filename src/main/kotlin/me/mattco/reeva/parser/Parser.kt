@@ -121,7 +121,7 @@ class Parser(val source: String) {
     fun parseScript(): ScriptNode {
         initLexer()
 
-        val globalScope = HoistingScope()
+        val globalScope = GlobalScope()
         scope = globalScope
         scope.globalScope = scope
 
@@ -732,7 +732,7 @@ class Parser(val source: String) {
             it.variable = Variable(
                 identifier.identifierName,
                 Variable.Type.Var,
-                Variable.Mode.Declared,
+                it.scope.declaredVarMode,
                 it
             )
             declarationScope.addDeclaredVariable(it.variable)
@@ -976,7 +976,7 @@ class Parser(val source: String) {
 
     private fun parseBindingIdentifier(
         varType: Variable.Type = Variable.Type.Var,
-        varMode: Variable.Mode = Variable.Mode.Declared,
+        varMode: Variable.Mode = scope.declaredVarMode,
         addVar: Boolean = true,
     ): BindingIdentifierNode = nps {
         BindingIdentifierNode(parseIdentifier()).also {

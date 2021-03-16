@@ -2,7 +2,6 @@ package me.mattco.reeva.parser
 
 import me.mattco.reeva.ast.VariableRefNode
 import me.mattco.reeva.ast.VariableSourceNode
-import me.mattco.reeva.utils.expect
 
 open class Scope(val outer: Scope? = null) {
     val childScopes = mutableListOf<Scope>()
@@ -27,6 +26,8 @@ open class Scope(val outer: Scope? = null) {
 
     val requiresEnv: Boolean get() = numSlots > 0
 
+    open val declaredVarMode = Variable.Mode.Declared
+
     val isStrict: Boolean by lazy {
         firstParentOfType<HoistingScope>().hasUseStrictDirective
     }
@@ -45,8 +46,6 @@ open class Scope(val outer: Scope? = null) {
     }
 
     fun addDeclaredVariable(variable: Variable) {
-        expect(variable.mode != Variable.Mode.Global)
-
         if (variable.type != Variable.Type.Var || this is HoistingScope) {
            _declaredVariables.add(variable)
         } else {
@@ -184,7 +183,11 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
 
 class ClassScope(outer: Scope? = null) : Scope(outer)
 
-class ModuleScope : HoistingScope(null)
+open class GlobalScope : HoistingScope() {
+    override val declaredVarMode = Variable.Mode.Global
+}
+
+class ModuleScope : GlobalScope()
 
 data class Variable(
     val name: String,

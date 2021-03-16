@@ -214,17 +214,25 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                 if (accumulator == JSUndefined)
                     Errors.UnknownReference(name.key()).throwReferenceError()
             }
+            is StaGlobal -> {
+                val name = loadConstant<String>(opcode.nameCpIndex)
+                globalEnv.extension().set(name.key(), accumulator)
+            }
             is LdaCurrentEnv -> {
+                expect(currentEnv !is GlobalEnvRecord)
                 accumulator = currentEnv.getBinding(opcode.slot)
             }
             is StaCurrentEnv -> {
+                expect(currentEnv !is GlobalEnvRecord)
                 currentEnv.setBinding(opcode.slot, accumulator)
             }
             is LdaEnv -> {
+                expect(currentEnv !is GlobalEnvRecord)
                 val envIndex = envStack.lastIndex - opcode.depthOffset
                 accumulator = envStack[envIndex].getBinding(opcode.slot)
             }
             is StaEnv -> {
+                expect(currentEnv !is GlobalEnvRecord)
                 val envIndex = envStack.lastIndex - opcode.depthOffset
                 envStack[envIndex].setBinding(opcode.slot, accumulator)
             }
