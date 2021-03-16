@@ -14,12 +14,8 @@ import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.utils.Errors
-import me.mattco.reeva.utils.expect
-import me.mattco.reeva.utils.toValue
-import me.mattco.reeva.utils.unreachable
+import me.mattco.reeva.utils.*
 import java.io.File
-import kotlin.system.exitProcess
 
 fun main() {
     val script = File("./demo/index.js").readText()
@@ -83,8 +79,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             }
         } catch (e: Throwable) {
             println("Exception in FunctionInfo ${info.name} (length=${info.code.size}), opcode ${ip - 1}")
-            e.printStackTrace()
-            exitProcess(1)
+            throw e
         }
 
         return if (exception != null) {
@@ -216,6 +211,8 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             is LdaGlobal -> {
                 val name = loadConstant<String>(opcode.nameCpIndex)
                 accumulator = globalEnv.extension().get(name)
+                if (accumulator == JSUndefined)
+                    Errors.UnknownReference(name.key()).throwReferenceError()
             }
             is LdaCurrentEnv -> {
                 accumulator = currentEnv.getBinding(opcode.slot)
