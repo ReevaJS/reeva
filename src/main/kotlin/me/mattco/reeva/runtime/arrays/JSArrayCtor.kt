@@ -30,13 +30,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        val realNewTarget = arguments.newTarget.let {
-            if (it is JSUndefined) {
-                // TODO: "If NewTarget is undefined, let newTarget be the active function
-                //  object; else let newTarget be NewTarget."
-                JSUndefined
-            } else it
-        }
+        val realNewTarget = arguments.newTarget.ifUndefined(this)
 
         val proto = Operations.getPrototypeFromConstructor(realNewTarget, realm.arrayProto)
 
