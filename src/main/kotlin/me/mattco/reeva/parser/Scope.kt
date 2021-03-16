@@ -5,7 +5,7 @@ import me.mattco.reeva.ast.VariableSourceNode
 import me.mattco.reeva.utils.expect
 
 open class Scope(val outer: Scope? = null) {
-    private val childScopes = mutableListOf<Scope>()
+    val childScopes = mutableListOf<Scope>()
     var globalScope: Scope? = null
 
     private val _declaredVariables = mutableListOf<Variable>()
@@ -19,17 +19,19 @@ open class Scope(val outer: Scope? = null) {
         get() = declaredVariables.filterNot { it.isInlineable }
 
     // Variables that have yet to be connected to their source
-    private val refNodes = mutableListOf<VariableRefNode>()
+    val refNodes = mutableListOf<VariableRefNode>()
 
     // How many slots the EnvRecord associated with this Scope requires
     var numSlots: Int = 0
-        private set
+        protected set
 
     val requiresEnv: Boolean get() = numSlots > 0
 
     val isStrict: Boolean by lazy {
         firstParentOfType<HoistingScope>().hasUseStrictDirective
     }
+
+    var possiblyReferencesArguments = false
 
     init {
         @Suppress("LeakingThis")
@@ -112,7 +114,7 @@ open class Scope(val outer: Scope? = null) {
         return false
     }
 
-    open fun onFinish() {
+    fun onFinish() {
         processUnlinkedNodes()
         searchForUseBeforeDecl()
         refNodes.clear()
@@ -148,7 +150,7 @@ open class Scope(val outer: Scope? = null) {
         childScopes.forEach(Scope::searchForUseBeforeDecl)
     }
 
-    private fun onFinishImpl() {
+    protected open fun onFinishImpl() {
         // Assign each non-inlineable variable their own slot index.
         // Inlineable variables are handled during the IR phase
         declaredVariables.filter {
@@ -164,6 +166,20 @@ open class Scope(val outer: Scope? = null) {
 
 open class HoistingScope(outer: Scope? = null) : Scope(outer) {
     var hasUseStrictDirective: Boolean = false
+
+    override fun onFinishImpl() {
+        possiblyReferencesArguments = searchForArgumentsReference(this)
+        super.onFinishImpl()
+    }
+
+    private fun searchForArgumentsReference(scope: Scope): Boolean {
+        for (node in scope.refNodes) {
+            if (node.boundName() == "arguments" && node.targetVar.mode == Variable.Mode.Global)
+                return true
+        }
+
+        return scope.childScopes.filter { it !is HoistingScope }.any { searchForArgumentsReference(it) }
+    }
 }
 
 class ClassScope(outer: Scope? = null) : Scope(outer)

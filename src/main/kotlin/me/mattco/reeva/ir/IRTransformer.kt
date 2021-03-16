@@ -623,7 +623,7 @@ class IRTransformer : ASTVisitor {
             else -> true
         }
 
-        if (argumentsObjectNeeded) {
+        if (argumentsObjectNeeded && bodyScope.possiblyReferencesArguments) {
             if (isStrict || !simpleParameterList) {
                 +CreateUnmappedArgumentsObject
             } else {
