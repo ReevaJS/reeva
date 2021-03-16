@@ -5,22 +5,6 @@ import me.mattco.reeva.utils.isIdContinue
 import me.mattco.reeva.utils.isIdStart
 import java.io.File
 
-fun main() {
-//    val source = File("./demo/test262.js").readText()
-//    val lexer = Lexer(source)
-//    runBlocking {
-//        val p = lexer.tokens()
-//
-//        p.collect { println(it) }
-//    }
-
-//     222.2
-    val source = File("./demo/test262.js").readText()
-    simpleMeasureTest(30, 20, 10) {
-
-    }
-}
-
 class Lexer(private val source: String) {
     private var lineNum = 0
     private var columnNum = 0

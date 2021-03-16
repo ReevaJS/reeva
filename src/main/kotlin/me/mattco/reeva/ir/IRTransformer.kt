@@ -15,13 +15,6 @@ import java.io.File
 import java.math.BigInteger
 import kotlin.math.floor
 
-fun main() {
-    val source = File("./demo/index.js").readText()
-    val ast = Parser(source).parseScript()
-    val info = IRTransformer().transform(ast)
-    OpcodePrinter.printFunctionInfo(info)
-}
-
 class FunctionInfo(
     val name: String?,
     val code: Array<Opcode>,

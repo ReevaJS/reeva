@@ -2,103 +2,98 @@ package me.mattco.reeva.test262
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.*
-import me.mattco.reeva.runtime.functions.JSFunction
-import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
-import me.mattco.reeva.runtime.primitives.JSUndefined
+import me.mattco.reeva.core.EvaluationResult
+import me.mattco.reeva.runtime.toJSString
+import me.mattco.reeva.runtime.toPrintableString
 import java.io.File
 
-val outDirectory = File("./demo/out/")
-val indexFile = File("./demo/index.js")
-val test262HarnessFile = File("./demo/test262.js")
-
-interface JVMToJSConverter {
-    fun isConvertible(value: Any): Boolean = true
-
-    fun convert(value: Any): JSValue
-}
-
-interface JSToJVMConverter {
-    fun isConvertible(value: JSValue): Boolean = true
-
-    fun convert(value: JSValue): Any
-}
-
 fun main() {
-    // CT example
-
-    val script = "..."
+    val test262 = File("./demo/test262.js").readText()
+    val script = File("./demo/index.js").readText()
 
     Reeva.setup()
 
-    val agent = Agent().apply {
-//        allowWithStatement = false
-//        allowEvalFunction = false
-//        allowNewFunction = true
-//        errorReporter = SomeErrorReporterClass(Console.out)
-//
-//        debugOutput.emitAST = true
-//        debugOutput.emitIR = true
-//        debugOutput.emitClassFiles = true
-//        debugOutput.path = File("./dump")
-    }
-
-    class CTGlobalObject(realm: Realm) : JSGlobalObject(realm) {
-        private val triggers = mutableMapOf<String, MutableList<JSFunction>>()
-
-        override fun init() {
-            super.init()
-
-            defineNativeFunction("register", 2, 0, ::register)
-        }
-
-        private fun register(arguments: JSArguments): JSValue {
-            val triggerType = arguments.argument(0).toJSString().string
-            val function = arguments.argument(1)
-            if (!function.isCallable)
-                TODO()
-
-            if (triggerType !in triggers)
-                triggers[triggerType] = mutableListOf()
-
-            triggers[triggerType]!!.add(function as JSFunction)
-            return JSUndefined
-        }
-
-        fun trigger(type: String) {
-            triggers[type]?.forEach {
-                it.call(JSArguments(listOf(), this))
-            }
-        }
-    }
+    val agent = Agent()
 
     Reeva.setAgent(agent)
-    val realm = Reeva.makeRealm {
-        JSGlobalObject.create(it).initialize()
+    val realm = Reeva.makeRealm()
+
+    when (val result = agent.run(test262, realm)) {
+        is EvaluationResult.ParseFailure -> println("\u001b[31m[test262] Parse failure: ${result.value}\u001B[0m")
+        is EvaluationResult.RuntimeError -> agent.withRealm(realm) {
+            println("\u001b[31m[test262] ${result.value.toJSString()}\u001B[0m")
+        }
     }
 
-    agent.run(script, realm)
+    agent.printIR = true
+
+    when (val result = agent.run(script, realm)) {
+        is EvaluationResult.ParseFailure -> println("\u001b[31mParse failure: ${result.value}\u001B[0m")
+        is EvaluationResult.RuntimeError -> agent.withRealm(realm) {
+            println("\u001b[31m${result.value.toJSString()}\u001B[0m")
+        }
+        else -> println(result.value.toPrintableString())
+    }
 
     Reeva.teardown()
-
-
-//    val realm = Reeva.makeRealm()
-//    val test262Result = Reeva.evaluateScript(test262HarnessFile.readText(), realm)
-//
-//    Reeva.with(realm) {
-//        if (test262Result.isError)
-//            println("\u001b[31m[test262] ${Operations.toString(test262Result.value).string}\u001B[0m")
-//    }
-//
-//    val result = Reeva.evaluateModule(indexFile, realm)
-//
-//    Reeva.with(realm) {
-//        if (result.isError) {
-//            println("\u001b[31m${Operations.toString(result.value).string}\u001B[0m")
-//        } else if (!result.value.isUndefined) {
-//            println(Operations.toPrintableString(result.value))
-//        }
-//    }
-
 }
+
+// PARSER BENCHMARK
+//// https://gist.github.com/olegcherr/b62a09aba1bff643a049
+//fun simpleMeasureTest(
+//    ITERATIONS: Int = 1000,
+//    TEST_COUNT: Int = 10,
+//    WARM_COUNT: Int = 2,
+//    callback: () -> Unit
+//) {
+//    val results = ArrayList<Long>()
+//    var totalTime = 0L
+//    var t = 0
+//
+//    println("$PRINT_REFIX -> go")
+//
+//    while (++t <= TEST_COUNT + WARM_COUNT) {
+//        val startTime = System.currentTimeMillis()
+//
+//        var i = 0
+//        while (i++ < ITERATIONS)
+//            callback()
+//
+//        if (t <= WARM_COUNT) {
+//            println("$PRINT_REFIX Warming $t of $WARM_COUNT")
+//            continue
+//        }
+//
+//        val time = System.currentTimeMillis() - startTime
+//        println(PRINT_REFIX+" "+time.toString()+"ms")
+//
+//        results.add(time)
+//        totalTime += time
+//    }
+//
+//    val average = totalTime / TEST_COUNT
+//    val median = results.sorted()[results.size / 2]
+//
+//    println("$PRINT_REFIX -> average=${average}ms / median=${median}ms")
+//}
+//
+///**
+// * Used to filter console messages easily
+// */
+//private val PRINT_REFIX = "[TimeTest]"
+//
+//fun main() {
+//    val source = File("./demo/index.js").readText()
+//
+//    try {
+////        simpleMeasureTest(30, 20, 10) {
+////            Parser(source).parseScript()
+////        }
+//        val ast = Parser(source).parseScript()
+//        ast.debugPrint()
+//    } catch (e: Parser.ParsingException) {
+//        ErrorReporter.prettyPrintError(source, e)
+//    } finally {
+//        Reeva.teardown()
+//    }
+//}

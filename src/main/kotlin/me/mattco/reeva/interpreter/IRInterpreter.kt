@@ -17,29 +17,6 @@ import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.*
 import java.io.File
 
-fun main() {
-    val script = File("./demo/index.js").readText()
-
-    Reeva.setup()
-
-    val agent = Agent().apply {
-        printIR = true
-    }
-
-    Reeva.setAgent(agent)
-    val realm = Reeva.makeRealm()
-
-    when (val result = agent.run(script, realm)) {
-        is EvaluationResult.ParseFailure -> println("\u001b[31mParse failure: ${result.value}\u001B[0m")
-        is EvaluationResult.RuntimeError -> agent.withRealm(realm) {
-            println("\u001b[31m${result.value.toJSString()}\u001B[0m")
-        }
-        else -> println(result.value.toPrintableString())
-    }
-
-    Reeva.teardown()
-}
-
 class IRInterpreter(private val function: IRFunction, private val arguments: List<JSValue>) {
     private val globalEnv: GlobalEnvRecord
 
