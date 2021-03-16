@@ -248,7 +248,7 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                 val target = registers[opcode.targetReg]
                 if (!Operations.isConstructor(target))
                     Errors.NotACtor(target.toJSString().string).throwTypeError()
-                
+
                 accumulator = Operations.construct(
                     target,
                     emptyList(),
@@ -551,8 +551,10 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
         }
 
         init {
-            arguments.forEachIndexed { index, value ->
-                registers[index] = value
+            for ((index, argument) in arguments.withIndex()) {
+                if (index >= info.argCount)
+                    break
+                registers[index] = argument
             }
         }
 
