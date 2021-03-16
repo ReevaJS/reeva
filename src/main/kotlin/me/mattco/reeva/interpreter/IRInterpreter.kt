@@ -210,9 +210,9 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             }
             is LdaGlobal -> {
                 val name = loadConstant<String>(opcode.nameCpIndex)
-                accumulator = globalEnv.extension().get(name)
-                if (accumulator == JSUndefined)
-                    Errors.UnknownReference(name.key()).throwReferenceError()
+                val desc = globalEnv.extension().getPropertyDescriptor(name.key())
+                    ?: Errors.UnknownReference(name.key()).throwReferenceError()
+                accumulator = desc.getActualValue(globalEnv.extension())
             }
             is StaGlobal -> {
                 val name = loadConstant<String>(opcode.nameCpIndex)

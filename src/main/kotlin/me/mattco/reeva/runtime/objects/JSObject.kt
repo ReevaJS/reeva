@@ -1,7 +1,6 @@
 package me.mattco.reeva.runtime.objects
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
@@ -126,6 +125,15 @@ open class JSObject protected constructor(
 
     open fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
         return internalGet(property)
+    }
+
+    fun getPropertyDescriptor(property: PropertyKey): Descriptor? {
+        return getOwnPropertyDescriptor(property) ?: let {
+            val parent = getPrototype()
+            if (parent != JSNull) {
+                (parent as JSObject).getPropertyDescriptor(property)
+            } else null
+        }
     }
 
     fun getOwnProperty(property: String) = getOwnProperty(property.key())
