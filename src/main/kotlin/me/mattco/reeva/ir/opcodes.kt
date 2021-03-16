@@ -467,6 +467,10 @@ class ThrowUseBeforeInitIfEmpty(val nameCpIndex: Int) : Opcode()
  * OTHER *
  *********/
 
+class DefineGetterProperty(val objectReg: Int, val propertyReg: Int, val getterReg: Int) : Opcode()
+
+class DefineSetterProperty(val objectReg: Int, val propertyReg: Int, val setterReg: Int) : Opcode()
+
 /**
  * Declare globals names
  */

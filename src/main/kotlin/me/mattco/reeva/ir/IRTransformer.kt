@@ -6,12 +6,10 @@ import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.interpreter.InterpRuntime
 import me.mattco.reeva.ir.FunctionBuilder.*
-import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
-import java.io.File
 import java.math.BigInteger
 import kotlin.math.floor
 
@@ -1330,7 +1328,7 @@ class IRTransformer : ASTVisitor {
                 is MethodProperty -> {
                     val method = property.method
 
-                    storeObjectProperty(objectReg, method.propName) {
+                    fun makeFunction() {
                         // TODO: This probably isn't correct
                         val functionNode = FunctionExpressionNode(
                             null,
@@ -1341,6 +1339,29 @@ class IRTransformer : ASTVisitor {
                         )
                         functionNode.scope = method.scope
                         visitFunctionExpression(functionNode)
+                    }
+
+                    when (method.type) {
+                        MethodDefinitionNode.Type.Normal -> storeObjectProperty(objectReg, method.propName, ::makeFunction)
+                        MethodDefinitionNode.Type.Getter, MethodDefinitionNode.Type.Setter -> {
+                            val propertyReg = nextFreeReg()
+                            val methodReg = nextFreeReg()
+                            val op = if (method.type == MethodDefinitionNode.Type.Getter) {
+                                ::DefineGetterProperty
+                            } else ::DefineSetterProperty
+
+                            visitPropertyName(method.propName)
+                            +Star(propertyReg)
+
+                            makeFunction()
+                            +Star(methodReg)
+
+                            +op(objectReg, propertyReg, methodReg)
+
+                            markRegFree(propertyReg)
+                            markRegFree(methodReg)
+                        }
+                        else -> TODO()
                     }
                 }
                 is ShorthandProperty -> {
@@ -1357,6 +1378,12 @@ class IRTransformer : ASTVisitor {
 
         +Ldar(objectReg)
         markRegFree(objectReg)
+    }
+
+    private fun visitPropertyName(property: PropertyName) {
+        if (property.type == PropertyName.Type.Identifier) {
+            +LdaConstant(loadConstant((property.expression as IdentifierNode).identifierName))
+        } else visit(property.expression)
     }
 
     private fun storeObjectProperty(objectReg: Int, property: PropertyName, valueProducer: () -> Unit) {

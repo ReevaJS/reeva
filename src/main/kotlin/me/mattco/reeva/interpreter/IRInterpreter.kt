@@ -1,7 +1,5 @@
 package me.mattco.reeva.interpreter
 
-import me.mattco.reeva.Reeva
-import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.EvaluationResult
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
@@ -11,11 +9,11 @@ import me.mattco.reeva.ir.*
 import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.functions.JSFunction
+import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.*
-import java.io.File
 
 class IRInterpreter(private val function: IRFunction, private val arguments: List<JSValue>) {
     private val globalEnv: GlobalEnvRecord
@@ -399,6 +397,18 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             Return -> {
                 isDone = true
             }
+            is DefineGetterProperty -> defineAccessor(
+                registers[opcode.objectReg] as JSObject,
+                registers[opcode.propertyReg],
+                registers[opcode.getterReg] as JSFunction,
+                isGetter = true,
+            )
+            is DefineSetterProperty -> defineAccessor(
+                registers[opcode.objectReg] as JSObject,
+                registers[opcode.propertyReg],
+                registers[opcode.setterReg] as JSFunction,
+                isGetter = false,
+            )
             is DeclareGlobals -> {
                 val array = loadConstant<DeclarationsArray>(opcode.declarationCpIndex)
                 declareGlobals(array)
@@ -422,6 +432,18 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             DebugBreakpoint -> TODO()
             else -> TODO("Unrecognized opcode: ${opcode::class.simpleName}")
         }
+    }
+
+    private fun defineAccessor(obj: JSObject, property: JSValue, method: JSFunction, isGetter: Boolean) {
+        val key = property.toPropertyKey()
+        Operations.setFunctionName(method, key, if (isGetter) "get" else "set")
+        val accessor = if (isGetter) JSAccessor(method, null) else JSAccessor(null, method)
+
+        Operations.definePropertyOrThrow(
+            obj,
+            key,
+            Descriptor(accessor, Descriptor.CONFIGURABLE or Descriptor.ENUMERABLE)
+        )
     }
 
     private fun binaryOp(lhs: Int, op: String) {
