@@ -600,8 +600,10 @@ class IRTransformer : ASTVisitor {
         val simpleParameterList = parameters.isSimple()
         val hasParameterExpressions = parameters.any { it.initializer != null }
 
-        val varDecls = bodyScope.declaredVariables.filter { it.type == Variable.Type.Var }.map { it.source }
         val lexNames = bodyScope.declaredVariables.filter { it.type != Variable.Type.Var }.map { it.name }
+        val varDecls = bodyScope.declaredVariables.filter {
+            it.type == Variable.Type.Var && it.mode != Variable.Mode.Parameter
+        }.map { it.source }
 
         val functionNames = mutableSetOf<String>()
         val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
