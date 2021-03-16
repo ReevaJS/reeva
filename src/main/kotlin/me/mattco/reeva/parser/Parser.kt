@@ -1610,6 +1610,9 @@ class Parser(val source: String) {
             TokenType.Void -> UnaryExpressionNode(expression, UnaryOperator.Void)
             TokenType.Delete -> UnaryExpressionNode(expression, UnaryOperator.Delete)
             else -> unreachable()
+        }.also {
+            if (it is UnaryExpressionNode)
+                it.scope = scope
         }
     }
 

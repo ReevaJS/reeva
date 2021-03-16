@@ -197,8 +197,22 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             TypeOf -> {
                 accumulator = Operations.typeofOperator(accumulator)
             }
-            is DeletePropertyStrict -> TODO()
-            is DeletePropertySloppy -> TODO()
+            is DeletePropertySloppy -> {
+                val target = registers[opcode.targetReg]
+                accumulator = if (target is JSObject) {
+                    target.delete(accumulator.toPropertyKey()).toValue()
+                } else JSTrue
+            }
+            is DeletePropertyStrict -> {
+                val target = registers[opcode.targetReg]
+                if (target is JSObject) {
+                    val key = accumulator.toPropertyKey()
+                    if (!target.delete(key))
+                        Errors.StrictModeFailedDelete(key, target.toJSString().string)
+                }
+
+                accumulator = JSTrue
+            }
             is LdaGlobal -> {
                 val name = loadConstant<String>(opcode.nameCpIndex)
                 accumulator = globalEnv.extension().get(name)

@@ -3,8 +3,11 @@ package me.mattco.reeva.ast.expressions
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.ASTNodeBase
 import me.mattco.reeva.ast.ExpressionNode
+import me.mattco.reeva.ast.NodeWithScope
 
-class UnaryExpressionNode(val expression: ExpressionNode, val op: UnaryOperator) : ASTNodeBase(listOf(expression)), ExpressionNode {
+// This is a NodeWithScope because the delete operator needs to know whether or not
+// it is in strict-mode code
+class UnaryExpressionNode(val expression: ExpressionNode, val op: UnaryOperator) : NodeWithScope(listOf(expression)), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()

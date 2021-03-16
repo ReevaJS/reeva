@@ -836,16 +836,44 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitUnaryExpression(node: UnaryExpressionNode) {
+        if (node.op == UnaryOperator.Delete) {
+            when (val expr = node.expression) {
+                is IdentifierReferenceNode -> +LdaFalse
+                !is MemberExpressionNode -> +LdaTrue
+                else -> if (expr.type == MemberExpressionNode.Type.Tagged) {
+                    +LdaTrue
+                } else {
+                    visit(expr.lhs)
+                    val target = nextFreeReg()
+                    +Star(target)
+
+                    if (expr.type == MemberExpressionNode.Type.Computed) {
+                        visit(expr.rhs)
+                    } else {
+                        +LdaConstant(loadConstant((expr.rhs as IdentifierNode).identifierName))
+                    }
+
+                    if (node.scope.isStrict) {
+                        +DeletePropertyStrict(target)
+                    } else +DeletePropertySloppy(target)
+
+                    markRegFree(target)
+                }
+            }
+
+            return
+        }
+
         visit(node.expression)
 
         when (node.op) {
-            UnaryOperator.Delete -> TODO()
             UnaryOperator.Void -> +LdaUndefined
             UnaryOperator.Typeof -> +TypeOf
             UnaryOperator.Plus -> TODO()
             UnaryOperator.Minus -> +Negate
             UnaryOperator.BitwiseNot -> +BitwiseNot
             UnaryOperator.Not -> +ToBooleanLogicalNot
+            else -> unreachable()
         }
     }
 
