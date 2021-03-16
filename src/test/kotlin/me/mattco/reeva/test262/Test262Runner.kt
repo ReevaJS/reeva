@@ -18,13 +18,16 @@ import java.time.LocalDateTime
 class Test262Runner {
     @TestFactory
     fun test262testProvider(): List<DynamicTest> {
-        return (targetDirectory ?: testDirectory).walkTopDown().onEnter {
+        val target = target ?: testDirectory
+        val files = if (!target.isDirectory) listOf(target) else target.walkTopDown().onEnter {
             it.name != "intl402" && it.name != "annexB"
         }.filter {
             !it.isDirectory && !it.name.endsWith("_FIXTURE.js") &&
                 "S13.2.1_A1_T1.js" !in it.name && // the nested function call test
                 "S7.8.5_A2.1_T2.js" !in it.name // a regexp test that hangs
-        }.toList().sortedBy { it.absolutePath }.map { file ->
+        }.toList().sortedBy { it.absolutePath }
+
+        return files.map { file ->
             val name = file.absolutePath.replace(testDirectory.absolutePath, "")
             val contents = file.readText()
 
@@ -59,8 +62,8 @@ class Test262Runner {
         val testDirectory = File(test262Directory, "test")
         val testDirectoryStr = testDirectory.absolutePath
         val harnessDirectory = File(test262Directory, "harness")
-//        val targetDirectory: File? = File(testDirectory, "language/statements/break")
-        val targetDirectory: File? = null
+//        val target: File? = File(testDirectory, "built-ins/Array")
+        val target: File? = null
         lateinit var pretestScript: String
 
         val testResults = mutableListOf<TestResult>()
