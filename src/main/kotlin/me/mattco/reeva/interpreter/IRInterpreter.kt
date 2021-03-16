@@ -245,15 +245,23 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
                 accumulator = InterpRuntime.values()[opcode.id].function(args)
             }
             is Construct0 -> {
+                val target = registers[opcode.targetReg]
+                if (!Operations.isConstructor(target))
+                    Errors.NotACtor(target.toJSString().string).throwTypeError()
+                
                 accumulator = Operations.construct(
-                    registers[opcode.targetReg],
+                    target,
                     emptyList(),
                     accumulator
                 )
             }
             is Construct -> {
+                val target = registers[opcode.targetReg]
+                if (!Operations.isConstructor(target))
+                    Errors.NotACtor(target.toJSString().string).throwTypeError()
+
                 accumulator = Operations.construct(
-                    registers[opcode.targetReg],
+                    target,
                     getRegisterBlock(opcode.firstArgReg, opcode.argCount),
                     accumulator
                 )
