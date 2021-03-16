@@ -6,6 +6,7 @@ import me.mattco.reeva.core.EvaluationResult
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.modules.resolver.DefaultModuleResolver
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.toJSString
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assumptions
 import org.opentest4j.AssertionFailedError
@@ -120,11 +121,17 @@ class Test262Test(
         if (shouldErrorDuringParse || shouldErrorDuringRuntime) {
             if (shouldErrorDuringParse) {
                 Assertions.assertTrue(testResult is EvaluationResult.ParseFailure) {
-                    "Expected EvaluationResult.ParseFailure, but received EvaluationResult.${testResult::class.simpleName}{$testResult}"
+                    val str = agent.withRealm(realm) {
+                        testResult.value.toJSString()
+                    }
+                    "Expected EvaluationResult.ParseFailure, but received EvaluationResult.${testResult::class.simpleName}{$str}"
                 }
             } else {
                 Assertions.assertTrue(testResult is EvaluationResult.RuntimeError) {
-                    "Expected EvaluationResult.RuntimeError, but received EvaluationResult.${testResult::class.simpleName}{$testResult}"
+                    val str = agent.withRealm(realm) {
+                        testResult.value.toJSString()
+                    }
+                    "Expected EvaluationResult.RuntimeError, but received EvaluationResult.${testResult::class.simpleName}{$str}"
                 }
             }
 
@@ -136,7 +143,10 @@ class Test262Test(
             }
         } else {
             Assertions.assertTrue(testResult is EvaluationResult.Success) {
-                "Expected EvaluationResult.Success, but received EvaluationResult.${testResult::class.simpleName}{$testResult}"
+                val str = agent.withRealm(realm) {
+                    testResult.value.toJSString()
+                }
+                "Expected EvaluationResult.Success, but received EvaluationResult.${testResult::class.simpleName}{$str}"
             }
         }
     }
