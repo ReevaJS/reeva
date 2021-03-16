@@ -175,8 +175,18 @@ class IRInterpreter(private val function: IRFunction, private val arguments: Lis
             Dec -> {
                 accumulator = JSNumber(accumulator.asInt - 1)
             }
-            Negate -> TODO()
-            BitwiseNot -> TODO()
+            Negate -> {
+                val expr = accumulator.toNumeric()
+                accumulator = if (expr is JSBigInt) {
+                    Operations.bigintUnaryMinus(expr)
+                } else Operations.numericUnaryMinus(accumulator)
+            }
+            BitwiseNot -> {
+                val expr = accumulator.toNumeric()
+                accumulator = if (expr is JSBigInt) {
+                    Operations.bigintBitwiseNOT(expr)
+                } else Operations.numericBitwiseNOT(accumulator)
+            }
             is TemplateAppend -> {
                 val template = registers[opcode.templateReg] as JSString
                 registers[opcode.templateReg] = JSString(
