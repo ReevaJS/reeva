@@ -1,501 +1,761 @@
 package me.mattco.reeva.ir
 
-import me.mattco.reeva.interpreter.InterpRuntime
+import me.mattco.reeva.utils.expect
 
-sealed class Opcode
+data class RegisterRange(val start: Int, val count: Int) {
+    val end: Int get() = start + count - 1
 
-/*************
- * CONSTANTS *
- *************/
+    init {
+        expect(start >= 0)
+        expect(count >= 0)
+    }
 
-object LdaZero: Opcode()
-object LdaUndefined : Opcode()
-object LdaNull : Opcode()
-object LdaTrue : Opcode()
-object LdaFalse : Opcode()
-class LdaConstant(val cpIndex: Int) : Opcode()
-class LdaInt(val int: Int) : Opcode()
-class LdaDouble(val double: Double) : Opcode()
+    fun drop(n: Int) = RegisterRange(start + n, count - n)
 
-/***********************
- * REGISTER OPERATIONS *
- ***********************/
-
-/**
- * Load the register [reg] into the accumulator
- */
-class Ldar(val reg: Int) : Opcode()
-
-/**
- * Store the accumulator into the register [reg]
- */
-class Star(val reg: Int) : Opcode()
-
-/**
- * Move the value in [fromReg] to [toReg]
- */
-class Mov(val fromReg: Int, val toReg: Int) : Opcode()
-
-/*********************
- * OBJECT PROPERTIES *
- *********************/
-
-/**
- * Load a literal property from an object in [objectReg]. The name
- * of the property is in [nameCpIndex] in the constant pool. The
- * result is inserted into the accumulator.
- */
-class LdaNamedProperty(val objectReg: Int, val nameCpIndex: Int) : Opcode()
-
-/**
- * Load a property from an object in [objectReg]. The property is in
- * the accumulator. The result is inserted into the accumulator.
- */
-class LdaKeyedProperty(val objectReg: Int) : Opcode()
-
-/**
- * Store a literal property into an object in [objectReg]. The name
- * of the property is in [nameCpIndex] in the constant pool. The
- * value is in the accumulator.
- */
-class StaNamedProperty(val objectReg: Int, val nameCpIndex: Int) : Opcode()
-
-/**
- * Store a property into an object in [objectReg]. The name of the
- * property is in [keyReg]. The value is in the accumulator. The
- * result is inserted into the accumulator.
- */
-class StaKeyedProperty(val objectReg: Int, val keyReg: Int) : Opcode()
-
-/*************************
- * OBJECT/ARRAY LITERALS *
- *************************/
-
-object CreateArrayLiteral : Opcode()
-
-class StaArrayLiteralIndex(val arrayReg: Int, val arrayIndex: Int) : Opcode()
-
-/**
- * Store a value into an object in [arrayReg] which is known to be an
- * array (generally one created by the transformer, not the user) at
- * index [indexReg].
- */
-class StaArrayLiteral(val arrayReg: Int, val indexReg: Int) : Opcode()
-
-object CreateObjectLiteral : Opcode()
-
-/*********************
- * BINARY OPERATIONS *
- *********************/
-
-// All binary operations perform their operation between the
-// accumulator and the value stored in [valueReg], and put
-// the result of the operation back into the accumulator.
-
-class Add(val valueReg: Int) : Opcode()
-class Sub(val valueReg: Int) : Opcode()
-class Mul(val valueReg: Int) : Opcode()
-class Div(val valueReg: Int) : Opcode()
-class Mod(val valueReg: Int) : Opcode()
-class Exp(val valueReg: Int) : Opcode()
-class BitwiseOr(val valueReg: Int) : Opcode()
-class BitwiseXor(val valueReg: Int) : Opcode()
-class BitwiseAnd(val valueReg: Int) : Opcode()
-class ShiftLeft(val valueReg: Int) : Opcode()
-class ShiftRight(val valueReg: Int) : Opcode()
-class ShiftRightUnsigned(val valueReg: Int) : Opcode()
-
-object Inc : Opcode()
-object Dec : Opcode()
-object Negate : Opcode()
-object BitwiseNot : Opcode()
-
-/**
- * Appends the string in the accumulator to the string stored in
- * [templateReg].
- */
-class TemplateAppend(val templateReg: Int) : Opcode()
-
-/**
- * Converts the accumulator to a boolean using the ToBoolean
- * operation, then invertes it.
- */
-object ToBooleanLogicalNot : Opcode()
-
-/**
- * Inverts the value in the accumulator. Must already be a
- * Boolean value.
- */
-object LogicalNot : Opcode()
-
-/**
- * Load the accumulator with the string representation of the
- * type currently in the accumulator.
- */
-object TypeOf : Opcode()
-
-/**
- * Delete the property stored in the accumulator from the object
- * at [targetReg] following strict-mode semantics.
- */
-class DeletePropertyStrict(val targetReg: Int) : Opcode()
-
-/**
- * Delete the property stored in the accumulator from the object
- * at [targetReg] following non-strict-mode semantics.
- */
-class DeletePropertySloppy(val targetReg: Int) : Opcode()
-
-/*********
- * SCOPE *
- *********/
-
-/**
- * Loads a global variable into the accumulator
- */
-class LdaGlobal(val nameCpIndex: Int) : Opcode()
-
-/**
- * Stores the value in the accumulator into the global env
- */
-class StaGlobal(val nameCpIndex: Int) : Opcode()
-
-/**
- * Load the named property [nameCpIndex] from the environment
- */
-class LdaCurrentEnv(val slot: Int) : Opcode()
-
-/**
- * Store the value in the accumulator into the named property
- * [nameCpIndex] in the environment as a 'let' binding
- */
-class StaCurrentEnv(val slot: Int) : Opcode()
-
-class LdaEnv(val slot: Int, val depthOffset: Int) : Opcode()
-
-class StaEnv(val slot: Int, val depthOffset: Int) : Opcode()
-
-/**
- * Create and immediately start using a new DeclarativeEnvRecord
- */
-class PushEnv(val numSlots: Int) : Opcode()
-
-/**
- * Sets the current lexicalEnv to it's outer env
- */
-object PopCurrentEnv  : Opcode()
-
-class PopEnvs(val count: Int) : Opcode()
-
-/***********
- * CALLING *
- ***********/
-
-/**
- * Calls the value in [callableReg] with any (possibly undefined)
- * receiver. The receiver is in [receiverReg], and the [argCount]
- * number of arguments directly follow it.
- */
-class Call(val callableReg: Int, val receiverReg: Int, val argCount: Int) : Opcode()
-
-/**
- * Calls the value in [callableReg] with any (possibly undefined) receiver
- * and no arguments. The receiver is in [receiverReg].
- */
-class Call0(val callableReg: Int, val receiverReg: Int) : Opcode()
-
-/**
- * Calls the value in [callableReg] with any (possibly undefined) receiver
- * and one argument. The receiver is in [receiverReg]. The argument is in
- * the accumulator
- */
-class Call1(val callableReg: Int, val receiverReg: Int) : Opcode()
-
-/**
- * Calls the value in [callableReg] with any (possibly undefined)
- * receiver. The receiver is in [receiverReg], and the [argCount]
- * number of arguments directly follow it. The last argument must
- * be a spread value.
- */
-class CallLastSpread(val callableReg: Int, val receiverReg: Int, val argCount: Int) : Opcode()
-
-/**
- * Calls the value in [callableReg] with any (possibly undefined)
- * receiver. The receiver in in [receiverReg], and the arguments
- * are in register [[receiverReg] + 1]
- */
-class CallFromArray(val callableReg: Int, val receiverReg: Int) : Opcode()
-
-/**
- * Call the runtime function specified by [id] with [argCount] number
- * of arguments, starting in [firstArgReg].
- */
-class CallRuntime(val id: Int, val firstArgReg: Int, val argCount: Int) : Opcode() {
-    constructor(method: InterpRuntime, firstArgReg: Int, argCount: Int) :
-        this(method.ordinal, firstArgReg, argCount)
+    fun dropLast(n: Int) = RegisterRange(start, count - n)
 }
 
-/****************
- * CONSTRUCTION *
- ****************/
+enum class OpcodeArgType {
+    Register,
+    CPIndex,
+    InstrIndex,
+    Literal,
+    Range;
 
-/**
- * Constructs the target with a given new.target with the given arguments.
- *
- * accumulator: new.target
- * [targetReg]: The target of the construct operation
- * [firstArgReg]: The register containing the first argument
- * [argCount]: The number of args (including firstArgReg)
- */
-class Construct(val targetReg: Int, val firstArgReg: Int, val argCount: Int) : Opcode()
+    fun validate(obj: Any) {
+        val valid = when (this) {
+            Register -> obj is Int && obj >= 0
+            CPIndex -> obj is Int && obj >= 0
+            InstrIndex -> obj is Int && obj >= 0
+            Literal -> obj is Int
+            Range -> obj is RegisterRange
+        }
 
-/**
- * Constructs the target with a given new.target and no arguments.
- *
- * accumulator: new.target
- * [targetReg]: The target of the construct operation
- */
-class Construct0(val targetReg: Int) : Opcode()
+        expect(valid) {
+            "$obj is not a valid argument for OpcodeArgType.$name"
+        }
+    }
 
-/**
- * Constructs the target with a given new.target with the given arguments. The
- * last argument must be a spread argument.
- *
- * TODO: This opcode is unused.
- *
- * accumulator: new.target
- * [targetReg]: The target of the construct operation
- * [firstArgReg]: The register containing the first argument
- * [argCount]: The number of args (including firstArgReg)
- */
-class ConstructLastSpread(val targetReg: Int, val firstArgReg: Int, val argCount: Int) : Opcode()
+    fun format(obj: Any, argCount: Int): String = when (this) {
+        Register -> (obj as Int).let {
+            when {
+                it == 0 -> "<receiver>"
+                it < argCount -> "a${argCount - it - 1}"
+                else -> "r${it - argCount}"
+            }
+        }
+        CPIndex -> "[$obj]"
+        InstrIndex -> "[$obj]"
+        Literal -> "#$obj"
+        Range -> {
+            val range = obj as RegisterRange
+            "${Register.format(range.start, argCount)}-${Register.format(range.end, argCount)}"
+        }
+    }
+}
 
-/**
- * Constructs the target in [targetReg] with a given new.target in the
- * accumulator, and the arguments in an array in [argumentsReg]. Used
- * with complex spread calls.
- */
-class ConstructFromArray(val targetReg: Int, val argumentsReg: Int) : Opcode()
+private val REG = OpcodeArgType.Register
+private val CP = OpcodeArgType.CPIndex
+private val INSTR = OpcodeArgType.InstrIndex
+private val LITERAL = OpcodeArgType.Literal
+private val RANGE = OpcodeArgType.Range
 
-/***********
- * TESTING *
- ***********/
+enum class OpcodeType(
+    vararg val types: OpcodeArgType,
+    val writesToAcc: Boolean = true,
+    val hasSideEffects: Boolean = true,
+) {
+    /////////////////
+    /// CONSTANTS ///
+    /////////////////
 
-/**
- * Tests whether or not [targetReg] is equal to the accumulator.
- */
-class TestEqual(val targetReg: Int) : Opcode()
+    LdaTrue(hasSideEffects = false),
+    LdaFalse(hasSideEffects = false),
+    LdaUndefined(hasSideEffects = false),
+    LdaNull(hasSideEffects = false),
+    LdaZero(hasSideEffects = false),
+    LdaConstant(CP, hasSideEffects = false),
+    LdaInt(LITERAL, hasSideEffects = false),
 
-/**
- * Tests whether or not [targetReg] is equal to the accumulator.
- */
-class TestNotEqual(val targetReg: Int) : Opcode()
+    ///////////////////////////
+    /// REGISTER OPERATIONS ///
+    ///////////////////////////
 
-/**
- * Tests whether or not [targetReg] is strictly equals to the accumulator.
- */
-class TestEqualStrict(val targetReg: Int) : Opcode()
+    /**
+     * Load the value in a register into the accumulator
+     *
+     * arg 1: the register containing the value to load into the accumulator
+     */
+    Ldar(REG, hasSideEffects = false),
 
-/**
- * Tests whether or not [targetReg] is strictly equals to the accumulator.
- */
-class TestNotEqualStrict(val targetReg: Int) : Opcode()
+    /**
+     * Store the value in the accumulator into a register
+     *
+     * arg 1: the register which the accumulator will be stored to
+     */
+    Star(REG, writesToAcc = false),
 
-/**
- * Tests whether or not [targetReg] is less than to the accumulator.
- */
-class TestLessThan(val targetReg: Int) : Opcode()
+    /**
+     * Copy a value from one register to another
+     *
+     * arg 1: the register with the desired value
+     * arg 2: the register that the value will be copied to
+     */
+    Mov(REG, REG, writesToAcc = false),
 
-/**
- * Tests whether or not [targetReg] is greater than to the accumulator.
- */
-class TestGreaterThan(val targetReg: Int) : Opcode()
+    /**
+     * Load a literal property from an object into the accumulator.
+     *
+     * arg 1: the register containing the object
+     * arg 2: the constant pool index of the name. Must be a string literal
+     */
+    LdaNamedProperty(REG, CP, hasSideEffects = false),
 
-/**
- * Tests whether or not [targetReg] is less than or equals to the accumulator.
- */
-class TestLessThanOrEqual(val targetReg: Int) : Opcode()
+    /**
+     * Load a computed property from an object into the accumulator.
+     *
+     * accumulator: the computed property value
+     * arg 1: the register containing object
+     */
+    LdaKeyedProperty(REG),
 
-/**
- * Tests whether or not [targetReg] is greater than or equals to the accumulator.
- */
-class TestGreaterThanOrEqual(val targetReg: Int) : Opcode()
+    /**
+     * Store a literal property into an object.
+     *
+     * accumulator: the value to store into the object property
+     * arg 1: the register containing the object
+     * arg 2: the constant pool index of the name. Must be a string literal
+     */
+    StaNamedProperty(REG, CP, writesToAcc = false),
 
-/**
- * Tests whether or not [targetReg] is referentially equal to the accumulator.
- */
-class TestReferenceEqual(val targetReg: Int) : Opcode()
+    /**
+     * Store a computed property into an object.
+     *
+     * accumulator: the value to store into the object property
+     * arg 1: the register containing the object
+     * arg 2: the register containing the computed property value
+     */
+    StaKeyedProperty(REG, REG, writesToAcc = false),
 
-/**
- * Tests whether or not [targetReg] is an instance of the type in the accumulator.
- */
-class TestInstanceOf(val targetReg: Int) : Opcode()
+    /////////////////////////////
+    /// OBJECT/ARRAY LITERALS ///
+    /////////////////////////////
 
-/**
- * Tests whether or not [targetReg] is a property of the object in the accumulator.
- */
-class TestIn(val targetReg: Int) : Opcode()
+    /**
+     * Creates an empty array object and loads it into the accumulator
+     */
+    CreateArrayLiteral,
 
-/**
- * Tests whether or not the accumulator is undefined or null
- */
-object TestNullish : Opcode()
+    /**
+     * Store a value into an array.
+     *
+     * accumulator: the value to store into the array
+     * arg 1: the register containing the array
+     * arg 2: the literal array index to insert the value into
+     */
+    StaArrayLiteralIndex(REG, LITERAL, writesToAcc = false),
 
-/**
- * Tests whether or not the accumulator is null
- */
-object TestNull : Opcode()
+    /**
+     * Store a value into an array.
+     *
+     * accumulator: the value to store into the array
+     * arg 1: the register containing the array
+     * arg 2: the literal array index to insert the value into
+     */
+    StaArrayLiteral(REG, REG, writesToAcc = false),
 
-/**
- * Tests whether or not the accumulator is undefined
- */
-object TestUndefined : Opcode()
+    /**
+     * Creates an empty object and loads it into the accumulator
+     */
+    CreateObjectLiteral,
 
-/***************
- * CONVERSIONS *
- ***************/
+    /////////////////////////
+    /// BINARY OPERATIONS ///
+    /////////////////////////
 
-object ToBoolean : Opcode()
-object ToNumber : Opcode()
-object ToNumeric : Opcode()
-object ToObject : Opcode()
-object ToString : Opcode()
+    /*
+     * All of the following binary opcodes perform their respective
+     * operations between two values and load the result into the
+     * accumulator. The first argument hold the LHS value of the
+     * operation, and the accumulator holds the RHS value.
+     */
 
-/*********
- * JUMPS *
- *********/
+    Add(REG, hasSideEffects = false),
+    Sub(REG, hasSideEffects = false),
+    Mul(REG, hasSideEffects = false),
+    Div(REG, hasSideEffects = false),
+    Mod(REG, hasSideEffects = false),
+    Exp(REG, hasSideEffects = false),
+    BitwiseOr(REG, hasSideEffects = false),
+    BitwiseXor(REG, hasSideEffects = false),
+    BitwiseAnd(REG, hasSideEffects = false),
+    ShiftLeft(REG, hasSideEffects = false),
+    ShiftRight(REG, hasSideEffects = false),
+    ShiftRightUnsigned(REG, hasSideEffects = false),
 
-/**
- * Jump by [offset] number of opcodes.
- */
-class Jump(val offset: Int) : Opcode()
+    /**
+     * Increments the value in the accumulator. This is NOT a generic
+     * operation; the value in the accumulator must be numeric.
+     */
+    Inc(hasSideEffects = false),
 
-/**
- * Jump by the number of opcodes specified by [offset] if the
- * accumulator holds the value "true".
- */
-class JumpIfTrue(val offset: Int) : Opcode()
+    /**
+     * Decrements the value in the accumulator. This is NOT a generic
+     * operation; the value in the accumulator must be numeric.
+     */
+    Dec(hasSideEffects = false),
 
-/**
- * Jump by the number of opcodes specified by [offset] if the
- * accumulator holds the value "false".
- */
-class JumpIfFalse(val offset: Int) : Opcode()
+    /**
+     * Negates the value in the accumulator. This is NOT a generic
+     * operation; the value in the accumulator must be numeric.
+     */
+    Negate(hasSideEffects = false),
 
-/**
- * Jump by the number of opcodes specified by [offset] if the
- * accumulator holds the value "true" after being cast to
- * a boolean value.
- */
-class JumpIfToBooleanTrue(val offset: Int) : Opcode()
+    /**
+     * Bitwise-nots the value in the accumulator. This is NOT a generic
+     * operation; the value in the accumulator must be numeric.
+     */
+    BitwiseNot(hasSideEffects = false),
 
-/**
- * Jump by the number of opcodes specified by [offset] if the
- * accumulator holds the value "false" after being cast to
- * a boolean value.
- */
-class JumpIfToBooleanFalse(val offset: Int) : Opcode()
+    /**
+     * Appends the string in the accumulator to another string.
+     *
+     * accumulator: the RHS of the string concatentation operation
+     * arg 1: the register with the string that will be the LHS of the
+     *        string concatenation operation
+     */
+    StringAppend(REG, writesToAcc = false),
 
-/**
- * Jump by the number of opcodes specified by [offset] if the
- * accumulator holds a null value.
- */
-class JumpIfNull(val offset: Int) : Opcode()
+    /**
+     * Converts the accumulator to a boolean using the ToBoolean
+     * operation, then inverts it.
+     */
+    ToBooleanLogicalNot,
 
-/**
- * Jump by the number of opcodes specified by [offset] if the
- * accumulator holds a non-null value.
- */
-class JumpIfNotNull(val offset: Int) : Opcode()
+    /**
+     * Inverts the boolean in the accumulator.
+     */
+    LogicalNot(writesToAcc = true),
 
-/**
- * Jump by the number of opcodes specified by [offset] if the
- * accumulator holds an undefined value.
- */
-class JumpIfUndefined(val offset: Int) : Opcode()
+    /**
+     * Load the accumulator with the string respresentation of the
+     * type currently in the accumulator
+     */
+    TypeOf(writesToAcc = true),
 
-/**
- * Jump by the number of opcodes specified by [offset] if the
- * accumulator holds a non-undefined value.
- */
-class JumpIfNotUndefined(val offset: Int) : Opcode()
+    /**
+     * Delete a property following strict-mode semantics.
+     *
+     * accumulator: the property which will be deleted
+     * arg 1: the register containing the target object
+     */
+    DeletePropertyStrict(REG, writesToAcc = false),
 
-/**
- * Jump by the number of opcodes specified by [offset] if the
- * accumulator holds an object value.
- */
-class JumpIfObject(val offset: Int) : Opcode()
+    /**
+     * Delete a property following sloppy-mode semantics.
+     *
+     * accumulator: the property which will be deleted
+     * arg 1: the register containing the target object
+     */
+    DeletePropertySloppy(REG, writesToAcc = false),
 
-/**
- * Jump by the number of opcodes specified by offset if accumulator
- * holds an nullish value.
- */
-class JumpIfNullish(val offset: Int) : Opcode()
+    /////////////
+    /// SCOPE ///
+    /////////////
 
-/**
- * Jump by the number of opcodes specified by offset if accumulator
- * holds an nullish value.
- */
-class JumpIfNotNullish(val offset: Int) : Opcode()
+    /**
+     * Loads a global variable into the accumulator
+     *
+     * arg 1: the name of the global variable
+     */
+    LdaGlobal(CP, hasSideEffects = false),
 
-object JumpPlaceholder : Opcode()
+    /**
+     * Stores the value in the accumulator into a global variable.
+     *
+     * arg 1: the name of the global variable
+     */
+    StaGlobal(CP),
 
-/************************
- * SPECIAL FLOW CONTROL *
- ************************/
+    /**
+     * Loads a named variable from the current environment into the
+     * accumulator.
+     *
+     * arg 1: the slot in the current environment to load
+     */
+    LdaCurrentEnv(LITERAL, hasSideEffects = false),
 
-/**
- * Returns the value in the accumulator
- */
-object Return : Opcode()
+    /**
+     * Stores the accumulator into a named variable in the current
+     * environment.
+     *
+     * accumulator: the value to store
+     * arg 1: the slot in the current environment to store to
+     */
+    StaCurrentEnv(LITERAL),
 
-/**
- * Throws the value in the accumulator
- */
-object Throw : Opcode()
+    /**
+     * Loads a named variable from a parent environment into the
+     * accumulator.
+     *
+     * arg 1: the slot in the environment to load
+     * arg 2: the distance of the current environment from the target
+     *        environment
+     */
+    LdaEnv(LITERAL, LITERAL, hasSideEffects = false),
 
-class ThrowConstReassignment(val nameCpIndex: Int) : Opcode()
+    /**
+     * Stores a value into a named variable in a parent environment.
+     *
+     * arg 1: the slot in the environment to store to
+     * arg 2: the distance of the current environment from the target
+     *        environment
+     */
+    StaEnv(LITERAL, LITERAL),
 
-/**
- * Throws a reference error if the value in the accumulator is empty.
- * This is used for checking if a variable declared in an EnvRecord
- * has already been initialized
- */
-class ThrowUseBeforeInitIfEmpty(val nameCpIndex: Int) : Opcode()
+    /**
+     * Pushes a new environment onto the env record stack
+     *
+     * arg 1: the numbers of slots the new environment will contain
+     */
+    PushEnv(LITERAL, writesToAcc = false),
 
-/*********
- * OTHER *
- *********/
+    /**
+     * Pops the current environment from the env record stack
+     */
+    PopCurrentEnv(writesToAcc = false),
 
-class DefineGetterProperty(val objectReg: Int, val propertyReg: Int, val getterReg: Int) : Opcode()
+    /**
+     * Pops multiple environments from the env record stack
+     *
+     * arg 1: the numbers of environments to pop
+     */
+    PopEnvs(LITERAL, writesToAcc = false),
 
-class DefineSetterProperty(val objectReg: Int, val propertyReg: Int, val setterReg: Int) : Opcode()
+    ///////////////
+    /// CALLING ///
+    ///////////////
 
-/**
- * Declare globals names
- */
-class DeclareGlobals(val declarationCpIndex: Int) : Opcode()
+    /**
+     * Calls a value with any receiver.
+     *
+     * arg 1: the target of the call
+     * arg 2: the argument registers, starting with the receiver registers
+     */
+    Call(REG, RANGE),
 
-/**
- * Creates a mapped arguments object and "installs" it into the current function
- */
-object CreateMappedArgumentsObject : Opcode()
+    /**
+     * Calls a value with any receiver and zero arguments.
+     *
+     * arg 1: the target of the call
+     * arg 2: the receiver register
+     */
+    Call0(REG, REG),
 
-/**
- * Creates an unmapped arguments object and "installs" it into the current function
- */
-object CreateUnmappedArgumentsObject : Opcode()
+    /**
+     * Calls a value with any receiver and one argument.
+     *
+     * arg 1: the target of the call
+     * arg 2: the argument registers, starting with the receiver registers
+     */
+    Call1(REG, RANGE),
 
-/**
- * Sets the accumulator to the result of calling
- * <accumulator>[Symbol.iterator]
- */
-object GetIterator : Opcode()
+    /**
+     * Calls a value with any receiver and any number of arguments. The
+     * last argument must be spread.
+     *
+     * arg 1: the target of the call
+     * arg 2: the argument registers, starting with the receiver registers
+     */
+    CallLastSpread(REG, RANGE),
 
-/**
- * Creates a function object, referencing a FunctionInfo object stored
- * in the constant pool at [cpIndex].
- */
-class CreateClosure(val cpIndex: Int) : Opcode()
+    /**
+     * Calls a value with any receiver and any number of arguments, with
+     * all arguments in an array.
+     *
+     * arg 1: the target of the call
+     * arg 2: the argument register array, with the receiver as the first
+     *        index
+     */
+    CallFromArray(REG, REG),
 
-object DebugBreakpoint : Opcode()
+    /**
+     * Calls a runtime function with any numbers of arguments.
+     *
+     * arg 1: the runtime function ID
+     * arg 2: the argument registers
+     */
+    CallRuntime(LITERAL, RANGE),
+
+    /////////////////////
+    /// CONSTRUCTIONS ///
+    /////////////////////
+
+    /**
+     * Constructs a value with any amount of arguments
+     *
+     * accumulator: the new.target
+     * arg 1: the target of the construction
+     * arg 2: the argument registers
+     */
+    Construct(REG, RANGE),
+
+    /**
+     * Constructs a value with no arguments
+     *
+     * accumulator: the new.target
+     * arg 1: the target of the construction
+     */
+    Construct0(REG),
+
+    /**
+     * Constructs a value with any amount of arguments. The last argument
+     * is a spread value.
+     *
+     * accumulator: the new.target
+     * arg 1: the target of the construction
+     * arg 2: the argument registers
+     */
+    ConstructLastSpread(REG, RANGE),
+
+    /**
+     * Constructs a value with any amount of arguments. The arguments are
+     * all stored in an array.
+     *
+     * accumulator: the new.target
+     * arg 1: the target of the construction
+     * arg 2: the argument register
+     */
+    ConstructFromArray(REG, REG),
+
+    ///////////////
+    /// TESTING ///
+    ///////////////
+
+    /**
+     * Tests if a value is weakly equal to the accumulator
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestEqual(REG),
+
+    /**
+     * Tests if a value is not weakly equal to the accumulator
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestNotEqual(REG),
+
+    /**
+     * Tests if a value is strictly equal to the accumulator
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestEqualStrict(REG),
+
+    /**
+     * Tests if a value is strictly not equal to the accumulator
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestNotEqualStrict(REG),
+
+    /**
+     * Tests if a value is less than the accumulator
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestLessThan(REG),
+
+    /**
+     * Tests if a value is greater than the accumulator
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestGreaterThan(REG),
+
+    /**
+     * Tests if a value is less than or equal to the accumulator
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestLessThanOrEqual(REG),
+
+    /**
+     * Tests if a value is greater than or equal to the accumulator
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestGreaterThanOrEqual(REG),
+
+    /**
+     * Tests if a value is the same object in the accumulator
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestReferenceEqual(REG),
+
+    /**
+     * Tests if a value is an instance of the value in the accumulator
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestInstanceOf(REG),
+
+    /**
+     * Tests if a value is 'in' the accumulator
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestIn(REG),
+
+    /**
+     * Tests if a value is nullish
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestNullish(hasSideEffects = false),
+
+    /**
+     * Tests if a value is null
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestNull(hasSideEffects = false),
+
+    /**
+     * Tests if a value is undefined
+     *
+     * accumulator: the rhs of the operation
+     * arg 1: the lhs of the operation
+     */
+    TestUndefined(hasSideEffects = false),
+
+    ///////////////////
+    /// CONVERSIONS ///
+    ///////////////////
+
+    /**
+     * Convert the accumulator to a boolean using ToBoolean()
+     */
+    ToBoolean(hasSideEffects = false),
+
+    /**
+     * Convert the accumulator to a number using ToNumber()
+     */
+    ToNumber,
+
+    /**
+     * Convert the accumulator to a number using ToNumeric()
+     */
+    ToNumeric,
+
+    /**
+     * Convert the accumulator to an object using ToObject()
+     */
+    ToObject,
+
+    /**
+     * Convert the accumulator to a string using ToString()
+     */
+    ToString,
+
+    /////////////
+    /// JUMPS ///
+    /////////////
+
+    /**
+     * Non-conditional jump to the instructions
+     */
+    Jump(INSTR, writesToAcc = false),
+
+    /**
+     * Conditional jump to an instruction if the accumulator is true
+     */
+    JumpIfTrue(INSTR, writesToAcc = false),
+
+    /**
+     * Conditional jump to an instruction if the accumulator is false
+     */
+    JumpIfFalse(INSTR, writesToAcc = false),
+
+    /**
+     * Conditional jump to an instruction if the accumulator is true,
+     * first calling ToBoolean()
+     */
+    JumpIfToBooleanTrue(INSTR, writesToAcc = false),
+
+    /**
+     * Conditional jump to an instruction if the accumulator is false,
+     * first calling ToBoolean()
+     */
+    JumpIfToBooleanFalse(INSTR, writesToAcc = false),
+
+    /**
+     * Conditional jump to an instruction if the accumulator is null
+     */
+    JumpIfNull(INSTR, writesToAcc = false),
+
+    /**
+     * Conditional jump to an instruction if the accumulator is not null
+     */
+    JumpIfNotNull(INSTR, writesToAcc = false),
+
+    /**
+     * Conditional jump to an instruction if the accumulator is undefined
+     */
+    JumpIfUndefined(INSTR, writesToAcc = false),
+
+    /**
+     * Conditional jump to an instruction if the accumulator is not undefined
+     */
+    JumpIfNotUndefined(INSTR, writesToAcc = false),
+
+    /**
+     * Conditional jump to an instruction if the accumulator is nullish
+     */
+    JumpIfNullish(INSTR, writesToAcc = false),
+
+    /**
+     * Conditional jump to an instruction if the accumulator is not nullish
+     */
+    JumpIfNotNullish(INSTR, writesToAcc = false),
+
+    /**
+     * Conditional jump to an instruction if the accumulator is an object
+     */
+    JumpIfObject(INSTR, writesToAcc = false),
+
+    /**
+     * Placeholder for jump instructions, this should not appear in any
+     * emitted IR
+     */
+    JumpPlaceholder,
+
+    ////////////////////////////
+    /// SPECIAL FLOW CONTROL ///
+    ////////////////////////////
+
+    /**
+     * Return the value in the accumulator
+     */
+    Return(writesToAcc = false),
+
+    /**
+     * Throws the value in the accumulator
+     */
+    Throw(writesToAcc = false),
+
+    /**
+     * Throws a const reassignment error
+     */
+    ThrowConstReassignment(CP, writesToAcc = false),
+
+    /**
+     * Throws a TypeError if the accumulator is <empty>
+     */
+    ThrowUseBeforeInitIfEmpty(CP, writesToAcc = false),
+
+    /////////////
+    /// OTHER ///
+    /////////////
+
+    /**
+     * Defines a getter function on an object
+     *
+     * arg 1: the target object register
+     * arg 2: the property name register
+     * arg 3: the method register
+     */
+    DefineGetterProperty(REG, REG, REG, writesToAcc = false),
+
+    /**
+     * Defines a setter function on an object
+     *
+     * arg 1: the target object register
+     * arg 2: the property name register
+     * arg 3: the method register
+     */
+    DefineSetterProperty(REG, REG, REG, writesToAcc = false),
+
+    /**
+     * Declare global names
+     */
+    DeclareGlobals(CP, writesToAcc = false),
+
+    /**
+     * Creates a mapped arguments objects and inserts it into the scope
+     * of the current function
+     */
+    CreateMappedArgumentsObject(writesToAcc = false),
+
+    /**
+     * Creates an unmapped arguments objects and inserts it into the scope
+     * of the current function
+     */
+    CreateUnmappedArgumentsObject(writesToAcc = false),
+
+    /**
+     * Sets the accumulator to the result of calling
+     * <accumulator>[Symbol.iterator]()
+     */
+    GetIterator,
+
+    /**
+     * Creates a function object, referencing a FunctionInfo object stored
+     * in the constant pool
+     *
+     * arg 1: the constant pool index entry with the FunctionInfo object
+     */
+    CreateClosure(CP),
+
+    /**
+     * TODO
+     */
+    DebugBreakpoint(writesToAcc = false)
+}
+
+class Opcode(type: OpcodeType, vararg args: Any) {
+    var type: OpcodeType = type
+        private set
+
+    var args: Array<out Any> = args
+        private set
+
+    init {
+        expect(args.size == type.types.size) {
+            "OpcodeType.$type expected ${type.types.size} arguments, but received ${args.size}"
+        }
+
+        args.forEachIndexed { index, arg ->
+            type.types[index].validate(arg)
+        }
+    }
+
+    fun regAt(index: Int) = args[index] as Int
+    fun cpAt(index: Int) = args[index] as Int
+    fun instrAt(index: Int) = args[index] as Int
+    fun literalAt(index: Int) = args[index] as Int
+    fun rangeAt(index: Int) = args[index] as RegisterRange
+
+    fun replaceJumpPlaceholder(newType: OpcodeType, offset: Int) {
+        expect(type == OpcodeType.JumpPlaceholder, type.toString())
+        type = newType
+        args = arrayOf(offset)
+    }
+
+    override fun toString() = type.name
+}

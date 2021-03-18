@@ -34,6 +34,16 @@ fun expect(condition: Boolean, message: String? = null) {
         throw ExpectationError(message ?: "Expectation failed")
 }
 
+@OptIn(ExperimentalContracts::class)
+fun expect(condition: Boolean, messageProvider: () -> String) {
+    contract {
+        returns() implies condition
+    }
+
+    if (!condition)
+        throw ExpectationError(messageProvider())
+}
+
 class ECMAError(message: String) : Exception(message)
 
 class ExpectationError(message: String) : Exception(message)

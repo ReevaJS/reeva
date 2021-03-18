@@ -22,7 +22,7 @@ class FunctionBuilder(val argCount: Int = 1) {
 
     // If a label is jumped to before it is placed, it is placed in this
     // queue, and is "completed" when it is placed
-    private val placeholders = mutableMapOf<Label, MutableList<Pair<Int, (Int) -> Opcode>>>()
+    private val placeholders = mutableMapOf<Label, MutableList<Pair<Int, OpcodeType>>>()
 
     val registerCount: Int
         get() = registers.size
@@ -48,22 +48,22 @@ class FunctionBuilder(val argCount: Int = 1) {
 
     fun label() = Label(null)
 
-    fun jump(label: Label) = jumpHelper(label, ::Jump)
+    fun jump(label: Label) = jumpHelper(label, OpcodeType.Jump)
 
-    fun jumpHelper(label: Label, jumpOp: (Int) -> Opcode) {
+    fun jumpHelper(label: Label, type: OpcodeType) {
         if (label.opIndex != null) {
             // the label has already been placed, so we can directly insert
             // a jump instruction
-            opcodes.add(jumpOp(label.opIndex!!))
+            opcodes.add(Opcode(type, label.opIndex!!))
         } else {
             // the label has yet to be placed, so we have to place a marker
             // and wait for the label to be placed
-            opcodes.add(JumpPlaceholder)
+            opcodes.add(Opcode(OpcodeType.JumpPlaceholder))
             val placeholderIndex = opcodes.lastIndex
 
             if (label !in placeholders)
                 placeholders[label] = mutableListOf()
-            placeholders[label]!!.add(placeholderIndex to jumpOp)
+            placeholders[label]!!.add(placeholderIndex to type)
         }
     }
 
@@ -75,10 +75,10 @@ class FunctionBuilder(val argCount: Int = 1) {
                 return@forEach
 
             it.value.forEach { (offset, jumpOp) ->
-                if (opcodes[offset] !is JumpPlaceholder) {
+                if (opcodes[offset].type != OpcodeType.JumpPlaceholder) {
                     TODO("expected JumpPlaceholder at offset $offset")
                 }
-                opcodes[offset] = jumpOp(targetIndex)
+                opcodes[offset].replaceJumpPlaceholder(jumpOp, targetIndex)
             }
             placeholders[label]!!.clear()
         }
@@ -138,9 +138,9 @@ class FunctionBuilder(val argCount: Int = 1) {
 
     fun goto(label: Label, contextDepth: Int) {
         if (contextDepth == nestedContexts - 1) {
-            opcodes.add(PopCurrentEnv)
+            opcodes.add(Opcode(OpcodeType.PopCurrentEnv))
         } else {
-            opcodes.add(PopEnvs(nestedContexts - contextDepth))
+            opcodes.add(Opcode(OpcodeType.PopEnvs, nestedContexts - contextDepth))
         }
         jump(label)
     }

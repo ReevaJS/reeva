@@ -6,6 +6,7 @@ import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.interpreter.InterpRuntime
 import me.mattco.reeva.ir.FunctionBuilder.*
+import me.mattco.reeva.ir.OpcodeType.*
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
 import me.mattco.reeva.utils.expect
@@ -36,12 +37,12 @@ class IRTransformer : ASTVisitor {
 
         globalDeclarationInstantiation(node.scope) {
             visit(node.statements)
-            +Return
+            add(Return)
         }
 
         return FunctionInfo(
             null,
-            builder.opcodes.toTypedArray(),
+            PeepholeOptimizer.optimize(builder.opcodes.toTypedArray()),
             builder.constantPool.toTypedArray(),
             builder.handlers.map(IRHandler::toHandler).toTypedArray(),
             builder.registerCount,
@@ -55,7 +56,7 @@ class IRTransformer : ASTVisitor {
     private fun enterScope(scope: Scope) {
         if (scope.requiresEnv) {
             builder.nestedContexts++
-            +PushEnv(scope.numSlots)
+            add(PushEnv, scope.numSlots)
             scope.envVariables.forEach { variable ->
                 variable.slot = builder.envVarCount++
             }
@@ -77,7 +78,7 @@ class IRTransformer : ASTVisitor {
 
         if (scope.requiresEnv) {
             builder.nestedContexts--
-            +PopCurrentEnv
+            add(PopCurrentEnv)
         }
     }
 
@@ -96,13 +97,13 @@ class IRTransformer : ASTVisitor {
 
         if (node.falseBlock == null) {
             val endLabel = label()
-            jump(endLabel, ::JumpIfToBooleanFalse)
+            jump(endLabel, JumpIfToBooleanFalse)
             visit(node.trueBlock)
             place(endLabel)
         } else {
             val falseLabel = label()
             val endLabel = label()
-            jump(falseLabel, ::JumpIfToBooleanFalse)
+            jump(falseLabel, JumpIfToBooleanFalse)
             visit(node.trueBlock)
             jump(endLabel)
             place(falseLabel)
@@ -122,7 +123,7 @@ class IRTransformer : ASTVisitor {
         builder.popBlock()
 
         visit(node.condition)
-        jump(loopStart, ::JumpIfToBooleanTrue)
+        jump(loopStart, JumpIfToBooleanTrue)
         place(loopEnd)
     }
 
@@ -132,7 +133,7 @@ class IRTransformer : ASTVisitor {
 
         place(loopStart)
         visit(node.condition)
-        jump(loopEnd, ::JumpIfToBooleanFalse)
+        jump(loopEnd, JumpIfToBooleanFalse)
 
         builder.pushBlock(LoopBlock(loopStart, loopEnd))
         visit(node.body)
@@ -144,7 +145,7 @@ class IRTransformer : ASTVisitor {
 
     override fun visitForStatement(node: ForStatementNode) {
         if (node.scope.requiresEnv) {
-            +PushEnv(node.scope.numSlots)
+            add(PushEnv, node.scope.numSlots)
             builder.nestedContexts++
             node.scope.envVariables.forEachIndexed { index, variable ->
                 variable.slot = index
@@ -165,7 +166,7 @@ class IRTransformer : ASTVisitor {
 
         if (node.condition != null) {
             visit(node.condition)
-            jump(loopEnd, ::JumpIfToBooleanFalse)
+            jump(loopEnd, JumpIfToBooleanFalse)
         }
 
         builder.pushBlock(LoopBlock(continueTarget, loopEnd))
@@ -187,7 +188,7 @@ class IRTransformer : ASTVisitor {
 
         if (node.scope.requiresEnv) {
             builder.nestedContexts--
-            +PopCurrentEnv
+            add(PopCurrentEnv)
         }
     }
 
@@ -197,14 +198,14 @@ class IRTransformer : ASTVisitor {
 
     override fun visitForOf(node: ForOfNode) {
         visit(node.expression)
-        +GetIterator
+        add(GetIterator)
         val iter = nextFreeReg()
-        +Star(iter)
+        add(Star, iter)
 
         val next = nextFreeReg()
-        +LdaNamedProperty(iter, loadConstant("next"))
-        +Star(next)
-        +CallRuntime(InterpRuntime.ThrowIfIteratorNextNotCallable, next, 1)
+        add(LdaNamedProperty, iter, loadConstant("next"))
+        add(Star, next)
+        add(CallRuntime, InterpRuntime.ThrowIfIteratorNextNotCallable, next, 1)
 
         if (node.scope.requiresEnv) {
             node.scope.envVariables.forEachIndexed { index, variable ->
@@ -223,23 +224,23 @@ class IRTransformer : ASTVisitor {
         place(loopStart)
 
         if (node.scope.requiresEnv)
-            +PushEnv(node.scope.numSlots)
+            add(PushEnv, node.scope.numSlots)
 
-        +Call0(next, iter)
+        add(Call0, next, iter)
         val nextResult = nextFreeReg()
-        +Star(nextResult)
-        +CallRuntime(InterpRuntime.ThrowIfIteratorReturnNotObject, nextResult, 1)
-        +LdaNamedProperty(nextResult, loadConstant("done"))
-        jump(loopEnd, ::JumpIfToBooleanTrue)
+        add(Star, nextResult)
+        add(CallRuntime, InterpRuntime.ThrowIfIteratorReturnNotObject, nextResult, 1)
+        add(LdaNamedProperty, nextResult, loadConstant("done"))
+        jump(loopEnd, JumpIfToBooleanTrue)
 
-        +LdaNamedProperty(nextResult, loadConstant("value"))
+        add(LdaNamedProperty, nextResult, loadConstant("value"))
 
         when (node.decl) {
             is VariableDeclarationNode -> {
                 val decl = node.decl.declarations[0]
                 val variable = decl.identifier.variable
                 if (variable.isInlineable) {
-                    +Star(variable.slot)
+                    add(Star, variable.slot)
                 } else {
                     storeEnvVariableRef(variable, node.scope)
                 }
@@ -248,7 +249,7 @@ class IRTransformer : ASTVisitor {
                 val decl = node.decl.declarations[0]
                 val variable = decl.identifier.variable
                 if (variable.isInlineable) {
-                    +Star(variable.slot)
+                    add(Star, variable.slot)
                 } else {
                     storeEnvVariableRef(variable, node.scope)
                 }
@@ -256,7 +257,7 @@ class IRTransformer : ASTVisitor {
             is BindingIdentifierNode -> {
                 val variable = node.decl.variable
                 if (variable.isInlineable) {
-                    +Star(variable.slot)
+                    add(Star, variable.slot)
                 } else {
                     storeEnvVariableRef(variable, node.scope)
                 }
@@ -267,7 +268,7 @@ class IRTransformer : ASTVisitor {
 
         if (node.scope.requiresEnv) {
             builder.nestedContexts--
-            +PopCurrentEnv
+            add(PopCurrentEnv)
         }
 
         jump(loopStart)
@@ -288,7 +289,7 @@ class IRTransformer : ASTVisitor {
 
     override fun visitThrowStatement(node: ThrowStatementNode) {
         visit(node.expr)
-        +Throw
+        add(Throw)
     }
 
     override fun visitTryStatement(node: TryStatementNode) {
@@ -321,7 +322,7 @@ class IRTransformer : ASTVisitor {
             if (node.catchNode.catchParameter != null) {
                 if (node.catchNode.scope.requiresEnv) {
                     builder.nestedContexts++
-                    +PushEnv(node.catchNode.scope.numSlots)
+                    add(PushEnv, node.catchNode.scope.numSlots)
                     node.catchNode.scope.envVariables.forEachIndexed { index, variable ->
                         variable.slot = index
                     }
@@ -331,7 +332,7 @@ class IRTransformer : ASTVisitor {
                 val param = node.catchNode.catchParameter
                 if (param.variable.isInlineable) {
                     param.variable.slot = nextFreeReg()
-                    +Star(param.variable.slot)
+                    add(Star, param.variable.slot)
                 } else {
                     storeEnvVariableRef(param.variable, node.catchNode.scope)
                 }
@@ -341,7 +342,7 @@ class IRTransformer : ASTVisitor {
             place(catchEnd!!)
 
             if (mustPopEnv)
-                +PopCurrentEnv
+                add(PopCurrentEnv)
 
             if (node.catchNode.catchParameter?.variable?.isInlineable == true)
                 markRegFree(node.catchNode.catchParameter.variable.slot)
@@ -362,10 +363,10 @@ class IRTransformer : ASTVisitor {
             val exceptionReg = nextFreeReg()
 
             place(finallyStart!!)
-            +Star(exceptionReg)
+            add(Star, exceptionReg)
             visit(node.finallyBlock)
-            +Ldar(exceptionReg)
-            +Throw
+            add(Ldar, exceptionReg)
+            add(Throw)
             markRegFree(exceptionReg)
 
             if (node.catchNode != null) {
@@ -406,11 +407,11 @@ class IRTransformer : ASTVisitor {
     override fun visitReturnStatement(node: ReturnStatementNode) {
         node.expression?.also(::visit)
         val resultReg = nextFreeReg()
-        +Star(resultReg)
+        add(Star, resultReg)
 
         visitScopedFinallyBlocks {
-            +Ldar(resultReg)
-            +Return
+            add(Ldar, resultReg)
+            add(Return)
         }
     }
 
@@ -463,14 +464,14 @@ class IRTransformer : ASTVisitor {
         if (declaration.initializer != null) {
             visit(declaration.initializer)
         } else {
-            +LdaUndefined
+            add(LdaUndefined)
         }
 
         storeVariable(variable, declaration.scope)
     }
 
     override fun visitDebuggerStatement() {
-        +DebugBreakpoint
+        add(DebugBreakpoint)
     }
 
     override fun visitImportDeclaration(node: ImportDeclarationNode) {
@@ -495,7 +496,7 @@ class IRTransformer : ASTVisitor {
         val useStart = node.sourceStart
         if (useStart.index < declarationStart.index && variable.type != Variable.Type.Var) {
             // We need to check if the variable has been initialized
-            +ThrowUseBeforeInitIfEmpty(loadConstant(node.identifierName))
+            add(ThrowUseBeforeInitIfEmpty, loadConstant(node.identifierName))
         }
     }
 
@@ -560,7 +561,7 @@ class IRTransformer : ASTVisitor {
         val lexNames = scope.declaredVariables.filter { it.type != Variable.Type.Var }.map { it.name }
 
         val array = DeclarationsArray(declaredVarNames.toList(), lexNames, declaredFunctionNames.toList())
-        +DeclareGlobals(loadConstant(array))
+        add(DeclareGlobals, loadConstant(array))
 
         commonInstantiation(varDecls, declaredFunctionNames, functionsToInitialize)
 
@@ -606,9 +607,9 @@ class IRTransformer : ASTVisitor {
 
         if (argumentsObjectNeeded && bodyScope.possiblyReferencesArguments) {
             if (isStrict || !simpleParameterList) {
-                +CreateUnmappedArgumentsObject
+                add(CreateUnmappedArgumentsObject)
             } else {
-                +CreateMappedArgumentsObject
+                add(CreateMappedArgumentsObject)
             }
         }
 
@@ -625,20 +626,20 @@ class IRTransformer : ASTVisitor {
                 // Check if the parameter is undefined
                 val skipDefault = label()
 
-                +Ldar(register)
-                jump(skipDefault, ::JumpIfNotUndefined)
+                add(Ldar, register)
+                jump(skipDefault, JumpIfNotUndefined)
 
                 visit(param.initializer)
                 if (isInlineable) {
-                    +Star(register)
+                    add(Star, register)
                 } else {
-                    +StaCurrentEnv(param.variable.slot)
+                    add(StaCurrentEnv, param.variable.slot)
                 }
 
                 place(skipDefault)
             } else if (!isInlineable) {
-                +Ldar(register)
-                +StaCurrentEnv(param.variable.slot)
+                add(Ldar, register)
+                add(StaCurrentEnv, param.variable.slot)
             }
         }
 
@@ -672,7 +673,7 @@ class IRTransformer : ASTVisitor {
                 instantiatedVarNames.add(variable.name)
 
                 if (variable.possiblyUsedBeforeDecl) {
-                    +LdaUndefined
+                    add(LdaUndefined)
                     storeVariable(variable, varDecl.scope)
                 }
             }
@@ -719,15 +720,15 @@ class IRTransformer : ASTVisitor {
                 super.visitBlock(body)
             } else visit(body)
 
-            if (builder.opcodes.lastOrNull() != Return) {
-                +LdaUndefined
-                +Return
+            if (builder.opcodes.lastOrNull()?.type != Return) {
+                add(LdaUndefined)
+                add(Return)
             }
         }
 
         val info = FunctionInfo(
             name,
-            builder.opcodes.toTypedArray(),
+            PeepholeOptimizer.optimize(builder.opcodes.toTypedArray()),
             builder.constantPool.toTypedArray(),
             builder.handlers.map(IRHandler::toHandler).toTypedArray(),
             builder.registerCount,
@@ -738,7 +739,7 @@ class IRTransformer : ASTVisitor {
         )
 
         builder = prevBuilder
-        +CreateClosure(loadConstant(info))
+        add(CreateClosure, loadConstant(info))
     }
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {
@@ -750,18 +751,18 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitBinaryExpression(node: BinaryExpressionNode) {
-        val opcode = when (node.operator) {
-            BinaryOperator.Add -> ::Add
-            BinaryOperator.Sub -> ::Sub
-            BinaryOperator.Mul -> ::Mul
-            BinaryOperator.Div -> ::Div
-            BinaryOperator.Exp -> ::Exp
-            BinaryOperator.Mod -> ::Mod
+        val type = when (node.operator) {
+            BinaryOperator.Add -> Add
+            BinaryOperator.Sub -> Sub
+            BinaryOperator.Mul -> Mul
+            BinaryOperator.Div -> Div
+            BinaryOperator.Exp -> Exp
+            BinaryOperator.Mod -> Mod
             BinaryOperator.And -> {
                 visit(node.lhs)
-                +ToBoolean
+                add(ToBoolean)
                 val skip = label()
-                jump(skip, ::JumpIfFalse)
+                jump(skip, JumpIfFalse)
                 visit(node.rhs)
                 place(skip)
                 return
@@ -769,7 +770,7 @@ class IRTransformer : ASTVisitor {
             BinaryOperator.Or -> {
                 visit(node.lhs)
                 val skip = label()
-                jump(skip, ::JumpIfToBooleanTrue)
+                jump(skip, JumpIfToBooleanTrue)
                 visit(node.rhs)
                 place(skip)
                 return
@@ -777,58 +778,58 @@ class IRTransformer : ASTVisitor {
             BinaryOperator.Coalesce -> {
                 visit(node.lhs)
                 val skip = label()
-                jump(skip, ::JumpIfNotNullish)
+                jump(skip, JumpIfNotNullish)
                 visit(node.rhs)
                 place(skip)
                 return
             }
-            BinaryOperator.BitwiseAnd -> ::BitwiseAnd
-            BinaryOperator.BitwiseOr -> ::BitwiseOr
-            BinaryOperator.BitwiseXor -> ::BitwiseXor
-            BinaryOperator.Shl -> ::ShiftLeft
-            BinaryOperator.Shr -> ::ShiftRight
-            BinaryOperator.UShr -> ::ShiftRightUnsigned
-            BinaryOperator.StrictEquals -> ::TestEqualStrict
-            BinaryOperator.StrictNotEquals -> ::TestNotEqualStrict
-            BinaryOperator.SloppyEquals -> ::TestEqual
-            BinaryOperator.SloppyNotEquals -> ::TestNotEqual
-            BinaryOperator.LessThan -> ::TestLessThan
-            BinaryOperator.LessThanEquals -> ::TestLessThanOrEqual
-            BinaryOperator.GreaterThan -> ::TestGreaterThan
-            BinaryOperator.GreaterThanEquals -> ::TestGreaterThanOrEqual
-            BinaryOperator.Instanceof -> ::TestInstanceOf
-            BinaryOperator.In -> ::TestIn
+            BinaryOperator.BitwiseAnd -> BitwiseAnd
+            BinaryOperator.BitwiseOr -> BitwiseOr
+            BinaryOperator.BitwiseXor -> BitwiseXor
+            BinaryOperator.Shl -> ShiftLeft
+            BinaryOperator.Shr -> ShiftRight
+            BinaryOperator.UShr -> ShiftRightUnsigned
+            BinaryOperator.StrictEquals -> TestEqualStrict
+            BinaryOperator.StrictNotEquals -> TestNotEqualStrict
+            BinaryOperator.SloppyEquals -> TestEqual
+            BinaryOperator.SloppyNotEquals -> TestNotEqual
+            BinaryOperator.LessThan -> TestLessThan
+            BinaryOperator.LessThanEquals -> TestLessThanOrEqual
+            BinaryOperator.GreaterThan -> TestGreaterThan
+            BinaryOperator.GreaterThanEquals -> TestGreaterThanOrEqual
+            BinaryOperator.Instanceof -> TestInstanceOf
+            BinaryOperator.In -> TestIn
         }
 
         visit(node.lhs)
         val reg = nextFreeReg()
-        +Star(reg)
+        add(Star, reg)
         visit(node.rhs)
-        +opcode(reg)
+        add(type, reg)
         markRegFree(reg)
     }
 
     override fun visitUnaryExpression(node: UnaryExpressionNode) {
         if (node.op == UnaryOperator.Delete) {
             when (val expr = node.expression) {
-                is IdentifierReferenceNode -> +LdaFalse
-                !is MemberExpressionNode -> +LdaTrue
+                is IdentifierReferenceNode -> add(LdaFalse)
+                !is MemberExpressionNode -> add(LdaTrue)
                 else -> if (expr.type == MemberExpressionNode.Type.Tagged) {
-                    +LdaTrue
+                    add(LdaTrue)
                 } else {
                     visit(expr.lhs)
                     val target = nextFreeReg()
-                    +Star(target)
+                    add(Star, target)
 
                     if (expr.type == MemberExpressionNode.Type.Computed) {
                         visit(expr.rhs)
                     } else {
-                        +LdaConstant(loadConstant((expr.rhs as IdentifierNode).identifierName))
+                        add(LdaConstant, loadConstant((expr.rhs as IdentifierNode).identifierName))
                     }
 
                     if (node.scope.isStrict) {
-                        +DeletePropertyStrict(target)
-                    } else +DeletePropertySloppy(target)
+                        add(DeletePropertyStrict, target)
+                    } else add(DeletePropertySloppy, target)
 
                     markRegFree(target)
                 }
@@ -840,12 +841,12 @@ class IRTransformer : ASTVisitor {
         visit(node.expression)
 
         when (node.op) {
-            UnaryOperator.Void -> +LdaUndefined
-            UnaryOperator.Typeof -> +TypeOf
+            UnaryOperator.Void -> add(LdaUndefined)
+            UnaryOperator.Typeof -> add(TypeOf)
             UnaryOperator.Plus -> TODO()
-            UnaryOperator.Minus -> +Negate
-            UnaryOperator.BitwiseNot -> +BitwiseNot
-            UnaryOperator.Not -> +ToBooleanLogicalNot
+            UnaryOperator.Minus -> add(Negate)
+            UnaryOperator.BitwiseNot -> add(BitwiseNot)
+            UnaryOperator.Not -> add(ToBooleanLogicalNot)
             else -> unreachable()
         }
     }
@@ -855,13 +856,13 @@ class IRTransformer : ASTVisitor {
 
         fun postfixGuard(action: () -> Unit) {
             val originalValue = if (node.isPostfix) {
-                nextFreeReg().also { +Star(it) }
+                nextFreeReg().also { add(Star, it) }
             } else -1
 
             action()
 
             if (node.isPostfix) {
-                +Ldar(originalValue)
+                add(Ldar, originalValue)
                 markRegFree(originalValue)
             }
         }
@@ -869,37 +870,37 @@ class IRTransformer : ASTVisitor {
         when (val target = node.target) {
             is IdentifierReferenceNode -> {
                 visit(target)
-                +ToNumeric
+                add(ToNumeric)
 
                 postfixGuard {
-                    +op
+                    add(op)
                     storeVariable(target.targetVar, target.scope)
                 }
             }
             is MemberExpressionNode -> {
                 val objectReg = nextFreeReg()
                 visit(target.lhs)
-                +Star(objectReg)
+                add(Star, objectReg)
 
                 when (target.type) {
                     MemberExpressionNode.Type.Computed -> {
                         val keyReg = nextFreeReg()
                         visit(target.rhs)
-                        +Star(keyReg)
-                        +LdaKeyedProperty(objectReg)
+                        add(Star, keyReg)
+                        add(LdaKeyedProperty, objectReg)
                         postfixGuard {
-                            +ToNumeric
-                            +op
-                            +StaKeyedProperty(objectReg, keyReg)
+                            add(ToNumeric)
+                            add(op)
+                            add(StaKeyedProperty, objectReg, keyReg)
                         }
                         markRegFree(keyReg)
                     }
                     MemberExpressionNode.Type.NonComputed -> {
-                        +LdaNamedProperty(objectReg, loadConstant((target.rhs as IdentifierNode).identifierName))
+                        add(LdaNamedProperty, objectReg, loadConstant((target.rhs as IdentifierNode).identifierName))
                         postfixGuard {
-                            +ToNumeric
-                            +op
-                            +StaNamedProperty(objectReg, loadConstant(target.rhs.identifierName))
+                            add(ToNumeric)
+                            add(op)
+                            add(StaNamedProperty, objectReg, loadConstant(target.rhs.identifierName))
                         }
                     }
                     MemberExpressionNode.Type.Tagged -> TODO()
@@ -939,20 +940,20 @@ class IRTransformer : ASTVisitor {
             is MemberExpressionNode -> {
                 val objectReg = nextFreeReg()
                 visit(lhs.lhs)
-                +Star(objectReg)
+                add(Star, objectReg)
 
                 when (lhs.type) {
                     MemberExpressionNode.Type.Computed -> {
                         val keyReg = nextFreeReg()
                         visit(lhs.rhs)
-                        +Star(keyReg)
+                        add(Star, keyReg)
                         loadRhsIntoAcc()
-                        +StaKeyedProperty(objectReg, keyReg)
+                        add(StaKeyedProperty, objectReg, keyReg)
                         markRegFree(keyReg)
                     }
                     MemberExpressionNode.Type.NonComputed -> {
                         loadRhsIntoAcc()
-                        +StaNamedProperty(objectReg, loadConstant((lhs.rhs as IdentifierNode).identifierName))
+                        add(StaNamedProperty, objectReg, loadConstant((lhs.rhs as IdentifierNode).identifierName))
                     }
                     MemberExpressionNode.Type.Tagged -> TODO()
                 }
@@ -967,18 +968,18 @@ class IRTransformer : ASTVisitor {
         when {
             variable.mode == Variable.Mode.Global -> {
                 if (variable.name == "undefined") {
-                    +LdaUndefined
-                } else +LdaGlobal(loadConstant(variable.name))
+                    add(LdaUndefined)
+                } else add(LdaGlobal, loadConstant(variable.name))
             }
-            variable.isInlineable -> +Ldar(variable.slot)
+            variable.isInlineable -> add(Ldar, variable.slot)
             else -> loadEnvVariableRef(variable, currentScope)
         }
     }
 
     private fun storeVariable(variable: Variable, currentScope: Scope) {
         when {
-            variable.mode == Variable.Mode.Global -> +StaGlobal(loadConstant(variable.name))
-            variable.isInlineable -> +Star(variable.slot)
+            variable.mode == Variable.Mode.Global -> add(StaGlobal, loadConstant(variable.name))
+            variable.isInlineable -> add(Star, variable.slot)
             else -> storeEnvVariableRef(variable, currentScope)
         }
     }
@@ -986,24 +987,24 @@ class IRTransformer : ASTVisitor {
     private fun loadEnvVariableRef(variable: Variable, currentScope: Scope) {
         val distance = currentScope.envDistanceFrom(variable.source.scope)
         if (distance == 0) {
-            +LdaCurrentEnv(variable.slot)
+            add(LdaCurrentEnv, variable.slot)
         } else {
-            +LdaEnv(variable.slot, distance)
+            add(LdaEnv, variable.slot, distance)
         }
     }
 
     private fun storeEnvVariableRef(variable: Variable, currentScope: Scope) {
         val distance = currentScope.distanceFrom(variable.source.scope)
         if (distance == 0) {
-            +StaCurrentEnv(variable.slot)
+            add(StaCurrentEnv, variable.slot)
         } else {
-            +StaEnv(variable.slot, distance)
+            add(StaEnv, variable.slot, distance)
         }
     }
 
     private fun checkForConstReassignment(node: VariableRefNode): Boolean {
         return if (node.targetVar.type == Variable.Type.Const) {
-            +ThrowConstReassignment(loadConstant(node.targetVar.name))
+            add(ThrowConstReassignment, loadConstant(node.targetVar.name))
             true
         } else false
     }
@@ -1028,7 +1029,7 @@ class IRTransformer : ASTVisitor {
         val ifFalseLabel = label()
         val endLabel = label()
 
-        jump(ifFalseLabel, ::JumpIfToBooleanFalse)
+        jump(ifFalseLabel, JumpIfToBooleanFalse)
         visit(node.ifTrue)
         jump(endLabel)
         place(ifFalseLabel)
@@ -1041,16 +1042,16 @@ class IRTransformer : ASTVisitor {
 
         val objectReg = nextFreeReg()
         visit(node.lhs)
-        +Star(objectReg)
+        add(Star, objectReg)
 
         when (node.type) {
             MemberExpressionNode.Type.Computed -> {
                 visit(node.rhs)
-                +LdaKeyedProperty(objectReg)
+                add(LdaKeyedProperty, objectReg)
             }
             MemberExpressionNode.Type.NonComputed -> {
                 val cpIndex = loadConstant((node.rhs as IdentifierNode).identifierName)
-                +LdaNamedProperty(objectReg, cpIndex)
+                add(LdaNamedProperty, objectReg, cpIndex)
             }
             MemberExpressionNode.Type.Tagged -> TODO()
         }
@@ -1080,41 +1081,42 @@ class IRTransformer : ASTVisitor {
         when (val target = node.target) {
             is IdentifierReferenceNode -> {
                 visit(target)
-                +Star(callableReg)
-                +Mov(receiverReg(), receiverReg)
+                add(Star, callableReg)
+                add(Mov, receiverReg(), receiverReg)
             }
             is MemberExpressionNode -> {
                 visit(target.lhs)
-                +Star(receiverReg)
+                add(Star, receiverReg)
 
                 when (target.type) {
                     MemberExpressionNode.Type.Computed -> {
                         visit(target.rhs)
-                        +LdaKeyedProperty(receiverReg)
+                        add(LdaKeyedProperty, receiverReg)
                     }
                     MemberExpressionNode.Type.NonComputed -> {
                         val cpIndex = loadConstant((target.rhs as IdentifierNode).identifierName)
-                        +LdaNamedProperty(receiverReg, cpIndex)
+                        add(LdaNamedProperty, receiverReg, cpIndex)
                     }
                     MemberExpressionNode.Type.Tagged -> TODO()
                 }
 
-                +Star(callableReg)
+                add(Star, callableReg)
             }
         }
 
         when {
-            args.isEmpty() -> +Call0(callableReg, receiverReg)
+            args.isEmpty() -> add(Call0, callableReg, receiverReg)
             args.size == 1 && !args[0].isSpread -> {
                 visit(args[0].expression)
-                +Call1(callableReg, receiverReg)
+                add(Star, receiverReg + 1)
+                add(Call1, callableReg, RegisterRange(receiverReg, 2))
             }
             else -> {
                 val (registers, mode) = loadArguments(args, receiverReg + 1)
                 when (mode) {
-                    ArgumentsMode.Normal -> +Call(callableReg, receiverReg, registers.count)
-                    ArgumentsMode.LastSpread -> +CallLastSpread(callableReg, receiverReg, registers.count)
-                    ArgumentsMode.Spread -> +CallFromArray(callableReg, receiverReg)
+                    ArgumentsMode.Normal -> add(Call, callableReg, RegisterRange(receiverReg, registers.count))
+                    ArgumentsMode.LastSpread -> add(CallLastSpread, callableReg, RegisterRange(receiverReg, registers.count))
+                    ArgumentsMode.Spread -> add(CallFromArray, callableReg, RegisterRange(receiverReg, 2))
                 }
                 registers.markFree()
             }
@@ -1128,7 +1130,7 @@ class IRTransformer : ASTVisitor {
     override fun visitNewExpression(node: NewExpressionNode) {
         val target = nextFreeReg()
         visit(node.target)
-        +Star(target)
+        add(Star, target)
 
         val argumentReg = nextFreeRegBlock(requiredRegisters(node.arguments))
 
@@ -1136,13 +1138,13 @@ class IRTransformer : ASTVisitor {
             loadArguments(node.arguments, argumentReg)
         } else null to null
 
-        +Ldar(target)
+        add(Ldar, target)
 
         when (mode) {
-            ArgumentsMode.Spread -> +ConstructFromArray(target, arguments!!.firstReg)
-            ArgumentsMode.LastSpread -> +ConstructLastSpread(target, arguments!!.firstReg, arguments.count)
-            ArgumentsMode.Normal -> +Construct(target, arguments!!.firstReg, arguments.count)
-            null -> +Construct0(target)
+            ArgumentsMode.Spread -> add(ConstructFromArray, target, arguments!!.firstReg)
+            ArgumentsMode.LastSpread -> add(ConstructLastSpread, target, arguments!!.firstReg, arguments.count)
+            ArgumentsMode.Normal -> add(Construct, target, arguments!!.firstReg, arguments.count)
+            null -> add(Construct0, target)
         }
 
         markRegFree(target)
@@ -1157,7 +1159,7 @@ class IRTransformer : ASTVisitor {
         } else {
             for ((index, argument) in arguments.withIndex()) {
                 visit(argument.expression)
-                +Star(firstReg + index)
+                add(Star, firstReg + index)
             }
 
             RegList(firstReg, arguments.size).also {
@@ -1173,26 +1175,26 @@ class IRTransformer : ASTVisitor {
     }
 
     private fun iterateValues(action: () -> Unit) {
-        +GetIterator
+        add(GetIterator)
         val iter = nextFreeReg()
-        +Star(iter)
+        add(Star, iter)
 
         val next = nextFreeReg()
-        +LdaNamedProperty(iter, loadConstant("next"))
-        +Star(next)
-        +CallRuntime(InterpRuntime.ThrowIfIteratorNextNotCallable, next, 1)
+        add(LdaNamedProperty, iter, loadConstant("next"))
+        add(Star, next)
+        add(CallRuntime, InterpRuntime.ThrowIfIteratorNextNotCallable, next, 1)
 
         val done = label()
         val head = place(label())
 
-        +Call0(next, iter)
+        add(Call0, next, iter)
         val nextResult = nextFreeReg()
-        +Star(nextResult)
-        +CallRuntime(InterpRuntime.ThrowIfIteratorReturnNotObject, nextResult, 1)
-        +LdaNamedProperty(nextResult, loadConstant("done"))
-        jump(done, ::JumpIfToBooleanTrue)
+        add(Star, nextResult)
+        add(CallRuntime, InterpRuntime.ThrowIfIteratorReturnNotObject, nextResult, 1)
+        add(LdaNamedProperty, nextResult, loadConstant("done"))
+        jump(done, JumpIfToBooleanTrue)
 
-        +LdaNamedProperty(nextResult, loadConstant("value"))
+        add(LdaNamedProperty, nextResult, loadConstant("value"))
         action()
         jump(head)
 
@@ -1203,8 +1205,8 @@ class IRTransformer : ASTVisitor {
     }
 
     private fun loadArgumentsWithSpread(arguments: ArgumentList, arrayReg: Int): RegList {
-        +CreateArrayLiteral
-        +Star(arrayReg)
+        add(CreateArrayLiteral)
+        add(Star, arrayReg)
         var indexReg = -1
         var indexUsable = true
 
@@ -1212,25 +1214,25 @@ class IRTransformer : ASTVisitor {
             if (argument.isSpread) {
                 indexUsable = false
                 indexReg = nextFreeReg()
-                +LdaInt(index)
-                +Star(indexReg)
+                add(LdaInt, index)
+                add(Star, indexReg)
 
                 visit(argument.expression)
                 iterateValues {
-                    +StaArrayLiteral(arrayReg, indexReg)
-                    +Ldar(indexReg)
-                    +Inc
-                    +Star(indexReg)
+                    add(StaArrayLiteral, arrayReg, indexReg)
+                    add(Ldar, indexReg)
+                    add(Inc)
+                    add(Star, indexReg)
                 }
             } else {
                 visit(argument.expression)
                 if (indexUsable) {
-                    +StaArrayLiteralIndex(arrayReg, index)
+                    add(StaArrayLiteralIndex, arrayReg, index)
                 } else {
-                    +StaArrayLiteral(arrayReg, indexReg)
-                    +Ldar(indexReg)
-                    +Inc
-                    +Star(indexReg)
+                    add(StaArrayLiteral, arrayReg, indexReg)
+                    add(Ldar, indexReg)
+                    add(Inc)
+                    add(Star, indexReg)
                 }
             }
         }
@@ -1271,20 +1273,20 @@ class IRTransformer : ASTVisitor {
         for ((index, part) in node.parts.withIndex()) {
             if (part is StringLiteralNode) {
                 val reg = loadConstant(part.value)
-                +LdaConstant(reg)
+                add(LdaConstant, reg)
             } else {
                 visit(part)
-                +ToString
+                add(ToString)
             }
 
             if (index != 0) {
-                +TemplateAppend(templateLiteral)
+                add(StringAppend, templateLiteral)
             } else {
-                +Star(templateLiteral)
+                add(Star, templateLiteral)
             }
         }
 
-        +Ldar(templateLiteral)
+        add(Ldar, templateLiteral)
     }
 
     override fun visitRegExpLiteral(node: RegExpLiteralNode) {
@@ -1300,27 +1302,27 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitArrayLiteral(node: ArrayLiteralNode) {
-        +CreateArrayLiteral
+        add(CreateArrayLiteral)
         val arrayReg = nextFreeReg()
-        +Star(arrayReg)
+        add(Star, arrayReg)
         for ((index, element) in node.elements.withIndex()) {
             when (element.type) {
                 ArrayElementNode.Type.Elision -> continue
                 ArrayElementNode.Type.Spread -> TODO()
                 ArrayElementNode.Type.Normal -> {
                     visit(element.expression!!)
-                    +StaArrayLiteralIndex(arrayReg, index)
+                    add(StaArrayLiteralIndex, arrayReg, index)
                 }
             }
         }
-        +Ldar(arrayReg)
+        add(Ldar, arrayReg)
         markRegFree(arrayReg)
     }
 
     override fun visitObjectLiteral(node: ObjectLiteralNode) {
-        +CreateObjectLiteral
+        add(CreateObjectLiteral)
         val objectReg = nextFreeReg()
-        +Star(objectReg)
+        add(Star, objectReg)
 
         for (property in node.list) {
             when (property) {
@@ -1347,16 +1349,16 @@ class IRTransformer : ASTVisitor {
                             val propertyReg = nextFreeReg()
                             val methodReg = nextFreeReg()
                             val op = if (method.type == MethodDefinitionNode.Type.Getter) {
-                                ::DefineGetterProperty
-                            } else ::DefineSetterProperty
+                                DefineGetterProperty
+                            } else DefineSetterProperty
 
                             visitPropertyName(method.propName)
-                            +Star(propertyReg)
+                            add(Star, propertyReg)
 
                             makeFunction()
-                            +Star(methodReg)
+                            add(Star, methodReg)
 
-                            +op(objectReg, propertyReg, methodReg)
+                            add(op, objectReg, propertyReg, methodReg)
 
                             markRegFree(propertyReg)
                             markRegFree(methodReg)
@@ -1366,7 +1368,7 @@ class IRTransformer : ASTVisitor {
                 }
                 is ShorthandProperty -> {
                     visit(property.key)
-                    +StaNamedProperty(objectReg, loadConstant(property.key.identifierName))
+                    add(StaNamedProperty, objectReg, loadConstant(property.key.identifierName))
                 }
                 is KeyValueProperty -> {
                     storeObjectProperty(objectReg, property.key) {
@@ -1376,13 +1378,13 @@ class IRTransformer : ASTVisitor {
             }
         }
 
-        +Ldar(objectReg)
+        add(Ldar, objectReg)
         markRegFree(objectReg)
     }
 
     private fun visitPropertyName(property: PropertyName) {
         if (property.type == PropertyName.Type.Identifier) {
-            +LdaConstant(loadConstant((property.expression as IdentifierNode).identifierName))
+            add(LdaConstant, loadConstant((property.expression as IdentifierNode).identifierName))
         } else visit(property.expression)
     }
 
@@ -1390,7 +1392,7 @@ class IRTransformer : ASTVisitor {
         if (property.type == PropertyName.Type.Identifier) {
             valueProducer()
             val name = (property.expression as IdentifierNode).identifierName
-            +StaNamedProperty(objectReg, loadConstant(name))
+            add(StaNamedProperty, objectReg, loadConstant(name))
             return
         }
 
@@ -1399,52 +1401,52 @@ class IRTransformer : ASTVisitor {
             PropertyName.Type.Number -> visit(property.expression)
             PropertyName.Type.Computed -> {
                 visit(property.expression)
-                +ToString
+                add(ToString)
             }
             PropertyName.Type.Identifier -> unreachable()
         }
 
         val keyReg = nextFreeReg()
-        +Star(keyReg)
+        add(Star, keyReg)
         valueProducer()
-        +StaKeyedProperty(objectReg, keyReg)
+        add(StaKeyedProperty, objectReg, keyReg)
         markRegFree(keyReg)
     }
 
     override fun visitBooleanLiteral(node: BooleanLiteralNode) {
-        if (node.value) +LdaTrue else +LdaFalse
+        add(if (node.value) LdaTrue else LdaFalse)
     }
 
     override fun visitStringLiteral(node: StringLiteralNode) {
-        +LdaConstant(loadConstant(node.value))
+        add(LdaConstant, loadConstant(node.value))
     }
 
     override fun visitNumericLiteral(node: NumericLiteralNode) {
         val value = node.value
         if (value.isFinite() && floor(value) == value && value in Int.MIN_VALUE.toDouble()..Int.MAX_VALUE.toDouble()) {
-            +LdaInt(value.toInt())
+            add(LdaInt, value.toInt())
         } else {
-            +LdaDouble(value)
+            add(LdaConstant, loadConstant(value))
         }
     }
 
     override fun visitBigIntLiteral(node: BigIntLiteralNode) {
         val bigint = BigInteger(node.value, node.type.radix)
-        +LdaConstant(loadConstant(bigint))
+        add(LdaConstant, loadConstant(bigint))
     }
 
     override fun visitNullLiteral() {
-        +LdaNull
+        add(LdaNull)
     }
 
     override fun visitThisLiteral() {
-        +Ldar(receiverReg())
+        add(Ldar, receiverReg())
     }
 
     private fun getOpcode(index: Int) = builder.getOpcode(index)
     private fun setOpcode(index: Int, value: Opcode) = builder.setOpcode(index, value)
     private fun label() = builder.label()
-    private fun jump(label: Label, op: (Int) -> Opcode = ::Jump) = builder.jumpHelper(label, op)
+    private fun jump(label: Label, type: OpcodeType = Jump) = builder.jumpHelper(label, type)
     private fun place(label: Label) = builder.place(label)
     private fun loadConstant(constant: Any) = builder.loadConstant(constant)
     private fun nextFreeReg() = builder.nextFreeReg()
@@ -1454,6 +1456,10 @@ class IRTransformer : ASTVisitor {
     private fun receiverReg() = builder.receiverReg()
     private fun argReg(index: Int) = builder.argReg(index)
     private fun reg(index: Int) = builder.reg(index)
+
+    private fun add(type: OpcodeType, vararg args: Any) {
+        builder.addOpcode(Opcode(type, *args))
+    }
 
     private operator fun Opcode.unaryPlus() {
         builder.addOpcode(this)
