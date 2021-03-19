@@ -29,9 +29,14 @@ class FunctionInfo(
 class IRTransformer : ASTVisitor {
     private lateinit var builder: FunctionBuilder
 
-    fun transform(node: ScriptNode): FunctionInfo {
+    fun transform(node: ASTNode): FunctionInfo {
         if (::builder.isInitialized)
             throw IllegalStateException("Cannot re-use an IRTransformer")
+
+        if (node is ModuleNode)
+            TODO()
+
+        expect(node is ScriptNode)
 
         builder = FunctionBuilder()
 
@@ -42,7 +47,7 @@ class IRTransformer : ASTVisitor {
 
         return FunctionInfo(
             null,
-            PeepholeOptimizer.optimize(builder.opcodes.toTypedArray()),
+            builder.opcodes.toTypedArray(),
             builder.constantPool.toTypedArray(),
             builder.handlers.map(IRHandler::toHandler).toTypedArray(),
             builder.registerCount,
@@ -728,7 +733,7 @@ class IRTransformer : ASTVisitor {
 
         val info = FunctionInfo(
             name,
-            PeepholeOptimizer.optimize(builder.opcodes.toTypedArray()),
+            builder.opcodes.toTypedArray(),
             builder.constantPool.toTypedArray(),
             builder.handlers.map(IRHandler::toHandler).toTypedArray(),
             builder.registerCount,

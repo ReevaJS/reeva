@@ -2,11 +2,10 @@ package me.mattco.reeva.test262
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.core.EvaluationResult
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.modules.resolver.DefaultModuleResolver
+import me.mattco.reeva.pipeline.PipelineError
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.toJSString
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assumptions
 import org.opentest4j.AssertionFailedError
@@ -55,10 +54,8 @@ class Test262Test(
 
             val pretestResult = agent.run("$requiredScript\n\n", realm)
 
-            Assertions.assertTrue(!pretestResult.isError) {
-                agent.withRealm(realm) {
-                    Operations.toString(pretestResult.value).string
-                }
+            Assertions.assertTrue(pretestResult.hasValue) {
+                pretestResult.error().toString()
             }
 
             if (metadata.flags != null && Flag.Async in metadata.flags) {
@@ -119,34 +116,33 @@ class Test262Test(
         val testResult = agent.run(theScript, realm)
 
         if (shouldErrorDuringParse || shouldErrorDuringRuntime) {
-            if (shouldErrorDuringParse) {
-                Assertions.assertTrue(testResult is EvaluationResult.ParseFailure) {
-                    val str = agent.withRealm(realm) {
-                        testResult.value.toJSString()
-                    }
-                    "Expected EvaluationResult.ParseFailure, but received EvaluationResult.${testResult::class.simpleName}{$str}"
-                }
-            } else {
-                Assertions.assertTrue(testResult is EvaluationResult.RuntimeError) {
-                    val str = agent.withRealm(realm) {
-                        testResult.value.toJSString()
-                    }
-                    "Expected EvaluationResult.RuntimeError, but received EvaluationResult.${testResult::class.simpleName}{$str}"
-                }
+            Assertions.assertTrue(testResult.hasError) {
+                "Expected error during execution, but not error was generated"
             }
 
-            val expectedClass = "JS${metadata.negative!!.type}Object"
-            val actualClass = testResult.value::class.simpleName
+            val error = testResult.error()
 
-            Assertions.assertTrue(actualClass == expectedClass) {
-                "Expected $expectedClass to be thrown, but found $actualClass"
+            if (shouldErrorDuringParse) {
+                Assertions.assertTrue(error is PipelineError.Parse) {
+                    "Expected ParseError, but received ${error::class.simpleName}{$error}"
+                }
+
+                // TODO: Is ever supposed to not be a SyntaxError?
+            } else {
+                Assertions.assertTrue(error is PipelineError.Runtime) {
+                    "Expected RuntimeError, but received ${error::class.simpleName}{$error}"
+                }
+
+                val expectedClass = "JS${metadata.negative!!.type}Object"
+                val actualClass = (error as PipelineError.Runtime).cause::class.simpleName
+
+                Assertions.assertTrue(actualClass == expectedClass) {
+                    "Expected $expectedClass to be thrown, but found $actualClass"
+                }
             }
         } else {
-            Assertions.assertTrue(testResult is EvaluationResult.Success) {
-                val str = agent.withRealm(realm) {
-                    testResult.value.toJSString()
-                }
-                "Expected EvaluationResult.Success, but received EvaluationResult.${testResult::class.simpleName}{$str}"
+            Assertions.assertTrue(testResult.hasValue) {
+                "Expected execution to complete normally, but received error ${testResult.error()::class.simpleName}{${testResult.error()}}"
             }
         }
     }

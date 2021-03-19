@@ -2,37 +2,32 @@ package me.mattco.reeva.test262
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.core.EvaluationResult
-import me.mattco.reeva.runtime.toJSString
 import me.mattco.reeva.runtime.toPrintableString
 import java.io.File
 
 fun main() {
-    val test262 = File("./demo/test262.js").readText()
-    val script = File("./demo/index.js").readText()
-
     Reeva.setup()
 
     val agent = Agent()
-
     Reeva.setAgent(agent)
     val realm = Reeva.makeRealm()
 
-    when (val result = agent.run(test262, realm)) {
-        is EvaluationResult.ParseFailure -> println("\u001b[31m[test262] Parse failure: ${result.value}\u001B[0m")
-        is EvaluationResult.RuntimeError -> agent.withRealm(realm) {
-            println("\u001b[31m[test262] ${result.value.toJSString()}\u001B[0m")
-        }
-    }
+    // val test262Script = File("./demo/test262.js").readText()
+    // val test262Result = agent.run(test262Script, realm)
+    // if (rest262Result.hasError) {
+    //     println(test262Result.error())
+    //     return
+    // }
 
     agent.printIR = true
 
-    when (val result = agent.run(script, realm)) {
-        is EvaluationResult.ParseFailure -> println("\u001b[31mParse failure: ${result.value}\u001B[0m")
-        is EvaluationResult.RuntimeError -> agent.withRealm(realm) {
-            println("\u001b[31m${result.value.toJSString()}\u001B[0m")
-        }
-        else -> println(result.value.toPrintableString())
+    val script = File("./demo/index.js").readText()
+    val result = agent.run(script, realm)
+
+    if (result.hasError) {
+        println(result.error())
+    } else {
+        println("Script result: ${result.value().toPrintableString()}")
     }
 
     Reeva.teardown()

@@ -1,12 +1,10 @@
 package me.mattco.reeva.core
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.interpreter.IRInterpreter
-import me.mattco.reeva.ir.IRTransformer
-import me.mattco.reeva.ir.OpcodePrinter
-import me.mattco.reeva.parser.Parser
-import me.mattco.reeva.runtime.JSArguments
-import me.mattco.reeva.runtime.errors.JSSyntaxErrorObject
+import me.mattco.reeva.pipeline.Pipeline
+import me.mattco.reeva.pipeline.PipelineError
+import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.utils.Result
 import me.mattco.reeva.utils.expect
 import java.nio.ByteOrder
 import java.util.*
@@ -20,7 +18,7 @@ class Agent {
     var printAST = false
     var printIR = false
 
-    val byteOrder = ByteOrder.nativeOrder()
+    val byteOrder: ByteOrder = ByteOrder.nativeOrder()
     val isLittleEndian: Boolean
         get() = byteOrder == ByteOrder.LITTLE_ENDIAN
     val isBigEndian: Boolean
@@ -30,43 +28,16 @@ class Agent {
     val activeRealm: Realm
         get() = activeRealms.peek()
 
-    internal val pendingMicrotasks = ArrayDeque<() -> Unit>()
+    private val pendingMicrotasks = ArrayDeque<() -> Unit>()
 
     init {
         Reeva.allAgents.add(this)
     }
 
-    fun run(script: String, realm: Realm): EvaluationResult {
-        val ast = try {
-            Parser(script).parseScript()
-        } catch (e: Parser.ParsingException) {
-            return EvaluationResult.ParseFailure(JSSyntaxErrorObject.create(realm, e.message!!), e.start, e.end)
+    fun run(script: String, realm: Realm, asModule: Boolean = false): Result<PipelineError, JSValue> {
+        return withRealm(realm) {
+            Pipeline.interpret(this, script, asModule)
         }
-
-        if (printAST)
-            ast.debugPrint()
-
-        val info = IRTransformer().transform(ast)
-        if (printIR) {
-            OpcodePrinter.printFunctionInfo(info)
-            println("\n")
-        }
-
-        val function = IRInterpreter.wrap(info, realm)
-        val initialSize = activeRealms.size
-        activeRealms.push(realm)
-
-        val result = try {
-            function.call(JSArguments(emptyList(), realm.globalObject))
-        } catch (e: ThrowException) {
-            return EvaluationResult.RuntimeError(e.value)
-        } finally {
-            activeRealms.pop()
-        }
-
-        expect(activeRealms.size == initialSize)
-
-        return EvaluationResult.Success(result)
     }
 
     internal fun addMicrotask(task: () -> Unit) {
@@ -81,18 +52,20 @@ class Agent {
         activeRealms.pop()
     }
 
-    internal fun processMicrotasks() {
-        while (pendingMicrotasks.isNotEmpty() && Reeva.running)
-            pendingMicrotasks.removeLast()()
-    }
-
     fun <T> withRealm(realm: Realm, block: () -> T): T {
+        val initialRealmCount = activeRealms.size
         pushRealm(realm)
         return try {
             block()
         } finally {
             popRealm()
+            expect(activeRealms.size == initialRealmCount)
         }
+    }
+
+    internal fun processMicrotasks() {
+        while (pendingMicrotasks.isNotEmpty() && Reeva.running)
+            pendingMicrotasks.removeLast()()
     }
 
     internal fun nextId() = uniqueId++
