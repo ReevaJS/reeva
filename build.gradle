@@ -39,17 +39,14 @@ test {
 
 compileKotlin {
     kotlinOptions {
-        freeCompilerArgs += '-Xopt-in=kotlin.RequiresOptIn'
-        languageVersion = '1.5'
-        apiVersion = '1.5'
+        freeCompilerArgs = ["-Xinline-classes"]
         jvmTarget = '1.8'
     }
 }
 
 compileTestKotlin {
     kotlinOptions {
-        languageVersion = '1.5'
-        apiVersion = '1.5'
+        freeCompilerArgs = ["-Xinline-classes"]
         jvmTarget = '1.8'
     }
 }
