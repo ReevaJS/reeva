@@ -842,7 +842,7 @@ object Operations {
                 else -> value.asDouble.toString()
             }
             is JSBigInt -> value.number.toString(10) + "n"
-            is JSString -> value.string
+            is JSString -> "\"${value.string}\""
             is JSSymbol -> value.descriptiveString()
             is JSObject -> "[object <${value::class.java.simpleName}>]"
             is JSAccessor -> "<accessor>"
