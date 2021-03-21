@@ -39,7 +39,7 @@ interface ASTVisitor {
             is ExportNode -> visitExport(node)
             is FunctionDeclarationNode -> visitFunctionDeclaration(node)
             is ClassDeclarationNode -> visitClassDeclaration(node)
-            else -> "Unrecognized StatementNode ${node.name}"
+            else -> throw IllegalArgumentException("Unrecognized StatementNode ${node.name}")
         }
     }
 
@@ -80,7 +80,7 @@ interface ASTVisitor {
             is BigIntLiteralNode -> visitBigIntLiteral(node)
             is NullLiteralNode -> visitNullLiteral()
             is ThisLiteralNode -> visitThisLiteral()
-            else -> "Unrecognized ExpressionNode ${node.name}"
+            else -> throw IllegalArgumentException("Unrecognized ExpressionNode ${node.name}")
         }
     }
 
