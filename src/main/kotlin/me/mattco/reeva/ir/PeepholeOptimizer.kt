@@ -1,6 +1,7 @@
 package me.mattco.reeva.ir
 
 import me.mattco.reeva.ir.OpcodeType.*
+import me.mattco.reeva.ir.opcodes.OpcodeVisitor
 
 class PeepholeOptimizer private constructor(private val input: Array<Opcode>) : OpcodeVisitor() {
     private val output = mutableListOf<Opcode>()

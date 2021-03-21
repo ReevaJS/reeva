@@ -1,5 +1,8 @@
-package me.mattco.reeva.ir
+package me.mattco.reeva.ir.opcodes
 
+import me.mattco.reeva.ir.DeclarationsArray
+import me.mattco.reeva.ir.FunctionInfo
+import me.mattco.reeva.ir.Opcode
 import me.mattco.reeva.utils.unreachable
 
 object OpcodePrinter {

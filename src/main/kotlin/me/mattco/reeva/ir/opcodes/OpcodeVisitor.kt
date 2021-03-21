@@ -1,4 +1,7 @@
-package me.mattco.reeva.ir
+package me.mattco.reeva.ir.opcodes
+
+import me.mattco.reeva.ir.Opcode
+import me.mattco.reeva.ir.OpcodeType
 
 abstract class OpcodeVisitor {
     open fun visit(opcode: Opcode) {

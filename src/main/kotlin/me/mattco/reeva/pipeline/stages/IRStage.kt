@@ -4,7 +4,7 @@ import me.mattco.reeva.ast.ASTNode
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.ir.FunctionInfo
 import me.mattco.reeva.ir.IRTransformer
-import me.mattco.reeva.ir.OpcodePrinter
+import me.mattco.reeva.ir.opcodes.OpcodePrinter
 import me.mattco.reeva.pipeline.PipelineError
 import me.mattco.reeva.pipeline.Stage
 import me.mattco.reeva.utils.Result
