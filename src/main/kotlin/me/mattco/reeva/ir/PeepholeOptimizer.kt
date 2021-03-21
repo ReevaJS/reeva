@@ -11,7 +11,6 @@ class PeepholeOptimizer private constructor(private val input: OpcodeList) : Opc
 
     fun optimize() {
 //        return
-        println()
 
         while (cursor < input.size) {
             visit(input[cursor])

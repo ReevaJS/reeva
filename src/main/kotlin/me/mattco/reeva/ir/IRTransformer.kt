@@ -1147,9 +1147,9 @@ class IRTransformer : ASTVisitor {
         add(Ldar, target)
 
         when (mode) {
-            ArgumentsMode.Spread -> add(ConstructFromArray, target, arguments!!.firstReg)
-            ArgumentsMode.LastSpread -> add(ConstructLastSpread, target, arguments!!.firstReg, arguments.count)
-            ArgumentsMode.Normal -> add(Construct, target, arguments!!.firstReg, arguments.count)
+            ArgumentsMode.Spread -> add(ConstructFromArray, target, arguments!!.start)
+            ArgumentsMode.LastSpread -> add(ConstructLastSpread, target, arguments!!)
+            ArgumentsMode.Normal -> add(Construct, target, arguments!!)
             null -> add(Construct0, target)
         }
 
@@ -1157,7 +1157,7 @@ class IRTransformer : ASTVisitor {
         arguments?.markFree()
     }
 
-    private fun loadArguments(arguments: ArgumentList, firstReg: Int): Pair<RegList, ArgumentsMode> {
+    private fun loadArguments(arguments: ArgumentList, firstReg: Int): Pair<RegisterRange, ArgumentsMode> {
         val mode = argumentsMode(arguments)
 
         return if (mode == ArgumentsMode.Spread) {
@@ -1168,7 +1168,7 @@ class IRTransformer : ASTVisitor {
                 add(Star, firstReg + index)
             }
 
-            RegList(firstReg, arguments.size).also {
+            RegisterRange(firstReg, arguments.size).also {
                 it.markUsed()
             } to mode
         }
@@ -1210,7 +1210,7 @@ class IRTransformer : ASTVisitor {
         markRegFree(next)
     }
 
-    private fun loadArgumentsWithSpread(arguments: ArgumentList, arrayReg: Int): RegList {
+    private fun loadArgumentsWithSpread(arguments: ArgumentList, arrayReg: Int): RegisterRange {
         add(CreateArrayLiteral)
         add(Star, arrayReg)
         var indexReg = -1
@@ -1244,7 +1244,7 @@ class IRTransformer : ASTVisitor {
         }
 
         markRegFree(indexReg)
-        return RegList(arrayReg, 1).also {
+        return RegisterRange(arrayReg, 1).also {
             it.markUsed()
         }
     }
@@ -1471,15 +1471,13 @@ class IRTransformer : ASTVisitor {
         builder.addOpcode(this)
     }
 
-    inner class RegList(val firstReg: Int, val count: Int) {
-        fun markUsed() {
-            for (i in 0 until count)
-                builder.markRegUsed(firstReg + i)
-        }
+    private fun RegisterRange.markUsed() {
+        for (i in 0 until count)
+            builder.markRegUsed(start + i)
+    }
 
-        fun markFree() {
-            for (i in 0 until count)
-                builder.markRegFree(firstReg + i)
-        }
+    private fun RegisterRange.markFree() {
+        for (i in 0 until count)
+            builder.markRegFree(start + i)
     }
 }
