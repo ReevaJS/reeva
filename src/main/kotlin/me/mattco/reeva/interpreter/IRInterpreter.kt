@@ -5,7 +5,10 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
-import me.mattco.reeva.ir.*
+import me.mattco.reeva.ir.DeclarationsArray
+import me.mattco.reeva.ir.FunctionInfo
+import me.mattco.reeva.ir.Opcode
+import me.mattco.reeva.ir.RegisterRange
 import me.mattco.reeva.ir.opcodes.OpcodeVisitor
 import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject

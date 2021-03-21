@@ -12,7 +12,7 @@ object PeepholeStage : Stage<FunctionInfo, FunctionInfo, PipelineError> {
         return try {
             val newInfo = FunctionInfo(
                 input.name,
-                PeepholeOptimizer.optimize(input.code),
+                input.code.also(PeepholeOptimizer::optimize),
                 input.constantPool,
                 input.handlers,
                 input.registerCount,

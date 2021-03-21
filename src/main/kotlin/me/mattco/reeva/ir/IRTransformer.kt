@@ -7,6 +7,7 @@ import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.interpreter.InterpRuntime
 import me.mattco.reeva.ir.FunctionBuilder.*
 import me.mattco.reeva.ir.OpcodeType.*
+import me.mattco.reeva.ir.opcodes.OpcodeList
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
 import me.mattco.reeva.utils.expect
@@ -16,7 +17,7 @@ import kotlin.math.floor
 
 class FunctionInfo(
     val name: String?,
-    val code: Array<Opcode>,
+    val code: OpcodeList,
     val constantPool: Array<Any>,
     val handlers: Array<Handler>,
     val registerCount: Int, // includes argCount
@@ -47,7 +48,7 @@ class IRTransformer : ASTVisitor {
 
         return FunctionInfo(
             null,
-            builder.opcodes.toTypedArray(),
+            OpcodeList(builder.opcodes),
             builder.constantPool.toTypedArray(),
             builder.handlers.map(IRHandler::toHandler).toTypedArray(),
             builder.registerCount,
@@ -733,7 +734,7 @@ class IRTransformer : ASTVisitor {
 
         val info = FunctionInfo(
             name,
-            builder.opcodes.toTypedArray(),
+            OpcodeList(builder.opcodes).also(PeepholeOptimizer::optimize),
             builder.constantPool.toTypedArray(),
             builder.handlers.map(IRHandler::toHandler).toTypedArray(),
             builder.registerCount,

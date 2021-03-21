@@ -732,7 +732,7 @@ class Opcode(type: OpcodeType, vararg args: Any) {
     var type: OpcodeType = type
         private set
 
-    var args: Array<out Any> = args
+    var args = args.toMutableList()
         private set
 
     init {
@@ -754,7 +754,7 @@ class Opcode(type: OpcodeType, vararg args: Any) {
     fun replaceJumpPlaceholder(newType: OpcodeType, offset: Int) {
         expect(type == OpcodeType.JumpPlaceholder, type.toString())
         type = newType
-        args = arrayOf(offset)
+        args = mutableListOf(offset)
     }
 
     override fun toString() = type.name
