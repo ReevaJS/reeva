@@ -1120,8 +1120,8 @@ class IRTransformer : ASTVisitor {
             else -> {
                 val (registers, mode) = loadArguments(args, receiverReg + 1)
                 when (mode) {
-                    ArgumentsMode.Normal -> add(Call, callableReg, RegisterRange(receiverReg, registers.count))
-                    ArgumentsMode.LastSpread -> add(CallLastSpread, callableReg, RegisterRange(receiverReg, registers.count))
+                    ArgumentsMode.Normal -> add(Call, callableReg, RegisterRange(receiverReg, registers.count + 1))
+                    ArgumentsMode.LastSpread -> add(CallLastSpread, callableReg, RegisterRange(receiverReg, registers.count + 1))
                     ArgumentsMode.Spread -> add(CallFromArray, callableReg, RegisterRange(receiverReg, 2))
                 }
                 registers.markFree()

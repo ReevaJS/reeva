@@ -323,7 +323,7 @@ class IRInterpreter(
     }
 
     override fun visitCall0(opcode: Opcode) {
-        call(opcode.regAt(0), RegisterRange(opcode.regAt(1), 0), CallMode.Normal)
+        call(opcode.regAt(0), RegisterRange(opcode.regAt(1), 1), CallMode.Normal)
     }
 
     override fun visitCall1(opcode: Opcode) {
@@ -612,31 +612,28 @@ class IRInterpreter(
 
     private fun call(callableReg: Int, range: RegisterRange, mode: CallMode) {
         val target = registers[callableReg]
-        val receiver = registers[range.start]
+        val args = getRegisterBlock(range)
 
         accumulator = when (mode) {
             CallMode.Normal -> {
-                Operations.call(target, receiver, getRegisterBlock(range))
+                Operations.call(target, args[0], args.drop(1))
             }
             CallMode.OneArg -> {
-                Operations.call(target, receiver, listOf(accumulator))
+                Operations.call(target, args[0], listOf(args[1]))
             }
             CallMode.LastSpread -> {
-                val nonSpreadArgs = if (range.count > 0) {
-                    getRegisterBlock(range.drop(1))
-                } else emptyList()
-
-                val spreadValues = Operations.iterableToList(registers[range.end])
-
-                Operations.call(target, receiver, nonSpreadArgs + spreadValues)
+                val nonSpreadArgs = args.drop(1).dropLast(1)
+                val spreadValues = Operations.iterableToList(args.last())
+                Operations.call(target, args[0], nonSpreadArgs + spreadValues)
             }
             CallMode.Spread -> {
-                val argArray = registers[range.end] as JSArrayObject
-                val args = (0 until argArray.indexedProperties.arrayLikeSize).map {
+                expect(args.size == 2)
+                val argArray = args[1] as JSArrayObject
+                val callArgs = (0 until argArray.indexedProperties.arrayLikeSize).map {
                     argArray.indexedProperties.get(argArray, it.toInt())
                 }
 
-                Operations.call(target, receiver, args)
+                Operations.call(target, args[0], callArgs)
             }
         }
     }
