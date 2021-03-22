@@ -39,6 +39,7 @@ interface ASTVisitor {
             is ExportNode -> visitExport(node)
             is FunctionDeclarationNode -> visitFunctionDeclaration(node)
             is ClassDeclarationNode -> visitClassDeclaration(node)
+            is EmptyStatementNode -> {}
             else -> throw IllegalArgumentException("Unrecognized StatementNode ${node.name}")
         }
     }

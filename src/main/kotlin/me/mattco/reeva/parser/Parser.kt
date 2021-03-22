@@ -7,7 +7,6 @@ import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
-import java.io.File
 import java.util.*
 import java.util.concurrent.LinkedBlockingQueue
 
@@ -627,11 +626,14 @@ class Parser(val source: String) {
             parseStatement()
         }
 
-        val forScope = scope
-        if (initRequiresOwnScope)
-            scope = scope.outer!!
+        val initScope = if (initRequiresOwnScope) {
+            scope
+        } else null
 
-        ForStatementNode(initializer, condition, update, body).also { it.scope = forScope }
+        ForStatementNode(initScope, initializer, condition, update, body).also {
+            if (initRequiresOwnScope)
+                scope = scope.outer!!
+        }
     }
 
     private fun parseForEachStatement(initializer: ASTNode): StatementNode = nps {

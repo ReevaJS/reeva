@@ -2,6 +2,7 @@ package me.mattco.reeva.ast.statements
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
+import me.mattco.reeva.parser.Scope
 
 typealias StatementList = ASTListNode<StatementNode>
 typealias SwitchClauseList = ASTListNode<SwitchClause>
@@ -51,11 +52,12 @@ class SwitchClause(
 ) : ASTNodeBase(listOfNotNull(target) + (body ?: emptyList())), StatementNode
 
 class ForStatementNode(
+    val initScope: Scope?,
     val initializer: StatementNode?,
     val condition: ExpressionNode?,
     val incrementer: ExpressionNode?,
     val body: StatementNode,
-) : NodeWithScope(listOfNotNull(initializer, condition, incrementer, body)), StatementNode {
+) : ASTNodeBase(listOfNotNull(initializer, condition, incrementer, body)), StatementNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()

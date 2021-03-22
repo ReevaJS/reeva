@@ -150,17 +150,20 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitForStatement(node: ForStatementNode) {
-        if (node.scope.requiresEnv) {
-            add(PushEnv, node.scope.numSlots)
-            builder.nestedContexts++
-            node.scope.envVariables.forEachIndexed { index, variable ->
-                variable.slot = index
+        if (node.initScope != null) {
+            if (node.initScope.requiresEnv) {
+                add(PushEnv, node.initScope.numSlots)
+                builder.nestedContexts++
+                node.initScope.envVariables.forEachIndexed { index, variable ->
+                    variable.slot = index
+                }
+            }
+
+            node.initScope.inlineableVariables.forEach {
+                it.slot = nextFreeReg()
             }
         }
 
-        node.scope.inlineableVariables.forEach {
-            it.slot = nextFreeReg()
-        }
 
         if (node.initializer != null)
             visit(node.initializer)
@@ -188,13 +191,15 @@ class IRTransformer : ASTVisitor {
 
         place(loopEnd)
 
-        node.scope.inlineableVariables.forEach {
-            markRegFree(it.slot)
-        }
+        if (node.initScope != null) {
+            node.initScope.inlineableVariables.forEach {
+                markRegFree(it.slot)
+            }
 
-        if (node.scope.requiresEnv) {
-            builder.nestedContexts--
-            add(PopCurrentEnv)
+            if (node.initScope.requiresEnv) {
+                builder.nestedContexts--
+                add(PopCurrentEnv)
+            }
         }
     }
 
