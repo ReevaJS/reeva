@@ -7,9 +7,9 @@ import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.ir.DeclarationsArray
 import me.mattco.reeva.ir.FunctionInfo
-import me.mattco.reeva.ir.Opcode
-import me.mattco.reeva.ir.RegisterRange
-import me.mattco.reeva.ir.opcodes.OpcodeVisitor
+import me.mattco.reeva.ir.opcodes.IrOpcode
+import me.mattco.reeva.ir.opcodes.RegisterRange
+import me.mattco.reeva.ir.opcodes.IrOpcodeVisitor
 import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.functions.JSFunction
@@ -22,7 +22,7 @@ import me.mattco.reeva.utils.*
 class IRInterpreter(
     private val function: IRFunction,
     private val arguments: List<JSValue>,
-) : OpcodeVisitor() {
+) : IrOpcodeVisitor() {
     private val globalEnv: GlobalEnvRecord
 
     private val info = function.info
@@ -98,44 +98,44 @@ class IRInterpreter(
         accumulator = JSNumber.ZERO
     }
 
-    override fun visitLdaConstant(opcode: Opcode) {
+    override fun visitLdaConstant(opcode: IrOpcode) {
         accumulator = getMappedConstant(opcode.cpAt(0))
     }
 
-    override fun visitLdaInt(opcode: Opcode) {
+    override fun visitLdaInt(opcode: IrOpcode) {
         accumulator = JSNumber(opcode.literalAt(0))
     }
 
-    override fun visitLdar(opcode: Opcode) {
+    override fun visitLdar(opcode: IrOpcode) {
         accumulator = registers[opcode.regAt(0)]
     }
 
-    override fun visitStar(opcode: Opcode) {
+    override fun visitStar(opcode: IrOpcode) {
         registers[opcode.regAt(0)] = accumulator
     }
 
-    override fun visitMov(opcode: Opcode) {
+    override fun visitMov(opcode: IrOpcode) {
         registers[opcode.regAt(1)] = registers[opcode.regAt(0)]
     }
 
-    override fun visitLdaNamedProperty(opcode: Opcode) {
+    override fun visitLdaNamedProperty(opcode: IrOpcode) {
         val name = loadConstant<String>(opcode.cpAt(1))
         val obj = registers[opcode.regAt(0)] as JSObject
         accumulator = obj.get(name)
     }
 
-    override fun visitLdaKeyedProperty(opcode: Opcode) {
+    override fun visitLdaKeyedProperty(opcode: IrOpcode) {
         val obj = registers[opcode.regAt(0)] as JSObject
         accumulator = obj.get(Operations.toPropertyKey(accumulator))
     }
 
-    override fun visitStaNamedProperty(opcode: Opcode) {
+    override fun visitStaNamedProperty(opcode: IrOpcode) {
         val name = loadConstant<String>(opcode.cpAt(1))
         val obj = registers[opcode.regAt(0)] as JSObject
         obj.set(name, accumulator)
     }
 
-    override fun visitStaKeyedProperty(opcode: Opcode) {
+    override fun visitStaKeyedProperty(opcode: IrOpcode) {
         val obj = registers[opcode.regAt(0)] as JSObject
         val key = registers[opcode.regAt(1)]
         obj.set(Operations.toPropertyKey(key), accumulator)
@@ -145,13 +145,13 @@ class IRInterpreter(
         accumulator = JSArrayObject.create(function.realm)
     }
 
-    override fun visitStaArrayLiteral(opcode: Opcode) {
+    override fun visitStaArrayLiteral(opcode: IrOpcode) {
         val array = registers[opcode.regAt(0)] as JSObject
         val index = (registers[opcode.regAt(1)] as JSNumber).asInt
         array.indexedProperties.set(array, index, accumulator)
     }
 
-    override fun visitStaArrayLiteralIndex(opcode: Opcode) {
+    override fun visitStaArrayLiteralIndex(opcode: IrOpcode) {
         val array = registers[opcode.regAt(0)] as JSObject
         array.indexedProperties.set(array, opcode.literalAt(1), accumulator)
     }
@@ -160,51 +160,51 @@ class IRInterpreter(
         accumulator = JSObject.create(function.realm)
     }
 
-    override fun visitAdd(opcode: Opcode) {
+    override fun visitAdd(opcode: IrOpcode) {
         binaryOp(opcode.regAt(0), "+")
     }
 
-    override fun visitSub(opcode: Opcode) {
+    override fun visitSub(opcode: IrOpcode) {
         binaryOp(opcode.regAt(0), "-")
     }
 
-    override fun visitMul(opcode: Opcode) {
+    override fun visitMul(opcode: IrOpcode) {
         binaryOp(opcode.regAt(0), "*")
     }
 
-    override fun visitDiv(opcode: Opcode) {
+    override fun visitDiv(opcode: IrOpcode) {
         binaryOp(opcode.regAt(0), "/")
     }
 
-    override fun visitMod(opcode: Opcode) {
+    override fun visitMod(opcode: IrOpcode) {
         binaryOp(opcode.regAt(0), "%")
     }
 
-    override fun visitExp(opcode: Opcode) {
+    override fun visitExp(opcode: IrOpcode) {
         binaryOp(opcode.regAt(0), "**")
     }
 
-    override fun visitBitwiseOr(opcode: Opcode) {
+    override fun visitBitwiseOr(opcode: IrOpcode) {
         binaryOp(opcode.regAt(0), "|")
     }
 
-    override fun visitBitwiseXor(opcode: Opcode) {
+    override fun visitBitwiseXor(opcode: IrOpcode) {
         binaryOp(opcode.regAt(0), "^")
     }
 
-    override fun visitBitwiseAnd(opcode: Opcode) {
+    override fun visitBitwiseAnd(opcode: IrOpcode) {
         binaryOp(opcode.regAt(0), "&")
     }
 
-    override fun visitShiftLeft(opcode: Opcode) {
+    override fun visitShiftLeft(opcode: IrOpcode) {
         binaryOp(opcode.regAt(0), "<<")
     }
 
-    override fun visitShiftRight(opcode: Opcode) {
+    override fun visitShiftRight(opcode: IrOpcode) {
         binaryOp(opcode.regAt(0), ">>")
     }
 
-    override fun visitShiftRightUnsigned(opcode: Opcode) {
+    override fun visitShiftRightUnsigned(opcode: IrOpcode) {
         binaryOp(opcode.regAt(0), ">>>")
     }
 
@@ -230,7 +230,7 @@ class IRInterpreter(
         } else Operations.numericBitwiseNOT(accumulator)
     }
 
-    override fun visitStringAppend(opcode: Opcode) {
+    override fun visitStringAppend(opcode: IrOpcode) {
         val template = registers[opcode.regAt(0)] as JSString
         registers[opcode.regAt(0)] = JSString(
             template.string + (accumulator as JSString).string
@@ -249,14 +249,14 @@ class IRInterpreter(
         accumulator = Operations.typeofOperator(accumulator)
     }
 
-    override fun visitDeletePropertySloppy(opcode: Opcode) {
+    override fun visitDeletePropertySloppy(opcode: IrOpcode) {
         val target = registers[opcode.regAt(0)]
         accumulator = if (target is JSObject) {
             target.delete(accumulator.toPropertyKey()).toValue()
         } else JSTrue
     }
 
-    override fun visitDeletePropertyStrict(opcode: Opcode) {
+    override fun visitDeletePropertyStrict(opcode: IrOpcode) {
         val target = registers[opcode.regAt(0)]
         if (target is JSObject) {
             val key = accumulator.toPropertyKey()
@@ -267,41 +267,41 @@ class IRInterpreter(
         accumulator = JSTrue
     }
 
-    override fun visitLdaGlobal(opcode: Opcode) {
+    override fun visitLdaGlobal(opcode: IrOpcode) {
         val name = loadConstant<String>(opcode.cpAt(0))
         val desc = globalEnv.extension().getPropertyDescriptor(name.key())
             ?: Errors.UnknownReference(name.key()).throwReferenceError()
         accumulator = desc.getActualValue(globalEnv.extension())
     }
 
-    override fun visitStaGlobal(opcode: Opcode) {
+    override fun visitStaGlobal(opcode: IrOpcode) {
         val name = loadConstant<String>(opcode.cpAt(0))
         globalEnv.extension().set(name.key(), accumulator)
     }
 
-    override fun visitLdaCurrentEnv(opcode: Opcode) {
+    override fun visitLdaCurrentEnv(opcode: IrOpcode) {
         expect(currentEnv !is GlobalEnvRecord)
         accumulator = currentEnv.getBinding(opcode.literalAt(0))
     }
 
-    override fun visitStaCurrentEnv(opcode: Opcode) {
+    override fun visitStaCurrentEnv(opcode: IrOpcode) {
         expect(currentEnv !is GlobalEnvRecord)
         currentEnv.setBinding(opcode.literalAt(0), accumulator)
     }
 
-    override fun visitLdaEnv(opcode: Opcode) {
+    override fun visitLdaEnv(opcode: IrOpcode) {
         expect(currentEnv !is GlobalEnvRecord)
         val envIndex = envStack.lastIndex - opcode.literalAt(1)
         accumulator = envStack[envIndex].getBinding(opcode.literalAt(0))
     }
 
-    override fun visitStaEnv(opcode: Opcode) {
+    override fun visitStaEnv(opcode: IrOpcode) {
         expect(currentEnv !is GlobalEnvRecord)
         val envIndex = envStack.lastIndex - opcode.literalAt(1)
         envStack[envIndex].setBinding(opcode.literalAt(0), accumulator)
     }
 
-    override fun visitPushEnv(opcode: Opcode) {
+    override fun visitPushEnv(opcode: IrOpcode) {
         val newEnv = EnvRecord(currentEnv, currentEnv.isStrict, opcode.literalAt(0))
         envStack.add(newEnv)
         currentEnv = newEnv
@@ -311,39 +311,39 @@ class IRInterpreter(
         currentEnv = envStack.removeLast()
     }
 
-    override fun visitPopEnvs(opcode: Opcode) {
+    override fun visitPopEnvs(opcode: IrOpcode) {
         repeat(opcode.literalAt(0) - 1) {
             envStack.removeLast()
         }
         currentEnv = envStack.removeLast()
     }
 
-    override fun visitCall(opcode: Opcode) {
+    override fun visitCall(opcode: IrOpcode) {
         call(opcode.regAt(0), opcode.rangeAt(1), CallMode.Normal)
     }
 
-    override fun visitCall0(opcode: Opcode) {
+    override fun visitCall0(opcode: IrOpcode) {
         call(opcode.regAt(0), RegisterRange(opcode.regAt(1), 1), CallMode.Normal)
     }
 
-    override fun visitCall1(opcode: Opcode) {
+    override fun visitCall1(opcode: IrOpcode) {
         call(opcode.regAt(0), opcode.rangeAt(1), CallMode.OneArg)
     }
 
-    override fun visitCallLastSpread(opcode: Opcode) {
+    override fun visitCallLastSpread(opcode: IrOpcode) {
         call(opcode.regAt(0), opcode.rangeAt(1), CallMode.LastSpread)
     }
 
-    override fun visitCallFromArray(opcode: Opcode) {
+    override fun visitCallFromArray(opcode: IrOpcode) {
         call(opcode.regAt(0), RegisterRange(opcode.regAt(1), 1), CallMode.Spread)
     }
 
-    override fun visitCallRuntime(opcode: Opcode) {
+    override fun visitCallRuntime(opcode: IrOpcode) {
         val args = getRegisterBlock(opcode.rangeAt(1))
         accumulator = InterpRuntime.values()[opcode.literalAt(0)].function(args)
     }
 
-    override fun visitConstruct(opcode: Opcode) {
+    override fun visitConstruct(opcode: IrOpcode) {
         val target = registers[opcode.regAt(0)]
         if (!Operations.isConstructor(target))
             Errors.NotACtor(target.toJSString().string).throwTypeError()
@@ -355,7 +355,7 @@ class IRInterpreter(
         )
     }
 
-    override fun visitConstruct0(opcode: Opcode) {
+    override fun visitConstruct0(opcode: IrOpcode) {
         val target = registers[opcode.regAt(0)]
         if (!Operations.isConstructor(target))
             Errors.NotACtor(target.toJSString().string).throwTypeError()
@@ -367,80 +367,80 @@ class IRInterpreter(
         )
     }
 
-    override fun visitConstructLastSpread(opcode: Opcode) {
+    override fun visitConstructLastSpread(opcode: IrOpcode) {
         TODO()
     }
 
-    override fun visitConstructFromArray(opcode: Opcode) {
+    override fun visitConstructFromArray(opcode: IrOpcode) {
         TODO()
     }
 
-    override fun visitTestEqual(opcode: Opcode) {
+    override fun visitTestEqual(opcode: IrOpcode) {
         accumulator = Operations.abstractEqualityComparison(registers[opcode.regAt(0)], accumulator)
     }
 
-    override fun visitTestNotEqual(opcode: Opcode) {
+    override fun visitTestNotEqual(opcode: IrOpcode) {
         accumulator = Operations.abstractEqualityComparison(registers[opcode.regAt(0)], accumulator).inv()
     }
 
-    override fun visitTestEqualStrict(opcode: Opcode) {
+    override fun visitTestEqualStrict(opcode: IrOpcode) {
         accumulator = Operations.strictEqualityComparison(registers[opcode.regAt(0)], accumulator)
     }
 
-    override fun visitTestNotEqualStrict(opcode: Opcode) {
+    override fun visitTestNotEqualStrict(opcode: IrOpcode) {
         accumulator = Operations.strictEqualityComparison(registers[opcode.regAt(0)], accumulator).inv()
     }
 
-    override fun visitTestLessThan(opcode: Opcode) {
+    override fun visitTestLessThan(opcode: IrOpcode) {
         val lhs = registers[opcode.regAt(0)]
         val rhs = accumulator
         val result = Operations.abstractRelationalComparison(lhs, rhs, true)
         accumulator = if (result == JSUndefined) JSFalse else result
     }
 
-    override fun visitTestGreaterThan(opcode: Opcode) {
+    override fun visitTestGreaterThan(opcode: IrOpcode) {
         val lhs = registers[opcode.regAt(0)]
         val rhs = accumulator
         val result = Operations.abstractRelationalComparison(rhs, lhs, false)
         accumulator = if (result == JSUndefined) JSFalse else result
     }
 
-    override fun visitTestLessThanOrEqual(opcode: Opcode) {
+    override fun visitTestLessThanOrEqual(opcode: IrOpcode) {
         val lhs = registers[opcode.regAt(0)]
         val rhs = accumulator
         val result = Operations.abstractRelationalComparison(rhs, lhs, false)
         accumulator = if (result == JSFalse) JSTrue else JSFalse
     }
 
-    override fun visitTestGreaterThanOrEqual(opcode: Opcode) {
+    override fun visitTestGreaterThanOrEqual(opcode: IrOpcode) {
         val lhs = registers[opcode.regAt(0)]
         val rhs = accumulator
         val result = Operations.abstractRelationalComparison(lhs, rhs, true)
         accumulator = if (result == JSFalse) JSTrue else JSFalse
     }
 
-    override fun visitTestReferenceEqual(opcode: Opcode) {
+    override fun visitTestReferenceEqual(opcode: IrOpcode) {
         accumulator = (accumulator == registers[opcode.regAt(0)]).toValue()
     }
 
-    override fun visitTestInstanceOf(opcode: Opcode) {
+    override fun visitTestInstanceOf(opcode: IrOpcode) {
         accumulator = Operations.instanceofOperator(registers[opcode.regAt(0)], accumulator)
     }
 
-    override fun visitTestIn(opcode: Opcode) {
+    override fun visitTestIn(opcode: IrOpcode) {
         val rval = registers[opcode.regAt(0)].toPropertyKey()
         accumulator = Operations.hasProperty(accumulator, rval).toValue()
     }
 
-    override fun visitTestNullish(opcode: Opcode) {
+    override fun visitTestNullish(opcode: IrOpcode) {
         accumulator = accumulator.let { it == JSNull || it == JSUndefined }.toValue()
     }
 
-    override fun visitTestNull(opcode: Opcode) {
+    override fun visitTestNull(opcode: IrOpcode) {
         accumulator = (accumulator == JSNull).toValue()
     }
 
-    override fun visitTestUndefined(opcode: Opcode) {
+    override fun visitTestUndefined(opcode: IrOpcode) {
         accumulator = (accumulator == JSUndefined).toValue()
     }
 
@@ -464,61 +464,61 @@ class IRInterpreter(
         accumulator = Operations.toString(accumulator)
     }
 
-    override fun visitJump(opcode: Opcode) {
+    override fun visitJump(opcode: IrOpcode) {
         ip = opcode.instrAt(0)
     }
 
-    override fun visitJumpIfTrue(opcode: Opcode) {
+    override fun visitJumpIfTrue(opcode: IrOpcode) {
         if (accumulator == JSTrue)
             ip = opcode.instrAt(0)
     }
 
-    override fun visitJumpIfFalse(opcode: Opcode) {
+    override fun visitJumpIfFalse(opcode: IrOpcode) {
         if (accumulator == JSFalse)
             ip = opcode.instrAt(0)
     }
 
-    override fun visitJumpIfToBooleanTrue(opcode: Opcode) {
+    override fun visitJumpIfToBooleanTrue(opcode: IrOpcode) {
         if (Operations.toBoolean(accumulator))
             ip = opcode.instrAt(0)
     }
 
-    override fun visitJumpIfToBooleanFalse(opcode: Opcode) {
+    override fun visitJumpIfToBooleanFalse(opcode: IrOpcode) {
         if (!Operations.toBoolean(accumulator))
             ip = opcode.instrAt(0)
     }
 
-    override fun visitJumpIfNull(opcode: Opcode) {
+    override fun visitJumpIfNull(opcode: IrOpcode) {
         if (accumulator == JSNull)
             ip = opcode.instrAt(0)
     }
 
-    override fun visitJumpIfNotNull(opcode: Opcode) {
+    override fun visitJumpIfNotNull(opcode: IrOpcode) {
         if (accumulator != JSNull)
             ip = opcode.instrAt(0)
     }
 
-    override fun visitJumpIfUndefined(opcode: Opcode) {
+    override fun visitJumpIfUndefined(opcode: IrOpcode) {
         if (accumulator == JSUndefined)
             ip = opcode.instrAt(0)
     }
 
-    override fun visitJumpIfNotUndefined(opcode: Opcode) {
+    override fun visitJumpIfNotUndefined(opcode: IrOpcode) {
         if (accumulator != JSUndefined)
             ip = opcode.instrAt(0)
     }
 
-    override fun visitJumpIfNullish(opcode: Opcode) {
+    override fun visitJumpIfNullish(opcode: IrOpcode) {
         if (accumulator is JSObject)
             ip = opcode.instrAt(0)
     }
 
-    override fun visitJumpIfNotNullish(opcode: Opcode) {
+    override fun visitJumpIfNotNullish(opcode: IrOpcode) {
         if (accumulator.let { it == JSNull || it == JSUndefined })
             ip = opcode.instrAt(0)
     }
 
-    override fun visitJumpIfObject(opcode: Opcode) {
+    override fun visitJumpIfObject(opcode: IrOpcode) {
         if (!accumulator.let { it == JSNull || it == JSUndefined })
             ip = opcode.instrAt(0)
     }
@@ -536,16 +536,16 @@ class IRInterpreter(
         ip = handler.handler
     }
 
-    override fun visitThrowConstReassignment(opcode: Opcode) {
+    override fun visitThrowConstReassignment(opcode: IrOpcode) {
         Errors.AssignmentToConstant(loadConstant(opcode.cpAt(0))).throwTypeError()
     }
 
-    override fun visitThrowUseBeforeInitIfEmpty(opcode: Opcode) {
+    override fun visitThrowUseBeforeInitIfEmpty(opcode: IrOpcode) {
         if (accumulator == JSEmpty)
             Errors.AccessBeforeInitialization(loadConstant(opcode.cpAt(0))).throwTypeError()
     }
 
-    override fun visitDefineGetterProperty(opcode: Opcode) {
+    override fun visitDefineGetterProperty(opcode: IrOpcode) {
         defineAccessor(
             registers[opcode.regAt(0)] as JSObject,
             registers[opcode.regAt(1)],
@@ -554,7 +554,7 @@ class IRInterpreter(
         )
     }
 
-    override fun visitDefineSetterProperty(opcode: Opcode) {
+    override fun visitDefineSetterProperty(opcode: IrOpcode) {
         defineAccessor(
             registers[opcode.regAt(0)] as JSObject,
             registers[opcode.regAt(1)],
@@ -563,7 +563,7 @@ class IRInterpreter(
         )
     }
 
-    override fun visitDeclareGlobals(opcode: Opcode) {
+    override fun visitDeclareGlobals(opcode: IrOpcode) {
         val array = loadConstant<DeclarationsArray>(opcode.cpAt(0))
         declareGlobals(array)
     }
@@ -582,7 +582,7 @@ class IRInterpreter(
             Errors.NonObjectIterator.throwTypeError()
     }
 
-    override fun visitCreateClosure(opcode: Opcode) {
+    override fun visitCreateClosure(opcode: IrOpcode) {
         val newInfo = loadConstant<FunctionInfo>(opcode.cpAt(0))
         val newEnv = EnvRecord(currentEnv, currentEnv.isStrict || newInfo.isStrict, newInfo.topLevelSlots)
         accumulator = IRFunction(function.realm, newInfo, newEnv).initialize()

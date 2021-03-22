@@ -2,10 +2,9 @@ package me.mattco.reeva.ir.opcodes
 
 import me.mattco.reeva.ir.DeclarationsArray
 import me.mattco.reeva.ir.FunctionInfo
-import me.mattco.reeva.ir.Opcode
 import me.mattco.reeva.utils.unreachable
 
-object OpcodePrinter {
+object IrPrinter {
     fun printFunctionInfo(info: FunctionInfo) {
         val name = if (info.isTopLevelScript) {
             "top-level script"
@@ -92,7 +91,7 @@ object OpcodePrinter {
         }
     }
 
-    private fun stringifyOpcode(opcode: Opcode, argCount: Int): String {
+    private fun stringifyOpcode(opcode: IrOpcode, argCount: Int): String {
         return buildString {
             append(opcode.type.name)
             append(" ")

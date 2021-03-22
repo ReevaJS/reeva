@@ -1,12 +1,14 @@
 package me.mattco.reeva.ir
 
 import me.mattco.reeva.ast.statements.BlockNode
+import me.mattco.reeva.ir.opcodes.IrOpcode
+import me.mattco.reeva.ir.opcodes.IrOpcodeType
 import java.util.*
 
 class FunctionBuilder(val argCount: Int = 1) {
     private val registers = mutableListOf<RegState>()
 
-    val opcodes = mutableListOf<Opcode>()
+    val opcodes = mutableListOf<IrOpcode>()
     val constantPool = mutableListOf<Any>()
     val handlers = mutableListOf<IRHandler>()
     val blocks = Stack<Block>()
@@ -22,7 +24,7 @@ class FunctionBuilder(val argCount: Int = 1) {
 
     // If a label is jumped to before it is placed, it is placed in this
     // queue, and is "completed" when it is placed
-    private val placeholders = mutableMapOf<Label, MutableList<Pair<Int, OpcodeType>>>()
+    private val placeholders = mutableMapOf<Label, MutableList<Pair<Int, IrOpcodeType>>>()
 
     val registerCount: Int
         get() = registers.size
@@ -40,25 +42,25 @@ class FunctionBuilder(val argCount: Int = 1) {
 
     fun getOpcode(index: Int) = opcodes[index]
 
-    fun setOpcode(index: Int, value: Opcode) {
+    fun setOpcode(index: Int, value: IrOpcode) {
         opcodes[index] = value
     }
 
-    fun addOpcode(opcode: Opcode) = opcodes.add(opcode)
+    fun addOpcode(opcode: IrOpcode) = opcodes.add(opcode)
 
     fun label() = Label(null)
 
-    fun jump(label: Label) = jumpHelper(label, OpcodeType.Jump)
+    fun jump(label: Label) = jumpHelper(label, IrOpcodeType.Jump)
 
-    fun jumpHelper(label: Label, type: OpcodeType) {
+    fun jumpHelper(label: Label, type: IrOpcodeType) {
         if (label.opIndex != null) {
             // the label has already been placed, so we can directly insert
             // a jump instruction
-            opcodes.add(Opcode(type, label.opIndex!!))
+            opcodes.add(IrOpcode(type, label.opIndex!!))
         } else {
             // the label has yet to be placed, so we have to place a marker
             // and wait for the label to be placed
-            opcodes.add(Opcode(OpcodeType.JumpPlaceholder))
+            opcodes.add(IrOpcode(IrOpcodeType.JumpPlaceholder))
             val placeholderIndex = opcodes.lastIndex
 
             if (label !in placeholders)
@@ -75,7 +77,7 @@ class FunctionBuilder(val argCount: Int = 1) {
                 return@forEach
 
             it.value.forEach { (offset, jumpOp) ->
-                if (opcodes[offset].type != OpcodeType.JumpPlaceholder) {
+                if (opcodes[offset].type != IrOpcodeType.JumpPlaceholder) {
                     TODO("expected JumpPlaceholder at offset $offset")
                 }
                 opcodes[offset].replaceJumpPlaceholder(jumpOp, targetIndex)
@@ -138,9 +140,9 @@ class FunctionBuilder(val argCount: Int = 1) {
 
     fun goto(label: Label, contextDepth: Int) {
         if (contextDepth == nestedContexts - 1) {
-            opcodes.add(Opcode(OpcodeType.PopCurrentEnv))
+            opcodes.add(IrOpcode(IrOpcodeType.PopCurrentEnv))
         } else {
-            opcodes.add(Opcode(OpcodeType.PopEnvs, nestedContexts - contextDepth))
+            opcodes.add(IrOpcode(IrOpcodeType.PopEnvs, nestedContexts - contextDepth))
         }
         jump(label)
     }

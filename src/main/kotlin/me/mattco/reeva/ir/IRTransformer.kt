@@ -6,8 +6,11 @@ import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.interpreter.InterpRuntime
 import me.mattco.reeva.ir.FunctionBuilder.*
-import me.mattco.reeva.ir.OpcodeType.*
-import me.mattco.reeva.ir.opcodes.OpcodeList
+import me.mattco.reeva.ir.opcodes.IrOpcode
+import me.mattco.reeva.ir.opcodes.IrOpcodeType.*
+import me.mattco.reeva.ir.opcodes.IrOpcodeList
+import me.mattco.reeva.ir.opcodes.IrOpcodeType
+import me.mattco.reeva.ir.opcodes.RegisterRange
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
 import me.mattco.reeva.utils.expect
@@ -17,7 +20,7 @@ import kotlin.math.floor
 
 class FunctionInfo(
     val name: String?,
-    val code: OpcodeList,
+    val code: IrOpcodeList,
     val constantPool: Array<Any>,
     val handlers: Array<Handler>,
     val registerCount: Int, // includes argCount
@@ -48,7 +51,7 @@ class IRTransformer : ASTVisitor {
 
         return FunctionInfo(
             null,
-            OpcodeList(builder.opcodes),
+            IrOpcodeList(builder.opcodes),
             builder.constantPool.toTypedArray(),
             builder.handlers.map(IRHandler::toHandler).toTypedArray(),
             builder.registerCount,
@@ -738,7 +741,7 @@ class IRTransformer : ASTVisitor {
 
         val info = FunctionInfo(
             name,
-            OpcodeList(builder.opcodes).also(PeepholeOptimizer::optimize),
+            IrOpcodeList(builder.opcodes).also(PeepholeOptimizer::optimize),
             builder.constantPool.toTypedArray(),
             builder.handlers.map(IRHandler::toHandler).toTypedArray(),
             builder.registerCount,
@@ -1454,9 +1457,9 @@ class IRTransformer : ASTVisitor {
     }
 
     private fun getOpcode(index: Int) = builder.getOpcode(index)
-    private fun setOpcode(index: Int, value: Opcode) = builder.setOpcode(index, value)
+    private fun setOpcode(index: Int, value: IrOpcode) = builder.setOpcode(index, value)
     private fun label() = builder.label()
-    private fun jump(label: Label, type: OpcodeType = Jump) = builder.jumpHelper(label, type)
+    private fun jump(label: Label, type: IrOpcodeType = Jump) = builder.jumpHelper(label, type)
     private fun place(label: Label) = builder.place(label)
     private fun loadConstant(constant: Any) = builder.loadConstant(constant)
     private fun nextFreeReg() = builder.nextFreeReg()
@@ -1467,11 +1470,11 @@ class IRTransformer : ASTVisitor {
     private fun argReg(index: Int) = builder.argReg(index)
     private fun reg(index: Int) = builder.reg(index)
 
-    private fun add(type: OpcodeType, vararg args: Any) {
-        builder.addOpcode(Opcode(type, *args))
+    private fun add(type: IrOpcodeType, vararg args: Any) {
+        builder.addOpcode(IrOpcode(type, *args))
     }
 
-    private operator fun Opcode.unaryPlus() {
+    private operator fun IrOpcode.unaryPlus() {
         builder.addOpcode(this)
     }
 

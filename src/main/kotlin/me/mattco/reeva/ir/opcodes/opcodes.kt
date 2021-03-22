@@ -1,4 +1,4 @@
-package me.mattco.reeva.ir
+package me.mattco.reeva.ir.opcodes
 
 import me.mattco.reeva.utils.expect
 
@@ -15,7 +15,7 @@ data class RegisterRange(val start: Int, val count: Int) {
     fun dropLast(n: Int) = RegisterRange(start, count - n)
 }
 
-enum class OpcodeArgType {
+enum class IrOpcodeArgType {
     Register,
     CPIndex,
     InstrIndex,
@@ -32,7 +32,7 @@ enum class OpcodeArgType {
         }
 
         expect(valid) {
-            "$obj is not a valid argument for OpcodeArgType.$name"
+            "$obj is not a valid argument for IrOpcodeArgType.$name"
         }
     }
 
@@ -54,16 +54,17 @@ enum class OpcodeArgType {
     }
 }
 
-private val REG = OpcodeArgType.Register
-private val CP = OpcodeArgType.CPIndex
-private val INSTR = OpcodeArgType.InstrIndex
-private val LITERAL = OpcodeArgType.Literal
-private val RANGE = OpcodeArgType.Range
+private val REG = IrOpcodeArgType.Register
+private val CP = IrOpcodeArgType.CPIndex
+private val INSTR = IrOpcodeArgType.InstrIndex
+private val LITERAL = IrOpcodeArgType.Literal
+private val RANGE = IrOpcodeArgType.Range
 
-enum class OpcodeType(
-    vararg val types: OpcodeArgType,
+enum class IrOpcodeType(
+    vararg val types: IrOpcodeArgType,
     val writesToAcc: Boolean = true,
     val hasSideEffects: Boolean = true,
+    val isFlow: Boolean = false,
 ) {
     /////////////////
     /// CONSTANTS ///
@@ -580,64 +581,64 @@ enum class OpcodeType(
     /**
      * Non-conditional jump to the instructions
      */
-    Jump(INSTR, writesToAcc = false),
+    Jump(INSTR, writesToAcc = false, isFlow = true),
 
     /**
      * Conditional jump to an instruction if the accumulator is true
      */
-    JumpIfTrue(INSTR, writesToAcc = false),
+    JumpIfTrue(INSTR, writesToAcc = false, isFlow = true),
 
     /**
      * Conditional jump to an instruction if the accumulator is false
      */
-    JumpIfFalse(INSTR, writesToAcc = false),
+    JumpIfFalse(INSTR, writesToAcc = false, isFlow = true),
 
     /**
      * Conditional jump to an instruction if the accumulator is true,
      * first calling ToBoolean()
      */
-    JumpIfToBooleanTrue(INSTR, writesToAcc = false),
+    JumpIfToBooleanTrue(INSTR, writesToAcc = false, isFlow = true),
 
     /**
      * Conditional jump to an instruction if the accumulator is false,
      * first calling ToBoolean()
      */
-    JumpIfToBooleanFalse(INSTR, writesToAcc = false),
+    JumpIfToBooleanFalse(INSTR, writesToAcc = false, isFlow = true),
 
     /**
      * Conditional jump to an instruction if the accumulator is null
      */
-    JumpIfNull(INSTR, writesToAcc = false),
+    JumpIfNull(INSTR, writesToAcc = false, isFlow = true),
 
     /**
      * Conditional jump to an instruction if the accumulator is not null
      */
-    JumpIfNotNull(INSTR, writesToAcc = false),
+    JumpIfNotNull(INSTR, writesToAcc = false, isFlow = true),
 
     /**
      * Conditional jump to an instruction if the accumulator is undefined
      */
-    JumpIfUndefined(INSTR, writesToAcc = false),
+    JumpIfUndefined(INSTR, writesToAcc = false, isFlow = true),
 
     /**
      * Conditional jump to an instruction if the accumulator is not undefined
      */
-    JumpIfNotUndefined(INSTR, writesToAcc = false),
+    JumpIfNotUndefined(INSTR, writesToAcc = false, isFlow = true),
 
     /**
      * Conditional jump to an instruction if the accumulator is nullish
      */
-    JumpIfNullish(INSTR, writesToAcc = false),
+    JumpIfNullish(INSTR, writesToAcc = false, isFlow = true),
 
     /**
      * Conditional jump to an instruction if the accumulator is not nullish
      */
-    JumpIfNotNullish(INSTR, writesToAcc = false),
+    JumpIfNotNullish(INSTR, writesToAcc = false, isFlow = true),
 
     /**
      * Conditional jump to an instruction if the accumulator is an object
      */
-    JumpIfObject(INSTR, writesToAcc = false),
+    JumpIfObject(INSTR, writesToAcc = false, isFlow = true),
 
     /**
      * Placeholder for jump instructions, this should not appear in any
@@ -652,22 +653,22 @@ enum class OpcodeType(
     /**
      * Return the value in the accumulator
      */
-    Return(writesToAcc = false),
+    Return(writesToAcc = false, isFlow = true),
 
     /**
      * Throws the value in the accumulator
      */
-    Throw(writesToAcc = false),
+    Throw(writesToAcc = false, isFlow = true),
 
     /**
      * Throws a const reassignment error
      */
-    ThrowConstReassignment(CP, writesToAcc = false),
+    ThrowConstReassignment(CP, writesToAcc = false, isFlow = true),
 
     /**
      * Throws a TypeError if the accumulator is <empty>
      */
-    ThrowUseBeforeInitIfEmpty(CP, writesToAcc = false),
+    ThrowUseBeforeInitIfEmpty(CP, writesToAcc = false, isFlow = true),
 
     /////////////
     /// OTHER ///
@@ -728,8 +729,8 @@ enum class OpcodeType(
     DebugBreakpoint(writesToAcc = false)
 }
 
-class Opcode(type: OpcodeType, vararg args: Any) {
-    var type: OpcodeType = type
+class IrOpcode(type: IrOpcodeType, vararg args: Any) {
+    var type: IrOpcodeType = type
         private set
 
     var args = args.toMutableList()
@@ -751,8 +752,8 @@ class Opcode(type: OpcodeType, vararg args: Any) {
     fun literalAt(index: Int) = args[index] as Int
     fun rangeAt(index: Int) = args[index] as RegisterRange
 
-    fun replaceJumpPlaceholder(newType: OpcodeType, offset: Int) {
-        expect(type == OpcodeType.JumpPlaceholder, type.toString())
+    fun replaceJumpPlaceholder(newType: IrOpcodeType, offset: Int) {
+        expect(type == IrOpcodeType.JumpPlaceholder, type.toString())
         type = newType
         args = mutableListOf(offset)
     }
