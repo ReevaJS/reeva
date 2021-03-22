@@ -164,7 +164,6 @@ class IRTransformer : ASTVisitor {
             }
         }
 
-
         if (node.initializer != null)
             visit(node.initializer)
 

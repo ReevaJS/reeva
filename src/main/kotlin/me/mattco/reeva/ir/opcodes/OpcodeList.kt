@@ -27,7 +27,7 @@ class OpcodeList(private val opcodes: MutableList<Opcode>) : MutableList<Opcode>
 
     override fun add(index: Int, element: Opcode) {
         for ((jumpOpcode, jumpIndex) in jumpInstrs) {
-            if (index >= jumpIndex)
+            if (index < jumpOpcode.args[0] as Int)
                 jumpOpcode.args[0] = (jumpOpcode.args[0] as Int) + 1
             if (index <= jumpIndex)
                 jumpInstrs[jumpOpcode] = jumpIndex + 1
@@ -50,7 +50,7 @@ class OpcodeList(private val opcodes: MutableList<Opcode>) : MutableList<Opcode>
         jumpInstrs.remove(opcode)
 
         for ((jumpOpcode, jumpIndex) in jumpInstrs) {
-            if (index >= jumpIndex)
+            if (index < jumpOpcode.args[0] as Int)
                 jumpOpcode.args[0] = (jumpOpcode.args[0] as Int) - 1
             if (index <= jumpIndex)
                 jumpInstrs[jumpOpcode] = jumpIndex - 1
