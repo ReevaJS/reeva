@@ -79,6 +79,57 @@ open class JSObject protected constructor(
         return true
     }
 
+    internal fun getOwnPropertyLocation(property: PropertyKey): PropertyLocation? {
+        return when {
+            property.isInt -> if (indexedProperties.hasIndex(property.asInt)) {
+                IntIndexedProperty(property.asInt, 0)
+            } else null
+            property.isLong -> if (indexedProperties.hasIndex(property.asLong)) {
+                LongIndexedProperty(property.asLong, 0)
+            } else null
+            else -> {
+                val data = shape[property.toStringOrSymbol()] ?: return null
+                return StorageProperty(data.offset, data.attributes)
+            }
+        }
+    }
+
+    internal fun getPropertyLocation(property: PropertyKey): PropertyLocation? {
+        var receiver = this
+
+        while (true) {
+            val location = receiver.getOwnPropertyLocation(property)
+            if (location != null)
+                return location
+            val parent = receiver.getPrototype()
+            if (parent !is JSObject)
+                break
+            receiver = parent
+        }
+
+        return null
+    }
+
+    internal fun getDescriptorAt(location: PropertyLocation): Descriptor {
+        val receiver = location.receiver(this)
+
+        return when (location) {
+            is IntIndexedProperty -> receiver.indexedProperties.getDescriptor(location.int)!!
+            is LongIndexedProperty -> receiver.indexedProperties.getDescriptor(location.long)!!
+            is StorageProperty -> Descriptor(receiver.storage[location.index], location.attributes)
+        }
+    }
+
+    internal fun setPropertyAt(location: PropertyLocation, descriptor: Descriptor) {
+        val receiver = location.receiver(this)
+
+        when (location) {
+            is IntIndexedProperty -> receiver.indexedProperties.setDescriptor(location.int, descriptor)
+            is LongIndexedProperty -> receiver.indexedProperties.setDescriptor(location.long, descriptor)
+            is StorageProperty -> receiver.storage[location.index] = descriptor.getActualValue(receiver)
+        }
+    }
+
     fun hasProperty(property: String): Boolean = hasProperty(property.key())
     fun hasProperty(property: JSSymbol) = hasProperty(property.key())
     fun hasProperty(property: Int) = hasProperty(property.key())
@@ -86,13 +137,7 @@ open class JSObject protected constructor(
 
     @ECMAImpl("9.1.7")
     open fun hasProperty(property: PropertyKey): Boolean {
-        val hasOwn = getOwnPropertyDescriptor(property)
-        if (hasOwn != null)
-            return true
-        val parent = getPrototype()
-        if (parent != JSNull)
-            return (parent as JSObject).hasProperty(property)
-        return false
+        return getPropertyLocation(property) != null
     }
 
     @ECMAImpl("9.1.3")
@@ -110,16 +155,11 @@ open class JSObject protected constructor(
     fun getOwnPropertyDescriptor(property: Long) = getOwnPropertyDescriptor(property.toString().key())
 
     open fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
-        return internalGet(property)
+        return getOwnPropertyLocation(property)?.let(::getDescriptorAt)
     }
 
     fun getPropertyDescriptor(property: PropertyKey): Descriptor? {
-        return getOwnPropertyDescriptor(property) ?: let {
-            val parent = getPrototype()
-            if (parent != JSNull) {
-                (parent as JSObject).getPropertyDescriptor(property)
-            } else null
-        }
+        return getPropertyLocation(property)?.let(::getDescriptorAt)
     }
 
     fun getOwnProperty(property: String) = getOwnProperty(property.key())
@@ -153,13 +193,7 @@ open class JSObject protected constructor(
 
     @JvmOverloads @ECMAImpl("9.1.8")
     open fun get(property: PropertyKey, receiver: JSValue = this): JSValue {
-        val desc = getOwnPropertyDescriptor(property)
-        if (desc == null) {
-            val parent = getPrototype()
-            if (parent == JSNull)
-                return JSUndefined
-            return (parent as JSObject).get(property, receiver)
-        }
+        val desc = getPropertyDescriptor(property) ?: return JSUndefined
         if (desc.isAccessorDescriptor)
             return if (desc.hasGetterFunction) Operations.call(desc.getter!!, receiver) else JSUndefined
         return desc.getActualValue(receiver)
@@ -222,10 +256,26 @@ open class JSObject protected constructor(
 
     @ECMAImpl("9.1.10")
     open fun delete(property: PropertyKey): Boolean {
-        val desc = getOwnPropertyDescriptor(property) ?: return true
-        if (desc.isConfigurable)
-            return internalDelete(property)
-        return false
+        val location = getPropertyLocation(property) ?: return true
+        val desc = getDescriptorAt(location)
+        if (!desc.isConfigurable)
+            return false
+
+        val receiver = location.receiver(this)
+
+        val stringOrSymbol = when {
+            property.isInt -> return receiver.indexedProperties.remove(property.asInt)
+            property.isLong -> return receiver.indexedProperties.remove(property.asLong)
+            else -> property.toStringOrSymbol()
+        }
+
+        val data = receiver.shape[stringOrSymbol] ?: return true
+        if (!receiver.shape.isUnique)
+            receiver.shape = receiver.shape.makeUniqueClone()
+
+        receiver.shape.removeUniqueShapeProperty(stringOrSymbol, data.offset)
+        receiver.storage.removeAt(data.offset)
+        return true
     }
 
     @ECMAImpl("9.1.11")
@@ -375,22 +425,6 @@ open class JSObject protected constructor(
         storage[data.offset] = descriptor.getRawValue()
     }
 
-    internal fun internalDelete(property: PropertyKey): Boolean {
-        val stringOrSymbol = when {
-            property.isInt -> return indexedProperties.remove(property.asInt)
-            property.isLong -> return indexedProperties.remove(property.asLong)
-            else -> property.toStringOrSymbol()
-        }
-
-        val data = shape[stringOrSymbol] ?: return true
-        if (!shape.isUnique)
-            shape = shape.makeUniqueClone()
-
-        shape.removeUniqueShapeProperty(stringOrSymbol, data.offset)
-        storage.removeAt(data.offset)
-        return true
-    }
-
     private fun ensureStorageCapacity(capacity: Int) {
         repeat(capacity - storage.size) {
             storage.add(JSEmpty)
@@ -403,7 +437,7 @@ open class JSObject protected constructor(
         KeyValue
     }
 
-    data class StringOrSymbol private constructor(private val value: Any) {
+    class StringOrSymbol private constructor(private val value: Any) {
         val isString = value is String
         val isSymbol = value is JSSymbol
 
@@ -469,3 +503,19 @@ open class JSObject protected constructor(
         }
     }
 }
+
+internal sealed class PropertyLocation(var protoOffset: Int) {
+    fun receiver(base: JSObject): JSObject {
+        var receiver = base
+        repeat(protoOffset) {
+            receiver = receiver.getPrototype() as JSObject
+        }
+        return receiver
+    }
+}
+
+internal class IntIndexedProperty(val int: Int, protoOffset: Int = 0) : PropertyLocation(protoOffset)
+
+internal class LongIndexedProperty(val long: Long, protoOffset: Int = 0) : PropertyLocation(protoOffset)
+
+internal class StorageProperty(val index: Int, val attributes: Int, protoOffset: Int = 0) : PropertyLocation(protoOffset)
