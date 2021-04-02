@@ -9,7 +9,6 @@ import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.toValue
 
 class JSIntegerIndexedObject private constructor(
     realm: Realm,
@@ -103,12 +102,12 @@ class JSIntegerIndexedObject private constructor(
 
     override fun ownPropertyKeys(onlyEnumerable: Boolean): List<PropertyKey> {
         val properties = if (!Operations.isDetachedBuffer(viewedArrayBuffer)) {
-            (0..arrayLength).map(::PropertyKey).toMutableList()
+            (0..arrayLength).map(PropertyKey::from).toMutableList()
         } else mutableListOf()
 
         return properties + shape.orderedPropertyTable().filter {
             if (onlyEnumerable) (it.attributes and Descriptor.ENUMERABLE) != 0 else true
-        }.map { PropertyKey(it.name) }
+        }.map { PropertyKey.from(it.name) }
     }
 
     companion object {

@@ -5,6 +5,7 @@ import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.runtime.primitives.JSString
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.utils.expect
+import me.mattco.reeva.utils.unreachable
 
 /**
  * Represents a key in a JSObject's property map. This class is extremely useless
@@ -13,44 +14,30 @@ import me.mattco.reeva.utils.expect
 data class PropertyKey private constructor(internal val value: Any) {
     val isString: Boolean
         get() = value is String
+    val isSymbol: Boolean
+        get() = value is JSSymbol
     val isInt: Boolean
         get() = value is Int
     val isLong: Boolean
         get() = value is Long
-    val isDouble: Boolean
-        get() = value is Double
-    val isSymbol: Boolean
-        get() = value is JSSymbol
 
     val asString: String
         get() = value as String
+    val asSymbol: JSSymbol
+        get() = value as JSSymbol
     val asInt: Int
         get() = value as Int
     val asLong: Long
         get() = value as Long
-    val asDouble: Double
-        get() = when {
-            isInt -> asInt.toDouble()
-            isLong -> asLong.toDouble()
-            else -> value as Double
-        }
-    val asSymbol: JSSymbol
-        get() = value as JSSymbol
 
     val asValue: JSValue
         get() = when {
             isString -> JSString(asString)
             isSymbol -> asSymbol
-            else -> JSNumber(asDouble)
+            isInt -> JSNumber(asInt)
+            isLong -> JSNumber(asLong)
+            else -> unreachable()
         }
-
-    constructor(value: String) : this(value as Any)
-    constructor(value: JSString) : this(value.string)
-    constructor(value: JSSymbol) : this(value as Any)
-    constructor(value: JSObject.StringOrSymbol) : this(if (value.isString) value.asString else value.asSymbol)
-    constructor(value: Long) : this(if (value <= Int.MAX_VALUE) value.toInt() else value)
-    constructor(value: Int) : this(value as Any)
-    constructor(value: Double) : this(value as Any)
 
     override fun equals(other: Any?): Boolean {
         return other is PropertyKey && value == other.value
@@ -60,27 +47,50 @@ data class PropertyKey private constructor(internal val value: Any) {
         return value.hashCode()
     }
 
+    fun toStringOrSymbol(): JSObject.StringOrSymbol {
+        expect(isString || isSymbol)
+        return if (isString) {
+            JSObject.StringOrSymbol(asString)
+        } else JSObject.StringOrSymbol(asSymbol)
+    }
+
     override fun toString(): String {
         return when {
             isString -> asString
             isInt -> asInt.toString()
             isLong -> asLong.toString()
-            isDouble -> asDouble.toString()
             else -> asSymbol.descriptiveString()
         }
     }
 
     companion object {
-        val INVALID_KEY = PropertyKey(0)
+        fun from(value: Any): PropertyKey {
+            if (value is String || value is JSString) {
+                val string = (value as? JSString)?.string ?: value as String
+                val long = string.toLongOrNull()
+                if (long != null) {
+                    if (long in 0..Int.MAX_VALUE)
+                        return PropertyKey(long.toInt())
+                    return PropertyKey(long)
+                }
+                return PropertyKey(string)
+            }
 
-        fun from(value: Any): PropertyKey? {
             return when (value) {
-                is String -> PropertyKey(value)
-                is JSString -> PropertyKey(value)
-                is Double -> PropertyKey(value)
-                is Int -> PropertyKey(value)
+                is Int -> if (value < 0) {
+                    PropertyKey(value.toString())
+                } else PropertyKey(value)
+                is Long -> when {
+                    value < 0L -> PropertyKey(value.toString())
+                    value <= Int.MAX_VALUE -> PropertyKey(value.toInt())
+                    else -> PropertyKey(value)
+                }
+                is Double -> PropertyKey(value.toString())
                 is JSSymbol -> PropertyKey(value)
-                else -> null
+                is JSObject.StringOrSymbol -> if (value.isString) {
+                    from(value.asString)
+                } else from(value.asSymbol)
+                else -> unreachable()
             }
         }
     }

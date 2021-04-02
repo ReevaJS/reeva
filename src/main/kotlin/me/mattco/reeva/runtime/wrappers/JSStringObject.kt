@@ -36,7 +36,7 @@ open class JSStringObject protected constructor(realm: Realm, string: JSString) 
 
     override fun ownPropertyKeys(onlyEnumerable: Boolean): List<PropertyKey> {
         val keys = mutableListOf<PropertyKey>()
-        string.string.indices.map(::PropertyKey).forEach(keys::add)
+        string.string.indices.map(PropertyKey::from).forEach(keys::add)
         return super.ownPropertyKeys(onlyEnumerable) + keys
     }
 

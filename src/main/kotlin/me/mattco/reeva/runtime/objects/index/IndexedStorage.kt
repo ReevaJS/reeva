@@ -1,6 +1,5 @@
 package me.mattco.reeva.runtime.objects.index
 
-import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 
 interface IndexedStorage {

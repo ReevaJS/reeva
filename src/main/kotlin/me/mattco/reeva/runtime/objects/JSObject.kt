@@ -6,10 +6,8 @@ import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.index.IndexedProperties
-import me.mattco.reeva.runtime.objects.index.IndexedStorage
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.*
 import java.util.*
@@ -22,7 +20,7 @@ open class JSObject protected constructor(
 ) : JSValue() {
     private val slots = EnumMap<SlotName, Any?>(SlotName::class.java)
 
-    private val storage = mutableListOf<JSValue>()
+    internal val storage = mutableListOf<JSValue>()
     internal val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
     protected var shape: Shape
@@ -53,18 +51,6 @@ open class JSObject protected constructor(
             field = value
         }
 
-    data class NativeMethodPair(
-        var attributes: Int,
-        var getter: NativeGetterSignature? = null,
-        var setter: NativeSetterSignature? = null,
-    )
-
-    data class NativeAccessorPair(
-        var attributes: Int,
-        var getter: JSFunction? = null,
-        var setter: JSFunction? = null,
-    )
-
     open fun init() { }
 
     @ECMAImpl("9.1.1")
@@ -76,7 +62,7 @@ open class JSObject protected constructor(
     }
 
     @ECMAImpl("9.1.2.1")
-    open fun ordinarySetPrototype(newPrototype: JSValue): Boolean {
+    fun ordinarySetPrototype(newPrototype: JSValue): Boolean {
         ecmaAssert(newPrototype is JSObject || newPrototype == JSNull)
         if (newPrototype.sameValue(shape.prototype ?: JSNull))
             return true
@@ -244,9 +230,9 @@ open class JSObject protected constructor(
 
     @ECMAImpl("9.1.11")
     open fun ownPropertyKeys(onlyEnumerable: Boolean = false): List<PropertyKey> {
-        return indexedProperties.indices().map(::PropertyKey) + shape.orderedPropertyTable().filter {
+        return indexedProperties.indices().map(PropertyKey::from) + shape.orderedPropertyTable().filter {
             if (onlyEnumerable) (it.attributes and Descriptor.ENUMERABLE) != 0 else true
-        }.map { PropertyKey(it.name) }
+        }.map { PropertyKey.from(it.name) }
     }
 
     fun defineNativeAccessor(
@@ -336,28 +322,9 @@ open class JSObject protected constructor(
 
     internal fun internalGet(property: PropertyKey): Descriptor? {
         val stringOrSymbol = when {
-            property.isString -> {
-                property.asString.toLongOrNull()?.also {
-                    if (it in 0..Int.MAX_VALUE)
-                        return indexedProperties.getDescriptor(it.toInt())
-                    if (it in 0L..IndexedStorage.INDEX_UPPER_BOUND)
-                        return indexedProperties.getDescriptor(it)
-                }
-                StringOrSymbol(property.asString)
-            }
-            property.isInt -> {
-                if (property.asInt >= 0)
-                    return indexedProperties.getDescriptor(property.asInt)
-                StringOrSymbol(property.asInt.toString())
-            }
-            property.isLong -> {
-                if (property.asLong in 0L..IndexedStorage.INDEX_UPPER_BOUND)
-                    return indexedProperties.getDescriptor(property.asLong)
-                StringOrSymbol(property.asLong.toString())
-            }
-            property.isDouble -> StringOrSymbol(property.asDouble.toString())
-            property.isSymbol -> StringOrSymbol(property.asSymbol)
-            else -> unreachable()
+            property.isInt -> return indexedProperties.getDescriptor(property.asInt)
+            property.isLong -> return indexedProperties.getDescriptor(property.asLong)
+            else -> property.toStringOrSymbol()
         }
 
         val data = shape[stringOrSymbol] ?: return null
@@ -366,32 +333,9 @@ open class JSObject protected constructor(
 
     internal fun internalSet(property: PropertyKey, descriptor: Descriptor) {
         val stringOrSymbol = when {
-            property.isString -> {
-                property.asString.toLongOrNull()?.also {
-                    if (it in 0..Int.MAX_VALUE) {
-                        indexedProperties.setDescriptor(it.toInt(), descriptor)
-                        return
-                    }
-                    if (it in 0L..IndexedStorage.INDEX_UPPER_BOUND) {
-                        indexedProperties.setDescriptor(it, descriptor)
-                        return
-                    }
-                }
-                StringOrSymbol(property.asString)
-            }
-            property.isInt -> {
-                if (property.asInt >= 0)
-                    return indexedProperties.setDescriptor(property.asInt, descriptor)
-                StringOrSymbol(property.asInt.toString())
-            }
-            property.isLong -> {
-                if (property.asLong in 0L..IndexedStorage.INDEX_UPPER_BOUND)
-                    return indexedProperties.setDescriptor(property.asLong, descriptor)
-                StringOrSymbol(property.asLong.toString())
-            }
-            property.isDouble -> StringOrSymbol(property.asDouble.toString())
-            property.isSymbol -> StringOrSymbol(property.asSymbol)
-            else -> unreachable()
+            property.isInt -> return indexedProperties.setDescriptor(property.asInt, descriptor)
+            property.isLong -> return indexedProperties.setDescriptor(property.asLong, descriptor)
+            else -> property.toStringOrSymbol()
         }
 
         internalSet(stringOrSymbol, descriptor)
@@ -433,28 +377,9 @@ open class JSObject protected constructor(
 
     internal fun internalDelete(property: PropertyKey): Boolean {
         val stringOrSymbol = when {
-            property.isString -> {
-                property.asString.toLongOrNull()?.also {
-                    if (it in 0..Int.MAX_VALUE)
-                        return indexedProperties.remove(it.toInt())
-                    if (it in 0L..IndexedStorage.INDEX_UPPER_BOUND)
-                        return indexedProperties.remove(it)
-                }
-                StringOrSymbol(property.asString)
-            }
-            property.isInt -> {
-                if (property.asInt >= 0)
-                    return indexedProperties.remove(property.asInt)
-                StringOrSymbol(property.asInt.toString())
-            }
-            property.isLong -> {
-                if (property.asLong in 0L..IndexedStorage.INDEX_UPPER_BOUND)
-                    return indexedProperties.remove(property.asLong)
-                StringOrSymbol(property.asLong.toString())
-            }
-            property.isDouble -> StringOrSymbol(property.asDouble.toString())
-            property.isSymbol -> StringOrSymbol(property.asSymbol)
-            else -> unreachable()
+            property.isInt -> return indexedProperties.remove(property.asInt)
+            property.isLong -> return indexedProperties.remove(property.asLong)
+            else -> property.toStringOrSymbol()
         }
 
         val data = shape[stringOrSymbol] ?: return true
@@ -491,24 +416,10 @@ open class JSObject protected constructor(
             get() = if (isString) JSString(asString) else asSymbol
 
         constructor(value: String) : this(value as Any)
-        constructor(value: JSString) : this(value.string)
         constructor(value: JSSymbol) : this(value as Any)
 
-        constructor(key: PropertyKey) : this(when {
-            key.isInt -> key.asInt.toString()
-            key.isDouble -> key.asDouble.toString()
-            key.isString -> key.asString
-            else -> key.asSymbol
-        })
-
         override fun toString(): String {
-            if (isString)
-                return asString
-            return asSymbol.toString()
-        }
-
-        companion object {
-            val INVALID_KEY = StringOrSymbol(0)
+            return if (isString) asString else asSymbol.toString()
         }
     }
 

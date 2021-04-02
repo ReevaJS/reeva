@@ -35,10 +35,10 @@ fun Char.isRadixDigit(radix: Int): Boolean {
 
 fun StringBuilder.newline(): StringBuilder = append("\n")
 
-fun String.key() = PropertyKey(this)
-fun Int.key() = PropertyKey(this)
-fun Long.key() = PropertyKey(this)
-fun JSSymbol.key() = PropertyKey(this)
+fun String.key() = PropertyKey.from(this)
+fun Int.key() = PropertyKey.from(this)
+fun Long.key() = PropertyKey.from(this)
+fun JSSymbol.key() = PropertyKey.from(this)
 
 fun Boolean.toValue() = if (this) JSTrue else JSFalse
 fun String.toValue() = JSString(this)

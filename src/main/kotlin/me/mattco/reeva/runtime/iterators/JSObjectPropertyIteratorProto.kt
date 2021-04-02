@@ -27,9 +27,8 @@ class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject
                 obj.ownPropertyKeys().forEach { key ->
                     when {
                         key.isString -> thisValue.remainingKeys.add(key)
-                        key.isInt -> thisValue.remainingKeys.add(PropertyKey(key.asInt.toString()))
-                        key.isLong -> thisValue.remainingKeys.add(PropertyKey(key.asLong.toString()))
-                        key.isDouble -> thisValue.remainingKeys.add(PropertyKey(key.asDouble.toString()))
+                        key.isInt -> thisValue.remainingKeys.add(PropertyKey.from(key.asInt.toString()))
+                        key.isLong -> thisValue.remainingKeys.add(PropertyKey.from(key.asLong.toString()))
                     }
                 }
                 thisValue.objWasVisited = true
