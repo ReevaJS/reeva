@@ -19,6 +19,7 @@ enum class IrOpcodeArgType {
     Register,
     CPIndex,
     InstrIndex,
+    FeedbackSlot,
     Literal,
     Range;
 
@@ -27,6 +28,7 @@ enum class IrOpcodeArgType {
             Register -> obj is Int && obj >= 0
             CPIndex -> obj is Int && obj >= 0
             InstrIndex -> obj is Int && obj >= 0
+            FeedbackSlot -> obj is Int && obj >= 0
             Literal -> obj is Int
             Range -> obj is RegisterRange
         }
@@ -46,6 +48,7 @@ enum class IrOpcodeArgType {
         }
         CPIndex -> "[$obj]"
         InstrIndex -> "[$obj]"
+        FeedbackSlot -> "{$obj}"
         Literal -> "#$obj"
         Range -> {
             val range = obj as RegisterRange
@@ -57,6 +60,7 @@ enum class IrOpcodeArgType {
 private val REG = IrOpcodeArgType.Register
 private val CP = IrOpcodeArgType.CPIndex
 private val INSTR = IrOpcodeArgType.InstrIndex
+private val FB = IrOpcodeArgType.FeedbackSlot
 private val LITERAL = IrOpcodeArgType.Literal
 private val RANGE = IrOpcodeArgType.Range
 
@@ -110,7 +114,7 @@ enum class IrOpcodeType(
      * arg 1: the register containing the object
      * arg 2: the constant pool index of the name. Must be a string literal
      */
-    LdaNamedProperty(REG, CP, hasSideEffects = false),
+    LdaNamedProperty(REG, CP, FB, hasSideEffects = false),
 
     /**
      * Load a computed property from an object into the accumulator.
@@ -118,7 +122,7 @@ enum class IrOpcodeType(
      * accumulator: the computed property value
      * arg 1: the register containing object
      */
-    LdaKeyedProperty(REG),
+    LdaKeyedProperty(REG, FB),
 
     /**
      * Store a literal property into an object.
@@ -127,7 +131,7 @@ enum class IrOpcodeType(
      * arg 1: the register containing the object
      * arg 2: the constant pool index of the name. Must be a string literal
      */
-    StaNamedProperty(REG, CP, writesToAcc = false),
+    StaNamedProperty(REG, CP, FB, writesToAcc = false),
 
     /**
      * Store a computed property into an object.
@@ -136,7 +140,7 @@ enum class IrOpcodeType(
      * arg 1: the register containing the object
      * arg 2: the register containing the computed property value
      */
-    StaKeyedProperty(REG, REG, writesToAcc = false),
+    StaKeyedProperty(REG, REG, FB, writesToAcc = false),
 
     /////////////////////////////
     /// OBJECT/ARRAY LITERALS ///
@@ -181,18 +185,18 @@ enum class IrOpcodeType(
      * operation, and the accumulator holds the RHS value.
      */
 
-    Add(REG, hasSideEffects = false),
-    Sub(REG, hasSideEffects = false),
-    Mul(REG, hasSideEffects = false),
-    Div(REG, hasSideEffects = false),
-    Mod(REG, hasSideEffects = false),
-    Exp(REG, hasSideEffects = false),
-    BitwiseOr(REG, hasSideEffects = false),
-    BitwiseXor(REG, hasSideEffects = false),
-    BitwiseAnd(REG, hasSideEffects = false),
-    ShiftLeft(REG, hasSideEffects = false),
-    ShiftRight(REG, hasSideEffects = false),
-    ShiftRightUnsigned(REG, hasSideEffects = false),
+    Add(REG, FB, hasSideEffects = false),
+    Sub(REG, FB, hasSideEffects = false),
+    Mul(REG, FB, hasSideEffects = false),
+    Div(REG, FB, hasSideEffects = false),
+    Mod(REG, FB, hasSideEffects = false),
+    Exp(REG, FB, hasSideEffects = false),
+    BitwiseOr(REG, FB, hasSideEffects = false),
+    BitwiseXor(REG, FB, hasSideEffects = false),
+    BitwiseAnd(REG, FB, hasSideEffects = false),
+    ShiftLeft(REG, FB, hasSideEffects = false),
+    ShiftRight(REG, FB, hasSideEffects = false),
+    ShiftRightUnsigned(REG, FB, hasSideEffects = false),
 
     /**
      * Increments the value in the accumulator. This is NOT a generic
@@ -751,6 +755,7 @@ class IrOpcode(type: IrOpcodeType, vararg args: Any) {
     fun instrAt(index: Int) = args[index] as Int
     fun literalAt(index: Int) = args[index] as Int
     fun rangeAt(index: Int) = args[index] as RegisterRange
+    fun slotAt(index: Int) = args[index] as Int
 
     fun replaceJumpPlaceholder(newType: IrOpcodeType, offset: Int) {
         expect(type == IrOpcodeType.JumpPlaceholder, type.toString())

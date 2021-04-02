@@ -4,13 +4,12 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
+import me.mattco.reeva.interpreter.FeedbackSlot
+import me.mattco.reeva.interpreter.FeedbackVector
 import me.mattco.reeva.interpreter.InterpRuntime
 import me.mattco.reeva.ir.FunctionBuilder.*
-import me.mattco.reeva.ir.opcodes.IrOpcode
+import me.mattco.reeva.ir.opcodes.*
 import me.mattco.reeva.ir.opcodes.IrOpcodeType.*
-import me.mattco.reeva.ir.opcodes.IrOpcodeList
-import me.mattco.reeva.ir.opcodes.IrOpcodeType
-import me.mattco.reeva.ir.opcodes.RegisterRange
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
 import me.mattco.reeva.utils.expect
@@ -18,11 +17,12 @@ import me.mattco.reeva.utils.unreachable
 import java.math.BigInteger
 import kotlin.math.floor
 
-class FunctionInfo(
+data class FunctionInfo(
     val name: String?,
     val code: IrOpcodeList,
     val constantPool: Array<Any>,
     val handlers: Array<Handler>,
+    val feedbackVector: FeedbackVector,
     val registerCount: Int, // includes argCount
     val argCount: Int,
     val topLevelSlots: Int,
@@ -54,6 +54,7 @@ class IRTransformer : ASTVisitor {
             IrOpcodeList(builder.opcodes),
             builder.constantPool.toTypedArray(),
             builder.handlers.map(IRHandler::toHandler).toTypedArray(),
+            builder.feedbackVector,
             builder.registerCount,
             1,
             node.scope.numSlots,
@@ -744,6 +745,7 @@ class IRTransformer : ASTVisitor {
             IrOpcodeList(builder.opcodes).also(PeepholeOptimizer::optimize),
             builder.constantPool.toTypedArray(),
             builder.handlers.map(IRHandler::toHandler).toTypedArray(),
+            builder.feedbackVector,
             builder.registerCount,
             parameters.size + 1,
             parameterScope.numSlots,
@@ -1471,11 +1473,12 @@ class IRTransformer : ASTVisitor {
     private fun reg(index: Int) = builder.reg(index)
 
     private fun add(type: IrOpcodeType, vararg args: Any) {
-        builder.addOpcode(IrOpcode(type, *args))
-    }
+        val actualArgs = if (type.types.lastOrNull() == IrOpcodeArgType.FeedbackSlot) {
+            builder.feedbackVector.addSlot(FeedbackSlot.forOpcode(type))
+            arrayOf(*args, builder.feedbackVector.numSlots - 1)
+        } else args
 
-    private operator fun IrOpcode.unaryPlus() {
-        builder.addOpcode(this)
+        builder.addOpcode(IrOpcode(type, *actualArgs))
     }
 
     private fun RegisterRange.markUsed() {

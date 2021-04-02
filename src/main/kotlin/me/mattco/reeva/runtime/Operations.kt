@@ -24,9 +24,7 @@ import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.iterators.JSArrayIterator
 import me.mattco.reeva.runtime.memory.DataBlock
 import me.mattco.reeva.runtime.memory.JSIntegerIndexedObject
-import me.mattco.reeva.runtime.objects.Descriptor
-import me.mattco.reeva.runtime.objects.JSObject
-import me.mattco.reeva.runtime.objects.PropertyKey
+import me.mattco.reeva.runtime.objects.*
 import me.mattco.reeva.runtime.objects.index.IndexedStorage
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.runtime.wrappers.*
@@ -1549,7 +1547,7 @@ object Operations {
                 if (!newDesc.hasEnumerable)
                     newDesc.setEnumerable(false)
             }
-            target?.internalSet(property!!, newDesc)
+            target?.addProperty(property!!, newDesc)
             return true
         }
 
@@ -1572,7 +1570,7 @@ object Operations {
                 } else {
                     Descriptor(JSUndefined, newAttrs)
                 }
-                target?.internalSet(property!!, currentDesc)
+                target?.addProperty(property!!, currentDesc)
             } else if (currentDesc.isDataDescriptor && newDesc.isDataDescriptor) {
                 if (currentDesc.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {
                     if (newDesc.isWritable)
@@ -1609,7 +1607,7 @@ object Operations {
             if (newDesc.hasWritable)
                 currentDesc.setWritable(newDesc.isWritable)
 
-            target.internalSet(property!!, currentDesc)
+            target.addProperty(property!!, currentDesc)
         }
 
         return true

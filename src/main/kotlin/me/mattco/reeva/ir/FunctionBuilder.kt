@@ -1,6 +1,7 @@
 package me.mattco.reeva.ir
 
 import me.mattco.reeva.ast.statements.BlockNode
+import me.mattco.reeva.interpreter.FeedbackVector
 import me.mattco.reeva.ir.opcodes.IrOpcode
 import me.mattco.reeva.ir.opcodes.IrOpcodeType
 import java.util.*
@@ -19,6 +20,8 @@ class FunctionBuilder(val argCount: Int = 1) {
     // Stores how deep we currently are in the context tree from the
     // scope we started with (this function's HoistingScope)
     var nestedContexts = 0
+
+    var feedbackVector = FeedbackVector()
 
     enum class RegState { USED, FREE }
 

@@ -8,8 +8,8 @@ import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.ir.DeclarationsArray
 import me.mattco.reeva.ir.FunctionInfo
 import me.mattco.reeva.ir.opcodes.IrOpcode
-import me.mattco.reeva.ir.opcodes.RegisterRange
 import me.mattco.reeva.ir.opcodes.IrOpcodeVisitor
+import me.mattco.reeva.ir.opcodes.RegisterRange
 import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.functions.JSFunction
@@ -119,26 +119,58 @@ class IRInterpreter(
     }
 
     override fun visitLdaNamedProperty(opcode: IrOpcode) {
-        val name = loadConstant<String>(opcode.cpAt(1))
+        val key = loadConstant<String>(opcode.cpAt(1)).key()
         val obj = registers[opcode.regAt(0)] as JSObject
-        accumulator = obj.get(name)
+        val slot = info.feedbackVector.slotAs<ObjectFeedback>(opcode.slotAt(2))
+
+        accumulator = if (obj.shape !in slot.shapes) {
+            val location = obj.getPropertyLocation(key)
+            if (location != null) {
+                slot.shapes[obj.shape] = location
+                obj.getDescriptorAt(location).getActualValue(obj)
+            } else JSUndefined
+        } else obj.get(key)
     }
 
     override fun visitLdaKeyedProperty(opcode: IrOpcode) {
+        val key = accumulator.toPropertyKey()
         val obj = registers[opcode.regAt(0)] as JSObject
-        accumulator = obj.get(Operations.toPropertyKey(accumulator))
+        val slot = info.feedbackVector.slotAs<ObjectFeedback>(opcode.slotAt(1))
+
+        accumulator = if (obj.shape !in slot.shapes) {
+            val location = obj.getPropertyLocation(key)
+            if (location != null) {
+                slot.shapes[obj.shape] = location
+                obj.getDescriptorAt(location).getActualValue(obj)
+            } else JSUndefined
+        } else obj.get(key)
     }
 
     override fun visitStaNamedProperty(opcode: IrOpcode) {
-        val name = loadConstant<String>(opcode.cpAt(1))
+        val key = loadConstant<String>(opcode.cpAt(1)).key()
         val obj = registers[opcode.regAt(0)] as JSObject
-        obj.set(name, accumulator)
+        val slot = info.feedbackVector.slotAs<ObjectFeedback>(opcode.slotAt(2))
+
+        if (obj.shape !in slot.shapes) {
+            val location = obj.getPropertyLocation(key)
+            if (location != null) {
+                slot.shapes[obj.shape] = location
+                obj.setPropertyAt(location, Descriptor(accumulator, Descriptor.DEFAULT_ATTRIBUTES))
+            } else JSUndefined
+        } else obj.get(key)
+
+        if (obj.shape !in slot.shapes)
+            slot.shapes[obj.shape] = obj.getPropertyLocation(key)!!
+        obj.set(key, accumulator)
     }
 
     override fun visitStaKeyedProperty(opcode: IrOpcode) {
         val obj = registers[opcode.regAt(0)] as JSObject
-        val key = registers[opcode.regAt(1)]
-        obj.set(Operations.toPropertyKey(key), accumulator)
+        val key = registers[opcode.regAt(1)].toPropertyKey()
+        val slot = info.feedbackVector.slotAs<ObjectFeedback>(opcode.slotAt(1))
+        if (obj.shape !in slot.shapes)
+            slot.shapes[obj.shape] = obj.getPropertyLocation(key)!!
+        obj.set(key, accumulator)
     }
 
     override fun visitCreateArrayLiteral() {
@@ -161,51 +193,51 @@ class IRInterpreter(
     }
 
     override fun visitAdd(opcode: IrOpcode) {
-        binaryOp(opcode.regAt(0), "+")
+        binaryOp(opcode, "+")
     }
 
     override fun visitSub(opcode: IrOpcode) {
-        binaryOp(opcode.regAt(0), "-")
+        binaryOp(opcode, "-")
     }
 
     override fun visitMul(opcode: IrOpcode) {
-        binaryOp(opcode.regAt(0), "*")
+        binaryOp(opcode, "*")
     }
 
     override fun visitDiv(opcode: IrOpcode) {
-        binaryOp(opcode.regAt(0), "/")
+        binaryOp(opcode, "/")
     }
 
     override fun visitMod(opcode: IrOpcode) {
-        binaryOp(opcode.regAt(0), "%")
+        binaryOp(opcode, "%")
     }
 
     override fun visitExp(opcode: IrOpcode) {
-        binaryOp(opcode.regAt(0), "**")
+        binaryOp(opcode, "**")
     }
 
     override fun visitBitwiseOr(opcode: IrOpcode) {
-        binaryOp(opcode.regAt(0), "|")
+        binaryOp(opcode, "|")
     }
 
     override fun visitBitwiseXor(opcode: IrOpcode) {
-        binaryOp(opcode.regAt(0), "^")
+        binaryOp(opcode, "^")
     }
 
     override fun visitBitwiseAnd(opcode: IrOpcode) {
-        binaryOp(opcode.regAt(0), "&")
+        binaryOp(opcode, "&")
     }
 
     override fun visitShiftLeft(opcode: IrOpcode) {
-        binaryOp(opcode.regAt(0), "<<")
+        binaryOp(opcode, "<<")
     }
 
     override fun visitShiftRight(opcode: IrOpcode) {
-        binaryOp(opcode.regAt(0), ">>")
+        binaryOp(opcode, ">>")
     }
 
     override fun visitShiftRightUnsigned(opcode: IrOpcode) {
-        binaryOp(opcode.regAt(0), ">>>")
+        binaryOp(opcode, ">>>")
     }
 
     override fun visitInc() {
@@ -217,16 +249,14 @@ class IRInterpreter(
     }
 
     override fun visitNegate() {
-        val expr = accumulator.toNumeric()
-        accumulator = if (expr is JSBigInt) {
-            Operations.bigintUnaryMinus(expr)
+        accumulator = if (accumulator is JSBigInt) {
+            Operations.bigintUnaryMinus(accumulator)
         } else Operations.numericUnaryMinus(accumulator)
     }
 
     override fun visitBitwiseNot() {
-        val expr = accumulator.toNumeric()
-        accumulator = if (expr is JSBigInt) {
-            Operations.bigintBitwiseNOT(expr)
+        accumulator = if (accumulator is JSBigInt) {
+            Operations.bigintBitwiseNOT(accumulator)
         } else Operations.numericBitwiseNOT(accumulator)
     }
 
@@ -604,10 +634,12 @@ class IRInterpreter(
         )
     }
 
-    private fun binaryOp(lhs: Int, op: String) {
-        accumulator = Operations.applyStringOrNumericBinaryOperator(
-            registers[lhs], accumulator, op
-        )
+    private fun binaryOp(opcode: IrOpcode, op: String) {
+        val lhs = registers[opcode.regAt(0)]
+        val slot = info.feedbackVector.slotAs<OpFeedback>(opcode.slotAt(1))
+        slot.typeTree.recordType(Type.fromValue(lhs))
+        slot.typeTree.recordType(Type.fromValue(accumulator))
+        accumulator = Operations.applyStringOrNumericBinaryOperator(lhs, accumulator, op)
     }
 
     private fun call(callableReg: Int, range: RegisterRange, mode: CallMode) {

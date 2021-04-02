@@ -23,7 +23,7 @@ open class JSObject protected constructor(
     internal val storage = mutableListOf<JSValue>()
     internal val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
-    protected var shape: Shape
+    internal var shape: Shape
 
     var transitionsEnabled: Boolean = true
 
@@ -96,15 +96,19 @@ open class JSObject protected constructor(
 
     internal fun getPropertyLocation(property: PropertyKey): PropertyLocation? {
         var receiver = this
+        var offset = 0
 
         while (true) {
             val location = receiver.getOwnPropertyLocation(property)
-            if (location != null)
+            if (location != null) {
+                location.protoOffset = offset
                 return location
+            }
             val parent = receiver.getPrototype()
             if (parent !is JSObject)
                 break
             receiver = parent
+            offset++
         }
 
         return null
@@ -314,7 +318,7 @@ open class JSObject protected constructor(
         }
 
         val value = JSAccessor(getterFunc, setterFunc)
-        internalSet(key, Descriptor(value, attributes))
+        addProperty(key, Descriptor(value, attributes))
     }
 
     fun defineNativeProperty(key: String, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
@@ -323,7 +327,7 @@ open class JSObject protected constructor(
 
     fun defineNativeProperty(key: PropertyKey, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
         val value = JSNativeProperty(getter, setter)
-        internalSet(key, Descriptor(value, attributes))
+        addProperty(key, Descriptor(value, attributes))
     }
 
     fun defineNativeFunction(
@@ -351,7 +355,7 @@ open class JSObject protected constructor(
         function: NativeFunctionSignature
     ) {
         val obj = JSNativeFunction.fromLambda(realm, name, length, function)
-        internalSet(key, Descriptor(obj, attributes))
+        addProperty(key, Descriptor(obj, attributes))
     }
 
     fun addSlot(name: SlotName, value: JSValue = JSUndefined) {
@@ -381,17 +385,17 @@ open class JSObject protected constructor(
         return Descriptor(storage[data.offset], data.attributes)
     }
 
-    internal fun internalSet(property: PropertyKey, descriptor: Descriptor) {
+    internal fun addProperty(property: PropertyKey, descriptor: Descriptor) {
         val stringOrSymbol = when {
             property.isInt -> return indexedProperties.setDescriptor(property.asInt, descriptor)
             property.isLong -> return indexedProperties.setDescriptor(property.asLong, descriptor)
             else -> property.toStringOrSymbol()
         }
 
-        internalSet(stringOrSymbol, descriptor)
+        addProperty(stringOrSymbol, descriptor)
     }
 
-    internal fun internalSet(key: StringOrSymbol, descriptor: Descriptor) {
+    internal fun addProperty(key: StringOrSymbol, descriptor: Descriptor) {
         if (!transitionsEnabled && !shape.isUnique) {
             shape.addPropertyWithoutTransition(key, descriptor.attributes)
             ensureStorageCapacity(shape.propertyCount)
@@ -455,6 +459,14 @@ open class JSObject protected constructor(
         override fun toString(): String {
             return if (isString) asString else asSymbol.toString()
         }
+
+        override fun equals(other: Any?): Boolean {
+            return other is StringOrSymbol && value == other.value
+        }
+
+        override fun hashCode(): Int {
+            return value.hashCode()
+        }
     }
 
     protected fun <T> slot(name: SlotName, initialValue: T) = SlotDelegator(name, initialValue)
@@ -504,7 +516,7 @@ open class JSObject protected constructor(
     }
 }
 
-internal sealed class PropertyLocation(var protoOffset: Int) {
+sealed class PropertyLocation(var protoOffset: Int) {
     fun receiver(base: JSObject): JSObject {
         var receiver = base
         repeat(protoOffset) {
@@ -514,8 +526,8 @@ internal sealed class PropertyLocation(var protoOffset: Int) {
     }
 }
 
-internal class IntIndexedProperty(val int: Int, protoOffset: Int = 0) : PropertyLocation(protoOffset)
+class IntIndexedProperty(val int: Int, protoOffset: Int = 0) : PropertyLocation(protoOffset)
 
-internal class LongIndexedProperty(val long: Long, protoOffset: Int = 0) : PropertyLocation(protoOffset)
+class LongIndexedProperty(val long: Long, protoOffset: Int = 0) : PropertyLocation(protoOffset)
 
-internal class StorageProperty(val index: Int, val attributes: Int, protoOffset: Int = 0) : PropertyLocation(protoOffset)
+class StorageProperty(val index: Int, val attributes: Int, protoOffset: Int = 0) : PropertyLocation(protoOffset)
