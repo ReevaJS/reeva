@@ -116,10 +116,6 @@ class CPEAAPLVisitor(
                     it.scope = parser.scope
                     it.variable = variable
                     variable.source = it
-
-                    // isInlineable will have been set to false due to the GlobalSourceNode
-                    // placeholder above
-                    variable.isInlineable = true
                 }
             })
         }

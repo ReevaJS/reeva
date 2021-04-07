@@ -11,12 +11,6 @@ open class Scope(val outer: Scope? = null) {
     val declaredVariables: List<Variable>
         get() = _declaredVariables
 
-    val inlineableVariables: List<Variable>
-        get() = declaredVariables.filter { it.isInlineable }
-
-    val envVariables: List<Variable>
-        get() = declaredVariables.filterNot { it.isInlineable }
-
     // Variables that have yet to be connected to their source
     val refNodes = mutableListOf<VariableRefNode>()
 
@@ -124,12 +118,8 @@ open class Scope(val outer: Scope? = null) {
         // Attempt to connect any remaining global var references
         for (node in refNodes) {
             val variable = findDeclaredVariable(node.targetVar.name)
-            if (variable != null) {
+            if (variable != null)
                 node.targetVar = variable
-                if (node.scope.crossesFunctionBoundary(variable.source.scope)) {
-                    variable.isInlineable = false
-                }
-            }
         }
 
         childScopes.forEach(Scope::processUnlinkedNodes)
@@ -150,11 +140,8 @@ open class Scope(val outer: Scope? = null) {
     }
 
     protected open fun onFinishImpl() {
-        // Assign each non-inlineable variable their own slot index.
-        // Inlineable variables are handled during the IR phase
-        declaredVariables.filter {
-            !it.isInlineable
-        }.forEachIndexed { index, value ->
+        // Assign each variable their own slot index
+        declaredVariables.forEachIndexed { index, value ->
             value.slot = index
             numSlots++
         }
@@ -195,12 +182,8 @@ data class Variable(
     val mode: Mode,
     var source: VariableSourceNode,
 ) {
-    var isInlineable = source !is GlobalSourceNode
-
     /**
-     * If isInlineable is true, then this is the register that
-     * the variable value is currently stored in. If not, then
-     * this is the slot index in its context.
+     * The slot index of this variable in its context
      */
     var slot = -1
 

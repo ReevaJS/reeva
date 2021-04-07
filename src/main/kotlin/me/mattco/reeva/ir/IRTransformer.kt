@@ -67,25 +67,13 @@ class IRTransformer : ASTVisitor {
         if (scope.requiresEnv) {
             builder.nestedContexts++
             add(PushEnv, scope.numSlots)
-            scope.envVariables.forEach { variable ->
+            scope.declaredVariables.forEach { variable ->
                 variable.slot = builder.envVarCount++
             }
-        }
-
-        scope.inlineableVariables.filter {
-            it.mode != Variable.Mode.Parameter
-        }.forEach {
-            it.slot = nextFreeReg()
         }
     }
 
     private fun exitScope(scope: Scope) {
-        scope.inlineableVariables.filter {
-            it.mode != Variable.Mode.Parameter
-        }.forEach {
-            markRegFree(it.slot)
-        }
-
         if (scope.requiresEnv) {
             builder.nestedContexts--
             add(PopCurrentEnv)
@@ -158,13 +146,9 @@ class IRTransformer : ASTVisitor {
             if (node.initScope.requiresEnv) {
                 add(PushEnv, node.initScope.numSlots)
                 builder.nestedContexts++
-                node.initScope.envVariables.forEachIndexed { index, variable ->
+                node.initScope.declaredVariables.forEachIndexed { index, variable ->
                     variable.slot = index
                 }
-            }
-
-            node.initScope.inlineableVariables.forEach {
-                it.slot = nextFreeReg()
             }
         }
 
@@ -194,15 +178,9 @@ class IRTransformer : ASTVisitor {
 
         place(loopEnd)
 
-        if (node.initScope != null) {
-            node.initScope.inlineableVariables.forEach {
-                markRegFree(it.slot)
-            }
-
-            if (node.initScope.requiresEnv) {
-                builder.nestedContexts--
-                add(PopCurrentEnv)
-            }
+        if (node.initScope != null && node.initScope.requiresEnv) {
+            builder.nestedContexts--
+            add(PopCurrentEnv)
         }
     }
 
@@ -222,14 +200,10 @@ class IRTransformer : ASTVisitor {
         add(CallRuntime, InterpRuntime.ThrowIfIteratorNextNotCallable, next, 1)
 
         if (node.scope.requiresEnv) {
-            node.scope.envVariables.forEachIndexed { index, variable ->
+            node.scope.declaredVariables.forEachIndexed { index, variable ->
                 variable.slot = index
             }
             builder.nestedContexts++
-        }
-
-        node.scope.inlineableVariables.forEach {
-            it.slot = nextFreeReg()
         }
 
         val loopStart = label()
@@ -253,28 +227,16 @@ class IRTransformer : ASTVisitor {
             is VariableDeclarationNode -> {
                 val decl = node.decl.declarations[0]
                 val variable = decl.identifier.variable
-                if (variable.isInlineable) {
-                    add(Star, variable.slot)
-                } else {
-                    storeEnvVariableRef(variable, node.scope)
-                }
+                storeEnvVariableRef(variable, node.scope)
             }
             is LexicalDeclarationNode -> {
                 val decl = node.decl.declarations[0]
                 val variable = decl.identifier.variable
-                if (variable.isInlineable) {
-                    add(Star, variable.slot)
-                } else {
-                    storeEnvVariableRef(variable, node.scope)
-                }
+                storeEnvVariableRef(variable, node.scope)
             }
             is BindingIdentifierNode -> {
                 val variable = node.decl.variable
-                if (variable.isInlineable) {
-                    add(Star, variable.slot)
-                } else {
-                    storeEnvVariableRef(variable, node.scope)
-                }
+                storeEnvVariableRef(variable, node.scope)
             }
         }
 
@@ -287,10 +249,6 @@ class IRTransformer : ASTVisitor {
 
         jump(loopStart)
         place(loopEnd)
-
-        node.scope.inlineableVariables.forEach {
-            markRegFree(it.slot)
-        }
     }
 
     override fun visitForAwaitOf(node: ForAwaitOfNode) {
@@ -337,19 +295,14 @@ class IRTransformer : ASTVisitor {
                 if (node.catchNode.scope.requiresEnv) {
                     builder.nestedContexts++
                     add(PushEnv, node.catchNode.scope.numSlots)
-                    node.catchNode.scope.envVariables.forEachIndexed { index, variable ->
+                    node.catchNode.scope.declaredVariables.forEachIndexed { index, variable ->
                         variable.slot = index
                     }
                     mustPopEnv = true
                 }
 
                 val param = node.catchNode.catchParameter
-                if (param.variable.isInlineable) {
-                    param.variable.slot = nextFreeReg()
-                    add(Star, param.variable.slot)
-                } else {
-                    storeEnvVariableRef(param.variable, node.catchNode.scope)
-                }
+                storeEnvVariableRef(param.variable, node.catchNode.scope)
             }
 
             visit(node.catchNode.block)
@@ -357,9 +310,6 @@ class IRTransformer : ASTVisitor {
 
             if (mustPopEnv)
                 add(PopCurrentEnv)
-
-            if (node.catchNode.catchParameter?.variable?.isInlineable == true)
-                markRegFree(node.catchNode.catchParameter.variable.slot)
 
             if (node.finallyBlock != null) {
                 visit(node.finallyBlock)
@@ -631,10 +581,6 @@ class IRTransformer : ASTVisitor {
 
         parameters.distinctBy { it.identifier.identifierName }.forEachIndexed { index, param ->
             val register = index + 1
-            val isInlineable = param.variable.isInlineable
-
-            if (isInlineable)
-                param.variable.slot = register
 
             if (param.initializer != null) {
                 // Check if the parameter is undefined
@@ -644,14 +590,10 @@ class IRTransformer : ASTVisitor {
                 jump(skipDefault, JumpIfNotUndefined)
 
                 visit(param.initializer)
-                if (isInlineable) {
-                    add(Star, register)
-                } else {
-                    add(StaCurrentEnv, param.variable.slot)
-                }
+                add(StaCurrentEnv, param.variable.slot)
 
                 place(skipDefault)
-            } else if (!isInlineable) {
+            } else {
                 add(Ldar, register)
                 add(StaCurrentEnv, param.variable.slot)
             }
@@ -980,23 +922,17 @@ class IRTransformer : ASTVisitor {
     }
 
     private fun loadVariable(variable: Variable, currentScope: Scope) {
-        when {
-            variable.mode == Variable.Mode.Global -> {
-                if (variable.name == "undefined") {
-                    add(LdaUndefined)
-                } else add(LdaGlobal, loadConstant(variable.name))
-            }
-            variable.isInlineable -> add(Ldar, variable.slot)
-            else -> loadEnvVariableRef(variable, currentScope)
-        }
+        if (variable.mode == Variable.Mode.Global) {
+            if (variable.name == "undefined") {
+                add(LdaUndefined)
+            } else add(LdaGlobal, loadConstant(variable.name))
+        } else loadEnvVariableRef(variable, currentScope)
     }
 
     private fun storeVariable(variable: Variable, currentScope: Scope) {
-        when {
-            variable.mode == Variable.Mode.Global -> add(StaGlobal, loadConstant(variable.name))
-            variable.isInlineable -> add(Star, variable.slot)
-            else -> storeEnvVariableRef(variable, currentScope)
-        }
+        if (variable.mode == Variable.Mode.Global) {
+            add(StaGlobal, loadConstant(variable.name))
+        } else storeEnvVariableRef(variable, currentScope)
     }
 
     private fun loadEnvVariableRef(variable: Variable, currentScope: Scope) {
