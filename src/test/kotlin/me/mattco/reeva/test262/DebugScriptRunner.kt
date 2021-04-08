@@ -2,6 +2,7 @@ package me.mattco.reeva.test262
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
+import me.mattco.reeva.pipeline.Pipeline
 import me.mattco.reeva.runtime.toPrintableString
 import java.io.File
 
@@ -29,6 +30,10 @@ fun main() {
     } else {
         println("Script result: ${result.value().toPrintableString()}")
     }
+
+    val graphResult = Pipeline.graph(agent, script)
+    if (graphResult.hasError)
+        graphResult.error().print()
 
     Reeva.teardown()
 }

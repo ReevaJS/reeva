@@ -6,7 +6,7 @@ import me.mattco.reeva.ir.opcodes.IrOpcodeVisitor
 import me.mattco.reeva.utils.toValue
 
 class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
-    val registers = Registers()
+    val registers = Registers(info.registerCount)
     private val graph = Graph()
 
     lateinit var currentEffect: Node
@@ -267,7 +267,7 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
     }
 
     override fun visitPopCurrentEnv(opcode: IrOpcode) {
-        super.visitPopCurrentEnv(opcode)
+        TODO()
     }
 
     override fun visitCall(opcode: IrOpcode) {
@@ -311,79 +311,79 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
     }
 
     override fun visitTestEqual(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestEqual, opcode)
     }
 
     override fun visitTestNotEqual(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestNotEqual, opcode)
     }
 
     override fun visitTestEqualStrict(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestEqualStrict, opcode)
     }
 
     override fun visitTestNotEqualStrict(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestNotEqualStrict, opcode)
     }
 
     override fun visitTestLessThan(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestLessThan, opcode)
     }
 
     override fun visitTestGreaterThan(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestGreaterThan, opcode)
     }
 
     override fun visitTestLessThanOrEqual(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestLessThanOrEqual, opcode)
     }
 
     override fun visitTestGreaterThanOrEqual(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestGreaterThanOrEqual, opcode)
     }
 
     override fun visitTestReferenceEqual(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestReferenceEqual, opcode)
     }
 
     override fun visitTestInstanceOf(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestInstanceOf, opcode)
     }
 
     override fun visitTestIn(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestIn, opcode)
     }
 
     override fun visitTestNullish(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestNullish, opcode)
     }
 
     override fun visitTestNull(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestNull, opcode)
     }
 
     override fun visitTestUndefined(opcode: IrOpcode) {
-        TODO()
+        doTest(NodeType.TestUndefined, opcode)
     }
 
     override fun visitToBoolean() {
-        TODO()
+        doUnaryOp(NodeType.ToBoolean)
     }
 
     override fun visitToNumber() {
-        TODO()
+        doUnaryOp(NodeType.ToNumber)
     }
 
     override fun visitToNumeric() {
-        TODO()
+        doUnaryOp(NodeType.ToNumeric)
     }
 
     override fun visitToObject() {
-        TODO()
+        doUnaryOp(NodeType.ToObject)
     }
 
     override fun visitToString() {
-        TODO()
+        doUnaryOp(NodeType.ToString)
     }
 
     override fun visitJump(opcode: IrOpcode) {
@@ -459,7 +459,7 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
     }
 
     override fun visitDeclareGlobals(opcode: IrOpcode) {
-        TODO()
+        // nop
     }
 
     override fun visitCreateMappedArgumentsObject() {
@@ -492,6 +492,15 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
             registers[opcode.regAt(0)],
             registers.accumulator!!,
             currentEffect,
+        )
+    }
+
+    private fun doTest(type: NodeType, opcode: IrOpcode) {
+        currentEffect = Node(
+            NodeDescriptors.test(type),
+            registers[opcode.regAt(0)],
+            registers.accumulator!!,
+            currentEffect
         )
     }
 }

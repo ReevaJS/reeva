@@ -16,6 +16,7 @@ object NodeDescriptors {
     private val longCache = mutableMapOf<Long, Node.Descriptor>()
     private val doubleCache = mutableMapOf<Double, Node.Descriptor>()
     private val stringCache = mutableMapOf<String, Node.Descriptor>()
+    private val typeCache = mutableMapOf<NodeType, Node.Descriptor>()
 
     val start = Node.Descriptor(NodeType.Start, 0, 0, 0, 0, 1, 0)
     val end = Node.Descriptor(NodeType.End, 0, 1, 0, 0, 0, 0)
@@ -26,7 +27,6 @@ object NodeDescriptors {
     val staArrayLiteral = Node.Descriptor(NodeType.StaArrayLiteral, 3, 1, 0, 0, 1, 0)
     val objectLiteral = Node.Descriptor(NodeType.CreateObjectLiteral, 0, 0, 0, 1, 0, 0)
 
-    private val opCache = mutableMapOf<NodeType, Node.Descriptor>()
 
     val stringAppend = Node.Descriptor(NodeType.StringAppend, 2, 1, 0, 1, 1, 0)
     val typeof_ = Node.Descriptor(NodeType.TypeOf, 1, 1, 0, 1, 1, 0)
@@ -46,13 +46,19 @@ object NodeDescriptors {
     fun <T> constant(value: T) = Node.DescriptorWithConst(NodeType.Constant, 0, 0, 0, 1, 0, 0, param = value)
 
     fun unaryOp(type: NodeType): Node.Descriptor {
-        return opCache.getOrPut(type) {
+        return typeCache.getOrPut(type) {
             Node.Descriptor(type, 1, 1, 0, 1, 1, 0)
         }
     }
 
     fun binaryOp(type: NodeType): Node.Descriptor {
-        return opCache.getOrPut(type) {
+        return typeCache.getOrPut(type) {
+            Node.Descriptor(type, 2, 1, 0, 1, 1, 0)
+        }
+    }
+
+    fun test(type: NodeType): Node.Descriptor {
+        return typeCache.getOrPut(type) {
             Node.Descriptor(type, 2, 1, 0, 1, 1, 0)
         }
     }

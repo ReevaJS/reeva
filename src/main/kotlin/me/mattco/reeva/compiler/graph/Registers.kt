@@ -4,8 +4,8 @@ import java.util.*
 
 typealias RegisterLiveness = BitSet
 
-class Registers {
-    private val nodes = mutableListOf<Node?>()
+class Registers(size: Int) {
+    private val nodes = Array<Node?>(size) { null }
     var accumulator: Node? = null
     private val livenessMap = mutableMapOf<Node, RegisterLiveness>()
 
