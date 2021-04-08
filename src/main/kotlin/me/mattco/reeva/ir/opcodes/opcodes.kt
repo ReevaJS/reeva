@@ -358,14 +358,6 @@ enum class IrOpcodeType(
     Call0(REG, REG),
 
     /**
-     * Calls a value with any receiver and one argument.
-     *
-     * arg 1: the target of the call
-     * arg 2: the argument registers, starting with the receiver registers
-     */
-    Call1(REG, RANGE),
-
-    /**
      * Calls a value with any receiver and any number of arguments. The
      * last argument must be spread.
      *
@@ -750,12 +742,8 @@ class IrOpcode(type: IrOpcodeType, vararg args: Any) {
         }
     }
 
-    fun regAt(index: Int) = args[index] as Int
-    fun cpAt(index: Int) = args[index] as Int
-    fun instrAt(index: Int) = args[index] as Int
-    fun literalAt(index: Int) = args[index] as Int
+    fun intAt(index: Int) = args[index] as Int
     fun rangeAt(index: Int) = args[index] as RegisterRange
-    fun slotAt(index: Int) = args[index] as Int
 
     fun replaceJumpPlaceholder(newType: IrOpcodeType, offset: Int) {
         expect(type == IrOpcodeType.JumpPlaceholder, type.toString())

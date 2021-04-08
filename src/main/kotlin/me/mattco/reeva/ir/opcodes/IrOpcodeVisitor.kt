@@ -8,83 +8,82 @@ abstract class IrOpcodeVisitor {
             IrOpcodeType.LdaUndefined -> visitLdaUndefined()
             IrOpcodeType.LdaNull -> visitLdaNull()
             IrOpcodeType.LdaZero -> visitLdaZero()
-            IrOpcodeType.LdaConstant -> visitLdaConstant(opcode)
-            IrOpcodeType.LdaInt -> visitLdaInt(opcode)
+            IrOpcodeType.LdaConstant -> visitLdaConstant(opcode.intAt(0))
+            IrOpcodeType.LdaInt -> visitLdaInt(opcode.intAt(0))
 
-            IrOpcodeType.Ldar -> visitLdar(opcode)
-            IrOpcodeType.Star -> visitStar(opcode)
-            IrOpcodeType.Mov -> visitMov(opcode)
-            IrOpcodeType.LdaNamedProperty -> visitLdaNamedProperty(opcode)
-            IrOpcodeType.LdaKeyedProperty -> visitLdaKeyedProperty(opcode)
-            IrOpcodeType.StaNamedProperty -> visitStaNamedProperty(opcode)
-            IrOpcodeType.StaKeyedProperty -> visitStaKeyedProperty(opcode)
+            IrOpcodeType.Ldar -> visitLdar(opcode.intAt(0))
+            IrOpcodeType.Star -> visitStar(opcode.intAt(0))
+            IrOpcodeType.Mov -> visitMov(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.LdaNamedProperty -> visitLdaNamedProperty(opcode.intAt(0), opcode.intAt(1), opcode.intAt(2))
+            IrOpcodeType.LdaKeyedProperty -> visitLdaKeyedProperty(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.StaNamedProperty -> visitStaNamedProperty(opcode.intAt(0), opcode.intAt(1), opcode.intAt(2))
+            IrOpcodeType.StaKeyedProperty -> visitStaKeyedProperty(opcode.intAt(0), opcode.intAt(1), opcode.intAt(2))
 
             IrOpcodeType.CreateArrayLiteral -> visitCreateArrayLiteral()
-            IrOpcodeType.StaArrayLiteral -> visitStaArrayLiteral(opcode)
-            IrOpcodeType.StaArrayLiteralIndex -> visitStaArrayLiteralIndex(opcode)
+            IrOpcodeType.StaArrayLiteral -> visitStaArrayLiteral(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.StaArrayLiteralIndex -> visitStaArrayLiteralIndex(opcode.intAt(0), opcode.intAt(1))
             IrOpcodeType.CreateObjectLiteral -> visitCreateObjectLiteral()
 
-            IrOpcodeType.Add -> visitAdd(opcode)
-            IrOpcodeType.Sub -> visitSub(opcode)
-            IrOpcodeType.Mul -> visitMul(opcode)
-            IrOpcodeType.Div -> visitDiv(opcode)
-            IrOpcodeType.Mod -> visitMod(opcode)
-            IrOpcodeType.Exp -> visitExp(opcode)
-            IrOpcodeType.BitwiseOr -> visitBitwiseOr(opcode)
-            IrOpcodeType.BitwiseXor -> visitBitwiseXor(opcode)
-            IrOpcodeType.BitwiseAnd -> visitBitwiseAnd(opcode)
-            IrOpcodeType.ShiftLeft -> visitShiftLeft(opcode)
-            IrOpcodeType.ShiftRight -> visitShiftRight(opcode)
-            IrOpcodeType.ShiftRightUnsigned -> visitShiftRightUnsigned(opcode)
+            IrOpcodeType.Add -> visitAdd(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.Sub -> visitSub(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.Mul -> visitMul(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.Div -> visitDiv(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.Mod -> visitMod(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.Exp -> visitExp(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.BitwiseOr -> visitBitwiseOr(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.BitwiseXor -> visitBitwiseXor(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.BitwiseAnd -> visitBitwiseAnd(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.ShiftLeft -> visitShiftLeft(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.ShiftRight -> visitShiftRight(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.ShiftRightUnsigned -> visitShiftRightUnsigned(opcode.intAt(0), opcode.intAt(1))
 
             IrOpcodeType.Inc -> visitInc()
             IrOpcodeType.Dec -> visitDec()
             IrOpcodeType.Negate -> visitNegate()
             IrOpcodeType.BitwiseNot -> visitBitwiseNot()
 
-            IrOpcodeType.StringAppend -> visitStringAppend(opcode)
+            IrOpcodeType.StringAppend -> visitStringAppend(opcode.intAt(0))
             IrOpcodeType.ToBooleanLogicalNot -> visitToBooleanLogicalNot()
             IrOpcodeType.LogicalNot -> visitLogicalNot()
             IrOpcodeType.TypeOf -> visitTypeOf()
-            IrOpcodeType.DeletePropertySloppy -> visitDeletePropertySloppy(opcode)
-            IrOpcodeType.DeletePropertyStrict -> visitDeletePropertyStrict(opcode)
+            IrOpcodeType.DeletePropertySloppy -> visitDeletePropertySloppy(opcode.intAt(0))
+            IrOpcodeType.DeletePropertyStrict -> visitDeletePropertyStrict(opcode.intAt(0))
 
-            IrOpcodeType.LdaGlobal -> visitLdaGlobal(opcode)
-            IrOpcodeType.StaGlobal -> visitStaGlobal(opcode)
-            IrOpcodeType.LdaCurrentEnv -> visitLdaCurrentEnv(opcode)
-            IrOpcodeType.StaCurrentEnv -> visitStaCurrentEnv(opcode)
-            IrOpcodeType.LdaEnv -> visitLdaEnv(opcode)
-            IrOpcodeType.StaEnv -> visitStaEnv(opcode)
-            IrOpcodeType.CreateBlockScope -> visitCreateBlockScope(opcode)
-            IrOpcodeType.PushEnv -> visitPushEnv(opcode)
-            IrOpcodeType.PopCurrentEnv -> visitPopCurrentEnv(opcode)
+            IrOpcodeType.LdaGlobal -> visitLdaGlobal(opcode.intAt(0))
+            IrOpcodeType.StaGlobal -> visitStaGlobal(opcode.intAt(0))
+            IrOpcodeType.LdaCurrentEnv -> visitLdaCurrentEnv(opcode.intAt(0))
+            IrOpcodeType.StaCurrentEnv -> visitStaCurrentEnv(opcode.intAt(0))
+            IrOpcodeType.LdaEnv -> visitLdaEnv(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.StaEnv -> visitStaEnv(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.CreateBlockScope -> visitCreateBlockScope(opcode.intAt(0))
+            IrOpcodeType.PushEnv -> visitPushEnv(opcode.intAt(0))
+            IrOpcodeType.PopCurrentEnv -> visitPopCurrentEnv(opcode.intAt(0))
 
-            IrOpcodeType.Call -> visitCall(opcode)
-            IrOpcodeType.Call0 -> visitCall0(opcode)
-            IrOpcodeType.Call1 -> visitCall1(opcode)
-            IrOpcodeType.CallLastSpread -> visitCallLastSpread(opcode)
-            IrOpcodeType.CallFromArray -> visitCallFromArray(opcode)
-            IrOpcodeType.CallRuntime -> visitCallRuntime(opcode)
+            IrOpcodeType.Call -> visitCall(opcode.intAt(0), opcode.rangeAt(1))
+            IrOpcodeType.Call0 -> visitCall0(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.CallLastSpread -> visitCallLastSpread(opcode.intAt(0), opcode.rangeAt(1))
+            IrOpcodeType.CallFromArray -> visitCallFromArray(opcode.intAt(0), opcode.intAt(1))
+            IrOpcodeType.CallRuntime -> visitCallRuntime(opcode.intAt(0), opcode.rangeAt(1))
 
-            IrOpcodeType.Construct -> visitConstruct(opcode)
-            IrOpcodeType.Construct0 -> visitConstruct0(opcode)
-            IrOpcodeType.ConstructLastSpread -> visitConstructLastSpread(opcode)
-            IrOpcodeType.ConstructFromArray -> visitConstructFromArray(opcode)
+            IrOpcodeType.Construct -> visitConstruct(opcode.intAt(0), opcode.rangeAt(1))
+            IrOpcodeType.Construct0 -> visitConstruct0(opcode.intAt(0))
+            IrOpcodeType.ConstructLastSpread -> visitConstructLastSpread(opcode.intAt(0), opcode.rangeAt(1))
+            IrOpcodeType.ConstructFromArray -> visitConstructFromArray(opcode.intAt(0), opcode.intAt(1))
 
-            IrOpcodeType.TestEqual -> visitTestEqual(opcode)
-            IrOpcodeType.TestNotEqual -> visitTestNotEqual(opcode)
-            IrOpcodeType.TestEqualStrict -> visitTestEqualStrict(opcode)
-            IrOpcodeType.TestNotEqualStrict -> visitTestNotEqualStrict(opcode)
-            IrOpcodeType.TestLessThan -> visitTestLessThan(opcode)
-            IrOpcodeType.TestGreaterThan -> visitTestGreaterThan(opcode)
-            IrOpcodeType.TestLessThanOrEqual -> visitTestLessThanOrEqual(opcode)
-            IrOpcodeType.TestGreaterThanOrEqual -> visitTestGreaterThanOrEqual(opcode)
-            IrOpcodeType.TestReferenceEqual -> visitTestReferenceEqual(opcode)
-            IrOpcodeType.TestInstanceOf -> visitTestInstanceOf(opcode)
-            IrOpcodeType.TestIn -> visitTestIn(opcode)
-            IrOpcodeType.TestNullish -> visitTestNullish(opcode)
-            IrOpcodeType.TestNull -> visitTestNull(opcode)
-            IrOpcodeType.TestUndefined -> visitTestUndefined(opcode)
+            IrOpcodeType.TestEqual -> visitTestEqual(opcode.intAt(0))
+            IrOpcodeType.TestNotEqual -> visitTestNotEqual(opcode.intAt(0))
+            IrOpcodeType.TestEqualStrict -> visitTestEqualStrict(opcode.intAt(0))
+            IrOpcodeType.TestNotEqualStrict -> visitTestNotEqualStrict(opcode.intAt(0))
+            IrOpcodeType.TestLessThan -> visitTestLessThan(opcode.intAt(0))
+            IrOpcodeType.TestGreaterThan -> visitTestGreaterThan(opcode.intAt(0))
+            IrOpcodeType.TestLessThanOrEqual -> visitTestLessThanOrEqual(opcode.intAt(0))
+            IrOpcodeType.TestGreaterThanOrEqual -> visitTestGreaterThanOrEqual(opcode.intAt(0))
+            IrOpcodeType.TestReferenceEqual -> visitTestReferenceEqual(opcode.intAt(0))
+            IrOpcodeType.TestInstanceOf -> visitTestInstanceOf(opcode.intAt(0))
+            IrOpcodeType.TestIn -> visitTestIn(opcode.intAt(0))
+            IrOpcodeType.TestNullish -> visitTestNullish(opcode.intAt(0))
+            IrOpcodeType.TestNull -> visitTestNull(opcode.intAt(0))
+            IrOpcodeType.TestUndefined -> visitTestUndefined(opcode.intAt(0))
 
             IrOpcodeType.ToBoolean -> visitToBoolean()
             IrOpcodeType.ToNumber -> visitToNumber()
@@ -92,32 +91,32 @@ abstract class IrOpcodeVisitor {
             IrOpcodeType.ToObject -> visitToObject()
             IrOpcodeType.ToString -> visitToString()
 
-            IrOpcodeType.Jump -> visitJump(opcode)
-            IrOpcodeType.JumpIfTrue -> visitJumpIfTrue(opcode)
-            IrOpcodeType.JumpIfFalse -> visitJumpIfFalse(opcode)
-            IrOpcodeType.JumpIfToBooleanTrue -> visitJumpIfToBooleanTrue(opcode)
-            IrOpcodeType.JumpIfToBooleanFalse -> visitJumpIfToBooleanFalse(opcode)
-            IrOpcodeType.JumpIfNull -> visitJumpIfNull(opcode)
-            IrOpcodeType.JumpIfNotNull -> visitJumpIfNotNull(opcode)
-            IrOpcodeType.JumpIfUndefined -> visitJumpIfUndefined(opcode)
-            IrOpcodeType.JumpIfNotUndefined -> visitJumpIfNotUndefined(opcode)
-            IrOpcodeType.JumpIfNullish -> visitJumpIfNullish(opcode)
-            IrOpcodeType.JumpIfNotNullish -> visitJumpIfNotNullish(opcode)
-            IrOpcodeType.JumpIfObject -> visitJumpIfObject(opcode)
+            IrOpcodeType.Jump -> visitJump(opcode.intAt(0))
+            IrOpcodeType.JumpIfTrue -> visitJumpIfTrue(opcode.intAt(0))
+            IrOpcodeType.JumpIfFalse -> visitJumpIfFalse(opcode.intAt(0))
+            IrOpcodeType.JumpIfToBooleanTrue -> visitJumpIfToBooleanTrue(opcode.intAt(0))
+            IrOpcodeType.JumpIfToBooleanFalse -> visitJumpIfToBooleanFalse(opcode.intAt(0))
+            IrOpcodeType.JumpIfNull -> visitJumpIfNull(opcode.intAt(0))
+            IrOpcodeType.JumpIfNotNull -> visitJumpIfNotNull(opcode.intAt(0))
+            IrOpcodeType.JumpIfUndefined -> visitJumpIfUndefined(opcode.intAt(0))
+            IrOpcodeType.JumpIfNotUndefined -> visitJumpIfNotUndefined(opcode.intAt(0))
+            IrOpcodeType.JumpIfNullish -> visitJumpIfNullish(opcode.intAt(0))
+            IrOpcodeType.JumpIfNotNullish -> visitJumpIfNotNullish(opcode.intAt(0))
+            IrOpcodeType.JumpIfObject -> visitJumpIfObject(opcode.intAt(0))
             IrOpcodeType.JumpPlaceholder -> throw IllegalArgumentException()
 
             IrOpcodeType.Return -> visitReturn()
             IrOpcodeType.Throw -> visitThrow()
-            IrOpcodeType.ThrowConstReassignment -> visitThrowConstReassignment(opcode)
-            IrOpcodeType.ThrowUseBeforeInitIfEmpty -> visitThrowUseBeforeInitIfEmpty(opcode)
+            IrOpcodeType.ThrowConstReassignment -> visitThrowConstReassignment(opcode.intAt(0))
+            IrOpcodeType.ThrowUseBeforeInitIfEmpty -> visitThrowUseBeforeInitIfEmpty(opcode.intAt(0))
 
-            IrOpcodeType.DefineGetterProperty -> visitDefineGetterProperty(opcode)
-            IrOpcodeType.DefineSetterProperty -> visitDefineSetterProperty(opcode)
-            IrOpcodeType.DeclareGlobals -> visitDeclareGlobals(opcode)
+            IrOpcodeType.DefineGetterProperty -> visitDefineGetterProperty(opcode.intAt(0), opcode.intAt(1), opcode.intAt(2))
+            IrOpcodeType.DefineSetterProperty -> visitDefineSetterProperty(opcode.intAt(0), opcode.intAt(1), opcode.intAt(2))
+            IrOpcodeType.DeclareGlobals -> visitDeclareGlobals(opcode.intAt(0))
             IrOpcodeType.CreateMappedArgumentsObject -> visitCreateMappedArgumentsObject()
             IrOpcodeType.CreateUnmappedArgumentsObject -> visitCreateUnmappedArgumentsObject()
             IrOpcodeType.GetIterator -> visitGetIterator()
-            IrOpcodeType.CreateClosure -> visitCreateClosure(opcode)
+            IrOpcodeType.CreateClosure -> visitCreateClosure(opcode.intAt(0))
             IrOpcodeType.DebugBreakpoint -> visitDebugBreakpoint()
         }
     }
@@ -132,55 +131,55 @@ abstract class IrOpcodeVisitor {
 
     open fun visitLdaZero() { }
 
-    open fun visitLdaConstant(opcode: IrOpcode) { }
+    open fun visitLdaConstant(cpIndex: Int) { }
 
-    open fun visitLdaInt(opcode: IrOpcode) { }
+    open fun visitLdaInt(int: Int) { }
 
-    open fun visitLdar(opcode: IrOpcode) { }
+    open fun visitLdar(reg: Int) { }
 
-    open fun visitStar(opcode: IrOpcode) { }
+    open fun visitStar(reg: Int) { }
 
-    open fun visitMov(opcode: IrOpcode) { }
+    open fun visitMov(fromReg: Int, toReg: Int) { }
 
-    open fun visitLdaNamedProperty(opcode: IrOpcode) { }
+    open fun visitLdaNamedProperty(objReg: Int, nameCpIndex: Int, slot: Int) { }
 
-    open fun visitLdaKeyedProperty(opcode: IrOpcode) { }
+    open fun visitLdaKeyedProperty(objReg: Int, slot: Int) { }
 
-    open fun visitStaNamedProperty(opcode: IrOpcode) { }
+    open fun visitStaNamedProperty(objReg: Int, nameCpIndex: Int, slot: Int) { }
 
-    open fun visitStaKeyedProperty(opcode: IrOpcode) { }
+    open fun visitStaKeyedProperty(objReg: Int, propertyReg: Int, slot: Int) { }
 
     open fun visitCreateArrayLiteral() { }
 
-    open fun visitStaArrayLiteral(opcode: IrOpcode) { }
+    open fun visitStaArrayLiteral(arrayReg: Int, indexReg: Int) { }
 
-    open fun visitStaArrayLiteralIndex(opcode: IrOpcode) { }
+    open fun visitStaArrayLiteralIndex(arrayReg: Int, index: Int) { }
 
     open fun visitCreateObjectLiteral() { }
 
-    open fun visitAdd(opcode: IrOpcode) { }
+    open fun visitAdd(lhsReg: Int, slot: Int) { }
 
-    open fun visitSub(opcode: IrOpcode) { }
+    open fun visitSub(lhsReg: Int, slot: Int) { }
 
-    open fun visitMul(opcode: IrOpcode) { }
+    open fun visitMul(lhsReg: Int, slot: Int) { }
 
-    open fun visitDiv(opcode: IrOpcode) { }
+    open fun visitDiv(lhsReg: Int, slot: Int) { }
 
-    open fun visitMod(opcode: IrOpcode) { }
+    open fun visitMod(lhsReg: Int, slot: Int) { }
 
-    open fun visitExp(opcode: IrOpcode) { }
+    open fun visitExp(lhsReg: Int, slot: Int) { }
 
-    open fun visitBitwiseOr(opcode: IrOpcode) { }
+    open fun visitBitwiseOr(lhsReg: Int, slot: Int) { }
 
-    open fun visitBitwiseXor(opcode: IrOpcode) { }
+    open fun visitBitwiseXor(lhsReg: Int, slot: Int) { }
 
-    open fun visitBitwiseAnd(opcode: IrOpcode) { }
+    open fun visitBitwiseAnd(lhsReg: Int, slot: Int) { }
 
-    open fun visitShiftLeft(opcode: IrOpcode) { }
+    open fun visitShiftLeft(lhsReg: Int, slot: Int) { }
 
-    open fun visitShiftRight(opcode: IrOpcode) { }
+    open fun visitShiftRight(lhsReg: Int, slot: Int) { }
 
-    open fun visitShiftRightUnsigned(opcode: IrOpcode) { }
+    open fun visitShiftRightUnsigned(lhsReg: Int, slot: Int) { }
 
     open fun visitInc() { }
 
@@ -190,7 +189,7 @@ abstract class IrOpcodeVisitor {
 
     open fun visitBitwiseNot() { }
 
-    open fun visitStringAppend(opcode: IrOpcode) { }
+    open fun visitStringAppend(lhsReg: Int) { }
 
     open fun visitToBooleanLogicalNot() { }
 
@@ -198,75 +197,73 @@ abstract class IrOpcodeVisitor {
 
     open fun visitTypeOf() { }
 
-    open fun visitDeletePropertySloppy(opcode: IrOpcode) { }
+    open fun visitDeletePropertySloppy(objReg: Int) { }
 
-    open fun visitDeletePropertyStrict(opcode: IrOpcode) { }
+    open fun visitDeletePropertyStrict(objReg: Int) { }
 
-    open fun visitLdaGlobal(opcode: IrOpcode) { }
+    open fun visitLdaGlobal(nameCpIndex: Int) { }
 
-    open fun visitStaGlobal(opcode: IrOpcode) { }
+    open fun visitStaGlobal(nameCpIndex: Int) { }
 
-    open fun visitLdaCurrentEnv(opcode: IrOpcode) { }
+    open fun visitLdaCurrentEnv(envSlot: Int) { }
 
-    open fun visitStaCurrentEnv(opcode: IrOpcode) { }
+    open fun visitStaCurrentEnv(envSlot: Int) { }
 
-    open fun visitLdaEnv(opcode: IrOpcode) { }
+    open fun visitLdaEnv(contextReg: Int, envSlot: Int) { }
 
-    open fun visitStaEnv(opcode: IrOpcode) { }
+    open fun visitStaEnv(contextReg: Int, envSlot: Int) { }
 
-    open fun visitCreateBlockScope(opcode: IrOpcode) { }
+    open fun visitCreateBlockScope(numSlots: Int) { }
 
-    open fun visitPushEnv(opcode: IrOpcode) { }
+    open fun visitPushEnv(envReg: Int) { }
 
-    open fun visitPopCurrentEnv(opcode: IrOpcode) { }
+    open fun visitPopCurrentEnv(envReg: Int) { }
 
-    open fun visitCall(opcode: IrOpcode) { }
+    open fun visitCall(targetReg: Int, args: RegisterRange) { }
 
-    open fun visitCall0(opcode: IrOpcode) { }
+    open fun visitCall0(targetReg: Int, receiverReg: Int) { }
 
-    open fun visitCall1(opcode: IrOpcode) { }
+    open fun visitCallLastSpread(targetReg: Int, args: RegisterRange) { }
 
-    open fun visitCallLastSpread(opcode: IrOpcode) { }
+    open fun visitCallFromArray(targetReg: Int, arrayReg: Int) { }
 
-    open fun visitCallFromArray(opcode: IrOpcode) { }
+    open fun visitCallRuntime(functionId: Int, args: RegisterRange) { }
 
-    open fun visitCallRuntime(opcode: IrOpcode) { }
+    open fun visitConstruct(targetReg: Int, args: RegisterRange) { }
 
-    open fun visitConstruct(opcode: IrOpcode) { }
+    open fun visitConstruct0(targetReg: Int) { }
 
-    open fun visitConstruct0(opcode: IrOpcode) { }
+    open fun visitConstructLastSpread(targetReg: Int, args: RegisterRange) { }
 
-    open fun visitConstructLastSpread(opcode: IrOpcode) { }
+    open fun visitConstructFromArray(targetReg: Int, arrayReg: Int) { }
 
-    open fun visitConstructFromArray(opcode: IrOpcode) { }
+    open fun visitTestEqual(lhsReg: Int) { }
 
-    open fun visitTestEqual(opcode: IrOpcode) { }
+    open fun visitTestNotEqual(lhsReg: Int) { }
 
-    open fun visitTestNotEqual(opcode: IrOpcode) { }
+    open fun visitTestEqualStrict(lhsReg: Int) { }
 
-    open fun visitTestEqualStrict(opcode: IrOpcode) { }
+    open fun visitTestNotEqualStrict(lhsReg: Int) { }
 
-    open fun visitTestNotEqualStrict(opcode: IrOpcode) { }
+    open fun visitTestLessThan(lhsReg: Int) { }
 
-    open fun visitTestLessThan(opcode: IrOpcode) { }
+    open fun visitTestGreaterThan(lhsReg: Int) { }
 
-    open fun visitTestGreaterThan(opcode: IrOpcode) { }
+    open fun visitTestLessThanOrEqual(lhsReg: Int) { }
 
-    open fun visitTestLessThanOrEqual(opcode: IrOpcode) { }
+    open fun visitTestGreaterThanOrEqual(lhsReg: Int) { }
 
-    open fun visitTestGreaterThanOrEqual(opcode: IrOpcode) { }
+    open fun visitTestReferenceEqual(lhsReg: Int) { }
 
-    open fun visitTestReferenceEqual(opcode: IrOpcode) { }
+    open fun visitTestInstanceOf(lhsReg: Int) { }
 
-    open fun visitTestInstanceOf(opcode: IrOpcode) { }
+    open fun visitTestIn(lhsReg: Int) { }
 
-    open fun visitTestIn(opcode: IrOpcode) { }
+    open fun visitTestNullish(lhsReg: Int) { }
 
-    open fun visitTestNullish(opcode: IrOpcode) { }
+    open fun visitTestNull(lhsReg: Int) { }
 
-    open fun visitTestNull(opcode: IrOpcode) { }
-
-    open fun visitTestUndefined(opcode: IrOpcode) { }
+    open fun visitTestUndefined(lhsReg: Int) { }
 
     open fun visitToBoolean() { }
 
@@ -278,43 +275,43 @@ abstract class IrOpcodeVisitor {
 
     open fun visitToString() { }
 
-    open fun visitJump(opcode: IrOpcode) { }
+    open fun visitJump(targetInstr: Int) { }
 
-    open fun visitJumpIfTrue(opcode: IrOpcode) { }
+    open fun visitJumpIfTrue(targetInstr: Int) { }
 
-    open fun visitJumpIfFalse(opcode: IrOpcode) { }
+    open fun visitJumpIfFalse(targetInstr: Int) { }
 
-    open fun visitJumpIfToBooleanTrue(opcode: IrOpcode) { }
+    open fun visitJumpIfToBooleanTrue(targetInstr: Int) { }
 
-    open fun visitJumpIfToBooleanFalse(opcode: IrOpcode) { }
+    open fun visitJumpIfToBooleanFalse(targetInstr: Int) { }
 
-    open fun visitJumpIfNull(opcode: IrOpcode) { }
+    open fun visitJumpIfNull(targetInstr: Int) { }
 
-    open fun visitJumpIfNotNull(opcode: IrOpcode) { }
+    open fun visitJumpIfNotNull(targetInstr: Int) { }
 
-    open fun visitJumpIfUndefined(opcode: IrOpcode) { }
+    open fun visitJumpIfUndefined(targetInstr: Int) { }
 
-    open fun visitJumpIfNotUndefined(opcode: IrOpcode) { }
+    open fun visitJumpIfNotUndefined(targetInstr: Int) { }
 
-    open fun visitJumpIfNullish(opcode: IrOpcode) { }
+    open fun visitJumpIfNullish(targetInstr: Int) { }
 
-    open fun visitJumpIfNotNullish(opcode: IrOpcode) { }
+    open fun visitJumpIfNotNullish(targetInstr: Int) { }
 
-    open fun visitJumpIfObject(opcode: IrOpcode) { }
+    open fun visitJumpIfObject(targetInstr: Int) { }
 
     open fun visitReturn() { }
 
     open fun visitThrow() { }
 
-    open fun visitThrowConstReassignment(opcode: IrOpcode) { }
+    open fun visitThrowConstReassignment(nameCpIndex: Int) { }
 
-    open fun visitThrowUseBeforeInitIfEmpty(opcode: IrOpcode) { }
+    open fun visitThrowUseBeforeInitIfEmpty(nameCpIndex: Int) { }
 
-    open fun visitDefineGetterProperty(opcode: IrOpcode) { }
+    open fun visitDefineGetterProperty(targetReg: Int, propertyReg: Int, methodReg: Int) { }
 
-    open fun visitDefineSetterProperty(opcode: IrOpcode) { }
+    open fun visitDefineSetterProperty(targetReg: Int, propertyReg: Int, methodReg: Int) { }
 
-    open fun visitDeclareGlobals(opcode: IrOpcode) { }
+    open fun visitDeclareGlobals(globalsCpIndex: Int) { }
 
     open fun visitCreateMappedArgumentsObject() { }
 
@@ -322,7 +319,7 @@ abstract class IrOpcodeVisitor {
 
     open fun visitGetIterator() { }
 
-    open fun visitCreateClosure(opcode: IrOpcode) { }
+    open fun visitCreateClosure(infoCpIndex: Int) { }
 
     open fun visitDebugBreakpoint() { }
 }

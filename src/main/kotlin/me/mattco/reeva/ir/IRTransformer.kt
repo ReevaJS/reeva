@@ -1053,23 +1053,15 @@ class IRTransformer : ASTVisitor {
             }
         }
 
-        when {
-            args.isEmpty() -> add(Call0, callableReg, receiverReg)
-            args.size == 1 && !args[0].isSpread -> {
-                visit(args[0].expression)
-                add(Star, receiverReg + 1)
-                add(Call1, callableReg, RegisterRange(receiverReg, 2))
+        if (args.isNotEmpty()) {
+            val (registers, mode) = loadArguments(args, receiverReg + 1)
+            when (mode) {
+                ArgumentsMode.Normal -> add(Call, callableReg, RegisterRange(receiverReg, registers.count + 1))
+                ArgumentsMode.LastSpread -> add(CallLastSpread, callableReg, RegisterRange(receiverReg, registers.count + 1))
+                ArgumentsMode.Spread -> add(CallFromArray, callableReg, RegisterRange(receiverReg, 2))
             }
-            else -> {
-                val (registers, mode) = loadArguments(args, receiverReg + 1)
-                when (mode) {
-                    ArgumentsMode.Normal -> add(Call, callableReg, RegisterRange(receiverReg, registers.count + 1))
-                    ArgumentsMode.LastSpread -> add(CallLastSpread, callableReg, RegisterRange(receiverReg, registers.count + 1))
-                    ArgumentsMode.Spread -> add(CallFromArray, callableReg, RegisterRange(receiverReg, 2))
-                }
-                registers.markFree()
-            }
-        }
+            registers.markFree()
+        } else add(Call0, callableReg, receiverReg)
 
         markRegFree(callableReg)
         for (i in 0..argRegCount)

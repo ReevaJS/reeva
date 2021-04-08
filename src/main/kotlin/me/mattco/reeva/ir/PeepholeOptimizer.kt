@@ -1,11 +1,10 @@
 package me.mattco.reeva.ir
 
-import me.mattco.reeva.ir.opcodes.IrOpcode
+import me.mattco.reeva.ir.opcodes.IrOpcodeList
+import me.mattco.reeva.ir.opcodes.IrOpcodeType
 import me.mattco.reeva.ir.opcodes.IrOpcodeType.Ldar
 import me.mattco.reeva.ir.opcodes.IrOpcodeType.Star
-import me.mattco.reeva.ir.opcodes.IrOpcodeList
 import me.mattco.reeva.ir.opcodes.IrOpcodeVisitor
-import me.mattco.reeva.ir.opcodes.IrOpcodeType
 
 class PeepholeOptimizer private constructor(private val input: IrOpcodeList) : IrOpcodeVisitor() {
     private var cursor = 0
@@ -23,17 +22,17 @@ class PeepholeOptimizer private constructor(private val input: IrOpcodeList) : I
         }
     }
 
-    override fun visitLdar(opcode: IrOpcode) {
+    override fun visitLdar(reg: Int) {
         val prev = previous()
 
-        if (prev?.type == Star && prev.regAt(0) == opcode.regAt(0))
+        if (prev?.type == Star && prev.intAt(0) == reg)
             skip()
     }
 
-    override fun visitStar(opcode: IrOpcode) {
+    override fun visitStar(reg: Int) {
         val prev = previous()
 
-        if (prev?.type == Ldar && prev.regAt(0) == opcode.regAt(0))
+        if (prev?.type == Ldar && prev.intAt(0) == reg)
             skip(2)
     }
 

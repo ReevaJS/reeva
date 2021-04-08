@@ -1,8 +1,8 @@
 package me.mattco.reeva.compiler.graph
 
 import me.mattco.reeva.ir.FunctionInfo
-import me.mattco.reeva.ir.opcodes.IrOpcode
 import me.mattco.reeva.ir.opcodes.IrOpcodeVisitor
+import me.mattco.reeva.ir.opcodes.RegisterRange
 import me.mattco.reeva.utils.toValue
 
 class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
@@ -47,53 +47,53 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
         registers.accumulator = Node(NodeDescriptors.int(0))
     }
 
-    override fun visitLdaConstant(opcode: IrOpcode) {
+    override fun visitLdaConstant(cpIndex: Int) {
         registers.accumulator = Node(NodeDescriptors.constant(
-            info.constantPool[opcode.cpAt(0)].toValue()
+            info.constantPool[cpIndex].toValue()
         ))
     }
 
-    override fun visitLdaInt(opcode: IrOpcode) {
-        registers.accumulator = Node(NodeDescriptors.int(opcode.literalAt(0)))
+    override fun visitLdaInt(int: Int) {
+        registers.accumulator = Node(NodeDescriptors.int(int))
     }
 
-    override fun visitLdar(opcode: IrOpcode) {
-        registers.accumulator = registers[opcode.regAt(0)]
+    override fun visitLdar(reg: Int) {
+        registers.accumulator = registers[reg]
     }
 
-    override fun visitStar(opcode: IrOpcode) {
-        registers[opcode.regAt(0)] = registers.accumulator!!
+    override fun visitStar(reg: Int) {
+        registers[reg] = registers.accumulator!!
     }
 
-    override fun visitMov(opcode: IrOpcode) {
-        registers[opcode.regAt(1)] = registers[opcode.regAt(0)]
+    override fun visitMov(fromReg: Int, toReg: Int) {
+        registers[toReg] = registers[fromReg]
     }
 
-    override fun visitLdaNamedProperty(opcode: IrOpcode) {
-        val obj = registers[opcode.regAt(0)]
-        val property = Node(NodeDescriptors.string(info.constantPool[opcode.cpAt(1)] as String))
+    override fun visitLdaNamedProperty(objReg: Int, nameCpIndex: Int, slot: Int) {
+        val obj = registers[objReg]
+        val property = Node(NodeDescriptors.string(info.constantPool[nameCpIndex] as String))
         registers.accumulator = Node(NodeDescriptors.load, obj, property, currentEffect).also {
             currentEffect = it
         }
     }
 
-    override fun visitLdaKeyedProperty(opcode: IrOpcode) {
-        val obj = registers[opcode.regAt(0)]
-        val property = registers[opcode.regAt(1)]
+    override fun visitLdaKeyedProperty(objReg: Int, slot: Int) {
+        val obj = registers[objReg]
+        val property = registers.accumulator!!
         val node = Node(NodeDescriptors.load, obj, property, currentEffect)
         registers.accumulator = node
         currentEffect = node
     }
 
-    override fun visitStaNamedProperty(opcode: IrOpcode) {
-        val obj = registers[opcode.regAt(0)]
-        val property = Node(NodeDescriptors.string(info.constantPool[opcode.cpAt(1)] as String))
+    override fun visitStaNamedProperty(objReg: Int, nameCpIndex: Int, slot: Int) {
+        val obj = registers[objReg]
+        val property = Node(NodeDescriptors.string(info.constantPool[nameCpIndex] as String))
         currentEffect = Node(NodeDescriptors.store, obj, property, currentEffect)
     }
 
-    override fun visitStaKeyedProperty(opcode: IrOpcode) {
-        val obj = registers[opcode.regAt(0)]
-        val property = registers[opcode.regAt(1)]
+    override fun visitStaKeyedProperty(objReg: Int, propertyReg: Int, slot: Int) {
+        val obj = registers[objReg]
+        val property = registers[propertyReg]
         currentEffect = Node(NodeDescriptors.store, obj, property, currentEffect)
     }
 
@@ -101,9 +101,9 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
         registers.accumulator = Node(NodeDescriptors.createArrayLiteral)
     }
 
-    override fun visitStaArrayLiteral(opcode: IrOpcode) {
-        val array = registers[opcode.regAt(0)]
-        val index = registers[opcode.regAt(1)]
+    override fun visitStaArrayLiteral(arrayReg: Int, indexReg: Int) {
+        val array = registers[arrayReg]
+        val index = registers[indexReg]
         currentEffect = Node(
             NodeDescriptors.staArrayLiteral,
             array,
@@ -113,13 +113,12 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
         )
     }
 
-    override fun visitStaArrayLiteralIndex(opcode: IrOpcode) {
-        val array = registers[opcode.regAt(0)]
-        val index = Node(NodeDescriptors.int(info.constantPool[opcode.literalAt(1)] as Int))
+    override fun visitStaArrayLiteralIndex(arrayReg: Int, index: Int) {
+        val array = registers[arrayReg]
         currentEffect = Node(
             NodeDescriptors.staArrayLiteral,
             array,
-            index,
+            Node(NodeDescriptors.int(info.constantPool[index] as Int)),
             registers.accumulator!!,
             currentEffect
         )
@@ -129,52 +128,52 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
         registers.accumulator = Node(NodeDescriptors.objectLiteral)
     }
 
-    override fun visitAdd(opcode: IrOpcode) {
-        doBinaryOp(NodeType.Add, opcode)
+    override fun visitAdd(lhsReg: Int, slot: Int) {
+        doBinaryOp(NodeType.Add, lhsReg)
     }
 
-    override fun visitSub(opcode: IrOpcode) {
-        doBinaryOp(NodeType.Sub, opcode)
+    override fun visitSub(lhsReg: Int, slot: Int) {
+        doBinaryOp(NodeType.Sub, lhsReg)
     }
 
-    override fun visitMul(opcode: IrOpcode) {
-        doBinaryOp(NodeType.Mul, opcode)
+    override fun visitMul(lhsReg: Int, slot: Int) {
+        doBinaryOp(NodeType.Mul, lhsReg)
     }
 
-    override fun visitDiv(opcode: IrOpcode) {
-        doBinaryOp(NodeType.Div, opcode)
+    override fun visitDiv(lhsReg: Int, slot: Int) {
+        doBinaryOp(NodeType.Div, lhsReg)
     }
 
-    override fun visitMod(opcode: IrOpcode) {
-        doBinaryOp(NodeType.Mod, opcode)
+    override fun visitMod(lhsReg: Int, slot: Int) {
+        doBinaryOp(NodeType.Mod, lhsReg)
     }
 
-    override fun visitExp(opcode: IrOpcode) {
-        doBinaryOp(NodeType.Exp, opcode)
+    override fun visitExp(lhsReg: Int, slot: Int) {
+        doBinaryOp(NodeType.Exp, lhsReg)
     }
 
-    override fun visitBitwiseOr(opcode: IrOpcode) {
-        doBinaryOp(NodeType.BitwiseOr, opcode)
+    override fun visitBitwiseOr(lhsReg: Int, slot: Int) {
+        doBinaryOp(NodeType.BitwiseOr, lhsReg)
     }
 
-    override fun visitBitwiseXor(opcode: IrOpcode) {
-        doBinaryOp(NodeType.BitwiseXor, opcode)
+    override fun visitBitwiseXor(lhsReg: Int, slot: Int) {
+        doBinaryOp(NodeType.BitwiseXor, lhsReg)
     }
 
-    override fun visitBitwiseAnd(opcode: IrOpcode) {
-        doBinaryOp(NodeType.BitwiseAnd, opcode)
+    override fun visitBitwiseAnd(lhsReg: Int, slot: Int) {
+        doBinaryOp(NodeType.BitwiseAnd, lhsReg)
     }
 
-    override fun visitShiftLeft(opcode: IrOpcode) {
-        doBinaryOp(NodeType.ShiftLeft, opcode)
+    override fun visitShiftLeft(lhsReg: Int, slot: Int) {
+        doBinaryOp(NodeType.ShiftLeft, lhsReg)
     }
 
-    override fun visitShiftRight(opcode: IrOpcode) {
-        doBinaryOp(NodeType.ShiftRight, opcode)
+    override fun visitShiftRight(lhsReg: Int, slot: Int) {
+        doBinaryOp(NodeType.ShiftRight, lhsReg)
     }
 
-    override fun visitShiftRightUnsigned(opcode: IrOpcode) {
-        doBinaryOp(NodeType.ShiftRightUnsigned, opcode)
+    override fun visitShiftRightUnsigned(lhsReg: Int, slot: Int) {
+        doBinaryOp(NodeType.ShiftRightUnsigned, lhsReg)
     }
 
     override fun visitInc() {
@@ -193,10 +192,10 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
         doUnaryOp(NodeType.BitwiseNot)
     }
 
-    override fun visitStringAppend(opcode: IrOpcode) {
+    override fun visitStringAppend(lhsReg: Int) {
         currentEffect = Node(
             NodeDescriptors.stringAppend,
-            registers[opcode.regAt(0)],
+            registers[lhsReg],
             registers.accumulator!!,
             currentEffect
         )
@@ -214,156 +213,152 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
         currentEffect = Node(NodeDescriptors.typeof_, registers.accumulator!!, currentEffect)
     }
 
-    override fun visitDeletePropertySloppy(opcode: IrOpcode) {
+    override fun visitDeletePropertySloppy(objReg: Int) {
         currentEffect = Node(
             NodeDescriptors.deletePropertySloppy,
-            registers[opcode.regAt(0)],
+            registers[objReg],
             registers.accumulator!!,
             currentEffect,
         )
     }
 
-    override fun visitDeletePropertyStrict(opcode: IrOpcode) {
+    override fun visitDeletePropertyStrict(objReg: Int) {
         currentEffect = Node(
             NodeDescriptors.deletePropertyStrict,
-            registers[opcode.regAt(0)],
+            registers[objReg],
             registers.accumulator!!,
             currentEffect,
         )
     }
 
-    override fun visitLdaGlobal(opcode: IrOpcode) {
-        val name = Node(NodeDescriptors.constant(info.constantPool[opcode.regAt(0)]))
+    override fun visitLdaGlobal(nameCpIndex: Int) {
+        val name = Node(NodeDescriptors.constant(info.constantPool[nameCpIndex]))
         currentEffect = Node(NodeDescriptors.ldaGlobal, name, currentEffect)
     }
 
-    override fun visitStaGlobal(opcode: IrOpcode) {
-        val name = Node(NodeDescriptors.constant(info.constantPool[opcode.regAt(0)]))
+    override fun visitStaGlobal(nameCpIndex: Int) {
+        val name = Node(NodeDescriptors.constant(info.constantPool[nameCpIndex]))
         currentEffect = Node(NodeDescriptors.ldaGlobal, name, currentEffect)
     }
 
-    override fun visitLdaCurrentEnv(opcode: IrOpcode) {
+    override fun visitLdaCurrentEnv(envSlot: Int) {
         TODO()
     }
 
-    override fun visitStaCurrentEnv(opcode: IrOpcode) {
+    override fun visitStaCurrentEnv(envSlot: Int) {
         TODO()
     }
 
-    override fun visitLdaEnv(opcode: IrOpcode) {
+    override fun visitLdaEnv(contextReg: Int, envSlot: Int) {
         TODO()
     }
 
-    override fun visitStaEnv(opcode: IrOpcode) {
+    override fun visitStaEnv(contextReg: Int, envSlot: Int) {
         TODO()
     }
 
-    override fun visitCreateBlockScope(opcode: IrOpcode) {
+    override fun visitCreateBlockScope(numSlots: Int) {
         TODO()
     }
 
-    override fun visitPushEnv(opcode: IrOpcode) {
+    override fun visitPushEnv(envReg: Int) {
         TODO()
     }
 
-    override fun visitPopCurrentEnv(opcode: IrOpcode) {
+    override fun visitPopCurrentEnv(envReg: Int) {
         TODO()
     }
 
-    override fun visitCall(opcode: IrOpcode) {
+    override fun visitCall(targetReg: Int, args: RegisterRange) {
         TODO()
     }
 
-    override fun visitCall0(opcode: IrOpcode) {
+    override fun visitCall0(targetReg: Int, receiverReg: Int) {
         TODO()
     }
 
-    override fun visitCall1(opcode: IrOpcode) {
+    override fun visitCallLastSpread(targetReg: Int, args: RegisterRange) {
         TODO()
     }
 
-    override fun visitCallLastSpread(opcode: IrOpcode) {
+    override fun visitCallFromArray(targetReg: Int, arrayReg: Int) {
         TODO()
     }
 
-    override fun visitCallFromArray(opcode: IrOpcode) {
+    override fun visitCallRuntime(functionId: Int, args: RegisterRange) {
         TODO()
     }
 
-    override fun visitCallRuntime(opcode: IrOpcode) {
+    override fun visitConstruct(targetReg: Int, args: RegisterRange) {
         TODO()
     }
 
-    override fun visitConstruct(opcode: IrOpcode) {
+    override fun visitConstruct0(targetReg: Int) {
         TODO()
     }
 
-    override fun visitConstruct0(opcode: IrOpcode) {
+    override fun visitConstructLastSpread(targetReg: Int, args: RegisterRange) {
         TODO()
     }
 
-    override fun visitConstructLastSpread(opcode: IrOpcode) {
+    override fun visitConstructFromArray(targetReg: Int, arrayReg: Int) {
         TODO()
     }
 
-    override fun visitConstructFromArray(opcode: IrOpcode) {
-        TODO()
+    override fun visitTestEqual(lhsReg: Int) {
+        doTest(NodeType.TestEqual, lhsReg)
     }
 
-    override fun visitTestEqual(opcode: IrOpcode) {
-        doTest(NodeType.TestEqual, opcode)
+    override fun visitTestNotEqual(lhsReg: Int) {
+        doTest(NodeType.TestNotEqual, lhsReg)
     }
 
-    override fun visitTestNotEqual(opcode: IrOpcode) {
-        doTest(NodeType.TestNotEqual, opcode)
+    override fun visitTestEqualStrict(lhsReg: Int) {
+        doTest(NodeType.TestEqualStrict, lhsReg)
     }
 
-    override fun visitTestEqualStrict(opcode: IrOpcode) {
-        doTest(NodeType.TestEqualStrict, opcode)
+    override fun visitTestNotEqualStrict(lhsReg: Int) {
+        doTest(NodeType.TestNotEqualStrict, lhsReg)
     }
 
-    override fun visitTestNotEqualStrict(opcode: IrOpcode) {
-        doTest(NodeType.TestNotEqualStrict, opcode)
+    override fun visitTestLessThan(lhsReg: Int) {
+        doTest(NodeType.TestLessThan, lhsReg)
     }
 
-    override fun visitTestLessThan(opcode: IrOpcode) {
-        doTest(NodeType.TestLessThan, opcode)
+    override fun visitTestGreaterThan(lhsReg: Int) {
+        doTest(NodeType.TestGreaterThan, lhsReg)
     }
 
-    override fun visitTestGreaterThan(opcode: IrOpcode) {
-        doTest(NodeType.TestGreaterThan, opcode)
+    override fun visitTestLessThanOrEqual(lhsReg: Int) {
+        doTest(NodeType.TestLessThanOrEqual, lhsReg)
     }
 
-    override fun visitTestLessThanOrEqual(opcode: IrOpcode) {
-        doTest(NodeType.TestLessThanOrEqual, opcode)
+    override fun visitTestGreaterThanOrEqual(lhsReg: Int) {
+        doTest(NodeType.TestGreaterThanOrEqual, lhsReg)
     }
 
-    override fun visitTestGreaterThanOrEqual(opcode: IrOpcode) {
-        doTest(NodeType.TestGreaterThanOrEqual, opcode)
+    override fun visitTestReferenceEqual(lhsReg: Int) {
+        doTest(NodeType.TestReferenceEqual, lhsReg)
     }
 
-    override fun visitTestReferenceEqual(opcode: IrOpcode) {
-        doTest(NodeType.TestReferenceEqual, opcode)
+    override fun visitTestInstanceOf(lhsReg: Int) {
+        doTest(NodeType.TestInstanceOf, lhsReg)
     }
 
-    override fun visitTestInstanceOf(opcode: IrOpcode) {
-        doTest(NodeType.TestInstanceOf, opcode)
+    override fun visitTestIn(lhsReg: Int) {
+        doTest(NodeType.TestIn, lhsReg)
     }
 
-    override fun visitTestIn(opcode: IrOpcode) {
-        doTest(NodeType.TestIn, opcode)
+    override fun visitTestNullish(lhsReg: Int) {
+        doTest(NodeType.TestNullish, lhsReg)
     }
 
-    override fun visitTestNullish(opcode: IrOpcode) {
-        doTest(NodeType.TestNullish, opcode)
+    override fun visitTestNull(lhsReg: Int) {
+        doTest(NodeType.TestNull, lhsReg)
     }
 
-    override fun visitTestNull(opcode: IrOpcode) {
-        doTest(NodeType.TestNull, opcode)
-    }
-
-    override fun visitTestUndefined(opcode: IrOpcode) {
-        doTest(NodeType.TestUndefined, opcode)
+    override fun visitTestUndefined(lhsReg: Int) {
+        doTest(NodeType.TestUndefined, lhsReg)
     }
 
     override fun visitToBoolean() {
@@ -386,51 +381,51 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
         doUnaryOp(NodeType.ToString)
     }
 
-    override fun visitJump(opcode: IrOpcode) {
+    override fun visitJump(targetInstr: Int) {
         TODO()
     }
 
-    override fun visitJumpIfTrue(opcode: IrOpcode) {
+    override fun visitJumpIfTrue(targetInstr: Int) {
         TODO()
     }
 
-    override fun visitJumpIfFalse(opcode: IrOpcode) {
+    override fun visitJumpIfFalse(targetInstr: Int) {
         TODO()
     }
 
-    override fun visitJumpIfToBooleanTrue(opcode: IrOpcode) {
+    override fun visitJumpIfToBooleanTrue(targetInstr: Int) {
         TODO()
     }
 
-    override fun visitJumpIfToBooleanFalse(opcode: IrOpcode) {
+    override fun visitJumpIfToBooleanFalse(targetInstr: Int) {
         TODO()
     }
 
-    override fun visitJumpIfNull(opcode: IrOpcode) {
+    override fun visitJumpIfNull(targetInstr: Int) {
         TODO()
     }
 
-    override fun visitJumpIfNotNull(opcode: IrOpcode) {
+    override fun visitJumpIfNotNull(targetInstr: Int) {
         TODO()
     }
 
-    override fun visitJumpIfUndefined(opcode: IrOpcode) {
+    override fun visitJumpIfUndefined(targetInstr: Int) {
         TODO()
     }
 
-    override fun visitJumpIfNotUndefined(opcode: IrOpcode) {
+    override fun visitJumpIfNotUndefined(targetInstr: Int) {
         TODO()
     }
 
-    override fun visitJumpIfNullish(opcode: IrOpcode) {
+    override fun visitJumpIfNullish(targetInstr: Int) {
         TODO()
     }
 
-    override fun visitJumpIfNotNullish(opcode: IrOpcode) {
+    override fun visitJumpIfNotNullish(targetInstr: Int) {
         TODO()
     }
 
-    override fun visitJumpIfObject(opcode: IrOpcode) {
+    override fun visitJumpIfObject(targetInstr: Int) {
         TODO()
     }
 
@@ -442,23 +437,23 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
         TODO()
     }
 
-    override fun visitThrowConstReassignment(opcode: IrOpcode) {
+    override fun visitThrowConstReassignment(nameCpIndex: Int) {
         TODO()
     }
 
-    override fun visitThrowUseBeforeInitIfEmpty(opcode: IrOpcode) {
+    override fun visitThrowUseBeforeInitIfEmpty(nameCpIndex: Int) {
         TODO()
     }
 
-    override fun visitDefineGetterProperty(opcode: IrOpcode) {
+    override fun visitDefineGetterProperty(targetReg: Int, propertyReg: Int, methodReg: Int) {
         TODO()
     }
 
-    override fun visitDefineSetterProperty(opcode: IrOpcode) {
+    override fun visitDefineSetterProperty(targetReg: Int, propertyReg: Int, methodReg: Int) {
         TODO()
     }
 
-    override fun visitDeclareGlobals(opcode: IrOpcode) {
+    override fun visitDeclareGlobals(globalsCpIndex: Int) {
         // nop
     }
 
@@ -474,7 +469,7 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
         TODO()
     }
 
-    override fun visitCreateClosure(opcode: IrOpcode) {
+    override fun visitCreateClosure(infoCpIndex: Int) {
         TODO()
     }
 
@@ -486,19 +481,19 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
         currentEffect = Node(NodeDescriptors.unaryOp(type), registers.accumulator!!, currentEffect)
     }
 
-    private fun doBinaryOp(type: NodeType, opcode: IrOpcode) {
+    private fun doBinaryOp(type: NodeType, lhsReg: Int) {
         currentEffect = Node(
             NodeDescriptors.binaryOp(type),
-            registers[opcode.regAt(0)],
+            registers[lhsReg],
             registers.accumulator!!,
             currentEffect,
         )
     }
 
-    private fun doTest(type: NodeType, opcode: IrOpcode) {
+    private fun doTest(type: NodeType, lhsReg: Int) {
         currentEffect = Node(
             NodeDescriptors.test(type),
-            registers[opcode.regAt(0)],
+            registers[lhsReg],
             registers.accumulator!!,
             currentEffect
         )
