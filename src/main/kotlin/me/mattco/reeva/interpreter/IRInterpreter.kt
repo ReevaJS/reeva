@@ -23,8 +23,6 @@ class IRInterpreter(
     private val function: IRFunction,
     private val arguments: List<JSValue>,
 ) : IrOpcodeVisitor() {
-    private val globalEnv: GlobalEnvRecord
-
     private val info = function.info
 
     private val registers = Registers(info.registerCount)
@@ -34,20 +32,7 @@ class IRInterpreter(
     private var exception: ThrowException? = null
     private val mappedCPool = Array<JSValue?>(info.constantPool.size) { null }
 
-    private val envStack = mutableListOf<EnvRecord>()
     private var currentEnv = function.envRecord
-
-    init {
-        var env: EnvRecord? = currentEnv
-        while (env != null) {
-            envStack.add(env)
-            env = env.outer
-        }
-        envStack.reverse()
-        val topEnv = envStack.first()
-        expect(topEnv is GlobalEnvRecord)
-        globalEnv = topEnv
-    }
 
     fun interpret(): EvaluationResult {
         try {
@@ -61,9 +46,6 @@ class IRInterpreter(
                         exception = e
                         isDone = true
                     } else {
-                        repeat(envStack.size - handler.contextDepth) {
-                            currentEnv = envStack.removeLast()
-                        }
                         ip = handler.handler
                     }
                 }
@@ -299,14 +281,14 @@ class IRInterpreter(
 
     override fun visitLdaGlobal(opcode: IrOpcode) {
         val name = loadConstant<String>(opcode.cpAt(0))
-        val desc = globalEnv.extension().getPropertyDescriptor(name.key())
+        val desc = function.globalEnv.extension().getPropertyDescriptor(name.key())
             ?: Errors.UnknownReference(name.key()).throwReferenceError()
-        accumulator = desc.getActualValue(globalEnv.extension())
+        accumulator = desc.getActualValue(function.globalEnv.extension())
     }
 
     override fun visitStaGlobal(opcode: IrOpcode) {
         val name = loadConstant<String>(opcode.cpAt(0))
-        globalEnv.extension().set(name.key(), accumulator)
+        function.globalEnv.extension().set(name.key(), accumulator)
     }
 
     override fun visitLdaCurrentEnv(opcode: IrOpcode) {
@@ -321,31 +303,28 @@ class IRInterpreter(
 
     override fun visitLdaEnv(opcode: IrOpcode) {
         expect(currentEnv !is GlobalEnvRecord)
-        val envIndex = envStack.lastIndex - opcode.literalAt(1)
-        accumulator = envStack[envIndex].getBinding(opcode.literalAt(0))
+        val targetContext = registers[opcode.literalAt(0)] as EnvRecord
+        accumulator = targetContext.getBinding(opcode.literalAt(0))
     }
 
     override fun visitStaEnv(opcode: IrOpcode) {
         expect(currentEnv !is GlobalEnvRecord)
-        val envIndex = envStack.lastIndex - opcode.literalAt(1)
-        envStack[envIndex].setBinding(opcode.literalAt(0), accumulator)
+        val targetContext = registers[opcode.literalAt(0)] as EnvRecord
+        targetContext.setBinding(opcode.literalAt(1), accumulator)
+    }
+
+    override fun visitCreateBlockScope(opcode: IrOpcode) {
+        accumulator = EnvRecord(currentEnv, currentEnv.isStrict, opcode.literalAt(0))
     }
 
     override fun visitPushEnv(opcode: IrOpcode) {
-        val newEnv = EnvRecord(currentEnv, currentEnv.isStrict, opcode.literalAt(0))
-        envStack.add(newEnv)
-        currentEnv = newEnv
+        val oldEnvReg = opcode.regAt(0)
+        registers[oldEnvReg] = currentEnv
+        currentEnv = accumulator as EnvRecord
     }
 
-    override fun visitPopCurrentEnv() {
-        currentEnv = envStack.removeLast()
-    }
-
-    override fun visitPopEnvs(opcode: IrOpcode) {
-        repeat(opcode.literalAt(0) - 1) {
-            envStack.removeLast()
-        }
-        currentEnv = envStack.removeLast()
+    override fun visitPopCurrentEnv(opcode: IrOpcode) {
+        currentEnv = registers[opcode.regAt(0)] as EnvRecord
     }
 
     override fun visitCall(opcode: IrOpcode) {
@@ -560,9 +539,6 @@ class IRInterpreter(
     override fun visitThrow() {
         val handler = info.handlers.firstOrNull { ip - 1 in it.start..it.end }
             ?: throw ThrowException(accumulator)
-        repeat(envStack.size - handler.contextDepth) {
-            currentEnv = envStack.removeLast()
-        }
         ip = handler.handler
     }
 
@@ -676,17 +652,17 @@ class IRInterpreter(
         val funcNames = array.funcIterator().toList()
 
         for (name in lexNames) {
-            if (globalEnv.hasRestrictedGlobalProperty(name))
+            if (function.globalEnv.hasRestrictedGlobalProperty(name))
                 Errors.RestrictedGlobalPropertyName(name).throwSyntaxError()
         }
 
         for (name in funcNames) {
-            if (!globalEnv.canDeclareGlobalFunction(name))
+            if (!function.globalEnv.canDeclareGlobalFunction(name))
                 Errors.InvalidGlobalFunction(name).throwTypeError()
         }
 
         for (name in varNames) {
-            if (!globalEnv.canDeclareGlobalVar(name))
+            if (!function.globalEnv.canDeclareGlobalVar(name))
                 Errors.InvalidGlobalVar(name).throwTypeError()
         }
     }
@@ -745,8 +721,19 @@ class IRInterpreter(
         val info: FunctionInfo,
         val envRecord: EnvRecord,
     ) : JSFunction(realm, info.isStrict) {
+        val globalEnv: GlobalEnvRecord
+
         init {
             isConstructable = true
+
+            if (envRecord is GlobalEnvRecord) {
+                globalEnv = envRecord
+            } else {
+                var record = envRecord
+                while (record !is GlobalEnvRecord)
+                    record = record.outer!!
+                globalEnv = record
+            }
         }
 
         override fun init() {

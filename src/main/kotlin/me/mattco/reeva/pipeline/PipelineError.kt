@@ -7,25 +7,26 @@ import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.toJSString
 
 sealed class PipelineError {
-    abstract override fun toString(): String
+    abstract fun print()
 
     class Parse(val reason: String, val start: TokenLocation, val end: TokenLocation) : PipelineError() {
-        override fun toString(): String {
-            return "\u001b[31mParse error ($start-$end): $reason\u001B[0m"
+        override fun print() {
+            println("\u001b[31mParse error ($start-$end): $reason\u001B[0m\n")
         }
     }
 
     class Runtime(val realm: Realm, val cause: JSValue) : PipelineError() {
-        override fun toString(): String {
-            return Reeva.activeAgent.withRealm(realm) {
-                "\u001b[31m${cause.toJSString()}\u001B[0m"
+        override fun print() {
+            Reeva.activeAgent.withRealm(realm) {
+                println("\u001b[31m${cause.toJSString()}\u001B[0m")
             }
         }
     }
 
     class Internal(val cause: Throwable) : PipelineError() {
-        override fun toString(): String {
-            return "\u001b[31mReeva error: ${cause.message}\u001B[0m"
+        override fun print() {
+            println("\u001b[31mInternal Reeva error\u001B[0m")
+            cause.printStackTrace()
         }
     }
 }

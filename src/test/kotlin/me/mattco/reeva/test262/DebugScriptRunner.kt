@@ -25,7 +25,7 @@ fun main() {
     val result = agent.run(script, realm)
 
     if (result.hasError) {
-        println(result.error())
+        result.error().print()
     } else {
         println("Script result: ${result.value().toPrintableString()}")
     }

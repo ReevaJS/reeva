@@ -12,7 +12,7 @@ import me.mattco.reeva.utils.key
 /**
  * The runtime-equivalent of the Parser's Scope objects
  */
-open class EnvRecord(val outer: EnvRecord?, val isStrict: Boolean, size: Int) {
+open class EnvRecord(val outer: EnvRecord?, val isStrict: Boolean, size: Int) : JSValue() {
     private val bindings: Array<JSValue> = Array(size) { JSEmpty }
 
     fun getBinding(index: Int): JSValue {

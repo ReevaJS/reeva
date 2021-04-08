@@ -303,39 +303,39 @@ enum class IrOpcodeType(
      * Loads a named variable from a parent environment into the
      * accumulator.
      *
-     * arg 1: the slot in the environment to load
-     * arg 2: the distance of the current environment from the target
-     *        environment
+     * arg 1: the register containing the target context
+     * arg 2: the slot in the environment to store to
      */
     LdaEnv(LITERAL, LITERAL, hasSideEffects = false),
 
     /**
      * Stores a value into a named variable in a parent environment.
      *
-     * arg 1: the slot in the environment to store to
-     * arg 2: the distance of the current environment from the target
-     *        environment
+     * arg 1: the register containing the target context
+     * arg 2: the slot in the environment to store to
      */
     StaEnv(LITERAL, LITERAL),
 
     /**
+     * Create a lexical block scope
+     *
+     * arg 1: the number of slots the new environment will have
+     */
+    CreateBlockScope(LITERAL),
+
+    /**
      * Pushes a new environment onto the env record stack
      *
-     * arg 1: the numbers of slots the new environment will contain
+     * arg 1: the register the current environment will be stored to
      */
-    PushEnv(LITERAL, writesToAcc = false),
+    PushEnv(REG, writesToAcc = false),
 
     /**
      * Pops the current environment from the env record stack
-     */
-    PopCurrentEnv(writesToAcc = false),
-
-    /**
-     * Pops multiple environments from the env record stack
      *
-     * arg 1: the numbers of environments to pop
+     * arg 1: the register of the context to restore
      */
-    PopEnvs(LITERAL, writesToAcc = false),
+    PopCurrentEnv(REG, writesToAcc = false),
 
     ///////////////
     /// CALLING ///

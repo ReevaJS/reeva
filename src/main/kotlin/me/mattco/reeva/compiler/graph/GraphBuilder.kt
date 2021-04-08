@@ -258,16 +258,16 @@ class GraphBuilder(val info: FunctionInfo) : IrOpcodeVisitor() {
         TODO()
     }
 
+    override fun visitCreateBlockScope(opcode: IrOpcode) {
+        TODO()
+    }
+
     override fun visitPushEnv(opcode: IrOpcode) {
         TODO()
     }
 
-    override fun visitPopCurrentEnv() {
-        TODO()
-    }
-
-    override fun visitPopEnvs(opcode: IrOpcode) {
-        TODO()
+    override fun visitPopCurrentEnv(opcode: IrOpcode) {
+        super.visitPopCurrentEnv(opcode)
     }
 
     override fun visitCall(opcode: IrOpcode) {

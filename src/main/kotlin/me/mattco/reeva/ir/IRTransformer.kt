@@ -10,6 +10,7 @@ import me.mattco.reeva.interpreter.InterpRuntime
 import me.mattco.reeva.ir.FunctionBuilder.*
 import me.mattco.reeva.ir.opcodes.*
 import me.mattco.reeva.ir.opcodes.IrOpcodeType.*
+import me.mattco.reeva.parser.GlobalScope
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
 import me.mattco.reeva.utils.expect
@@ -64,9 +65,8 @@ class IRTransformer : ASTVisitor {
     }
 
     private fun enterScope(scope: Scope) {
-        if (scope.requiresEnv) {
-            builder.nestedContexts++
-            add(PushEnv, scope.numSlots)
+        if (scope.requiresEnv && scope !is GlobalScope) {
+            add(PushEnv, builder.enterScope(scope))
             scope.declaredVariables.forEach { variable ->
                 variable.slot = builder.envVarCount++
             }
@@ -74,9 +74,9 @@ class IRTransformer : ASTVisitor {
     }
 
     private fun exitScope(scope: Scope) {
-        if (scope.requiresEnv) {
-            builder.nestedContexts--
-            add(PopCurrentEnv)
+        if (scope.requiresEnv && scope !is GlobalScope) {
+            val currentEnvReg = builder.exitScope(scope)
+            add(PopCurrentEnv, currentEnvReg)
         }
     }
 
@@ -142,13 +142,10 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitForStatement(node: ForStatementNode) {
-        if (node.initScope != null) {
-            if (node.initScope.requiresEnv) {
-                add(PushEnv, node.initScope.numSlots)
-                builder.nestedContexts++
-                node.initScope.declaredVariables.forEachIndexed { index, variable ->
-                    variable.slot = index
-                }
+        if (node.initScope != null && node.initScope.requiresEnv) {
+            add(PushEnv, builder.enterScope(node.initScope))
+            node.initScope.declaredVariables.forEachIndexed { index, variable ->
+                variable.slot = index
             }
         }
 
@@ -178,10 +175,8 @@ class IRTransformer : ASTVisitor {
 
         place(loopEnd)
 
-        if (node.initScope != null && node.initScope.requiresEnv) {
-            builder.nestedContexts--
-            add(PopCurrentEnv)
-        }
+        if (node.initScope != null && node.initScope.requiresEnv)
+            add(PopCurrentEnv, builder.exitScope(node.initScope))
     }
 
     override fun visitForIn(node: ForInNode) {
@@ -199,11 +194,12 @@ class IRTransformer : ASTVisitor {
         add(Star, next)
         add(CallRuntime, InterpRuntime.ThrowIfIteratorNextNotCallable, next, 1)
 
+        // TODO: This isn't right, ForOfNode should have an optional scope for the initializer
         if (node.scope.requiresEnv) {
+            add(PushEnv, builder.enterScope(node.scope))
             node.scope.declaredVariables.forEachIndexed { index, variable ->
                 variable.slot = index
             }
-            builder.nestedContexts++
         }
 
         val loopStart = label()
@@ -211,8 +207,9 @@ class IRTransformer : ASTVisitor {
 
         place(loopStart)
 
-        if (node.scope.requiresEnv)
-            add(PushEnv, node.scope.numSlots)
+        // TODO: ???
+//        if (node.scope.requiresEnv)
+//            add(PushEnv)
 
         add(Call0, next, iter)
         val nextResult = nextFreeReg()
@@ -242,10 +239,8 @@ class IRTransformer : ASTVisitor {
 
         visit(node.body)
 
-        if (node.scope.requiresEnv) {
-            builder.nestedContexts--
-            add(PopCurrentEnv)
-        }
+        if (node.scope.requiresEnv)
+            add(PopCurrentEnv, builder.exitScope(node.scope))
 
         jump(loopStart)
         place(loopEnd)
@@ -293,8 +288,7 @@ class IRTransformer : ASTVisitor {
 
             if (node.catchNode.catchParameter != null) {
                 if (node.catchNode.scope.requiresEnv) {
-                    builder.nestedContexts++
-                    add(PushEnv, node.catchNode.scope.numSlots)
+                    add(PushEnv, builder.enterScope(node.catchNode.scope))
                     node.catchNode.scope.declaredVariables.forEachIndexed { index, variable ->
                         variable.slot = index
                     }
@@ -309,7 +303,7 @@ class IRTransformer : ASTVisitor {
             place(catchEnd!!)
 
             if (mustPopEnv)
-                add(PopCurrentEnv)
+                add(PopCurrentEnv, builder.exitScope(node.catchNode.scope))
 
             if (node.finallyBlock != null) {
                 visit(node.finallyBlock)
@@ -317,7 +311,7 @@ class IRTransformer : ASTVisitor {
             }
 
             val handlers = block.getHandlersForRegion(
-                IRHandler(tryStart, tryEnd.shift(-1), catchStart, isCatch = true, builder.nestedContexts),
+                IRHandler(tryStart, tryEnd.shift(-1), catchStart, isCatch = true, builder.scopeStack.last()),
             )
             builder.handlers.addAll(handlers)
         }
@@ -337,7 +331,7 @@ class IRTransformer : ASTVisitor {
                 builder.addHandler(catchStart!!, catchEnd!!.shift(-1), finallyStart, isCatch = false)
             } else {
                 val handlers = block.getHandlersForRegion(
-                    IRHandler(tryStart, tryEnd, finallyStart, isCatch = false, builder.nestedContexts),
+                    IRHandler(tryStart, tryEnd, finallyStart, isCatch = false, builder.scopeStack.last()),
                 )
                 builder.handlers.addAll(handlers)
             }
@@ -354,7 +348,7 @@ class IRTransformer : ASTVisitor {
 
         val (targetIndex, targetLabel) = getLoopFlowTarget(true)
         visitScopedFinallyBlocks(targetIndex) {
-            builder.goto(targetLabel, builder.blocks[targetIndex].contextDepth)
+            builder.goto(targetLabel, builder.blocks[targetIndex].scope)
         }
     }
 
@@ -364,7 +358,7 @@ class IRTransformer : ASTVisitor {
 
         val (targetIndex, targetLabel) = getLoopFlowTarget(false)
         visitScopedFinallyBlocks(targetIndex) {
-            builder.goto(targetLabel, builder.blocks[targetIndex].contextDepth)
+            builder.goto(targetLabel, builder.blocks[targetIndex].scope)
         }
     }
 
@@ -936,6 +930,10 @@ class IRTransformer : ASTVisitor {
     }
 
     private fun loadEnvVariableRef(variable: Variable, currentScope: Scope) {
+
+
+
+
         val distance = currentScope.envDistanceFrom(variable.source.scope)
         if (distance == 0) {
             add(LdaCurrentEnv, variable.slot)

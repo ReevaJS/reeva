@@ -55,9 +55,9 @@ abstract class IrOpcodeVisitor {
             IrOpcodeType.StaCurrentEnv -> visitStaCurrentEnv(opcode)
             IrOpcodeType.LdaEnv -> visitLdaEnv(opcode)
             IrOpcodeType.StaEnv -> visitStaEnv(opcode)
+            IrOpcodeType.CreateBlockScope -> visitCreateBlockScope(opcode)
             IrOpcodeType.PushEnv -> visitPushEnv(opcode)
-            IrOpcodeType.PopCurrentEnv -> visitPopCurrentEnv()
-            IrOpcodeType.PopEnvs -> visitPopEnvs(opcode)
+            IrOpcodeType.PopCurrentEnv -> visitPopCurrentEnv(opcode)
 
             IrOpcodeType.Call -> visitCall(opcode)
             IrOpcodeType.Call0 -> visitCall0(opcode)
@@ -214,11 +214,11 @@ abstract class IrOpcodeVisitor {
 
     open fun visitStaEnv(opcode: IrOpcode) { }
 
+    open fun visitCreateBlockScope(opcode: IrOpcode) { }
+
     open fun visitPushEnv(opcode: IrOpcode) { }
 
-    open fun visitPopCurrentEnv() { }
-
-    open fun visitPopEnvs(opcode: IrOpcode) { }
+    open fun visitPopCurrentEnv(opcode: IrOpcode) { }
 
     open fun visitCall(opcode: IrOpcode) { }
 

@@ -2,8 +2,12 @@ package me.mattco.reeva.parser
 
 import me.mattco.reeva.ast.VariableRefNode
 import me.mattco.reeva.ast.VariableSourceNode
+import me.mattco.reeva.ir.opcodes.IrOpcodeType
 
 open class Scope(val outer: Scope? = null) {
+    val depth: Int = outer?.depth?.plus(1) ?: 0
+    open val createScopeOpcode: IrOpcodeType = IrOpcodeType.CreateBlockScope
+
     val childScopes = mutableListOf<Scope>()
     var globalScope: Scope? = null
 
@@ -152,6 +156,8 @@ open class Scope(val outer: Scope? = null) {
 
 open class HoistingScope(outer: Scope? = null) : Scope(outer) {
     var hasUseStrictDirective: Boolean = false
+    override val createScopeOpcode: IrOpcodeType
+        get() = TODO()
 
     override fun onFinishImpl() {
         possiblyReferencesArguments = searchForArgumentsReference(this)
@@ -168,13 +174,21 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
     }
 }
 
-class ClassScope(outer: Scope? = null) : Scope(outer)
+class ClassScope(outer: Scope? = null) : Scope(outer) {
+    override val createScopeOpcode: IrOpcodeType
+        get() = TODO()
+}
 
 open class GlobalScope : HoistingScope() {
     override val declaredVarMode = Variable.Mode.Global
+    override val createScopeOpcode: IrOpcodeType
+        get() = TODO()
 }
 
-class ModuleScope : GlobalScope()
+class ModuleScope : GlobalScope() {
+    override val createScopeOpcode: IrOpcodeType
+        get() = TODO()
+}
 
 data class Variable(
     val name: String,

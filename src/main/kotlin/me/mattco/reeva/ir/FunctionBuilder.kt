@@ -4,6 +4,8 @@ import me.mattco.reeva.ast.statements.BlockNode
 import me.mattco.reeva.interpreter.FeedbackVector
 import me.mattco.reeva.ir.opcodes.IrOpcode
 import me.mattco.reeva.ir.opcodes.IrOpcodeType
+import me.mattco.reeva.parser.Scope
+import me.mattco.reeva.utils.expect
 import java.util.*
 
 class FunctionBuilder(val argCount: Int = 1) {
@@ -17,9 +19,8 @@ class FunctionBuilder(val argCount: Int = 1) {
     // Count of env variables in current scope
     var envVarCount = 0
 
-    // Stores how deep we currently are in the context tree from the
-    // scope we started with (this function's HoistingScope)
-    var nestedContexts = 0
+    var scopeRegMap = mutableMapOf<Scope, Int>()
+    var scopeStack = mutableListOf<Scope>()
 
     var feedbackVector = FeedbackVector()
 
@@ -141,17 +142,40 @@ class FunctionBuilder(val argCount: Int = 1) {
         return constantPool.lastIndex
     }
 
-    fun goto(label: Label, contextDepth: Int) {
-        if (contextDepth == nestedContexts - 1) {
-            opcodes.add(IrOpcode(IrOpcodeType.PopCurrentEnv))
-        } else {
-            opcodes.add(IrOpcode(IrOpcodeType.PopEnvs, nestedContexts - contextDepth))
+    fun goto(label: Label, scope: Scope) {
+        while (scopeStack.last() != scope) {
+            val poppedScope = scopeStack.removeLast()
+            val reg = scopeRegMap.remove(poppedScope)!!
+            markRegFree(reg)
+            opcodes.add(IrOpcode(IrOpcodeType.PopCurrentEnv, reg))
         }
+
         jump(label)
     }
 
+    /**
+     * @return the register of the new scope
+     */
+    fun enterScope(scope: Scope): Int {
+        opcodes.add(IrOpcode(scope.createScopeOpcode))
+        val envReg = nextFreeReg()
+        scopeRegMap[scope] = envReg
+        scopeStack.add(scope)
+        return envReg
+    }
+
+    /**
+     * @return the register of the current scope AFTER removing [scope]
+     */
+    fun exitScope(scope: Scope): Int {
+        expect(scopeStack.last() == scope)
+        scopeStack.removeLast()
+        markRegFree(scopeRegMap.remove(scope)!!)
+        return scopeRegMap[scopeStack.last()]!!
+    }
+
     fun pushBlock(block: Block) {
-        block.contextDepth = nestedContexts
+        block.scope = scopeStack.last()
         blocks.push(block)
     }
 
@@ -160,7 +184,7 @@ class FunctionBuilder(val argCount: Int = 1) {
     }
 
     fun addHandler(start: Label, end: Label, handler: Label, isCatch: Boolean) {
-        handlers.add(IRHandler(start, end, handler, isCatch, nestedContexts))
+        handlers.add(IRHandler(start, end, handler, isCatch, scopeStack.last()))
     }
 
     class Label(var opIndex: Int?) {
@@ -174,9 +198,9 @@ class FunctionBuilder(val argCount: Int = 1) {
         val end: Label,
         val handler: Label,
         val isCatch: Boolean,
-        val contextDepth: Int,
+        val scope: Scope,
     ) {
-        fun toHandler() = Handler(start.opIndex!!, end.opIndex!!, handler.opIndex!!, isCatch, contextDepth)
+        fun toHandler() = Handler(start.opIndex!!, end.opIndex!!, handler.opIndex!!, isCatch, scope)
     }
 
     data class Handler(
@@ -184,12 +208,12 @@ class FunctionBuilder(val argCount: Int = 1) {
         val end: Int,
         val handler: Int,
         val isCatch: Boolean,
-        val contextDepth: Int,
+        val scope: Scope,
     )
 
     abstract class Block {
         open val jsLabel: String? = null
-        var contextDepth = -1
+        lateinit var scope: Scope
     }
 
     class LoopBlock(
@@ -290,17 +314,17 @@ class FunctionBuilder(val argCount: Int = 1) {
                     when {
                         start < exclStart && end > exclEnd -> {
                             split = true
-                            newHandlers.add(IRHandler(handler.start, Label(exclStart - 1), handler.handler, isCatch, handler.contextDepth))
-                            newHandlers.add(IRHandler(Label(exclEnd + 1), handler.end, handler.handler, isCatch, handler.contextDepth))
+                            newHandlers.add(IRHandler(handler.start, Label(exclStart - 1), handler.handler, isCatch, handler.scope))
+                            newHandlers.add(IRHandler(Label(exclEnd + 1), handler.end, handler.handler, isCatch, handler.scope))
                         }
                         exclStart <= start && exclEnd >= end -> { /* nop */ }
                         exclStart in (start + 1)..end && end <= exclEnd -> {
                             split = true
-                            newHandlers.add(IRHandler(handler.start, Label(exclStart - 1), handler.handler, isCatch, handler.contextDepth))
+                            newHandlers.add(IRHandler(handler.start, Label(exclStart - 1), handler.handler, isCatch, handler.scope))
                         }
                         start in exclStart..exclEnd && exclEnd < end -> {
                             split = true
-                            newHandlers.add(IRHandler(Label(exclEnd + 1), handler.end, handler.handler, isCatch, handler.contextDepth))
+                            newHandlers.add(IRHandler(Label(exclEnd + 1), handler.end, handler.handler, isCatch, handler.scope))
                         }
                         start > exclEnd || end < exclStart -> newHandlers.add(handler)
                     }
