@@ -53,7 +53,7 @@ class IRInterpreter(
         try {
             while (!isDone) {
                 try {
-                    visit(info.code[ip++])
+                    visit(info.opcodes[ip++])
                 } catch (e: ThrowException) {
                     val handler = info.handlers.firstOrNull { ip - 1 in it.start..it.end }
 
@@ -69,7 +69,7 @@ class IRInterpreter(
                 }
             }
         } catch (e: Throwable) {
-            println("Exception in FunctionInfo ${info.name} (length=${info.code.size}), opcode ${ip - 1}")
+            println("Exception in FunctionInfo ${info.name} (length=${info.opcodes.size}), opcode ${ip - 1}")
             throw e
         }
 

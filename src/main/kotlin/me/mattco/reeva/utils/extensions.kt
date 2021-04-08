@@ -1,11 +1,10 @@
 package me.mattco.reeva.utils
 
+import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.*
 import java.math.BigInteger
-import kotlin.math.abs
 import kotlin.reflect.KMutableProperty0
-import kotlin.reflect.KProperty
 
 fun Iterable<Boolean>.all() = this.all { it }
 fun <T> Iterable<T>.allIndexed(predicate: (index: Int, T) -> Boolean) = this.mapIndexed(predicate).all()
@@ -35,16 +34,22 @@ fun Char.isRadixDigit(radix: Int): Boolean {
 
 fun StringBuilder.newline(): StringBuilder = append("\n")
 
-fun String.key() = PropertyKey.from(this)
-fun Int.key() = PropertyKey.from(this)
-fun Long.key() = PropertyKey.from(this)
-fun JSSymbol.key() = PropertyKey.from(this)
+fun Any.key() = PropertyKey.from(this)
 
 fun Boolean.toValue() = if (this) JSTrue else JSFalse
 fun String.toValue() = JSString(this)
 fun Char.toValue() = JSString(this.toString())
 fun Number.toValue() = JSNumber(this.toDouble())
 fun BigInteger.toValue() = JSBigInt(this)
+
+fun Any.toValue(): JSValue = when (this) {
+    is Boolean -> toValue()
+    is String -> toValue()
+    is Char -> toValue()
+    is Number -> toValue()
+    is BigInteger -> toValue()
+    else -> throw IllegalArgumentException("Cannot convert ${this::class.simpleName} to a JSValue")
+}
 
 fun <T> KMutableProperty0<T>.temporaryChange(newValue: T): () -> Unit {
     val oldValue = this.get()

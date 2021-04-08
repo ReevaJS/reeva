@@ -1,6 +1,6 @@
 plugins {
-    id 'org.jetbrains.kotlin.jvm' version '1.4.31'
-    id 'org.jetbrains.kotlin.plugin.serialization' version '1.4.31'
+    id 'org.jetbrains.kotlin.jvm' version '1.4.32'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.4.32'
 }
 
 group = 'me.mattco'
@@ -39,14 +39,12 @@ test {
 
 compileKotlin {
     kotlinOptions {
-        freeCompilerArgs = ["-Xinline-classes"]
         jvmTarget = '1.8'
     }
 }
 
 compileTestKotlin {
     kotlinOptions {
-        freeCompilerArgs = ["-Xinline-classes"]
         jvmTarget = '1.8'
     }
 }

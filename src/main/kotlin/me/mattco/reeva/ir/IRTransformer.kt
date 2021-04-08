@@ -19,7 +19,7 @@ import kotlin.math.floor
 
 data class FunctionInfo(
     val name: String?,
-    val code: IrOpcodeList,
+    val opcodes: IrOpcodeList,
     val constantPool: Array<Any>,
     val handlers: Array<Handler>,
     val feedbackVector: FeedbackVector,

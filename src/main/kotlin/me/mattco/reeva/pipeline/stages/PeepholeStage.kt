@@ -10,7 +10,7 @@ import me.mattco.reeva.utils.Result
 object PeepholeStage : Stage<FunctionInfo, FunctionInfo, PipelineError> {
     override fun process(agent: Agent, input: FunctionInfo): Result<PipelineError, FunctionInfo> {
         return try {
-            Result.success(input.copy(code = input.code.also(PeepholeOptimizer::optimize)))
+            Result.success(input.copy(opcodes = input.opcodes.also(PeepholeOptimizer::optimize)))
         } catch (e: Throwable) {
             Result.error(PipelineError.Internal(e))
         }

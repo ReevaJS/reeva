@@ -15,14 +15,14 @@ object IrPrinter {
         println("Register count: ${info.registerCount}")
 
         val indexWidth = listOf(
-            info.code.size.toString().length,
+            info.opcodes.size.toString().length,
             info.constantPool.size.toString().length,
             info.handlers.size.toString().length,
         ).maxOrNull()!!
 
         println("Bytecode:")
         val fmt = "\t%${indexWidth}d.    %s"
-        info.code.forEachIndexed { index, opcode ->
+        info.opcodes.forEachIndexed { index, opcode ->
             println(fmt.format(index, stringifyOpcode(opcode, info.argCount)))
         }
 
