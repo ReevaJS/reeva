@@ -23,7 +23,7 @@ dependencies {
     implementation 'org.ow2.asm:asm-tree:8.0.1'
     implementation 'org.ow2.asm:asm-commons:8.0.1'
     implementation 'com.github.mattco98:Koffee:3b4b48e9ff'
-    implementation 'com.github.jruby:joni:2.1.8'
+    implementation 'org.jruby.joni:joni:2.1.41'
 
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.7.0"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.7.0"
