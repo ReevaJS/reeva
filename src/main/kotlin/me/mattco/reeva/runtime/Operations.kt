@@ -770,7 +770,7 @@ object Operations {
         if (trimmed == "Infinity" || '.' in trimmed || trimmed.matches(exponentRegex))
             Errors.BigInt.Conversion(string).throwSyntaxError()
 
-        var lc = trimmed.toLowerCase()
+        var lc = trimmed.lowercase()
         val radix = when {
             lc.startsWith("0x") -> {
                 lc = lc.drop(2)

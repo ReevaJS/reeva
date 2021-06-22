@@ -27,7 +27,7 @@ fun Char.isRadixDigit(radix: Int): Boolean {
         in 2..10 -> this - '0' in range
         else -> {
             expect(radix > 10)
-            this - '0' in range || this.toLowerCase() - 'a' in range
+            this - '0' in range || this.lowercase() - 'a' in range
         }
     }
 }

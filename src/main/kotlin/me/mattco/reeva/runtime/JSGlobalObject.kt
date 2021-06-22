@@ -114,7 +114,7 @@ open class JSGlobalObject protected constructor(
             } else 10
         }
 
-        if (stripPrefix && inputString.toLowerCase().startsWith("0x")) {
+        if (stripPrefix && inputString.lowercase().startsWith("0x")) {
             inputString = inputString.substring(2)
             radix = 16
         }

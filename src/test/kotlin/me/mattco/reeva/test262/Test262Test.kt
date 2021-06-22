@@ -25,7 +25,7 @@ class Test262Test(
         val agent = Reeva.activeAgent
 
         try {
-            Assumptions.assumeTrue(metadata.features?.any { "intl" in it.toLowerCase() } != true)
+            Assumptions.assumeTrue(metadata.features?.any { "intl" in it.lowercase() } != true)
             Assumptions.assumeTrue(metadata.features?.any { it in excludedFeatures } != true)
 
             // TODO: This function is used by many regexp tests, and often leads to for loops

@@ -344,7 +344,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         val string = Operations.toString(obj).string
 
         // TODO: unicode handling
-        return string.toLowerCase().toValue()
+        return string.lowercase().toValue()
     }
 
     fun toString(arguments: JSArguments): JSValue {
@@ -356,7 +356,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         val string = Operations.toString(obj).string
 
         // TODO: unicode handling
-        return string.toUpperCase().toValue()
+        return string.uppercase().toValue()
     }
 
     fun trim(arguments: JSArguments): JSValue {
