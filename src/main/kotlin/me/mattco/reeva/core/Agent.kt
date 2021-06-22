@@ -1,10 +1,13 @@
 package me.mattco.reeva.core
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.pipeline.Pipeline
-import me.mattco.reeva.pipeline.PipelineError
+import me.mattco.reeva.interpreter.IRInterpreter
+import me.mattco.reeva.ir.IRTransformer
+import me.mattco.reeva.ir.opcodes.IrPrinter
+import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.utils.Result
+import me.mattco.reeva.utils.ResultT
 import me.mattco.reeva.utils.expect
 import java.nio.ByteOrder
 import java.util.*
@@ -34,9 +37,24 @@ class Agent {
         Reeva.allAgents.add(this)
     }
 
-    fun run(script: String, realm: Realm, asModule: Boolean = false): Result<PipelineError, JSValue> {
-        return withRealm(realm) {
-            Pipeline.interpret(this, script, asModule)
+    fun run(script: String, realm: Realm): ResultT<JSValue> {
+        return try {
+            val ast = Parser(script).parseScript()
+            if (printAST) {
+                ast.debugPrint()
+                println("\n")
+            }
+
+            val ir = IRTransformer().transform(ast)
+            if (printIR) {
+                IrPrinter.printFunctionInfo(ir)
+                println("\n")
+            }
+
+            val function = IRInterpreter.wrap(ir, realm)
+            return Result.success(function.call(realm.globalObject, emptyList()))
+        } catch (e: Throwable) {
+            Result.error(e)
         }
     }
 
@@ -44,21 +62,13 @@ class Agent {
         pendingMicrotasks.addFirst(task)
     }
 
-    fun pushRealm(realm: Realm) = apply {
-        activeRealms.push(realm)
-    }
-
-    fun popRealm() = apply {
-        activeRealms.pop()
-    }
-
     fun <T> withRealm(realm: Realm, block: () -> T): T {
         val initialRealmCount = activeRealms.size
-        pushRealm(realm)
+        activeRealms.push(realm)
         return try {
             block()
         } finally {
-            popRealm()
+            activeRealms.pop()
             expect(activeRealms.size == initialRealmCount)
         }
     }

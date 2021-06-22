@@ -4,7 +4,6 @@ import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.modules.resolver.DefaultModuleResolver
-import me.mattco.reeva.pipeline.PipelineError
 import me.mattco.reeva.runtime.Operations
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assumptions
@@ -122,24 +121,28 @@ class Test262Test(
 
             val error = testResult.error()
 
-            if (shouldErrorDuringParse) {
-                Assertions.assertTrue(error is PipelineError.Parse) {
-                    "Expected ParseError, but received ${error::class.simpleName}{$error}"
-                }
+            error.printStackTrace()
+            Assertions.fail()
 
-                // TODO: Is ever supposed to not be a SyntaxError?
-            } else {
-                Assertions.assertTrue(error is PipelineError.Runtime) {
-                    "Expected RuntimeError, but received ${error::class.simpleName}{$error}"
-                }
-
-                val expectedClass = "JS${metadata.negative!!.type}Object"
-                val actualClass = (error as PipelineError.Runtime).cause::class.simpleName
-
-                Assertions.assertTrue(actualClass == expectedClass) {
-                    "Expected $expectedClass to be thrown, but found $actualClass"
-                }
-            }
+            // FIXME: Implement
+//            if (shouldErrorDuringParse) {
+//                Assertions.assertTrue(error is PipelineError.Parse) {
+//                    "Expected ParseError, but received ${error::class.simpleName}{$error}"
+//                }
+//
+//                // TODO: Is ever supposed to not be a SyntaxError?
+//            } else {
+//                Assertions.assertTrue(error is PipelineError.Runtime) {
+//                    "Expected RuntimeError, but received ${error::class.simpleName}{$error}"
+//                }
+//
+//                val expectedClass = "JS${metadata.negative!!.type}Object"
+//                val actualClass = (error as PipelineError.Runtime).cause::class.simpleName
+//
+//                Assertions.assertTrue(actualClass == expectedClass) {
+//                    "Expected $expectedClass to be thrown, but found $actualClass"
+//                }
+//            }
         } else {
             Assertions.assertTrue(testResult.hasValue) {
                 "Expected execution to complete normally, but received error ${testResult.error()::class.simpleName}{${testResult.error()}}"
