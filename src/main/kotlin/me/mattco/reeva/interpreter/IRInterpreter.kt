@@ -5,10 +5,13 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
+import me.mattco.reeva.ir.Block
 import me.mattco.reeva.ir.DeclarationsArray
 import me.mattco.reeva.ir.FunctionInfo
+import me.mattco.reeva.ir.opcodes.Index
 import me.mattco.reeva.ir.opcodes.IrOpcodeVisitor
-import me.mattco.reeva.ir.opcodes.RegisterRange
+import me.mattco.reeva.ir.opcodes.Literal
+import me.mattco.reeva.ir.opcodes.Register
 import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.functions.JSFunction
@@ -24,39 +27,39 @@ class IRInterpreter(
 ) : IrOpcodeVisitor() {
     private val info = function.info
 
-    private val registers = Registers(info.registerCount)
+    private val registers = Registers(info.code.registerCount)
     private var accumulator by registers::accumulator
-    private var ip = 0
     private var isDone = false
     private var exception: ThrowException? = null
-    private val mappedCPool = Array<JSValue?>(info.constantPool.size) { null }
+    private val mappedCPool = Array<JSValue?>(info.code.constantPool.size) { null }
 
     private var currentEnv = function.envRecord
+    private var currentBlock = info.code.blocks[0]
+    private var ip = 0
 
     fun interpret(): EvaluationResult {
         try {
             while (!isDone) {
                 try {
-                    visit(info.opcodes[ip++])
+                    visit(currentBlock[ip++])
                 } catch (e: ThrowException) {
-                    val handler = info.handlers.firstOrNull { ip - 1 in it.start..it.end }
-
-                    if (handler == null) {
-                        exception = e
-                        isDone = true
-                    } else {
-                        ip = handler.handler
-                    }
+                    exception = e
+                    isDone = true
                 }
             }
         } catch (e: Throwable) {
-            println("Exception in FunctionInfo ${info.name} (length=${info.opcodes.size}), opcode ${ip - 1}")
+            println("Exception in FunctionInfo ${info.name}, block=${currentBlock.index} opcode ${ip - 1}")
             throw e
         }
 
         return if (exception != null) {
             EvaluationResult.RuntimeError(exception!!.value)
         } else EvaluationResult.Success(accumulator)
+    }
+
+    private fun jumpTo(block: Block) {
+        ip = 0
+        currentBlock = block
     }
 
     override fun visitLdaTrue() {
@@ -79,146 +82,111 @@ class IRInterpreter(
         accumulator = JSNumber.ZERO
     }
 
-    override fun visitLdaConstant(cpIndex: Int) {
-        accumulator = getMappedConstant(cpIndex)
+    override fun visitLdaConstant(index: Index) {
+        accumulator = getMappedConstant(index)
     }
 
-    override fun visitLdaInt(int: Int) {
+    override fun visitLdaInt(int: Literal) {
         accumulator = JSNumber(int)
     }
 
-    override fun visitLdar(reg: Int) {
+    override fun visitLdar(reg: Register) {
         accumulator = registers[reg]
     }
 
-    override fun visitStar(reg: Int) {
+    override fun visitStar(reg: Register) {
         registers[reg] = accumulator
     }
 
-    override fun visitMov(fromReg: Int, toReg: Int) {
-        registers[fromReg] = registers[toReg]
+    override fun visitLdaNamedProperty(objectReg: Register, nameIndex: Index) {
+        val obj = registers[objectReg] as JSObject
+        val key = loadConstant<String>(nameIndex).key()
+        accumulator = obj.get(key)
     }
 
-    override fun visitLdaNamedProperty(objReg: Int, nameCpIndex: Int, slot: Int) {
-        val obj = registers[objReg] as JSObject
-        val key = loadConstant<String>(nameCpIndex).key()
-        val slot = info.feedbackVector.slotAs<ObjectFeedback>(slot)
-
-        accumulator = if (obj.shape !in slot.shapes) {
-            val location = obj.getPropertyLocation(key)
-            if (location != null) {
-                slot.shapes[obj.shape] = location
-                obj.getDescriptorAt(location).getActualValue(obj)
-            } else JSUndefined
-        } else obj.get(key)
-    }
-
-    override fun visitLdaKeyedProperty(objReg: Int, slot: Int) {
-        val obj = registers[objReg] as JSObject
+    override fun visitLdaKeyedProperty(objectReg: Register) {
+        val obj = registers[objectReg] as JSObject
         val key = accumulator.toPropertyKey()
-        val slot = info.feedbackVector.slotAs<ObjectFeedback>(slot)
-
-        accumulator = if (obj.shape !in slot.shapes) {
-            val location = obj.getPropertyLocation(key)
-            if (location != null) {
-                slot.shapes[obj.shape] = location
-                obj.getDescriptorAt(location).getActualValue(obj)
-            } else JSUndefined
-        } else obj.get(key)
+        accumulator = obj.get(key)
     }
 
-    override fun visitStaNamedProperty(objReg: Int, nameCpIndex: Int, slot: Int) {
-        val obj = registers[objReg] as JSObject
-        val key = loadConstant<String>(nameCpIndex).key()
-        val slot = info.feedbackVector.slotAs<ObjectFeedback>(slot)
-
-        if (obj.shape !in slot.shapes) {
-            val location = obj.getPropertyLocation(key)
-            if (location != null) {
-                slot.shapes[obj.shape] = location
-                obj.setPropertyAt(location, Descriptor(accumulator, Descriptor.DEFAULT_ATTRIBUTES))
-            } else JSUndefined
-        } else obj.get(key)
-
-        if (obj.shape !in slot.shapes)
-            slot.shapes[obj.shape] = obj.getPropertyLocation(key)!!
+    override fun visitStaNamedProperty(objectReg: Register, nameIndex: Index) {
+        val obj = registers[objectReg] as JSObject
+        val key = loadConstant<String>(nameIndex).key()
         obj.set(key, accumulator)
     }
 
-    override fun visitStaKeyedProperty(objReg: Int, propertyReg: Int, slot: Int) {
-        val obj = registers[objReg] as JSObject
-        val key = registers[propertyReg].toPropertyKey()
-        val slot = info.feedbackVector.slotAs<ObjectFeedback>(slot)
-        if (obj.shape !in slot.shapes)
-            slot.shapes[obj.shape] = obj.getPropertyLocation(key)!!
+    override fun visitStaKeyedProperty(objectReg: Register, nameReg: Register) {
+        val obj = registers[objectReg] as JSObject
+        val key = registers[nameReg].toPropertyKey()
         obj.set(key, accumulator)
     }
 
-    override fun visitCreateArrayLiteral() {
+    override fun visitCreateArray() {
         accumulator = JSArrayObject.create(function.realm)
     }
 
-    override fun visitStaArrayLiteral(arrayReg: Int, indexReg: Int) {
+    override fun visitStaArrayIndex(arrayReg: Register, index: Literal) {
+        val array = registers[arrayReg] as JSObject
+        array.indexedProperties.set(array, index, accumulator)
+    }
+
+    override fun visitStaArray(arrayReg: Register, indexReg: Register) {
         val array = registers[arrayReg] as JSObject
         val index = (registers[indexReg] as JSNumber).asInt
         array.indexedProperties.set(array, index, accumulator)
     }
 
-    override fun visitStaArrayLiteralIndex(arrayReg: Int, index: Int) {
-        val array = registers[arrayReg] as JSObject
-        array.indexedProperties.set(array, index, accumulator)
-    }
-
-    override fun visitCreateObjectLiteral() {
+    override fun visitCreateObject() {
         accumulator = JSObject.create(function.realm)
     }
 
-    override fun visitAdd(lhsReg: Int, slot: Int) {
-        binaryOp("+", lhsReg, slot)
+    override fun visitAdd(lhsReg: Register) {
+        binaryOp("+", lhsReg)
     }
 
-    override fun visitSub(lhsReg: Int, slot: Int) {
-        binaryOp("-", lhsReg, slot)
+    override fun visitSub(lhsReg: Register) {
+        binaryOp("-", lhsReg)
     }
 
-    override fun visitMul(lhsReg: Int, slot: Int) {
-        binaryOp("*", lhsReg, slot)
+    override fun visitMul(lhsReg: Register) {
+        binaryOp("*", lhsReg)
     }
 
-    override fun visitDiv(lhsReg: Int, slot: Int) {
-        binaryOp("/", lhsReg, slot)
+    override fun visitDiv(lhsReg: Register) {
+        binaryOp("/", lhsReg)
     }
 
-    override fun visitMod(lhsReg: Int, slot: Int) {
-        binaryOp("%", lhsReg, slot)
+    override fun visitMod(lhsReg: Register) {
+        binaryOp("%", lhsReg)
     }
 
-    override fun visitExp(lhsReg: Int, slot: Int) {
-        binaryOp("**", lhsReg, slot)
+    override fun visitExp(lhsReg: Register) {
+        binaryOp("**", lhsReg)
     }
 
-    override fun visitBitwiseOr(lhsReg: Int, slot: Int) {
-        binaryOp("|", lhsReg, slot)
+    override fun visitBitwiseOr(lhsReg: Register) {
+        binaryOp("|", lhsReg)
     }
 
-    override fun visitBitwiseXor(lhsReg: Int, slot: Int) {
-        binaryOp("^", lhsReg, slot)
+    override fun visitBitwiseXor(lhsReg: Register) {
+        binaryOp("^", lhsReg)
     }
 
-    override fun visitBitwiseAnd(lhsReg: Int, slot: Int) {
-        binaryOp("&", lhsReg, slot)
+    override fun visitBitwiseAnd(lhsReg: Register) {
+        binaryOp("&", lhsReg)
     }
 
-    override fun visitShiftLeft(lhsReg: Int, slot: Int) {
-        binaryOp("<<", lhsReg, slot)
+    override fun visitShiftLeft(lhsReg: Register) {
+        binaryOp("<<", lhsReg)
     }
 
-    override fun visitShiftRight(lhsReg: Int, slot: Int) {
-        binaryOp(">>", lhsReg, slot)
+    override fun visitShiftRight(lhsReg: Register) {
+        binaryOp(">>", lhsReg)
     }
 
-    override fun visitShiftRightUnsigned(lhsReg: Int, slot: Int) {
-        binaryOp(">>>", lhsReg, slot)
+    override fun visitShiftRightUnsigned(lhsReg: Register) {
+        binaryOp(">>>", lhsReg)
     }
 
     override fun visitInc() {
@@ -241,9 +209,9 @@ class IRInterpreter(
         } else Operations.numericBitwiseNOT(accumulator)
     }
 
-    override fun visitStringAppend(lhsReg: Int) {
-        val template = registers[lhsReg] as JSString
-        registers[lhsReg] = JSString(
+    override fun visitStringAppend(lhsStringReg: Register) {
+        val template = registers[lhsStringReg] as JSString
+        registers[lhsStringReg] = JSString(
             template.string + (accumulator as JSString).string
         )
     }
@@ -260,15 +228,15 @@ class IRInterpreter(
         accumulator = Operations.typeofOperator(accumulator)
     }
 
-    override fun visitDeletePropertySloppy(objReg: Int) {
-        val target = registers[objReg]
+    override fun visitDeletePropertySloppy(objectReg: Register) {
+        val target = registers[objectReg]
         accumulator = if (target is JSObject) {
             target.delete(accumulator.toPropertyKey()).toValue()
         } else JSTrue
     }
 
-    override fun visitDeletePropertyStrict(objReg: Int) {
-        val target = registers[objReg]
+    override fun visitDeletePropertyStrict(objectReg: Register) {
+        val target = registers[objectReg]
         if (target is JSObject) {
             val key = accumulator.toPropertyKey()
             if (!target.delete(key))
@@ -278,172 +246,154 @@ class IRInterpreter(
         accumulator = JSTrue
     }
 
-    override fun visitLdaGlobal(nameCpIndex: Int) {
-        val name = loadConstant<String>(nameCpIndex)
+    override fun visitLdaGlobal(name: Index) {
+        val name = loadConstant<String>(name)
         val desc = function.globalEnv.extension().getPropertyDescriptor(name.key())
             ?: Errors.UnknownReference(name.key()).throwReferenceError()
         accumulator = desc.getActualValue(function.globalEnv.extension())
     }
 
-    override fun visitStaGlobal(nameCpIndex: Int) {
-        val name = loadConstant<String>(nameCpIndex)
+    override fun visitStaGlobal(name: Index) {
+        val name = loadConstant<String>(name)
         function.globalEnv.extension().set(name.key(), accumulator)
     }
 
-    override fun visitLdaCurrentEnv(envSlot: Int) {
+    override fun visitLdaCurrentEnv(slot: Literal) {
         expect(currentEnv !is GlobalEnvRecord)
-        accumulator = currentEnv.getBinding(envSlot)
+        accumulator = currentEnv.getBinding(slot)
     }
 
-    override fun visitStaCurrentEnv(envSlot: Int) {
+    override fun visitStaCurrentEnv(slot: Literal) {
         expect(currentEnv !is GlobalEnvRecord)
-        currentEnv.setBinding(envSlot, accumulator)
+        currentEnv.setBinding(slot, accumulator)
     }
 
-    override fun visitLdaEnv(contextReg: Int, envSlot: Int) {
-        expect(currentEnv !is GlobalEnvRecord)
-        val targetContext = registers[contextReg] as EnvRecord
-        accumulator = targetContext.getBinding(envSlot)
-    }
-
-    override fun visitStaEnv(contextReg: Int, envSlot: Int) {
+    override fun visitLdaEnv(contextReg: Register, slot: Literal) {
         expect(currentEnv !is GlobalEnvRecord)
         val targetContext = registers[contextReg] as EnvRecord
-        targetContext.setBinding(envSlot, accumulator)
+        accumulator = targetContext.getBinding(slot)
     }
 
-    override fun visitCreateBlockScope(numSlots: Int) {
+    override fun visitStaEnv(contextReg: Register, slot: Literal) {
+        expect(currentEnv !is GlobalEnvRecord)
+        val targetContext = registers[contextReg] as EnvRecord
+        targetContext.setBinding(slot, accumulator)
+    }
+
+    override fun visitCreateBlockScope(numSlots: Literal) {
         accumulator = EnvRecord(currentEnv, currentEnv.isStrict, numSlots)
     }
 
-    override fun visitPushEnv(envReg: Int) {
-        registers[envReg] = currentEnv
+    override fun visitPushEnv(targetReg: Register) {
+        registers[targetReg] = currentEnv
         currentEnv = accumulator as EnvRecord
     }
 
-    override fun visitPopCurrentEnv(envReg: Int) {
-        currentEnv = registers[envReg] as EnvRecord
+    override fun visitPopCurrentEnv(newEnvReg: Register) {
+        currentEnv = registers[newEnvReg] as EnvRecord
     }
 
-    override fun visitCall(targetReg: Int, args: RegisterRange) {
-        call(targetReg, args, CallMode.Normal)
+    override fun visitCall(targetReg: Register, receiverReg: Register, argumentRegs: List<Register>) {
+        accumulator = Operations.call(
+            registers[targetReg],
+            registers[receiverReg],
+            argumentRegs.map { registers[it] }
+        )
     }
 
-    override fun visitCall0(targetReg: Int, receiverReg: Int) {
-        call(targetReg, RegisterRange(receiverReg, 1), CallMode.Normal)
+    override fun visitCallWithArgArray(targetReg: Register, receiverReg: Register, argumentReg: Register) {
+        val argumentsArray = registers[argumentReg] as JSObject
+        accumulator = Operations.call(
+            registers[targetReg],
+            registers[receiverReg],
+            (0 until argumentsArray.indexedProperties.arrayLikeSize).map {
+                argumentsArray.get(it)
+            }
+        )
     }
 
-    override fun visitCallLastSpread(targetReg: Int, args: RegisterRange) {
-        call(targetReg, args, CallMode.LastSpread)
-    }
-
-    override fun visitCallFromArray(targetReg: Int, arrayReg: Int) {
-        call(targetReg, RegisterRange(arrayReg, 1), CallMode.Spread)
-    }
-
-    override fun visitCallRuntime(functionId: Int, args: RegisterRange) {
-        val args = getRegisterBlock(args)
-        accumulator = InterpRuntime.values()[functionId].function(args)
-    }
-
-    override fun visitConstruct(targetReg: Int, args: RegisterRange) {
+    override fun visitConstruct(targetReg: Register, newTargetReg: Register, argumentRegs: List<Register>) {
         val target = registers[targetReg]
         if (!Operations.isConstructor(target))
             Errors.NotACtor(target.toJSString().string).throwTypeError()
 
         accumulator = Operations.construct(
             target,
-            getRegisterBlock(args),
-            accumulator
+            argumentRegs.map { registers[it] },
+            registers[newTargetReg],
         )
     }
 
-    override fun visitConstruct0(targetReg: Int) {
-        val target = registers[targetReg]
-        if (!Operations.isConstructor(target))
-            Errors.NotACtor(target.toJSString().string).throwTypeError()
-
-        accumulator = Operations.construct(
-            target,
-            emptyList(),
-            accumulator
-        )
-    }
-
-    override fun visitConstructLastSpread(targetReg: Int, args: RegisterRange) {
+    override fun visitConstructWithArgArray(targetReg: Register, newTargetReg: Register, argumentReg: Register) {
         TODO()
     }
 
-    override fun visitConstructFromArray(targetReg: Int, arrayReg: Int) {
-        TODO()
-    }
-
-    override fun visitTestEqual(lhsReg: Int) {
+    override fun visitTestEqual(lhsReg: Register) {
         accumulator = Operations.abstractEqualityComparison(registers[lhsReg], accumulator)
     }
 
-    override fun visitTestNotEqual(lhsReg: Int) {
+    override fun visitTestNotEqual(lhsReg: Register) {
         accumulator = Operations.abstractEqualityComparison(registers[lhsReg], accumulator).inv()
     }
 
-    override fun visitTestEqualStrict(lhsReg: Int) {
+    override fun visitTestEqualStrict(lhsReg: Register) {
         accumulator = Operations.strictEqualityComparison(registers[lhsReg], accumulator)
     }
 
-    override fun visitTestNotEqualStrict(lhsReg: Int) {
+    override fun visitTestNotEqualStrict(lhsReg: Register) {
         accumulator = Operations.strictEqualityComparison(registers[lhsReg], accumulator).inv()
     }
 
-    override fun visitTestLessThan(lhsReg: Int) {
+    override fun visitTestLessThan(lhsReg: Register) {
         val lhs = registers[lhsReg]
         val rhs = accumulator
         val result = Operations.abstractRelationalComparison(lhs, rhs, true)
         accumulator = if (result == JSUndefined) JSFalse else result
     }
 
-    override fun visitTestGreaterThan(lhsReg: Int) {
+    override fun visitTestGreaterThan(lhsReg: Register) {
         val lhs = registers[lhsReg]
         val rhs = accumulator
         val result = Operations.abstractRelationalComparison(rhs, lhs, false)
         accumulator = if (result == JSUndefined) JSFalse else result
     }
 
-    override fun visitTestLessThanOrEqual(lhsReg: Int) {
+    override fun visitTestLessThanOrEqual(lhsReg: Register) {
         val lhs = registers[lhsReg]
         val rhs = accumulator
         val result = Operations.abstractRelationalComparison(rhs, lhs, false)
         accumulator = if (result == JSFalse) JSTrue else JSFalse
     }
 
-    override fun visitTestGreaterThanOrEqual(lhsReg: Int) {
+    override fun visitTestGreaterThanOrEqual(lhsReg: Register) {
         val lhs = registers[lhsReg]
         val rhs = accumulator
         val result = Operations.abstractRelationalComparison(lhs, rhs, true)
         accumulator = if (result == JSFalse) JSTrue else JSFalse
     }
 
-    override fun visitTestReferenceEqual(lhsReg: Int) {
+    override fun visitTestReferenceEqual(lhsReg: Register) {
         accumulator = (accumulator == registers[lhsReg]).toValue()
     }
 
-    override fun visitTestInstanceOf(lhsReg: Int) {
+    override fun visitTestInstanceOf(lhsReg: Register) {
         accumulator = Operations.instanceofOperator(registers[lhsReg], accumulator)
     }
 
-    override fun visitTestIn(lhsReg: Int) {
+    override fun visitTestIn(lhsReg: Register) {
         val rval = registers[lhsReg].toPropertyKey()
         accumulator = Operations.hasProperty(accumulator, rval).toValue()
     }
 
-    override fun visitTestNullish(lhsReg: Int) {
+    override fun visitTestNullish() {
         accumulator = accumulator.let { it == JSNull || it == JSUndefined }.toValue()
     }
 
-    override fun visitTestNull(lhsReg: Int) {
+    override fun visitTestNull() {
         accumulator = (accumulator == JSNull).toValue()
     }
 
-    override fun visitTestUndefined(lhsReg: Int) {
+    override fun visitTestUndefined() {
         accumulator = (accumulator == JSUndefined).toValue()
     }
 
@@ -467,63 +417,28 @@ class IRInterpreter(
         accumulator = Operations.toString(accumulator)
     }
 
-    override fun visitJump(targetInstr: Int) {
-        ip = targetInstr
+    override fun visitJump(ifBlock: Block) {
+        jumpTo(ifBlock)
     }
 
-    override fun visitJumpIfTrue(targetInstr: Int) {
-        if (accumulator == JSTrue)
-            ip = targetInstr
+    override fun visitJumpIfTrue(ifBlock: Block, elseBlock: Block) {
+        jumpTo(if (accumulator == JSTrue) ifBlock else elseBlock)
     }
 
-    override fun visitJumpIfFalse(targetInstr: Int) {
-        if (accumulator == JSFalse)
-            ip = targetInstr
+    override fun visitJumpIfNull(ifBlock: Block, elseBlock: Block) {
+        jumpTo(if (accumulator == JSNull) ifBlock else elseBlock)
     }
 
-    override fun visitJumpIfToBooleanTrue(targetInstr: Int) {
-        if (Operations.toBoolean(accumulator))
-            ip = targetInstr
+    override fun visitJumpIfUndefined(ifBlock: Block, elseBlock: Block) {
+        jumpTo(if (accumulator == JSUndefined) ifBlock else elseBlock)
     }
 
-    override fun visitJumpIfToBooleanFalse(targetInstr: Int) {
-        if (!Operations.toBoolean(accumulator))
-            ip = targetInstr
+    override fun visitJumpIfNullish(ifBlock: Block, elseBlock: Block) {
+        jumpTo(if (accumulator.isNullish) ifBlock else elseBlock)
     }
 
-    override fun visitJumpIfNull(targetInstr: Int) {
-        if (accumulator == JSNull)
-            ip = targetInstr
-    }
-
-    override fun visitJumpIfNotNull(targetInstr: Int) {
-        if (accumulator != JSNull)
-            ip = targetInstr
-    }
-
-    override fun visitJumpIfUndefined(targetInstr: Int) {
-        if (accumulator == JSUndefined)
-            ip = targetInstr
-    }
-
-    override fun visitJumpIfNotUndefined(targetInstr: Int) {
-        if (accumulator != JSUndefined)
-            ip = targetInstr
-    }
-
-    override fun visitJumpIfNullish(targetInstr: Int) {
-        if (accumulator is JSObject)
-            ip = targetInstr
-    }
-
-    override fun visitJumpIfNotNullish(targetInstr: Int) {
-        if (accumulator.let { it == JSNull || it == JSUndefined })
-            ip = targetInstr
-    }
-
-    override fun visitJumpIfObject(targetInstr: Int) {
-        if (!accumulator.let { it == JSNull || it == JSUndefined })
-            ip = targetInstr
+    override fun visitJumpIfObject(ifBlock: Block, elseBlock: Block) {
+        jumpTo(if (accumulator is JSObject) ifBlock else elseBlock)
     }
 
     override fun visitReturn() {
@@ -531,40 +446,38 @@ class IRInterpreter(
     }
 
     override fun visitThrow() {
-        val handler = info.handlers.firstOrNull { ip - 1 in it.start..it.end }
-            ?: throw ThrowException(accumulator)
-        ip = handler.handler
+        throw ThrowException(accumulator)
     }
 
-    override fun visitThrowConstReassignment(nameCpIndex: Int) {
-        Errors.AssignmentToConstant(loadConstant(nameCpIndex)).throwTypeError()
+    override fun visitThrowConstReassignment(nameIndex: Index) {
+        Errors.AssignmentToConstant(loadConstant(nameIndex)).throwTypeError()
     }
 
-    override fun visitThrowUseBeforeInitIfEmpty(nameCpIndex: Int) {
+    override fun visitThrowUseBeforeInitIfEmpty(nameIndex: Index) {
         if (accumulator == JSEmpty)
-            Errors.AccessBeforeInitialization(loadConstant(nameCpIndex)).throwTypeError()
+            Errors.AccessBeforeInitialization(loadConstant(nameIndex)).throwTypeError()
     }
 
-    override fun visitDefineGetterProperty(targetReg: Int, propertyReg: Int, methodReg: Int) {
+    override fun visitDefineGetterProperty(objectReg: Register, nameReg: Register, methodReg: Register) {
         defineAccessor(
-            registers[targetReg] as JSObject,
-            registers[propertyReg],
+            registers[objectReg] as JSObject,
+            registers[nameReg],
             registers[methodReg] as JSFunction,
             isGetter = true,
         )
     }
 
-    override fun visitDefineSetterProperty(targetReg: Int, propertyReg: Int, methodReg: Int) {
+    override fun visitDefineSetterProperty(objectReg: Int, nameReg: Int, methodReg: Int) {
         defineAccessor(
-            registers[targetReg] as JSObject,
-            registers[propertyReg],
+            registers[objectReg] as JSObject,
+            registers[nameReg],
             registers[methodReg] as JSFunction,
             isGetter = false,
         )
     }
 
-    override fun visitDeclareGlobals(globalsCpIndex: Int) {
-        val array = loadConstant<DeclarationsArray>(globalsCpIndex)
+    override fun visitDeclareGlobals(declarationsIndex: Index) {
+        val array = loadConstant<DeclarationsArray>(declarationsIndex)
         declareGlobals(array)
     }
 
@@ -604,40 +517,9 @@ class IRInterpreter(
         )
     }
 
-    private fun binaryOp(op: String, lhsReg: Int, slot: Int) {
+    private fun binaryOp(op: String, lhsReg: Register) {
         val lhs = registers[lhsReg]
-        val slot = info.feedbackVector.slotAs<OpFeedback>(slot)
-        slot.typeTree.recordType(Type.fromValue(lhs))
-        slot.typeTree.recordType(Type.fromValue(accumulator))
         accumulator = Operations.applyStringOrNumericBinaryOperator(lhs, accumulator, op)
-    }
-
-    private fun call(callableReg: Int, range: RegisterRange, mode: CallMode) {
-        val target = registers[callableReg]
-        val args = getRegisterBlock(range)
-
-        accumulator = when (mode) {
-            CallMode.Normal -> {
-                Operations.call(target, args[0], args.drop(1))
-            }
-            CallMode.OneArg -> {
-                Operations.call(target, args[0], listOf(args[1]))
-            }
-            CallMode.LastSpread -> {
-                val nonSpreadArgs = args.drop(1).dropLast(1)
-                val spreadValues = Operations.iterableToList(args.last())
-                Operations.call(target, args[0], nonSpreadArgs + spreadValues)
-            }
-            CallMode.Spread -> {
-                expect(args.size == 2)
-                val argArray = args[1] as JSArrayObject
-                val callArgs = (0 until argArray.indexedProperties.arrayLikeSize).map {
-                    argArray.indexedProperties.get(argArray, it.toInt())
-                }
-
-                Operations.call(target, args[0], callArgs)
-            }
-        }
     }
 
     private fun declareGlobals(array: DeclarationsArray) {
@@ -668,15 +550,8 @@ class IRInterpreter(
         Spread,
     }
 
-    private fun getRegisterBlock(range: RegisterRange): List<JSValue> {
-        val args = mutableListOf<JSValue>()
-        for (i in range.start until (range.start + range.count))
-            args.add(registers[i])
-        return args
-    }
-
     private fun getMappedConstant(index: Int): JSValue {
-        return mappedCPool[index] ?: when (val value = info.constantPool[index]) {
+        return mappedCPool[index] ?: when (val value = info.code.constantPool[index]) {
             is Int -> JSNumber(value)
             is Double -> JSNumber(value)
             is String -> JSString(value)
@@ -686,7 +561,7 @@ class IRInterpreter(
     }
 
     private inline fun <reified T> loadConstant(index: Int): T {
-        return info.constantPool[index] as T
+        return info.code.constantPool[index] as T
     }
 
     inner class Registers(size: Int) {

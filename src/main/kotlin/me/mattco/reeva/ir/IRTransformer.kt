@@ -4,12 +4,7 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
-import me.mattco.reeva.interpreter.FeedbackSlot
-import me.mattco.reeva.interpreter.FeedbackVector
-import me.mattco.reeva.interpreter.InterpRuntime
-import me.mattco.reeva.ir.FunctionBuilder.*
 import me.mattco.reeva.ir.opcodes.*
-import me.mattco.reeva.ir.opcodes.IrOpcodeType.*
 import me.mattco.reeva.parser.GlobalScope
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
@@ -20,43 +15,36 @@ import kotlin.math.floor
 
 data class FunctionInfo(
     val name: String?,
-    val opcodes: IrOpcodeList,
-    val constantPool: Array<Any>,
-    val handlers: Array<Handler>,
-    val feedbackVector: FeedbackVector,
-    val registerCount: Int, // includes argCount
+    val code: FunctionOpcodes,
     val argCount: Int,
     val topLevelSlots: Int,
     val isStrict: Boolean,
-    val isTopLevelScript: Boolean = false,
+    val isTopLevelScript: Boolean,
 )
 
 class IRTransformer : ASTVisitor {
-    private lateinit var builder: FunctionBuilder
+    private lateinit var generator: Generator
+    private val envStack = mutableListOf<Pair<Scope, Register>>()
 
     fun transform(node: ASTNode): FunctionInfo {
-        if (::builder.isInitialized)
+        if (::generator.isInitialized)
             throw IllegalStateException("Cannot re-use an IRTransformer")
+
+        generator = Generator()
 
         if (node is ModuleNode)
             TODO()
 
         expect(node is ScriptNode)
 
-        builder = FunctionBuilder()
-
         globalDeclarationInstantiation(node.scope) {
             visit(node.statements)
-            add(Return)
+            generator.add(Return)
         }
 
         return FunctionInfo(
             null,
-            IrOpcodeList(builder.opcodes),
-            builder.constantPool.toTypedArray(),
-            builder.handlers.map(IRHandler::toHandler).toTypedArray(),
-            builder.feedbackVector,
-            builder.registerCount,
+            generator.finish(),
             1,
             node.scope.numSlots,
             node.scope.isStrict,
@@ -66,17 +54,18 @@ class IRTransformer : ASTVisitor {
 
     private fun enterScope(scope: Scope) {
         if (scope.requiresEnv && scope !is GlobalScope) {
-            add(PushEnv, builder.enterScope(scope))
-            scope.declaredVariables.forEach { variable ->
-                variable.slot = builder.envVarCount++
-            }
+            generator.add(scope.createEnterScopeOpcode(scope.numSlots))
+            val envReg = generator.reserveRegister()
+            generator.add(PushEnv(envReg))
+            envStack.add(scope to envReg)
         }
     }
 
     private fun exitScope(scope: Scope) {
         if (scope.requiresEnv && scope !is GlobalScope) {
-            val currentEnvReg = builder.exitScope(scope)
-            add(PopCurrentEnv, currentEnvReg)
+            val (newScope, newReg) = envStack.removeLast()
+            expect(newScope == scope)
+            generator.add(PopCurrentEnv(newReg))
         }
     }
 
@@ -94,56 +83,46 @@ class IRTransformer : ASTVisitor {
         visit(node.condition)
 
         if (node.falseBlock == null) {
-            val endLabel = label()
-            jump(endLabel, JumpIfToBooleanFalse)
-            visit(node.trueBlock)
-            place(endLabel)
+            generator.ifHelper(::JumpIfTrue) {
+                visit(node.trueBlock)
+            }
         } else {
-            val falseLabel = label()
-            val endLabel = label()
-            jump(falseLabel, JumpIfToBooleanFalse)
-            visit(node.trueBlock)
-            jump(endLabel)
-            place(falseLabel)
-            visit(node.falseBlock)
-            place(endLabel)
+            generator.ifElseHelper(::JumpIfTrue, {
+                visit(node.trueBlock)
+            }, {
+                visit(node.falseBlock)
+            })
         }
     }
 
     override fun visitDoWhileStatement(node: DoWhileStatementNode) {
-        val loopStart = label()
-        val loopEnd = label()
+        val headBlock = generator.makeBlock()
+        val doneBlock = generator.makeBlock()
 
-        place(loopStart)
-
-        builder.pushBlock(LoopBlock(loopStart, loopEnd))
+        generator.currentBlock = headBlock
         visit(node.body)
-        builder.popBlock()
-
         visit(node.condition)
-        jump(loopStart, JumpIfToBooleanTrue)
-        place(loopEnd)
+        generator.add(JumpIfTrue(headBlock, doneBlock))
+        generator.currentBlock = doneBlock
     }
 
     override fun visitWhileStatement(node: WhileStatementNode) {
-        val loopStart = label()
-        val loopEnd = label()
+        val testBlock = generator.makeBlock()
+        val bodyBlock = generator.makeBlock()
+        val doneBlock = generator.makeBlock()
 
-        place(loopStart)
+        generator.currentBlock = testBlock
         visit(node.condition)
-        jump(loopEnd, JumpIfToBooleanFalse)
-
-        builder.pushBlock(LoopBlock(loopStart, loopEnd))
+        generator.add(JumpIfTrue(bodyBlock, doneBlock))
+        generator.currentBlock = bodyBlock
         visit(node.body)
-        builder.popBlock()
-
-        jump(loopStart)
-        place(loopEnd)
+        generator.add(Jump(testBlock))
+        generator.currentBlock = doneBlock
     }
 
     override fun visitForStatement(node: ForStatementNode) {
-        if (node.initScope != null && node.initScope.requiresEnv) {
-            add(PushEnv, builder.enterScope(node.initScope))
+        if (node.initScope != null) {
+            enterScope(node.initScope)
             node.initScope.declaredVariables.forEachIndexed { index, variable ->
                 variable.slot = index
             }
@@ -152,31 +131,37 @@ class IRTransformer : ASTVisitor {
         if (node.initializer != null)
             visit(node.initializer)
 
-        val loopStart = label()
-        val loopEnd = label()
-        val continueTarget = label()
-        place(loopStart)
+        var testBlock: Block? = null
 
         if (node.condition != null) {
-            visit(node.condition)
-            jump(loopEnd, JumpIfToBooleanFalse)
+            testBlock = generator.makeBlock()
         }
 
-        builder.pushBlock(LoopBlock(continueTarget, loopEnd))
-        visit(node.body)
-        builder.popBlock()
+        val bodyBlock = generator.makeBlock()
+        val doneBlock = generator.makeBlock()
 
-        place(continueTarget)
+        if (node.condition != null) {
+            generator.currentBlock = testBlock!!
+            visit(node.condition)
+            generator.add(JumpIfTrue(bodyBlock, doneBlock))
+        }
+
+        generator.currentBlock = bodyBlock
+        generator.enterBreakableScope(doneBlock)
+        generator.enterContinuableScope(testBlock ?: bodyBlock)
+        visit(node.body)
+        generator.exitBreakableScope()
+        generator.exitContinuableScope()
 
         if (node.incrementer != null)
             visit(node.incrementer)
 
-        jump(loopStart)
+        generator.add(Jump(testBlock ?: bodyBlock))
 
-        place(loopEnd)
+        generator.currentBlock = doneBlock
 
-        if (node.initScope != null && node.initScope.requiresEnv)
-            add(PopCurrentEnv, builder.exitScope(node.initScope))
+        if (node.initScope != null)
+            exitScope(node.initScope)
     }
 
     override fun visitForIn(node: ForInNode) {
@@ -184,66 +169,67 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitForOf(node: ForOfNode) {
-        visit(node.expression)
-        add(GetIterator)
-        val iter = nextFreeReg()
-        add(Star, iter)
-
-        val next = nextFreeReg()
-        add(LdaNamedProperty, iter, loadConstant("next"))
-        add(Star, next)
-        add(CallRuntime, InterpRuntime.ThrowIfIteratorNextNotCallable, next, 1)
-
-        // TODO: This isn't right, ForOfNode should have an optional scope for the initializer
-        if (node.scope.requiresEnv) {
-            add(PushEnv, builder.enterScope(node.scope))
-            node.scope.declaredVariables.forEachIndexed { index, variable ->
-                variable.slot = index
-            }
-        }
-
-        val loopStart = label()
-        val loopEnd = label()
-
-        place(loopStart)
-
-        // TODO: ???
+        TODO()
+//        visit(node.expression)
+//        add(GetIterator)
+//        val iter = generator.reserveRegister()
+//        add(Star, iter)
+//
+//        val next = generator.reserveRegister()
+//        add(LdaNamedProperty, iter, generator.intern("next"))
+//        add(Star, next)
+//        add(CallRuntime, InterpRuntime.ThrowIfIteratorNextNotCallable, next, 1)
+//
+//        // TODO: This isn't right, ForOfNode should have an optional scope for the initializer
+//        if (node.scope.requiresEnv) {
+//            add(PushEnv, builder.enterScope(node.scope))
+//            node.scope.declaredVariables.forEachIndexed { index, variable ->
+//                variable.slot = index
+//            }
+//        }
+//
+//        val loopStart = label()
+//        val loopEnd = label()
+//
+//        place(loopStart)
+//
+//        // TODO: ???
+////        if (node.scope.requiresEnv)
+////            add(PushEnv)
+//
+//        add(Call0, next, iter)
+//        val nextResult = generator.reserveRegister()
+//        add(Star, nextResult)
+//        add(CallRuntime, InterpRuntime.ThrowIfIteratorReturnNotObject, nextResult, 1)
+//        add(LdaNamedProperty, nextResult, generator.intern("done"))
+//        jump(loopEnd, JumpIfToBooleanTrue)
+//
+//        add(LdaNamedProperty, nextResult, generator.intern("value"))
+//
+//        when (node.decl) {
+//            is VariableDeclarationNode -> {
+//                val decl = node.decl.declarations[0]
+//                val variable = decl.identifier.variable
+//                storeEnvVariableRef(variable, node.scope)
+//            }
+//            is LexicalDeclarationNode -> {
+//                val decl = node.decl.declarations[0]
+//                val variable = decl.identifier.variable
+//                storeEnvVariableRef(variable, node.scope)
+//            }
+//            is BindingIdentifierNode -> {
+//                val variable = node.decl.variable
+//                storeEnvVariableRef(variable, node.scope)
+//            }
+//        }
+//
+//        visit(node.body)
+//
 //        if (node.scope.requiresEnv)
-//            add(PushEnv)
-
-        add(Call0, next, iter)
-        val nextResult = nextFreeReg()
-        add(Star, nextResult)
-        add(CallRuntime, InterpRuntime.ThrowIfIteratorReturnNotObject, nextResult, 1)
-        add(LdaNamedProperty, nextResult, loadConstant("done"))
-        jump(loopEnd, JumpIfToBooleanTrue)
-
-        add(LdaNamedProperty, nextResult, loadConstant("value"))
-
-        when (node.decl) {
-            is VariableDeclarationNode -> {
-                val decl = node.decl.declarations[0]
-                val variable = decl.identifier.variable
-                storeEnvVariableRef(variable, node.scope)
-            }
-            is LexicalDeclarationNode -> {
-                val decl = node.decl.declarations[0]
-                val variable = decl.identifier.variable
-                storeEnvVariableRef(variable, node.scope)
-            }
-            is BindingIdentifierNode -> {
-                val variable = node.decl.variable
-                storeEnvVariableRef(variable, node.scope)
-            }
-        }
-
-        visit(node.body)
-
-        if (node.scope.requiresEnv)
-            add(PopCurrentEnv, builder.exitScope(node.scope))
-
-        jump(loopStart)
-        place(loopEnd)
+//            add(PopCurrentEnv, builder.exitScope(node.scope))
+//
+//        jump(loopStart)
+//        place(loopEnd)
     }
 
     override fun visitForAwaitOf(node: ForAwaitOfNode) {
@@ -256,156 +242,33 @@ class IRTransformer : ASTVisitor {
 
     override fun visitThrowStatement(node: ThrowStatementNode) {
         visit(node.expr)
-        add(Throw)
+        generator.add(Throw)
     }
 
     override fun visitTryStatement(node: TryStatementNode) {
-        val (tryStart, tryEnd) = label() to label()
-        val (catchStart, catchEnd) = if (node.catchNode != null) {
-            label() to label()
-        } else null to null
-        val finallyStart = if (node.finallyBlock != null) label() else null
-        val blockEnd = label()
-
-        val block = TryCatchBlock(tryStart, tryEnd, catchStart, finallyStart, node.finallyBlock)
-        builder.pushBlock(block)
-
-        place(tryStart)
-        visit(node.tryBlock)
-        place(tryEnd)
-
-        if (node.finallyBlock != null) {
-            visit(node.finallyBlock)
-            jump(blockEnd)
-        }
-
-        if (node.catchNode != null) {
-            if (finallyStart == null)
-                jump(blockEnd)
-
-            place(catchStart!!)
-            var mustPopEnv = false
-
-            if (node.catchNode.catchParameter != null) {
-                if (node.catchNode.scope.requiresEnv) {
-                    add(PushEnv, builder.enterScope(node.catchNode.scope))
-                    node.catchNode.scope.declaredVariables.forEachIndexed { index, variable ->
-                        variable.slot = index
-                    }
-                    mustPopEnv = true
-                }
-
-                val param = node.catchNode.catchParameter
-                storeEnvVariableRef(param.variable, node.catchNode.scope)
-            }
-
-            visit(node.catchNode.block)
-            place(catchEnd!!)
-
-            if (mustPopEnv)
-                add(PopCurrentEnv, builder.exitScope(node.catchNode.scope))
-
-            if (node.finallyBlock != null) {
-                visit(node.finallyBlock)
-                jump(blockEnd)
-            }
-
-            val handlers = block.getHandlersForRegion(
-                IRHandler(tryStart, tryEnd.shift(-1), catchStart, isCatch = true, builder.scopeStack.last()),
-            )
-            builder.handlers.addAll(handlers)
-        }
-
-        if (node.finallyBlock != null) {
-            // Throw variant of finally block
-            val exceptionReg = nextFreeReg()
-
-            place(finallyStart!!)
-            add(Star, exceptionReg)
-            visit(node.finallyBlock)
-            add(Ldar, exceptionReg)
-            add(Throw)
-            markRegFree(exceptionReg)
-
-            if (node.catchNode != null) {
-                builder.addHandler(catchStart!!, catchEnd!!.shift(-1), finallyStart, isCatch = false)
-            } else {
-                val handlers = block.getHandlersForRegion(
-                    IRHandler(tryStart, tryEnd, finallyStart, isCatch = false, builder.scopeStack.last()),
-                )
-                builder.handlers.addAll(handlers)
-            }
-        }
-
-        place(blockEnd)
-
-        builder.popBlock()
+        TODO()
     }
 
     override fun visitBreakStatement(node: BreakStatementNode) {
         if (node.label != null)
             TODO()
 
-        val (targetIndex, targetLabel) = getLoopFlowTarget(true)
-        visitScopedFinallyBlocks(targetIndex) {
-            builder.goto(targetLabel, builder.blocks[targetIndex].scope)
-        }
+        generator.add(Jump(generator.breakableScope))
+        generator.currentBlock = generator.makeBlock()
     }
 
     override fun visitContinueStatement(node: ContinueStatementNode) {
         if (node.label != null)
             TODO()
 
-        val (targetIndex, targetLabel) = getLoopFlowTarget(false)
-        visitScopedFinallyBlocks(targetIndex) {
-            builder.goto(targetLabel, builder.blocks[targetIndex].scope)
-        }
+        generator.add(Jump(generator.continuableScope))
+        generator.currentBlock = generator.makeBlock()
     }
 
     override fun visitReturnStatement(node: ReturnStatementNode) {
-        node.expression?.also(::visit)
-        val resultReg = nextFreeReg()
-        add(Star, resultReg)
-
-        visitScopedFinallyBlocks {
-            add(Ldar, resultReg)
-            add(Return)
-        }
-    }
-
-    private fun getLoopFlowTarget(isBreak: Boolean): Pair<Int, Label> {
-        val targetIndex = builder.blocks.indexOfLast {
-            it is LoopBlock || (isBreak && it is SwitchBlock)
-        }
-        expect(targetIndex >= 0)
-        val targetBlock = builder.blocks[targetIndex]
-        return targetIndex to if (isBreak) {
-            if (targetBlock is SwitchBlock) {
-                targetBlock.breakTarget
-            } else (targetBlock as LoopBlock).breakTarget
-        } else (targetBlock as LoopBlock).continueTarget
-    }
-
-    private fun visitScopedFinallyBlocks(blockStartIndex: Int = 0, cleanupBlock: () -> Unit) {
-        val tryCatchBlocks = builder.blocks.subList(blockStartIndex, builder.blocks.size)
-            .filterIsInstance<TryCatchBlock>()
-            .asReversed()
-
-        val blockStartLabels = mutableMapOf<TryCatchBlock, Label>()
-
-        for (block in tryCatchBlocks) {
-            if (block.finallyNode == null)
-                continue
-            blockStartLabels[block] = place(label())
-            visit(block.finallyNode)
-        }
-
-        cleanupBlock()
-
-        val end = place(label()).shift(-1)
-
-        for ((block, start) in blockStartLabels)
-            block.excludedRegions.add(start to end)
+        if (node.expression != null)
+            visit(node.expression)
+        generator.add(Return)
     }
 
     override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
@@ -422,14 +285,14 @@ class IRTransformer : ASTVisitor {
         if (declaration.initializer != null) {
             visit(declaration.initializer)
         } else {
-            add(LdaUndefined)
+            generator.add(LdaUndefined)
         }
 
         storeVariable(variable, declaration.scope)
     }
 
     override fun visitDebuggerStatement() {
-        add(DebugBreakpoint)
+        generator.add(DebugBreakpoint)
     }
 
     override fun visitImportDeclaration(node: ImportDeclarationNode) {
@@ -454,7 +317,7 @@ class IRTransformer : ASTVisitor {
         val useStart = node.sourceStart
         if (useStart.index < declarationStart.index && variable.type != Variable.Type.Var) {
             // We need to check if the variable has been initialized
-            add(ThrowUseBeforeInitIfEmpty, loadConstant(node.identifierName))
+            generator.add(ThrowUseBeforeInitIfEmpty(generator.intern(node.identifierName)))
         }
     }
 
@@ -519,7 +382,7 @@ class IRTransformer : ASTVisitor {
         val lexNames = scope.declaredVariables.filter { it.type != Variable.Type.Var }.map { it.name }
 
         val array = DeclarationsArray(declaredVarNames.toList(), lexNames, declaredFunctionNames.toList())
-        add(DeclareGlobals, loadConstant(array))
+        generator.add(DeclareGlobals(generator.intern(array)))
 
         commonInstantiation(varDecls, declaredFunctionNames, functionsToInitialize)
 
@@ -565,9 +428,9 @@ class IRTransformer : ASTVisitor {
 
         if (argumentsObjectNeeded && bodyScope.possiblyReferencesArguments) {
             if (isStrict || !simpleParameterList) {
-                add(CreateUnmappedArgumentsObject)
+                generator.add(CreateUnmappedArgumentsObject)
             } else {
-                add(CreateMappedArgumentsObject)
+                generator.add(CreateMappedArgumentsObject)
             }
         }
 
@@ -577,19 +440,14 @@ class IRTransformer : ASTVisitor {
             val register = index + 1
 
             if (param.initializer != null) {
-                // Check if the parameter is undefined
-                val skipDefault = label()
-
-                add(Ldar, register)
-                jump(skipDefault, JumpIfNotUndefined)
-
-                visit(param.initializer)
-                add(StaCurrentEnv, param.variable.slot)
-
-                place(skipDefault)
+                generator.add(Ldar(register))
+                generator.ifHelper(::JumpIfUndefined) {
+                    visit(param.initializer)
+                }
+                generator.add(StaCurrentEnv(param.variable.slot))
             } else {
-                add(Ldar, register)
-                add(StaCurrentEnv, param.variable.slot)
+                generator.add(Ldar(register))
+                generator.add(StaCurrentEnv(param.variable.slot))
             }
         }
 
@@ -623,7 +481,7 @@ class IRTransformer : ASTVisitor {
                 instantiatedVarNames.add(variable.name)
 
                 if (variable.possiblyUsedBeforeDecl) {
-                    add(LdaUndefined)
+                    generator.add(LdaUndefined)
                     storeVariable(variable, varDecl.scope)
                 }
             }
@@ -653,8 +511,8 @@ class IRTransformer : ASTVisitor {
         isStrict: Boolean,
         isLexical: Boolean,
     ) {
-        val prevBuilder = builder
-        builder = FunctionBuilder(parameters.size + 1)
+        val prevGenerator = generator
+        generator = Generator()
 
         functionDeclarationInstantiation(
             parameters,
@@ -670,27 +528,23 @@ class IRTransformer : ASTVisitor {
                 super.visitBlock(body)
             } else visit(body)
 
-            if (builder.opcodes.lastOrNull()?.type != Return) {
-                add(LdaUndefined)
-                add(Return)
+            if (generator.currentBlock.lastOrNull() !is Return) {
+                generator.add(LdaUndefined)
+                generator.add(Return)
             }
         }
 
         val info = FunctionInfo(
             name,
-            IrOpcodeList(builder.opcodes).also(PeepholeOptimizer::optimize),
-            builder.constantPool.toTypedArray(),
-            builder.handlers.map(IRHandler::toHandler).toTypedArray(),
-            builder.feedbackVector,
-            builder.registerCount,
+            generator.finish(),
             parameters.size + 1,
             parameterScope.numSlots,
             isStrict,
-            isTopLevelScript = false,
+            isTopLevelScript = false
         )
 
-        builder = prevBuilder
-        add(CreateClosure, loadConstant(info))
+        generator = prevGenerator
+        generator.add(CreateClosure(generator.intern(info)))
     }
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {
@@ -702,87 +556,83 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitBinaryExpression(node: BinaryExpressionNode) {
-        val type = when (node.operator) {
-            BinaryOperator.Add -> Add
-            BinaryOperator.Sub -> Sub
-            BinaryOperator.Mul -> Mul
-            BinaryOperator.Div -> Div
-            BinaryOperator.Exp -> Exp
-            BinaryOperator.Mod -> Mod
+        val op = when (node.operator) {
+            BinaryOperator.Add -> ::Add
+            BinaryOperator.Sub -> ::Sub
+            BinaryOperator.Mul -> ::Mul
+            BinaryOperator.Div -> ::Div
+            BinaryOperator.Exp -> ::Exp
+            BinaryOperator.Mod -> ::Mod
+            BinaryOperator.BitwiseAnd -> ::BitwiseAnd
+            BinaryOperator.BitwiseOr -> ::BitwiseOr
+            BinaryOperator.BitwiseXor -> ::BitwiseXor
+            BinaryOperator.Shl -> ::ShiftLeft
+            BinaryOperator.Shr -> ::ShiftRight
+            BinaryOperator.UShr -> ::ShiftRightUnsigned
+            BinaryOperator.StrictEquals -> ::TestEqualStrict
+            BinaryOperator.StrictNotEquals -> ::TestNotEqualStrict
+            BinaryOperator.SloppyEquals -> ::TestEqual
+            BinaryOperator.SloppyNotEquals -> ::TestNotEqual
+            BinaryOperator.LessThan -> ::TestLessThan
+            BinaryOperator.LessThanEquals -> ::TestLessThanOrEqual
+            BinaryOperator.GreaterThan -> ::TestGreaterThan
+            BinaryOperator.GreaterThanEquals -> ::TestGreaterThanOrEqual
+            BinaryOperator.Instanceof -> ::TestInstanceOf
+            BinaryOperator.In -> ::TestIn
             BinaryOperator.And -> {
                 visit(node.lhs)
-                add(ToBoolean)
-                val skip = label()
-                jump(skip, JumpIfFalse)
-                visit(node.rhs)
-                place(skip)
+                generator.add(ToBoolean)
+                generator.ifHelper(::JumpIfTrue) {
+                    visit(node.rhs)
+                }
                 return
             }
             BinaryOperator.Or -> {
                 visit(node.lhs)
-                val skip = label()
-                jump(skip, JumpIfToBooleanTrue)
-                visit(node.rhs)
-                place(skip)
+                generator.add(ToBoolean)
+                generator.ifHelper(::JumpIfTrue, negateOp = true) {
+                    visit(node.rhs)
+                }
                 return
             }
             BinaryOperator.Coalesce -> {
                 visit(node.lhs)
-                val skip = label()
-                jump(skip, JumpIfNotNullish)
-                visit(node.rhs)
-                place(skip)
+                generator.ifHelper(::JumpIfNullish) {
+                    visit(node.rhs)
+                }
                 return
             }
-            BinaryOperator.BitwiseAnd -> BitwiseAnd
-            BinaryOperator.BitwiseOr -> BitwiseOr
-            BinaryOperator.BitwiseXor -> BitwiseXor
-            BinaryOperator.Shl -> ShiftLeft
-            BinaryOperator.Shr -> ShiftRight
-            BinaryOperator.UShr -> ShiftRightUnsigned
-            BinaryOperator.StrictEquals -> TestEqualStrict
-            BinaryOperator.StrictNotEquals -> TestNotEqualStrict
-            BinaryOperator.SloppyEquals -> TestEqual
-            BinaryOperator.SloppyNotEquals -> TestNotEqual
-            BinaryOperator.LessThan -> TestLessThan
-            BinaryOperator.LessThanEquals -> TestLessThanOrEqual
-            BinaryOperator.GreaterThan -> TestGreaterThan
-            BinaryOperator.GreaterThanEquals -> TestGreaterThanOrEqual
-            BinaryOperator.Instanceof -> TestInstanceOf
-            BinaryOperator.In -> TestIn
         }
 
         visit(node.lhs)
-        val reg = nextFreeReg()
-        add(Star, reg)
+
+        val lhsReg = generator.reserveRegister()
+        generator.add(Star(lhsReg))
         visit(node.rhs)
-        add(type, reg)
-        markRegFree(reg)
+        generator.add(op(lhsReg))
     }
 
     override fun visitUnaryExpression(node: UnaryExpressionNode) {
         if (node.op == UnaryOperator.Delete) {
             when (val expr = node.expression) {
-                is IdentifierReferenceNode -> add(LdaFalse)
-                !is MemberExpressionNode -> add(LdaTrue)
+                is IdentifierReferenceNode -> generator.add(LdaFalse)
+                !is MemberExpressionNode -> generator.add(LdaTrue)
                 else -> if (expr.type == MemberExpressionNode.Type.Tagged) {
-                    add(LdaTrue)
+                    generator.add(LdaTrue)
                 } else {
                     visit(expr.lhs)
-                    val target = nextFreeReg()
-                    add(Star, target)
+                    val target = generator.reserveRegister()
+                    generator.add(Star(target))
 
                     if (expr.type == MemberExpressionNode.Type.Computed) {
                         visit(expr.rhs)
                     } else {
-                        add(LdaConstant, loadConstant((expr.rhs as IdentifierNode).identifierName))
+                        val cpIndex = generator.intern((expr.rhs as IdentifierNode).identifierName)
+                        generator.add(LdaConstant(cpIndex))
                     }
 
-                    if (node.scope.isStrict) {
-                        add(DeletePropertyStrict, target)
-                    } else add(DeletePropertySloppy, target)
-
-                    markRegFree(target)
+                    val deleteOp = if (node.scope.isStrict) ::DeletePropertyStrict else ::DeletePropertySloppy
+                    generator.add(deleteOp(target))
                 }
             }
 
@@ -792,12 +642,12 @@ class IRTransformer : ASTVisitor {
         visit(node.expression)
 
         when (node.op) {
-            UnaryOperator.Void -> add(LdaUndefined)
-            UnaryOperator.Typeof -> add(TypeOf)
+            UnaryOperator.Void -> generator.add(LdaUndefined)
+            UnaryOperator.Typeof -> generator.add(TypeOf)
             UnaryOperator.Plus -> TODO()
-            UnaryOperator.Minus -> add(Negate)
-            UnaryOperator.BitwiseNot -> add(BitwiseNot)
-            UnaryOperator.Not -> add(ToBooleanLogicalNot)
+            UnaryOperator.Minus -> generator.add(Negate)
+            UnaryOperator.BitwiseNot -> generator.add(BitwiseNot)
+            UnaryOperator.Not -> generator.add(ToBooleanLogicalNot)
             else -> unreachable()
         }
     }
@@ -807,57 +657,55 @@ class IRTransformer : ASTVisitor {
 
         fun postfixGuard(action: () -> Unit) {
             val originalValue = if (node.isPostfix) {
-                nextFreeReg().also { add(Star, it) }
+                generator.reserveRegister().also {
+                    generator.add(Star(it))
+                }
             } else -1
 
             action()
 
-            if (node.isPostfix) {
-                add(Ldar, originalValue)
-                markRegFree(originalValue)
-            }
+            if (node.isPostfix)
+                generator.add(Ldar(originalValue))
         }
 
         when (val target = node.target) {
             is IdentifierReferenceNode -> {
                 visit(target)
-                add(ToNumeric)
+                generator.add(ToNumeric)
 
                 postfixGuard {
-                    add(op)
+                    generator.add(op)
                     storeVariable(target.targetVar, target.scope)
                 }
             }
             is MemberExpressionNode -> {
-                val objectReg = nextFreeReg()
+                val objectReg = generator.reserveRegister()
                 visit(target.lhs)
-                add(Star, objectReg)
+                generator.add(Star(objectReg))
 
                 when (target.type) {
                     MemberExpressionNode.Type.Computed -> {
-                        val keyReg = nextFreeReg()
+                        val keyReg = generator.reserveRegister()
                         visit(target.rhs)
-                        add(Star, keyReg)
-                        add(LdaKeyedProperty, objectReg)
+                        generator.add(Star(keyReg))
+                        generator.add(LdaKeyedProperty(objectReg))
                         postfixGuard {
-                            add(ToNumeric)
-                            add(op)
-                            add(StaKeyedProperty, objectReg, keyReg)
+                            generator.add(ToNumeric)
+                            generator.add(op)
+                            generator.add(StaKeyedProperty(objectReg, keyReg))
                         }
-                        markRegFree(keyReg)
                     }
                     MemberExpressionNode.Type.NonComputed -> {
-                        add(LdaNamedProperty, objectReg, loadConstant((target.rhs as IdentifierNode).identifierName))
+                        val nameIndex = generator.intern((target.rhs as IdentifierNode).identifierName)
+                        generator.add(LdaNamedProperty(objectReg, nameIndex))
                         postfixGuard {
-                            add(ToNumeric)
-                            add(op)
-                            add(StaNamedProperty, objectReg, loadConstant(target.rhs.identifierName))
+                            generator.add(ToNumeric)
+                            generator.add(op)
+                            generator.add(StaNamedProperty(objectReg, nameIndex))
                         }
                     }
                     MemberExpressionNode.Type.Tagged -> TODO()
                 }
-
-                markRegFree(objectReg)
             }
             else -> TODO()
         }
@@ -889,27 +737,25 @@ class IRTransformer : ASTVisitor {
                 return
             }
             is MemberExpressionNode -> {
-                val objectReg = nextFreeReg()
+                val objectReg = generator.reserveRegister()
                 visit(lhs.lhs)
-                add(Star, objectReg)
+                generator.add(Star(objectReg))
 
                 when (lhs.type) {
                     MemberExpressionNode.Type.Computed -> {
-                        val keyReg = nextFreeReg()
+                        val keyReg = generator.reserveRegister()
                         visit(lhs.rhs)
-                        add(Star, keyReg)
+                        generator.add(Star(keyReg))
                         loadRhsIntoAcc()
-                        add(StaKeyedProperty, objectReg, keyReg)
-                        markRegFree(keyReg)
+                        generator.add(StaKeyedProperty(objectReg, keyReg))
                     }
                     MemberExpressionNode.Type.NonComputed -> {
                         loadRhsIntoAcc()
-                        add(StaNamedProperty, objectReg, loadConstant((lhs.rhs as IdentifierNode).identifierName))
+                        val nameIndex = generator.intern((lhs.rhs as IdentifierNode).identifierName)
+                        generator.add(StaNamedProperty(objectReg, nameIndex))
                     }
                     MemberExpressionNode.Type.Tagged -> TODO()
                 }
-
-                markRegFree(objectReg)
             }
             else -> TODO()
         }
@@ -918,42 +764,38 @@ class IRTransformer : ASTVisitor {
     private fun loadVariable(variable: Variable, currentScope: Scope) {
         if (variable.mode == Variable.Mode.Global) {
             if (variable.name == "undefined") {
-                add(LdaUndefined)
-            } else add(LdaGlobal, loadConstant(variable.name))
+                generator.add(LdaUndefined)
+            } else generator.add(LdaGlobal(generator.intern(variable.name)))
         } else loadEnvVariableRef(variable, currentScope)
     }
 
     private fun storeVariable(variable: Variable, currentScope: Scope) {
         if (variable.mode == Variable.Mode.Global) {
-            add(StaGlobal, loadConstant(variable.name))
+            generator.add(StaGlobal(generator.intern(variable.name)))
         } else storeEnvVariableRef(variable, currentScope)
     }
 
     private fun loadEnvVariableRef(variable: Variable, currentScope: Scope) {
-
-
-
-
         val distance = currentScope.envDistanceFrom(variable.source.scope)
         if (distance == 0) {
-            add(LdaCurrentEnv, variable.slot)
+            generator.add(LdaCurrentEnv(variable.slot))
         } else {
-            add(LdaEnv, variable.slot, distance)
+            generator.add(LdaEnv(variable.slot, distance))
         }
     }
 
     private fun storeEnvVariableRef(variable: Variable, currentScope: Scope) {
         val distance = currentScope.distanceFrom(variable.source.scope)
         if (distance == 0) {
-            add(StaCurrentEnv, variable.slot)
+            generator.add(StaCurrentEnv(variable.slot))
         } else {
-            add(StaEnv, variable.slot, distance)
+            generator.add(StaEnv(variable.slot, distance))
         }
     }
 
     private fun checkForConstReassignment(node: VariableRefNode): Boolean {
         return if (node.targetVar.type == Variable.Type.Const) {
-            add(ThrowConstReassignment, loadConstant(node.targetVar.name))
+            generator.add(ThrowConstReassignment(generator.intern(node.targetVar.name)))
             true
         } else false
     }
@@ -974,46 +816,31 @@ class IRTransformer : ASTVisitor {
 
     override fun visitConditionalExpression(node: ConditionalExpressionNode) {
         visit(node.predicate)
-
-        val ifFalseLabel = label()
-        val endLabel = label()
-
-        jump(ifFalseLabel, JumpIfToBooleanFalse)
-        visit(node.ifTrue)
-        jump(endLabel)
-        place(ifFalseLabel)
-        visit(node.ifFalse)
-        place(endLabel)
+        generator.add(ToBoolean)
+        generator.ifElseHelper(::JumpIfTrue, {
+            visit(node.ifTrue)
+        }, {
+            visit(node.ifFalse)
+        })
     }
 
     override fun visitMemberExpression(node: MemberExpressionNode) {
         // TODO: Deal with assigning to a MemberExpression
 
-        val objectReg = nextFreeReg()
+        val objectReg = generator.reserveRegister()
         visit(node.lhs)
-        add(Star, objectReg)
+        generator.add(Star(objectReg))
 
         when (node.type) {
             MemberExpressionNode.Type.Computed -> {
                 visit(node.rhs)
-                add(LdaKeyedProperty, objectReg)
+                generator.add(LdaKeyedProperty(objectReg))
             }
             MemberExpressionNode.Type.NonComputed -> {
-                val cpIndex = loadConstant((node.rhs as IdentifierNode).identifierName)
-                add(LdaNamedProperty, objectReg, cpIndex)
+                val cpIndex = generator.intern((node.rhs as IdentifierNode).identifierName)
+                generator.add(LdaNamedProperty(objectReg, cpIndex))
             }
             MemberExpressionNode.Type.Tagged -> TODO()
-        }
-
-        markRegFree(objectReg)
-    }
-
-    private fun argumentsMode(arguments: ArgumentList): ArgumentsMode {
-        return when {
-            arguments.isEmpty() -> ArgumentsMode.Normal
-            arguments.last().isSpread && arguments.dropLast(1).none { it.isSpread } -> ArgumentsMode.LastSpread
-            arguments.any { it.isSpread } -> ArgumentsMode.Spread
-            else -> ArgumentsMode.Normal
         }
     }
 
@@ -1022,166 +849,154 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitCallExpression(node: CallExpressionNode) {
-        val args = node.arguments
-        val callableReg = nextFreeReg()
-        val argRegCount = requiredRegisters(args)
-        val receiverReg = nextFreeRegBlock(argRegCount + 1)
+        val callableReg = generator.reserveRegister()
+        val receiverReg = generator.reserveRegister()
 
         when (val target = node.target) {
             is IdentifierReferenceNode -> {
                 visit(target)
-                add(Star, callableReg)
-                add(Mov, receiverReg(), receiverReg)
+                generator.add(Star(callableReg))
+                generator.add(LdaUndefined)
+                generator.add(Star(receiverReg))
             }
             is MemberExpressionNode -> {
                 visit(target.lhs)
-                add(Star, receiverReg)
+                generator.add(Star(receiverReg))
 
                 when (target.type) {
                     MemberExpressionNode.Type.Computed -> {
                         visit(target.rhs)
-                        add(LdaKeyedProperty, receiverReg)
+                        generator.add(LdaKeyedProperty(receiverReg))
                     }
                     MemberExpressionNode.Type.NonComputed -> {
-                        val cpIndex = loadConstant((target.rhs as IdentifierNode).identifierName)
-                        add(LdaNamedProperty, receiverReg, cpIndex)
+                        val cpIndex = generator.intern((target.rhs as IdentifierNode).identifierName)
+                        generator.add(LdaNamedProperty(receiverReg, cpIndex))
                     }
                     MemberExpressionNode.Type.Tagged -> TODO()
                 }
 
-                add(Star, callableReg)
+                generator.add(Star(callableReg))
             }
         }
 
-        if (args.isNotEmpty()) {
-            val (registers, mode) = loadArguments(args, receiverReg + 1)
-            when (mode) {
-                ArgumentsMode.Normal -> add(Call, callableReg, RegisterRange(receiverReg, registers.count + 1))
-                ArgumentsMode.LastSpread -> add(CallLastSpread, callableReg, RegisterRange(receiverReg, registers.count + 1))
-                ArgumentsMode.Spread -> add(CallFromArray, callableReg, RegisterRange(receiverReg, 2))
-            }
-            registers.markFree()
-        } else add(Call0, callableReg, receiverReg)
+        val (argumentsMode, argumentRegisters) = loadArguments(node.arguments)
 
-        markRegFree(callableReg)
-        for (i in 0..argRegCount)
-            markRegFree(receiverReg + i)
+        if (argumentsMode == ArgumentsMode.Normal) {
+            generator.add(Call(callableReg, receiverReg, argumentRegisters))
+        } else {
+            expect(argumentRegisters.size == 1)
+            generator.add(CallWithArgArray(callableReg, receiverReg, argumentRegisters[0]))
+        }
     }
 
     override fun visitNewExpression(node: NewExpressionNode) {
-        val target = nextFreeReg()
+        val target = generator.reserveRegister()
         visit(node.target)
-        add(Star, target)
+        generator.add(Star(target))
 
-        val argumentReg = nextFreeRegBlock(requiredRegisters(node.arguments))
+        val (argumentsMode, argumentRegisters) = loadArguments(node.arguments)
 
-        val (arguments, mode) = if (node.arguments.isNotEmpty()) {
-            loadArguments(node.arguments, argumentReg)
-        } else null to null
-
-        add(Ldar, target)
-
-        when (mode) {
-            ArgumentsMode.Spread -> add(ConstructFromArray, target, arguments!!.start)
-            ArgumentsMode.LastSpread -> add(ConstructLastSpread, target, arguments!!)
-            ArgumentsMode.Normal -> add(Construct, target, arguments!!)
-            null -> add(Construct0, target)
-        }
-
-        markRegFree(target)
-        arguments?.markFree()
-    }
-
-    private fun loadArguments(arguments: ArgumentList, firstReg: Int): Pair<RegisterRange, ArgumentsMode> {
-        val mode = argumentsMode(arguments)
-
-        return if (mode == ArgumentsMode.Spread) {
-            loadArgumentsWithSpread(arguments, firstReg) to mode
+        // TODO: Proper new.target
+        if (argumentsMode == ArgumentsMode.Normal) {
+            generator.add(Construct(target, target, argumentRegisters))
         } else {
-            for ((index, argument) in arguments.withIndex()) {
-                visit(argument.expression)
-                add(Star, firstReg + index)
-            }
-
-            RegisterRange(firstReg, arguments.size).also {
-                it.markUsed()
-            } to mode
+            expect(argumentRegisters.size == 1)
+            generator.add(ConstructWithArgArray(target, target, argumentRegisters[0]))
         }
     }
 
     enum class ArgumentsMode {
         Normal,
-        LastSpread,
         Spread,
     }
 
-    private fun iterateValues(action: () -> Unit) {
-        add(GetIterator)
-        val iter = nextFreeReg()
-        add(Star, iter)
-
-        val next = nextFreeReg()
-        add(LdaNamedProperty, iter, loadConstant("next"))
-        add(Star, next)
-        add(CallRuntime, InterpRuntime.ThrowIfIteratorNextNotCallable, next, 1)
-
-        val done = label()
-        val head = place(label())
-
-        add(Call0, next, iter)
-        val nextResult = nextFreeReg()
-        add(Star, nextResult)
-        add(CallRuntime, InterpRuntime.ThrowIfIteratorReturnNotObject, nextResult, 1)
-        add(LdaNamedProperty, nextResult, loadConstant("done"))
-        jump(done, JumpIfToBooleanTrue)
-
-        add(LdaNamedProperty, nextResult, loadConstant("value"))
-        action()
-        jump(head)
-
-        place(done)
-
-        markRegFree(iter)
-        markRegFree(next)
+    private fun argumentsMode(arguments: ArgumentList): ArgumentsMode {
+        return if (arguments.any { it.isSpread }) {
+            ArgumentsMode.Spread
+        } else ArgumentsMode.Normal
     }
 
-    private fun loadArgumentsWithSpread(arguments: ArgumentList, arrayReg: Int): RegisterRange {
-        add(CreateArrayLiteral)
-        add(Star, arrayReg)
+    private fun loadArguments(arguments: ArgumentList): Pair<ArgumentsMode, List<Register>> {
+        val mode = argumentsMode(arguments)
+        val registers = mutableListOf<Register>()
+
+        return if (mode == ArgumentsMode.Spread) {
+            return ArgumentsMode.Spread to listOf(loadArgumentsWithSpread(arguments))
+        } else {
+            for (argument in arguments) {
+                visit(argument.expression)
+                val argReg = generator.reserveRegister()
+                registers.add(argReg)
+                generator.add(Star(argReg))
+            }
+
+            ArgumentsMode.Normal to registers
+        }
+    }
+
+    private fun loadArgumentsWithSpread(arguments: ArgumentList): Register {
+        val arrayReg = generator.reserveRegister()
+        generator.add(CreateArray)
+        generator.add(Star(arrayReg))
         var indexReg = -1
         var indexUsable = true
 
         for ((index, argument) in arguments.withIndex()) {
             if (argument.isSpread) {
                 indexUsable = false
-                indexReg = nextFreeReg()
-                add(LdaInt, index)
-                add(Star, indexReg)
+                indexReg = generator.reserveRegister()
+                generator.add(LdaInt(index))
+                generator.add(Star(indexReg))
 
                 visit(argument.expression)
                 iterateValues {
-                    add(StaArrayLiteral, arrayReg, indexReg)
-                    add(Ldar, indexReg)
-                    add(Inc)
-                    add(Star, indexReg)
+                    generator.add(StaArray(arrayReg, indexReg))
+                    generator.add(Ldar(indexReg))
+                    generator.add(Inc)
+                    generator.add(Star(indexReg))
                 }
             } else {
                 visit(argument.expression)
                 if (indexUsable) {
-                    add(StaArrayLiteralIndex, arrayReg, index)
+                    generator.add(StaArrayIndex(arrayReg, index))
                 } else {
-                    add(StaArrayLiteral, arrayReg, indexReg)
-                    add(Ldar, indexReg)
-                    add(Inc)
-                    add(Star, indexReg)
+                    generator.add(StaArray(arrayReg, indexReg))
+                    generator.add(Ldar(indexReg))
+                    generator.add(Inc)
+                    generator.add(Star(indexReg))
                 }
             }
         }
 
-        markRegFree(indexReg)
-        return RegisterRange(arrayReg, 1).also {
-            it.markUsed()
-        }
+        return arrayReg
+    }
+
+    private fun iterateValues(action: () -> Unit) {
+        generator.add(GetIterator)
+        val iteratorReg = generator.reserveRegister()
+        generator.add(Star(iteratorReg))
+
+        val headBlock = generator.makeBlock()
+        val isExhaustedBlock = generator.makeBlock()
+        val isNotExhaustedBlock = generator.makeBlock()
+
+        generator.add(Jump(headBlock))
+
+        generator.currentBlock = headBlock
+        val iteratorResultReg = generator.reserveRegister()
+        generator.add(Ldar(iteratorReg))
+        generator.add(IteratorNext)
+        generator.add(Star(iteratorResultReg))
+        generator.add(IteratorResultDone)
+        generator.add(JumpIfTrue(isExhaustedBlock, isNotExhaustedBlock))
+
+        generator.currentBlock = isNotExhaustedBlock
+        generator.add(Ldar(iteratorResultReg))
+        generator.add(IteratorResultValue)
+        action()
+        generator.add(Jump(headBlock))
+
+        generator.currentBlock = isExhaustedBlock
     }
 
     override fun visitOptionalExpression(node: OptionalExpressionNode) {
@@ -1209,25 +1024,25 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitTemplateLiteral(node: TemplateLiteralNode) {
-        val templateLiteral = nextFreeReg()
+        val templateLiteral = generator.reserveRegister()
 
         for ((index, part) in node.parts.withIndex()) {
             if (part is StringLiteralNode) {
-                val reg = loadConstant(part.value)
-                add(LdaConstant, reg)
+                val reg = generator.intern(part.value)
+                generator.add(LdaConstant(reg))
             } else {
                 visit(part)
-                add(ToString)
+                generator.add(ToString)
             }
 
             if (index != 0) {
-                add(StringAppend, templateLiteral)
+                generator.add(StringAppend(templateLiteral))
             } else {
-                add(Star, templateLiteral)
+                generator.add(Star(templateLiteral))
             }
         }
 
-        add(Ldar, templateLiteral)
+        generator.add(Ldar(templateLiteral))
     }
 
     override fun visitRegExpLiteral(node: RegExpLiteralNode) {
@@ -1243,27 +1058,26 @@ class IRTransformer : ASTVisitor {
     }
 
     override fun visitArrayLiteral(node: ArrayLiteralNode) {
-        add(CreateArrayLiteral)
-        val arrayReg = nextFreeReg()
-        add(Star, arrayReg)
+        generator.add(CreateArray)
+        val arrayReg = generator.reserveRegister()
+        generator.add(Star(arrayReg))
         for ((index, element) in node.elements.withIndex()) {
             when (element.type) {
                 ArrayElementNode.Type.Elision -> continue
                 ArrayElementNode.Type.Spread -> TODO()
                 ArrayElementNode.Type.Normal -> {
                     visit(element.expression!!)
-                    add(StaArrayLiteralIndex, arrayReg, index)
+                    generator.add(StaArrayIndex(arrayReg, index))
                 }
             }
         }
-        add(Ldar, arrayReg)
-        markRegFree(arrayReg)
+        generator.add(Ldar(arrayReg))
     }
 
     override fun visitObjectLiteral(node: ObjectLiteralNode) {
-        add(CreateObjectLiteral)
-        val objectReg = nextFreeReg()
-        add(Star, objectReg)
+        generator.add(CreateObject)
+        val objectReg = generator.reserveRegister()
+        generator.add(Star(objectReg))
 
         for (property in node.list) {
             when (property) {
@@ -1285,31 +1099,32 @@ class IRTransformer : ASTVisitor {
                     }
 
                     when (method.type) {
-                        MethodDefinitionNode.Type.Normal -> storeObjectProperty(objectReg, method.propName, ::makeFunction)
+                        MethodDefinitionNode.Type.Normal -> storeObjectProperty(
+                            objectReg,
+                            method.propName,
+                            ::makeFunction
+                        )
                         MethodDefinitionNode.Type.Getter, MethodDefinitionNode.Type.Setter -> {
-                            val propertyReg = nextFreeReg()
-                            val methodReg = nextFreeReg()
+                            val propertyReg = generator.reserveRegister()
+                            val methodReg = generator.reserveRegister()
                             val op = if (method.type == MethodDefinitionNode.Type.Getter) {
-                                DefineGetterProperty
-                            } else DefineSetterProperty
+                                ::DefineGetterProperty
+                            } else ::DefineSetterProperty
 
                             visitPropertyName(method.propName)
-                            add(Star, propertyReg)
+                            generator.add(Star(propertyReg))
 
                             makeFunction()
-                            add(Star, methodReg)
+                            generator.add(Star(methodReg))
 
-                            add(op, objectReg, propertyReg, methodReg)
-
-                            markRegFree(propertyReg)
-                            markRegFree(methodReg)
+                            generator.add(op(objectReg, propertyReg, methodReg))
                         }
                         else -> TODO()
                     }
                 }
                 is ShorthandProperty -> {
                     visit(property.key)
-                    add(StaNamedProperty, objectReg, loadConstant(property.key.identifierName))
+                    generator.add(StaNamedProperty(objectReg, generator.intern(property.key.identifierName)))
                 }
                 is KeyValueProperty -> {
                     storeObjectProperty(objectReg, property.key) {
@@ -1319,13 +1134,13 @@ class IRTransformer : ASTVisitor {
             }
         }
 
-        add(Ldar, objectReg)
-        markRegFree(objectReg)
+        generator.add(Ldar(objectReg))
     }
 
     private fun visitPropertyName(property: PropertyName) {
         if (property.type == PropertyName.Type.Identifier) {
-            add(LdaConstant, loadConstant((property.expression as IdentifierNode).identifierName))
+            val nameIndex = generator.intern((property.expression as IdentifierNode).identifierName)
+            generator.add(LdaConstant(nameIndex))
         } else visit(property.expression)
     }
 
@@ -1333,7 +1148,7 @@ class IRTransformer : ASTVisitor {
         if (property.type == PropertyName.Type.Identifier) {
             valueProducer()
             val name = (property.expression as IdentifierNode).identifierName
-            add(StaNamedProperty, objectReg, loadConstant(name))
+            generator.add(StaNamedProperty(objectReg, generator.intern(name)))
             return
         }
 
@@ -1342,78 +1157,44 @@ class IRTransformer : ASTVisitor {
             PropertyName.Type.Number -> visit(property.expression)
             PropertyName.Type.Computed -> {
                 visit(property.expression)
-                add(ToString)
+                generator.add(ToString)
             }
             PropertyName.Type.Identifier -> unreachable()
         }
 
-        val keyReg = nextFreeReg()
-        add(Star, keyReg)
+        val keyReg = generator.reserveRegister()
+        generator.add(Star(keyReg))
         valueProducer()
-        add(StaKeyedProperty, objectReg, keyReg)
-        markRegFree(keyReg)
+        generator.add(StaKeyedProperty(objectReg, keyReg))
     }
 
     override fun visitBooleanLiteral(node: BooleanLiteralNode) {
-        add(if (node.value) LdaTrue else LdaFalse)
+        generator.add(if (node.value) LdaTrue else LdaFalse)
     }
 
     override fun visitStringLiteral(node: StringLiteralNode) {
-        add(LdaConstant, loadConstant(node.value))
+        generator.add(LdaConstant(generator.intern(node.value)))
     }
 
     override fun visitNumericLiteral(node: NumericLiteralNode) {
         val value = node.value
         if (value.isFinite() && floor(value) == value && value in Int.MIN_VALUE.toDouble()..Int.MAX_VALUE.toDouble()) {
-            add(LdaInt, value.toInt())
+            generator.add(LdaInt(value.toInt()))
         } else {
-            add(LdaConstant, loadConstant(value))
+            generator.add(LdaConstant(generator.intern(value)))
         }
     }
 
     override fun visitBigIntLiteral(node: BigIntLiteralNode) {
         val bigint = BigInteger(node.value, node.type.radix)
-        add(LdaConstant, loadConstant(bigint))
+        generator.add(LdaConstant(generator.intern(bigint)))
     }
 
     override fun visitNullLiteral() {
-        add(LdaNull)
+        generator.add(LdaNull)
     }
 
     override fun visitThisLiteral() {
-        add(Ldar, receiverReg())
-    }
-
-    private fun getOpcode(index: Int) = builder.getOpcode(index)
-    private fun setOpcode(index: Int, value: IrOpcode) = builder.setOpcode(index, value)
-    private fun label() = builder.label()
-    private fun jump(label: Label, type: IrOpcodeType = Jump) = builder.jumpHelper(label, type)
-    private fun place(label: Label) = builder.place(label)
-    private fun loadConstant(constant: Any) = builder.loadConstant(constant)
-    private fun nextFreeReg() = builder.nextFreeReg()
-    private fun nextFreeRegBlock(count: Int) = builder.nextFreeRegBlock(count)
-    private fun markRegUsed(index: Int) = builder.markRegUsed(index)
-    private fun markRegFree(index: Int) = builder.markRegFree(index)
-    private fun receiverReg() = builder.receiverReg()
-    private fun argReg(index: Int) = builder.argReg(index)
-    private fun reg(index: Int) = builder.reg(index)
-
-    private fun add(type: IrOpcodeType, vararg args: Any) {
-        val actualArgs = if (type.types.lastOrNull() == IrOpcodeArgType.FeedbackSlot) {
-            builder.feedbackVector.addSlot(FeedbackSlot.forOpcode(type))
-            arrayOf(*args, builder.feedbackVector.numSlots - 1)
-        } else args
-
-        builder.addOpcode(IrOpcode(type, *actualArgs))
-    }
-
-    private fun RegisterRange.markUsed() {
-        for (i in 0 until count)
-            builder.markRegUsed(start + i)
-    }
-
-    private fun RegisterRange.markFree() {
-        for (i in 0 until count)
-            builder.markRegFree(start + i)
+        TODO()
     }
 }
