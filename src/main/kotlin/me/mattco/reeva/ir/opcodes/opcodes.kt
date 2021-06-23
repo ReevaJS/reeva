@@ -253,21 +253,12 @@ class StaEnv(val contextReg: Register, val slot: Literal) : Opcode()
  *
  * numSlots: the number of slots the new environment will have
  */
-class CreateBlockScope(val numSlots: Literal) : Opcode()
-
-/**
- * Pushes a new environment onto the env record stack
- *
- * targetReg: the register the current environment will be stored to
- */
-class PushEnv(val targetReg: Register) : Opcode()
+class PushBlockScope(val numSlots: Literal) : Opcode()
 
 /**
  * Pops the current environment from the env record stack
- *
- * newEnvReg: the register of the context to restore
  */
-class PopCurrentEnv(val newEnvReg: Register) : Opcode()
+object PopBlockScope : Opcode()
 
 ///////////////
 /// CALLING ///

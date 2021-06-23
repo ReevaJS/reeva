@@ -282,17 +282,12 @@ class Interpreter(
         targetContext.setBinding(slot, accumulator)
     }
 
-    override fun visitCreateBlockScope(numSlots: Literal) {
-        accumulator = EnvRecord(currentEnv, currentEnv.isStrict, numSlots)
+    override fun visitPushBlockScope(numSlots: Literal) {
+        currentEnv = EnvRecord(currentEnv, currentEnv.isStrict, numSlots)
     }
 
-    override fun visitPushEnv(targetReg: Register) {
-        registers[targetReg] = currentEnv
-        currentEnv = accumulator as EnvRecord
-    }
-
-    override fun visitPopCurrentEnv(newEnvReg: Register) {
-        currentEnv = registers[newEnvReg] as EnvRecord
+    override fun visitPopBlockScope() {
+        currentEnv = currentEnv.outer!!
     }
 
     override fun visitCall(targetReg: Register, receiverReg: Register, argumentRegs: List<Register>) {

@@ -59,7 +59,7 @@ class Generator {
         continuableScopes.removeLast()
     }
 
-    inline fun ifHelper(op: (Block, Block) -> Opcode, negateOp: Boolean = false, ifTrue: () -> Unit) {
+    fun ifHelper(op: (Block, Block) -> Opcode, negateOp: Boolean = false, ifTrue: () -> Unit) {
         var trueBlock = makeBlock()
         var doneBlock = makeBlock()
 
@@ -76,7 +76,7 @@ class Generator {
         currentBlock = doneBlock
     }
 
-    inline fun ifElseHelper(op: (Block, Block) -> Opcode, ifTrue: () -> Unit, ifFalse: () -> Unit) {
+    fun ifElseHelper(op: (Block, Block) -> Opcode, ifTrue: () -> Unit, ifFalse: () -> Unit) {
         val trueBlock = makeBlock()
         val falseBlock = makeBlock()
         val doneBlock = makeBlock()

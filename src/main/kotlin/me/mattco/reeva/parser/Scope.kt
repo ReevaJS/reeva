@@ -2,54 +2,39 @@ package me.mattco.reeva.parser
 
 import me.mattco.reeva.ast.VariableRefNode
 import me.mattco.reeva.ast.VariableSourceNode
-import me.mattco.reeva.ir.opcodes.CreateBlockScope
-import me.mattco.reeva.ir.opcodes.Opcode
 
 open class Scope(val outer: Scope? = null) {
-    val depth: Int = outer?.depth?.plus(1) ?: 0
-
     val childScopes = mutableListOf<Scope>()
-    var globalScope: Scope? = null
+    val parentHoistingScope: HoistingScope by lazy { firstParentOfType() }
+    val globalScope: GlobalScope by lazy { firstParentOfType() }
 
-    private val _declaredVariables = mutableListOf<Variable>()
-    val declaredVariables: List<Variable>
-        get() = _declaredVariables
+    val declaredVariables = mutableListOf<Variable>()
 
     // Variables that have yet to be connected to their source
-    val refNodes = mutableListOf<VariableRefNode>()
-
-    // How many slots the EnvRecord associated with this Scope requires
-    var numSlots: Int = 0
-        protected set
-
-    val requiresEnv: Boolean get() = numSlots > 0
+    val pendingReferences = mutableListOf<VariableRefNode>()
 
     open val declaredVarMode = Variable.Mode.Declared
 
-    val isStrict: Boolean by lazy {
-        firstParentOfType<HoistingScope>().hasUseStrictDirective
-    }
-
     var possiblyReferencesArguments = false
+
+    // How many slots the EnvRecord associated with this Scope requires
+    var requiredSlots: Int = 0
+        protected set
+
+    val requiresEnv: Boolean
+    get() = requiredSlots > 0
+
+    val isStrict: Boolean
+        get() = parentHoistingScope.hasUseStrictDirective
 
     init {
         @Suppress("LeakingThis")
         outer?.childScopes?.add(this)
-
-        globalScope = outer?.globalScope
-    }
-
-    open fun createEnterScopeOpcode(numSlots: Int): Opcode {
-        return CreateBlockScope(numSlots)
-    }
-
-    fun hoistingScope(): HoistingScope {
-        return if (this is HoistingScope) this else outer!!.hoistingScope()
     }
 
     fun addDeclaredVariable(variable: Variable) {
         if (variable.type != Variable.Type.Var || this is HoistingScope) {
-           _declaredVariables.add(variable)
+           declaredVariables.add(variable)
         } else {
             outer!!.addDeclaredVariable(variable)
         }
@@ -58,37 +43,27 @@ open class Scope(val outer: Scope? = null) {
     fun addReference(node: VariableRefNode) {
         val name = node.boundName()
 
-        refNodes.add(node)
+        pendingReferences.add(node)
 
         node.targetVar = Variable(
             name,
             Variable.Type.Var,
             Variable.Mode.Global,
-            GlobalSourceNode().also { it.scope = globalScope!! },
+            GlobalSourceNode().also { it.scope = globalScope },
         )
     }
 
     private fun findDeclaredVariable(name: String): Variable? {
-        return _declaredVariables.firstOrNull {
+        return declaredVariables.firstOrNull {
             it.name == name
         } ?: outer?.findDeclaredVariable(name)
     }
 
-    inline fun <reified T : Scope> firstParentOfType(): T {
+    private inline fun <reified T : Scope> firstParentOfType(): T {
         var scope = this
         while (scope !is T)
             scope = scope.outer!!
         return scope
-    }
-
-    fun distanceFrom(ancestorScope: Scope): Int {
-        var scope = this
-        var i = 0
-        while (scope != ancestorScope) {
-            i++
-            scope = scope.outer!!
-        }
-        return i
     }
 
     fun envDistanceFrom(ancestorScope: Scope): Int {
@@ -105,26 +80,16 @@ open class Scope(val outer: Scope? = null) {
         return i + if (ancestorScope.requiresEnv) 1 else 0
     }
 
-    fun crossesFunctionBoundary(other: Scope): Boolean {
-        var scope = this
-        while (scope != other) {
-            if (scope is HoistingScope)
-                return true
-            scope = scope.outer!!
-        }
-        return false
-    }
-
     fun onFinish() {
         processUnlinkedNodes()
         searchForUseBeforeDecl()
-        refNodes.clear()
         onFinishImpl()
+        pendingReferences.clear()
     }
 
     private fun processUnlinkedNodes() {
         // Attempt to connect any remaining global var references
-        for (node in refNodes) {
+        for (node in pendingReferences) {
             val variable = findDeclaredVariable(node.targetVar.name)
             if (variable != null)
                 node.targetVar = variable
@@ -136,7 +101,7 @@ open class Scope(val outer: Scope? = null) {
     private fun searchForUseBeforeDecl() {
         // TODO: Improving this is not trivial, but it would be nice
 
-        for (node in refNodes) {
+        for (node in pendingReferences) {
             val refStart = node.sourceStart.index
             val varStart = node.targetVar.source.sourceStart.index
 
@@ -151,7 +116,7 @@ open class Scope(val outer: Scope? = null) {
         // Assign each variable their own slot index
         declaredVariables.forEachIndexed { index, value ->
             value.slot = index
-            numSlots++
+            requiredSlots++
         }
 
         childScopes.forEach(Scope::onFinishImpl)
@@ -161,17 +126,13 @@ open class Scope(val outer: Scope? = null) {
 open class HoistingScope(outer: Scope? = null) : Scope(outer) {
     var hasUseStrictDirective: Boolean = false
 
-    override fun createEnterScopeOpcode(numSlots: Int): Opcode {
-        TODO()
-    }
-
     override fun onFinishImpl() {
         possiblyReferencesArguments = searchForArgumentsReference(this)
         super.onFinishImpl()
     }
 
     private fun searchForArgumentsReference(scope: Scope): Boolean {
-        for (node in scope.refNodes) {
+        for (node in scope.pendingReferences) {
             if (node.boundName() == "arguments" && node.targetVar.mode == Variable.Mode.Global)
                 return true
         }
@@ -180,21 +141,8 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
     }
 }
 
-class ClassScope(outer: Scope? = null) : Scope(outer) {
-}
-
 open class GlobalScope : HoistingScope() {
     override val declaredVarMode = Variable.Mode.Global
-
-    override fun createEnterScopeOpcode(numSlots: Int): Opcode {
-        TODO()
-    }
-}
-
-class ModuleScope : GlobalScope() {
-    override fun createEnterScopeOpcode(numSlots: Int): Opcode {
-        TODO()
-    }
 }
 
 data class Variable(
@@ -215,14 +163,13 @@ data class Variable(
     enum class Mode {
         Declared,
         Parameter,
-        CatchParameter,
         Global,
     }
 
     enum class Type {
         Var,
-        Const,
         Let,
+        Const,
     }
 }
 

@@ -24,7 +24,6 @@ data class FunctionInfo(
 
 class Transformer : ASTVisitor {
     private lateinit var generator: Generator
-    private val envStack = mutableListOf<Pair<Scope, Register>>()
 
     fun transform(node: ASTNode): FunctionInfo {
         if (::generator.isInitialized)
@@ -46,27 +45,20 @@ class Transformer : ASTVisitor {
             null,
             generator.finish(),
             1,
-            node.scope.numSlots,
+            node.scope.requiredSlots,
             node.scope.isStrict,
             isTopLevelScript = true
         )
     }
 
     private fun enterScope(scope: Scope) {
-        if (scope.requiresEnv && scope !is GlobalScope) {
-            generator.add(scope.createEnterScopeOpcode(scope.numSlots))
-            val envReg = generator.reserveRegister()
-            generator.add(PushEnv(envReg))
-            envStack.add(scope to envReg)
-        }
+        if (scope.requiresEnv && scope !is GlobalScope)
+            generator.add(PushBlockScope(scope.requiredSlots))
     }
 
     private fun exitScope(scope: Scope) {
-        if (scope.requiresEnv && scope !is GlobalScope) {
-            val (newScope, newReg) = envStack.removeLast()
-            expect(newScope == scope)
-            generator.add(PopCurrentEnv(newReg))
-        }
+        if (scope.requiresEnv && scope !is GlobalScope)
+            generator.add(PopBlockScope)
     }
 
     override fun visitBlock(node: BlockNode) {
@@ -538,7 +530,7 @@ class Transformer : ASTVisitor {
             name,
             generator.finish(),
             parameters.size + 1,
-            parameterScope.numSlots,
+            parameterScope.requiredSlots,
             isStrict,
             isTopLevelScript = false
         )
@@ -785,7 +777,7 @@ class Transformer : ASTVisitor {
     }
 
     private fun storeEnvVariableRef(variable: Variable, currentScope: Scope) {
-        val distance = currentScope.distanceFrom(variable.source.scope)
+        val distance = currentScope.envDistanceFrom(variable.source.scope)
         if (distance == 0) {
             generator.add(StaCurrentEnv(variable.slot))
         } else {

@@ -5,7 +5,6 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
-import me.mattco.reeva.interpreter.ExecutionResult
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 import java.util.*
@@ -64,7 +63,6 @@ class Parser(val source: String) {
 
             val globalScope = GlobalScope()
             scope = globalScope
-            scope.globalScope = scope
 
             globalScope.hasUseStrictDirective = checkForAndConsumeUseStrict()
 
@@ -507,7 +505,7 @@ class Parser(val source: String) {
             val catchParam = if (match(TokenType.OpenParen)) {
                 scope = Scope(scope)
                 consume()
-                parseBindingIdentifier(varMode = Variable.Mode.CatchParameter).also {
+                parseBindingIdentifier().also {
                     consume(TokenType.CloseParen)
                 }
             } else null
@@ -673,7 +671,7 @@ class Parser(val source: String) {
      *     [+Default] function ( FormalParameters ) { FunctionBody }
      */
     private fun parseFunctionDeclaration(): StatementNode = nps {
-        val declarationScope = scope.hoistingScope()
+        val declarationScope = scope.parentHoistingScope
         val (identifier, params, body, parameterScope, bodyScope) = parseFunctionHelper(isDeclaration = true)
         FunctionDeclarationNode(identifier!!, params, body, parameterScope, bodyScope).also {
             it.scope = declarationScope
@@ -929,7 +927,7 @@ class Parser(val source: String) {
         addVar: Boolean = true,
     ): BindingIdentifierNode = nps {
         BindingIdentifierNode(parseIdentifier()).also {
-            it.scope = if (varType == Variable.Type.Var) scope.hoistingScope() else scope
+            it.scope = if (varType == Variable.Type.Var) scope.parentHoistingScope else scope
 
             if (addVar && !disableAutoScoping) {
                 val variable = Variable(

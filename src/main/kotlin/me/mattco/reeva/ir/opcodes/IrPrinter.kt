@@ -107,9 +107,7 @@ object IrPrinter {
                 append(" context:", stringifyRegister(opcode.contextReg))
                 append(" slot:", stringifyLiteral(opcode.slot))
             }
-            is CreateBlockScope -> append(stringifyLiteral(opcode.numSlots))
-            is PushEnv -> append(stringifyLiteral(opcode.targetReg))
-            is PopCurrentEnv -> append(stringifyRegister(opcode.newEnvReg))
+            is PushBlockScope -> append(stringifyLiteral(opcode.numSlots))
 
             is Call -> {
                 append(" target:", stringifyRegister(opcode.targetReg))

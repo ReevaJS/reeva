@@ -56,9 +56,8 @@ abstract class IrOpcodeVisitor {
             is StaCurrentEnv -> visitStaCurrentEnv(opcode.slot)
             is LdaEnv -> visitLdaEnv(opcode.contextReg, opcode.slot)
             is StaEnv -> visitStaEnv(opcode.contextReg, opcode.slot)
-            is CreateBlockScope -> visitCreateBlockScope(opcode.numSlots)
-            is PushEnv -> visitPushEnv(opcode.targetReg)
-            is PopCurrentEnv -> visitPopCurrentEnv(opcode.newEnvReg)
+            is PushBlockScope -> visitPushBlockScope(opcode.numSlots)
+            PopBlockScope -> visitPopBlockScope()
 
             is Call -> visitCall(opcode.targetReg, opcode.receiverReg, opcode.argumentRegs)
             is CallWithArgArray -> visitCallWithArgArray(opcode.targetReg, opcode.receiverReg, opcode.argumentsReg)
@@ -203,11 +202,9 @@ abstract class IrOpcodeVisitor {
 
     open fun visitStaEnv(contextReg: Register, slot: Literal) { }
 
-    open fun visitCreateBlockScope(numSlots: Literal) { }
+    open fun visitPushBlockScope(numSlots: Literal) { }
 
-    open fun visitPushEnv(targetReg: Register) { }
-
-    open fun visitPopCurrentEnv(newEnvReg: Register) { }
+    open fun visitPopBlockScope() { }
 
     open fun visitCall(targetReg: Register, receiverReg: Register, argumentRegs: List<Register>) { }
 
