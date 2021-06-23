@@ -3,6 +3,7 @@ package me.mattco.reeva.test262
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.interpreter.ExecutionResult
 import me.mattco.reeva.runtime.Operations
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assumptions
@@ -51,8 +52,8 @@ class Test262Test(
 
             val pretestResult = agent.run("$requiredScript\n\n", realm)
 
-            Assertions.assertTrue(pretestResult.hasValue) {
-                pretestResult.error().toString()
+            Assertions.assertTrue(!pretestResult.isError) {
+                "Expected pretest to run without exception, but received $pretestResult"
             }
 
             if (metadata.flags != null && Flag.Async in metadata.flags) {
@@ -111,37 +112,30 @@ class Test262Test(
         val testResult = agent.run(theScript, realm)
 
         if (shouldErrorDuringParse || shouldErrorDuringRuntime) {
-            Assertions.assertTrue(testResult.hasError) {
-                "Expected error during execution, but not error was generated"
+            Assertions.assertTrue(testResult.isError) {
+                "Expected error during execution, but no error was generated"
             }
 
-            val error = testResult.error()
-
-            error.printStackTrace()
-            Assertions.fail()
-
             // FIXME: Implement
-//            if (shouldErrorDuringParse) {
-//                Assertions.assertTrue(error is PipelineError.Parse) {
-//                    "Expected ParseError, but received ${error::class.simpleName}{$error}"
-//                }
-//
-//                // TODO: Is ever supposed to not be a SyntaxError?
-//            } else {
-//                Assertions.assertTrue(error is PipelineError.Runtime) {
-//                    "Expected RuntimeError, but received ${error::class.simpleName}{$error}"
-//                }
-//
-//                val expectedClass = "JS${metadata.negative!!.type}Object"
-//                val actualClass = (error as PipelineError.Runtime).cause::class.simpleName
-//
-//                Assertions.assertTrue(actualClass == expectedClass) {
-//                    "Expected $expectedClass to be thrown, but found $actualClass"
-//                }
-//            }
+            if (shouldErrorDuringParse) {
+                Assertions.assertTrue(testResult is ExecutionResult.ParseError) {
+                    "Expected ParseError, but received ${testResult::class.simpleName} ($testResult)"
+                }
+            } else {
+                Assertions.assertTrue(testResult is ExecutionResult.RuntimeError) {
+                    "Expected RuntimeError, but received ${testResult::class.simpleName} ($testResult)"
+                }
+
+                val expectedClass = "JS${metadata.negative!!.type}Object"
+                val actualClass = (testResult as ExecutionResult.RuntimeError).cause::class.simpleName
+
+                Assertions.assertTrue(actualClass == expectedClass) {
+                    "Expected $expectedClass to be thrown, but found $actualClass"
+                }
+            }
         } else {
-            Assertions.assertTrue(testResult.hasValue) {
-                "Expected execution to complete normally, but received error ${testResult.error()::class.simpleName}{${testResult.error()}}"
+            Assertions.assertTrue(testResult is ExecutionResult.Success) {
+                "Expected execution to complete normally, but received error ${testResult::class.simpleName} ($testResult)"
             }
         }
     }

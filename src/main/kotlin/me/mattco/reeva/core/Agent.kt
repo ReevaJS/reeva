@@ -1,13 +1,12 @@
 package me.mattco.reeva.core
 
 import me.mattco.reeva.Reeva
+import me.mattco.reeva.interpreter.ExecutionResult
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.ir.Transformer
 import me.mattco.reeva.ir.opcodes.IrPrinter
 import me.mattco.reeva.parser.Parser
-import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.utils.Result
-import me.mattco.reeva.utils.ResultT
+import me.mattco.reeva.parser.ParsingResult
 import java.nio.ByteOrder
 
 class Agent {
@@ -30,24 +29,40 @@ class Agent {
         Reeva.allAgents.add(this)
     }
 
-    fun run(script: String, realm: Realm): ResultT<JSValue> {
-        return try {
-            val ast = Parser(script).parseScript()
-            if (printAST) {
-                ast.debugPrint()
-                println("\n")
-            }
+    fun run(script: String, realm: Realm): ExecutionResult {
+        val ast = when (val astResult = Parser(script).parseScript()) {
+            is ParsingResult.InternalError -> return ExecutionResult.InternalError(astResult.cause)
+            is ParsingResult.ParseError -> return ExecutionResult.ParseError(
+                astResult.reason,
+                astResult.start,
+                astResult.end
+            )
+            is ParsingResult.Success -> astResult.script
+        }
 
-            val ir = Transformer().transform(ast)
-            if (printIR) {
-                IrPrinter.printFunctionInfo(ir)
-                println("\n")
-            }
+        if (printAST) {
+            ast.debugPrint()
+            println("\n")
+        }
 
-            val function = Interpreter.wrap(ir, realm)
-            return Result.success(function.call(realm.globalObject, emptyList()))
+        val ir = try {
+            Transformer().transform(ast)
         } catch (e: Throwable) {
-            Result.error(e)
+            return ExecutionResult.InternalError(e)
+        }
+
+        if (printIR) {
+            IrPrinter.printFunctionInfo(ir)
+            println("\n")
+        }
+
+        val function = Interpreter.wrap(ir, realm)
+        return try {
+            ExecutionResult.Success(function.call(realm.globalObject, emptyList()))
+        } catch (e: ThrowException) {
+            ExecutionResult.RuntimeError(realm, e.value)
+        } catch (e: Throwable) {
+            ExecutionResult.InternalError(e)
         }
     }
 

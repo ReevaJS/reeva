@@ -5,6 +5,7 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
+import me.mattco.reeva.interpreter.ExecutionResult
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 import java.util.*
@@ -57,22 +58,27 @@ class Parser(val source: String) {
         consume()
     }
 
-    @Throws(ParsingException::class)
-    fun parseScript(): ScriptNode {
-        initLexer()
+    fun parseScript(): ParsingResult {
+        try {
+            initLexer()
 
-        val globalScope = GlobalScope()
-        scope = globalScope
-        scope.globalScope = scope
+            val globalScope = GlobalScope()
+            scope = globalScope
+            scope.globalScope = scope
 
-        globalScope.hasUseStrictDirective = checkForAndConsumeUseStrict()
+            globalScope.hasUseStrictDirective = checkForAndConsumeUseStrict()
 
-        val script = parseScriptImpl()
-        script.scope = globalScope
+            val script = parseScriptImpl()
+            script.scope = globalScope
 
-        globalScope.onFinish()
+            globalScope.onFinish()
 
-        return script
+            return ParsingResult.Success(script)
+        } catch (e: ParsingException) {
+            return ParsingResult.ParseError(e.message!!, e.start, e.end)
+        } catch (e: Throwable) {
+            return ParsingResult.InternalError(e)
+        }
     }
 
     @Throws(ParsingException::class)
@@ -899,8 +905,8 @@ class Parser(val source: String) {
     }
 
     private fun matchIdentifier() = match(TokenType.Identifier) ||
-            (!inYieldContext && !scope.isStrict && match(TokenType.Yield)) ||
-            (!inAsyncContext && !scope.isStrict && match(TokenType.Await))
+        (!inYieldContext && !scope.isStrict && match(TokenType.Yield)) ||
+        (!inAsyncContext && !scope.isStrict && match(TokenType.Await))
 
     private fun parseIdentifier(): String {
         expect(matchAny(TokenType.Identifier, TokenType.Await, TokenType.Yield))
@@ -1478,7 +1484,7 @@ class Parser(val source: String) {
         NumericLiteralNode(numericToken.doubleValue())
     }
 
-    private fun  parseCPEAAPLNode(): CPEAAPLNode = nps {
+    private fun parseCPEAAPLNode(): CPEAAPLNode = nps {
         val prevDisableScoping = disableAutoScoping
         disableAutoScoping = true
 
@@ -1546,7 +1552,7 @@ class Parser(val source: String) {
 
         when (type) {
             TokenType.Inc -> UpdateExpressionNode(expression, isIncrement = true, isPostfix = false)
-            TokenType.Dec -> UpdateExpressionNode(expression, isIncrement = false, isPostfix = false,)
+            TokenType.Dec -> UpdateExpressionNode(expression, isIncrement = false, isPostfix = false)
             TokenType.Not -> UnaryExpressionNode(expression, UnaryOperator.Not)
             TokenType.BitwiseNot -> UnaryExpressionNode(expression, UnaryOperator.BitwiseNot)
             TokenType.Add -> UnaryExpressionNode(expression, UnaryOperator.Plus)
@@ -1610,7 +1616,11 @@ class Parser(val source: String) {
         return result
     }
 
-    private inline fun <T> inBreakContinueContext(isBreak: Boolean = true, isContinue: Boolean = true, block: () -> T): T {
+    private inline fun <T> inBreakContinueContext(
+        isBreak: Boolean = true,
+        isContinue: Boolean = true,
+        block: () -> T
+    ): T {
         val previousBreakContext = inBreakContext
         val previousContinueContext = inContinueContext
         inBreakContext = inBreakContext || isBreak

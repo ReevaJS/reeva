@@ -2,6 +2,7 @@ package me.mattco.reeva.test262
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
+import me.mattco.reeva.interpreter.ExecutionResult
 import me.mattco.reeva.runtime.toPrintableString
 import java.io.File
 
@@ -24,10 +25,10 @@ fun main() {
     val script = File("./demo/index.js").readText()
     val result = agent.run(script, realm)
 
-    if (result.hasError) {
-        result.error().printStackTrace()
+    if (result.isError) {
+        println("Script error: $result")
     } else {
-        println("Script result: ${result.value().toPrintableString()}")
+        println("Script result: ${(result as ExecutionResult.Success).result.toPrintableString()}")
     }
 
     Reeva.teardown()
