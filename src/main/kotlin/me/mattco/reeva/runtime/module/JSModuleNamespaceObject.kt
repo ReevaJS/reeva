@@ -1,7 +1,6 @@
 package me.mattco.reeva.runtime.module
 
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.core.modules.records.ModuleRecord
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -10,14 +9,12 @@ import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.key
 import me.mattco.reeva.utils.toValue
 
 open class JSModuleNamespaceObject(
     realm: Realm,
-    private val module: ModuleRecord,
     private val exports: List<String>
 ) : JSObject(realm, JSNull) {
     override fun init() {
@@ -78,12 +75,13 @@ open class JSModuleNamespaceObject(
         if (property.asString !in exports)
             return JSUndefined
 
-        val binding = module.resolveExport(property.asString)
-        ecmaAssert(binding != null)
-        if (binding.bindingName == "*namespace*")
-            return binding.module.namespaceObject
-
-        return binding.module.resolveBinding(binding.bindingName)
+        return JSEmpty
+//        val binding = module.resolveExport(property.asString)
+//        ecmaAssert(binding != null)
+//        if (binding.bindingName == "*namespace*")
+//            return binding.module.namespaceObject
+//
+//        return binding.module.resolveBinding(binding.bindingName)
     }
 
     override fun set(property: PropertyKey, value: JSValue, receiver: JSValue) = false
@@ -101,8 +99,7 @@ open class JSModuleNamespaceObject(
     companion object {
         fun create(
             realm: Realm,
-            module: ModuleRecord,
             exports: List<String>
-        ) = JSModuleNamespaceObject(realm, module, exports.sorted()).initialize()
+        ) = JSModuleNamespaceObject(realm, exports.sorted()).initialize()
     }
 }

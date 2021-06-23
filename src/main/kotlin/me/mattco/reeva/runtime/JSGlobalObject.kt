@@ -3,7 +3,6 @@ package me.mattco.reeva.runtime
 import me.mattco.reeva.ast.statements.StatementList
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.environment.EnvRecord
-import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -241,7 +240,6 @@ open class JSGlobalObject protected constructor(
             varEnv: EnvRecord,
             lexEnv: EnvRecord,
             strictEval: Boolean,
-            interpreter: Interpreter,
         ) {
             // TODO
 //            val varNames = body.varDeclaredNames()

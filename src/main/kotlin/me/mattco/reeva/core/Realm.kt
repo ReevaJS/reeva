@@ -1,6 +1,5 @@
 package me.mattco.reeva.core
 
-import me.mattco.reeva.core.modules.resolver.ModuleResolver
 import me.mattco.reeva.jvmcompat.JSClassProto
 import me.mattco.reeva.jvmcompat.JSPackageObject
 import me.mattco.reeva.jvmcompat.JSPackageProto
@@ -26,7 +25,7 @@ import me.mattco.reeva.runtime.wrappers.*
 import java.util.concurrent.ConcurrentHashMap
 
 @Suppress("ObjectPropertyName")
-class Realm(var moduleResolver: ModuleResolver? = null) {
+class Realm {
     lateinit var globalObject: JSObject
         private set
 

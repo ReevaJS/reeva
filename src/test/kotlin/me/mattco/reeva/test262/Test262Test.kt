@@ -3,7 +3,6 @@ package me.mattco.reeva.test262
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.core.modules.resolver.DefaultModuleResolver
 import me.mattco.reeva.runtime.Operations
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assumptions
@@ -47,9 +46,8 @@ class Test262Test(
             realm.setGlobalObject(Test262GlobalObject.create(realm))
 
             val isModule = metadata.flags != null && Flag.Module in metadata.flags
-
             if (isModule)
-                realm.moduleResolver = DefaultModuleResolver(realm, file.parentFile)
+                TODO()
 
             val pretestResult = agent.run("$requiredScript\n\n", realm)
 
