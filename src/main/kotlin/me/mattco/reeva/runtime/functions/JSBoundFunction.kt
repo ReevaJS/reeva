@@ -17,16 +17,13 @@ class JSBoundFunction private constructor(
     boundTargetFunction.isStrict,
     prototype,
 ) {
-    init {
-        isCallable = boundTargetFunction.isCallable
-        isConstructable = boundTargetFunction.isConstructable
-    }
+    override val isConstructable = boundTargetFunction.isConstructable
 
     override fun evaluate(arguments: JSArguments): JSValue {
         val newArguments = JSArguments(boundArguments + arguments, boundArguments.thisValue)
         val newTarget = arguments.newTarget
         if (newTarget == JSUndefined)
-            return Operations.call(boundTargetFunction, newArguments)
+            return Operations.call(realm, boundTargetFunction, newArguments)
         ecmaAssert(Operations.isConstructor(boundTargetFunction))
         return Operations.construct(
             boundTargetFunction,

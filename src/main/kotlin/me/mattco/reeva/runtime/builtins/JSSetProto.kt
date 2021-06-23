@@ -37,19 +37,19 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         defineNativeFunction(Realm.`@@iterator`.key(), 0, function = ::values)
     }
 
-    fun getSize(thisValue: JSValue): JSValue {
-        return thisSetObject(thisValue, "getSize").set.size.toValue()
+    fun getSize(realm: Realm, thisValue: JSValue): JSValue {
+        return thisSetObject(realm, thisValue, "getSize").set.size.toValue()
     }
 
-    fun add(arguments: JSArguments): JSValue {
-        val data = thisSetObject(arguments.thisValue, "add")
+    fun add(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisSetObject(realm, arguments.thisValue, "add")
         data.set.add(arguments.argument(0))
         data.insertionOrder.add(arguments.argument(0))
         return arguments.thisValue
     }
 
-    fun clear(arguments: JSArguments): JSValue {
-        val data = thisSetObject(arguments.thisValue, "clear")
+    fun clear(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisSetObject(realm, arguments.thisValue, "clear")
         data.set.clear()
         if (data.iterationCount == 0) {
             data.insertionOrder.clear()
@@ -61,8 +61,8 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return JSUndefined
     }
 
-    fun delete(arguments: JSArguments): JSValue {
-        val data = thisSetObject(arguments.thisValue, "delete")
+    fun delete(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisSetObject(realm, arguments.thisValue, "delete")
         val value = arguments.argument(0)
         if (data.iterationCount == 0) {
             data.insertionOrder.remove(value)
@@ -75,16 +75,16 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return data.set.remove(value).toValue()
     }
 
-    fun entries(arguments: JSArguments): JSValue {
-        val data = thisSetObject(arguments.thisValue, "entries")
+    fun entries(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisSetObject(realm, arguments.thisValue, "entries")
         return JSSetIterator.create(realm, data, PropertyKind.KeyValue)
     }
 
-    fun forEach(arguments: JSArguments): JSValue {
-        val data = thisSetObject(arguments.thisValue, "forEach")
+    fun forEach(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisSetObject(realm, arguments.thisValue, "forEach")
         val (callback, thisArg) = arguments.takeArgs(0..1)
         if (!Operations.isCallable(callback))
-            Errors.Set.FirstArgNotCallable("forEach").throwTypeError()
+            Errors.Set.FirstArgNotCallable("forEach").throwTypeError(realm)
 
         data.iterationCount++
 
@@ -92,7 +92,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         while (index < data.insertionOrder.size) {
             val value = data.insertionOrder[index]
             if (value != JSEmpty)
-                Operations.call(callback, thisArg, listOf(value, value, arguments.thisValue))
+                Operations.call(realm, callback, thisArg, listOf(value, value, arguments.thisValue))
 
             index++
         }
@@ -102,22 +102,22 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return JSUndefined
     }
 
-    fun has(arguments: JSArguments): JSValue {
-        val data = thisSetObject(arguments.thisValue, "has")
+    fun has(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisSetObject(realm, arguments.thisValue, "has")
         return (arguments.argument(0) in data.set).toValue()
     }
 
-    fun values(arguments: JSArguments): JSValue {
-        val data = thisSetObject(arguments.thisValue, "values")
+    fun values(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisSetObject(realm, arguments.thisValue, "values")
         return JSSetIterator.create(realm, data, PropertyKind.Value)
     }
 
     companion object {
         fun create(realm: Realm) = JSSetProto(realm).initialize()
 
-        private fun thisSetObject(thisValue: JSValue, method: String): JSSetObject.SetData {
+        private fun thisSetObject(realm: Realm, thisValue: JSValue, method: String): JSSetObject.SetData {
             if (!Operations.requireInternalSlot(thisValue, SlotName.SetData))
-                Errors.IncompatibleMethodCall("Set.prototype.$method").throwTypeError()
+                Errors.IncompatibleMethodCall("Set.prototype.$method").throwTypeError(realm)
             return thisValue.getSlotAs(SlotName.SetData)
         }
     }

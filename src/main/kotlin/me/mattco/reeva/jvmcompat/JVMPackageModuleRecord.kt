@@ -32,7 +32,7 @@ class JVMPackageModuleRecord(realm: Realm, private val packageName: String) : Mo
     override fun resolveBinding(importName: String): JSValue {
         val obj = packageObj.get(importName)
         if (obj !is JSClassObject)
-            Errors.JVMCompat.BadImportFromPackage(importName, packageName).throwReferenceError()
+            Errors.JVMCompat.BadImportFromPackage(importName, packageName).throwReferenceError(realm)
         return obj
     }
 

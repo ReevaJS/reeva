@@ -11,29 +11,35 @@ import me.mattco.reeva.utils.key
 import me.mattco.reeva.utils.toValue
 
 class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ArrayBuffer", 1) {
-    init {
-        isConstructable = true
-    }
-
     override fun init() {
         super.init()
 
-        defineNativeAccessor(Realm.`@@species`.key(), attrs { +conf -enum }, ::`get@@species`, name = "[Symbol.species]")
+        defineNativeAccessor(
+            Realm.`@@species`.key(),
+            attrs { +conf - enum },
+            ::`get@@species`,
+            name = "[Symbol.species]"
+        )
         defineNativeFunction("isView", 1, ::isView)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
         val newTarget = arguments.newTarget
         if (newTarget == JSUndefined)
-            Errors.CtorCallWithoutNew("ArrayBuffer").throwTypeError()
-        return Operations.allocateArrayBuffer((newTarget as JSObject).realm, newTarget, arguments.argument(0).toIndex())
+            Errors.CtorCallWithoutNew("ArrayBuffer").throwTypeError(realm)
+
+        return Operations.allocateArrayBuffer(
+            (newTarget as JSObject).realm,
+            newTarget,
+            arguments.argument(0).toIndex(realm)
+        )
     }
 
-    fun isView(arguments: JSArguments): JSValue {
+    fun isView(realm: Realm, arguments: JSArguments): JSValue {
         return arguments.argument(0).let { it is JSObject && it.hasSlot(SlotName.ViewedArrayBuffer) }.toValue()
     }
 
-    fun `get@@species`(thisValue: JSValue): JSValue {
+    fun `get@@species`(realm: Realm, thisValue: JSValue): JSValue {
         return thisValue
     }
 

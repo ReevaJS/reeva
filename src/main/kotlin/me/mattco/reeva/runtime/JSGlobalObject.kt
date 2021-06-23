@@ -1,6 +1,5 @@
 package me.mattco.reeva.runtime
 
-import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.statements.StatementList
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.environment.EnvRecord
@@ -80,17 +79,17 @@ open class JSGlobalObject protected constructor(
 //        defineNativeFunction("isStrict".key(), 0, 0) { Operations.isStrict().toValue() }
     }
 
-    private fun id(arguments: JSArguments): JSValue {
+    private fun id(realm: Realm, arguments: JSArguments): JSValue {
         val o = arguments.argument(0)
         return "${o::class.java.simpleName}@${Integer.toHexString(o.hashCode())}".toValue()
     }
 
-    private fun eval(arguments: JSArguments): JSValue {
-        return performEval(arguments.argument(0), Reeva.activeAgent.activeRealm, strictCaller = false, direct = false)
+    private fun eval(realm: Realm, arguments: JSArguments): JSValue {
+        return performEval(realm, arguments.argument(0), realm, strictCaller = false, direct = false)
     }
 
-    private fun parseInt(arguments: JSArguments): JSValue {
-        var inputString = Operations.trimString(Operations.toString(arguments.argument(0)), Operations.TrimType.Start)
+    private fun parseInt(realm: Realm, arguments: JSArguments): JSValue {
+        var inputString = Operations.trimString(realm, Operations.toString(realm, arguments.argument(0)), Operations.TrimType.Start)
         val sign = when {
             inputString.startsWith("-") -> {
                 inputString = inputString.substring(1)
@@ -104,7 +103,7 @@ open class JSGlobalObject protected constructor(
         }
 
         var stripPrefix = true
-        var radix = Operations.toInt32(arguments.argument(1)).asInt.let {
+        var radix = Operations.toInt32(realm, arguments.argument(1)).asInt.let {
             if (it != 0) {
                 if (it !in 2..36)
                     return JSNumber.NaN
@@ -127,24 +126,24 @@ open class JSGlobalObject protected constructor(
         return JSNumber(numericValue * sign)
     }
 
-    private fun jvm(arguments: JSArguments): JSValue {
+    private fun jvm(realm: Realm, arguments: JSArguments): JSValue {
         // TODO
         return JSUndefined
 
 //        if (arguments.isEmpty())
-//            Errors.JVMCompat.JVMFuncNoArgs.throwTypeError()
+//            Errors.JVMCompat.JVMFuncNoArgs.throwTypeError(realm)
 //
 //        if (arguments.any { it !is JSClassObject })
-//            Errors.JVMCompat.JVMFuncBadArgType.throwTypeError()
+//            Errors.JVMCompat.JVMFuncBadArgType.throwTypeError(realm)
 //
 //        val classObjects = arguments.map { (it as JSClassObject).clazz }
 //        if (classObjects.count { it.isInterface } > 1)
-//            Errors.JVMCompat.JVMFuncMultipleBaseClasses.throwTypeError()
+//            Errors.JVMCompat.JVMFuncMultipleBaseClasses.throwTypeError(realm)
 //
 //        classObjects.firstOrNull {
 //            Modifier.isFinal(it.modifiers)
 //        }?.let {
-//            Errors.JVMCompat.JVMFuncFinalClass(it.name).throwTypeError()
+//            Errors.JVMCompat.JVMFuncFinalClass(it.name).throwTypeError(realm)
 //        }
 //
 //        val baseClass = classObjects.firstOrNull { !it.isInterface }
@@ -158,9 +157,9 @@ open class JSGlobalObject protected constructor(
 
     companion object {
         @ECMAImpl("18.2.1.1")
-        fun performEval(argument: JSValue, callerRealm: Realm, strictCaller: Boolean, direct: Boolean): JSValue {
+        fun performEval(realm: Realm, argument: JSValue, callerRealm: Realm, strictCaller: Boolean, direct: Boolean): JSValue {
             // TODO
-            Errors.Custom("eval is not yet implemented in Reeva").throwInternalError()
+            Errors.Custom("eval is not yet implemented in Reeva").throwInternalError(realm)
 
 //            if (!direct)
 //                ecmaAssert(!strictCaller)
@@ -193,17 +192,17 @@ open class JSGlobalObject protected constructor(
 //            }
 //
 //            if (parser.syntaxErrors.isNotEmpty())
-//                Error(parser.syntaxErrors.first().message).throwSyntaxError()
+//                Error(parser.syntaxErrors.first().message).throwSyntaxError(realm)
 //
 //            val body = scriptNode.statementList
 //            if (!inFunction && body.contains("NewTargetExpressionNode"))
-//                Errors.NewTargetOutsideFunc.throwSyntaxError()
+//                Errors.NewTargetOutsideFunc.throwSyntaxError(realm)
 //
 //            if (!inMethod && body.contains("SuperPropertyExpressionNode"))
-//                Errors.SuperOutsideMethod.throwSyntaxError()
+//                Errors.SuperOutsideMethod.throwSyntaxError(realm)
 //
 //            if (!inDerivedConstructor && body.contains("SuperCallExpressionNode"))
-//                Errors.SuperCallOutsideCtor.throwSyntaxError()
+//                Errors.SuperCallOutsideCtor.throwSyntaxError(realm)
 //
 //            val strictEval = strictCaller || scriptNode.statementList.hasUseStrictDirective()
 //            val context = Agent.runningContext
@@ -251,7 +250,7 @@ open class JSGlobalObject protected constructor(
 //                if (varEnv is GlobalEnvRecord) {
 //                    varNames.forEach { name ->
 //                        if (varEnv.hasLexicalDeclaration(name))
-//                            Errors.TODO("evalDeclarationInstantiation 1").throwSyntaxError()
+//                            Errors.TODO("evalDeclarationInstantiation 1").throwSyntaxError(realm)
 //                    }
 //                }
 //                var thisEnv = lexEnv
@@ -259,7 +258,7 @@ open class JSGlobalObject protected constructor(
 //                    if (thisEnv !is ObjectEnvRecord) {
 //                        varNames.forEach { name ->
 //                            if (thisEnv.hasBinding(name))
-//                                Errors.TODO("evalDeclarationInstantiation 2").throwSyntaxError()
+//                                Errors.TODO("evalDeclarationInstantiation 2").throwSyntaxError(realm)
 //                        }
 //                    }
 //                    thisEnv = thisEnv.outerEnv!!
@@ -274,7 +273,7 @@ open class JSGlobalObject protected constructor(
 //                if (functionName !in declaredFunctionNames) {
 //                    if (varEnv is GlobalEnvRecord) {
 //                        if (!varEnv.canDeclareGlobalFunction(functionName))
-//                            Errors.TODO("evalDeclarationInstantiation 3").throwTypeError()
+//                            Errors.TODO("evalDeclarationInstantiation 3").throwTypeError(realm)
 //                        declaredFunctionNames.add(functionName)
 //                        functionsToInitialize.add(0, decl as FunctionDeclarationNode)
 //                    }
@@ -289,7 +288,7 @@ open class JSGlobalObject protected constructor(
 //                    if (name !in declaredFunctionNames) {
 //                        if (varEnv is GlobalEnvRecord) {
 //                            if (!varEnv.canDeclareGlobalVar(name))
-//                                Errors.TODO("evalDeclarationInstantiation 4").throwTypeError()
+//                                Errors.TODO("evalDeclarationInstantiation 4").throwTypeError(realm)
 //                        }
 //                        if (name !in declaredVarNames)
 //                            declaredVarNames.add(name)

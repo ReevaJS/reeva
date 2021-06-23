@@ -10,10 +10,6 @@ import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.toValue
 
 class JSBooleanCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Boolean", 1) {
-    init {
-        isConstructable = true
-    }
-
     override fun evaluate(arguments: JSArguments): JSValue {
         val bool = Operations.toBoolean(arguments.argument(0)).toValue()
         val newTarget = arguments.newTarget
@@ -21,7 +17,7 @@ class JSBooleanCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             return bool
         if (newTarget == realm.booleanCtor)
             return JSBooleanObject.create(realm, Operations.toBoolean(arguments.argument(0)).toValue())
-        return Operations.ordinaryCreateFromConstructor(newTarget, realm.booleanProto, listOf(SlotName.BooleanData)).also {
+        return Operations.ordinaryCreateFromConstructor(realm, newTarget, realm.booleanProto, listOf(SlotName.BooleanData)).also {
             it.setSlot(SlotName.BooleanData, bool)
         }
     }

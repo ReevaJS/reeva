@@ -22,29 +22,29 @@ class JSBigIntProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         defineNativeFunction("valueOf", 0, ::valueOf)
     }
 
-    fun toString(arguments: JSArguments): JSValue {
-        val bigInt = thisBigIntValue(arguments.thisValue, "toString")
+    fun toString(realm: Realm, arguments: JSArguments): JSValue {
+        val bigInt = thisBigIntValue(realm, arguments.thisValue, "toString")
         val radixArg = arguments.argument(0)
         val radix = if (radixArg != JSUndefined) {
-            Operations.toIntegerOrInfinity(arguments.argument(0)).asInt
+            Operations.toIntegerOrInfinity(realm, arguments.argument(0)).asInt
         } else 10
         if (radix < 2 || radix > 36)
-            Errors.Number.InvalidRadix(radix).throwRangeError()
+            Errors.Number.InvalidRadix(radix).throwRangeError(realm)
         return bigInt.number.toString(radix).toValue()
     }
 
-    fun valueOf(arguments: JSArguments): JSValue {
-        return thisBigIntValue(arguments.thisValue, "valueOf")
+    fun valueOf(realm: Realm, arguments: JSArguments): JSValue {
+        return thisBigIntValue(realm, arguments.thisValue, "valueOf")
     }
 
     companion object {
-        private fun thisBigIntValue(thisValue: JSValue, methodName: String): JSBigInt {
+        private fun thisBigIntValue(realm: Realm, thisValue: JSValue, methodName: String): JSBigInt {
             if (thisValue is JSBigInt)
                 return thisValue
             if (thisValue !is JSObject)
-                Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError()
+                Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError(realm)
             return thisValue.getSlotAs(SlotName.BigIntData) ?:
-                Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError()
+                Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError(realm)
         }
 
         fun create(realm: Realm) = JSBigIntProto(realm).initialize()

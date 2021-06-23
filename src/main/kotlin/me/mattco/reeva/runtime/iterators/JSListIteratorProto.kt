@@ -15,12 +15,12 @@ class JSListIteratorProto private constructor(realm: Realm) : JSObject(realm, re
     }
 
     // TODO: Spec doesn't say this is an actual method
-    fun next(arguments: JSArguments): JSValue {
+    fun next(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
         ecmaAssert(thisValue is JSListIterator)
         if (thisValue.nextIndex >= thisValue.iteratorList.size)
-            return Operations.createIterResultObject(JSUndefined, true)
-        return Operations.createIterResultObject(thisValue.iteratorList[thisValue.nextIndex], false).also {
+            return Operations.createIterResultObject(realm, JSUndefined, true)
+        return Operations.createIterResultObject(realm, thisValue.iteratorList[thisValue.nextIndex], false).also {
             thisValue.nextIndex++
         }
     }

@@ -28,7 +28,7 @@ class JSIntegerIndexedObject private constructor(
         if (property.isSymbol)
             return super.getOwnPropertyDescriptor(property)
 
-        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
+        val numericIndex = Operations.canonicalNumericIndexString(realm, property.asValue)
             ?: return super.getOwnPropertyDescriptor(property)
 
         val value = Operations.integerIndexedElementGet(this, numericIndex)
@@ -41,7 +41,7 @@ class JSIntegerIndexedObject private constructor(
     override fun hasProperty(property: PropertyKey): Boolean {
         if (property.isSymbol)
             return super.hasProperty(property)
-        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
+        val numericIndex = Operations.canonicalNumericIndexString(realm, property.asValue)
             ?: return super.hasProperty(property)
         return Operations.isValidIntegerIndex(this, numericIndex)
     }
@@ -50,7 +50,7 @@ class JSIntegerIndexedObject private constructor(
         if (property.isSymbol)
             return super.defineOwnProperty(property, descriptor)
 
-        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
+        val numericIndex = Operations.canonicalNumericIndexString(realm, property.asValue)
             ?: return super.defineOwnProperty(property, descriptor)
 
         if (!Operations.isValidIntegerIndex(this, numericIndex))
@@ -65,7 +65,7 @@ class JSIntegerIndexedObject private constructor(
         if (descriptor.hasWritable && !descriptor.isWritable)
             return false
         if (descriptor.getRawValue() != JSEmpty)
-            Operations.integerIndexedElementSet(this, numericIndex, descriptor.getActualValue(this))
+            Operations.integerIndexedElementSet(realm, this, numericIndex, descriptor.getActualValue(realm, this))
         return true
     }
 
@@ -73,7 +73,7 @@ class JSIntegerIndexedObject private constructor(
         if (property.isSymbol)
             return super.get(property, receiver)
 
-        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
+        val numericIndex = Operations.canonicalNumericIndexString(realm, property.asValue)
             ?: return super.get(property, receiver)
 
         return Operations.integerIndexedElementGet(receiver, numericIndex)
@@ -83,10 +83,10 @@ class JSIntegerIndexedObject private constructor(
         if (property.isSymbol)
             return super.set(property, value, receiver)
 
-        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
+        val numericIndex = Operations.canonicalNumericIndexString(realm, property.asValue)
             ?: return super.set(property, value, receiver)
 
-        Operations.integerIndexedElementSet(receiver, numericIndex, value)
+        Operations.integerIndexedElementSet(realm, receiver, numericIndex, value)
         return true
     }
 
@@ -94,7 +94,7 @@ class JSIntegerIndexedObject private constructor(
         if (property.isSymbol)
             return super.delete(property)
 
-        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
+        val numericIndex = Operations.canonicalNumericIndexString(realm, property.asValue)
             ?: return super.delete(property)
 
         return !Operations.isValidIntegerIndex(this, numericIndex)

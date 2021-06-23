@@ -11,63 +11,63 @@ import kotlin.math.min
 
 class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     // For use with the generic array methods
-    private val lengthProducer = { obj: JSObject -> getLength(obj).asLong }
-    private val indicesProducer = { obj: JSObject -> 0L..lengthProducer(obj) }
+    private val lengthProducer = { realm: Realm, obj: JSObject -> getLength(realm, obj).asLong }
+    private val indicesProducer = { obj: JSObject -> 0L..lengthProducer(realm, obj) }
 
     override fun init() {
         super.init()
 
         defineNativeAccessor(Realm.`@@toStringTag`.key(), attrs { +conf -enum }, ::`get@@toStringTag`)
-        defineNativeAccessor("buffer", attrs { +conf -enum }, ::getBuffer)
-        defineNativeAccessor("byteLength", attrs { +conf -enum }, ::getByteLength)
-        defineNativeAccessor("byteOffset", attrs { +conf -enum }, ::getByteOffset)
-        defineNativeAccessor("length", attrs { +conf -enum }, ::getLength)
+        defineNativeAccessor("buffer", attrs { +conf - enum }, ::getBuffer)
+        defineNativeAccessor("byteLength", attrs { +conf - enum }, ::getByteLength)
+        defineNativeAccessor("byteOffset", attrs { +conf - enum }, ::getByteOffset)
+        defineNativeAccessor("length", attrs { +conf - enum }, ::getLength)
     }
 
-    private fun `get@@toStringTag`(thisValue: JSValue): JSValue {
+    private fun `get@@toStringTag`(realm: Realm, thisValue: JSValue): JSValue {
         if (thisValue !is JSObject)
             return JSUndefined
         val kind = thisValue.getSlotAs<Operations.TypedArrayKind?>(SlotName.TypedArrayKind) ?: return JSUndefined
         return "${kind.name}Array".toValue()
     }
 
-    private fun getBuffer(thisValue: JSValue): JSObject {
+    private fun getBuffer(realm: Realm, thisValue: JSValue): JSObject {
         ecmaAssert(thisValue is JSObject && thisValue.hasSlot(SlotName.ViewedArrayBuffer))
         return thisValue.getSlotAs(SlotName.ViewedArrayBuffer)
     }
 
-    private fun getByteLength(thisValue: JSValue): JSValue {
-        val buffer = getBuffer(thisValue)
+    private fun getByteLength(realm: Realm, thisValue: JSValue): JSValue {
+        val buffer = getBuffer(realm, thisValue)
         if (Operations.isDetachedBuffer(buffer))
             return JSNumber.ZERO
         return (thisValue as JSObject).getSlotAs<Int>(SlotName.ByteLength).toValue()
     }
 
-    private fun getByteOffset(thisValue: JSValue): JSValue {
-        val buffer = getBuffer(thisValue)
+    private fun getByteOffset(realm: Realm, thisValue: JSValue): JSValue {
+        val buffer = getBuffer(realm, thisValue)
         if (Operations.isDetachedBuffer(buffer))
             return JSNumber.ZERO
         return (thisValue as JSObject).getSlotAs<Int>(SlotName.ByteOffset).toValue()
     }
 
-    private fun getLength(thisValue: JSValue): JSValue {
-        val buffer = getBuffer(thisValue)
+    private fun getLength(realm: Realm, thisValue: JSValue): JSValue {
+        val buffer = getBuffer(realm, thisValue)
         if (Operations.isDetachedBuffer(buffer))
             return JSNumber.ZERO
         return (thisValue as JSObject).getSlotAs<Int>(SlotName.ArrayLength).toValue()
     }
 
-    private fun copyWithin(arguments: JSArguments): JSValue {
+    private fun copyWithin(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
-        val buffer = Operations.validateTypedArray(thisValue)
+        val buffer = Operations.validateTypedArray(realm, thisValue)
         expect(thisValue is JSObject)
 
         val (target, start, end) = arguments.takeArgs(0..2)
         val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength)
 
-        val to = Operations.mapWrappedArrayIndex(target.toIntegerOrInfinity(), len.toLong())
-        val from = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(), len.toLong())
-        val relativeEnd = if (end == JSUndefined) len.toValue() else end.toIntegerOrInfinity()
+        val to = Operations.mapWrappedArrayIndex(target.toIntegerOrInfinity(realm), len.toLong())
+        val from = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(realm), len.toLong())
+        val relativeEnd = if (end == JSUndefined) len.toValue() else end.toIntegerOrInfinity(realm)
         val final = Operations.mapWrappedArrayIndex(relativeEnd, len.toLong())
 
         val count = min(final - from, len - to)
@@ -75,7 +75,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             return thisValue
 
         if (Operations.isDetachedBuffer(buffer))
-            Errors.TODO("%TypedArray%.prototype.copyWithin").throwTypeError()
+            Errors.TODO("%TypedArray%.prototype.copyWithin").throwTypeError(realm)
 
         val kind = thisValue.getSlotAs<Operations.TypedArrayKind>(SlotName.TypedArrayKind)
         val elementSize = kind.size
@@ -91,8 +91,22 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         } else 1
 
         while (countBytes > 0) {
-            val value = Operations.getValueFromBuffer(buffer, fromByteIndex.toInt(), Operations.TypedArrayKind.Uint8, true, Operations.TypedArrayOrder.Unordered)
-            Operations.setValueInBuffer(buffer, toByteIndex.toInt(), Operations.TypedArrayKind.Uint8, value, true, Operations.TypedArrayOrder.Unordered)
+            val value = Operations.getValueFromBuffer(
+                buffer,
+                fromByteIndex.toInt(),
+                Operations.TypedArrayKind.Uint8,
+                true,
+                Operations.TypedArrayOrder.Unordered
+            )
+            Operations.setValueInBuffer(
+                realm,
+                buffer,
+                toByteIndex.toInt(),
+                Operations.TypedArrayKind.Uint8,
+                value,
+                true,
+                Operations.TypedArrayOrder.Unordered
+            )
             fromByteIndex += direction
             toByteIndex += direction
             countBytes--
@@ -101,18 +115,18 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         return thisValue
     }
 
-    private fun entries(arguments: JSArguments): JSValue {
-        Operations.validateTypedArray(arguments.thisValue)
+    private fun entries(realm: Realm, arguments: JSArguments): JSValue {
+        Operations.validateTypedArray(realm, arguments.thisValue)
         return Operations.createArrayIterator(realm, this, PropertyKind.KeyValue)
     }
 
-    private fun every(arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayEvery(arguments, lengthProducer, indicesProducer)
+    private fun every(realm: Realm, arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayEvery(realm, arguments, lengthProducer, indicesProducer)
     }
 
-    private fun fill(arguments: JSArguments): JSValue {
+    private fun fill(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
-        val buffer = Operations.validateTypedArray(thisValue)
+        val buffer = Operations.validateTypedArray(realm, thisValue)
         expect(thisValue is JSObject)
 
         if (Operations.isDetachedBuffer(buffer))
@@ -121,26 +135,26 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         val (valueArg, start, end) = arguments.takeArgs(0..2)
         val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength).toLong()
         val kind = thisValue.getSlotAs<Operations.TypedArrayKind>(SlotName.TypedArrayKind)
-        val value = if (kind.isBigInt) valueArg.toBigInt() else valueArg.toNumber()
+        val value = if (kind.isBigInt) valueArg.toBigInt(realm) else valueArg.toNumber(realm)
 
-        var k = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(), len)
-        val relativeEnd = if (end == JSUndefined) len.toValue() else end.toIntegerOrInfinity()
+        var k = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(realm), len)
+        val relativeEnd = if (end == JSUndefined) len.toValue() else end.toIntegerOrInfinity(realm)
         val final = Operations.mapWrappedArrayIndex(relativeEnd, len)
 
         while (k < final)
-            Operations.set(thisValue, k.key(), value, true)
+            Operations.set(realm, thisValue, k.key(), value, true)
 
         return thisValue
     }
 
-    private fun filter(arguments: JSArguments): JSValue {
+    private fun filter(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
-        Operations.validateTypedArray(thisValue)
+        Operations.validateTypedArray(realm, thisValue)
         expect(thisValue is JSObject)
 
         val (callbackfn, thisArg) = arguments.takeArgs(0..1)
         if (!callbackfn.isCallable)
-            Errors.NotCallable(callbackfn.toPrintableString()).throwTypeError()
+            Errors.NotCallable(callbackfn.toPrintableString()).throwTypeError(realm)
 
         val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength)
         val kept = mutableListOf<JSValue>()
@@ -148,33 +162,33 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
         while (k < len) {
             val value = thisValue.get(k)
-            if (Operations.call(callbackfn, thisArg, listOf(value, k.toValue(), thisValue)).toBoolean())
+            if (Operations.call(realm, callbackfn, thisArg, listOf(value, k.toValue(), thisValue)).toBoolean())
                 kept.add(value)
             k++
         }
 
-        val newArr = Operations.typedArraySpeciesCreate(thisValue, JSArguments(listOf(kept.size.toValue())))
+        val newArr = Operations.typedArraySpeciesCreate(realm, thisValue, JSArguments(listOf(kept.size.toValue())))
         kept.forEachIndexed { index, value ->
-            Operations.set(thisValue, index.key(), value, true)
+            Operations.set(realm, thisValue, index.key(), value, true)
         }
 
         return newArr
     }
 
-    private fun find(arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayFind(arguments, lengthProducer, indicesProducer)
+    private fun find(realm: Realm, arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayFind(realm, arguments, lengthProducer, indicesProducer)
     }
 
-    private fun findIndex(arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayFindIndex(arguments, lengthProducer, indicesProducer)
+    private fun findIndex(realm: Realm, arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayFindIndex(realm, arguments, lengthProducer, indicesProducer)
     }
 
-    private fun forEach(arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayForEach(arguments, lengthProducer, indicesProducer)
+    private fun forEach(realm: Realm, arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayForEach(realm, arguments, lengthProducer, indicesProducer)
     }
 
-    private fun includes(arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayIncludes(arguments, lengthProducer, indicesProducer)
+    private fun includes(realm: Realm, arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayIncludes(realm, arguments, lengthProducer, indicesProducer)
     }
 
 //    private fun indexOf(arguments: JSArguments): JSValue {
@@ -182,27 +196,27 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 //    }
 
     private fun join(arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayJoin(arguments, lengthProducer)
+        return JSArrayProto.genericArrayJoin(realm, arguments, lengthProducer)
     }
 
     private fun lastIndexOf(arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayLastIndexOf(arguments, lengthProducer, indicesProducer)
+        return JSArrayProto.genericArrayLastIndexOf(realm, arguments, lengthProducer, indicesProducer)
     }
 
     private fun reduce(arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayReduce(arguments, lengthProducer, indicesProducer, false)
+        return JSArrayProto.genericArrayReduce(realm, arguments, lengthProducer, indicesProducer, false)
     }
 
     private fun reduceRight(arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayReduce(arguments, lengthProducer, indicesProducer, true)
+        return JSArrayProto.genericArrayReduce(realm, arguments, lengthProducer, indicesProducer, true)
     }
 
     private fun reverse(arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArrayReverse(arguments, lengthProducer, indicesProducer)
+        return JSArrayProto.genericArrayReverse(realm, arguments, lengthProducer, indicesProducer)
     }
 
     private fun some(arguments: JSArguments): JSValue {
-        return JSArrayProto.genericArraySome(arguments, lengthProducer, indicesProducer)
+        return JSArrayProto.genericArraySome(realm, arguments, lengthProducer, indicesProducer)
     }
 
     companion object {

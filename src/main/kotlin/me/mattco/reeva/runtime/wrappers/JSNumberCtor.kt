@@ -12,10 +12,6 @@ import me.mattco.reeva.utils.toValue
 import kotlin.math.abs
 
 class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Number", 1) {
-    init {
-        isConstructable = true
-    }
-
     override fun init() {
         super.init()
 
@@ -36,7 +32,7 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @ECMAImpl("20.1.2.2")
-    fun isFinite(arguments: JSArguments): JSValue {
+    fun isFinite(realm: Realm, arguments: JSArguments): JSValue {
         val number = arguments.argument(0)
         if (!number.isNumber)
             return JSFalse
@@ -46,29 +42,29 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     @ECMAImpl("20.1.2.3")
-    fun isInteger(arguments: JSArguments): JSValue {
+    fun isInteger(realm: Realm, arguments: JSArguments): JSValue {
         return Operations.isIntegralNumber(arguments.argument(0)).toValue()
     }
 
     @ECMAImpl("20.1.2.4")
-    fun isNaN(arguments: JSArguments): JSValue {
+    fun isNaN(realm: Realm, arguments: JSArguments): JSValue {
         return arguments.argument(0).isNaN.toValue()
     }
 
     @ECMAImpl("20.1.2.5")
-    fun isSafeInteger(arguments: JSArguments): JSValue {
+    fun isSafeInteger(realm: Realm, arguments: JSArguments): JSValue {
         if (!Operations.isIntegralNumber(arguments.argument(0)))
             return JSFalse
         return (abs(arguments.argument(0).asDouble) <= Operations.MAX_SAFE_INTEGER).toValue()
     }
 
     @ECMAImpl("20.1.2.12")
-    fun parseFloat(arguments: JSArguments): JSValue {
+    fun parseFloat(realm: Realm, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.2.13")
-    fun parseInt(arguments: JSArguments): JSValue {
+    fun parseInt(realm: Realm, arguments: JSArguments): JSValue {
         TODO()
     }
 
@@ -76,20 +72,20 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val newTarget = arguments.newTarget
         val value = arguments.argument(0)
         val n = if (value != JSUndefined) {
-            numberFromArg(value).toValue()
+            numberFromArg(realm, value).toValue()
         } else JSNumber.ZERO
 
         if (newTarget == JSUndefined)
             return n
 
-        return Operations.ordinaryCreateFromConstructor(newTarget, realm.numberProto, listOf(SlotName.NumberData)).also {
+        return Operations.ordinaryCreateFromConstructor(realm, newTarget, realm.numberProto, listOf(SlotName.NumberData)).also {
             it.setSlot(SlotName.NumberData, n)
         }
     }
 
-    private fun numberFromArg(argument: JSValue): Double {
+    private fun numberFromArg(realm: Realm, argument: JSValue): Double {
         return if (!argument.isUndefined) {
-            val prim = Operations.toNumeric(argument)
+            val prim = Operations.toNumeric(realm, argument)
             if (prim is JSBigInt)
                 return prim.number.toDouble()
             prim.asDouble

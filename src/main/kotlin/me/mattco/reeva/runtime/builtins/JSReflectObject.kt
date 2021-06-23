@@ -30,116 +30,116 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         defineNativeFunction("setPrototypeOf", 2, ::setPrototypeOf)
     }
 
-    fun apply(arguments: JSArguments): JSValue {
+    fun apply(realm: Realm, arguments: JSArguments): JSValue {
         val (target, thisArg, argumentsList) = arguments.takeArgs(0..2)
 
         if (!Operations.isCallable(target))
-            Errors.NotCallable(Operations.toPrintableString(target)).throwTypeError()
+            Errors.NotCallable(Operations.toPrintableString(target)).throwTypeError(realm)
 
-        val args = Operations.createListFromArrayLike(argumentsList)
-        return Operations.call(target, thisArg, args)
+        val args = Operations.createListFromArrayLike(realm, argumentsList)
+        return Operations.call(realm, target, thisArg, args)
     }
 
-    fun construct(arguments: JSArguments): JSValue {
+    fun construct(realm: Realm, arguments: JSArguments): JSValue {
         val (target, argumentsList) = arguments.takeArgs(0..1)
         val newTarget = if (arguments.size <= 2) {
             target
         } else arguments.argument(2).also {
             if (!Operations.isConstructor(it))
-                Errors.NotACtor(Operations.toPrintableString(it)).throwTypeError()
+                Errors.NotACtor(Operations.toPrintableString(it)).throwTypeError(realm)
         }
 
         if (!Operations.isCallable(target))
-            Errors.NotCallable(Operations.toPrintableString(target)).throwTypeError()
+            Errors.NotCallable(Operations.toPrintableString(target)).throwTypeError(realm)
 
-        val args = Operations.createListFromArrayLike(argumentsList)
+        val args = Operations.createListFromArrayLike(realm, argumentsList)
         return Operations.construct(target, args, newTarget)
     }
 
-    fun defineProperty(arguments: JSArguments): JSValue {
+    fun defineProperty(realm: Realm, arguments: JSArguments): JSValue {
         val (target, propertyKey, attributes) = arguments.takeArgs(0..2)
         if (target !is JSObject)
-            Errors.Reflect.FirstArgNotCallable("defineProperty").throwTypeError()
-        val key = Operations.toPropertyKey(propertyKey)
-        val desc = Descriptor.fromObject(attributes)
+            Errors.Reflect.FirstArgNotCallable("defineProperty").throwTypeError(realm)
+        val key = Operations.toPropertyKey(realm, propertyKey)
+        val desc = Descriptor.fromObject(realm, attributes)
         return target.defineOwnProperty(key, desc).toValue()
     }
 
-    fun deleteProperty(arguments: JSArguments): JSValue {
+    fun deleteProperty(realm: Realm, arguments: JSArguments): JSValue {
         val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject)
-            Errors.Reflect.FirstArgNotCallable("deleteProperty").throwTypeError()
-        val key = Operations.toPropertyKey(propertyKey)
+            Errors.Reflect.FirstArgNotCallable("deleteProperty").throwTypeError(realm)
+        val key = Operations.toPropertyKey(realm, propertyKey)
         return target.delete(key).toValue()
     }
 
-    fun get(arguments: JSArguments): JSValue {
+    fun get(realm: Realm, arguments: JSArguments): JSValue {
         val (target, propertyKey, receiver) = arguments.takeArgs(0..2)
         if (target !is JSObject)
-            Errors.Reflect.FirstArgNotCallable("get").throwTypeError()
-        val key = Operations.toPropertyKey(propertyKey)
+            Errors.Reflect.FirstArgNotCallable("get").throwTypeError(realm)
+        val key = Operations.toPropertyKey(realm, propertyKey)
         return target.get(key, receiver.ifUndefined(target))
     }
 
-    fun getOwnPropertyDescriptor(arguments: JSArguments): JSValue {
+    fun getOwnPropertyDescriptor(realm: Realm, arguments: JSArguments): JSValue {
         val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject)
-            Errors.Reflect.FirstArgNotCallable("getOwnPropertyDescriptor").throwTypeError()
-        val key = Operations.toPropertyKey(propertyKey)
+            Errors.Reflect.FirstArgNotCallable("getOwnPropertyDescriptor").throwTypeError(realm)
+        val key = Operations.toPropertyKey(realm, propertyKey)
         return target.getOwnPropertyDescriptor(key)?.toObject(realm, JSUndefined) ?: JSUndefined
     }
 
-    fun getPrototypeOf(arguments: JSArguments): JSValue {
+    fun getPrototypeOf(realm: Realm, arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
-            Errors.Reflect.FirstArgNotCallable("getPrototypeOf").throwTypeError()
+            Errors.Reflect.FirstArgNotCallable("getPrototypeOf").throwTypeError(realm)
         return target.getPrototype()
     }
 
-    fun has(arguments: JSArguments): JSValue {
+    fun has(realm: Realm, arguments: JSArguments): JSValue {
         val (target, propertyKey) = arguments.takeArgs(0..1)
         if (target !is JSObject)
-            Errors.Reflect.FirstArgNotCallable("has").throwTypeError()
-        val key = Operations.toPropertyKey(propertyKey)
+            Errors.Reflect.FirstArgNotCallable("has").throwTypeError(realm)
+        val key = Operations.toPropertyKey(realm, propertyKey)
         return target.hasProperty(key).toValue()
     }
 
-    fun isExtensible(arguments: JSArguments): JSValue {
+    fun isExtensible(realm: Realm, arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
-            Errors.Reflect.FirstArgNotCallable("isExtensible").throwTypeError()
+            Errors.Reflect.FirstArgNotCallable("isExtensible").throwTypeError(realm)
         return target.isExtensible().toValue()
     }
 
-    fun ownKeys(arguments: JSArguments): JSValue {
+    fun ownKeys(realm: Realm, arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
-            Errors.Reflect.FirstArgNotCallable("ownKeys").throwTypeError()
+            Errors.Reflect.FirstArgNotCallable("ownKeys").throwTypeError(realm)
         val keys = target.ownPropertyKeys()
-        return Operations.createArrayFromList(keys.map { it.asValue })
+        return Operations.createArrayFromList(realm, keys.map { it.asValue })
     }
 
-    fun preventExtensions(arguments: JSArguments): JSValue {
+    fun preventExtensions(realm: Realm, arguments: JSArguments): JSValue {
         val target = arguments.argument(0)
         if (target !is JSObject)
-            Errors.Reflect.FirstArgNotCallable("preventExtensions").throwTypeError()
+            Errors.Reflect.FirstArgNotCallable("preventExtensions").throwTypeError(realm)
         return target.preventExtensions().toValue()
     }
 
-    fun set(arguments: JSArguments): JSValue {
+    fun set(realm: Realm, arguments: JSArguments): JSValue {
         val (target, propertyKey, value, receiver) = arguments.takeArgs(0..3)
         if (target !is JSObject)
-            Errors.Reflect.FirstArgNotCallable("set").throwTypeError()
-        val key = Operations.toPropertyKey(propertyKey)
+            Errors.Reflect.FirstArgNotCallable("set").throwTypeError(realm)
+        val key = Operations.toPropertyKey(realm, propertyKey)
         return target.set(key, value, receiver.ifUndefined(target)).toValue()
     }
 
-    fun setPrototypeOf(arguments: JSArguments): JSValue {
+    fun setPrototypeOf(realm: Realm, arguments: JSArguments): JSValue {
         val (target, proto) = arguments.takeArgs(0..1)
         if (target !is JSObject)
-            Errors.Reflect.FirstArgNotCallable("setPrototypeOf").throwTypeError()
+            Errors.Reflect.FirstArgNotCallable("setPrototypeOf").throwTypeError(realm)
         if (proto !is JSObject && proto != JSNull)
-            Errors.Reflect.BadProto.throwTypeError()
+            Errors.Reflect.BadProto.throwTypeError(realm)
         return target.setPrototype(proto).toValue()
     }
 

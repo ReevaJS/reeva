@@ -4,7 +4,10 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
-import me.mattco.reeva.runtime.primitives.*
+import me.mattco.reeva.runtime.primitives.JSFalse
+import me.mattco.reeva.runtime.primitives.JSNull
+import me.mattco.reeva.runtime.primitives.JSTrue
+import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 import kotlin.math.floor
 import kotlin.math.max
@@ -22,16 +25,16 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         defineNativeProperty("length".key(), Descriptor.WRITABLE, ::getLength, ::setLength)
 
         val unscopables = create(realm, JSNull)
-        Operations.createDataPropertyOrThrow(unscopables, "copyWithin".key(), JSTrue)
-        Operations.createDataPropertyOrThrow(unscopables, "entries".key(), JSTrue)
-        Operations.createDataPropertyOrThrow(unscopables, "fill".key(), JSTrue)
-        Operations.createDataPropertyOrThrow(unscopables, "find".key(), JSTrue)
-        Operations.createDataPropertyOrThrow(unscopables, "findIndex".key(), JSTrue)
-        Operations.createDataPropertyOrThrow(unscopables, "flat".key(), JSTrue)
-        Operations.createDataPropertyOrThrow(unscopables, "flatMap".key(), JSTrue)
-        Operations.createDataPropertyOrThrow(unscopables, "includes".key(), JSTrue)
-        Operations.createDataPropertyOrThrow(unscopables, "keys".key(), JSTrue)
-        Operations.createDataPropertyOrThrow(unscopables, "values".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(realm, unscopables, "copyWithin".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(realm, unscopables, "entries".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(realm, unscopables, "fill".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(realm, unscopables, "find".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(realm, unscopables, "findIndex".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(realm, unscopables, "flat".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(realm, unscopables, "flatMap".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(realm, unscopables, "includes".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(realm, unscopables, "keys".key(), JSTrue)
+        Operations.createDataPropertyOrThrow(realm, unscopables, "values".key(), JSTrue)
         defineOwnProperty(Realm.`@@unscopables`, unscopables, Descriptor.CONFIGURABLE)
 
         defineNativeFunction("concat", 1, ::concat)
@@ -69,9 +72,9 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         defineOwnProperty(Realm.`@@iterator`, internalGet("values".key())!!.getRawValue())
     }
 
-    fun concat(arguments: JSArguments): JSValue {
-        val thisObj = Operations.toObject(arguments.thisValue)
-        val array = Operations.arraySpeciesCreate(thisObj, 0)
+    fun concat(realm: Realm, arguments: JSArguments): JSValue {
+        val thisObj = Operations.toObject(realm, arguments.thisValue)
+        val array = Operations.arraySpeciesCreate(realm, thisObj, 0)
 
         val items = listOf(thisObj) + arguments
         var n = 0L
@@ -82,45 +85,45 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                 val isSpreadable = item.get(Realm.`@@isConcatSpreadable`)
                 if (isSpreadable != JSUndefined) {
                     Operations.toBoolean(isSpreadable)
-                } else Operations.isArray(item)
+                } else Operations.isArray(realm, item)
             }
             if (isConcatSpreadable) {
-                val length = Operations.lengthOfArrayLike(item)
+                val length = Operations.lengthOfArrayLike(realm, item)
                 if (length == 0L)
                     return@forEach
                 if (length + n > Operations.MAX_SAFE_INTEGER)
-                    Errors.InvalidArrayLength(length + n).throwTypeError()
+                    Errors.InvalidArrayLength(length + n).throwTypeError(realm)
 
                 val indices = Operations.objectIndices(item as JSObject)
 
                 for (index in indices) {
                     if (index >= length)
                         break
-                    Operations.createDataPropertyOrThrow(array, (n + index).key(), item.get(index))
+                    Operations.createDataPropertyOrThrow(realm, array, (n + index).key(), item.get(index))
                 }
 
                 n += length
             } else {
-                Operations.createDataPropertyOrThrow(array, n.key(), item)
+                Operations.createDataPropertyOrThrow(realm, array, n.key(), item)
                 n++
             }
         }
-        Operations.set(array as JSObject, "length".key(), n.toValue(), true)
+        Operations.set(realm, array as JSObject, "length".key(), n.toValue(), true)
         return array
     }
 
-    fun copyWithin(arguments: JSArguments): JSValue {
+    fun copyWithin(realm: Realm, arguments: JSArguments): JSValue {
         val (target, start, end) = arguments.takeArgs(0..2)
 
-        val thisObj = Operations.toObject(arguments.thisValue)
-        val length = Operations.lengthOfArrayLike(thisObj)
+        val thisObj = Operations.toObject(realm, arguments.thisValue)
+        val length = Operations.lengthOfArrayLike(realm, thisObj)
 
-        var to = Operations.mapWrappedArrayIndex(Operations.toIntegerOrInfinity(target), length)
-        var from = Operations.mapWrappedArrayIndex(Operations.toIntegerOrInfinity(start), length)
+        var to = Operations.mapWrappedArrayIndex(Operations.toIntegerOrInfinity(realm, target), length)
+        var from = Operations.mapWrappedArrayIndex(Operations.toIntegerOrInfinity(realm, start), length)
 
         val relativeEnd = if (end == JSUndefined) {
             length.toValue()
-        } else Operations.toIntegerOrInfinity(end)
+        } else Operations.toIntegerOrInfinity(realm, end)
         val final = Operations.mapWrappedArrayIndex(relativeEnd, length)
 
         var count = min(final - from, length - to)
@@ -134,8 +137,8 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             if (thisObj.hasProperty(from)) {
                 val fromVal = thisObj.get(from)
                 if (!thisObj.set(to, fromVal))
-                    Errors.Array.CopyWithinFailedSet(from, to).throwTypeError()
-            } else if (!Operations.deletePropertyOrThrow(thisObj, to.key())) {
+                    Errors.Array.CopyWithinFailedSet(from, to).throwTypeError(realm)
+            } else if (!Operations.deletePropertyOrThrow(realm, thisObj, to.key())) {
                 return INVALID_VALUE
             }
             from += direction
@@ -145,26 +148,26 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return thisObj
     }
 
-    fun entries(arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(arguments.thisValue)
+    fun entries(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(realm, arguments.thisValue)
         return Operations.createArrayIterator(realm, obj, PropertyKind.KeyValue)
     }
 
-    fun every(arguments: JSArguments): JSValue {
-        return genericArrayEvery(arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
+    fun every(realm: Realm, arguments: JSArguments): JSValue {
+        return genericArrayEvery(realm, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
-    fun fill(arguments: JSArguments): JSValue {
-        val thisObj = Operations.toObject(arguments.thisValue)
+    fun fill(realm: Realm, arguments: JSArguments): JSValue {
+        val thisObj = Operations.toObject(realm, arguments.thisValue)
 
-        val length = Operations.lengthOfArrayLike(thisObj)
+        val length = Operations.lengthOfArrayLike(realm, thisObj)
 
         val (value, start, end) = arguments.takeArgs(0..2)
-        var startIndex = Operations.mapWrappedArrayIndex(Operations.toIntegerOrInfinity(start), length)
+        var startIndex = Operations.mapWrappedArrayIndex(Operations.toIntegerOrInfinity(realm, start), length)
 
         val relativeEnd = if (end == JSUndefined) {
             length.toValue()
-        } else Operations.toIntegerOrInfinity(end)
+        } else Operations.toIntegerOrInfinity(realm, end)
 
         val endIndex = Operations.mapWrappedArrayIndex(relativeEnd, length)
 
@@ -176,15 +179,15 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return thisObj
     }
 
-    fun filter(arguments: JSArguments): JSValue {
-        val thisObj = Operations.toObject(arguments.thisValue)
-        val length = Operations.lengthOfArrayLike(thisObj)
+    fun filter(realm: Realm, arguments: JSArguments): JSValue {
+        val thisObj = Operations.toObject(realm, arguments.thisValue)
+        val length = Operations.lengthOfArrayLike(realm, thisObj)
 
         val (callback, thisArg) = arguments.takeArgs(0..2)
         if (!Operations.isCallable(callback))
-            Errors.Array.CallableFirstArg("filter").throwTypeError()
+            Errors.Array.CallableFirstArg("filter").throwTypeError(realm)
 
-        val array = Operations.arraySpeciesCreate(thisObj, 0)
+        val array = Operations.arraySpeciesCreate(realm, thisObj, 0)
         var toIndex = 0
 
         for (index in Operations.objectIndices(thisObj)) {
@@ -192,10 +195,10 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                 break
 
             val value = thisObj.get(index)
-            val callbackResult = Operations.call(callback, thisArg, listOf(value, index.toValue(), thisObj))
+            val callbackResult = Operations.call(realm, callback, thisArg, listOf(value, index.toValue(), thisObj))
             val booleanResult = Operations.toBoolean(callbackResult)
             if (booleanResult) {
-                if (!Operations.createDataPropertyOrThrow(array, toIndex.key(), value))
+                if (!Operations.createDataPropertyOrThrow(realm, array, toIndex.key(), value))
                     return INVALID_VALUE
                 toIndex++
             }
@@ -204,187 +207,187 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         return array
     }
 
-    fun find(arguments: JSArguments): JSValue {
-        return genericArrayFind(arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
+    fun find(realm: Realm, arguments: JSArguments): JSValue {
+        return genericArrayFind(realm, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
-    fun findIndex(arguments: JSArguments): JSValue {
-        return genericArrayFindIndex(arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
+    fun findIndex(realm: Realm, arguments: JSArguments): JSValue {
+        return genericArrayFindIndex(realm, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
-    fun flat(arguments: JSArguments): JSValue {
-        val thisObj = Operations.toObject(arguments.thisValue)
-        val sourceLength = Operations.lengthOfArrayLike(thisObj)
+    fun flat(realm: Realm, arguments: JSArguments): JSValue {
+        val thisObj = Operations.toObject(realm, arguments.thisValue)
+        val sourceLength = Operations.lengthOfArrayLike(realm, thisObj)
         val depth = if (arguments.isNotEmpty()) {
-            Operations.toIntegerOrInfinity(arguments[0]).asInt.coerceAtLeast(0)
+            Operations.toIntegerOrInfinity(realm, arguments[0]).asInt.coerceAtLeast(0)
         } else 1
 
-        val array = Operations.arraySpeciesCreate(thisObj, 0)
-        flattenIntoArray(array, thisObj, sourceLength, 0, depth)
+        val array = Operations.arraySpeciesCreate(realm, thisObj, 0)
+        flattenIntoArray(realm, array, thisObj, sourceLength, 0, depth)
         return array
     }
 
-    fun flatMap(arguments: JSArguments): JSValue {
-        val thisObj = Operations.toObject(arguments.thisValue)
-        val sourceLength = Operations.lengthOfArrayLike(thisObj)
+    fun flatMap(realm: Realm, arguments: JSArguments): JSValue {
+        val thisObj = Operations.toObject(realm, arguments.thisValue)
+        val sourceLength = Operations.lengthOfArrayLike(realm, thisObj)
 
         val (mapperFunction, thisArg) = arguments.takeArgs(0..1)
         if (!Operations.isCallable(mapperFunction))
-            Errors.Array.CallableFirstArg("flatMap").throwTypeError()
+            Errors.Array.CallableFirstArg("flatMap").throwTypeError(realm)
 
-        val array = Operations.arraySpeciesCreate(thisObj, 0)
-        flattenIntoArray(array, thisObj, sourceLength, 0, 1, mapperFunction, thisArg)
+        val array = Operations.arraySpeciesCreate(realm, thisObj, 0)
+        flattenIntoArray(realm, array, thisObj, sourceLength, 0, 1, mapperFunction, thisArg)
         return array
     }
 
-    fun forEach(arguments: JSArguments): JSValue {
-        return genericArrayForEach(arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
+    fun forEach(realm: Realm, arguments: JSArguments): JSValue {
+        return genericArrayForEach(realm, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
-    fun includes(arguments: JSArguments): JSValue {
-        return genericArrayIncludes(arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
+    fun includes(realm: Realm, arguments: JSArguments): JSValue {
+        return genericArrayIncludes(realm, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
-    fun join(arguments: JSArguments): JSValue {
-        return genericArrayJoin(arguments, Operations::lengthOfArrayLike)
+    fun join(realm: Realm, arguments: JSArguments): JSValue {
+        return genericArrayJoin(realm, arguments, Operations::lengthOfArrayLike)
     }
 
-    fun keys(arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(arguments.thisValue)
+    fun keys(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(realm, arguments.thisValue)
         return Operations.createArrayIterator(realm, obj, PropertyKind.Key)
     }
 
-    fun lastIndexOf(arguments: JSArguments): JSValue {
-        return genericArrayLastIndexOf(arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
+    fun lastIndexOf(realm: Realm, arguments: JSArguments): JSValue {
+        return genericArrayLastIndexOf(realm, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
-    fun map(arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(arguments.thisValue)
-        val length = Operations.lengthOfArrayLike(obj)
+    fun map(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(realm, arguments.thisValue)
+        val length = Operations.lengthOfArrayLike(realm, obj)
         val (callback, thisArg) = arguments.takeArgs(0..1)
         if (!Operations.isCallable(callback))
-            Errors.Array.CallableFirstArg("map").throwTypeError()
+            Errors.Array.CallableFirstArg("map").throwTypeError(realm)
 
-        val array = Operations.arraySpeciesCreate(obj, length)
+        val array = Operations.arraySpeciesCreate(realm, obj, length)
         Operations.objectIndices(obj).filter {
             it < length
         }.forEach {
             val value = obj.get(it)
-            val mappedValue = Operations.call(callback, thisArg, listOf(value, it.toValue(), obj))
-            Operations.createDataPropertyOrThrow(array, it.key(), mappedValue)
+            val mappedValue = Operations.call(realm, callback, thisArg, listOf(value, it.toValue(), obj))
+            Operations.createDataPropertyOrThrow(realm, array, it.key(), mappedValue)
         }
 
         return array
     }
 
-    fun pop(arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(arguments.thisValue)
-        val length = Operations.lengthOfArrayLike(obj)
+    fun pop(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(realm, arguments.thisValue)
+        val length = Operations.lengthOfArrayLike(realm, obj)
         if (length == 0L)
             return JSUndefined
 
         val element = obj.get(length - 1)
-        Operations.deletePropertyOrThrow(obj, (length - 1).key())
+        Operations.deletePropertyOrThrow(realm, obj, (length - 1).key())
         obj.set("length", (length - 1).toValue())
         return element
     }
 
-    fun push(arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(arguments.thisValue)
-        var length = Operations.lengthOfArrayLike(obj)
+    fun push(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(realm, arguments.thisValue)
+        var length = Operations.lengthOfArrayLike(realm, obj)
         if (length + arguments.size >= Operations.MAX_SAFE_INTEGER)
-            Errors.Array.GrowToInvalidLength.throwTypeError()
+            Errors.Array.GrowToInvalidLength.throwTypeError(realm)
         arguments.forEach {
-            Operations.set(obj, length.key(), it, true)
+            Operations.set(realm, obj, length.key(), it, true)
             length++
         }
-        Operations.set(obj, "length".key(), length.toValue(), true)
+        Operations.set(realm, obj, "length".key(), length.toValue(), true)
         return length.toValue()
     }
 
-    fun reduce(arguments: JSArguments): JSValue {
-        return genericArrayReduce(arguments, Operations::lengthOfArrayLike, Operations::objectIndices, false)
+    fun reduce(realm: Realm, arguments: JSArguments): JSValue {
+        return genericArrayReduce(realm, arguments, Operations::lengthOfArrayLike, Operations::objectIndices, false)
     }
 
-    fun reduceRight(arguments: JSArguments): JSValue {
-        return genericArrayReduce(arguments, Operations::lengthOfArrayLike, Operations::objectIndices, true)
+    fun reduceRight(realm: Realm, arguments: JSArguments): JSValue {
+        return genericArrayReduce(realm, arguments, Operations::lengthOfArrayLike, Operations::objectIndices, true)
     }
 
-    fun reverse(arguments: JSArguments): JSValue {
-        return genericArrayReverse(arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
+    fun reverse(realm: Realm, arguments: JSArguments): JSValue {
+        return genericArrayReverse(realm, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
-    fun shift(arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(arguments.thisValue)
-        val length = Operations.lengthOfArrayLike(obj)
+    fun shift(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(realm, arguments.thisValue)
+        val length = Operations.lengthOfArrayLike(realm, obj)
         if (length == 0L)
             return JSUndefined
 
         val element = obj.indexedProperties.removeFirst(obj)
-        Operations.set(obj, "length".key(), (length - 1).toValue(), true)
-        return element.getActualValue(obj)
+        Operations.set(realm, obj, "length".key(), (length - 1).toValue(), true)
+        return element.getActualValue(realm, obj)
     }
 
-    fun slice(arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(arguments.thisValue)
-        val length = Operations.lengthOfArrayLike(obj)
+    fun slice(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(realm, arguments.thisValue)
+        val length = Operations.lengthOfArrayLike(realm, obj)
         val (start, end) = arguments.takeArgs(0..1)
 
-        val k = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(), length)
+        val k = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(realm), length)
         val relativeEnd = if (end == JSUndefined) {
             length.toValue()
-        } else Operations.toIntegerOrInfinity(end)
+        } else Operations.toIntegerOrInfinity(realm, end)
 
         val final = Operations.mapWrappedArrayIndex(relativeEnd, length)
 
         val count = max(final - k, 0)
-        val array = Operations.arraySpeciesCreate(obj, count)
+        val array = Operations.arraySpeciesCreate(realm, obj, count)
         val range = k until final
 
         Operations.objectIndices(obj).filter {
             it in range
         }.forEach {
-            Operations.createDataPropertyOrThrow(array, it.key(), obj.get(it))
+            Operations.createDataPropertyOrThrow(realm, array, it.key(), obj.get(it))
         }
 
-        Operations.set(array as JSObject, "length".key(), (count - 1).toValue(), true)
+        Operations.set(realm, array as JSObject, "length".key(), (count - 1).toValue(), true)
 
         return array
     }
 
-    fun some(arguments: JSArguments): JSValue {
-        return genericArraySome(arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
+    fun some(realm: Realm, arguments: JSArguments): JSValue {
+        return genericArraySome(realm, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
-    fun splice(arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(arguments.thisValue)
-        val length = Operations.lengthOfArrayLike(obj)
+    fun splice(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(realm, arguments.thisValue)
+        val length = Operations.lengthOfArrayLike(realm, obj)
         val (start, deleteCount) = arguments.takeArgs(0..1)
 
-        val actualStart = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(), length)
+        val actualStart = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(realm), length)
 
         val (insertCount, actualDeleteCount) = when {
             arguments.isEmpty() -> 0L to 0L
             arguments.size == 1 -> 0L to length - actualStart
             else -> {
-                val dc = Operations.toIntegerOrInfinity(deleteCount).asLong.coerceIn(0L, length - actualStart)
+                val dc = Operations.toIntegerOrInfinity(realm, deleteCount).asLong.coerceIn(0L, length - actualStart)
                 (arguments.size - 2L) to dc
             }
         }
 
         if (length + insertCount - actualDeleteCount > Operations.MAX_SAFE_INTEGER)
-            Errors.Array.GrowToInvalidLength.throwTypeError()
+            Errors.Array.GrowToInvalidLength.throwTypeError(realm)
 
-        val array = Operations.arraySpeciesCreate(obj, actualDeleteCount) as JSObject
+        val array = Operations.arraySpeciesCreate(realm, obj, actualDeleteCount) as JSObject
         val objIndices = Operations.objectIndices(obj)
 
         objIndices.filter {
             it in actualStart..(actualStart + actualDeleteCount)
         }.forEach {
-            Operations.createDataPropertyOrThrow(array, (it - actualStart).key(), obj.get(it))
+            Operations.createDataPropertyOrThrow(realm, array, (it - actualStart).key(), obj.get(it))
         }
 
-        Operations.set(array, "length".key(), actualDeleteCount.toValue(), true)
+        Operations.set(realm, array, "length".key(), actualDeleteCount.toValue(), true)
 
         val itemCount = (arguments.size - 2).coerceAtLeast(0)
         if (itemCount < actualDeleteCount) {
@@ -393,16 +396,16 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                 val from = k + actualDeleteCount
                 val to = k + itemCount
                 if (Operations.hasProperty(obj, from.key())) {
-                    Operations.set(obj, to.key(), obj.get(from.key()), true)
+                    Operations.set(realm, obj, to.key(), obj.get(from.key()), true)
                 } else {
-                    Operations.deletePropertyOrThrow(obj, to.key())
+                    Operations.deletePropertyOrThrow(realm, obj, to.key())
                 }
                 k++
             }
 
             k = length
             while (k > (length - actualDeleteCount + itemCount)) {
-                Operations.deletePropertyOrThrow(obj, (k - 1).key())
+                Operations.deletePropertyOrThrow(realm, obj, (k - 1).key())
                 k--
             }
         } else if (itemCount > actualDeleteCount) {
@@ -411,9 +414,9 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                 val from = k + actualDeleteCount - 1
                 val to = k + itemCount - 1
                 if (Operations.hasProperty(obj, from.key())) {
-                    Operations.set(obj, to.key(), obj.get(from.key()), true)
+                    Operations.set(realm, obj, to.key(), obj.get(from.key()), true)
                 } else {
-                    Operations.deletePropertyOrThrow(obj, to.key())
+                    Operations.deletePropertyOrThrow(realm, obj, to.key())
                 }
                 k--
             }
@@ -421,45 +424,46 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
         if (arguments.size > 2) {
             arguments.subList(2, arguments.size).forEachIndexed { index, item ->
-                Operations.set(obj, (actualStart + index).key(), item, true)
+                Operations.set(realm, obj, (actualStart + index).key(), item, true)
 
             }
         }
 
-        Operations.set(obj, "length".key(), (length - actualDeleteCount + itemCount).toValue(), true)
+        Operations.set(realm, obj, "length".key(), (length - actualDeleteCount + itemCount).toValue(), true)
         return array
     }
 
-    fun toString(arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(arguments.thisValue)
+    fun toString(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(realm, arguments.thisValue)
         val func = obj.get("join")
         if (Operations.isCallable(func))
-            return Operations.call(func, obj)
-        return realm.objectProto.toString(arguments)
+            return Operations.call(realm, func, obj)
+        return realm.objectProto.toString(realm, arguments)
     }
 
-    fun unshift(arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(arguments.thisValue)
-        val length = Operations.lengthOfArrayLike(obj)
+    fun unshift(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(realm, arguments.thisValue)
+        val length = Operations.lengthOfArrayLike(realm, obj)
         val argCount = arguments.size
         if (argCount > 0) {
             if (length + argCount >= Operations.MAX_SAFE_INTEGER)
-                Errors.Array.GrowToInvalidLength.throwTypeError()
+                Errors.Array.GrowToInvalidLength.throwTypeError(realm)
             // TODO: Batch this insertion, as it is quite an expensive operation
             arguments.reversed().forEach {
                 obj.indexedProperties.insert(0, it)
             }
         }
-        Operations.set(obj, "length".key(), (length + argCount).toValue(), true)
+        Operations.set(realm, obj, "length".key(), (length + argCount).toValue(), true)
         return (length + argCount).toValue()
     }
 
-    fun values(arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(arguments.thisValue)
+    fun values(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(realm, arguments.thisValue)
         return Operations.createArrayIterator(realm, obj, PropertyKind.Value)
     }
 
     private fun flattenIntoArray(
+        realm: Realm,
         target: JSValue,
         source: JSValue,
         sourceLength: Long,
@@ -483,18 +487,18 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             if (source.hasProperty(sourceIndex)) {
                 var element = source.get(sourceIndex)
                 if (mapperFunction != null)
-                    element = Operations.call(mapperFunction, thisArg!!, listOf(element, sourceIndex.toValue(), source))
+                    element = Operations.call(realm, mapperFunction, thisArg!!, listOf(element, sourceIndex.toValue(), source))
 
-                val shouldFlatten = if (depth == null || depth > 0) Operations.isArray(element) else false
+                val shouldFlatten = if (depth == null || depth > 0) Operations.isArray(realm, element) else false
                 if (shouldFlatten) {
                     val newDepth = if (depth == null) null else depth - 1
-                    val elementLength = Operations.lengthOfArrayLike(element)
+                    val elementLength = Operations.lengthOfArrayLike(realm, element)
                     // TODO: Spec says we should pass mapperFunction? Is that true?
-                    targetIndex = flattenIntoArray(target, element, elementLength, targetIndex, newDepth)
+                    targetIndex = flattenIntoArray(realm, target, element, elementLength, targetIndex, newDepth)
                 } else {
                     if (targetIndex >= Operations.MAX_SAFE_INTEGER)
-                        Errors.TODO("flattenIntoArray").throwTypeError()
-                    Operations.createDataPropertyOrThrow(target, targetIndex.key(), element)
+                        Errors.TODO("flattenIntoArray").throwTypeError(realm)
+                    Operations.createDataPropertyOrThrow(realm, target, targetIndex.key(), element)
                     targetIndex++
                 }
             }
@@ -508,24 +512,25 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         fun create(realm: Realm) = JSArrayProto(realm).initialize()
 
         fun genericArrayEvery(
+            realm: Realm,
             arguments: JSArguments,
-            lengthProducer: (obj: JSObject) -> Long,
+            lengthProducer: (realm: Realm, obj: JSObject) -> Long,
             indicesProducer: (obj: JSObject) -> Iterable<Long>
         ): JSValue {
             val (callback, thisArg) = arguments.takeArgs(0..1)
 
             if (!Operations.isCallable(callback))
-                Errors.Array.CallableFirstArg("every").throwTypeError()
+                Errors.Array.CallableFirstArg("every").throwTypeError(realm)
 
-            val thisObj = Operations.toObject(arguments.thisValue)
-            val length = lengthProducer(thisObj)
+            val thisObj = Operations.toObject(realm, arguments.thisValue)
+            val length = lengthProducer(realm, thisObj)
 
             for (index in indicesProducer(thisObj)) {
                 if (index >= length)
                     break
 
                 val value = thisObj.get(index)
-                val testResult = Operations.call(callback, thisArg, listOf(value, index.toValue(), thisObj))
+                val testResult = Operations.call(realm, callback, thisArg, listOf(value, index.toValue(), thisObj))
                 val testBoolean = Operations.toBoolean(testResult)
                 if (!testBoolean)
                     return JSFalse
@@ -535,23 +540,24 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         }
 
         fun genericArrayFind(
+            realm: Realm,
             arguments: JSArguments,
-            lengthProducer: (obj: JSObject) -> Long,
+            lengthProducer: (realm: Realm, obj: JSObject) -> Long,
             indicesProducer: (obj: JSObject) -> Iterable<Long>
         ): JSValue {
-            val thisObj = Operations.toObject(arguments.thisValue)
-            val length = lengthProducer(thisObj)
+            val thisObj = Operations.toObject(realm, arguments.thisValue)
+            val length = lengthProducer(realm, thisObj)
             val (predicate, thisArg) = arguments.takeArgs(0..1)
 
             if (!Operations.isCallable(predicate))
-                Errors.Array.CallableFirstArg("find").throwTypeError()
+                Errors.Array.CallableFirstArg("find").throwTypeError(realm)
 
             for (index in indicesProducer(thisObj)) {
                 if (index >= length)
                     break
 
                 val value = thisObj.get(index)
-                val testResult = Operations.call(predicate, thisArg, listOf(value, index.toValue(), thisObj))
+                val testResult = Operations.call(realm, predicate, thisArg, listOf(value, index.toValue(), thisObj))
                 val booleanResult = Operations.toBoolean(testResult)
                 if (booleanResult)
                     return value
@@ -561,23 +567,24 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         }
 
         fun genericArrayFindIndex(
+            realm: Realm,
             arguments: JSArguments,
-            lengthProducer: (obj: JSObject) -> Long,
+            lengthProducer: (realm: Realm, obj: JSObject) -> Long,
             indicesProducer: (obj: JSObject) -> Iterable<Long>
         ): JSValue {
-            val thisObj = Operations.toObject(arguments.thisValue)
-            val length = lengthProducer(thisObj)
+            val thisObj = Operations.toObject(realm, arguments.thisValue)
+            val length = lengthProducer(realm, thisObj)
             val (predicate, thisArg) = arguments.takeArgs(0..1)
 
             if (!Operations.isCallable(predicate))
-                Errors.Array.CallableFirstArg("findIndex").throwTypeError()
+                Errors.Array.CallableFirstArg("findIndex").throwTypeError(realm)
 
             for (index in indicesProducer(thisObj)) {
                 if (index >= length)
                     break
 
                 val value = thisObj.get(index)
-                val testResult = Operations.call(predicate, thisArg, listOf(value, index.toValue(), thisObj))
+                val testResult = Operations.call(realm, predicate, thisArg, listOf(value, index.toValue(), thisObj))
                 val booleanResult = Operations.toBoolean(testResult)
                 if (booleanResult)
                     return index.toValue()
@@ -587,50 +594,52 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         }
 
         fun genericArrayForEach(
+            realm: Realm,
             arguments: JSArguments,
-            lengthProducer: (obj: JSObject) -> Long,
+            lengthProducer: (realm: Realm, obj: JSObject) -> Long,
             indicesProducer: (obj: JSObject) -> Iterable<Long>
         ): JSValue {
-            val obj = Operations.toObject(arguments.thisValue)
-            val length = lengthProducer(obj)
+            val obj = Operations.toObject(realm, arguments.thisValue)
+            val length = lengthProducer(realm, obj)
 
             val callbackFn = arguments.argument(0)
             if (!Operations.isCallable(callbackFn))
-                Errors.Array.CallableFirstArg("forEach").throwTypeError()
+                Errors.Array.CallableFirstArg("forEach").throwTypeError(realm)
 
             for (index in indicesProducer(obj)) {
                 if (index >= length)
                     break
 
                 val value = obj.get(index)
-                Operations.call(callbackFn, arguments.argument(1), listOf(value, index.toValue(), obj))
+                Operations.call(realm, callbackFn, arguments.argument(1), listOf(value, index.toValue(), obj))
             }
 
             return JSUndefined
         }
 
         fun genericArrayIncludes(
+            realm: Realm,
             arguments: JSArguments,
-            lengthProducer: (obj: JSObject) -> Long,
+            lengthProducer: (realm: Realm, obj: JSObject) -> Long,
             indicesProducer: (obj: JSObject) -> Iterable<Long>
         ): JSValue {
-            val obj = arguments.thisValue.toObject()
-            val length = lengthProducer(obj)
+            val obj = arguments.thisValue.toObject(realm)
+            val length = lengthProducer(realm, obj)
 
             if (length == 0L)
                 return JSFalse
 
             val (searchElement, fromIndex) = arguments.takeArgs(0..1)
-            val n = fromIndex.toIntegerOrInfinity().let {
+            val k = fromIndex.toIntegerOrInfinity(realm).let {
                 when {
                     it.isPositiveInfinity -> return JSFalse
                     it.isNegativeInfinity -> 0
+                    it.asLong < 0 -> max(0, length + it.asLong)
                     else -> it.asLong
                 }
             }
 
-
-            val indices = indicesProducer(obj)
+            val indices = indicesProducer(obj).filter { it in k..length }
             if (searchElement == JSUndefined)
                 return (indices.count().toLong() != length).toValue()
 
@@ -640,12 +649,13 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         }
 
         fun genericArrayJoin(
+            realm: Realm,
             arguments: JSArguments,
-            lengthProducer: (obj: JSObject) -> Long,
+            lengthProducer: (realm: Realm, obj: JSObject) -> Long,
         ): JSValue {
-            val obj = Operations.toObject(arguments.thisValue)
-            val length = lengthProducer(obj)
-            val sep = if (arguments.isEmpty()) "," else Operations.toString(arguments[0]).string
+            val obj = Operations.toObject(realm, arguments.thisValue)
+            val length = lengthProducer(realm, obj)
+            val sep = if (arguments.isEmpty()) "," else Operations.toString(realm, arguments[0]).string
 
             return buildString {
                 for (i in 0 until length) {
@@ -653,25 +663,26 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                         append(sep)
                     val element = obj.get(i)
                     if (!element.isNullish)
-                        append(Operations.toString(element).string)
+                        append(Operations.toString(realm, element).string)
                 }
             }.toValue()
         }
 
         fun genericArrayLastIndexOf(
+            realm: Realm,
             arguments: JSArguments,
-            lengthProducer: (obj: JSObject) -> Long,
+            lengthProducer: (realm: Realm, obj: JSObject) -> Long,
             indicesProducer: (obj: JSObject) -> Iterable<Long>
         ): JSValue {
-            val obj = Operations.toObject(arguments.thisValue)
-            val length = lengthProducer(obj)
+            val obj = Operations.toObject(realm, arguments.thisValue)
+            val length = lengthProducer(realm, obj)
             if (length == 0L)
                 return (-1).toValue()
 
             val (searchElement, fromIndex) = arguments.takeArgs(0..1)
             val fromNumber = if (fromIndex == JSUndefined) {
                 length - 1L
-            } else Operations.toIntegerOrInfinity(fromIndex).let {
+            } else Operations.toIntegerOrInfinity(realm, fromIndex).let {
                 if (it.isNegativeInfinity)
                     return (-1).toValue()
                 it.asLong
@@ -693,19 +704,20 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         }
 
         fun genericArrayReduce(
+            realm: Realm,
             arguments: JSArguments,
-            lengthProducer: (obj: JSObject) -> Long,
+            lengthProducer: (realm: Realm, obj: JSObject) -> Long,
             indicesProducer: (obj: JSObject) -> Iterable<Long>,
             isRight: Boolean
         ): JSValue {
-            val obj = Operations.toObject(arguments.thisValue)
-            val length = lengthProducer(obj)
+            val obj = Operations.toObject(realm, arguments.thisValue)
+            val length = lengthProducer(realm, obj)
             val (callback, initialValue) = arguments.takeArgs(0..1)
             if (!Operations.isCallable(callback))
-                Errors.Array.CallableFirstArg("reduceRight").throwTypeError()
+                Errors.Array.CallableFirstArg("reduceRight").throwTypeError(realm)
 
             if (length == 0L && arguments.size == 1)
-                Errors.Array.ReduceEmptyArray.throwTypeError()
+                Errors.Array.ReduceEmptyArray.throwTypeError(realm)
 
             val indices = indicesProducer(obj).let {
                 if (isRight) it.reversed() else it
@@ -715,25 +727,26 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                 initialValue
             } else {
                 if (indices.isEmpty())
-                    Errors.Array.ReduceEmptyArray.throwTypeError()
+                    Errors.Array.ReduceEmptyArray.throwTypeError(realm)
                 obj.get(indices.removeFirst())
             }
 
             indices.forEach {
                 val value = obj.get(it)
-                accumulator = Operations.call(callback, JSUndefined, listOf(accumulator, value, it.toValue(), obj))
+                accumulator = Operations.call(realm, callback, JSUndefined, listOf(accumulator, value, it.toValue(), obj))
             }
 
             return accumulator
         }
 
         fun genericArrayReverse(
+            realm: Realm,
             arguments: JSArguments,
-            lengthProducer: (obj: JSObject) -> Long,
+            lengthProducer: (realm: Realm, obj: JSObject) -> Long,
             indicesProducer: (obj: JSObject) -> Iterable<Long>
         ): JSValue {
-            val obj = Operations.toObject(arguments.thisValue)
-            var length = lengthProducer(obj)
+            val obj = Operations.toObject(realm, arguments.thisValue)
+            val length = lengthProducer(realm, obj)
             val middle = floor(length / 2.0)
             val indices = indicesProducer(obj)
 
@@ -755,12 +768,12 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
                 if (upperIndex in upperIndices) {
                     val upperVal = obj.get(upperIndex)
-                    Operations.set(obj, upperIndex.key(), lowerVal, true)
-                    Operations.set(obj, lowerIndex.key(), upperVal, true)
+                    Operations.set(realm, obj, upperIndex.key(), lowerVal, true)
+                    Operations.set(realm, obj, lowerIndex.key(), upperVal, true)
                     upperIndices.remove(upperIndex)
                 } else {
-                    Operations.set(obj, upperIndex.key(), lowerVal, true)
-                    Operations.deletePropertyOrThrow(obj, lowerIndex.key())
+                    Operations.set(realm, obj, upperIndex.key(), lowerVal, true)
+                    Operations.deletePropertyOrThrow(realm, obj, lowerIndex.key())
                 }
 
                 lowerIt.remove()
@@ -774,12 +787,12 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
                 if (lowerIndex in lowerIndices) {
                     val lowerVal = obj.get(lowerIndex)
-                    Operations.set(obj, lowerIndex.key(), upperVal, true)
-                    Operations.set(obj, upperIndex.key(), lowerVal, true)
+                    Operations.set(realm, obj, lowerIndex.key(), upperVal, true)
+                    Operations.set(realm, obj, upperIndex.key(), lowerVal, true)
                     lowerIndices.remove(lowerIndex)
                 } else {
-                    Operations.set(obj, lowerIndex.key(), upperVal, true)
-                    Operations.deletePropertyOrThrow(obj, upperIndex.key())
+                    Operations.set(realm, obj, lowerIndex.key(), upperVal, true)
+                    Operations.deletePropertyOrThrow(realm, obj, upperIndex.key())
                 }
 
                 upperIt.remove()
@@ -791,23 +804,24 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         }
 
         fun genericArraySome(
+            realm: Realm,
             arguments: JSArguments,
-            lengthProducer: (obj: JSObject) -> Long,
+            lengthProducer: (realm: Realm, obj: JSObject) -> Long,
             indicesProducer: (obj: JSObject) -> Iterable<Long>
         ): JSValue {
-            val obj = Operations.toObject(arguments.thisValue)
-            val length = lengthProducer(obj)
+            val obj = Operations.toObject(realm, arguments.thisValue)
+            val length = lengthProducer(realm, obj)
             val (callback, thisArg) = arguments.takeArgs(0..1)
 
             if (!Operations.isCallable(callback))
-                Errors.Array.CallableFirstArg("some").throwTypeError()
+                Errors.Array.CallableFirstArg("some").throwTypeError(realm)
 
             indicesProducer(obj).forEach {
                 if (it >= length)
                     return@forEach
 
                 val value = obj.get(it)
-                val testResult = Operations.toBoolean(Operations.call(callback, thisArg, listOf(value, it.toValue(), obj)))
+                val testResult = Operations.toBoolean(Operations.call(realm, callback, thisArg, listOf(value, it.toValue(), obj)))
                 if (testResult)
                     return JSTrue
             }

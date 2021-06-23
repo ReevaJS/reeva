@@ -21,33 +21,33 @@ class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(r
         defineNativeFunction("next", 0, ::next)
     }
 
-    fun next(arguments: JSArguments): JSValue {
+    fun next(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
         if (thisValue !is JSRegExpStringIterator)
-            Errors.IncompatibleMethodCall("%RegExpStringIterator%.prototype.next").throwTypeError()
+            Errors.IncompatibleMethodCall("%RegExpStringIterator%.prototype.next").throwTypeError(realm)
         if (thisValue.done)
-            return Operations.createIterResultObject(JSUndefined, true)
+            return Operations.createIterResultObject(realm, JSUndefined, true)
 
         val match = Operations.regExpExec(realm, thisValue, thisValue.iteratedString, ".next")
         if (match == JSNull) {
             thisValue.done = true
-            return Operations.createIterResultObject(JSUndefined, true)
+            return Operations.createIterResultObject(realm, JSUndefined, true)
         }
 
         expect(match is JSObject)
 
         return if (thisValue.global) {
-            val matchStr = Operations.toString(match.get(0)).string
+            val matchStr = Operations.toString(realm, match.get(0)).string
             if (matchStr == "") {
-                val thisIndex = Operations.toLength(thisValue.get("lastIndex")).asInt
+                val thisIndex = Operations.toLength(realm, thisValue.get("lastIndex")).asInt
                 // TODO: AdvanceStringIndex
                 val nextIndex = thisIndex + 1
-                Operations.set(thisValue, "lastIndex".key(), nextIndex.toValue(), true)
+                Operations.set(realm, thisValue, "lastIndex".key(), nextIndex.toValue(), true)
             }
-            Operations.createIterResultObject(match, false)
+            Operations.createIterResultObject(realm, match, false)
         } else {
             thisValue.done = true
-            Operations.createIterResultObject(match, false)
+            Operations.createIterResultObject(realm, match, false)
         }
     }
 

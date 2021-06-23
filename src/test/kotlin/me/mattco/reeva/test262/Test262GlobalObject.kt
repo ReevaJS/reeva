@@ -1,16 +1,15 @@
 package me.mattco.reeva.test262
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.JSArguments
+import me.mattco.reeva.runtime.JSGlobalObject
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
-import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Error
-import me.mattco.reeva.runtime.JSArguments
 
 class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(realm) {
     override fun init() {
@@ -30,7 +29,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
             defineNativeFunction("gc", 0, ::gc)
         }
 
-        fun createRealm(arguments: JSArguments): JSValue {
+        fun createRealm(realm: Realm, arguments: JSArguments): JSValue {
             val newRealm = Reeva.makeRealm()
             newRealm.initObjects()
             val newGlobal = Test262GlobalObject.create(newRealm)
@@ -38,13 +37,13 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
             return newGlobal.get("$262")
         }
 
-        fun detachArrayBuffer(arguments: JSArguments): JSValue {
-            Operations.detachArrayBuffer(arguments.argument(0))
+        fun detachArrayBuffer(realm: Realm, arguments: JSArguments): JSValue {
+            Operations.detachArrayBuffer(realm, arguments.argument(0))
             return JSUndefined
         }
 
-        fun gc(arguments: JSArguments): JSValue {
-            Error("unable to force JVM garbage collection").throwTypeError()
+        fun gc(realm: Realm, arguments: JSArguments): JSValue {
+            Error("unable to force JVM garbage collection").throwTypeError(realm)
         }
     }
 

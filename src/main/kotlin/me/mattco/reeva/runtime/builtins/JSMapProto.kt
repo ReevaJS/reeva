@@ -35,12 +35,12 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         defineNativeFunction(Realm.`@@iterator`.key(), 0, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, function = ::entries)
     }
 
-    fun getSize(thisValue: JSValue): JSValue {
-        return thisMapData(thisValue, "size").map.size.toValue()
+    fun getSize(realm: Realm, thisValue: JSValue): JSValue {
+        return thisMapData(realm, thisValue, "size").map.size.toValue()
     }
 
-    fun clear(arguments: JSArguments): JSValue {
-        val data = thisMapData(arguments.thisValue, "clear")
+    fun clear(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisMapData(realm, arguments.thisValue, "clear")
         data.map.clear()
         if (data.iterationCount == 0) {
             data.keyInsertionOrder.clear()
@@ -52,8 +52,8 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return JSUndefined
     }
 
-    fun delete(arguments: JSArguments): JSValue {
-        val data = thisMapData(arguments.thisValue, "delete")
+    fun delete(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisMapData(realm, arguments.thisValue, "delete")
         val key = arguments.argument(0)
         if (data.iterationCount == 0) {
             data.keyInsertionOrder.remove(key)
@@ -67,13 +67,13 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return (data.map.remove(key) != null).toValue()
     }
 
-    fun entries(arguments: JSArguments): JSValue {
-        val data = thisMapData(arguments.thisValue, "entries")
+    fun entries(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisMapData(realm, arguments.thisValue, "entries")
         return JSMapIterator.create(realm, data, PropertyKind.KeyValue)
     }
 
-    fun forEach(arguments: JSArguments): JSValue {
-        val data = thisMapData(arguments.thisValue, "forEach")
+    fun forEach(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisMapData(realm, arguments.thisValue, "forEach")
         val (callback, thisArg) = arguments.takeArgs(0..1)
         if (!Operations.isCallable(callback))
             Errors.Map.CallableFirstArg("forEach")
@@ -84,7 +84,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         while (index < data.keyInsertionOrder.size) {
             val key = data.keyInsertionOrder[index]
             if (key != JSEmpty)
-                Operations.call(callback, thisArg, listOf(data.map[key]!!, key, arguments.thisValue))
+                Operations.call(realm, callback, thisArg, listOf(data.map[key]!!, key, arguments.thisValue))
 
             index++
         }
@@ -94,40 +94,40 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         return JSUndefined
     }
 
-    fun get(arguments: JSArguments): JSValue {
-        val data = thisMapData(arguments.thisValue, "get")
+    fun get(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisMapData(realm, arguments.thisValue, "get")
         return data.map[arguments.argument(0)] ?: JSUndefined
     }
 
-    fun has(arguments: JSArguments): JSValue {
-        val data = thisMapData(arguments.thisValue, "has")
+    fun has(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisMapData(realm, arguments.thisValue, "has")
         return (arguments.argument(0) in data.map).toValue()
     }
 
-    fun keys(arguments: JSArguments): JSValue {
-        val map = thisMapData(arguments.thisValue, "keys")
+    fun keys(realm: Realm, arguments: JSArguments): JSValue {
+        val map = thisMapData(realm, arguments.thisValue, "keys")
         return JSMapIterator.create(realm, map, PropertyKind.Key)
     }
 
-    fun set(arguments: JSArguments): JSValue {
-        val data = thisMapData(arguments.thisValue, "set")
+    fun set(realm: Realm, arguments: JSArguments): JSValue {
+        val data = thisMapData(realm, arguments.thisValue, "set")
         val key = arguments.argument(0)
         data.map[key] = arguments.argument(1)
         data.keyInsertionOrder.add(key)
         return arguments.thisValue
     }
 
-    fun values(arguments: JSArguments): JSValue {
-        val map = thisMapData(arguments.thisValue, "values")
+    fun values(realm: Realm, arguments: JSArguments): JSValue {
+        val map = thisMapData(realm, arguments.thisValue, "values")
         return JSMapIterator.create(realm, map, PropertyKind.Value)
     }
 
     companion object {
         fun create(realm: Realm) = JSMapProto(realm).initialize()
 
-        private fun thisMapData(thisValue: JSValue, method: String): JSMapObject.MapData {
+        private fun thisMapData(realm: Realm, thisValue: JSValue, method: String): JSMapObject.MapData {
             if (!Operations.requireInternalSlot(thisValue, SlotName.MapData))
-                Errors.IncompatibleMethodCall("Map.prototype.$method").throwTypeError()
+                Errors.IncompatibleMethodCall("Map.prototype.$method").throwTypeError(realm)
             return thisValue.getSlotAs(SlotName.MapData)
         }
     }

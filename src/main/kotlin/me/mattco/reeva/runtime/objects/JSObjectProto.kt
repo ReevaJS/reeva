@@ -31,48 +31,48 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("B.2.2.1.1")
-    fun getProto(thisValue: JSValue): JSValue {
-        return Operations.toObject(thisValue).getPrototype()
+    fun getProto(realm: Realm, thisValue: JSValue): JSValue {
+        return Operations.toObject(realm, thisValue).getPrototype()
     }
 
     @ECMAImpl("B.2.2.1.2")
-    fun setProto(thisValue: JSValue, proto: JSValue): JSValue {
-        val obj = Operations.requireObjectCoercible(thisValue)
+    fun setProto(realm: Realm, thisValue: JSValue, proto: JSValue): JSValue {
+        val obj = Operations.requireObjectCoercible(realm, thisValue)
         if (proto !is JSObject && proto != JSNull)
-            Errors.Object.ProtoValue.throwTypeError()
+            Errors.Object.ProtoValue.throwTypeError(realm)
         if (obj is JSObject && !obj.setPrototype(proto))
-            Errors.TODO("set Object.prototype.__proto__").throwTypeError()
+            Errors.TODO("set Object.prototype.__proto__").throwTypeError(realm)
         return JSUndefined
     }
 
     @ECMAImpl("B.2.2.2")
-    fun defineGetter(arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(arguments.thisValue)
+    fun defineGetter(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(realm, arguments.thisValue)
         val getter = arguments.argument(1)
         if (!Operations.isCallable(getter))
-            Errors.Object.DefineGetterBadArgType.throwTypeError()
-        val desc = Descriptor(JSAccessor(getter as JSFunction, null), Descriptor.ENUMERABLE or Descriptor.CONFIGURABLE)
-        val key = Operations.toPropertyKey(arguments.argument(0))
-        Operations.definePropertyOrThrow(obj, key, desc)
+            Errors.Object.DefineGetterBadArgType.throwTypeError(realm)
+        val desc = Descriptor(JSAccessor(getter, null), Descriptor.ENUMERABLE or Descriptor.CONFIGURABLE)
+        val key = Operations.toPropertyKey(realm, arguments.argument(0))
+        Operations.definePropertyOrThrow(realm, obj, key, desc)
         return JSUndefined
     }
 
     @ECMAImpl("B.2.2.2")
-    fun defineSetter(arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(arguments.thisValue)
+    fun defineSetter(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.toObject(realm, arguments.thisValue)
         val setter = arguments.argument(1)
         if (!Operations.isCallable(setter))
-            Errors.Object.DefineSetterBadArgType.throwTypeError()
-        val desc = Descriptor(JSAccessor(null, setter as JSFunction), Descriptor.ENUMERABLE or Descriptor.CONFIGURABLE)
-        val key = Operations.toPropertyKey(arguments.argument(0))
-        Operations.definePropertyOrThrow(obj, key, desc)
+            Errors.Object.DefineSetterBadArgType.throwTypeError(realm)
+        val desc = Descriptor(JSAccessor(null, setter), Descriptor.ENUMERABLE or Descriptor.CONFIGURABLE)
+        val key = Operations.toPropertyKey(realm, arguments.argument(0))
+        Operations.definePropertyOrThrow(realm, obj, key, desc)
         return JSUndefined
     }
 
     @ECMAImpl("B.2.2.4")
-    fun lookupGetter(arguments: JSArguments): JSValue {
-        var obj = Operations.toObject(arguments.thisValue)
-        val key = Operations.toPropertyKey(arguments.argument(0))
+    fun lookupGetter(realm: Realm, arguments: JSArguments): JSValue {
+        var obj = Operations.toObject(realm, arguments.thisValue)
+        val key = Operations.toPropertyKey(realm, arguments.argument(0))
         while (true) {
             val desc = obj.getOwnPropertyDescriptor(key)
             if (desc != null) {
@@ -85,9 +85,9 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("B.2.2.4")
-    fun lookupSetter(arguments: JSArguments): JSValue {
-        var obj = Operations.toObject(arguments.thisValue)
-        val key = Operations.toPropertyKey(arguments.argument(0))
+    fun lookupSetter(realm: Realm, arguments: JSArguments): JSValue {
+        var obj = Operations.toObject(realm, arguments.thisValue)
+        val key = Operations.toPropertyKey(realm, arguments.argument(0))
         while (true) {
             val desc = obj.getOwnPropertyDescriptor(key)
             if (desc != null) {
@@ -100,18 +100,18 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("19.1.3.2")
-    fun hasOwnProperty(arguments: JSArguments): JSValue {
-        val key = Operations.toPropertyKey(arguments.argument(0))
-        val o = Operations.toObject(arguments.thisValue)
+    fun hasOwnProperty(realm: Realm, arguments: JSArguments): JSValue {
+        val key = Operations.toPropertyKey(realm, arguments.argument(0))
+        val o = Operations.toObject(realm, arguments.thisValue)
         return Operations.hasOwnProperty(o, key).toValue()
     }
 
     @ECMAImpl("19.1.3.3")
-    fun isPrototypeOf(arguments: JSArguments): JSValue {
+    fun isPrototypeOf(realm: Realm, arguments: JSArguments): JSValue {
         var arg = arguments.argument(0)
         if (arg !is JSObject)
             return JSFalse
-        val thisObj = Operations.toObject(arguments.thisValue)
+        val thisObj = Operations.toObject(realm, arguments.thisValue)
         while (true) {
             arg = (arg as JSObject).getPrototype()
             if (arg == JSNull)
@@ -122,32 +122,32 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     }
 
     @ECMAImpl("19.1.3.4")
-    fun propertyIsEnumerable(arguments: JSArguments): JSValue {
-        val key = Operations.toPropertyKey(arguments.argument(0))
-        val thisObj = Operations.toObject(arguments.thisValue)
+    fun propertyIsEnumerable(realm: Realm, arguments: JSArguments): JSValue {
+        val key = Operations.toPropertyKey(realm, arguments.argument(0))
+        val thisObj = Operations.toObject(realm, arguments.thisValue)
         val desc = thisObj.getOwnPropertyDescriptor(key) ?: return JSFalse
         return desc.isEnumerable.toValue()
     }
 
     @ECMAImpl("19.1.3.5")
-    fun toLocaleString(arguments: JSArguments): JSValue {
-        val thisObj = Operations.toObject(arguments.thisValue)
-        return Operations.invoke(thisObj, "toString".toValue())
+    fun toLocaleString(realm: Realm, arguments: JSArguments): JSValue {
+        val thisObj = Operations.toObject(realm, arguments.thisValue)
+        return Operations.invoke(realm, thisObj, "toString".toValue())
     }
 
-    fun toString(arguments: JSArguments): JSValue {
+    fun toString(realm: Realm, arguments: JSArguments): JSValue {
         if (arguments.thisValue == JSUndefined)
             return "[object Undefined]".toValue()
         if (arguments.thisValue == JSNull)
             return "[object Null]".toValue()
 
-        val obj = Operations.toObject(arguments.thisValue)
+        val obj = Operations.toObject(realm, arguments.thisValue)
         val tag = obj.get(Realm.`@@toStringTag`).let {
             if (it is JSString) {
                 it.string
             } else {
                 when {
-                    Operations.isArray(obj) -> "Array"
+                    Operations.isArray(realm, obj) -> "Array"
                     obj.hasSlot(SlotName.ParameterMap) -> "Arguments"
                     obj is JSFunction -> "Function" // TODO: Slot check? Can you extend Function?
                     obj.hasSlot(SlotName.ErrorData) -> "Error"
@@ -165,8 +165,8 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         return "[object $tag]".toValue()
     }
 
-    fun valueOf(arguments: JSArguments): JSValue {
-        return Operations.toObject(arguments.thisValue)
+    fun valueOf(realm: Realm, arguments: JSArguments): JSValue {
+        return Operations.toObject(realm, arguments.thisValue)
     }
 
     companion object {

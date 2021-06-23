@@ -1,6 +1,6 @@
 package me.mattco.reeva.utils
 
-import me.mattco.reeva.Reeva
+import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
@@ -8,32 +8,32 @@ import me.mattco.reeva.runtime.errors.*
 import me.mattco.reeva.runtime.objects.PropertyKey
 
 open class Error(private val message: String) {
-    fun throwEvalError(): Nothing {
-        throw ThrowException(JSEvalErrorObject.create(Reeva.activeAgent.activeRealm, message))
+    fun throwEvalError(realm: Realm): Nothing {
+        throw ThrowException(JSEvalErrorObject.create(realm, message))
     }
 
-    fun throwInternalError(): Nothing {
-        throw ThrowException(JSInternalErrorObject.create(Reeva.activeAgent.activeRealm, message))
+    fun throwInternalError(realm: Realm): Nothing {
+        throw ThrowException(JSInternalErrorObject.create(realm, message))
     }
 
-    fun throwTypeError(): Nothing {
-        throw ThrowException(JSTypeErrorObject.create(Reeva.activeAgent.activeRealm, message))
+    fun throwTypeError(realm: Realm): Nothing {
+        throw ThrowException(JSTypeErrorObject.create(realm, message))
     }
 
-    fun throwRangeError(): Nothing {
-        throw ThrowException(JSRangeErrorObject.create(Reeva.activeAgent.activeRealm, message))
+    fun throwRangeError(realm: Realm): Nothing {
+        throw ThrowException(JSRangeErrorObject.create(realm, message))
     }
 
-    fun throwReferenceError(): Nothing {
-        throw ThrowException(JSReferenceErrorObject.create(Reeva.activeAgent.activeRealm, message))
+    fun throwReferenceError(realm: Realm): Nothing {
+        throw ThrowException(JSReferenceErrorObject.create(realm, message))
     }
 
-    fun throwSyntaxError(): Nothing {
-        throw ThrowException(JSSyntaxErrorObject.create(Reeva.activeAgent.activeRealm, message))
+    fun throwSyntaxError(realm: Realm): Nothing {
+        throw ThrowException(JSSyntaxErrorObject.create(realm, message))
     }
 
-    fun throwURIError(): Nothing {
-        throw ThrowException(JSURIErrorObject.create(Reeva.activeAgent.activeRealm, message))
+    fun throwURIError(realm: Realm): Nothing {
+        throw ThrowException(JSURIErrorObject.create(realm, message))
     }
 }
 

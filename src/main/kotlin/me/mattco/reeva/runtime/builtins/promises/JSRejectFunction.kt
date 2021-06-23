@@ -19,7 +19,7 @@ class JSRejectFunction private constructor(
         if (alreadyResolved.value)
             return JSUndefined
         alreadyResolved.value = true
-        return Operations.rejectPromise(promise, arguments.argument(0))
+        return Operations.rejectPromise(realm, promise, arguments.argument(0))
     }
 
     companion object {

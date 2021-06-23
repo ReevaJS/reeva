@@ -14,11 +14,11 @@ class JSConsoleProto private constructor(realm: Realm) : JSObject(realm, realm.o
         defineNativeFunction("log", 0, function = ::log)
     }
 
-    fun log(arguments: JSArguments): JSValue {
+    fun log(realm: Realm, arguments: JSArguments): JSValue {
         println(arguments.joinToString(separator = " ") {
             if (it is JSSymbol) {
                 it.descriptiveString()
-            } else Operations.toString(it).string
+            } else Operations.toString(realm, it).string
         })
         return JSUndefined
     }

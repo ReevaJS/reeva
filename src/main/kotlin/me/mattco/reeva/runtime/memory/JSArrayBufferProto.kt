@@ -21,28 +21,28 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
         defineNativeFunction("slice", 2, ::slice)
     }
 
-    private fun getByteLength(thisValue: JSValue): JSValue {
+    private fun getByteLength(realm: Realm, thisValue: JSValue): JSValue {
         if (!Operations.requireInternalSlot(thisValue, SlotName.ArrayBufferData))
-            Errors.IncompatibleMethodCall("ArrayBuffer.prototype.byteLength").throwTypeError()
+            Errors.IncompatibleMethodCall("ArrayBuffer.prototype.byteLength").throwTypeError(realm)
         if (Operations.isSharedArrayBuffer(thisValue))
-            Errors.TODO("ArrayBuffer.prototype.getByteLength isSharedArrayBuffer").throwTypeError()
+            Errors.TODO("ArrayBuffer.prototype.getByteLength isSharedArrayBuffer").throwTypeError(realm)
 
         if (Operations.isDetachedBuffer(thisValue))
             return JSNumber.ZERO
         return thisValue.getSlotAs<Int>(SlotName.ArrayBufferByteLength).toValue()
     }
 
-    private fun slice(arguments: JSArguments): JSValue {
+    private fun slice(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
         if (!Operations.requireInternalSlot(thisValue, SlotName.ArrayBufferData))
-            Errors.IncompatibleMethodCall("ArrayBuffer.prototype.slice").throwTypeError()
+            Errors.IncompatibleMethodCall("ArrayBuffer.prototype.slice").throwTypeError(realm)
         if (Operations.isSharedArrayBuffer(thisValue))
-            Errors.TODO("ArrayBuffer.prototype.slice isSharedArrayBuffer 1").throwTypeError()
+            Errors.TODO("ArrayBuffer.prototype.slice isSharedArrayBuffer 1").throwTypeError(realm)
         if (Operations.isDetachedBuffer(thisValue))
-            Errors.TODO("ArrayBuffer.prototype.slice isDetachedBuffer").throwTypeError()
+            Errors.TODO("ArrayBuffer.prototype.slice isDetachedBuffer").throwTypeError(realm)
 
         val length = thisValue.getSlotAs<Int>(SlotName.ArrayBufferByteLength)
-        val relativeStart = arguments.argument(0).toIntegerOrInfinity()
+        val relativeStart = arguments.argument(0).toIntegerOrInfinity(realm, )
         val first = when {
             relativeStart.number < 0 -> max(length + relativeStart.asInt, 0)
             relativeStart.isNegativeInfinity -> 0
@@ -52,7 +52,7 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
         val relativeEnd = arguments.argument(1).let {
             if (it == JSUndefined) {
                 length.toValue()
-            } else it.toIntegerOrInfinity()
+            } else it.toIntegerOrInfinity(realm, )
         }
 
         val final = when {
@@ -63,23 +63,23 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
 
         val newLength = max(final - first, 0)
 
-        val ctor = Operations.speciesConstructor(thisValue, realm.arrayBufferCtor)
+        val ctor = Operations.speciesConstructor(realm, thisValue, realm.arrayBufferCtor)
         val new = Operations.construct(ctor, listOf(newLength.toValue()))
         if (!Operations.requireInternalSlot(new, SlotName.ArrayBufferData))
-            Errors.ArrayBuffer.BadSpecies(new.toPrintableString()).throwTypeError()
+            Errors.ArrayBuffer.BadSpecies(new.toPrintableString()).throwTypeError(realm)
 
         if (Operations.isSharedArrayBuffer(new))
-            Errors.TODO("ArrayBuffer.prototype.slice isSharedArrayBuffer 2").throwTypeError()
+            Errors.TODO("ArrayBuffer.prototype.slice isSharedArrayBuffer 2").throwTypeError(realm)
         if (Operations.isDetachedBuffer(new))
-            Errors.TODO("ArrayBuffer.prototype.slice isDetachedBuffer 1").throwTypeError()
+            Errors.TODO("ArrayBuffer.prototype.slice isDetachedBuffer 1").throwTypeError(realm)
 
         if (new.sameValue(thisValue))
-            Errors.TODO("ArrayBuffer.prototype.slice SameValue").throwTypeError()
+            Errors.TODO("ArrayBuffer.prototype.slice SameValue").throwTypeError(realm)
 
         if (new.getSlotAs<Int>(SlotName.ArrayBufferByteLength) < newLength)
-            Errors.TODO("ArrayBuffer.prototype.slice newLength").throwTypeError()
+            Errors.TODO("ArrayBuffer.prototype.slice newLength").throwTypeError(realm)
         if (Operations.isDetachedBuffer(new))
-            Errors.TODO("ArrayBuffer.prototype.slice isDetachedBuffer 2").throwTypeError()
+            Errors.TODO("ArrayBuffer.prototype.slice isDetachedBuffer 2").throwTypeError(realm)
 
         val fromBuf = thisValue.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
         val toBuf = new.getSlotAs<DataBlock>(SlotName.ArrayBufferData)

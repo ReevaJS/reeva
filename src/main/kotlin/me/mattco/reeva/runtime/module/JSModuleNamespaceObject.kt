@@ -2,7 +2,6 @@ package me.mattco.reeva.runtime.module
 
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.modules.records.ModuleRecord
-import me.mattco.reeva.core.modules.resolver.ModuleResolver
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -11,7 +10,10 @@ import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.ecmaAssert
+import me.mattco.reeva.utils.expect
+import me.mattco.reeva.utils.key
+import me.mattco.reeva.utils.toValue
 
 open class JSModuleNamespaceObject(
     realm: Realm,
@@ -59,7 +61,7 @@ open class JSModuleNamespaceObject(
         if (descriptor.hasConfigurable && descriptor.isConfigurable)
             return false
         if (descriptor.getRawValue() != JSEmpty)
-            return descriptor.getActualValue(this).sameValue(current.getActualValue(this))
+            return descriptor.getActualValue(realm, this).sameValue(current.getActualValue(realm, this))
         return true
     }
 

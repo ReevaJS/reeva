@@ -26,8 +26,8 @@ class JSPromiseAllResolver private constructor(
         values[index] = arguments.argument(0)
         remainingElements.value--
         if (remainingElements.value == 0) {
-            val valuesArray = Operations.createArrayFromList(values)
-            return Operations.call(capability.resolve!!, JSUndefined, listOf(valuesArray))
+            val valuesArray = Operations.createArrayFromList(realm, values)
+            return Operations.call(realm, capability.resolve!!, JSUndefined, listOf(valuesArray))
         }
         return JSUndefined
     }

@@ -11,10 +11,6 @@ import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.key
 
 class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Proxy", 2) {
-    init {
-        isConstructable = true
-    }
-
     override fun init() {
         super.init()
         defineNativeFunction("revocable", 2, function = ::revocable)
@@ -22,21 +18,21 @@ class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "P
 
     override fun evaluate(arguments: JSArguments): JSValue {
         if (arguments.newTarget == JSUndefined)
-            Errors.CtorCallWithoutNew("Proxy").throwTypeError()
+            Errors.CtorCallWithoutNew("Proxy").throwTypeError(realm)
         return proxyCreate(realm, arguments.argument(0), arguments.argument(1))
     }
 
-    fun revocable(arguments: JSArguments): JSValue {
+    fun revocable(realm: Realm, arguments: JSArguments): JSValue {
         val proxy = proxyCreate(realm, arguments.argument(0), arguments.argument(1))
 
         val resultObj = JSObject.create(realm)
-        Operations.createDataPropertyOrThrow(resultObj, "proxy".key(), proxy)
+        Operations.createDataPropertyOrThrow(realm, resultObj, "proxy".key(), proxy)
 
-        val revokeMethod = fromLambda(realm, "", 0) { _ ->
+        val revokeMethod = fromLambda(realm, "", 0) { _, _ ->
             (proxy as JSProxyObject).revoke()
             JSUndefined
         }
-        Operations.createDataPropertyOrThrow(resultObj, "revoke".key(), revokeMethod)
+        Operations.createDataPropertyOrThrow(realm, resultObj, "revoke".key(), revokeMethod)
 
         return resultObj
     }
@@ -44,9 +40,9 @@ class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "P
     companion object {
         private fun proxyCreate(realm: Realm, target: JSValue, handler: JSValue): JSObject {
             if (target !is JSObject)
-                Errors.Proxy.CtorFirstArgType.throwTypeError()
+                Errors.Proxy.CtorFirstArgType.throwTypeError(realm)
             if (handler !is JSObject)
-                Errors.Proxy.CtorSecondArgType.throwTypeError()
+                Errors.Proxy.CtorSecondArgType.throwTypeError(realm)
             return JSProxyObject.create(realm, target, handler)
         }
 

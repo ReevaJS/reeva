@@ -1,6 +1,5 @@
 package me.mattco.reeva.runtime.objects
 
-import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
@@ -21,7 +20,7 @@ open class JSObject protected constructor(
     private val slots = EnumMap<SlotName, Any?>(SlotName::class.java)
 
     internal val storage = mutableListOf<JSValue>()
-    internal val indexedProperties = IndexedProperties()
+    internal val indexedProperties = IndexedProperties(realm)
     private var extensible: Boolean = true
     internal var shape: Shape
 
@@ -130,7 +129,7 @@ open class JSObject protected constructor(
         when (location) {
             is IntIndexedProperty -> receiver.indexedProperties.setDescriptor(location.int, descriptor)
             is LongIndexedProperty -> receiver.indexedProperties.setDescriptor(location.long, descriptor)
-            is StorageProperty -> receiver.storage[location.index] = descriptor.getActualValue(receiver)
+            is StorageProperty -> receiver.storage[location.index] = descriptor.getActualValue(realm, receiver)
         }
     }
 
@@ -183,7 +182,7 @@ open class JSObject protected constructor(
 
     @ECMAImpl("9.1.6")
     open fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
-        return Operations.validateAndApplyPropertyDescriptor(this, property, isExtensible(), descriptor, getOwnPropertyDescriptor(property))
+        return Operations.validateAndApplyPropertyDescriptor(realm, this, property, isExtensible(), descriptor, getOwnPropertyDescriptor(property))
     }
 
     @JvmOverloads fun get(property: String, receiver: JSValue = this) = get(property.key(), receiver)
@@ -199,8 +198,8 @@ open class JSObject protected constructor(
     open fun get(property: PropertyKey, receiver: JSValue = this): JSValue {
         val desc = getPropertyDescriptor(property) ?: return JSUndefined
         if (desc.isAccessorDescriptor)
-            return if (desc.hasGetterFunction) Operations.call(desc.getter!!, receiver) else JSUndefined
-        return desc.getActualValue(receiver)
+            return if (desc.hasGetterFunction) Operations.call(realm, desc.getter!!, receiver) else JSUndefined
+        return desc.getActualValue(realm, receiver)
     }
 
     @JvmOverloads fun set(property: String, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
@@ -246,7 +245,7 @@ open class JSObject protected constructor(
         expect(ownDesc.isAccessorDescriptor)
         if (!ownDesc.hasSetterFunction)
             return false
-        Operations.call(ownDesc.setter!!, receiver, listOf(value))
+        Operations.call(realm, ownDesc.setter!!, receiver, listOf(value))
         return true
     }
 
@@ -306,13 +305,13 @@ open class JSObject protected constructor(
         name: String? = null
     ) {
         val getterFunc = getter?.let { f ->
-            JSNativeFunction.fromLambda(realm, "get ${name ?: key}", 0) { args -> f(args.thisValue) }
+            JSNativeFunction.fromLambda(realm, "get ${name ?: key}", 0) { r, args -> f(r, args.thisValue) }
         }
         val setterFunc = setter?.let { f ->
-            JSNativeFunction.fromLambda(realm, "set ${name ?: key}", 0) { args ->
+            JSNativeFunction.fromLambda(realm, "set ${name ?: key}", 0) { r, args ->
                 if (args.size != 1)
                     TODO()
-                f(args.thisValue, args.argument(0))
+                f(r, args.thisValue, args.argument(0))
                 JSUndefined
             }
         }
@@ -504,8 +503,6 @@ open class JSObject protected constructor(
     }
 
     companion object {
-        val INVALID_OBJECT by lazy { JSObject(Reeva.activeAgent.activeRealm) }
-
         @JvmStatic
         @JvmOverloads
         fun create(realm: Realm, proto: JSValue = realm.objectProto) = JSObject(realm, proto).initialize()

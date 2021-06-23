@@ -26,6 +26,8 @@ class IRInterpreter(
     private val arguments: List<JSValue>,
 ) : IrOpcodeVisitor() {
     private val info = function.info
+    private val realm: Realm
+        get() = function.realm
 
     private val registers = Registers(info.code.registerCount)
     private var accumulator by registers::accumulator
@@ -106,7 +108,7 @@ class IRInterpreter(
 
     override fun visitLdaKeyedProperty(objectReg: Register) {
         val obj = registers[objectReg] as JSObject
-        val key = accumulator.toPropertyKey()
+        val key = accumulator.toPropertyKey(realm)
         accumulator = obj.get(key)
     }
 
@@ -118,7 +120,7 @@ class IRInterpreter(
 
     override fun visitStaKeyedProperty(objectReg: Register, nameReg: Register) {
         val obj = registers[objectReg] as JSObject
-        val key = registers[nameReg].toPropertyKey()
+        val key = registers[nameReg].toPropertyKey(realm)
         obj.set(key, accumulator)
     }
 
@@ -206,7 +208,7 @@ class IRInterpreter(
     override fun visitBitwiseNot() {
         accumulator = if (accumulator is JSBigInt) {
             Operations.bigintBitwiseNOT(accumulator)
-        } else Operations.numericBitwiseNOT(accumulator)
+        } else Operations.numericBitwiseNOT(realm, accumulator)
     }
 
     override fun visitStringAppend(lhsStringReg: Register) {
@@ -231,16 +233,16 @@ class IRInterpreter(
     override fun visitDeletePropertySloppy(objectReg: Register) {
         val target = registers[objectReg]
         accumulator = if (target is JSObject) {
-            target.delete(accumulator.toPropertyKey()).toValue()
+            target.delete(accumulator.toPropertyKey(realm)).toValue()
         } else JSTrue
     }
 
     override fun visitDeletePropertyStrict(objectReg: Register) {
         val target = registers[objectReg]
         if (target is JSObject) {
-            val key = accumulator.toPropertyKey()
+            val key = accumulator.toPropertyKey(realm)
             if (!target.delete(key))
-                Errors.StrictModeFailedDelete(key, target.toJSString().string)
+                Errors.StrictModeFailedDelete(key, target.toJSString(realm).string)
         }
 
         accumulator = JSTrue
@@ -249,8 +251,8 @@ class IRInterpreter(
     override fun visitLdaGlobal(name: Index) {
         val name = loadConstant<String>(name)
         val desc = function.globalEnv.extension().getPropertyDescriptor(name.key())
-            ?: Errors.UnknownReference(name.key()).throwReferenceError()
-        accumulator = desc.getActualValue(function.globalEnv.extension())
+            ?: Errors.UnknownReference(name.key()).throwReferenceError(realm)
+        accumulator = desc.getActualValue(realm, function.globalEnv.extension())
     }
 
     override fun visitStaGlobal(name: Index) {
@@ -295,6 +297,7 @@ class IRInterpreter(
 
     override fun visitCall(targetReg: Register, receiverReg: Register, argumentRegs: List<Register>) {
         accumulator = Operations.call(
+            realm,
             registers[targetReg],
             registers[receiverReg],
             argumentRegs.map { registers[it] }
@@ -304,6 +307,7 @@ class IRInterpreter(
     override fun visitCallWithArgArray(targetReg: Register, receiverReg: Register, argumentReg: Register) {
         val argumentsArray = registers[argumentReg] as JSObject
         accumulator = Operations.call(
+            realm,
             registers[targetReg],
             registers[receiverReg],
             (0 until argumentsArray.indexedProperties.arrayLikeSize).map {
@@ -315,7 +319,7 @@ class IRInterpreter(
     override fun visitConstruct(targetReg: Register, newTargetReg: Register, argumentRegs: List<Register>) {
         val target = registers[targetReg]
         if (!Operations.isConstructor(target))
-            Errors.NotACtor(target.toJSString().string).throwTypeError()
+            Errors.NotACtor(target.toJSString(realm).string).throwTypeError(realm)
 
         accumulator = Operations.construct(
             target,
@@ -329,11 +333,11 @@ class IRInterpreter(
     }
 
     override fun visitTestEqual(lhsReg: Register) {
-        accumulator = Operations.abstractEqualityComparison(registers[lhsReg], accumulator)
+        accumulator = Operations.abstractEqualityComparison(realm, registers[lhsReg], accumulator)
     }
 
     override fun visitTestNotEqual(lhsReg: Register) {
-        accumulator = Operations.abstractEqualityComparison(registers[lhsReg], accumulator).inv()
+        accumulator = Operations.abstractEqualityComparison(realm, registers[lhsReg], accumulator).inv()
     }
 
     override fun visitTestEqualStrict(lhsReg: Register) {
@@ -347,28 +351,28 @@ class IRInterpreter(
     override fun visitTestLessThan(lhsReg: Register) {
         val lhs = registers[lhsReg]
         val rhs = accumulator
-        val result = Operations.abstractRelationalComparison(lhs, rhs, true)
+        val result = Operations.abstractRelationalComparison(realm, lhs, rhs, true)
         accumulator = if (result == JSUndefined) JSFalse else result
     }
 
     override fun visitTestGreaterThan(lhsReg: Register) {
         val lhs = registers[lhsReg]
         val rhs = accumulator
-        val result = Operations.abstractRelationalComparison(rhs, lhs, false)
+        val result = Operations.abstractRelationalComparison(realm, rhs, lhs, false)
         accumulator = if (result == JSUndefined) JSFalse else result
     }
 
     override fun visitTestLessThanOrEqual(lhsReg: Register) {
         val lhs = registers[lhsReg]
         val rhs = accumulator
-        val result = Operations.abstractRelationalComparison(rhs, lhs, false)
+        val result = Operations.abstractRelationalComparison(realm, rhs, lhs, false)
         accumulator = if (result == JSFalse) JSTrue else JSFalse
     }
 
     override fun visitTestGreaterThanOrEqual(lhsReg: Register) {
         val lhs = registers[lhsReg]
         val rhs = accumulator
-        val result = Operations.abstractRelationalComparison(lhs, rhs, true)
+        val result = Operations.abstractRelationalComparison(realm, lhs, rhs, true)
         accumulator = if (result == JSFalse) JSTrue else JSFalse
     }
 
@@ -377,11 +381,11 @@ class IRInterpreter(
     }
 
     override fun visitTestInstanceOf(lhsReg: Register) {
-        accumulator = Operations.instanceofOperator(registers[lhsReg], accumulator)
+        accumulator = Operations.instanceofOperator(realm, registers[lhsReg], accumulator)
     }
 
     override fun visitTestIn(lhsReg: Register) {
-        val rval = registers[lhsReg].toPropertyKey()
+        val rval = registers[lhsReg].toPropertyKey(realm)
         accumulator = Operations.hasProperty(accumulator, rval).toValue()
     }
 
@@ -402,19 +406,19 @@ class IRInterpreter(
     }
 
     override fun visitToNumber() {
-        accumulator = Operations.toNumber(accumulator)
+        accumulator = Operations.toNumber(realm, accumulator)
     }
 
     override fun visitToNumeric() {
-        accumulator = Operations.toNumeric(accumulator)
+        accumulator = Operations.toNumeric(realm, accumulator)
     }
 
     override fun visitToObject() {
-        accumulator = Operations.toObject(accumulator)
+        accumulator = Operations.toObject(realm, accumulator)
     }
 
     override fun visitToString() {
-        accumulator = Operations.toString(accumulator)
+        accumulator = Operations.toString(realm, accumulator)
     }
 
     override fun visitJump(ifBlock: Block) {
@@ -450,12 +454,12 @@ class IRInterpreter(
     }
 
     override fun visitThrowConstReassignment(nameIndex: Index) {
-        Errors.AssignmentToConstant(loadConstant(nameIndex)).throwTypeError()
+        Errors.AssignmentToConstant(loadConstant(nameIndex)).throwTypeError(realm)
     }
 
     override fun visitThrowUseBeforeInitIfEmpty(nameIndex: Index) {
         if (accumulator == JSEmpty)
-            Errors.AccessBeforeInitialization(loadConstant(nameIndex)).throwTypeError()
+            Errors.AccessBeforeInitialization(loadConstant(nameIndex)).throwTypeError(realm)
     }
 
     override fun visitDefineGetterProperty(objectReg: Register, nameReg: Register, methodReg: Register) {
@@ -490,9 +494,9 @@ class IRInterpreter(
     }
 
     override fun visitGetIterator() {
-        accumulator = Operations.getIterator(Operations.toObject(accumulator)).iterator
+        accumulator = Operations.getIterator(realm, Operations.toObject(realm, accumulator)).iterator
         if (accumulator !is JSObject)
-            Errors.NonObjectIterator.throwTypeError()
+            Errors.NonObjectIterator.throwTypeError(realm)
     }
 
     override fun visitCreateClosure(infoCpIndex: Int) {
@@ -506,11 +510,12 @@ class IRInterpreter(
     }
 
     private fun defineAccessor(obj: JSObject, property: JSValue, method: JSFunction, isGetter: Boolean) {
-        val key = property.toPropertyKey()
-        Operations.setFunctionName(method, key, if (isGetter) "get" else "set")
+        val key = property.toPropertyKey(realm)
+        Operations.setFunctionName(realm, method, key, if (isGetter) "get" else "set")
         val accessor = if (isGetter) JSAccessor(method, null) else JSAccessor(null, method)
 
         Operations.definePropertyOrThrow(
+            realm,
             obj,
             key,
             Descriptor(accessor, Descriptor.CONFIGURABLE or Descriptor.ENUMERABLE)
@@ -519,7 +524,7 @@ class IRInterpreter(
 
     private fun binaryOp(op: String, lhsReg: Register) {
         val lhs = registers[lhsReg]
-        accumulator = Operations.applyStringOrNumericBinaryOperator(lhs, accumulator, op)
+        accumulator = Operations.applyStringOrNumericBinaryOperator(realm, lhs, accumulator, op)
     }
 
     private fun declareGlobals(array: DeclarationsArray) {
@@ -529,17 +534,17 @@ class IRInterpreter(
 
         for (name in lexNames) {
             if (function.globalEnv.hasRestrictedGlobalProperty(name))
-                Errors.RestrictedGlobalPropertyName(name).throwSyntaxError()
+                Errors.RestrictedGlobalPropertyName(name).throwSyntaxError(realm)
         }
 
         for (name in funcNames) {
             if (!function.globalEnv.canDeclareGlobalFunction(name))
-                Errors.InvalidGlobalFunction(name).throwTypeError()
+                Errors.InvalidGlobalFunction(name).throwTypeError(realm)
         }
 
         for (name in varNames) {
             if (!function.globalEnv.canDeclareGlobalVar(name))
-                Errors.InvalidGlobalVar(name).throwTypeError()
+                Errors.InvalidGlobalVar(name).throwTypeError(realm)
         }
     }
 
@@ -593,8 +598,6 @@ class IRInterpreter(
         val globalEnv: GlobalEnvRecord
 
         init {
-            isConstructable = true
-
             if (envRecord is GlobalEnvRecord) {
                 globalEnv = envRecord
             } else {

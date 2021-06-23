@@ -15,10 +15,6 @@ open class JSGenericTypedArrayCtor protected constructor(
     realm: Realm,
     private val kind: Operations.TypedArrayKind,
 ) : JSNativeFunction(realm, "${kind.name}Array", 3, prototype = realm.typedArrayCtor) {
-    init {
-        isConstructable = true
-    }
-
     override fun init() {
         super.init()
 
@@ -30,7 +26,7 @@ open class JSGenericTypedArrayCtor protected constructor(
     override fun evaluate(arguments: JSArguments): JSValue {
         val newTarget = arguments.newTarget
         if (newTarget == JSUndefined)
-            Errors.CtorCallWithoutNew("${kind.name}Array").throwTypeError()
+            Errors.CtorCallWithoutNew("${kind.name}Array").throwTypeError(realm)
         ecmaAssert(newTarget is JSObject)
 
         val proto = kind.getProto(realm)
@@ -39,18 +35,18 @@ open class JSGenericTypedArrayCtor protected constructor(
 
         val firstArgument = arguments.argument(0)
         if (firstArgument !is JSObject)
-            return allocateTypedArray(newTarget, proto, firstArgument.toIndex())
+            return allocateTypedArray(newTarget, proto, firstArgument.toIndex(realm))
 
         val obj = allocateTypedArray(newTarget, proto)
         when {
             firstArgument.hasSlot(SlotName.TypedArrayName) ->
-                initializeTypedArrayFromTypedArray(obj, firstArgument)
+                initializeTypedArrayFromTypedArray(realm, obj, firstArgument)
             firstArgument.hasSlot(SlotName.ArrayBufferData) ->
                 initializeTypedArrayFromArrayBuffer(obj, firstArgument, arguments.argument(1), arguments.argument(2))
             else -> {
-                val usingIterator = Operations.getMethod(firstArgument, Realm.`@@iterator`)
+                val usingIterator = Operations.getMethod(realm, firstArgument, Realm.`@@iterator`)
                 if (usingIterator != JSUndefined) {
-                    val values = Operations.iterableToList(firstArgument, usingIterator)
+                    val values = Operations.iterableToList(realm, firstArgument, usingIterator)
                     initializeTypedArrayFromList(obj, values)
                 } else {
                     initializeTypedArrayFromArrayLike(obj, firstArgument)
@@ -75,11 +71,11 @@ open class JSGenericTypedArrayCtor protected constructor(
     }
 
     @ECMAImpl("22.2.5.1.2")
-    private fun initializeTypedArrayFromTypedArray(obj: JSValue, srcArray: JSValue) {
+    private fun initializeTypedArrayFromTypedArray(realm: Realm, obj: JSValue, srcArray: JSValue) {
         ecmaAssert(obj is JSObject && srcArray is JSObject)
         val srcData = srcArray.getSlotAs<JSValue>(SlotName.ViewedArrayBuffer)
         if (Operations.isDetachedBuffer(srcData))
-            Errors.TODO("initializeTypedArrayFromTypedArray isDetachedBuffer 1").throwTypeError()
+            Errors.TODO("initializeTypedArrayFromTypedArray isDetachedBuffer 1").throwTypeError(realm)
 
         val ctorKind = obj.getSlotAs<Operations.TypedArrayKind>(SlotName.TypedArrayKind)
         val srcKind = srcArray.getSlotAs<Operations.TypedArrayKind>(SlotName.TypedArrayKind)
@@ -88,16 +84,16 @@ open class JSGenericTypedArrayCtor protected constructor(
         val byteLength = ctorKind.size * elementLength
 
         val bufferCtor = if (Operations.isSharedArrayBuffer(srcData)) {
-            Operations.speciesConstructor(srcData, realm.arrayBufferCtor)
+            Operations.speciesConstructor(realm, srcData, realm.arrayBufferCtor)
         } else realm.arrayBufferCtor
 
         val data = if (ctorKind == srcKind) {
             Operations.cloneArrayBuffer(realm, srcData, srcByteOffset, byteLength, bufferCtor)
         } else Operations.allocateArrayBuffer(realm, bufferCtor, byteLength).also { buffer ->
             if (Operations.isDetachedBuffer(srcData))
-                Errors.TODO("initializeTypedArrayFromTypedArray isDetachedBuffer 2").throwTypeError()
+                Errors.TODO("initializeTypedArrayFromTypedArray isDetachedBuffer 2").throwTypeError(realm)
             if (ctorKind.isBigInt != srcKind.isBigInt)
-                Errors.TODO("initializeTypedArrayFromTypedArray isBigInt").throwTypeError()
+                Errors.TODO("initializeTypedArrayFromTypedArray isBigInt").throwTypeError(realm)
 
             var srcByteIndex = srcByteOffset
             var targetByteIndex = 0
@@ -105,7 +101,7 @@ open class JSGenericTypedArrayCtor protected constructor(
 
             while (count > 0) {
                 val value = Operations.getValueFromBuffer(srcData, srcByteIndex, srcKind, true, Operations.TypedArrayOrder.Unordered)
-                Operations.setValueInBuffer(buffer, targetByteIndex, ctorKind, value, true, Operations.TypedArrayOrder.Unordered)
+                Operations.setValueInBuffer(realm, buffer, targetByteIndex, ctorKind, value, true, Operations.TypedArrayOrder.Unordered)
                 srcByteIndex += srcKind.size
                 targetByteIndex -= ctorKind.size
                 count--
@@ -125,25 +121,25 @@ open class JSGenericTypedArrayCtor protected constructor(
 
         val ctorKind = obj.getSlotAs<Operations.TypedArrayKind>(SlotName.TypedArrayKind)
         val elementSize = ctorKind.size
-        val offset = byteOffset.toIndex()
+        val offset = byteOffset.toIndex(realm)
         if (offset % elementSize != 0)
-            Errors.TypedArrays.InvalidByteOffset(offset, ctorKind).throwRangeError()
+            Errors.TypedArrays.InvalidByteOffset(offset, ctorKind).throwRangeError(realm)
 
         if (Operations.isDetachedBuffer(buffer))
-            Errors.TODO("initializeTypedArrayFromArrayBuffer isDetachedBuffer").throwTypeError()
+            Errors.TODO("initializeTypedArrayFromArrayBuffer isDetachedBuffer").throwTypeError(realm)
 
         val bufferByteLength = buffer.getSlotAs<Int>(SlotName.ArrayBufferByteLength)
         val newByteLength = if (length == JSUndefined) {
             if (bufferByteLength % elementSize != 0)
-                Errors.TypedArrays.InvalidBufferLength(bufferByteLength, ctorKind).throwRangeError()
+                Errors.TypedArrays.InvalidBufferLength(bufferByteLength, ctorKind).throwRangeError(realm)
             (bufferByteLength - offset).also {
                 if (it < 0)
-                    Errors.TypedArrays.InvalidOffsetAndBufferSize(offset, bufferByteLength, ctorKind).throwRangeError()
+                    Errors.TypedArrays.InvalidOffsetAndBufferSize(offset, bufferByteLength, ctorKind).throwRangeError(realm)
             }
         } else {
-            (length.toIndex() * elementSize).also {
+            (length.toIndex(realm) * elementSize).also {
                 if (offset + it > bufferByteLength)
-                    Errors.TypedArrays.InvalidOffsetAndLength(offset, it, bufferByteLength, ctorKind).throwRangeError()
+                    Errors.TypedArrays.InvalidOffsetAndLength(offset, it, bufferByteLength, ctorKind).throwRangeError(realm)
             }
         }
 
@@ -158,16 +154,16 @@ open class JSGenericTypedArrayCtor protected constructor(
         ecmaAssert(obj is JSObject && obj.hasSlot(SlotName.TypedArrayName))
         allocateTypedArrayBuffer(obj, values.size)
         values.forEachIndexed { index, value ->
-            Operations.set(obj, index.key(), value, true)
+            Operations.set(realm, obj, index.key(), value, true)
         }
     }
 
     @ECMAImpl("22.2.5.1.5")
     private fun initializeTypedArrayFromArrayLike(obj: JSValue, arrayLike: JSObject) {
         ecmaAssert(obj is JSObject && obj.hasSlot(SlotName.TypedArrayName))
-        val length = Operations.lengthOfArrayLike(arrayLike)
+        val length = Operations.lengthOfArrayLike(realm, arrayLike)
         for (i in 0 until length)
-            Operations.set(obj, i.key(), arrayLike.get(i), true)
+            Operations.set(realm, obj, i.key(), arrayLike.get(i), true)
     }
 
     @ECMAImpl("22.2.5.1.6")

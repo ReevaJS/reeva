@@ -17,8 +17,8 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
     override fun init() {
         super.init()
 
-        val thrower = JSNativeFunction.fromLambda(realm, "", 0) { _ ->
-            Errors.Function.CallerArgumentsAccess.throwTypeError()
+        val thrower = JSNativeFunction.fromLambda(realm, "", 0) { realm, _ ->
+            Errors.Function.CallerArgumentsAccess.throwTypeError(realm)
         }
 
         val desc = Descriptor(JSAccessor(thrower, thrower), Descriptor.CONFIGURABLE)
@@ -30,13 +30,13 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
         defineNativeFunction("apply", 2, ::apply)
     }
 
-    private fun bind(arguments: JSArguments): JSValue {
+    private fun bind(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
         if (!Operations.isCallable(thisValue))
-            Errors.Function.BindNonFunction.throwTypeError()
+            Errors.Function.BindNonFunction.throwTypeError(realm)
 
         val args = if (arguments.size > 1) arguments.takeArgs(1 until arguments.size) else emptyList()
-        val function = Operations.boundFunctionCreate(thisValue as JSFunction, JSArguments(args, arguments.argument(0)))
+        val function = Operations.boundFunctionCreate(realm, thisValue as JSFunction, JSArguments(args, arguments.argument(0)))
 
         var length = JSNumber.ZERO
 
@@ -46,7 +46,7 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
                 if (targetLen.isPositiveInfinity) {
                     length = targetLen
                 } else if (!targetLen.isNegativeInfinity) {
-                    val targetLenAsInt = Operations.toIntegerOrInfinity(targetLen).let {
+                    val targetLenAsInt = Operations.toIntegerOrInfinity(realm, targetLen).let {
                         ecmaAssert(it.isFinite)
                         it.asInt
                     }
@@ -55,31 +55,31 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
             }
         }
 
-        Operations.definePropertyOrThrow(function, "length".key(), Descriptor(length, Descriptor.CONFIGURABLE))
+        Operations.definePropertyOrThrow(realm, function, "length".key(), Descriptor(length, Descriptor.CONFIGURABLE))
 
         val targetName = thisValue.get("name").let {
             if (it !is JSString) "" else it.asString
         }
 
-        Operations.setFunctionName(function, targetName.key(), "bound")
+        Operations.setFunctionName(realm, function, targetName.key(), "bound")
         return function
     }
 
-    private fun call(arguments: JSArguments): JSValue {
+    private fun call(realm: Realm, arguments: JSArguments): JSValue {
         if (!Operations.isCallable(arguments.thisValue))
-            Errors.Function.NonCallable("call").throwTypeError()
-        return Operations.call(arguments.thisValue, arguments.argument(0), arguments.subList(1, arguments.size))
+            Errors.Function.NonCallable("call").throwTypeError(realm)
+        return Operations.call(realm, arguments.thisValue, arguments.argument(0), arguments.subList(1, arguments.size))
     }
 
-    private fun apply(arguments: JSArguments): JSValue {
+    private fun apply(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
         if (!Operations.isCallable(thisValue))
-            Errors.Function.NonCallable("apply").throwTypeError()
+            Errors.Function.NonCallable("apply").throwTypeError(realm)
         val array = arguments.argument(1)
         if (array == JSUndefined || array == JSNull)
-            return Operations.call(thisValue, arguments.argument(0))
-        val argList = Operations.createListFromArrayLike(array)
-        return Operations.call(thisValue, arguments.argument(0), argList)
+            return Operations.call(realm, thisValue, arguments.argument(0))
+        val argList = Operations.createListFromArrayLike(realm, array)
+        return Operations.call(realm, thisValue, arguments.argument(0), argList)
     }
 
     companion object {

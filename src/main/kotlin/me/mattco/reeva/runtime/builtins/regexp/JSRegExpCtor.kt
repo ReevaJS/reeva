@@ -12,17 +12,13 @@ import me.mattco.reeva.utils.key
 import me.mattco.reeva.utils.toValue
 
 class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "RegExp", 2) {
-    init {
-        isConstructable = true
-    }
-
     override fun init() {
         super.init()
 
         defineNativeAccessor(Realm.`@@species`.key(), attrs { +conf -enum }, ::`get@@species`, null)
     }
 
-    fun `get@@species`(thisValue: JSValue): JSValue {
+    fun `get@@species`(realm: Realm, thisValue: JSValue): JSValue {
         return thisValue
     }
 

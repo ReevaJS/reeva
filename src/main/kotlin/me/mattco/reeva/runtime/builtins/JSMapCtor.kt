@@ -13,31 +13,27 @@ import me.mattco.reeva.utils.attrs
 import me.mattco.reeva.utils.key
 
 class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map", 0) {
-    init {
-        isConstructable = true
-    }
-
     override fun init() {
         super.init()
         defineNativeAccessor(Realm.`@@species`.key(), attrs { +conf -enum }, ::`get@@species`, null)
     }
 
-    fun `get@@species`(thisValue: JSValue): JSValue {
+    fun `get@@species`(realm: Realm, thisValue: JSValue): JSValue {
         return thisValue
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
         if (arguments.newTarget == JSUndefined)
-            Errors.CtorCallWithoutNew("Map").throwTypeError()
+            Errors.CtorCallWithoutNew("Map").throwTypeError(realm)
 
-        val map = Operations.ordinaryCreateFromConstructor(arguments.newTarget, realm.mapProto, listOf(SlotName.MapData))
+        val map = Operations.ordinaryCreateFromConstructor(realm, arguments.newTarget, realm.mapProto, listOf(SlotName.MapData))
         map.setSlot(SlotName.MapData, JSMapObject.MapData())
         val iterable = arguments.argument(0)
         if (iterable == JSUndefined || iterable == JSNull)
             return map
 
         val adder = map.get("set")
-        return Operations.addEntriesFromIterable(map, iterable, adder)
+        return Operations.addEntriesFromIterable(realm, map, iterable, adder)
     }
 
     companion object {

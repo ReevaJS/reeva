@@ -42,7 +42,7 @@ class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm
                 parameterMap.delete(property)
             } else {
                 if (descriptor.getRawValue() != JSEmpty) {
-                    val status = parameterMap.set(property, descriptor.getActualValue(this))
+                    val status = parameterMap.set(property, descriptor.getActualValue(realm, this))
                     ecmaAssert(status)
                 }
                 if (descriptor.hasWritable && !descriptor.isWritable)

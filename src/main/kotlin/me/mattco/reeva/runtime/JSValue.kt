@@ -1,7 +1,7 @@
 package me.mattco.reeva.runtime
 
+import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.annotations.ECMAImpl
-import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.ecmaAssert
@@ -90,12 +90,6 @@ abstract class JSValue {
         get() {
             expect(isAccessor)
             return this as JSNativeProperty
-        }
-
-    val asArray: JSArrayObject
-        get() {
-            expect(isArray)
-            return this as JSArrayObject
         }
 
     @ECMAImpl("7.2.10")
@@ -197,30 +191,29 @@ abstract class JSValue {
  * Operations extension methods
  */
 
-val JSValue.isArray: Boolean get() = Operations.isArray(this)
 val JSValue.isCallable: Boolean get() = Operations.isCallable(this)
 val JSValue.isConstructor: Boolean get() = Operations.isConstructor(this)
 val JSValue.isIntegralNumber: Boolean get() = Operations.isIntegralNumber(this)
 val JSValue.isPropertyKey: Boolean get() = Operations.isPropertyKey(this)
 val JSValue.isRegExp: Boolean get() = Operations.isRegExp(this)
 
-fun JSValue.toPrimitive(hint: Operations.ToPrimitiveHint? = null) = Operations.toPrimitive(this, hint)
+fun JSValue.toPrimitive(realm: Realm, hint: Operations.ToPrimitiveHint? = null) = Operations.toPrimitive(realm, this, hint)
 fun JSValue.toBoolean() = Operations.toBoolean(this)
-fun JSValue.toNumeric() = Operations.toNumeric(this)
-fun JSValue.toNumber() = Operations.toNumber(this)
-fun JSValue.toJSString() = Operations.toString(this)
-fun JSValue.toIntegerOrInfinity() = Operations.toIntegerOrInfinity(this)
-fun JSValue.toInt32() = Operations.toInt32(this)
-fun JSValue.toUint32() = Operations.toUint32(this)
-fun JSValue.toUint16() = Operations.toUint16(this)
-fun JSValue.toBigInt() = Operations.toBigInt(this)
+fun JSValue.toNumeric(realm: Realm) = Operations.toNumeric(realm, this)
+fun JSValue.toNumber(realm: Realm) = Operations.toNumber(realm, this)
+fun JSValue.toJSString(realm: Realm) = Operations.toString(realm, this)
+fun JSValue.toIntegerOrInfinity(realm: Realm) = Operations.toIntegerOrInfinity(realm, this)
+fun JSValue.toInt32(realm: Realm) = Operations.toInt32(realm, this)
+fun JSValue.toUint32(realm: Realm) = Operations.toUint32(realm, this)
+fun JSValue.toUint16(realm: Realm) = Operations.toUint16(realm, this)
+fun JSValue.toBigInt(realm: Realm) = Operations.toBigInt(realm, this)
 fun JSValue.toPrintableString() = Operations.toPrintableString(this)
-fun JSValue.toObject() = Operations.toObject(this)
-fun JSValue.toPropertyKey() = Operations.toPropertyKey(this)
-fun JSValue.toLength() = Operations.toLength(this)
-fun JSValue.toIndex() = Operations.toIndex(this)
-fun JSValue.requireObjectCoercible() = Operations.requireObjectCoercible(this)
-fun JSValue.lengthOfArrayLike() = Operations.lengthOfArrayLike(this)
+fun JSValue.toObject(realm: Realm) = Operations.toObject(realm, this)
+fun JSValue.toPropertyKey(realm: Realm) = Operations.toPropertyKey(realm, this)
+fun JSValue.toLength(realm: Realm) = Operations.toLength(realm, this)
+fun JSValue.toIndex(realm: Realm) = Operations.toIndex(realm, this)
+fun JSValue.requireObjectCoercible(realm: Realm) = Operations.requireObjectCoercible(realm, this)
+fun JSValue.lengthOfArrayLike(realm: Realm) = Operations.lengthOfArrayLike(realm, this)
 
 
 

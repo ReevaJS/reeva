@@ -2,13 +2,13 @@ package me.mattco.reeva.runtime.builtins.promises
 
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
+import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.errors.JSTypeErrorObject
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.runtime.JSArguments
 
 class JSResolveFunction private constructor(
     val promise: JSObject,
@@ -25,7 +25,7 @@ class JSResolveFunction private constructor(
         val resolution = arguments.argument(0)
         if (resolution.sameValue(promise)) {
             val selfResolutionError = JSTypeErrorObject.create(realm, "TODO: message (promise self resolution)")
-            return Operations.rejectPromise(promise, selfResolutionError)
+            return Operations.rejectPromise(realm, promise, selfResolutionError)
         }
 
         if (resolution !is JSObject)
@@ -34,13 +34,13 @@ class JSResolveFunction private constructor(
         val thenAction = try {
             resolution.get("then")
         } catch (e: ThrowException) {
-            return Operations.rejectPromise(promise, e.value)
+            return Operations.rejectPromise(realm, promise, e.value)
         }
 
         if (!Operations.isCallable(thenAction))
             return Operations.fulfillPromise(promise, resolution)
 
-        val job = Operations.newPromiseResolveThenableJob(promise, resolution, thenAction)
+        val job = Operations.newPromiseResolveThenableJob(realm, promise, resolution, thenAction)
         Operations.hostEnqueuePromiseJob(job.job, job.realm)
 
         return JSUndefined

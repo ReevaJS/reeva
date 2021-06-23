@@ -1,12 +1,14 @@
 package me.mattco.reeva.runtime.objects
 
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.errors.JSTypeErrorObject
+import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.functions.JSFunction
-import me.mattco.reeva.runtime.primitives.*
+import me.mattco.reeva.runtime.primitives.JSAccessor
+import me.mattco.reeva.runtime.primitives.JSEmpty
+import me.mattco.reeva.runtime.primitives.JSNativeProperty
+import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.toValue
@@ -129,17 +131,17 @@ data class Descriptor constructor(
         } or HAS_WRITABLE
     }
 
-    fun getActualValue(thisValue: JSValue?): JSValue {
+    fun getActualValue(realm: Realm, thisValue: JSValue?): JSValue {
         return when (val v = value) {
-            is JSNativeProperty -> v.get(thisValue!!)
+            is JSNativeProperty -> v.get(realm, thisValue!!)
             is JSAccessor -> v.callGetter(thisValue!!)
             else -> v.ifEmpty(JSUndefined)
         }
     }
 
-    fun setActualValue(thisValue: JSValue?, newValue: JSValue) {
+    fun setActualValue(realm: Realm, thisValue: JSValue?, newValue: JSValue) {
         when (val v = value) {
-            is JSNativeProperty -> v.set(thisValue!!, newValue)
+            is JSNativeProperty -> v.set(realm, thisValue!!, newValue)
             is JSAccessor -> v.callSetter(thisValue!!, newValue)
             else -> value = newValue
         }
@@ -158,7 +160,7 @@ data class Descriptor constructor(
             obj.set("get", (value as JSAccessor).getter ?: JSUndefined)
             obj.set("set", (value as JSAccessor).setter ?: JSUndefined)
         } else if (isDataDescriptor) {
-            obj.set("value", getActualValue(thisValue))
+            obj.set("value", getActualValue(realm, thisValue))
         }
 
         if (hasConfigurable)
@@ -226,9 +228,9 @@ data class Descriptor constructor(
         const val DEFAULT_ATTRIBUTES = CONFIGURABLE or ENUMERABLE or WRITABLE or HAS_BASIC
 
         @ECMAImpl("6.2.5.5", "ToPropertyDescriptor")
-        fun fromObject(obj: JSValue): Descriptor {
+        fun fromObject(realm: Realm, obj: JSValue): Descriptor {
             if (obj !is JSObject)
-                Errors.TODO("fromObject").throwTypeError()
+                Errors.TODO("fromObject").throwTypeError(realm)
 
             val descriptor = Descriptor(JSEmpty, 0)
             if (obj.hasProperty("enumerable")) {
@@ -257,7 +259,7 @@ data class Descriptor constructor(
             if (obj.hasProperty("get")) {
                 val getterTemp = obj.get("get")
                 if (!Operations.isCallable(getterTemp) && getterTemp != JSUndefined)
-                    Errors.DescriptorGetType.throwTypeError()
+                    Errors.DescriptorGetType.throwTypeError(realm)
                 getter = getterTemp as? JSFunction
                 descriptor.attributes = descriptor.attributes or HAS_GETTER
                 hasGetterOrSetter = true
@@ -266,7 +268,7 @@ data class Descriptor constructor(
             if (obj.hasProperty("set")) {
                 val setterTemp = obj.get("set")
                 if (!Operations.isCallable(setterTemp) && setterTemp != JSUndefined)
-                    Errors.DescriptorSetType.throwTypeError()
+                    Errors.DescriptorSetType.throwTypeError(realm)
                 setter = setterTemp as? JSFunction
                 descriptor.attributes = descriptor.attributes or HAS_SETTER
                 hasGetterOrSetter = true
@@ -274,7 +276,7 @@ data class Descriptor constructor(
 
             if (hasGetterOrSetter) {
                 if (descriptor.value != JSEmpty || descriptor.hasWritable)
-                    Errors.DescriptorPropType.throwTypeError()
+                    Errors.DescriptorPropType.throwTypeError(realm)
                 descriptor.setRawValue(JSAccessor(getter, setter))
             }
 

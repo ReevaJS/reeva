@@ -37,17 +37,17 @@ class JSPackageObject private constructor(
     }
 
     override fun delete(property: PropertyKey): Boolean {
-        Errors.JVMPackage.InvalidDelete.throwTypeError()
+        Errors.JVMPackage.InvalidDelete.throwTypeError(realm)
     }
 
     override fun set(property: PropertyKey, value: JSValue, receiver: JSValue): Boolean {
-        Errors.JVMPackage.InvalidSet.throwTypeError()
+        Errors.JVMPackage.InvalidSet.throwTypeError(realm)
     }
 
     override fun isExtensible() = true
 
     override fun preventExtensions(): Boolean {
-        Errors.JVMPackage.InvalidPreventExtensions.throwTypeError()
+        Errors.JVMPackage.InvalidPreventExtensions.throwTypeError(realm)
     }
 
     override fun hasProperty(property: PropertyKey): Boolean {
@@ -61,9 +61,9 @@ class JSPackageObject private constructor(
 
     private fun validatePropertyKey(key: PropertyKey): String {
         if (key.isSymbol)
-            Errors.JVMPackage.InvalidSymbolAccess.throwTypeError()
+            Errors.JVMPackage.InvalidSymbolAccess.throwTypeError(realm)
         if (!key.isString)
-            Errors.JVMPackage.InvalidNumberAccess.throwTypeError()
+            Errors.JVMPackage.InvalidNumberAccess.throwTypeError(realm)
         return key.asString
     }
 

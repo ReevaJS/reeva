@@ -1,25 +1,33 @@
 package me.mattco.reeva.runtime.builtins
 
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSArguments
-import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.SlotName
+import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.ecmaAssert
+import me.mattco.reeva.utils.expect
+import me.mattco.reeva.utils.toValue
 
 class JSProxyObject private constructor(
     realm: Realm,
     target: JSObject,
     handler: JSObject,
-) : JSObject(realm, realm.objectProto) {
-    val isCallable = Operations.isCallable(target)
-    val isConstructor = Operations.isConstructor(target)
+) : JSFunction(
+    realm,
+    if (target is JSFunction) target.isStrict else false,
+    if (target is JSFunction) realm.functionProto else realm.objectProto,
+) {
+    override val isCallable = Operations.isCallable(target)
+    override val isConstructable = Operations.isConstructor(target)
 
     val target by slot(SlotName.ProxyTarget, target)
     var handler: JSObject? by slot(SlotName.ProxyHandler, handler)
@@ -29,14 +37,14 @@ class JSProxyObject private constructor(
         handler = null
     }
 
-    private inline fun getTrapAndHandler(name: String, block: () -> Unit): Pair<JSObject, JSValue> {
+    private inline fun getTrapAndHandler(name: String, block: () -> Nothing): Pair<JSObject, JSValue> {
         val handler = handler.let {
             if (it == null)
-                Errors.Proxy.Revoked(name).throwTypeError()
+                Errors.Proxy.Revoked(name).throwTypeError(realm)
             it
         }
-        val trap = Operations.getMethod(handler, name.toValue())
-        if (trap == JSUndefined)
+        val trap = Operations.getMethod(realm, handler, name.toValue())
+        if (trap is JSUndefined)
             block()
         return handler to trap
     }
@@ -46,15 +54,15 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("getPrototypeOf") {
             return target.getPrototype()
         }
-        val handlerProto = Operations.call(trap, handler, listOf(target))
+        val handlerProto = Operations.call(realm, trap, handler, listOf(target))
         if (handlerProto !is JSObject && handlerProto != JSNull)
-            Errors.Proxy.GetPrototypeOf.ReturnObjectOrNull.throwTypeError()
+            Errors.Proxy.GetPrototypeOf.ReturnObjectOrNull.throwTypeError(realm)
         if (target.isExtensible())
             return handlerProto
 
         val targetProto = target.getPrototype()
         if (!handlerProto.sameValue(targetProto))
-            Errors.Proxy.GetPrototypeOf.NonExtensibleReturn.throwTypeError()
+            Errors.Proxy.GetPrototypeOf.NonExtensibleReturn.throwTypeError(realm)
         return handlerProto
     }
 
@@ -63,14 +71,15 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("setPrototypeOf") {
             return target.setPrototype(newPrototype)
         }
-        val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, newPrototype)))
+        val booleanTrapResult =
+            Operations.toBoolean(Operations.call(realm, trap, handler, listOf(target, newPrototype)))
         if (!booleanTrapResult)
             return false
         if (target.isExtensible())
             return true
         val targetProto = target.getPrototype()
         if (!newPrototype.sameValue(targetProto))
-            Errors.Proxy.SetPrototypeOf.NonExtensibleReturn.throwTypeError()
+            Errors.Proxy.SetPrototypeOf.NonExtensibleReturn.throwTypeError(realm)
         return true
     }
 
@@ -78,9 +87,9 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("isExtensible") {
             return target.isExtensible()
         }
-        val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target)))
+        val booleanTrapResult = Operations.toBoolean(Operations.call(realm, trap, handler, listOf(target)))
         if (booleanTrapResult != target.isExtensible())
-            Errors.Proxy.IsExtensible.DifferentReturn.throwTypeError()
+            Errors.Proxy.IsExtensible.DifferentReturn.throwTypeError(realm)
         return booleanTrapResult
     }
 
@@ -88,9 +97,9 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("preventExtensions") {
             return target.preventExtensions()
         }
-        val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target)))
+        val booleanTrapResult = Operations.toBoolean(Operations.call(realm, trap, handler, listOf(target)))
         if (booleanTrapResult && target.isExtensible())
-            Errors.Proxy.PreventExtensions.ExtensibleReturn.throwTypeError()
+            Errors.Proxy.PreventExtensions.ExtensibleReturn.throwTypeError(realm)
         return booleanTrapResult
     }
 
@@ -98,29 +107,29 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("getOwnPropertyDescriptor") {
             return target.getOwnPropertyDescriptor(property)
         }
-        val trapResultObj = Operations.call(trap, handler, listOf(target, property.asValue))
+        val trapResultObj = Operations.call(realm, trap, handler, listOf(target, property.asValue))
         if (trapResultObj !is JSObject && trapResultObj != JSUndefined)
-            Errors.Proxy.GetOwnPropertyDesc.ReturnObjectOrUndefined.throwTypeError()
+            Errors.Proxy.GetOwnPropertyDesc.ReturnObjectOrUndefined.throwTypeError(realm)
         val targetDesc = target.getOwnPropertyDescriptor(property)
         if (trapResultObj == JSUndefined) {
             if (targetDesc == null)
                 return null
             if (!targetDesc.isConfigurable)
-                Errors.Proxy.GetOwnPropertyDesc.ExistingNonConf(property).throwTypeError()
+                Errors.Proxy.GetOwnPropertyDesc.ExistingNonConf(property).throwTypeError(realm)
             if (!target.isExtensible())
-                Errors.Proxy.GetOwnPropertyDesc.NonExtensibleOwnProp(property).throwTypeError()
+                Errors.Proxy.GetOwnPropertyDesc.NonExtensibleOwnProp(property).throwTypeError(realm)
             return null
         }
-        val resultDesc = Descriptor.fromObject(trapResultObj).complete()
-        if (!Operations.isCompatiblePropertyDescriptor(target.isExtensible(), resultDesc, targetDesc))
-            Errors.Proxy.GetOwnPropertyDesc.NonExistentNonExtensible(property).throwTypeError()
+        val resultDesc = Descriptor.fromObject(realm, trapResultObj).complete()
+        if (!Operations.isCompatiblePropertyDescriptor(realm, target.isExtensible(), resultDesc, targetDesc))
+            Errors.Proxy.GetOwnPropertyDesc.NonExistentNonExtensible(property).throwTypeError(realm)
         if (!resultDesc.isConfigurable) {
             if (targetDesc == null)
-                Errors.Proxy.GetOwnPropertyDesc.NonExistentNonConf(property).throwTypeError()
+                Errors.Proxy.GetOwnPropertyDesc.NonExistentNonConf(property).throwTypeError(realm)
             if (targetDesc.isConfigurable)
-                Errors.Proxy.GetOwnPropertyDesc.ConfAsNonConf(property).throwTypeError()
+                Errors.Proxy.GetOwnPropertyDesc.ConfAsNonConf(property).throwTypeError(realm)
             if (resultDesc.hasWritable && !resultDesc.isWritable && targetDesc.isWritable)
-                Errors.Proxy.GetOwnPropertyDesc.WritableAsNonWritable(property).throwTypeError()
+                Errors.Proxy.GetOwnPropertyDesc.WritableAsNonWritable(property).throwTypeError(realm)
         }
         return resultDesc
     }
@@ -131,7 +140,8 @@ class JSProxyObject private constructor(
         }
 
         val descObj = descriptor.toObject(realm, target)
-        val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, property.asValue, descObj)))
+        val booleanTrapResult =
+            Operations.toBoolean(Operations.call(realm, trap, handler, listOf(target, property.asValue, descObj)))
         if (!booleanTrapResult)
             return false
         val targetDesc = target.getOwnPropertyDescriptor(property)
@@ -139,16 +149,16 @@ class JSProxyObject private constructor(
         val settingConfigFalse = descriptor.hasConfigurable && !descriptor.isConfigurable
         if (targetDesc == null) {
             if (!isExtensible)
-                Errors.Proxy.DefineOwnProperty.AddToNonExtensible(property).throwTypeError()
+                Errors.Proxy.DefineOwnProperty.AddToNonExtensible(property).throwTypeError(realm)
             if (settingConfigFalse)
-                Errors.Proxy.DefineOwnProperty.AddNonConf(property).throwTypeError()
+                Errors.Proxy.DefineOwnProperty.AddNonConf(property).throwTypeError(realm)
         } else {
-            if (!Operations.isCompatiblePropertyDescriptor(isExtensible, descriptor, targetDesc))
-                Errors.Proxy.DefineOwnProperty.IncompatibleDesc(property).throwTypeError()
+            if (!Operations.isCompatiblePropertyDescriptor(realm, isExtensible, descriptor, targetDesc))
+                Errors.Proxy.DefineOwnProperty.IncompatibleDesc(property).throwTypeError(realm)
             if (settingConfigFalse && targetDesc.isConfigurable)
-                Errors.Proxy.DefineOwnProperty.ChangeConf(property).throwTypeError()
+                Errors.Proxy.DefineOwnProperty.ChangeConf(property).throwTypeError(realm)
             if (targetDesc.isDataDescriptor && !targetDesc.isConfigurable && targetDesc.isWritable && descriptor.hasWritable && !descriptor.isWritable)
-                Errors.Proxy.DefineOwnProperty.ChangeWritable(property).throwTypeError()
+                Errors.Proxy.DefineOwnProperty.ChangeWritable(property).throwTypeError(realm)
         }
         return true
     }
@@ -157,14 +167,15 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("has") {
             return target.hasProperty(property)
         }
-        val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, property.asValue)))
+        val booleanTrapResult =
+            Operations.toBoolean(Operations.call(realm, trap, handler, listOf(target, property.asValue)))
         if (!booleanTrapResult) {
             val targetDesc = target.getOwnPropertyDescriptor(property)
             if (targetDesc != null) {
                 if (!targetDesc.isConfigurable)
-                    Errors.Proxy.HasProperty.ExistingNonConf(property).throwTypeError()
+                    Errors.Proxy.HasProperty.ExistingNonConf(property).throwTypeError(realm)
                 if (!target.isExtensible())
-                    Errors.Proxy.HasProperty.ExistingNonExtensible(property).throwTypeError()
+                    Errors.Proxy.HasProperty.ExistingNonExtensible(property).throwTypeError(realm)
             }
         }
         return booleanTrapResult
@@ -174,13 +185,13 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("get") {
             return target.get(property, receiver)
         }
-        val trapResult = Operations.call(trap, handler, listOf(target, property.asValue, receiver))
+        val trapResult = Operations.call(realm, trap, handler, listOf(target, property.asValue, receiver))
         val targetDesc = target.getOwnPropertyDescriptor(property)
         if (targetDesc != null && !targetDesc.isConfigurable) {
             if (targetDesc.isDataDescriptor && !targetDesc.isWritable && !trapResult.sameValue(targetDesc.getRawValue()))
-                Errors.Proxy.Get.DifferentValue(property).throwTypeError()
+                Errors.Proxy.Get.DifferentValue(property).throwTypeError(realm)
             if (targetDesc.isAccessorDescriptor && !targetDesc.hasGetterFunction && trapResult != JSUndefined)
-                Errors.Proxy.Get.NonConfAccessor(property).throwTypeError()
+                Errors.Proxy.Get.NonConfAccessor(property).throwTypeError(realm)
         }
         return trapResult
     }
@@ -189,15 +200,16 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("set") {
             return target.set(property, value, receiver)
         }
-        val trapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, property.asValue, receiver)))
+        val trapResult =
+            Operations.toBoolean(Operations.call(realm, trap, handler, listOf(target, property.asValue, receiver)))
         if (!trapResult)
             return false
         val targetDesc = target.getOwnPropertyDescriptor(property)
         if (targetDesc != null && !targetDesc.isConfigurable) {
             if (targetDesc.isDataDescriptor && !targetDesc.isWritable && !value.sameValue(targetDesc.getRawValue()))
-                Errors.Proxy.Set.NonConfNonWritable(property).throwTypeError()
+                Errors.Proxy.Set.NonConfNonWritable(property).throwTypeError(realm)
             if (targetDesc.isAccessorDescriptor && !targetDesc.hasSetterFunction)
-                Errors.Proxy.Set.NonConfAccessor(property).throwTypeError()
+                Errors.Proxy.Set.NonConfAccessor(property).throwTypeError(realm)
         }
         return true
     }
@@ -206,14 +218,21 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("deleteProperty") {
             return target.delete(property)
         }
-        val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target, Operations.toString(property.asValue))))
+        val booleanTrapResult = Operations.toBoolean(
+            Operations.call(
+                realm,
+                trap,
+                handler,
+                listOf(target, Operations.toString(realm, property.asValue))
+            )
+        )
         if (!booleanTrapResult)
             return false
         val targetDesc = target.getOwnPropertyDescriptor(property) ?: return true
         if (!targetDesc.isConfigurable)
-            Errors.Proxy.Delete.NonConf(property).throwTypeError()
+            Errors.Proxy.Delete.NonConf(property).throwTypeError(realm)
         if (!target.isExtensible())
-            Errors.Proxy.Delete.NonExtensible(property).throwTypeError()
+            Errors.Proxy.Delete.NonExtensible(property).throwTypeError(realm)
         return true
     }
 
@@ -221,16 +240,17 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("ownKeys") {
             return target.ownPropertyKeys(onlyEnumerable)
         }
-        val trapResultArray = Operations.call(trap, handler, listOf(target))
+        val trapResultArray = Operations.call(realm, trap, handler, listOf(target))
         // Spec deviation: We use numbers as keys, so we need to include the number type in this list
         val trapResult = Operations.createListFromArrayLike(
+            realm,
             trapResultArray,
             listOf(Type.String, Type.Symbol, Type.Number)
         ).map {
-            PropertyKey.from(it)!!
+            PropertyKey.from(it)
         }
         if (trapResult.distinct().size != trapResult.size)
-            Errors.Proxy.OwnPropertyKeys.DuplicateKeys.throwTypeError()
+            Errors.Proxy.OwnPropertyKeys.DuplicateKeys.throwTypeError(realm)
         val isExtensible = target.isExtensible()
         val targetKeys = target.ownPropertyKeys(onlyEnumerable)
         val targetConfigurableKeys = mutableListOf<PropertyKey>()
@@ -247,40 +267,38 @@ class JSProxyObject private constructor(
         val uncheckedResultKeys = trapResult.toMutableList()
         targetNonconfigurableKeys.forEach { key ->
             if (key !in uncheckedResultKeys)
-                Errors.Proxy.OwnPropertyKeys.NonConf(key).throwTypeError()
+                Errors.Proxy.OwnPropertyKeys.NonConf(key).throwTypeError(realm)
             uncheckedResultKeys.remove(key)
         }
         if (isExtensible)
             return trapResult
         targetConfigurableKeys.forEach { key ->
             if (key !in uncheckedResultKeys)
-                Errors.Proxy.OwnPropertyKeys.NonExtensibleMissingKey(key).throwTypeError()
+                Errors.Proxy.OwnPropertyKeys.NonExtensibleMissingKey(key).throwTypeError(realm)
             uncheckedResultKeys.remove(key)
         }
         if (uncheckedResultKeys.isNotEmpty())
-            Errors.Proxy.OwnPropertyKeys.NonExtensibleExtraProp.throwTypeError()
+            Errors.Proxy.OwnPropertyKeys.NonExtensibleExtraProp.throwTypeError(realm)
         return trapResult
     }
 
-    fun call(arguments: JSArguments): JSValue {
-        expect(isCallable)
-        val (_, trap) = getTrapAndHandler("apply") {
-            return Operations.call(target, arguments)
+    override fun evaluate(arguments: JSArguments): JSValue {
+        if (arguments.newTarget == JSUndefined) {
+            val (_, trap) = getTrapAndHandler("apply") {
+                return Operations.call(realm, target as JSFunction, arguments)
+            }
+            val argArray = Operations.createArrayFromList(realm, arguments)
+            return Operations.call(realm, trap, arguments.thisValue, listOf(target, arguments.thisValue, argArray))
+        } else {
+            val (handler, trap) = getTrapAndHandler("construct") {
+                return Operations.construct(target as JSFunction, arguments, arguments.newTarget)
+            }
+            val argArray = Operations.createArrayFromList(realm, arguments)
+            val newObj = Operations.call(realm, trap, handler, listOf(target, argArray, arguments.newTarget))
+            if (newObj !is JSObject)
+                Errors.Proxy.Construct.NonObject.throwTypeError(realm)
+            return newObj
         }
-        val argArray = Operations.createArrayFromList(arguments)
-        return Operations.call(trap, arguments.thisValue, listOf(target, arguments.thisValue, argArray))
-    }
-
-    fun construct(arguments: JSArguments): JSValue {
-        expect(isConstructor)
-        val (handler, trap) = getTrapAndHandler("construct") {
-            return Operations.construct(target, arguments, arguments.newTarget)
-        }
-        val argArray = Operations.createArrayFromList(arguments)
-        val newObj = Operations.call(trap, handler, listOf(target, argArray, arguments.newTarget))
-        if (newObj !is JSObject)
-            Errors.Proxy.Construct.NonObject.throwTypeError()
-        return newObj
     }
 
     companion object {

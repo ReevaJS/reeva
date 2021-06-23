@@ -29,35 +29,35 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
     }
 
     @ECMAImpl("20.1.3.2")
-    fun toExponential(arguments: JSArguments): JSValue {
+    fun toExponential(realm: Realm, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.3.3")
-    fun toFixed(arguments: JSArguments): JSValue {
+    fun toFixed(realm: Realm, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.3.3")
-    fun toLocaleString(arguments: JSArguments): JSValue {
+    fun toLocaleString(realm: Realm, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.3.3")
-    fun toPrecision(arguments: JSArguments): JSValue {
+    fun toPrecision(realm: Realm, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("20.1.3.3")
-    fun toString(arguments: JSArguments): JSValue {
+    fun toString(realm: Realm, arguments: JSArguments): JSValue {
         // TODO: Spec-compliant conversion
-        val x = thisNumberValue(arguments.thisValue, "toString")
+        val x = thisNumberValue(realm, arguments.thisValue, "toString")
         val radix = if (arguments.isEmpty()) {
             10
-        } else Operations.toIntegerOrInfinity(arguments[0]).asInt
+        } else Operations.toIntegerOrInfinity(realm, arguments[0]).asInt
 
         if (radix < 2 || radix > 36)
-            Errors.Number.InvalidRadix(radix).throwRangeError()
+            Errors.Number.InvalidRadix(radix).throwRangeError(realm)
 
         return if (x.isInt) {
             x.asInt.toString(radix).toValue()
@@ -69,21 +69,21 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
     }
 
     @ECMAImpl("20.1.3.3")
-    fun valueOf(arguments: JSArguments): JSValue {
-        return thisNumberValue(arguments.thisValue, "valueOf")
+    fun valueOf(realm: Realm, arguments: JSArguments): JSValue {
+        return thisNumberValue(realm, arguments.thisValue, "valueOf")
     }
 
     companion object {
         fun create(realm: Realm) = JSNumberProto(realm).initialize()
 
         @ECMAImpl("20.1.3")
-        private fun thisNumberValue(value: JSValue, methodName: String): JSNumber {
+        private fun thisNumberValue(realm: Realm, value: JSValue, methodName: String): JSNumber {
             if (value.isNumber)
                 return value as JSNumber
             if (value !is JSObject)
-                Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError()
+                Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError(realm)
             return value.getSlotAs(SlotName.NumberData) ?:
-                Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError()
+                Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError(realm)
         }
     }
 }

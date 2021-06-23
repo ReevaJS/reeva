@@ -15,24 +15,20 @@ import me.mattco.reeva.utils.attrs
 import me.mattco.reeva.utils.key
 
 class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set", 0) {
-    init {
-        isConstructable = true
-    }
-
     override fun init() {
         super.init()
         defineNativeAccessor(Realm.`@@species`.key(), attrs { +conf -enum }, ::`get@@species`, null)
     }
 
-    fun `get@@species`(thisValue: JSValue): JSValue {
+    fun `get@@species`(realm: Realm, thisValue: JSValue): JSValue {
         return thisValue
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
         if (arguments.newTarget == JSUndefined)
-            Errors.CtorCallWithoutNew("Set").throwTypeError()
+            Errors.CtorCallWithoutNew("Set").throwTypeError(realm)
 
-        val set = Operations.ordinaryCreateFromConstructor(arguments.newTarget, realm.setProto, listOf(SlotName.SetData))
+        val set = Operations.ordinaryCreateFromConstructor(realm, arguments.newTarget, realm.setProto, listOf(SlotName.SetData))
         set.setSlot(SlotName.SetData, JSSetObject.SetData())
         val iterator = arguments.argument(0)
         if (iterator == JSUndefined || iterator == JSNull)
@@ -40,16 +36,16 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
 
         val adder = set.get("add")
         if (!Operations.isCallable(adder))
-            Errors.Set.ThisMissingAdd.throwTypeError()
+            Errors.Set.ThisMissingAdd.throwTypeError(realm)
 
-        val iteratorRecord = Operations.getIterator(iterator)
+        val iteratorRecord = Operations.getIterator(realm, iterator)
         while (true) {
             val next = Operations.iteratorStep(iteratorRecord)
             if (next == JSFalse)
                 return set
             val nextValue = Operations.iteratorValue(next)
             try {
-                Operations.call(adder, set, listOf(nextValue))
+                Operations.call(realm, adder, set, listOf(nextValue))
             } catch (e: ThrowException) {
                 Operations.iteratorClose(iteratorRecord, e.value)
                 throw e

@@ -24,10 +24,6 @@ import java.time.temporal.TemporalField
 
 // TODO: Code deduplication
 class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Date", 7) {
-    init {
-        isConstructable = true
-    }
-
     override fun init() {
         super.init()
 
@@ -47,11 +43,11 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
                 if (arg is JSObject && arg.hasSlot(SlotName.DateValue)) {
                     arg.getSlot(SlotName.DateValue) ?: return JSDateObject.create(realm, null)
                 } else {
-                    val prim = Operations.toPrimitive(arg)
+                    val prim = Operations.toPrimitive(realm, arg)
                     if (prim is JSString) {
                         parseHelper(arguments)
                     } else {
-                        Operations.timeClip(ZonedDateTime.ofInstant(Instant.ofEpochMilli(Operations.toNumber(prim).asLong), Operations.defaultZone))
+                        Operations.timeClip(ZonedDateTime.ofInstant(Instant.ofEpochMilli(Operations.toNumber(realm, prim).asLong), Operations.defaultZone))
                     }
                 }
             }
@@ -59,17 +55,17 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
                 fun getArg(index: Int): Long? {
                     if (arguments.size <= index)
                         return 0L
-                    val value = Operations.toNumber(arguments[index])
+                    val value = Operations.toNumber(realm, arguments[index])
                     if (!value.isFinite)
                         return null
                     return value.asLong
                 }
 
-                val yearArg = Operations.toNumber(arguments.argument(0))
+                val yearArg = Operations.toNumber(realm, arguments.argument(0))
                 val year = if (yearArg.isNaN) {
                     return JSNumber.NaN
                 } else {
-                    val yi = Operations.toIntegerOrInfinity(yearArg).asLong
+                    val yi = Operations.toIntegerOrInfinity(realm, yearArg).asLong
                     (if (yi in 0..99) 1900 + yi else yearArg.asLong) - 1970
                 }
 
@@ -95,22 +91,23 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
         }
 
         return Operations.ordinaryCreateFromConstructor(
+            realm,
             arguments.newTarget,
             realm.dateProto,
             listOf(SlotName.DateValue)
         ).also { it.setSlot(SlotName.DateValue, zdt) }
     }
 
-    fun now(arguments: JSArguments): JSValue {
+    fun now(realm: Realm, arguments: JSArguments): JSValue {
         return Instant.now().toEpochMilli().toValue()
     }
 
-    fun parse(arguments: JSArguments): JSValue {
+    fun parse(realm: Realm, arguments: JSArguments): JSValue {
         return JSDateObject.create(realm, parseHelper(arguments) ?: return JSNumber.NaN)
     }
 
     private fun parseHelper(arguments: JSArguments): ZonedDateTime? {
-        val arg = Operations.toString(arguments.argument(0)).string
+        val arg = Operations.toString(realm, arguments.argument(0)).string
 
         val result = dateTimeStringFormatter.parse(arg)
 
@@ -134,21 +131,21 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
         return if (isSupported(field)) get(field) else default
     }
 
-    fun utc(arguments: JSArguments): JSValue {
+    fun utc(realm: Realm, arguments: JSArguments): JSValue {
         fun getArg(index: Int, offset: Int = 0): Long? {
             if (arguments.size <= index)
                 return 0L
-            val value = Operations.toNumber(arguments[index])
+            val value = Operations.toNumber(realm, arguments[index])
             if (!value.isFinite)
                 return null
             return value.asLong + offset
         }
 
-        val yearArg = Operations.toNumber(arguments.argument(0))
+        val yearArg = Operations.toNumber(realm, arguments.argument(0))
         val year = if (!yearArg.isFinite) {
             return JSNumber.NaN
         } else {
-            val yi = Operations.toIntegerOrInfinity(yearArg).asLong
+            val yi = Operations.toIntegerOrInfinity(realm, yearArg).asLong
             (if (yi in 0..99) 1900 + yi else yearArg.asLong) - 1970
         }
 

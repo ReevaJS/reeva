@@ -8,10 +8,7 @@ import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.utils.Result
 import me.mattco.reeva.utils.ResultT
-import me.mattco.reeva.utils.expect
 import java.nio.ByteOrder
-import java.util.*
-import kotlin.collections.ArrayDeque
 
 class Agent {
     // Used to ensure names of various things are unique
@@ -26,10 +23,6 @@ class Agent {
         get() = byteOrder == ByteOrder.LITTLE_ENDIAN
     val isBigEndian: Boolean
         get() = byteOrder == ByteOrder.BIG_ENDIAN
-
-    private val activeRealms = Stack<Realm>()
-    val activeRealm: Realm
-        get() = activeRealms.peek()
 
     private val pendingMicrotasks = ArrayDeque<() -> Unit>()
 
@@ -60,17 +53,6 @@ class Agent {
 
     internal fun addMicrotask(task: () -> Unit) {
         pendingMicrotasks.addFirst(task)
-    }
-
-    fun <T> withRealm(realm: Realm, block: () -> T): T {
-        val initialRealmCount = activeRealms.size
-        activeRealms.push(realm)
-        return try {
-            block()
-        } finally {
-            activeRealms.pop()
-            expect(activeRealms.size == initialRealmCount)
-        }
     }
 
     internal fun processMicrotasks() {

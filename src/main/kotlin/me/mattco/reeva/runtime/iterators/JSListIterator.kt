@@ -9,6 +9,7 @@ class JSListIterator private constructor(
     val iteratorList: List<JSValue>,
 ) : JSObject(realm, realm.listIteratorProto) {
     var nextIndex: Int = 0
+
     companion object {
         fun create(realm: Realm, iteratorList: List<JSValue>) = JSListIterator(realm, iteratorList)
     }

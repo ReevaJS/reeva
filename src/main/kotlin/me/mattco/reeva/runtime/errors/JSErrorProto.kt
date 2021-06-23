@@ -24,21 +24,21 @@ open class JSErrorProto protected constructor(
         defineNativeFunction("toString", 0, ::toString)
     }
 
-    fun toString(arguments: JSArguments): JSValue {
+    fun toString(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
         if (thisValue !is JSObject)
-            Errors.IncompatibleMethodCall("Error.prototype.toString").throwTypeError()
+            Errors.IncompatibleMethodCall("Error.prototype.toString").throwTypeError(realm)
 
         val name = thisValue.get("name").let {
             if (it == JSUndefined) {
                 "Error".toValue()
-            } else Operations.toString(it)
+            } else Operations.toString(realm, it)
         }
 
         val message = thisValue.get("message").let {
             if (it == JSUndefined) {
                 "".toValue()
-            } else Operations.toString(it)
+            } else Operations.toString(realm, it)
         }
 
         if (name.string.isEmpty())

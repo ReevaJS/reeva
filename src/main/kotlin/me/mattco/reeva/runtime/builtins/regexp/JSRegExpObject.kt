@@ -26,11 +26,11 @@ class JSRegExpObject private constructor(
     init {
         val invalidFlag = originalFlags.firstOrNull { Flag.values().none { flag -> flag.char == it } }
         if (invalidFlag != null)
-            Errors.RegExp.InvalidFlag(invalidFlag).throwSyntaxError()
+            Errors.RegExp.InvalidFlag(invalidFlag).throwSyntaxError(realm)
         if (originalFlags.toCharArray().distinct().size != originalFlags.length)
-            Errors.RegExp.DuplicateFlag.throwSyntaxError()
+            Errors.RegExp.DuplicateFlag.throwSyntaxError(realm)
 
-        regex = makeClosure(originalSource, originalFlags)
+        regex = makeClosure(realm, originalSource, originalFlags)
     }
 
     enum class Flag(val char: Char) {
@@ -89,7 +89,7 @@ class JSRegExpObject private constructor(
         }
 
         @ECMAImpl("N/A", name = "The [[RegExpMatcher]] Abstract Closure")
-        fun makeClosure(source: String, flags: String): Regex {
+        fun makeClosure(realm: Realm, source: String, flags: String): Regex {
             var options = 0
             if (Flag.IgnoreCase.char in flags)
                 options = options or Option.IGNORECASE
@@ -109,12 +109,12 @@ class JSRegExpObject private constructor(
                     ErrorMessages.EMPTY_RANGE_IN_CHAR_CLASS -> Errors.RegExp.InvalidRange
                     ErrorMessages.UPPER_SMALLER_THAN_LOWER_IN_REPEAT_RANGE -> Errors.RegExp.BackwardsBraceQuantifier
                     else -> throw e
-                }.throwSyntaxError()
+                }.throwSyntaxError(realm)
             } catch (e: SyntaxException) {
                 when (e.message) {
                     ErrorMessages.END_PATTERN_AT_ESCAPE -> Errors.RegExp.BadEscape
                     else -> throw e
-                }.throwSyntaxError()
+                }.throwSyntaxError(realm)
             }
         }
 

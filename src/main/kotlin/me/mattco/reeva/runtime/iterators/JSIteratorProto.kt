@@ -12,7 +12,7 @@ class JSIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.
         defineNativeFunction(Realm.`@@iterator`.key(), 0, function = ::`@@iterator`)
     }
 
-    fun `@@iterator`(arguments: JSArguments): JSValue {
+    fun `@@iterator`(realm: Realm, arguments: JSArguments): JSValue {
         return arguments.thisValue
     }
 

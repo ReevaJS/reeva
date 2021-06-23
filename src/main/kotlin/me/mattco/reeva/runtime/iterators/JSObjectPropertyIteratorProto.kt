@@ -16,7 +16,7 @@ class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject
         defineNativeFunction("next", 0, ::next)
     }
 
-    fun next(arguments: JSArguments): JSValue {
+    fun next(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
         ecmaAssert(thisValue is JSObjectPropertyIterator)
         while (true) {
@@ -40,7 +40,7 @@ class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject
                     if (desc != null) {
                         thisValue.visitedKeys.add(key)
                         if (desc.isEnumerable) {
-                            return Operations.createIterResultObject(key.asValue, false)
+                            return Operations.createIterResultObject(realm, key.asValue, false)
                         }
                     }
                 }
@@ -48,7 +48,7 @@ class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject
             thisValue.obj = obj.getPrototype()
             thisValue.objWasVisited = false
             if (thisValue.obj == JSNull)
-                return Operations.createIterResultObject(JSUndefined, true)
+                return Operations.createIterResultObject(realm, JSUndefined, true)
         }
     }
 

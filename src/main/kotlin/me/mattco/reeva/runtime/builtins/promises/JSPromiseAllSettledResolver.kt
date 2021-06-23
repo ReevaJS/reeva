@@ -28,13 +28,13 @@ class JSPromiseAllSettledResolver private constructor(
         val obj = create(realm)
         val status = if (isRejector) "rejected" else "fulfilled"
         val valKey = if (isRejector) "reason" else "value"
-        Operations.createDataPropertyOrThrow(obj, "status".toValue(), status.toValue())
-        Operations.createDataPropertyOrThrow(obj, valKey.toValue(), arguments.argument(0))
+        Operations.createDataPropertyOrThrow(realm, obj, "status".toValue(), status.toValue())
+        Operations.createDataPropertyOrThrow(realm, obj, valKey.toValue(), arguments.argument(0))
         values[index] = obj
         remainingElements.value--
         if (remainingElements.value == 0) {
-            val valuesArray = Operations.createArrayFromList(values)
-            return Operations.call(capability.resolve!!, JSUndefined, listOf(valuesArray))
+            val valuesArray = Operations.createArrayFromList(realm, values)
+            return Operations.call(realm, capability.resolve!!, JSUndefined, listOf(valuesArray))
         }
         return JSUndefined
     }

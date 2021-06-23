@@ -19,26 +19,26 @@ class JSSetIteratorProto private constructor(realm: Realm) : JSObject(realm, rea
         defineNativeFunction("next", 0, ::next)
     }
 
-    fun next(arguments: JSArguments): JSValue {
+    fun next(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
         if (thisValue !is JSSetIterator)
-            Errors.IncompatibleMethodCall("%MapIteratorPrototype%.next").throwTypeError()
+            Errors.IncompatibleMethodCall("%MapIteratorPrototype%.next").throwTypeError(realm)
 
-        val set = thisValue.iteratedSet ?: return Operations.createIterResultObject(JSUndefined, true)
+        val set = thisValue.iteratedSet ?: return Operations.createIterResultObject(realm, JSUndefined, true)
 
         while (thisValue.nextIndex < set.insertionOrder.size) {
             val value = set.insertionOrder[thisValue.nextIndex]
             thisValue.nextIndex++
             if (value != JSEmpty) {
                 if (thisValue.iterationKind == PropertyKind.KeyValue)
-                    return Operations.createIterResultObject(Operations.createArrayFromList(listOf(value, value)), false)
-                return Operations.createIterResultObject(value, false)
+                    return Operations.createIterResultObject(realm, Operations.createArrayFromList(realm, listOf(value, value)), false)
+                return Operations.createIterResultObject(realm, value, false)
             }
         }
 
         set.iterationCount--
         thisValue.iteratedSet = null
-        return Operations.createIterResultObject(JSUndefined, true)
+        return Operations.createIterResultObject(realm, JSUndefined, true)
     }
 
     companion object {

@@ -24,34 +24,34 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         defineNativeFunction(Realm.`@@toPrimitive`.key(), 0, function = ::`@@toPrimitive`)
     }
 
-    fun getDescription(thisValue: JSValue): JSValue {
-        return thisSymbolValue(thisValue, "description").description?.toValue() ?: JSUndefined
+    fun getDescription(realm: Realm, thisValue: JSValue): JSValue {
+        return thisSymbolValue(realm, thisValue, "description").description?.toValue() ?: JSUndefined
     }
 
-    fun `get@@toStringTag`(thisValue: JSValue) = "Symbol".toValue()
+    fun `get@@toStringTag`(realm: Realm, thisValue: JSValue) = "Symbol".toValue()
 
-    fun toString(arguments: JSArguments): JSValue {
-        return thisSymbolValue(arguments.thisValue, "toString").descriptiveString().toValue()
+    fun toString(realm: Realm, arguments: JSArguments): JSValue {
+        return thisSymbolValue(realm, arguments.thisValue, "toString").descriptiveString().toValue()
     }
 
-    fun toValue(arguments: JSArguments): JSValue {
-        return thisSymbolValue(arguments.thisValue, "toValue")
+    fun toValue(realm: Realm, arguments: JSArguments): JSValue {
+        return thisSymbolValue(realm, arguments.thisValue, "toValue")
     }
 
-    fun `@@toPrimitive`(arguments: JSArguments): JSValue {
-        return thisSymbolValue(arguments.thisValue, "@@toPrimitive")
+    fun `@@toPrimitive`(realm: Realm, arguments: JSArguments): JSValue {
+        return thisSymbolValue(realm, arguments.thisValue, "@@toPrimitive")
     }
 
     companion object {
         fun create(realm: Realm) = JSSymbolProto(realm).initialize()
 
         @ECMAImpl("19.4.3")
-        private fun thisSymbolValue(value: JSValue, methodName: String): JSSymbol {
+        private fun thisSymbolValue(realm: Realm, value: JSValue, methodName: String): JSSymbol {
             if (value.isSymbol)
                 return value.asSymbol
             if (value is JSSymbolObject)
                 return value.symbol
-            Errors.IncompatibleMethodCall("Symbol.prototype.$methodName").throwTypeError()
+            Errors.IncompatibleMethodCall("Symbol.prototype.$methodName").throwTypeError(realm)
         }
     }
 }

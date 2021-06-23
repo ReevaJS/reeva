@@ -1,5 +1,6 @@
 package me.mattco.reeva.runtime.objects.index
 
+import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -9,6 +10,7 @@ import me.mattco.reeva.runtime.primitives.JSUndefined
 import java.util.*
 
 class IndexedProperties private constructor(
+    private val realm: Realm,
     private var storage: IndexedStorage
 ) {
     val size: Long
@@ -19,7 +21,7 @@ class IndexedProperties private constructor(
     val isEmpty: Boolean
         get() = size == 0L
 
-    constructor() : this(SimpleIndexedStorage())
+    constructor(realm: Realm) : this(realm, SimpleIndexedStorage())
 
     fun hasIndex(index: Int) = storage.hasIndex(index)
     fun hasIndex(index: Long) = storage is GenericIndexedStorage && storage.hasIndex(index)
@@ -28,12 +30,12 @@ class IndexedProperties private constructor(
     fun getDescriptor(index: Long): Descriptor? = if (storage is SimpleIndexedStorage) null else storage.get(index)
 
     fun get(thisValue: JSValue, index: Int): JSValue {
-        return storage.get(index)?.getActualValue(thisValue) ?: return JSUndefined
+        return storage.get(index)?.getActualValue(realm, thisValue) ?: return JSUndefined
     }
 
     fun get(thisValue: JSValue, index: Long): JSValue {
         return if (storage is GenericIndexedStorage) {
-            storage.get(index)?.getActualValue(thisValue) ?: return JSUndefined
+            storage.get(index)?.getActualValue(realm, thisValue) ?: return JSUndefined
         } else JSUndefined
     }
 
@@ -67,7 +69,7 @@ class IndexedProperties private constructor(
             storage.set(index, descriptor)
             return
         }
-        existingValue.setActualValue(thisValue, descriptor.getActualValue(thisValue))
+        existingValue.setActualValue(realm, thisValue, descriptor.getActualValue(realm, thisValue))
         existingValue.attributes = descriptor.attributes
     }
 
@@ -79,7 +81,7 @@ class IndexedProperties private constructor(
             storage.set(index, descriptor)
             return
         }
-        existingValue.setActualValue(thisValue, descriptor.getActualValue(thisValue))
+        existingValue.setActualValue(realm, thisValue, descriptor.getActualValue(realm, thisValue))
         existingValue.attributes = descriptor.attributes
     }
 

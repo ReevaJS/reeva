@@ -13,8 +13,8 @@ class JSPackageProto private constructor(realm: Realm) : JSObject(realm, realm.o
         defineNativeFunction("toString", 0, ::toString)
     }
 
-    private fun toString(arguments: JSArguments): JSValue {
-        val packageName = thisPackageObject(arguments.thisValue, "toString").packageName
+    private fun toString(realm: Realm, arguments: JSArguments): JSValue {
+        val packageName = thisPackageObject(realm, arguments.thisValue, "toString").packageName
         return if (packageName == null) {
             "TopLevelPackage"
         } else {
@@ -25,9 +25,9 @@ class JSPackageProto private constructor(realm: Realm) : JSObject(realm, realm.o
     companion object {
         fun create(realm: Realm) = JSPackageProto(realm).initialize()
 
-        private fun thisPackageObject(thisValue: JSValue, methodName: String): JSPackageObject {
+        private fun thisPackageObject(realm: Realm, thisValue: JSValue, methodName: String): JSPackageObject {
             if (thisValue !is JSPackageObject)
-                Errors.IncompatibleMethodCall("Package.prototype.$methodName").throwTypeError()
+                Errors.IncompatibleMethodCall("Package.prototype.$methodName").throwTypeError(realm)
             return thisValue
         }
     }

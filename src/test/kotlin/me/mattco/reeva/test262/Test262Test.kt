@@ -97,10 +97,8 @@ class Test262Test(
             }
         }
 
-        agent.withRealm(realm) {
-            Assertions.assertTrue(!Operations.toBoolean(doneFunction.result)) {
-                "Expected \$DONE to be called with falsy value, received ${Operations.toString(doneFunction.result)}"
-            }
+        Assertions.assertTrue(!Operations.toBoolean(doneFunction.result)) {
+            "Expected \$DONE to be called with falsy value, received ${Operations.toString(realm, doneFunction.result)}"
         }
     }
 

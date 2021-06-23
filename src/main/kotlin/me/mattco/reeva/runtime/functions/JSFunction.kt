@@ -1,6 +1,5 @@
 package me.mattco.reeva.runtime.functions
 
-import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
@@ -9,14 +8,15 @@ import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSNull
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.ecmaAssert
+import me.mattco.reeva.utils.expect
 
 abstract class JSFunction(
     realm: Realm,
     var isStrict: Boolean = false,
     prototype: JSValue = realm.functionProto,
 ) : JSObject(realm, prototype) {
-    var isCallable: Boolean = true
-    var isConstructable: Boolean = false
+    open val isCallable: Boolean = true
+    open val isConstructable: Boolean = true
 
     abstract fun evaluate(arguments: JSArguments): JSValue
 
@@ -24,15 +24,16 @@ abstract class JSFunction(
         return when {
             isStrict -> oldThis
             oldThis == JSUndefined || oldThis == JSNull -> realm.globalObject
-            else -> Operations.toObject(oldThis)
+            else -> Operations.toObject(realm, oldThis)
         }
     }
 
     fun call(arguments: JSArguments): JSValue {
+        // TODO: Should this throw an error? Or will we never get here to due
+        // the guard in Operations.call
+        expect(isCallable)
         val newThis = getNewThisValue(arguments.thisValue)
-        return Reeva.activeAgent.withRealm(realm) {
-            evaluate(arguments.withThisValue(newThis))
-        }
+        return evaluate(arguments.withThisValue(newThis))
     }
 
     fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
@@ -40,16 +41,19 @@ abstract class JSFunction(
     }
 
     fun construct(arguments: JSArguments): JSValue {
+        // TODO: Should this throw an error? Or will we never get here to due
+        // the guard in Operations.construct
+        expect(isConstructable)
+
         ecmaAssert(arguments.newTarget is JSObject)
 
         val thisValue = Operations.ordinaryCreateFromConstructor(
+            realm,
             arguments.newTarget,
             realm.objectProto,
         )
 
-        val result = Reeva.activeAgent.withRealm(realm) {
-            evaluate(arguments.withThisValue(thisValue))
-        }
+        val result = evaluate(arguments.withThisValue(thisValue))
         if (result is JSObject)
             return result
 

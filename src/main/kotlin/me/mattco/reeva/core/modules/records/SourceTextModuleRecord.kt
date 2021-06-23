@@ -111,7 +111,7 @@ class SourceTextModuleRecord(
 //        indirectExportEntries.forEach { e ->
 //            val resolution = resolveExport(e.exportName!!)
 //            if (resolution == null || resolution == ResolvedBindingRecord.AMBIGUOUS)
-//                Errors.TODO("SourceTextModuleRecord initializeEnvironment 1").throwSyntaxError()
+//                Errors.TODO("SourceTextModuleRecord initializeEnvironment 1").throwSyntaxError(realm)
 //        }
 //
 //        // TODO: "Assert: All named exports from module are resolvable."
@@ -126,7 +126,7 @@ class SourceTextModuleRecord(
 //            } else {
 //                val resolution = importedModule.resolveExport(ie.importName)
 //                if (resolution == null || resolution == ResolvedBindingRecord.AMBIGUOUS)
-//                    Errors.TODO("SourceTextModuleRecord initializeEnvironment 2").throwSyntaxError()
+//                    Errors.TODO("SourceTextModuleRecord initializeEnvironment 2").throwSyntaxError(realm)
 //                if (resolution.bindingName == "*namespace*") {
 //                    env.createImmutableBinding(ie.localName, true)
 //                    env.initializeBinding(ie.localName, resolution.module.namespaceObject)

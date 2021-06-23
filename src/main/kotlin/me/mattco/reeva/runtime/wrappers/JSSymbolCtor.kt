@@ -11,10 +11,6 @@ import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.toValue
 
 class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Symbol", 0) {
-    init {
-        isConstructable = true
-    }
-
     override fun init() {
         super.init()
 
@@ -36,7 +32,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineNativeFunction("keyFor", 1, ::keyFor)
     }
 
-    fun `for`(arguments: JSArguments): JSValue {
+    fun `for`(realm: Realm, arguments: JSArguments): JSValue {
         val key = arguments.argument(0).asString
         for ((globalKey, globalSymbol) in Realm.globalSymbolRegistry) {
             if (globalKey == key)
@@ -47,10 +43,10 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return newSymbol
     }
 
-    fun keyFor(arguments: JSArguments): JSValue {
+    fun keyFor(realm: Realm, arguments: JSArguments): JSValue {
         val sym = arguments.argument(0)
         if (!sym.isSymbol)
-            Errors.Symbol.KeyForBadArg.throwTypeError()
+            Errors.Symbol.KeyForBadArg.throwTypeError(realm)
         for ((globalKey, globalSymbol) in Realm.globalSymbolRegistry) {
             if (sym == globalSymbol)
                 return globalKey.toValue()
@@ -60,10 +56,10 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
     override fun evaluate(arguments: JSArguments): JSValue {
         if (arguments.newTarget != JSUndefined)
-            Errors.NotACtor("Symbol").throwTypeError()
+            Errors.NotACtor("Symbol").throwTypeError(realm)
 
         val description = arguments.argument(0).let {
-            if (it == JSUndefined) null else Operations.toString(it).string
+            if (it == JSUndefined) null else Operations.toString(realm, it).string
         }
         return JSSymbol(description)
     }

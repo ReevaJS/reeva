@@ -8,40 +8,36 @@ import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
 
 class JSDataViewCtor private constructor(realm: Realm) : JSNativeFunction(realm, "DataView", 1) {
-    init {
-        isConstructable = true
-    }
-
     override fun evaluate(arguments: JSArguments): JSValue {
         val newTarget = arguments.newTarget
         if (newTarget == JSUndefined)
-            Errors.CtorCallWithoutNew("DataView").throwTypeError()
+            Errors.CtorCallWithoutNew("DataView").throwTypeError(realm)
 
         val (buffer, byteOffset, byteLength) = arguments.takeArgs(0..2)
 
         if (!Operations.requireInternalSlot(buffer, SlotName.ArrayBufferData))
-            Errors.DataView.CtorBadBufferArg.throwTypeError()
+            Errors.DataView.CtorBadBufferArg.throwTypeError(realm)
 
-        val offset = byteOffset.toIndex()
+        val offset = byteOffset.toIndex(realm)
 
         if (Operations.isDetachedBuffer(buffer))
-            Errors.TODO("DataViewCtor isDetachedBuffer 1").throwTypeError()
+            Errors.TODO("DataViewCtor isDetachedBuffer 1").throwTypeError(realm)
 
         val bufferByteLength = buffer.getSlotAs<Int>(SlotName.ArrayBufferByteLength)
         if (offset > bufferByteLength)
-            Errors.DataView.OutOfRangeOffset(offset, bufferByteLength).throwRangeError()
+            Errors.DataView.OutOfRangeOffset(offset, bufferByteLength).throwRangeError(realm)
 
         val viewByteLength = if (byteLength != JSUndefined) {
-            byteLength.toIndex().also {
+            byteLength.toIndex(realm).also {
                 if (offset + it > bufferByteLength)
-                    Errors.DataView.OutOfRangeOffset(offset + it, bufferByteLength).throwRangeError()
+                    Errors.DataView.OutOfRangeOffset(offset + it, bufferByteLength).throwRangeError(realm)
             }
         } else bufferByteLength - offset
 
         val theRealm = (newTarget as? JSObject)?.realm ?: realm
-        val obj = Operations.ordinaryCreateFromConstructor(newTarget, theRealm.dataViewProto, listOf(SlotName.DataView))
+        val obj = Operations.ordinaryCreateFromConstructor(realm, newTarget, theRealm.dataViewProto, listOf(SlotName.DataView))
         if (Operations.isDetachedBuffer(buffer))
-            Errors.TODO("DataViewCtor isDetachedBuffer 2").throwTypeError()
+            Errors.TODO("DataViewCtor isDetachedBuffer 2").throwTypeError(realm)
 
         obj.setSlot(SlotName.ViewedArrayBuffer, buffer)
         obj.setSlot(SlotName.ByteLength, viewByteLength)

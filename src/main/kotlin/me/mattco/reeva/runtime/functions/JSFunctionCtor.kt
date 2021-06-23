@@ -1,18 +1,12 @@
 package me.mattco.reeva.runtime.functions
 
-import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.utils.attrs
 import me.mattco.reeva.utils.toValue
 
 class JSFunctionCtor private constructor(realm: Realm) : JSNativeFunction(realm, "FunctionConstructor", 1) {
-    init {
-        isConstructable = true
-    }
-
     override fun init() {
         super.init()
 

@@ -22,26 +22,26 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
     }
 
     @ECMAImpl("19.3.3.2")
-    fun toString(arguments: JSArguments): JSValue {
-        val b = thisBooleanValue(arguments.thisValue, "toString")
+    fun toString(realm: Realm, arguments: JSArguments): JSValue {
+        val b = thisBooleanValue(realm, arguments.thisValue, "toString")
         return if (b.boolean) "true".toValue() else "false".toValue()
     }
 
     @ECMAImpl("19.3.3.2")
-    fun valueOf(arguments: JSArguments): JSValue {
-        return thisBooleanValue(arguments.thisValue, "valueOf")
+    fun valueOf(realm: Realm, arguments: JSArguments): JSValue {
+        return thisBooleanValue(realm, arguments.thisValue, "valueOf")
     }
 
     companion object {
         fun create(realm: Realm) = JSBooleanProto(realm).initialize()
 
-        private fun thisBooleanValue(value: JSValue, methodName: String): JSBoolean {
+        private fun thisBooleanValue(realm: Realm, value: JSValue, methodName: String): JSBoolean {
             if (value.isBoolean)
                 return value as JSBoolean
             if (value !is JSObject)
-                Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError()
+                Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError(realm)
             return value.getSlotAs(SlotName.BooleanData) ?:
-                Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError()
+                Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError(realm)
         }
     }
 }

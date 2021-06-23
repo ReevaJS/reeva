@@ -4,16 +4,12 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.arrays.JSArrayObject
-import me.mattco.reeva.runtime.primitives.JSFalse
-import me.mattco.reeva.runtime.primitives.JSTrue
-import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.JSBigInt
-import me.mattco.reeva.runtime.wrappers.JSBigIntObject
-import me.mattco.reeva.runtime.wrappers.JSBooleanObject
-import me.mattco.reeva.runtime.wrappers.JSNumberObject
-import me.mattco.reeva.runtime.wrappers.JSStringObject
+import me.mattco.reeva.runtime.primitives.JSFalse
+import me.mattco.reeva.runtime.primitives.JSTrue
+import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.*
 import kotlin.math.min
 
@@ -26,17 +22,17 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         defineNativeFunction("stringify", 3, function = ::stringify)
     }
 
-    fun `get@@toStringTag`(thisValue: JSValue): JSValue {
+    fun `get@@toStringTag`(realm: Realm, thisValue: JSValue): JSValue {
         return "JSON".toValue()
     }
 
     @ECMAImpl("24.5.1")
-    fun parse(arguments: JSArguments): JSValue {
+    fun parse(realm: Realm, arguments: JSArguments): JSValue {
         TODO()
     }
 
     @ECMAImpl("24.5.2")
-    fun stringify(arguments: JSArguments): JSValue {
+    fun stringify(realm: Realm, arguments: JSArguments): JSValue {
         // TODO: ReplacerFunction
 
         val value = arguments.argument(0)
@@ -51,14 +47,14 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         if (space is JSObject) {
             if (space.hasSlot(SlotName.NumberData)) {
-                space = space.toNumber()
+                space = space.toNumber(realm)
             } else if (space.hasSlot(SlotName.StringData)) {
-                space = Operations.toString(space)
+                space = Operations.toString(realm, space)
             }
         }
 
         if (space.isNumber) {
-            repeat(min(10, Operations.toIntegerOrInfinity(space).asInt)) {
+            repeat(min(10, Operations.toIntegerOrInfinity(realm, space).asInt)) {
                 gap += " "
             }
         } else if (space.isString) {
@@ -67,7 +63,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         }
 
         val wrapper = JSObject.create(realm)
-        Operations.createDataPropertyOrThrow(wrapper, "".toValue(), value)
+        Operations.createDataPropertyOrThrow(realm, wrapper, "".toValue(), value)
         val state = SerializeState(
             mutableListOf(),
             "",
@@ -81,15 +77,15 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     private fun serializeJSONProperty(state: SerializeState, key: PropertyKey, holder: JSObject): String? {
         var value = holder.get(key)
         if (value is JSObject || value is JSBigInt) {
-            val toJSON = Operations.getV(value, "toJSON".toValue())
+            val toJSON = Operations.getV(realm, value, "toJSON".toValue())
             if (Operations.isCallable(toJSON)) {
-                value = Operations.call(toJSON, value, listOf(key.asValue))
+                value = Operations.call(realm, toJSON, value, listOf(key.asValue))
             }
         }
         if (value is JSObject) {
             value = when {
-                value.hasSlot(SlotName.NumberData) -> value.toNumber()
-                value.hasSlot(SlotName.StringData) -> Operations.toString(value)
+                value.hasSlot(SlotName.NumberData) -> value.toNumber(realm)
+                value.hasSlot(SlotName.StringData) -> Operations.toString(realm, value)
                 value.hasSlot(SlotName.BooleanData) -> value.getSlotAs(SlotName.BooleanData)
                 value.hasSlot(SlotName.BigIntData) -> value.getSlotAs(SlotName.BigIntData)
                 else -> value
@@ -105,14 +101,14 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             return quoteJSONString(value.asString)
         if (value.isNumber) {
             if (value.isFinite) {
-                return Operations.toString(value).string
+                return Operations.toString(realm, value).string
             }
             return "null"
         }
         if (value.isBigInt)
-            Errors.JSON.StringifyBigInt.throwTypeError()
+            Errors.JSON.StringifyBigInt.throwTypeError(realm)
         if (value.isObject && !Operations.isCallable(value)) {
-            if (Operations.isArray(value))
+            if (Operations.isArray(realm, value))
                 return serializeJSONArray(state, value as JSArrayObject)
             return serializeJSONObject(state, value as JSObject)
         }
@@ -158,13 +154,13 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
 
     private fun serializeJSONArray(state: SerializeState, value: JSArrayObject): String {
         if (value in state.stack)
-            Errors.JSON.StringifyCircular.throwTypeError()
+            Errors.JSON.StringifyCircular.throwTypeError(realm)
 
         state.stack.add(value)
         val stepback = state.indent
         state.indent += state.gap
         val partial = mutableListOf<String>()
-        val len = Operations.lengthOfArrayLike(value)
+        val len = Operations.lengthOfArrayLike(realm, value)
         for (i in 0 until len) {
             val strP = serializeJSONProperty(state, i.key(), value)
             partial.add(strP ?: "null")
@@ -193,18 +189,18 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
 
     private fun serializeJSONObject(state: SerializeState, value: JSObject): String {
         if (value in state.stack)
-            Errors.JSON.StringifyCircular.throwTypeError()
+            Errors.JSON.StringifyCircular.throwTypeError(realm)
 
         state.stack.add(value)
         val stepback = state.indent
         state.indent += state.gap
         val partial = mutableListOf<String>()
 
-        Operations.enumerableOwnPropertyNames(value, PropertyKind.Key).forEach { property ->
-            val strP = serializeJSONProperty(state, Operations.toPropertyKey(property), value)
+        Operations.enumerableOwnPropertyNames(realm, value, PropertyKind.Key).forEach { property ->
+            val strP = serializeJSONProperty(state, Operations.toPropertyKey(realm, property), value)
             if (strP != null) {
                 partial.add(buildString {
-                    append(quoteJSONString(Operations.toString(property).string))
+                    append(quoteJSONString(Operations.toString(realm, property).string))
                     append(":")
                     if (state.gap.isNotEmpty())
                         append(" ")
