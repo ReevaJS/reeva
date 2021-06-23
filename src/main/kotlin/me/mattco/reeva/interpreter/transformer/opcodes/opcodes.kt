@@ -1,6 +1,6 @@
-package me.mattco.reeva.ir.opcodes
+package me.mattco.reeva.interpreter.transformer.opcodes
 
-import me.mattco.reeva.ir.Block
+import me.mattco.reeva.interpreter.transformer.Block
 
 typealias Register = Int
 typealias Index = Int

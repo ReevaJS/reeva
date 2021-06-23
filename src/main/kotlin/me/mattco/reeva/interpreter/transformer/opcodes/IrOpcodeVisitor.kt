@@ -1,6 +1,6 @@
-package me.mattco.reeva.ir.opcodes
+package me.mattco.reeva.interpreter.transformer.opcodes
 
-import me.mattco.reeva.ir.Block
+import me.mattco.reeva.interpreter.transformer.Block
 
 abstract class IrOpcodeVisitor {
     open fun visit(opcode: Opcode) {

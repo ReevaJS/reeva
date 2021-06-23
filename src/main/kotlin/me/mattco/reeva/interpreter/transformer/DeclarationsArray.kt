@@ -1,4 +1,4 @@
-package me.mattco.reeva.ir
+package me.mattco.reeva.interpreter.transformer
 
 class DeclarationsArray(
     varDecls: List<String>,

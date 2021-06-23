@@ -1,7 +1,7 @@
-package me.mattco.reeva.ir
+package me.mattco.reeva.interpreter.transformer
 
-import me.mattco.reeva.ir.opcodes.Jump
-import me.mattco.reeva.ir.opcodes.Opcode
+import me.mattco.reeva.interpreter.transformer.opcodes.Jump
+import me.mattco.reeva.interpreter.transformer.opcodes.Opcode
 import me.mattco.reeva.utils.expect
 
 data class FunctionOpcodes(

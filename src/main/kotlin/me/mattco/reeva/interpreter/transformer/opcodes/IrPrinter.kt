@@ -1,8 +1,8 @@
-package me.mattco.reeva.ir.opcodes
+package me.mattco.reeva.interpreter.transformer.opcodes
 
-import me.mattco.reeva.ir.Block
-import me.mattco.reeva.ir.DeclarationsArray
-import me.mattco.reeva.ir.FunctionInfo
+import me.mattco.reeva.interpreter.transformer.Block
+import me.mattco.reeva.interpreter.transformer.DeclarationsArray
+import me.mattco.reeva.interpreter.transformer.FunctionInfo
 import me.mattco.reeva.utils.unreachable
 
 object IrPrinter {
