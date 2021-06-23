@@ -6,7 +6,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
-import me.mattco.reeva.interpreter.IRInterpreter
+import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.utils.expect
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -57,7 +57,7 @@ class Test262Runner {
     }
 
     companion object {
-        val backends = listOf(IRInterpreter)
+        val backends = listOf(Interpreter)
         val test262Directory = File("./src/test/resources/test262/")
         val testDirectory = File(test262Directory, "test")
         val testDirectoryStr = testDirectory.absolutePath

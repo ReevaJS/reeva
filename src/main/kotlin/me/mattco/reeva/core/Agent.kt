@@ -1,8 +1,8 @@
 package me.mattco.reeva.core
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.interpreter.IRInterpreter
-import me.mattco.reeva.ir.IRTransformer
+import me.mattco.reeva.interpreter.Interpreter
+import me.mattco.reeva.ir.Transformer
 import me.mattco.reeva.ir.opcodes.IrPrinter
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.runtime.JSValue
@@ -38,13 +38,13 @@ class Agent {
                 println("\n")
             }
 
-            val ir = IRTransformer().transform(ast)
+            val ir = Transformer().transform(ast)
             if (printIR) {
                 IrPrinter.printFunctionInfo(ir)
                 println("\n")
             }
 
-            val function = IRInterpreter.wrap(ir, realm)
+            val function = Interpreter.wrap(ir, realm)
             return Result.success(function.call(realm.globalObject, emptyList()))
         } catch (e: Throwable) {
             Result.error(e)

@@ -22,7 +22,7 @@ data class FunctionInfo(
     val isTopLevelScript: Boolean,
 )
 
-class IRTransformer : ASTVisitor {
+class Transformer : ASTVisitor {
     private lateinit var generator: Generator
     private val envStack = mutableListOf<Pair<Scope, Register>>()
 

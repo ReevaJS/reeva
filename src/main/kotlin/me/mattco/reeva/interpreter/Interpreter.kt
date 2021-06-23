@@ -21,7 +21,7 @@ import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.*
 
-class IRInterpreter(
+class Interpreter(
     private val function: IRFunction,
     private val arguments: List<JSValue>,
 ) : IrOpcodeVisitor() {
@@ -616,7 +616,7 @@ class IRInterpreter(
 
         override fun evaluate(arguments: JSArguments): JSValue {
             val args = listOf(arguments.thisValue) + arguments
-            val result = IRInterpreter(this, args).interpret()
+            val result = Interpreter(this, args).interpret()
             if (result is EvaluationResult.RuntimeError)
                 throw ThrowException(result.value)
             return result.value
