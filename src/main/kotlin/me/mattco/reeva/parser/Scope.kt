@@ -17,13 +17,6 @@ open class Scope(val outer: Scope? = null) {
 
     var possiblyReferencesArguments = false
 
-    // How many slots the EnvRecord associated with this Scope requires
-    var requiredSlots: Int = 0
-        protected set
-
-    val requiresEnv: Boolean
-        get() = requiredSlots > 0
-
     val isStrict: Boolean
         get() = parentHoistingScope.hasUseStrictDirective
 
@@ -71,13 +64,12 @@ open class Scope(val outer: Scope? = null) {
             return 0
 
         var scope = this
-        var i = 0
+        var i = 1
         while (scope != ancestorScope) {
-            if (scope.requiresEnv)
-                i++
+            i++
             scope = scope.outer!!
         }
-        return i + if (ancestorScope.requiresEnv) 1 else 0
+        return i
     }
 
     fun onFinish() {
@@ -113,13 +105,6 @@ open class Scope(val outer: Scope? = null) {
     }
 
     protected open fun onFinishImpl() {
-        // Assign each variable their own slot index
-        declaredVariables.forEachIndexed { index, value ->
-            value.slot = index
-            requiredSlots++
-        }
-
-        childScopes.forEach(Scope::onFinishImpl)
     }
 }
 
@@ -151,14 +136,10 @@ data class Variable(
     val mode: Mode,
     var source: VariableSourceNode,
 ) {
-    /**
-     * The slot index of this variable in its context
-     */
-    var slot = -1
-
     var possiblyUsedBeforeDecl = false
 
-    val scope: Scope get() = source.scope
+    val scope: Scope
+        get() = source.scope
 
     enum class Mode {
         Declared,

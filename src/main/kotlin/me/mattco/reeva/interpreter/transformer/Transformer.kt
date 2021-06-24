@@ -17,7 +17,6 @@ data class FunctionInfo(
     val name: String?,
     val code: FunctionOpcodes,
     val argCount: Int,
-    val topLevelSlots: Int,
     val isStrict: Boolean,
     val isTopLevelScript: Boolean,
 )
@@ -45,19 +44,18 @@ class Transformer : ASTVisitor {
             null,
             generator.finish(),
             1,
-            node.scope.requiredSlots,
             node.scope.isStrict,
             isTopLevelScript = true
         )
     }
 
     private fun enterScope(scope: Scope) {
-        if (scope.requiresEnv && scope !is GlobalScope)
+        if (scope !is GlobalScope)
             generator.add(PushLexicalEnv)
     }
 
     private fun exitScope(scope: Scope) {
-        if (scope.requiresEnv && scope !is GlobalScope)
+        if (scope !is GlobalScope)
             generator.add(PopEnv)
     }
 
@@ -427,16 +425,17 @@ class Transformer : ASTVisitor {
         parameters.distinctBy { it.identifier.identifierName }.forEachIndexed { index, param ->
             val register = index + 1
 
+            val name = generator.intern(param.variable.name)
+
+            generator.add(Ldar(register))
+
             if (param.initializer != null) {
-                generator.add(Ldar(register))
                 generator.ifHelper(::JumpIfUndefined) {
                     visit(param.initializer)
                 }
-                generator.add(StaCurrentEnv(param.variable.slot))
-            } else {
-                generator.add(Ldar(register))
-                generator.add(StaCurrentEnv(param.variable.slot))
             }
+
+            generator.add(StaCurrentEnv(name))
         }
 
         if (bodyScope != parameterScope)
@@ -526,7 +525,6 @@ class Transformer : ASTVisitor {
             name,
             generator.finish(),
             parameters.size + 1,
-            parameterScope.requiredSlots,
             isStrict,
             isTopLevelScript = false
         )
@@ -764,20 +762,22 @@ class Transformer : ASTVisitor {
     }
 
     private fun loadEnvVariableRef(variable: Variable, currentScope: Scope) {
+        val name = generator.intern(variable.name)
         val distance = currentScope.envDistanceFrom(variable.source.scope)
         if (distance == 0) {
-            generator.add(LdaCurrentEnv(variable.slot))
+            generator.add(LdaCurrentEnv(name))
         } else {
-            generator.add(LdaEnv(variable.slot, distance))
+            generator.add(LdaEnv(name, distance))
         }
     }
 
     private fun storeEnvVariableRef(variable: Variable, currentScope: Scope) {
+        val name = generator.intern(variable.name)
         val distance = currentScope.envDistanceFrom(variable.source.scope)
         if (distance == 0) {
-            generator.add(StaCurrentEnv(variable.slot))
+            generator.add(StaCurrentEnv(name))
         } else {
-            generator.add(StaEnv(variable.slot, distance))
+            generator.add(StaEnv(name, distance))
         }
     }
 
