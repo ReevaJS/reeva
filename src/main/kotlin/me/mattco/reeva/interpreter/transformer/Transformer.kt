@@ -53,12 +53,12 @@ class Transformer : ASTVisitor {
 
     private fun enterScope(scope: Scope) {
         if (scope.requiresEnv && scope !is GlobalScope)
-            generator.add(PushBlockScope(scope.requiredSlots))
+            generator.add(PushLexicalEnv)
     }
 
     private fun exitScope(scope: Scope) {
         if (scope.requiresEnv && scope !is GlobalScope)
-            generator.add(PopBlockScope)
+            generator.add(PopEnv)
     }
 
     override fun visitBlock(node: BlockNode) {
@@ -113,12 +113,8 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitForStatement(node: ForStatementNode) {
-        if (node.initScope != null) {
+        if (node.initScope != null)
             enterScope(node.initScope)
-            node.initScope.declaredVariables.forEachIndexed { index, variable ->
-                variable.slot = index
-            }
-        }
 
         if (node.initializer != null)
             visit(node.initializer)

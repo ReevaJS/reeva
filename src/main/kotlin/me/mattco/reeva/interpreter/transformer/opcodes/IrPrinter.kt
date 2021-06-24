@@ -97,17 +97,16 @@ object IrPrinter {
 
             is LdaGlobal -> append(stringifyIndex(info, opcode.name))
             is StaGlobal -> append(stringifyIndex(info, opcode.name))
-            is LdaCurrentEnv -> append(stringifyLiteral(opcode.slot))
-            is StaCurrentEnv -> append(stringifyLiteral(opcode.slot))
+            is LdaCurrentEnv -> append(stringifyIndex(info, opcode.name))
+            is StaCurrentEnv -> append(stringifyIndex(info, opcode.name))
             is LdaEnv -> {
-                append(" context:", stringifyRegister(opcode.contextReg))
-                append(" slot:", stringifyLiteral(opcode.slot))
+                append(" name:", stringifyIndex(info, opcode.name))
+                append(" offset:", stringifyLiteral(opcode.offset))
             }
             is StaEnv -> {
-                append(" context:", stringifyRegister(opcode.contextReg))
-                append(" slot:", stringifyLiteral(opcode.slot))
+                append(" name:", stringifyIndex(info, opcode.name))
+                append(" offset:", stringifyLiteral(opcode.offset))
             }
-            is PushBlockScope -> append(stringifyLiteral(opcode.numSlots))
 
             is Call -> {
                 append(" target:", stringifyRegister(opcode.targetReg))

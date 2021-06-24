@@ -218,47 +218,47 @@ class StaGlobal(val name: Index) : Opcode()
  * Loads a named variable from the current environment into the
  * accumulator.
  *
- * slot: the slot in the current environment to load
+ * name: the index in the constant pool for the name of the binding
  */
-class LdaCurrentEnv(val slot: Literal) : Opcode()
+class LdaCurrentEnv(val name: Index) : Opcode()
 
 /**
  * Stores the accumulator into a named variable in the current
  * environment.
  *
  * accumulator: the value to store
- * slot: the slot in the current environment to store to
+ * name: the index in the constant pool for the name of the binding
  */
-class StaCurrentEnv(val slot: Literal) : Opcode()
+class StaCurrentEnv(val name: Index) : Opcode()
 
 /**
  * Loads a named variable from a parent environment into the
  * accumulator.
  *
- * contextReg: the register containing the target context
- * slot: the slot in the environment to store to
+ * name: the index in the constant pool for the name of the binding
+ * offset: the distance up the environment stack of the target
+ *         environment (0 would be the current environment)
  */
-class LdaEnv(val contextReg: Register, val slot: Literal) : Opcode()
+class LdaEnv(val name: Index, val offset: Literal) : Opcode()
 
 /**
  * Stores a value into a named variable in a parent environment.
  *
- * contextReg: the register containing the target context
- * slot: the slot in the environment to store to
+ * name: the index in the constant pool for the name of the binding
+ * offset: the distance up the environment stack of the target
+ *         environment (0 would be the current environment)
  */
-class StaEnv(val contextReg: Register, val slot: Literal) : Opcode()
+class StaEnv(val name: Index, val offset: Literal) : Opcode()
 
 /**
- * Create a lexical block scope
- *
- * numSlots: the number of slots the new environment will have
+ * Pushes a DeclarativeEnvRecord onto the env stack
  */
-class PushBlockScope(val numSlots: Literal) : Opcode()
+object PushLexicalEnv : Opcode()
 
 /**
- * Pops the current environment from the env record stack
+ * Pops an EnvRecord off of the env stack
  */
-object PopBlockScope : Opcode()
+object PopEnv : Opcode()
 
 ///////////////
 /// CALLING ///

@@ -3,9 +3,13 @@ package me.mattco.reeva.interpreter
 import me.mattco.reeva.core.EvaluationResult
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
+import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
+import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
-import me.mattco.reeva.interpreter.transformer.*
+import me.mattco.reeva.interpreter.transformer.Block
+import me.mattco.reeva.interpreter.transformer.DeclarationsArray
+import me.mattco.reeva.interpreter.transformer.FunctionInfo
 import me.mattco.reeva.interpreter.transformer.opcodes.Index
 import me.mattco.reeva.interpreter.transformer.opcodes.IrOpcodeVisitor
 import me.mattco.reeva.interpreter.transformer.opcodes.Literal
@@ -17,7 +21,10 @@ import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.utils.*
+import me.mattco.reeva.utils.Errors
+import me.mattco.reeva.utils.key
+import me.mattco.reeva.utils.toValue
+import me.mattco.reeva.utils.unreachable
 
 class Interpreter(
     private val function: IRFunction,
@@ -33,11 +40,12 @@ class Interpreter(
     private var exception: ThrowException? = null
     private val mappedCPool = Array<JSValue?>(info.code.constantPool.size) { null }
 
-    private var currentEnv = function.envRecord
     private var currentBlock = info.code.blocks[0]
     private var ip = 0
 
     fun interpret(): EvaluationResult {
+        realm.pushEnv(function.envRecord)
+
         try {
             while (!isDone) {
                 try {
@@ -247,45 +255,56 @@ class Interpreter(
     }
 
     override fun visitLdaGlobal(name: Index) {
-        val name = loadConstant<String>(name)
-        val desc = function.globalEnv.extension().getPropertyDescriptor(name.key())
-            ?: Errors.UnknownReference(name.key()).throwReferenceError(realm)
-        accumulator = desc.getActualValue(realm, function.globalEnv.extension())
+        accumulator = realm.globalEnv.getBindingValue(
+            loadConstant(name),
+            realm.activeEnv.isStrict,
+        )
     }
 
     override fun visitStaGlobal(name: Index) {
-        val name = loadConstant<String>(name)
-        function.globalEnv.extension().set(name.key(), accumulator)
+        realm.globalEnv.setMutableBinding(
+            loadConstant(name),
+            accumulator,
+            realm.activeEnv.isStrict,
+        )
     }
 
-    override fun visitLdaCurrentEnv(slot: Literal) {
-        expect(currentEnv !is GlobalEnvRecord)
-        accumulator = currentEnv.getBinding(slot)
+    override fun visitLdaCurrentEnv(name: Index) {
+        accumulator = realm.activeEnv.getBindingValue(
+            loadConstant(name),
+            realm.activeEnv.isStrict,
+        )
     }
 
-    override fun visitStaCurrentEnv(slot: Literal) {
-        expect(currentEnv !is GlobalEnvRecord)
-        currentEnv.setBinding(slot, accumulator)
+    override fun visitStaCurrentEnv(name: Index) {
+        realm.activeEnv.setMutableBinding(
+            loadConstant(name),
+            accumulator,
+            realm.activeEnv.isStrict,
+        )
     }
 
-    override fun visitLdaEnv(contextReg: Register, slot: Literal) {
-        expect(currentEnv !is GlobalEnvRecord)
-        val targetContext = registers[contextReg] as EnvRecord
-        accumulator = targetContext.getBinding(slot)
+    override fun visitLdaEnv(name: Index, offset: Literal) {
+        accumulator = realm.getOffsetEnv(offset).getBindingValue(
+            loadConstant(name),
+            realm.activeEnv.isStrict,
+        )
     }
 
-    override fun visitStaEnv(contextReg: Register, slot: Literal) {
-        expect(currentEnv !is GlobalEnvRecord)
-        val targetContext = registers[contextReg] as EnvRecord
-        targetContext.setBinding(slot, accumulator)
+    override fun visitStaEnv(name: Index, offset: Literal) {
+        realm.getOffsetEnv(offset).setMutableBinding(
+            loadConstant(name),
+            accumulator,
+            realm.activeEnv.isStrict,
+        )
     }
 
-    override fun visitPushBlockScope(numSlots: Literal) {
-        currentEnv = EnvRecord(currentEnv, currentEnv.isStrict, numSlots)
+    override fun visitPushLexicalEnv() {
+        realm.pushEnv(DeclarativeEnvRecord(realm, realm.activeEnv.isStrict))
     }
 
-    override fun visitPopBlockScope() {
-        currentEnv = currentEnv.outer!!
+    override fun visitPopEnv() {
+        realm.popEnv()
     }
 
     override fun visitCall(targetReg: Register, receiverReg: Register, argumentRegs: List<Register>) {
@@ -492,10 +511,12 @@ class Interpreter(
             Errors.NonObjectIterator.throwTypeError(realm)
     }
 
-    override fun visitCreateClosure(infoCpIndex: Int) {
-        val newInfo = loadConstant<FunctionInfo>(infoCpIndex)
-        val newEnv = EnvRecord(currentEnv, currentEnv.isStrict || newInfo.isStrict, newInfo.topLevelSlots)
-        accumulator = IRFunction(function.realm, newInfo, newEnv).initialize()
+    override fun visitCreateClosure(functionInfoIndex: Int) {
+        val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
+        val function = IRFunction(function.realm, newInfo).initialize()
+        accumulator = function
+        val functionEnv = FunctionEnvRecord(realm, newInfo.isStrict, function)
+        function.envRecord = functionEnv
     }
 
     override fun visitDebugBreakpoint() {
@@ -526,17 +547,17 @@ class Interpreter(
         val funcNames = array.funcIterator().toList()
 
         for (name in lexNames) {
-            if (function.globalEnv.hasRestrictedGlobalProperty(name))
+            if (realm.globalEnv.hasRestrictedGlobalProperty(name))
                 Errors.RestrictedGlobalPropertyName(name).throwSyntaxError(realm)
         }
 
         for (name in funcNames) {
-            if (!function.globalEnv.canDeclareGlobalFunction(name))
+            if (!realm.globalEnv.canDeclareGlobalFunction(name))
                 Errors.InvalidGlobalFunction(name).throwTypeError(realm)
         }
 
         for (name in varNames) {
-            if (!function.globalEnv.canDeclareGlobalVar(name))
+            if (!realm.globalEnv.canDeclareGlobalVar(name))
                 Errors.InvalidGlobalVar(name).throwTypeError(realm)
         }
     }
@@ -583,23 +604,8 @@ class Interpreter(
         }
     }
 
-    class IRFunction(
-        realm: Realm,
-        val info: FunctionInfo,
-        val envRecord: EnvRecord,
-    ) : JSFunction(realm, info.isStrict) {
-        val globalEnv: GlobalEnvRecord
-
-        init {
-            if (envRecord is GlobalEnvRecord) {
-                globalEnv = envRecord
-            } else {
-                var record = envRecord
-                while (record !is GlobalEnvRecord)
-                    record = record.outer!!
-                globalEnv = record
-            }
-        }
+    class IRFunction(realm: Realm, val info: FunctionInfo) : JSFunction(realm, info.isStrict) {
+        lateinit var envRecord: EnvRecord
 
         override fun init() {
             super.init()
@@ -618,11 +624,9 @@ class Interpreter(
 
     companion object {
         fun wrap(info: FunctionInfo, realm: Realm): JSFunction {
-            return IRFunction(
-                realm,
-                info,
-                GlobalEnvRecord(realm, info.isStrict, info.topLevelSlots)
-            ).initialize()
+            return IRFunction(realm, info).initialize().also {
+                it.envRecord = GlobalEnvRecord(realm, info.isStrict)
+            }
         }
     }
 }

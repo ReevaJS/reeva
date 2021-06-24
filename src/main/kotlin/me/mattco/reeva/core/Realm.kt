@@ -1,5 +1,7 @@
 package me.mattco.reeva.core
 
+import me.mattco.reeva.core.environment.EnvRecord
+import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.jvmcompat.JSClassProto
 import me.mattco.reeva.jvmcompat.JSPackageObject
 import me.mattco.reeva.jvmcompat.JSPackageProto
@@ -26,8 +28,15 @@ import java.util.concurrent.ConcurrentHashMap
 
 @Suppress("ObjectPropertyName")
 class Realm {
+    private val envStack = mutableListOf<EnvRecord>()
+
     lateinit var globalObject: JSObject
         private set
+    val globalEnv: GlobalEnvRecord
+        get() = envStack[0] as GlobalEnvRecord
+
+    val activeEnv: EnvRecord
+        get() = envStack.last()
 
     // Special objects that have to be handled manually
     lateinit var objectProto: JSObjectProto private set
@@ -137,6 +146,14 @@ class Realm {
     fun setGlobalObject(obj: JSObject) = apply {
         globalObject = obj
     }
+
+    fun pushEnv(env: EnvRecord) {
+        envStack.add(env)
+    }
+
+    fun popEnv() = envStack.removeLast()
+
+    fun getOffsetEnv(offset: Int) = envStack[envStack.lastIndex - offset]
 
     fun initObjects() {
         objectProto = JSObjectProto.create(this)

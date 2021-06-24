@@ -22,7 +22,7 @@ open class Scope(val outer: Scope? = null) {
         protected set
 
     val requiresEnv: Boolean
-    get() = requiredSlots > 0
+        get() = requiredSlots > 0
 
     val isStrict: Boolean
         get() = parentHoistingScope.hasUseStrictDirective
@@ -34,7 +34,7 @@ open class Scope(val outer: Scope? = null) {
 
     fun addDeclaredVariable(variable: Variable) {
         if (variable.type != Variable.Type.Var || this is HoistingScope) {
-           declaredVariables.add(variable)
+            declaredVariables.add(variable)
         } else {
             outer!!.addDeclaredVariable(variable)
         }

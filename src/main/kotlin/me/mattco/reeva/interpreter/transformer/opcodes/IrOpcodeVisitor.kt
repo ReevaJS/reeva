@@ -52,12 +52,12 @@ abstract class IrOpcodeVisitor {
 
             is LdaGlobal -> visitLdaGlobal(opcode.name)
             is StaGlobal -> visitStaGlobal(opcode.name)
-            is LdaCurrentEnv -> visitLdaCurrentEnv(opcode.slot)
-            is StaCurrentEnv -> visitStaCurrentEnv(opcode.slot)
-            is LdaEnv -> visitLdaEnv(opcode.contextReg, opcode.slot)
-            is StaEnv -> visitStaEnv(opcode.contextReg, opcode.slot)
-            is PushBlockScope -> visitPushBlockScope(opcode.numSlots)
-            PopBlockScope -> visitPopBlockScope()
+            is LdaCurrentEnv -> visitLdaCurrentEnv(opcode.name)
+            is StaCurrentEnv -> visitStaCurrentEnv(opcode.name)
+            is LdaEnv -> visitLdaEnv(opcode.name, opcode.offset)
+            is StaEnv -> visitStaEnv(opcode.name, opcode.offset)
+            PushLexicalEnv -> visitPushLexicalEnv()
+            PopEnv -> visitPopEnv()
 
             is Call -> visitCall(opcode.targetReg, opcode.receiverReg, opcode.argumentRegs)
             is CallWithArgArray -> visitCallWithArgArray(opcode.targetReg, opcode.receiverReg, opcode.argumentsReg)
@@ -194,17 +194,17 @@ abstract class IrOpcodeVisitor {
 
     open fun visitStaGlobal(name: Index) { }
 
-    open fun visitLdaCurrentEnv(slot: Literal) { }
+    open fun visitLdaCurrentEnv(name: Index) { }
 
-    open fun visitStaCurrentEnv(slot: Literal) { }
+    open fun visitStaCurrentEnv(name: Index) { }
 
-    open fun visitLdaEnv(contextReg: Register, slot: Literal) { }
+    open fun visitLdaEnv(name: Index, offset: Literal) { }
 
-    open fun visitStaEnv(contextReg: Register, slot: Literal) { }
+    open fun visitStaEnv(name: Index, offset: Literal) { }
 
-    open fun visitPushBlockScope(numSlots: Literal) { }
+    open fun visitPushLexicalEnv() { }
 
-    open fun visitPopBlockScope() { }
+    open fun visitPopEnv() { }
 
     open fun visitCall(targetReg: Register, receiverReg: Register, argumentRegs: List<Register>) { }
 
@@ -290,7 +290,7 @@ abstract class IrOpcodeVisitor {
 
     open fun visitIteratorResultValue() { }
 
-    open fun visitCreateClosure(infoCpIndex: Int) { }
+    open fun visitCreateClosure(functionInfoIndex: Int) { }
 
     open fun visitDebugBreakpoint() { }
 }
