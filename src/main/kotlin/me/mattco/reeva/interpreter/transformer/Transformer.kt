@@ -569,6 +569,7 @@ class Transformer : ASTVisitor {
 
         if (bodyScope != parameterScope)
             exitScope(bodyScope)
+
         exitScope(parameterScope)
     }
 
@@ -637,7 +638,8 @@ class Transformer : ASTVisitor {
                 super.visitBlock(body)
             } else visit(body)
 
-            generator.addIfNotTerminated(LdaUndefined)
+            if (body !is ExpressionStatementNode)
+                generator.addIfNotTerminated(LdaUndefined)
             generator.addIfNotTerminated(Return)
         }
 

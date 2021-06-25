@@ -1528,13 +1528,21 @@ class Parser(val source: String) {
             reporter.arrowFunctionNewLine()
 
         consume()
-        val parameterScope = HoistingScope(scope).also { scope = it }
+        val parameterScope = HoistingScope(scope)
+        scope = parameterScope
         val parameters = CPEAAPLVisitor(this, node).parseAsParameterList()
 
         val bodyScope = if (parameters.any { it.initializer != null }) {
             HoistingScope(scope).also { scope = it }
         } else parameterScope
-        val body = parseStatement()
+
+        val body = functionBoundary {
+            if (match(TokenType.OpenCurly)) {
+                parseBlock(pushNewScope = false)
+            } else {
+                parseStatement()
+            }
+        }
 
         ArrowFunctionNode(parameters, body, parameterScope, bodyScope).also {
             it.scope = scope
