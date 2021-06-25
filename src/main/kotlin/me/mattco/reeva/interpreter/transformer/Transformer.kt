@@ -487,8 +487,10 @@ class Transformer : ASTVisitor {
 
         val lexNames = scope.declaredVariables.filter { it.type != Variable.Type.Var }.map { it.name }
 
-        val array = DeclarationsArray(declaredVarNames.toList(), lexNames, declaredFunctionNames.toList())
-        generator.add(DeclareGlobals(generator.intern(array)))
+        if (declaredVarNames.isNotEmpty() || lexNames.isNotEmpty() || declaredFunctionNames.isNotEmpty()) {
+            val array = DeclarationsArray(declaredVarNames.toList(), lexNames, declaredFunctionNames.toList())
+            generator.add(DeclareGlobals(generator.intern(array)))
+        }
 
         commonInstantiation(varDecls, declaredFunctionNames, functionsToInitialize)
 
