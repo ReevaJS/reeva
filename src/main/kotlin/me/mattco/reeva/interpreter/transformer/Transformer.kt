@@ -5,6 +5,7 @@ import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.interpreter.DeclarationsArray
+import me.mattco.reeva.interpreter.JumpTable
 import me.mattco.reeva.interpreter.transformer.opcodes.*
 import me.mattco.reeva.parser.GlobalScope
 import me.mattco.reeva.parser.Scope
@@ -229,11 +230,113 @@ class Transformer : ASTVisitor {
 
     override fun visitThrowStatement(node: ThrowStatementNode) {
         visit(node.expr)
-        generator.add(Throw)
+
+        if (generator.currentBlock.isTerminated)
+            return
+
+        val handlerScope = generator.handlerScope
+        if (handlerScope != null) {
+            if (handlerScope.catchBlock != null) {
+                generator.add(Jump(handlerScope.catchBlock.handler!!))
+            } else {
+                generator.add(Star(handlerScope.scratchRegister(generator)))
+                generator.add(LdaInt(JumpTable.THROW))
+                generator.add(Star(handlerScope.actionRegister(generator)))
+                generator.add(Jump(handlerScope.finallyBlock!!))
+            }
+        } else {
+            generator.add(Throw)
+        }
     }
 
     override fun visitTryStatement(node: TryStatementNode) {
-        TODO()
+        val hasCatch = node.catchNode != null
+        val hasFinally = node.finallyBlock != null
+
+        var catchBlock: Block? = null
+        var finallyBlock: Block? = null
+
+        if (hasCatch)
+            catchBlock = generator.makeBlock()
+        if (hasFinally)
+            finallyBlock = generator.makeBlock()
+
+        val doneBlock = generator.makeBlock()
+
+        generator.enterHandlerScope(catchBlock, finallyBlock)
+        val tryBlock = generator.makeBlock()
+        generator.add(Jump(tryBlock))
+        generator.currentBlock = tryBlock
+        visit(node.tryBlock)
+
+        if (hasFinally) {
+            if (!generator.currentBlock.isTerminated) {
+                val handlerScope = generator.handlerScope!!
+                generator.add(LdaInt(JumpTable.FALLTHROUGH))
+                generator.add(Star(handlerScope.actionRegister(generator)))
+                generator.add(Jump(finallyBlock!!))
+            }
+        } else {
+            generator.addIfNotTerminated(Jump(doneBlock))
+        }
+
+        val finallyHandlerScope = generator.exitHandlerScope()
+
+        if (hasCatch) {
+            generator.currentBlock = catchBlock!!
+
+            val parameter = node.catchNode!!.catchParameter
+
+            if (parameter != null) {
+                // The exception is in the accumulator
+                generator.add(PushLexicalEnv)
+                generator.add(StaCurrentEnv(generator.intern(parameter.identifierName)))
+            }
+
+            if (hasFinally) {
+                // We exit above and re-enter here because we no longer have an active
+                // catch handler
+                generator.enterHandlerScope(null, finallyBlock!!)
+            }
+
+            visit(node.catchNode.block)
+            if (parameter != null)
+                generator.addIfNotTerminated(PopEnv)
+
+            if (!generator.currentBlock.isTerminated && hasFinally) {
+                generator.add(LdaInt(JumpTable.FALLTHROUGH))
+                generator.add(Star(finallyHandlerScope.actionRegister(generator)))
+                generator.add(Jump(finallyBlock!!))
+            }
+
+            if (hasFinally)
+                generator.exitHandlerScope()
+        }
+
+        if (hasFinally) {
+            generator.currentBlock = finallyBlock!!
+            visit(node.finallyBlock!!)
+
+            if (!generator.currentBlock.isTerminated) {
+                val throwBlock = generator.makeBlock()
+                val returnBlock = generator.makeBlock()
+                val jumpTable = JumpTable()
+                jumpTable[JumpTable.FALLTHROUGH] = doneBlock
+                jumpTable[JumpTable.THROW] = throwBlock
+                jumpTable[JumpTable.RETURN] = returnBlock
+                generator.add(Ldar(finallyHandlerScope.actionRegister(generator)))
+                generator.add(JumpFromTable(generator.intern(jumpTable)))
+
+                generator.currentBlock = throwBlock
+                generator.add(Ldar(finallyHandlerScope.scratchRegister(generator)))
+                generator.add(Throw)
+                generator.currentBlock = returnBlock
+                generator.add(Ldar(finallyHandlerScope.scratchRegister(generator)))
+                generator.add(Return)
+            }
+        }
+
+        generator.currentBlock = doneBlock
     }
 
     override fun visitBreakStatement(node: BreakStatementNode) {
@@ -253,9 +356,25 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitReturnStatement(node: ReturnStatementNode) {
-        if (node.expression != null)
+        if (node.expression != null) {
             visit(node.expression)
-        generator.add(Return)
+            if (generator.currentBlock.isTerminated)
+                return
+        } else {
+            generator.add(LdaUndefined)
+        }
+
+        val handlerScope = generator.handlerScope
+        if (handlerScope != null) {
+            if (handlerScope.finallyBlock != null) {
+                generator.add(Star(handlerScope.scratchRegister(generator)))
+                generator.add(LdaInt(JumpTable.RETURN))
+                generator.add(Star(handlerScope.actionRegister(generator)))
+                generator.add(Jump(handlerScope.finallyBlock))
+            }
+        } else {
+            generator.add(Return)
+        }
     }
 
     override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {

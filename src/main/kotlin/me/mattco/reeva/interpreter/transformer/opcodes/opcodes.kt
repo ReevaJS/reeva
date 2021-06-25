@@ -460,6 +460,10 @@ class JumpIfUndefined(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBloc
 class JumpIfNullish(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfObject(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 
+class JumpFromTable(val table: Index) : Opcode() {
+    override val isTerminator = true
+}
+
 ////////////////////////////
 /// SPECIAL CONTROL FLOW ///
 ////////////////////////////

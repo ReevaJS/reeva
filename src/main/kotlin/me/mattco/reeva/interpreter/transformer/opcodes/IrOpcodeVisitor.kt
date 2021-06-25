@@ -91,6 +91,7 @@ abstract class IrOpcodeVisitor {
             is JumpIfUndefined -> visitJumpIfUndefined(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfNullish -> visitJumpIfNullish(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfObject -> visitJumpIfObject(opcode.ifBlock, opcode.elseBlock!!)
+            is JumpFromTable -> visitJumpFromTable(opcode.table)
             is Jump -> visitJump(opcode.ifBlock)
 
             Return -> visitReturn()
@@ -261,6 +262,8 @@ abstract class IrOpcodeVisitor {
     open fun visitJumpIfNullish(ifBlock: Block, elseBlock: Block) { }
 
     open fun visitJumpIfObject(ifBlock: Block, elseBlock: Block) { }
+
+    open fun visitJumpFromTable(table: Index) { }
 
     open fun visitJump(ifBlock: Block) { }
 

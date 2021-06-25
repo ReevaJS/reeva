@@ -2,7 +2,29 @@ package me.mattco.reeva.interpreter.transformer
 
 import me.mattco.reeva.interpreter.transformer.opcodes.Jump
 import me.mattco.reeva.interpreter.transformer.opcodes.Opcode
+import me.mattco.reeva.interpreter.transformer.opcodes.Register
 import me.mattco.reeva.utils.expect
+import java.util.*
+
+class HandlerScope(
+    val catchBlock: Block?,
+    val finallyBlock: Block?
+) {
+    private var actionRegisterBacker: Register? = null
+    private var scratchRegisterBacker: Register? = null
+
+    fun actionRegister(generator: Generator): Register {
+        if (actionRegisterBacker == null)
+            actionRegisterBacker = generator.reserveRegister()
+        return actionRegisterBacker!!
+    }
+
+    fun scratchRegister(generator: Generator): Register {
+        if (scratchRegisterBacker == null)
+            scratchRegisterBacker = generator.reserveRegister()
+        return scratchRegisterBacker!!
+    }
+}
 
 data class FunctionOpcodes(
     val blocks: List<Block>,
@@ -11,10 +33,16 @@ data class FunctionOpcodes(
 )
 
 class Generator {
+    private val blocks = mutableListOf<Block>()
     private val constantPool = mutableListOf<Any>()
+
+    private val handlerScopeStack = LinkedList<HandlerScope>()
+    val handlerScope: HandlerScope?
+        get() = handlerScopeStack.firstOrNull()
+
     private val breakableScopes = mutableListOf<Block>()
     private val continuableScopes = mutableListOf<Block>()
-    private val blocks = mutableListOf<Block>()
+
     private var nextRegister = 0
     private var nextBlock = 1
     var currentBlock = makeBlock()
@@ -31,7 +59,25 @@ class Generator {
     val continuableScope: Block
         get() = continuableScopes.last()
 
-    fun makeBlock() = Block(nextBlock++).also(blocks::add)
+    fun makeBlock(): Block {
+        val block = Block(nextBlock++)
+        blocks.add(block)
+
+        val catchScope = handlerScopeStack.firstOrNull { it.catchBlock != null }?.catchBlock
+        if (catchScope != null)
+            block.handler = catchScope
+
+        return block
+    }
+
+    fun enterHandlerScope(catchBlock: Block?, finallyBlock: Block?) {
+        expect(catchBlock != null || finallyBlock != null)
+        handlerScopeStack.push(HandlerScope(catchBlock, finallyBlock))
+    }
+
+    fun exitHandlerScope(): HandlerScope {
+        return handlerScopeStack.pop()
+    }
 
     fun reserveRegister() = nextRegister++
 
@@ -105,6 +151,6 @@ class Generator {
     fun finish() = FunctionOpcodes(
         blocks,
         constantPool,
-        nextRegister
+        nextRegister,
     )
 }

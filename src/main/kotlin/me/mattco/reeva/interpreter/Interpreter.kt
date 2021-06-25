@@ -53,6 +53,17 @@ class DeclarationsArray(
     }
 }
 
+class JumpTable private constructor(
+    private val table: MutableMap<Int, Block>
+) : MutableMap<Int, Block> by table {
+    constructor() : this(mutableMapOf())
+    companion object {
+        const val FALLTHROUGH = 0
+        const val RETURN = 1
+        const val THROW = 2
+    }
+}
+
 class Interpreter(
     private val function: IRFunction,
     private val arguments: List<JSValue>,
@@ -78,8 +89,14 @@ class Interpreter(
                 try {
                     visit(currentBlock[ip++])
                 } catch (e: ThrowException) {
-                    exception = e
-                    isDone = true
+                    val handler = currentBlock.handler
+                    if (handler != null) {
+                        accumulator = e.value
+                        jumpTo(handler)
+                    } else {
+                        exception = e
+                        break
+                    }
                 }
             }
         } catch (e: Throwable) {
@@ -482,6 +499,11 @@ class Interpreter(
 
     override fun visitJumpIfObject(ifBlock: Block, elseBlock: Block) {
         jumpTo(if (accumulator is JSObject) ifBlock else elseBlock)
+    }
+    
+    override fun visitJumpFromTable(tableIndex: Index) {
+        val table = loadConstant<JumpTable>(tableIndex)
+        jumpTo(table[accumulator.asInt]!!)
     }
 
     override fun visitReturn() {

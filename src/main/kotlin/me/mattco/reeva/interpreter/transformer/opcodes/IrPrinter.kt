@@ -1,8 +1,10 @@
 package me.mattco.reeva.interpreter.transformer.opcodes
 
 import me.mattco.reeva.interpreter.DeclarationsArray
+import me.mattco.reeva.interpreter.JumpTable
 import me.mattco.reeva.interpreter.transformer.Block
 import me.mattco.reeva.interpreter.transformer.FunctionInfo
+import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 
 object IrPrinter {
@@ -38,6 +40,11 @@ object IrPrinter {
 
     private fun stringifyBlock(info: FunctionInfo, block: Block) = buildString {
         append(block.index)
+        if (block.handler != null) {
+            append(" (handler=@")
+            append(block.handler!!.index)
+            append(")")
+        }
         append(":\n")
         block.forEachIndexed { index, opcode ->
             append("    ")
@@ -157,6 +164,7 @@ object IrPrinter {
             is JumpIfUndefined -> append(stringifyBlock(opcode.ifBlock), " else:", stringifyBlock(opcode.elseBlock!!))
             is JumpIfNullish -> append(stringifyBlock(opcode.ifBlock), " else:", stringifyBlock(opcode.elseBlock!!))
             is JumpIfObject -> append(stringifyBlock(opcode.ifBlock), " else:", stringifyBlock(opcode.elseBlock!!))
+            is JumpFromTable -> append(stringifyIndex(info, opcode.table))
             is Jump -> append(stringifyBlock(opcode.ifBlock))
 
             is ThrowConstReassignment -> append(stringifyIndex(info, opcode.nameIndex))
@@ -218,6 +226,17 @@ object IrPrinter {
                     append(funcs)
                     append("}")
                 }
+            }
+            is JumpTable -> buildString {
+                append("JumpTable { ")
+                expect(constant.isNotEmpty())
+                for ((index, block) in constant) {
+                    append(index)
+                    append(": @")
+                    append(block.index)
+                    append(' ')
+                }
+                append('}')
             }
             else -> unreachable()
         }
