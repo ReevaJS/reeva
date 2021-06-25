@@ -57,7 +57,7 @@ object IrPrinter {
             is Star -> append(stringifyRegister(opcode.reg))
             is LdaNamedProperty -> {
                 append(" object:", stringifyRegister(opcode.objectReg))
-                append(" name:", stringifyRegister(opcode.nameIndex))
+                append(" name:", stringifyIndex(info, opcode.nameIndex))
             }
             is LdaKeyedProperty -> append(" object:", stringifyRegister(opcode.objectReg))
             is StaNamedProperty -> {

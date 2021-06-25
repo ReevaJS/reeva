@@ -33,7 +33,7 @@ sealed class ExecutionResult {
 
     class InternalError(val cause: Throwable) : ExecutionResult() {
         override fun toString() = buildString {
-            append("\u001b[31mInternal Reeva error\u001B[0m")
+            append("\u001b[31mInternal Reeva error\n")
             val sw = StringWriter()
             cause.printStackTrace(PrintWriter(sw))
             append(sw.toString())
