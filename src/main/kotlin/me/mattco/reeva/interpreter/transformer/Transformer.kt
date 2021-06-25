@@ -30,7 +30,7 @@ class Transformer : ASTVisitor {
         if (::generator.isInitialized)
             throw IllegalStateException("Cannot re-use an IRTransformer")
 
-        generator = Generator()
+        generator = Generator(1)
 
         if (node is ModuleNode)
             TODO()
@@ -621,7 +621,7 @@ class Transformer : ASTVisitor {
         isLexical: Boolean,
     ) {
         val prevGenerator = generator
-        generator = Generator()
+        generator = Generator(parameters.size + 1)
 
         functionDeclarationInstantiation(
             parameters,
@@ -637,10 +637,8 @@ class Transformer : ASTVisitor {
                 super.visitBlock(body)
             } else visit(body)
 
-            if (generator.currentBlock.lastOrNull() !is Return) {
-                generator.add(LdaUndefined)
-                generator.add(Return)
-            }
+            generator.addIfNotTerminated(LdaUndefined)
+            generator.addIfNotTerminated(Return)
         }
 
         val info = FunctionInfo(
@@ -1305,6 +1303,6 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitThisLiteral() {
-        TODO()
+        generator.add(Ldar(0))
     }
 }

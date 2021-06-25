@@ -72,7 +72,7 @@ class Interpreter(
     private val realm: Realm
         get() = function.realm
 
-    private val registers = Registers(info.code.registerCount)
+    private val registers = Registers(info.argCount + info.code.registerCount)
     private var accumulator by registers::accumulator
     private var isDone = false
     private var exception: ThrowException? = null
@@ -102,6 +102,8 @@ class Interpreter(
         } catch (e: Throwable) {
             println("Exception in FunctionInfo ${info.name}, block=${currentBlock.index} opcode ${ip - 1}")
             throw e
+        } finally {
+            realm.popEnv()
         }
 
         return if (exception != null) {

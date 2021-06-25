@@ -32,7 +32,7 @@ data class FunctionOpcodes(
     val registerCount: Int,
 )
 
-class Generator {
+class Generator(argCount: Int) {
     private val blocks = mutableListOf<Block>()
     private val constantPool = mutableListOf<Any>()
 
@@ -43,7 +43,7 @@ class Generator {
     private val breakableScopes = mutableListOf<Block>()
     private val continuableScopes = mutableListOf<Block>()
 
-    private var nextRegister = 0
+    private var nextRegister = argCount
     private var nextBlock = 1
     var currentBlock = makeBlock()
         set(value) {

@@ -52,7 +52,7 @@ class Agent {
         }
 
         if (printIR) {
-            IrPrinter.printFunctionInfo(ir)
+            IrPrinter(ir).print()
             println("\n")
         }
 

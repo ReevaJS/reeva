@@ -7,8 +7,8 @@ import me.mattco.reeva.interpreter.transformer.FunctionInfo
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 
-object IrPrinter {
-    fun printFunctionInfo(info: FunctionInfo) {
+class IrPrinter(private val info: FunctionInfo) {
+    fun print() {
         val name = if (info.isTopLevelScript) {
             "<top-level script>"
         } else "function \"${info.name}\""
@@ -18,7 +18,7 @@ object IrPrinter {
         println("Register count: ${info.code.registerCount}")
 
         for (block in info.code.blocks)
-            println(stringifyBlock(info, block))
+            println(stringifyBlock(block))
 
         if (info.code.constantPool.isNotEmpty()) {
             val childFunctions = mutableListOf<FunctionInfo>()
@@ -33,12 +33,12 @@ object IrPrinter {
 
             for (childFunction in childFunctions) {
                 println()
-                printFunctionInfo(childFunction)
+                IrPrinter(childFunction).print()
             }
         }
     }
 
-    private fun stringifyBlock(info: FunctionInfo, block: Block) = buildString {
+    private fun stringifyBlock(block: Block) = buildString {
         append(block.index)
         if (block.handler != null) {
             append(" (handler=@")
@@ -48,28 +48,28 @@ object IrPrinter {
         append(":\n")
         block.forEachIndexed { index, opcode ->
             append("    ")
-            append(stringifyOpcode(info, opcode))
+            append(stringifyOpcode(opcode))
             if (index != block.lastIndex)
                 append('\n')
         }
     }
 
-    private fun stringifyOpcode(info: FunctionInfo, opcode: Opcode) = buildString {
+    private fun stringifyOpcode(opcode: Opcode) = buildString {
         append(opcode::class.simpleName)
 
         when (opcode) {
-            is LdaConstant -> append(stringifyIndex(info, opcode.index))
+            is LdaConstant -> append(stringifyIndex(opcode.index))
             is LdaInt -> append(stringifyLiteral(opcode.int))
             is Ldar -> append(stringifyRegister(opcode.reg))
             is Star -> append(stringifyRegister(opcode.reg))
             is LdaNamedProperty -> {
                 append(" object:", stringifyRegister(opcode.objectReg))
-                append(" name:", stringifyIndex(info, opcode.nameIndex))
+                append(" name:", stringifyIndex(opcode.nameIndex))
             }
             is LdaKeyedProperty -> append(" object:", stringifyRegister(opcode.objectReg))
             is StaNamedProperty -> {
                 append(" object:", stringifyRegister(opcode.objectReg))
-                append(" name:", stringifyIndex(info, opcode.nameIndex))
+                append(" name:", stringifyIndex(opcode.nameIndex))
             }
             is StaKeyedProperty -> {
                 append(" object:", stringifyRegister(opcode.objectReg))
@@ -78,7 +78,7 @@ object IrPrinter {
 
             is StaArrayIndex -> {
                 append(" array:", stringifyRegister(opcode.arrayReg))
-                append(" index:", stringifyIndex(info, opcode.index))
+                append(" index:", stringifyIndex(opcode.index))
             }
             is StaArray -> {
                 append(" array:", stringifyRegister(opcode.arrayReg))
@@ -102,16 +102,16 @@ object IrPrinter {
             is DeletePropertySloppy -> append(stringifyRegister(opcode.objectReg))
             is DeletePropertyStrict -> append(stringifyRegister(opcode.objectReg))
 
-            is LdaGlobal -> append(stringifyIndex(info, opcode.name))
-            is StaGlobal -> append(stringifyIndex(info, opcode.name))
-            is LdaCurrentEnv -> append(stringifyIndex(info, opcode.name))
-            is StaCurrentEnv -> append(stringifyIndex(info, opcode.name))
+            is LdaGlobal -> append(stringifyIndex(opcode.name))
+            is StaGlobal -> append(stringifyIndex(opcode.name))
+            is LdaCurrentEnv -> append(stringifyIndex(opcode.name))
+            is StaCurrentEnv -> append(stringifyIndex(opcode.name))
             is LdaEnv -> {
-                append(" name:", stringifyIndex(info, opcode.name))
+                append(" name:", stringifyIndex(opcode.name))
                 append(" offset:", stringifyLiteral(opcode.offset))
             }
             is StaEnv -> {
-                append(" name:", stringifyIndex(info, opcode.name))
+                append(" name:", stringifyIndex(opcode.name))
                 append(" offset:", stringifyLiteral(opcode.offset))
             }
 
@@ -159,16 +159,16 @@ object IrPrinter {
             is TestInstanceOf -> append(stringifyRegister(opcode.lhsReg))
             is TestIn -> append(stringifyRegister(opcode.lhsReg))
 
-            is JumpIfTrue -> append(stringifyBlock(opcode.ifBlock), " else:", stringifyBlock(opcode.elseBlock!!))
-            is JumpIfNull -> append(stringifyBlock(opcode.ifBlock), " else:", stringifyBlock(opcode.elseBlock!!))
-            is JumpIfUndefined -> append(stringifyBlock(opcode.ifBlock), " else:", stringifyBlock(opcode.elseBlock!!))
-            is JumpIfNullish -> append(stringifyBlock(opcode.ifBlock), " else:", stringifyBlock(opcode.elseBlock!!))
-            is JumpIfObject -> append(stringifyBlock(opcode.ifBlock), " else:", stringifyBlock(opcode.elseBlock!!))
-            is JumpFromTable -> append(stringifyIndex(info, opcode.table))
-            is Jump -> append(stringifyBlock(opcode.ifBlock))
+            is JumpIfTrue -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
+            is JumpIfNull -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
+            is JumpIfUndefined -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
+            is JumpIfNullish -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
+            is JumpIfObject -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
+            is JumpFromTable -> append(stringifyIndex(opcode.table))
+            is Jump -> append(stringifyBlockIndex(opcode.ifBlock))
 
-            is ThrowConstReassignment -> append(stringifyIndex(info, opcode.nameIndex))
-            is ThrowUseBeforeInitIfEmpty -> append(stringifyIndex(info, opcode.nameIndex))
+            is ThrowConstReassignment -> append(stringifyIndex(opcode.nameIndex))
+            is ThrowUseBeforeInitIfEmpty -> append(stringifyIndex(opcode.nameIndex))
 
             is DefineGetterProperty -> {
                 append(" object:", stringifyRegister(opcode.objectReg))
@@ -180,23 +180,29 @@ object IrPrinter {
                 append(" name:", stringifyRegister(opcode.nameReg))
                 append(" method:", stringifyRegister(opcode.methodReg))
             }
-            is DeclareGlobals -> append(stringifyIndex(info, opcode.declarationsIndex))
-            is CreateClosure -> append(stringifyIndex(info, opcode.functionInfoIndex))
+            is DeclareGlobals -> append(stringifyIndex(opcode.declarationsIndex))
+            is CreateClosure -> append(stringifyIndex(opcode.functionInfoIndex))
             else -> {
             }
         }
     }
 
-    private fun stringifyIndex(info: FunctionInfo, index: Index): String {
+    private fun stringifyIndex(index: Index): String {
         val constantString = stringifyConstant(info.code.constantPool[index])
         return " [$index] ($constantString)"
     }
 
-    private fun stringifyRegister(register: Register) = " r$register"
+    private fun stringifyRegister(register: Register): String {
+        return when {
+            register == 0 -> " <this>"
+            register < info.argCount -> " a${register - 1}"
+            else -> " r${register - info.argCount}"
+        }
+    }
 
     private fun stringifyLiteral(literal: Literal) = " #$literal"
 
-    private fun stringifyBlock(block: Block) = " @${block.index}"
+    private fun stringifyBlockIndex(block: Block) = " @${block.index}"
 
     private fun stringifyConstant(constant: Any): String {
         return when (constant) {
