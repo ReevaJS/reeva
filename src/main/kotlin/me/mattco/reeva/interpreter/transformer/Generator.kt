@@ -18,6 +18,12 @@ class Generator {
     private var nextRegister = 0
     private var nextBlock = 1
     var currentBlock = makeBlock()
+        set(value) {
+            expect(field.isTerminated) {
+                "Attempt to change block when current block is not yet terminated"
+            }
+            field = value
+        }
 
     val breakableScope: Block
         get() = breakableScopes.last()
