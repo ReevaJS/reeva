@@ -117,16 +117,13 @@ class Generator(argCount: Int) {
     }
 
     fun ifHelper(op: (Block, Block) -> Opcode, negateOp: Boolean = false, ifTrue: () -> Unit) {
-        var trueBlock = makeBlock()
-        var doneBlock = makeBlock()
+        val trueBlock = makeBlock()
+        val doneBlock = makeBlock()
 
-        if (negateOp) {
-            val temp = trueBlock
-            trueBlock = doneBlock
-            doneBlock = temp
-        }
+        val firstBlock = if (negateOp) doneBlock else trueBlock
+        val secondBlock = if (negateOp) trueBlock else doneBlock
 
-        add(op(trueBlock, doneBlock))
+        add(op(firstBlock, secondBlock))
         currentBlock = trueBlock
         ifTrue()
         addIfNotTerminated(Jump(doneBlock))

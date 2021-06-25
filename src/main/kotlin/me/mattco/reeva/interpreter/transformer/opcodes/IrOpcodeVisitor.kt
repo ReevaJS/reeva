@@ -87,6 +87,7 @@ abstract class IrOpcodeVisitor {
             ToString -> visitToString()
 
             is JumpIfTrue -> visitJumpIfTrue(opcode.ifBlock, opcode.elseBlock!!)
+            is JumpIfToBooleanTrue -> visitJumpIfToBooleanTrue(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfNull -> visitJumpIfNull(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfUndefined -> visitJumpIfUndefined(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfNullish -> visitJumpIfNullish(opcode.ifBlock, opcode.elseBlock!!)
@@ -254,6 +255,8 @@ abstract class IrOpcodeVisitor {
     open fun visitToString() { }
 
     open fun visitJumpIfTrue(ifBlock: Block, elseBlock: Block) { }
+
+    open fun visitJumpIfToBooleanTrue(ifBlock: Block, elseBlock: Block) { }
 
     open fun visitJumpIfNull(ifBlock: Block, elseBlock: Block) { }
 

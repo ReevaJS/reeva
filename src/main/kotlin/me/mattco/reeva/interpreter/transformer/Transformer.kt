@@ -687,16 +687,14 @@ class Transformer : ASTVisitor {
             BinaryOperator.In -> ::TestIn
             BinaryOperator.And -> {
                 visit(node.lhs)
-                generator.add(ToBoolean)
-                generator.ifHelper(::JumpIfTrue) {
+                generator.ifHelper(::JumpIfToBooleanTrue) {
                     visit(node.rhs)
                 }
                 return
             }
             BinaryOperator.Or -> {
                 visit(node.lhs)
-                generator.add(ToBoolean)
-                generator.ifHelper(::JumpIfTrue, negateOp = true) {
+                generator.ifHelper(::JumpIfToBooleanTrue, negateOp = true) {
                     visit(node.rhs)
                 }
                 return

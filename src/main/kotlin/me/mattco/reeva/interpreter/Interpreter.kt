@@ -491,6 +491,10 @@ class Interpreter(
         jumpTo(if (accumulator == JSTrue) ifBlock else elseBlock)
     }
 
+    override fun visitJumpIfToBooleanTrue(ifBlock: Block, elseBlock: Block) {
+        jumpTo(if (accumulator.toBoolean()) ifBlock else elseBlock)
+    }
+
     override fun visitJumpIfNull(ifBlock: Block, elseBlock: Block) {
         jumpTo(if (accumulator == JSNull) ifBlock else elseBlock)
     }
