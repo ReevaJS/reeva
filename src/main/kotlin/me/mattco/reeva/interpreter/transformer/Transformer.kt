@@ -57,7 +57,7 @@ class Transformer : ASTVisitor {
 
     private fun exitScope(scope: Scope) {
         if (scope !is GlobalScope)
-            generator.add(PopEnv)
+            generator.addIfNotTerminated(PopEnv)
     }
 
     override fun visitBlock(node: BlockNode) {

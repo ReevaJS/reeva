@@ -40,6 +40,11 @@ class Generator {
         currentBlock.add(opcode)
     }
 
+    fun addIfNotTerminated(opcode: Opcode) {
+        if (!currentBlock.isTerminated)
+            currentBlock.add(opcode)
+    }
+
     fun intern(obj: Any): Int {
         val index = constantPool.indexOf(obj)
         if (index != -1)
@@ -78,7 +83,7 @@ class Generator {
         add(op(trueBlock, doneBlock))
         currentBlock = trueBlock
         ifTrue()
-        add(Jump(doneBlock))
+        addIfNotTerminated(Jump(doneBlock))
         currentBlock = doneBlock
     }
 
@@ -90,10 +95,10 @@ class Generator {
         add(op(trueBlock, falseBlock))
         currentBlock = trueBlock
         ifTrue()
-        add(Jump(doneBlock, null))
+        addIfNotTerminated(Jump(doneBlock, null))
         currentBlock = falseBlock
         ifFalse()
-        add(Jump(doneBlock, null))
+        addIfNotTerminated(Jump(doneBlock, null))
         currentBlock = doneBlock
     }
 
