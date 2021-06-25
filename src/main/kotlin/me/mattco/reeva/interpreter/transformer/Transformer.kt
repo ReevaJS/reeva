@@ -477,7 +477,7 @@ class Transformer : ASTVisitor {
 
         for (function in functions) {
             visitFunctionHelper(
-                function.name,
+                function.identifier.identifierName,
                 function.parameters,
                 function.body,
                 function.parameterScope,
