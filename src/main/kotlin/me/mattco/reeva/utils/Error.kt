@@ -38,9 +38,8 @@ open class Error(private val message: String) {
 }
 
 object Errors {
-    class UnknownReference(propertyName: PropertyKey) : Error("unknown reference \"$propertyName\"")
+    class NotDefined(name: String) : Error("\"$name\" is not defined")
     class InvalidLHSAssignment(lhs: String) : Error("cannot assign value to non-left-hand-side expression $lhs")
-    class UnresolvableReference(propertyName: PropertyKey) : Error("cannot resolve reference \"$propertyName\"")
     class StrictModeFailedSet(propertyName: PropertyKey, base: String) : Error("unable to set property \"$propertyName\" " +
         "of object $base")
     class StrictModeFailedDelete(propertyName: PropertyKey, base: String) : Error("unable to delete property \"$propertyName\" " +

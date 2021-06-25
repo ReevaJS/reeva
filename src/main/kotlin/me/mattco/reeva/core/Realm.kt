@@ -26,7 +26,6 @@ import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.wrappers.*
 import java.util.concurrent.ConcurrentHashMap
 
-@Suppress("ObjectPropertyName")
 class Realm {
     private val envStack = mutableListOf<EnvRecord>()
 
@@ -208,9 +207,8 @@ class Realm {
         newObjectShape.setPrototypeWithoutTransition(objectProto)
     }
 
-    internal companion object {
-        val EMPTY_REALM = Realm()
-
+    @Suppress("ObjectPropertyName")
+    companion object {
         val globalSymbolRegistry = ConcurrentHashMap<String, JSSymbol>()
 
         // To get access to the symbol via their name without reflection

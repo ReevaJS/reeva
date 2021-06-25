@@ -299,8 +299,12 @@ class Interpreter(
     }
 
     override fun visitLdaGlobal(name: Index) {
+        val actualName = loadConstant<String>(name)
+        if (!realm.globalEnv.hasBinding(actualName))
+            Errors.NotDefined(actualName).throwReferenceError(realm)
+
         accumulator = realm.globalEnv.getBindingValue(
-            loadConstant(name),
+            actualName,
             realm.activeEnv.isStrict,
         )
     }
