@@ -64,7 +64,7 @@ open class Scope(val outer: Scope? = null) {
             return 0
 
         var scope = this
-        var i = 1
+        var i = 0
         while (scope != ancestorScope) {
             i++
             scope = scope.outer!!
