@@ -114,189 +114,189 @@ abstract class IrOpcodeVisitor {
         }
     }
 
-    open fun visitLdaTrue() { }
+    abstract fun visitLdaTrue()
 
-    open fun visitLdaFalse() { }
+    abstract fun visitLdaFalse()
 
-    open fun visitLdaUndefined() { }
+    abstract fun visitLdaUndefined()
 
-    open fun visitLdaNull() { }
+    abstract fun visitLdaNull()
 
-    open fun visitLdaZero() { }
+    abstract fun visitLdaZero()
 
-    open fun visitLdaConstant(index: Index) { }
+    abstract fun visitLdaConstant(index: Index)
 
-    open fun visitLdaInt(int: Literal) { }
+    abstract fun visitLdaInt(int: Literal)
 
-    open fun visitLdar(reg: Register) { }
+    abstract fun visitLdar(reg: Register)
 
-    open fun visitStar(reg: Register) { }
+    abstract fun visitStar(reg: Register)
 
-    open fun visitLdaNamedProperty(objectReg: Register, nameIndex: Index) { }
+    abstract fun visitLdaNamedProperty(objectReg: Register, nameIndex: Index)
 
-    open fun visitLdaKeyedProperty(objectReg: Register) { }
+    abstract fun visitLdaKeyedProperty(objectReg: Register)
 
-    open fun visitStaNamedProperty(objectReg: Register, nameIndex: Index) { }
+    abstract fun visitStaNamedProperty(objectReg: Register, nameIndex: Index)
 
-    open fun visitStaKeyedProperty(objectReg: Register, nameReg: Register) { }
+    abstract fun visitStaKeyedProperty(objectReg: Register, nameReg: Register)
 
-    open fun visitCreateArray() { }
+    abstract fun visitCreateArray()
 
-    open fun visitStaArrayIndex(arrayReg: Register, index: Literal) { }
+    abstract fun visitStaArrayIndex(arrayReg: Register, index: Literal)
 
-    open fun visitStaArray(arrayReg: Register, indexReg: Register) { }
+    abstract fun visitStaArray(arrayReg: Register, indexReg: Register)
 
-    open fun visitCreateObject() { }
+    abstract fun visitCreateObject()
 
-    open fun visitAdd(lhsReg: Register) { }
+    abstract fun visitAdd(lhsReg: Register)
 
-    open fun visitSub(lhsReg: Register) { }
+    abstract fun visitSub(lhsReg: Register)
 
-    open fun visitMul(lhsReg: Register) { }
+    abstract fun visitMul(lhsReg: Register)
 
-    open fun visitDiv(lhsReg: Register) { }
+    abstract fun visitDiv(lhsReg: Register)
 
-    open fun visitMod(lhsReg: Register) { }
+    abstract fun visitMod(lhsReg: Register)
 
-    open fun visitExp(lhsReg: Register) { }
+    abstract fun visitExp(lhsReg: Register)
 
-    open fun visitBitwiseOr(lhsReg: Register) { }
+    abstract fun visitBitwiseOr(lhsReg: Register)
 
-    open fun visitBitwiseXor(lhsReg: Register) { }
+    abstract fun visitBitwiseXor(lhsReg: Register)
 
-    open fun visitBitwiseAnd(lhsReg: Register) { }
+    abstract fun visitBitwiseAnd(lhsReg: Register)
 
-    open fun visitShiftLeft(lhsReg: Register) { }
+    abstract fun visitShiftLeft(lhsReg: Register)
 
-    open fun visitShiftRight(lhsReg: Register) { }
+    abstract fun visitShiftRight(lhsReg: Register)
 
-    open fun visitShiftRightUnsigned(lhsReg: Register) { }
+    abstract fun visitShiftRightUnsigned(lhsReg: Register)
 
-    open fun visitInc() { }
+    abstract fun visitInc()
 
-    open fun visitDec() { }
+    abstract fun visitDec()
 
-    open fun visitNegate() { }
+    abstract fun visitNegate()
 
-    open fun visitBitwiseNot() { }
+    abstract fun visitBitwiseNot()
 
-    open fun visitStringAppend(lhsStringReg: Register) { }
+    abstract fun visitStringAppend(lhsStringReg: Register)
 
-    open fun visitToBooleanLogicalNot() { }
+    abstract fun visitToBooleanLogicalNot()
 
-    open fun visitLogicalNot() { }
+    abstract fun visitLogicalNot()
 
-    open fun visitTypeOf() { }
+    abstract fun visitTypeOf()
 
-    open fun visitDeletePropertySloppy(objectReg: Register) { }
+    abstract fun visitDeletePropertySloppy(objectReg: Register)
 
-    open fun visitDeletePropertyStrict(objectReg: Register) { }
+    abstract fun visitDeletePropertyStrict(objectReg: Register)
 
-    open fun visitLdaGlobal(name: Index) { }
+    abstract fun visitLdaGlobal(name: Index)
 
-    open fun visitStaGlobal(name: Index) { }
+    abstract fun visitStaGlobal(name: Index)
 
-    open fun visitLdaCurrentEnv(name: Index) { }
+    abstract fun visitLdaCurrentEnv(name: Index)
 
-    open fun visitStaCurrentEnv(name: Index) { }
+    abstract fun visitStaCurrentEnv(name: Index)
 
-    open fun visitLdaEnv(name: Index, offset: Literal) { }
+    abstract fun visitLdaEnv(name: Index, offset: Literal)
 
-    open fun visitStaEnv(name: Index, offset: Literal) { }
+    abstract fun visitStaEnv(name: Index, offset: Literal)
 
-    open fun visitPushLexicalEnv() { }
+    abstract fun visitPushLexicalEnv()
 
-    open fun visitPopEnv() { }
+    abstract fun visitPopEnv()
 
-    open fun visitCall(targetReg: Register, receiverReg: Register, argumentRegs: List<Register>) { }
+    abstract fun visitCall(targetReg: Register, receiverReg: Register, argumentRegs: List<Register>)
 
-    open fun visitCallWithArgArray(targetReg: Register, receiverReg: Register, argumentReg: Register) { }
+    abstract fun visitCallWithArgArray(targetReg: Register, receiverReg: Register, argumentReg: Register)
 
-    open fun visitConstruct(targetReg: Register, newTargetReg: Register, argumentRegs: List<Register>) { }
+    abstract fun visitConstruct(targetReg: Register, newTargetReg: Register, argumentRegs: List<Register>)
 
-    open fun visitConstructWithArgArray(targetReg: Register, newTargetReg: Register, argumentReg: Register) { }
+    abstract fun visitConstructWithArgArray(targetReg: Register, newTargetReg: Register, argumentReg: Register)
 
-    open fun visitTestEqual(lhsReg: Register) { }
+    abstract fun visitTestEqual(lhsReg: Register)
 
-    open fun visitTestNotEqual(lhsReg: Register) { }
+    abstract fun visitTestNotEqual(lhsReg: Register)
 
-    open fun visitTestEqualStrict(lhsReg: Register) { }
+    abstract fun visitTestEqualStrict(lhsReg: Register)
 
-    open fun visitTestNotEqualStrict(lhsReg: Register) { }
+    abstract fun visitTestNotEqualStrict(lhsReg: Register)
 
-    open fun visitTestLessThan(lhsReg: Register) { }
+    abstract fun visitTestLessThan(lhsReg: Register)
 
-    open fun visitTestGreaterThan(lhsReg: Register) { }
+    abstract fun visitTestGreaterThan(lhsReg: Register)
 
-    open fun visitTestLessThanOrEqual(lhsReg: Register) { }
+    abstract fun visitTestLessThanOrEqual(lhsReg: Register)
 
-    open fun visitTestGreaterThanOrEqual(lhsReg: Register) { }
+    abstract fun visitTestGreaterThanOrEqual(lhsReg: Register)
 
-    open fun visitTestReferenceEqual(lhsReg: Register) { }
+    abstract fun visitTestReferenceEqual(lhsReg: Register)
 
-    open fun visitTestInstanceOf(lhsReg: Register) { }
+    abstract fun visitTestInstanceOf(lhsReg: Register)
 
-    open fun visitTestIn(lhsReg: Register) { }
+    abstract fun visitTestIn(lhsReg: Register)
 
-    open fun visitTestNullish() { }
+    abstract fun visitTestNullish()
 
-    open fun visitTestNull() { }
+    abstract fun visitTestNull()
 
-    open fun visitTestUndefined() { }
+    abstract fun visitTestUndefined()
 
-    open fun visitToBoolean() { }
+    abstract fun visitToBoolean()
 
-    open fun visitToNumber() { }
+    abstract fun visitToNumber()
 
-    open fun visitToNumeric() { }
+    abstract fun visitToNumeric()
 
-    open fun visitToObject() { }
+    abstract fun visitToObject()
 
-    open fun visitToString() { }
+    abstract fun visitToString()
 
-    open fun visitJumpIfTrue(ifBlock: Block, elseBlock: Block) { }
+    abstract fun visitJumpIfTrue(ifBlock: Block, elseBlock: Block)
 
-    open fun visitJumpIfToBooleanTrue(ifBlock: Block, elseBlock: Block) { }
+    abstract fun visitJumpIfToBooleanTrue(ifBlock: Block, elseBlock: Block)
 
-    open fun visitJumpIfNull(ifBlock: Block, elseBlock: Block) { }
+    abstract fun visitJumpIfNull(ifBlock: Block, elseBlock: Block)
 
-    open fun visitJumpIfUndefined(ifBlock: Block, elseBlock: Block) { }
+    abstract fun visitJumpIfUndefined(ifBlock: Block, elseBlock: Block)
 
-    open fun visitJumpIfNullish(ifBlock: Block, elseBlock: Block) { }
+    abstract fun visitJumpIfNullish(ifBlock: Block, elseBlock: Block)
 
-    open fun visitJumpIfObject(ifBlock: Block, elseBlock: Block) { }
+    abstract fun visitJumpIfObject(ifBlock: Block, elseBlock: Block)
 
-    open fun visitJumpFromTable(table: Index) { }
+    abstract fun visitJumpFromTable(table: Index)
 
-    open fun visitJump(ifBlock: Block) { }
+    abstract fun visitJump(ifBlock: Block)
 
-    open fun visitReturn() { }
+    abstract fun visitReturn()
 
-    open fun visitThrow() { }
+    abstract fun visitThrow()
 
-    open fun visitThrowConstReassignment(nameIndex: Index) { }
+    abstract fun visitThrowConstReassignment(nameIndex: Index)
 
-    open fun visitThrowUseBeforeInitIfEmpty(nameIndex: Index) { }
+    abstract fun visitThrowUseBeforeInitIfEmpty(nameIndex: Index)
 
-    open fun visitDefineGetterProperty(objectReg: Register, nameReg: Register, methodReg: Register) { }
+    abstract fun visitDefineGetterProperty(objectReg: Register, nameReg: Register, methodReg: Register)
 
-    open fun visitDefineSetterProperty(objectReg: Register, nameReg: Register, methodReg: Register) { }
+    abstract fun visitDefineSetterProperty(objectReg: Register, nameReg: Register, methodReg: Register)
 
-    open fun visitDeclareGlobals(declarationsIndex: Index) { }
+    abstract fun visitDeclareGlobals(declarationsIndex: Index)
 
-    open fun visitCreateMappedArgumentsObject() { }
+    abstract fun visitCreateMappedArgumentsObject()
 
-    open fun visitCreateUnmappedArgumentsObject() { }
+    abstract fun visitCreateUnmappedArgumentsObject()
 
-    open fun visitGetIterator() { }
+    abstract fun visitGetIterator()
 
-    open fun visitIteratorNext() { }
+    abstract fun visitIteratorNext()
 
-    open fun visitIteratorResultDone() { }
+    abstract fun visitIteratorResultDone()
 
-    open fun visitIteratorResultValue() { }
+    abstract fun visitIteratorResultValue()
 
-    open fun visitCreateClosure(functionInfoIndex: Int) { }
+    abstract fun visitCreateClosure(functionInfoIndex: Int)
 
-    open fun visitDebugBreakpoint() { }
+    abstract fun visitDebugBreakpoint()
 }

@@ -565,9 +565,21 @@ class Interpreter(
     }
 
     override fun visitGetIterator() {
-        accumulator = Operations.getIterator(realm, Operations.toObject(realm, accumulator)).iterator
+        accumulator = Operations.getIterator(realm, Operations.toObject(realm, accumulator))
         if (accumulator !is JSObject)
             Errors.NonObjectIterator.throwTypeError(realm)
+    }
+
+    override fun visitIteratorNext() {
+        accumulator = Operations.iteratorNext(accumulator as Operations.IteratorRecord)
+    }
+
+    override fun visitIteratorResultDone() {
+        accumulator = Operations.iteratorComplete(accumulator).toValue()
+    }
+
+    override fun visitIteratorResultValue() {
+        accumulator = Operations.iteratorValue(accumulator)
     }
 
     override fun visitCreateClosure(functionInfoIndex: Int) {
