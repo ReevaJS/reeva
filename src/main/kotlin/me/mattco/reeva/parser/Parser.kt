@@ -594,12 +594,12 @@ class Parser(val source: String) {
 
         consume(TokenType.OpenParen)
 
-        var initializer: StatementNode? = null
+        var initializer: ASTNode? = null
         var initRequiresOwnScope = false
 
         if (!match(TokenType.Semicolon)) {
             if (tokenType.isExpressionToken) {
-                initializer = nps { ExpressionStatementNode(parseExpression(0, false, setOf(TokenType.In))) }
+                initializer = nps { parseExpression(0, false, setOf(TokenType.In)) }
                 if (matchForEach())
                     return@nps parseForEachStatement(initializer)
             } else if (tokenType.isVariableDeclarationToken) {

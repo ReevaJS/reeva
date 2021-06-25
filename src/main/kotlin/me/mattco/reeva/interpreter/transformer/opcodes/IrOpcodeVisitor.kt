@@ -109,6 +109,7 @@ abstract class IrOpcodeVisitor {
             IteratorNext -> visitIteratorNext()
             IteratorResultDone -> visitIteratorResultDone()
             IteratorResultValue -> visitIteratorResultValue()
+            ForInEnumerate -> visitForInEnumerate()
             is CreateClosure -> visitCreateClosure(opcode.functionInfoIndex)
             DebugBreakpoint -> visitDebugBreakpoint()
         }
@@ -269,6 +270,8 @@ abstract class IrOpcodeVisitor {
     abstract fun visitJumpFromTable(table: Index)
 
     abstract fun visitJump(ifBlock: Block)
+    
+    abstract fun visitForInEnumerate()
 
     abstract fun visitReturn()
 

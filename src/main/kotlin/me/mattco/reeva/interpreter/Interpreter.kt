@@ -16,9 +16,11 @@ import me.mattco.reeva.interpreter.transformer.opcodes.Register
 import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.functions.JSFunction
+import me.mattco.reeva.runtime.iterators.JSObjectPropertyIterator
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
+import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.*
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.key
@@ -516,6 +518,14 @@ class Interpreter(
         jumpTo(table[accumulator.asInt]!!)
     }
 
+    override fun visitForInEnumerate() {
+        val target = accumulator.toObject(realm)
+        val iterator = JSObjectPropertyIterator.create(realm, target)
+        val nextMethod = Operations.getV(realm, iterator, PropertyKey.from("next"))
+        val iteratorRecord = Operations.IteratorRecord(iterator, nextMethod, false)
+        accumulator = iteratorRecord
+    }
+
     override fun visitReturn() {
         isDone = true
     }
@@ -566,8 +576,6 @@ class Interpreter(
 
     override fun visitGetIterator() {
         accumulator = Operations.getIterator(realm, Operations.toObject(realm, accumulator))
-        if (accumulator !is JSObject)
-            Errors.NonObjectIterator.throwTypeError(realm)
     }
 
     override fun visitIteratorNext() {

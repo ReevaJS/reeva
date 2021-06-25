@@ -548,6 +548,8 @@ object IteratorResultDone : Opcode()
 
 object IteratorResultValue : Opcode()
 
+object ForInEnumerate : Opcode()
+
 /**
  * Creates a function object, referencing a FunctionInfo object stored
  * in the constant pool

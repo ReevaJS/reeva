@@ -53,7 +53,7 @@ class SwitchClause(
 
 class ForStatementNode(
     val initScope: Scope?,
-    val initializer: StatementNode?,
+    val initializer: ASTNode?,
     val condition: ExpressionNode?,
     val incrementer: ExpressionNode?,
     val body: StatementNode,

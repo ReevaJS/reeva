@@ -3256,7 +3256,7 @@ object Operations {
         Async
     }
 
-    data class IteratorRecord(val iterator: JSObject, val nextMethod: JSValue, var isDone: Boolean)
+    data class IteratorRecord(val iterator: JSObject, val nextMethod: JSValue, var isDone: Boolean) : JSValue()
 
     data class CodepointRecord(val codepoint: Int, val codeUnitCount: Int, val isUnpairedSurrogate: Boolean)
 

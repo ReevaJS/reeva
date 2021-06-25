@@ -153,7 +153,34 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitForIn(node: ForInNode) {
-        TODO()
+        visit(node.expression)
+        val isUndefinedBlock = generator.makeBlock()
+        val isNotUndefinedBlock = generator.makeBlock()
+
+        generator.add(JumpIfUndefined(isUndefinedBlock, isNotUndefinedBlock))
+        generator.currentBlock = isNotUndefinedBlock
+
+        iterateValues {
+            val needsScope = node.decl is VariableDeclarationNode
+
+            if (needsScope)
+                generator.add(PushLexicalEnv)
+
+            when (val decl = node.decl) {
+                // TODO: This should really be a BindingIdentifierNode
+                is IdentifierReferenceNode -> generator.add(StaGlobal(generator.intern(decl.identifierName)))
+                is VariableDeclarationNode -> visit(decl)
+                else -> TODO()
+            }
+
+            visit(node.body)
+
+            if (needsScope)
+                generator.add(PopEnv)
+        }
+
+        generator.add(Jump(isUndefinedBlock))
+        generator.currentBlock = isUndefinedBlock
     }
 
     override fun visitForOf(node: ForOfNode) {
@@ -303,10 +330,14 @@ class Transformer : ASTVisitor {
             if (parameter != null)
                 generator.addIfNotTerminated(PopEnv)
 
-            if (!generator.currentBlock.isTerminated && hasFinally) {
-                generator.add(LdaInt(JumpTable.FALLTHROUGH))
-                generator.add(Star(finallyHandlerScope.actionRegister(generator)))
-                generator.add(Jump(finallyBlock!!))
+            if (!generator.currentBlock.isTerminated) {
+                if (hasFinally) {
+                    generator.add(LdaInt(JumpTable.FALLTHROUGH))
+                    generator.add(Star(finallyHandlerScope.actionRegister(generator)))
+                    generator.add(Jump(finallyBlock!!))
+                } else {
+                    generator.add(Jump(doneBlock))
+                }
             }
 
             if (hasFinally)

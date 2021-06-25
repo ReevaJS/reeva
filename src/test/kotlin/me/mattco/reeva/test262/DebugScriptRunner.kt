@@ -13,12 +13,12 @@ fun main() {
     Reeva.setAgent(agent)
     val realm = Reeva.makeRealm()
 
-    // val test262Script = File("./demo/test262.js").readText()
-    // val test262Result = agent.run(test262Script, realm)
-    // if (rest262Result.hasError) {
-    //     println(test262Result.error())
-    //     return
-    // }
+//     val test262Script = File("./demo/test262.js").readText()
+//     val test262Result = agent.run(test262Script, realm)
+//     if (test262Result.isError) {
+//         println(test262Result)
+//         return
+//     }
 
     agent.printIR = true
 

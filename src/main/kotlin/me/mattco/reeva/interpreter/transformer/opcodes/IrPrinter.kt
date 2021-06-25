@@ -78,7 +78,7 @@ class IrPrinter(private val info: FunctionInfo) {
 
             is StaArrayIndex -> {
                 append(" array:", stringifyRegister(opcode.arrayReg))
-                append(" index:", stringifyIndex(opcode.index))
+                append(" index:", stringifyLiteral(opcode.index))
             }
             is StaArray -> {
                 append(" array:", stringifyRegister(opcode.arrayReg))
