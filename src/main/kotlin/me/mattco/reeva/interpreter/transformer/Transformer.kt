@@ -4,6 +4,7 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
+import me.mattco.reeva.interpreter.DeclarationsArray
 import me.mattco.reeva.interpreter.transformer.opcodes.*
 import me.mattco.reeva.parser.GlobalScope
 import me.mattco.reeva.parser.Scope

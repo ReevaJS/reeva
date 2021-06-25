@@ -8,7 +8,6 @@ import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.interpreter.transformer.Block
-import me.mattco.reeva.interpreter.transformer.DeclarationsArray
 import me.mattco.reeva.interpreter.transformer.FunctionInfo
 import me.mattco.reeva.interpreter.transformer.opcodes.Index
 import me.mattco.reeva.interpreter.transformer.opcodes.IrOpcodeVisitor
@@ -25,6 +24,34 @@ import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.key
 import me.mattco.reeva.utils.toValue
 import me.mattco.reeva.utils.unreachable
+
+class DeclarationsArray(
+    varDecls: List<String>,
+    lexDecls: List<String>,
+    funcDecls: List<String>,
+) : Iterable<String> {
+    private val values = varDecls.toTypedArray() + lexDecls.toTypedArray() + funcDecls.toTypedArray()
+    private val firstLex = varDecls.size
+    private val firstFunc = firstLex + lexDecls.size
+
+    val size: Int
+        get() = values.size
+
+    override fun iterator() = values.iterator()
+
+    fun varIterator() = getValuesIterator(0, firstLex)
+    fun lexIterator() = getValuesIterator(firstLex, firstFunc)
+    fun funcIterator() = getValuesIterator(firstFunc, values.size)
+
+    private fun getValuesIterator(start: Int, end: Int) = object : Iterable<String> {
+        override fun iterator() = object : Iterator<String> {
+            private var i = start
+
+            override fun hasNext() = i < end
+            override fun next() = values[i++]
+        }
+    }
+}
 
 class Interpreter(
     private val function: IRFunction,

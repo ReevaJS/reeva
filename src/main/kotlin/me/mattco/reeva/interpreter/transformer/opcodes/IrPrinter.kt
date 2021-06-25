@@ -1,7 +1,7 @@
 package me.mattco.reeva.interpreter.transformer.opcodes
 
+import me.mattco.reeva.interpreter.DeclarationsArray
 import me.mattco.reeva.interpreter.transformer.Block
-import me.mattco.reeva.interpreter.transformer.DeclarationsArray
 import me.mattco.reeva.interpreter.transformer.FunctionInfo
 import me.mattco.reeva.utils.unreachable
 
