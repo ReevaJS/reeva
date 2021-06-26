@@ -57,8 +57,17 @@ class Transformer : ASTVisitor {
     }
 
     private fun exitScope(scope: Scope) {
-        if (scope !is GlobalScope)
-            generator.addIfNotTerminated(PopEnv)
+        if (scope is GlobalScope)
+            return
+
+        if (generator.currentBlock.isTerminated) {
+            // Insert a PopEnv before the terminating instruction. It doesn't modify the
+            // accumulator register, so this is always save
+            val currentBlock = generator.currentBlock
+            currentBlock.add(currentBlock.lastIndex, PopEnv)
+        } else {
+            generator.add(PopEnv)
+        }
     }
 
     override fun visitBlock(node: BlockNode) {
