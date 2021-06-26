@@ -1,6 +1,7 @@
 package me.mattco.reeva.core
 
 import me.mattco.reeva.Reeva
+import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.interpreter.ExecutionResult
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.interpreter.transformer.Transformer
@@ -55,6 +56,9 @@ class Agent {
             IrPrinter(ir).print()
             println("\n")
         }
+
+        val globalEnv = GlobalEnvRecord(realm, ast.scope.isStrict)
+        realm.globalEnv = globalEnv
 
         val function = Interpreter.wrap(ir, realm)
         return try {

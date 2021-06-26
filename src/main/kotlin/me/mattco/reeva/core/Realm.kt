@@ -27,15 +27,18 @@ import me.mattco.reeva.runtime.wrappers.*
 import java.util.concurrent.ConcurrentHashMap
 
 class Realm {
-    private val envStack = mutableListOf<EnvRecord>()
-
     lateinit var globalObject: JSObject
         private set
-    val globalEnv: GlobalEnvRecord
-        get() = envStack[0] as GlobalEnvRecord
+    lateinit var globalEnv: GlobalEnvRecord
+        internal set
+    
+    private val varEnvStack = mutableListOf<EnvRecord>()
+    private val lexEnvStack = mutableListOf<EnvRecord>()
 
-    val activeEnv: EnvRecord
-        get() = envStack.last()
+    val varEnv: EnvRecord
+        get() = varEnvStack.last()
+    val lexEnv: EnvRecord
+        get() = lexEnvStack.last()
 
     // Special objects that have to be handled manually
     lateinit var objectProto: JSObjectProto private set
@@ -146,13 +149,23 @@ class Realm {
         globalObject = obj
     }
 
-    fun pushEnv(env: EnvRecord) {
-        envStack.add(env)
+    fun pushVarEnv(env: EnvRecord) = apply {
+        varEnvStack.add(env)
     }
 
-    fun popEnv() = envStack.removeLast()
+    fun pushLexEnv(env: EnvRecord) = apply {
+        lexEnvStack.add(env)
+    }
 
-    fun getOffsetEnv(offset: Int) = envStack[envStack.lastIndex - offset]
+    fun popVarEnv() {
+        varEnvStack.removeLast()
+    }
+
+    fun popLexEnv() {
+        lexEnvStack.removeLast()
+    }
+
+    fun getOffsetLexEnv(offset: Int) = lexEnvStack[lexEnvStack.lastIndex - offset]
 
     fun initObjects() {
         objectProto = JSObjectProto.create(this)

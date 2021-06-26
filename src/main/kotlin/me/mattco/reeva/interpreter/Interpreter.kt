@@ -84,7 +84,8 @@ class Interpreter(
     private var ip = 0
 
     fun interpret(): EvaluationResult {
-        realm.pushEnv(function.envRecord)
+        realm.pushVarEnv(function.envRecord)
+        realm.pushLexEnv(function.envRecord)
 
         try {
             while (!isDone) {
@@ -105,7 +106,8 @@ class Interpreter(
             println("Exception in FunctionInfo ${info.name}, block=${currentBlock.index} opcode ${ip - 1}")
             throw e
         } finally {
-            realm.popEnv()
+            realm.popVarEnv()
+            realm.popLexEnv()
         }
 
         return if (exception != null) {
@@ -309,7 +311,7 @@ class Interpreter(
 
         accumulator = realm.globalEnv.getBindingValue(
             actualName,
-            realm.activeEnv.isStrict,
+            realm.varEnv.isStrict,
         )
     }
 
@@ -317,46 +319,52 @@ class Interpreter(
         realm.globalEnv.setMutableBinding(
             loadConstant(name),
             accumulator,
-            realm.activeEnv.isStrict,
+            realm.varEnv.isStrict,
         )
     }
 
     override fun visitLdaCurrentEnv(name: Index) {
-        accumulator = realm.activeEnv.getBindingValue(
+        // The current env will always be the lexical env. Even at the top-level
+        // of a function, the lexEnv will be equal to the varEnv, so we can still
+        // access this through .lexEnv
+        accumulator = realm.lexEnv.getBindingValue(
             loadConstant(name),
-            realm.activeEnv.isStrict,
+            realm.varEnv.isStrict,
         )
     }
 
     override fun visitStaCurrentEnv(name: Index) {
-        realm.activeEnv.setMutableBinding(
+        // The current env will always be the lexical env. Even at the top-level
+        // of a function, the lexEnv will be equal to the varEnv, so we can still
+        // access this through .lexEnv
+        realm.lexEnv.setMutableBinding(
             loadConstant(name),
             accumulator,
-            realm.activeEnv.isStrict,
+            realm.varEnv.isStrict,
         )
     }
 
     override fun visitLdaEnv(name: Index, offset: Literal) {
-        accumulator = realm.getOffsetEnv(offset).getBindingValue(
+        accumulator = realm.getOffsetLexEnv(offset).getBindingValue(
             loadConstant(name),
-            realm.activeEnv.isStrict,
+            realm.varEnv.isStrict,
         )
     }
 
     override fun visitStaEnv(name: Index, offset: Literal) {
-        realm.getOffsetEnv(offset).setMutableBinding(
+        realm.getOffsetLexEnv(offset).setMutableBinding(
             loadConstant(name),
             accumulator,
-            realm.activeEnv.isStrict,
+            realm.varEnv.isStrict,
         )
     }
 
     override fun visitPushLexicalEnv() {
-        realm.pushEnv(DeclarativeEnvRecord(realm, realm.activeEnv.isStrict))
+        realm.pushLexEnv(DeclarativeEnvRecord(realm, realm.varEnv.isStrict))
     }
 
     override fun visitPopEnv() {
-        realm.popEnv()
+        realm.popLexEnv()
     }
 
     override fun visitCall(targetReg: Register, receiverReg: Register, argumentRegs: List<Register>) {
