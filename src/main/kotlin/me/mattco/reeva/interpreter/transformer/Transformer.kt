@@ -129,7 +129,8 @@ class Transformer : ASTVisitor {
         val doneBlock = generator.makeBlock()
 
         if (node.condition != null) {
-            generator.currentBlock = testBlock!!
+            generator.add(Jump(testBlock!!))
+            generator.currentBlock = testBlock
             visit(node.condition)
             generator.add(JumpIfTrue(bodyBlock, doneBlock))
         }
@@ -152,6 +153,38 @@ class Transformer : ASTVisitor {
             exitScope(node.initScope)
     }
 
+    private fun assign(node: ASTNode) {
+        when (node) {
+            // TODO: This branch shouldn't be necessary
+            is IdentifierReferenceNode -> generator.add(StaGlobal(generator.intern(node.identifierName)))
+            is BindingIdentifierNode -> generator.add(StaGlobal(generator.intern(node.identifierName)))
+            is VariableDeclarationNode -> {
+                val declaration = node.declarations[0]
+                storeVariable(declaration.variable, declaration.scope)
+            }
+            is LexicalDeclarationNode -> {
+                val declaration = node.declarations[0]
+                storeVariable(declaration.variable, declaration.scope)
+            }
+            else -> TODO()
+        }
+    }
+
+    private fun iterateForEach(decl: ASTNode, body: ASTNode) {
+        iterateValues {
+            val needsScope = decl is VariableDeclarationNode || decl is LexicalDeclarationNode
+
+            if (needsScope)
+                generator.add(PushLexicalEnv)
+
+            assign(decl)
+            visit(body)
+
+            if (needsScope)
+                generator.add(PopEnv)
+        }
+    }
+
     override fun visitForIn(node: ForInNode) {
         visit(node.expression)
         val isUndefinedBlock = generator.makeBlock()
@@ -160,91 +193,17 @@ class Transformer : ASTVisitor {
         generator.add(JumpIfUndefined(isUndefinedBlock, isNotUndefinedBlock))
         generator.currentBlock = isNotUndefinedBlock
 
-        iterateValues {
-            val needsScope = node.decl is VariableDeclarationNode
-
-            if (needsScope)
-                generator.add(PushLexicalEnv)
-
-            when (val decl = node.decl) {
-                // TODO: This should really be a BindingIdentifierNode
-                is IdentifierReferenceNode -> generator.add(StaGlobal(generator.intern(decl.identifierName)))
-                is VariableDeclarationNode -> visit(decl)
-                else -> TODO()
-            }
-
-            visit(node.body)
-
-            if (needsScope)
-                generator.add(PopEnv)
-        }
+        generator.add(ForInEnumerate)
+        iterateForEach(node.decl, node.body)
 
         generator.add(Jump(isUndefinedBlock))
         generator.currentBlock = isUndefinedBlock
     }
 
     override fun visitForOf(node: ForOfNode) {
-        TODO()
-//        visit(node.expression)
-//        add(GetIterator)
-//        val iter = generator.reserveRegister()
-//        add(Star, iter)
-//
-//        val next = generator.reserveRegister()
-//        add(LdaNamedProperty, iter, generator.intern("next"))
-//        add(Star, next)
-//        add(CallRuntime, InterpRuntime.ThrowIfIteratorNextNotCallable, next, 1)
-//
-//        // TODO: This isn't right, ForOfNode should have an optional scope for the initializer
-//        if (node.scope.requiresEnv) {
-//            add(PushEnv, builder.enterScope(node.scope))
-//            node.scope.declaredVariables.forEachIndexed { index, variable ->
-//                variable.slot = index
-//            }
-//        }
-//
-//        val loopStart = label()
-//        val loopEnd = label()
-//
-//        place(loopStart)
-//
-//        // TODO: ???
-////        if (node.scope.requiresEnv)
-////            add(PushEnv)
-//
-//        add(Call0, next, iter)
-//        val nextResult = generator.reserveRegister()
-//        add(Star, nextResult)
-//        add(CallRuntime, InterpRuntime.ThrowIfIteratorReturnNotObject, nextResult, 1)
-//        add(LdaNamedProperty, nextResult, generator.intern("done"))
-//        jump(loopEnd, JumpIfToBooleanTrue)
-//
-//        add(LdaNamedProperty, nextResult, generator.intern("value"))
-//
-//        when (node.decl) {
-//            is VariableDeclarationNode -> {
-//                val decl = node.decl.declarations[0]
-//                val variable = decl.identifier.variable
-//                storeEnvVariableRef(variable, node.scope)
-//            }
-//            is LexicalDeclarationNode -> {
-//                val decl = node.decl.declarations[0]
-//                val variable = decl.identifier.variable
-//                storeEnvVariableRef(variable, node.scope)
-//            }
-//            is BindingIdentifierNode -> {
-//                val variable = node.decl.variable
-//                storeEnvVariableRef(variable, node.scope)
-//            }
-//        }
-//
-//        visit(node.body)
-//
-//        if (node.scope.requiresEnv)
-//            add(PopCurrentEnv, builder.exitScope(node.scope))
-//
-//        jump(loopStart)
-//        place(loopEnd)
+        visit(node.expression)
+        generator.add(GetIterator)
+        iterateForEach(node.decl, node.body)
     }
 
     override fun visitForAwaitOf(node: ForAwaitOfNode) {
@@ -1111,7 +1070,6 @@ class Transformer : ASTVisitor {
     }
 
     private fun iterateValues(action: () -> Unit) {
-        generator.add(GetIterator)
         val iteratorReg = generator.reserveRegister()
         generator.add(Star(iteratorReg))
 
@@ -1132,7 +1090,13 @@ class Transformer : ASTVisitor {
         generator.currentBlock = isNotExhaustedBlock
         generator.add(Ldar(iteratorResultReg))
         generator.add(IteratorResultValue)
+
+        generator.enterBreakableScope(isExhaustedBlock)
+        generator.enterContinuableScope(headBlock)
         action()
+        generator.exitBreakableScope()
+        generator.exitContinuableScope()
+
         generator.add(Jump(headBlock))
 
         generator.currentBlock = isExhaustedBlock
