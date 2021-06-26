@@ -22,10 +22,7 @@ import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.utils.Errors
-import me.mattco.reeva.utils.key
-import me.mattco.reeva.utils.toValue
-import me.mattco.reeva.utils.unreachable
+import me.mattco.reeva.utils.*
 
 class DeclarationsArray(
     varDecls: List<String>,
@@ -59,6 +56,7 @@ class JumpTable private constructor(
     private val table: MutableMap<Int, Block>
 ) : MutableMap<Int, Block> by table {
     constructor() : this(mutableMapOf())
+
     companion object {
         const val FALLTHROUGH = 0
         const val RETURN = 1
@@ -80,12 +78,18 @@ class Interpreter(
     private var exception: ThrowException? = null
     private val mappedCPool = Array<JSValue?>(info.code.constantPool.size) { null }
 
+    private var lexicalDepth = 0
+    private val lexicalDepthStack = mutableListOf<Int>()
+    private val seenHandlers = mutableSetOf<Int>()
+
     private var currentBlock = info.code.blocks[0]
     private var ip = 0
 
     fun interpret(): EvaluationResult {
         realm.pushVarEnv(function.envRecord)
         realm.pushLexEnv(function.envRecord)
+
+        lexicalDepthStack.add(lexicalDepth)
 
         try {
             while (!isDone) {
@@ -94,6 +98,12 @@ class Interpreter(
                 } catch (e: ThrowException) {
                     val handler = currentBlock.handler
                     if (handler != null) {
+                        val lexicalEnvsToRemove = lexicalDepth - lexicalDepthStack.removeLast()
+                        expect(lexicalEnvsToRemove >= 0)
+                        repeat(lexicalEnvsToRemove) {
+                            realm.popLexEnv()
+                        }
+
                         accumulator = e.value
                         jumpTo(handler)
                     } else {
@@ -116,6 +126,29 @@ class Interpreter(
     }
 
     private fun jumpTo(block: Block) {
+        val currentHandler = currentBlock.handler?.index
+        val newHandler = block.handler?.index
+
+        if (currentHandler != newHandler) {
+            when {
+                currentHandler == null && newHandler != null -> {
+                    seenHandlers.add(newHandler)
+                    lexicalDepthStack.add(lexicalDepth)
+                }
+                currentHandler != null && newHandler == null -> {
+                    lexicalDepthStack.removeLast()
+                }
+                currentHandler != null && newHandler != null -> {
+                    if (newHandler in seenHandlers) {
+                        lexicalDepthStack.removeLast()
+                    } else {
+                        seenHandlers.add(newHandler)
+                        lexicalDepthStack.add(lexicalDepth)
+                    }
+                }
+            }
+        }
+
         ip = 0
         currentBlock = block
     }
@@ -360,10 +393,12 @@ class Interpreter(
     }
 
     override fun visitPushLexicalEnv() {
+        lexicalDepth++
         realm.pushLexEnv(DeclarativeEnvRecord(realm, realm.varEnv.isStrict))
     }
 
     override fun visitPopEnv() {
+        lexicalDepth--
         realm.popLexEnv()
     }
 
@@ -520,7 +555,7 @@ class Interpreter(
     override fun visitJumpIfObject(ifBlock: Block, elseBlock: Block) {
         jumpTo(if (accumulator is JSObject) ifBlock else elseBlock)
     }
-    
+
     override fun visitJumpFromTable(tableIndex: Index) {
         val table = loadConstant<JumpTable>(tableIndex)
         jumpTo(table[accumulator.asInt]!!)

@@ -64,9 +64,9 @@ class Transformer : ASTVisitor {
             // Insert a PopEnv before the terminating instruction. It doesn't modify the
             // accumulator register, so this is always save
             val currentBlock = generator.currentBlock
-            currentBlock.add(currentBlock.lastIndex, PopEnv)
+            currentBlock.add(currentBlock.lastIndex, PopLexicalEnv)
         } else {
-            generator.add(PopEnv)
+            generator.add(PopLexicalEnv)
         }
     }
 
@@ -201,7 +201,7 @@ class Transformer : ASTVisitor {
             visit(body)
 
             if (needsScope)
-                generator.add(PopEnv)
+                generator.add(PopLexicalEnv)
         }
     }
 
@@ -311,9 +311,9 @@ class Transformer : ASTVisitor {
                 visitASTListNode(node.catchNode.block.statements)
 
                 if (generator.currentBlock.isTerminated) {
-                    generator.currentBlock.add(generator.currentBlock.lastIndex, PopEnv)
+                    generator.currentBlock.add(generator.currentBlock.lastIndex, PopLexicalEnv)
                 } else {
-                    generator.add(PopEnv)
+                    generator.add(PopLexicalEnv)
                 }
             } else {
                 visit(node.catchNode.block)

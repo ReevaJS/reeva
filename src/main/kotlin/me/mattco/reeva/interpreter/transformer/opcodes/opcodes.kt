@@ -258,7 +258,7 @@ object PushLexicalEnv : Opcode()
 /**
  * Pops an EnvRecord off of the env stack
  */
-object PopEnv : Opcode()
+object PopLexicalEnv : Opcode()
 
 ///////////////
 /// CALLING ///

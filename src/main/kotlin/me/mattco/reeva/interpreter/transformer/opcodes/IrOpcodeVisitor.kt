@@ -57,7 +57,7 @@ abstract class IrOpcodeVisitor {
             is LdaEnv -> visitLdaEnv(opcode.name, opcode.offset)
             is StaEnv -> visitStaEnv(opcode.name, opcode.offset)
             PushLexicalEnv -> visitPushLexicalEnv()
-            PopEnv -> visitPopEnv()
+            PopLexicalEnv -> visitPopEnv()
 
             is Call -> visitCall(opcode.targetReg, opcode.receiverReg, opcode.argumentRegs)
             is CallWithArgArray -> visitCallWithArgArray(opcode.targetReg, opcode.receiverReg, opcode.argumentsReg)
