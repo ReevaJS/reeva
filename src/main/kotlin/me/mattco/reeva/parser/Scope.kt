@@ -13,8 +13,6 @@ open class Scope(val outer: Scope? = null) {
     // Variables that have yet to be connected to their source
     val pendingReferences = mutableListOf<VariableRefNode>()
 
-    open val declaredVarMode = Variable.Mode.Declared
-
     var possiblyReferencesArguments = false
 
     val isStrict: Boolean
@@ -24,6 +22,8 @@ open class Scope(val outer: Scope? = null) {
         @Suppress("LeakingThis")
         outer?.childScopes?.add(this)
     }
+
+    open fun declaredVarMode(type: Variable.Type): Variable.Mode = Variable.Mode.Declared
 
     fun addDeclaredVariable(variable: Variable) {
         if (variable.type != Variable.Type.Var || this is HoistingScope) {
@@ -127,7 +127,11 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
 }
 
 open class GlobalScope : HoistingScope() {
-    override val declaredVarMode = Variable.Mode.Global
+    override fun declaredVarMode(type: Variable.Type): Variable.Mode {
+        return if (type == Variable.Type.Var) {
+            Variable.Mode.Global
+        } else Variable.Mode.Declared
+    }
 }
 
 data class Variable(

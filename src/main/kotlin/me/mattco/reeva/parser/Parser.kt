@@ -679,7 +679,7 @@ class Parser(val source: String) {
             it.variable = Variable(
                 identifier.identifierName,
                 Variable.Type.Var,
-                it.scope.declaredVarMode,
+                it.scope.declaredVarMode(Variable.Type.Var),
                 it
             )
             declarationScope.addDeclaredVariable(it.variable)
@@ -923,7 +923,7 @@ class Parser(val source: String) {
 
     private fun parseBindingIdentifier(
         varType: Variable.Type = Variable.Type.Var,
-        varMode: Variable.Mode = scope.declaredVarMode,
+        varMode: Variable.Mode = scope.declaredVarMode(varType),
         addVar: Boolean = true,
     ): BindingIdentifierNode = nps {
         BindingIdentifierNode(parseIdentifier()).also {
