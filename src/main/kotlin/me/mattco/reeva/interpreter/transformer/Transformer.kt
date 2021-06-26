@@ -310,8 +310,14 @@ class Transformer : ASTVisitor {
             }
 
             visit(node.catchNode.block)
-            if (parameter != null)
-                generator.addIfNotTerminated(PopEnv)
+
+            if (parameter != null) {
+                if (generator.currentBlock.isTerminated) {
+                    generator.currentBlock.add(generator.currentBlock.lastIndex, PopEnv)
+                } else {
+                    generator.add(PopEnv)
+                }
+            }
 
             if (!generator.currentBlock.isTerminated) {
                 if (hasFinally) {
