@@ -81,11 +81,7 @@ class Transformer : ASTVisitor {
     override fun visitBlock(node: BlockNode) {
         enterScope(node.scope)
         try {
-            node.statements.forEach {
-                visit(it)
-                if (generator.currentBlock.isTerminated)
-                    return
-            }
+            visitASTListNode(node.statements)
         } finally {
             exitScope(node.scope)
         }
@@ -309,14 +305,18 @@ class Transformer : ASTVisitor {
                 generator.enterHandlerScope(null, finallyBlock!!)
             }
 
-            visit(node.catchNode.block)
-
             if (parameter != null) {
+                // We will have already pushed a context, so we call visitASTListNode to
+                // skip the {enter,exit}Scope calls
+                visitASTListNode(node.catchNode.block.statements)
+
                 if (generator.currentBlock.isTerminated) {
                     generator.currentBlock.add(generator.currentBlock.lastIndex, PopEnv)
                 } else {
                     generator.add(PopEnv)
                 }
+            } else {
+                visit(node.catchNode.block)
             }
 
             if (!generator.currentBlock.isTerminated) {
@@ -653,9 +653,9 @@ class Transformer : ASTVisitor {
         ) {
             // body's scope is the same as the function's scope (the scope we receive
             // as a parameter). We don't want to re-enter the same scope, so we explicitly
-            // call super.visitBlock if necessary.
+            // call visitASTListNode instead, which skips the {enter,exit}Scope calls.
             if (body is BlockNode) {
-                super.visitBlock(body)
+                visitASTListNode(body.statements)
             } else visit(body)
 
             if (body !is ExpressionStatementNode)

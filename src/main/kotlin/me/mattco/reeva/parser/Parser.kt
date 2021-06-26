@@ -505,11 +505,11 @@ class Parser(val source: String) {
             val catchParam = if (match(TokenType.OpenParen)) {
                 scope = Scope(scope)
                 consume()
-                parseBindingIdentifier().also {
+                parseBindingIdentifier(Variable.Type.Let).also {
                     consume(TokenType.CloseParen)
                 }
             } else null
-            CatchNode(catchParam, parseBlock()).also {
+            CatchNode(catchParam, parseBlock(pushNewScope = catchParam == null)).also {
                 it.scope = scope
                 if (catchParam != null)
                     scope = scope.outer!!
