@@ -10,7 +10,7 @@ interface ASTVisitor {
             is StatementNode -> visitStatement(node)
             is ExpressionNode -> visitExpression(node)
             is ASTListNode<*> -> visitASTListNode(node)
-            else -> throw IllegalArgumentException("Unrecognized ASTNode ${node.name}")
+            else -> throw IllegalArgumentException("Unrecognized ASTNode ${node.astNodeName}")
         }
     }
 
@@ -40,7 +40,7 @@ interface ASTVisitor {
             is FunctionDeclarationNode -> visitFunctionDeclaration(node)
             is ClassDeclarationNode -> visitClassDeclaration(node)
             is EmptyStatementNode -> {}
-            else -> throw IllegalArgumentException("Unrecognized StatementNode ${node.name}")
+            else -> throw IllegalArgumentException("Unrecognized StatementNode ${node.astNodeName}")
         }
     }
 
@@ -81,7 +81,7 @@ interface ASTVisitor {
             is BigIntLiteralNode -> visitBigIntLiteral(node)
             is NullLiteralNode -> visitNullLiteral()
             is ThisLiteralNode -> visitThisLiteral()
-            else -> throw IllegalArgumentException("Unrecognized ExpressionNode ${node.name}")
+            else -> throw IllegalArgumentException("Unrecognized ExpressionNode ${node.astNodeName}")
         }
     }
 

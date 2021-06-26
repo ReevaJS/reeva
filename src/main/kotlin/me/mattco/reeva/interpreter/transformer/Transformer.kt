@@ -527,7 +527,7 @@ class Transformer : ASTVisitor {
         isStrict: Boolean,
         evaluationBlock: () -> Unit,
     ) {
-        val parameterNames = parameters.map { it.name }
+        val parameterNames = parameters.map { it.identifier.identifierName }
         val simpleParameterList = parameters.isSimple()
         val hasParameterExpressions = parameters.any { it.initializer != null }
 
@@ -601,10 +601,10 @@ class Transformer : ASTVisitor {
         val instantiatedVarNames = functionNames.toMutableSet()
 
         for (varDecl in varDecls) {
-            if (varDecl is FunctionDeclarationNode || varDecl.name in instantiatedVarNames)
+            if (varDecl is FunctionDeclarationNode || varDecl.variable.name in instantiatedVarNames)
                 continue
 
-            instantiatedVarNames.add(varDecl.name)
+            instantiatedVarNames.add(varDecl.variable.name)
             val variable = varDecl.variable
 
             if (variable.name !in instantiatedVarNames) {

@@ -16,7 +16,7 @@ open class ASTNodeBase(children: List<ASTNode> = emptyList()) : ASTNode {
         children as MutableList<ASTNode>
     } else children.toMutableList()
 
-    override val name: String
+    override val astNodeName: String
         get() = this::class.java.simpleName
 
     override var sourceStart: TokenLocation = TokenLocation.EMPTY
@@ -49,7 +49,7 @@ abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeW
 }
 
 interface ASTNode {
-    val name: String
+    val astNodeName: String
     val children: MutableList<ASTNode>
 
     var sourceStart: TokenLocation
@@ -104,7 +104,7 @@ interface ASTNode {
     }
 
     fun StringBuilder.appendName() {
-        append(name)
+        append(astNodeName)
         append(" (")
         append(sourceStart)
         append(" - ")
