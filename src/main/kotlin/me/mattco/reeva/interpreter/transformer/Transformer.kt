@@ -39,7 +39,7 @@ class Transformer : ASTVisitor {
 
         globalDeclarationInstantiation(node.scope) {
             visit(node.statements)
-            generator.add(Return)
+            generator.addIfNotTerminated(Return)
         }
 
         return FunctionInfo(
@@ -70,10 +70,25 @@ class Transformer : ASTVisitor {
         }
     }
 
+    override fun visitASTListNode(node: ASTListNode<*>) {
+        node.children.forEach {
+            visit(it)
+            if (generator.currentBlock.isTerminated)
+                return
+        }
+    }
+
     override fun visitBlock(node: BlockNode) {
         enterScope(node.scope)
-        super.visitBlock(node)
-        exitScope(node.scope)
+        try {
+            node.statements.forEach {
+                visit(it)
+                if (generator.currentBlock.isTerminated)
+                    return
+            }
+        } finally {
+            exitScope(node.scope)
+        }
     }
 
     override fun visitExpressionStatement(node: ExpressionStatementNode) {

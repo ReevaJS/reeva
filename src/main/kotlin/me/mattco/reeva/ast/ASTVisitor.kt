@@ -9,7 +9,7 @@ interface ASTVisitor {
         when (node) {
             is StatementNode -> visitStatement(node)
             is ExpressionNode -> visitExpression(node)
-            is ASTListNode<*> -> node.children.forEach(::visit)
+            is ASTListNode<*> -> visitASTListNode(node)
             else -> throw IllegalArgumentException("Unrecognized ASTNode ${node.name}")
         }
     }
@@ -83,6 +83,10 @@ interface ASTVisitor {
             is ThisLiteralNode -> visitThisLiteral()
             else -> throw IllegalArgumentException("Unrecognized ExpressionNode ${node.name}")
         }
+    }
+
+    fun visitASTListNode(node: ASTListNode<*>) {
+        node.children.forEach(::visit)
     }
 
     fun visitBlock(node: BlockNode) {
