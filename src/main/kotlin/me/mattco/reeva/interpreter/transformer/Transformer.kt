@@ -569,17 +569,19 @@ class Transformer : ASTVisitor {
         parameters.distinctBy { it.identifier.identifierName }.forEachIndexed { index, param ->
             val register = index + 1
 
-            val name = generator.intern(param.variable.name)
+            if (param.isRest) {
+                generator.add(CreateRestParam)
+            } else {
+                generator.add(Ldar(register))
 
-            generator.add(Ldar(register))
-
-            if (param.initializer != null) {
-                generator.ifHelper(::JumpIfUndefined) {
-                    visit(param.initializer)
+                if (param.initializer != null) {
+                    generator.ifHelper(::JumpIfUndefined) {
+                        visit(param.initializer)
+                    }
                 }
             }
 
-            generator.add(StaCurrentEnv(name))
+            generator.add(StaCurrentEnv(generator.intern(param.variable.name)))
         }
 
         if (bodyScope != functionScope)

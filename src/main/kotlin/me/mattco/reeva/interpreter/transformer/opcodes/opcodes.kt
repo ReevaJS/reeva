@@ -559,6 +559,11 @@ object ForInEnumerate : Opcode()
 class CreateClosure(val functionInfoIndex: Index) : Opcode()
 
 /**
+ * Collects excess parameters into an array
+ */
+object CreateRestParam : Opcode()
+
+/**
  * TODO
  */
 object DebugBreakpoint : Opcode()

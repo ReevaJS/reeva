@@ -111,6 +111,7 @@ abstract class IrOpcodeVisitor {
             IteratorResultValue -> visitIteratorResultValue()
             ForInEnumerate -> visitForInEnumerate()
             is CreateClosure -> visitCreateClosure(opcode.functionInfoIndex)
+            CreateRestParam -> visitCreateRestParam()
             DebugBreakpoint -> visitDebugBreakpoint()
         }
     }
@@ -300,6 +301,8 @@ abstract class IrOpcodeVisitor {
     abstract fun visitIteratorResultValue()
 
     abstract fun visitCreateClosure(functionInfoIndex: Int)
+
+    abstract fun visitCreateRestParam()
 
     abstract fun visitDebugBreakpoint()
 }

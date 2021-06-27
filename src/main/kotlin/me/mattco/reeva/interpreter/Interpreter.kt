@@ -641,6 +641,10 @@ class Interpreter(
         function.envRecord = functionEnv
     }
 
+    override fun visitCreateRestParam() {
+        accumulator = Operations.createArrayFromList(realm, arguments.takeLast(arguments.size - info.argCount + 1))
+    }
+
     override fun visitDebugBreakpoint() {
         TODO()
     }
