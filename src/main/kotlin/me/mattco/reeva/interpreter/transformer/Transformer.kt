@@ -7,7 +7,6 @@ import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.interpreter.DeclarationsArray
 import me.mattco.reeva.interpreter.JumpTable
 import me.mattco.reeva.interpreter.transformer.opcodes.*
-import me.mattco.reeva.parser.GlobalScope
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
 import me.mattco.reeva.utils.expect
@@ -52,12 +51,12 @@ class Transformer : ASTVisitor {
     }
 
     private fun enterScope(scope: Scope) {
-        if (scope !is GlobalScope)
+        if (scope.requiresEnv())
             generator.add(PushLexicalEnv)
     }
 
     private fun exitScope(scope: Scope) {
-        if (scope is GlobalScope)
+        if (!scope.requiresEnv())
             return
 
         if (generator.currentBlock.isTerminated) {

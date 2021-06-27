@@ -25,6 +25,8 @@ open class Scope(val outer: Scope? = null) {
 
     open fun declaredVarMode(type: Variable.Type): Variable.Mode = Variable.Mode.Declared
 
+    open fun requiresEnv(): Boolean = declaredVariables.any { it.type != Variable.Type.Var }
+
     fun addDeclaredVariable(variable: Variable) {
         if (variable.type != Variable.Type.Var || this is HoistingScope) {
             declaredVariables.add(variable)
@@ -66,7 +68,8 @@ open class Scope(val outer: Scope? = null) {
         var scope = this
         var i = 0
         while (scope != ancestorScope) {
-            i++
+            if (scope.requiresEnv())
+                i++
             scope = scope.outer!!
         }
         return i
@@ -111,6 +114,8 @@ open class Scope(val outer: Scope? = null) {
 open class HoistingScope(outer: Scope? = null) : Scope(outer) {
     var hasUseStrictDirective: Boolean = false
 
+    override fun requiresEnv() = true
+
     override fun onFinishImpl() {
         possiblyReferencesArguments = searchForArgumentsReference(this)
         super.onFinishImpl()
@@ -127,6 +132,8 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
 }
 
 open class GlobalScope : HoistingScope() {
+    override fun requiresEnv() = false
+
     override fun declaredVarMode(type: Variable.Type): Variable.Mode {
         return if (type == Variable.Type.Var) {
             Variable.Mode.Global
