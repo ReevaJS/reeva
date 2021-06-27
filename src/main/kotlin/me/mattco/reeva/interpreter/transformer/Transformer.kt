@@ -455,7 +455,7 @@ class Transformer : ASTVisitor {
             node.identifier?.identifierName ?: "<anonymous>",
             node.parameters,
             node.body,
-            node.parameterScope,
+            node.functionScope,
             node.bodyScope,
             node.scope.isStrict,
             false,
@@ -467,7 +467,7 @@ class Transformer : ASTVisitor {
             "<anonymous>",
             node.parameters,
             node.body,
-            node.parameterScope,
+            node.functionScope,
             node.bodyScope,
             node.scope.isStrict,
             true,
@@ -520,12 +520,17 @@ class Transformer : ASTVisitor {
 
     private fun functionDeclarationInstantiation(
         parameters: ParameterList,
-        parameterScope: Scope,
+        functionScope: Scope,
         bodyScope: Scope,
         isLexical: Boolean,
         isStrict: Boolean,
         evaluationBlock: () -> Unit,
     ) {
+        // functionScope is essentially ignored here, as the EnvRecord for it is
+        // created and stored in IRFunction::envRecord. It is pushed automatically
+        // by the interpreter and does not need to be explicitly present in the
+        // bytecode
+
         val parameterNames = parameters.map { it.identifier.identifierName }
         val simpleParameterList = parameters.isSimple()
         val hasParameterExpressions = parameters.any { it.initializer != null }
@@ -561,8 +566,6 @@ class Transformer : ASTVisitor {
             }
         }
 
-        enterScope(parameterScope)
-
         parameters.distinctBy { it.identifier.identifierName }.forEachIndexed { index, param ->
             val register = index + 1
 
@@ -579,17 +582,15 @@ class Transformer : ASTVisitor {
             generator.add(StaCurrentEnv(name))
         }
 
-        if (bodyScope != parameterScope)
+        if (bodyScope != functionScope)
             enterScope(bodyScope)
 
         commonInstantiation(varDecls, functionNames, functionsToInitialize)
 
         evaluationBlock()
 
-        if (bodyScope != parameterScope)
+        if (bodyScope != functionScope)
             exitScope(bodyScope)
-
-        exitScope(parameterScope)
     }
 
     private fun commonInstantiation(
@@ -621,9 +622,9 @@ class Transformer : ASTVisitor {
                 function.identifier.identifierName,
                 function.parameters,
                 function.body,
-                function.parameterScope,
+                function.functionScope,
                 function.bodyScope,
-                function.scope.isStrict || function.parameterScope.isStrict || function.bodyScope.isStrict,
+                function.scope.isStrict || function.functionScope.isStrict || function.bodyScope.isStrict,
                 false, // TODO
             )
 
@@ -635,7 +636,7 @@ class Transformer : ASTVisitor {
         name: String,
         parameters: ParameterList,
         body: ASTNode,
-        parameterScope: Scope,
+        functionScope: Scope,
         bodyScope: Scope,
         isStrict: Boolean,
         isLexical: Boolean,
@@ -645,7 +646,7 @@ class Transformer : ASTVisitor {
 
         functionDeclarationInstantiation(
             parameters,
-            parameterScope,
+            functionScope,
             bodyScope,
             isLexical,
             isStrict
@@ -1223,7 +1224,7 @@ class Transformer : ASTVisitor {
                             null,
                             method.parameters,
                             method.body,
-                            method.parameterScope,
+                            method.functionScope,
                             method.bodyScope,
                         )
                         functionNode.scope = method.scope

@@ -672,8 +672,8 @@ class Parser(val source: String) {
      */
     private fun parseFunctionDeclaration(): StatementNode = nps {
         val declarationScope = scope.parentHoistingScope
-        val (identifier, params, body, parameterScope, bodyScope) = parseFunctionHelper(isDeclaration = true)
-        FunctionDeclarationNode(identifier!!, params, body, parameterScope, bodyScope).also {
+        val (identifier, params, body, functionScope, bodyScope) = parseFunctionHelper(isDeclaration = true)
+        FunctionDeclarationNode(identifier!!, params, body, functionScope, bodyScope).also {
             it.scope = declarationScope
 
             it.variable = Variable(
@@ -691,8 +691,8 @@ class Parser(val source: String) {
      *     function BindingIdentifier? ( FormalParameters ) { FunctionBody }
      */
     private fun parseFunctionExpression(): ExpressionNode = nps {
-        val (identifier, params, body, parameterScope, bodyScope) = parseFunctionHelper(isDeclaration = false)
-        FunctionExpressionNode(identifier, params, body, parameterScope, bodyScope).also {
+        val (identifier, params, body, functionScope, bodyScope) = parseFunctionHelper(isDeclaration = false)
+        FunctionExpressionNode(identifier, params, body, functionScope, bodyScope).also {
             it.scope = scope
         }
     }
@@ -701,7 +701,7 @@ class Parser(val source: String) {
         val identifier: BindingIdentifierNode?,
         val params: ParameterList,
         val body: BlockNode,
-        val parameterScope: Scope,
+        val functionScope: Scope,
         val bodyScope: Scope,
     ) : ASTNodeBase()
 
@@ -728,15 +728,15 @@ class Parser(val source: String) {
             else -> null
         }
 
-        val parameterScope = HoistingScope(scope)
-        scope = parameterScope
+        val functionScope = HoistingScope(scope)
+        scope = functionScope
         val params = parseFunctionParameters()
 
         val bodyScope = if (params.any { it.initializer != null }) {
             HoistingScope(scope).also {
                 scope = it
             }
-        } else parameterScope
+        } else functionScope
 
         // TODO: Static Semantics
 
@@ -744,9 +744,9 @@ class Parser(val source: String) {
             parseBlock(pushNewScope = false)
         }
 
-        FunctionTemp(identifier, params, body, parameterScope, bodyScope).also {
+        FunctionTemp(identifier, params, body, functionScope, bodyScope).also {
             scope = scope.outer!!
-            if (bodyScope != parameterScope)
+            if (bodyScope != functionScope)
                 scope = scope.outer!!
         }
     }
@@ -1312,20 +1312,20 @@ class Parser(val source: String) {
 
             val methodName = if (needsNewName) parsePropertyName() else name
 
-            val parameterScope = HoistingScope(scope).also { scope = it }
+            val functionScope = HoistingScope(scope).also { scope = it }
 
             val params = parseFunctionParameters()
             val bodyScope = if (params.any { it.initializer != null }) {
                 HoistingScope(scope).also { scope = it }
-            } else parameterScope
+            } else functionScope
 
             val body = functionBoundary {
                 parseBlock(pushNewScope = false)
             }
-            val methodNode = MethodDefinitionNode(methodName, params, body, parameterScope, bodyScope, type).also {
+            val methodNode = MethodDefinitionNode(methodName, params, body, functionScope, bodyScope, type).also {
                 it.scope = scope
                 scope = scope.outer!!
-                if (parameterScope != bodyScope)
+                if (functionScope != bodyScope)
                     scope = scope.outer!!
             }
             return@nps MethodProperty(methodNode)
@@ -1528,13 +1528,13 @@ class Parser(val source: String) {
             reporter.arrowFunctionNewLine()
 
         consume()
-        val parameterScope = HoistingScope(scope)
-        scope = parameterScope
+        val functionScope = HoistingScope(scope)
+        scope = functionScope
         val parameters = CPEAAPLVisitor(this, node).parseAsParameterList()
 
         val bodyScope = if (parameters.any { it.initializer != null }) {
             HoistingScope(scope).also { scope = it }
-        } else parameterScope
+        } else functionScope
 
         val body = functionBoundary {
             if (match(TokenType.OpenCurly)) {
@@ -1544,10 +1544,10 @@ class Parser(val source: String) {
             }
         }
 
-        ArrowFunctionNode(parameters, body, parameterScope, bodyScope).also {
+        ArrowFunctionNode(parameters, body, functionScope, bodyScope).also {
             it.scope = scope
             scope = scope.outer!!
-            if (parameterScope != bodyScope)
+            if (functionScope != bodyScope)
                 scope = scope.outer!!
         }
     }

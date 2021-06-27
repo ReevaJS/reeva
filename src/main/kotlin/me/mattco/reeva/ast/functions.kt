@@ -49,7 +49,7 @@ open class GenericFunctionDeclarationNode(
     val identifier: BindingIdentifierNode,
     val parameters: ParameterList,
     val body: BlockNode,
-    val parameterScope: Scope,
+    val functionScope: Scope,
     val bodyScope: Scope,
 ) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), StatementNode {
     override var variable by identifier::variable
@@ -59,21 +59,21 @@ class FunctionDeclarationNode(
     identifier: BindingIdentifierNode,
     parameters: ParameterList,
     body: BlockNode,
-    parameterScope: Scope,
+    functionScope: Scope,
     bodyScope: Scope
-) : GenericFunctionDeclarationNode(identifier, parameters, body, parameterScope, bodyScope)
+) : GenericFunctionDeclarationNode(identifier, parameters, body, functionScope, bodyScope)
 
 class FunctionExpressionNode(
     val identifier: BindingIdentifierNode?,
     val parameters: ParameterList,
     val body: BlockNode,
-    val parameterScope: Scope,
+    val functionScope: Scope,
     val bodyScope: Scope,
 ) : NodeWithScope(listOfNotNull(identifier) + parameters + body), ExpressionNode
 
 class ArrowFunctionNode(
     val parameters: ParameterList,
     val body: ASTNode, // BlockNode or ExpressionNode
-    val parameterScope: Scope,
+    val functionScope: Scope,
     val bodyScope: Scope,
 ) : NodeWithScope(parameters + body), ExpressionNode

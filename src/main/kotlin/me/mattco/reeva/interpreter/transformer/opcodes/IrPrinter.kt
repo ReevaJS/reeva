@@ -16,6 +16,7 @@ class IrPrinter(private val info: FunctionInfo) {
 
         println("Parameter count: ${info.argCount}")
         println("Register count: ${info.code.registerCount}")
+        println("Opcode count: ${info.code.blocks.sumOf { it.size }}")
 
         for (block in info.code.blocks)
             println(stringifyBlock(block))

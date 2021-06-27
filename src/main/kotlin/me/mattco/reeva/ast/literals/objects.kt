@@ -39,7 +39,7 @@ class MethodDefinitionNode(
     val propName: PropertyName,
     val parameters: ParameterList,
     val body: BlockNode,
-    val parameterScope: Scope,
+    val functionScope: Scope,
     val bodyScope: Scope,
     val type: Type
 ) : NodeWithScope(listOf(propName) + parameters + body) {
