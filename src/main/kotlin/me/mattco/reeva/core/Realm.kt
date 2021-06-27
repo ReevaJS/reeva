@@ -29,16 +29,22 @@ import java.util.concurrent.ConcurrentHashMap
 class Realm {
     lateinit var globalObject: JSObject
         private set
-    lateinit var globalEnv: GlobalEnvRecord
-        internal set
-    
-    private val varEnvStack = mutableListOf<EnvRecord>()
-    private val lexEnvStack = mutableListOf<EnvRecord>()
 
-    val varEnv: EnvRecord
-        get() = varEnvStack.last()
-    val lexEnv: EnvRecord
-        get() = lexEnvStack.last()
+    private var globalEnvBacker: GlobalEnvRecord? = null
+    private var varEnvBacker: EnvRecord? = null
+    private var lexEnvBacker: EnvRecord? = null
+
+    var globalEnv: GlobalEnvRecord
+        get() = globalEnvBacker ?: throw IllegalStateException("This Realm has no global EnvRecord")
+        set(value) { globalEnvBacker = value }
+
+    var varEnv: EnvRecord
+        get() = varEnvBacker ?: throw IllegalStateException("This Realm has no variable EnvRecord")
+        set(value) { varEnvBacker = value }
+
+    var lexEnv: EnvRecord
+        get() = lexEnvBacker ?: throw IllegalStateException("This Realm has no lexical EnvRecord")
+        set(value) { lexEnvBacker = value }
 
     // Special objects that have to be handled manually
     lateinit var objectProto: JSObjectProto private set
@@ -149,23 +155,19 @@ class Realm {
         globalObject = obj
     }
 
-    fun pushVarEnv(env: EnvRecord) = apply {
-        varEnvStack.add(env)
+    fun getOffsetLexEnv(offset: Int): EnvRecord {
+        var env = lexEnv
+        repeat(offset) {
+            env = env.outer!!
+        }
+        return env
     }
 
-    fun pushLexEnv(env: EnvRecord) = apply {
-        lexEnvStack.add(env)
+    internal fun clearEnvRecords() {
+        globalEnvBacker = null
+        varEnvBacker = null
+        lexEnvBacker = null
     }
-
-    fun popVarEnv() {
-        varEnvStack.removeLast()
-    }
-
-    fun popLexEnv() {
-        lexEnvStack.removeLast()
-    }
-
-    fun getOffsetLexEnv(offset: Int) = lexEnvStack[lexEnvStack.lastIndex - offset]
 
     fun initObjects() {
         objectProto = JSObjectProto.create(this)

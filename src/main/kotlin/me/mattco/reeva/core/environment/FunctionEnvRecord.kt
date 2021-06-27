@@ -10,8 +10,9 @@ import me.mattco.reeva.utils.ecmaAssert
 class FunctionEnvRecord(
     realm: Realm,
     isStrict: Boolean,
+    outer: EnvRecord,
     val functionObject: Interpreter.IRFunction,
-) : DeclarativeEnvRecord(realm, isStrict) {
+) : DeclarativeEnvRecord(realm, isStrict, outer) {
     private lateinit var thisValue: JSValue
     private lateinit var thisBindingStatus: BindingStatus
     private var newTarget: JSObject? = null

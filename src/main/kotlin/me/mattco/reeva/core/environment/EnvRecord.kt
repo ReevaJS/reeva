@@ -7,7 +7,7 @@ import me.mattco.reeva.runtime.objects.JSObject
 /**
  * The runtime-equivalent of the Parser's Scope objects
  */
-abstract class EnvRecord(val realm: Realm, var isStrict: Boolean) {
+abstract class EnvRecord(val realm: Realm, var isStrict: Boolean, val outer: EnvRecord?) {
     abstract fun hasBinding(name: String): Boolean
 
     abstract fun createMutableBinding(name: String, deletable: Boolean)

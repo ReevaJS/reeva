@@ -14,9 +14,10 @@ import me.mattco.reeva.utils.unreachable
 class ObjectEnvRecord(
     realm: Realm,
     isStrict: Boolean,
+    outer: EnvRecord?,
     val bindingObject: JSObject,
     private val isWithEnvironment: Boolean,
-) : EnvRecord(realm, isStrict) {
+) : EnvRecord(realm, isStrict, outer) {
     override fun hasBinding(name: String): Boolean {
         if (!bindingObject.hasProperty(name))
             return false

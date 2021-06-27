@@ -9,9 +9,9 @@ import me.mattco.reeva.runtime.objects.PropertyKey
 import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
 
-class GlobalEnvRecord(realm: Realm, isStrict: Boolean) : EnvRecord(realm, isStrict) {
-    private val objectRecord = ObjectEnvRecord(realm, isStrict, realm.globalObject, isWithEnvironment = false)
-    private val declarativeRecord = DeclarativeEnvRecord(realm, isStrict)
+class GlobalEnvRecord(realm: Realm, isStrict: Boolean) : EnvRecord(realm, isStrict, null) {
+    private val objectRecord = ObjectEnvRecord(realm, isStrict, null, realm.globalObject, isWithEnvironment = false)
+    private val declarativeRecord = DeclarativeEnvRecord(realm, isStrict, null)
     private val varNames = mutableSetOf<String>()
 
     override fun hasBinding(name: String): Boolean {

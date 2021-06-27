@@ -7,7 +7,7 @@ import me.mattco.reeva.runtime.primitives.JSEmpty
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.ecmaAssert
 
-open class DeclarativeEnvRecord(realm: Realm, isStrict: Boolean) : EnvRecord(realm, isStrict) {
+open class DeclarativeEnvRecord(realm: Realm, isStrict: Boolean, outer: EnvRecord?) : EnvRecord(realm, isStrict, outer) {
     private val bindings = mutableMapOf<String, Binding>()
 
     override fun hasBinding(name: String) = name in bindings

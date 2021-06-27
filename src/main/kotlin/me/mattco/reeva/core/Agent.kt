@@ -59,14 +59,18 @@ class Agent {
 
         val globalEnv = GlobalEnvRecord(realm, ast.scope.isStrict)
         realm.globalEnv = globalEnv
+        realm.varEnv = globalEnv
+        realm.lexEnv = globalEnv
 
-        val function = Interpreter.wrap(ir, realm)
         return try {
+            val function = Interpreter.wrap(ir, realm)
             ExecutionResult.Success(function.call(realm.globalObject, emptyList()))
         } catch (e: ThrowException) {
             ExecutionResult.RuntimeError(realm, e.value)
         } catch (e: Throwable) {
             ExecutionResult.InternalError(e)
+        } finally {
+            realm.clearEnvRecords()
         }
     }
 

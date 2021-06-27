@@ -86,8 +86,10 @@ class Interpreter(
     private var ip = 0
 
     fun interpret(): EvaluationResult {
-        realm.pushVarEnv(function.envRecord)
-        realm.pushLexEnv(function.envRecord)
+        val initialVarEnv = realm.varEnv
+        val initialLexEnv = realm.lexEnv
+        realm.varEnv = function.envRecord
+        realm.lexEnv = function.envRecord
 
         lexicalDepthStack.add(lexicalDepth)
 
@@ -101,7 +103,7 @@ class Interpreter(
                         val lexicalEnvsToRemove = lexicalDepth - lexicalDepthStack.removeLast()
                         expect(lexicalEnvsToRemove >= 0)
                         repeat(lexicalEnvsToRemove) {
-                            realm.popLexEnv()
+                            realm.lexEnv = realm.lexEnv.outer!!
                         }
 
                         accumulator = e.value
@@ -116,8 +118,8 @@ class Interpreter(
             println("Exception in FunctionInfo ${info.name}, block=${currentBlock.index} opcode ${ip - 1}")
             throw e
         } finally {
-            realm.popVarEnv()
-            realm.popLexEnv()
+            realm.varEnv = initialVarEnv
+            realm.lexEnv = initialLexEnv
         }
 
         return if (exception != null) {
@@ -394,12 +396,12 @@ class Interpreter(
 
     override fun visitPushLexicalEnv() {
         lexicalDepth++
-        realm.pushLexEnv(DeclarativeEnvRecord(realm, realm.varEnv.isStrict))
+        realm.lexEnv = DeclarativeEnvRecord(realm, realm.varEnv.isStrict, realm.lexEnv)
     }
 
     override fun visitPopEnv() {
         lexicalDepth--
-        realm.popLexEnv()
+        realm.lexEnv = realm.lexEnv.outer!!
     }
 
     override fun visitCall(targetReg: Register, receiverReg: Register, argumentRegs: List<Register>) {
@@ -628,6 +630,7 @@ class Interpreter(
         accumulator = Operations.getIterator(realm, Operations.toObject(realm, accumulator))
     }
 
+
     override fun visitIteratorNext() {
         accumulator = Operations.iteratorNext(accumulator as Operations.IteratorRecord)
     }
@@ -644,7 +647,7 @@ class Interpreter(
         val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
         val function = IRFunction(function.realm, newInfo).initialize()
         accumulator = function
-        val functionEnv = FunctionEnvRecord(realm, newInfo.isStrict, function)
+        val functionEnv = FunctionEnvRecord(realm, newInfo.isStrict, realm.lexEnv, function)
         function.envRecord = functionEnv
     }
 
