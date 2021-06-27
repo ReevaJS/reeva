@@ -436,7 +436,14 @@ class Interpreter(
     }
 
     override fun visitConstructWithArgArray(targetReg: Register, newTargetReg: Register, argumentReg: Register) {
-        TODO()
+        val argumentsArray = registers[argumentReg] as JSObject
+        accumulator = Operations.construct(
+            registers[targetReg],
+            (0 until argumentsArray.indexedProperties.arrayLikeSize).map {
+                argumentsArray.get(it)
+            },
+            registers[newTargetReg],
+        )
     }
 
     override fun visitTestEqual(lhsReg: Register) {
