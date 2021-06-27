@@ -2,6 +2,9 @@ package me.mattco.reeva.parser
 
 import me.mattco.reeva.utils.expect
 
+// A basic unit of a script. This class is also used to communicate
+// Lexer errors: if type == TokenType.Invalid, then literals will
+// contain an error message
 data class Token(
     val type: TokenType,
     val start: TokenLocation,
@@ -24,6 +27,8 @@ data class Token(
 
         return literals.filterNot { it == '_' }.toDouble()
     }
+
+    fun error() = if (type == TokenType.Invalid) literals else null
 
     companion object {
         val INVALID = Token(TokenType.Invalid, TokenLocation.EMPTY, TokenLocation.EMPTY, false, "", "")

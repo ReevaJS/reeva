@@ -3,7 +3,6 @@ package me.mattco.reeva.parser
 import me.mattco.reeva.utils.isHexDigit
 import me.mattco.reeva.utils.isIdContinue
 import me.mattco.reeva.utils.isIdStart
-import java.io.File
 
 class Lexer(private val source: String) {
     private var lineNum = 0
@@ -24,233 +23,244 @@ class Lexer(private val source: String) {
     }
 
     fun nextToken(): Token {
-        val triviaStartCursor = cursor
-        val inTemplate = templateStates.isNotEmpty()
+        try {
+            val triviaStartCursor = cursor
+            val inTemplate = templateStates.isNotEmpty()
 
-        if (!inTemplate || templateStates.last().inExpr) {
-            // Consume whitespace and comments
-            while (!isDone) {
-                if (char.isWhitespace()) {
-                    do {
+            if (!inTemplate || templateStates.last().inExpr) {
+                // Consume whitespace and comments
+                while (!isDone) {
+                    if (char.isWhitespace()) {
+                        do {
+                            consume()
+                        } while (!isDone && char.isWhitespace())
+                    } else if (isCommentStart()) {
                         consume()
-                    } while (!isDone && char.isWhitespace())
-                } else if (isCommentStart()) {
-                    consume()
-                    do {
+                        do {
+                            consume()
+                        } while (!isDone && char != '\n')
+                    } else if (has(2) && match(multilineCommentStart)) {
                         consume()
-                    } while (!isDone && char != '\n')
-                } else if (has(2) && match(multilineCommentStart)) {
-                    consume()
-                    do {
-                        consume()
-                    } while (has(2) && !match(multilineCommentEnd))
+                        do {
+                            consume()
+                        } while (has(2) && !match(multilineCommentEnd))
 
-                    if (!isDone)
-                        consume(2)
-                } else break
+                        if (!isDone)
+                            consume(2)
+                    } else break
+                }
             }
-        }
 
-        val afterNewline = '\n' in source.substring(triviaStartCursor, cursor)
+            val afterNewline = '\n' in source.substring(triviaStartCursor, cursor)
 
-        val valueStartCursor = cursor
-        val valueStartLocation = TokenLocation(cursor, lineNum, columnNum)
-        var tokenType: TokenType
+            val valueStartCursor = cursor
+            val valueStartLocation = TokenLocation(cursor, lineNum, columnNum)
+            var tokenType: TokenType
 
-        if (isDone) {
-            tokenType = TokenType.Eof
-        } else if (lastToken.type == TokenType.RegExpLiteral && !isDone && char.isLetter() && !afterNewline) {
-            tokenType = TokenType.RegexFlags
-            while (!isDone && char.isLetter())
+            if (isDone) {
+                tokenType = TokenType.Eof
+            } else if (lastToken.type == TokenType.RegExpLiteral && !isDone && char.isLetter() && !afterNewline) {
+                tokenType = TokenType.RegexFlags
+                while (!isDone && char.isLetter())
+                    consume()
+            } else if (char == '`') {
                 consume()
-        } else if (char == '`') {
-            consume()
 
-            if (!inTemplate) {
-                tokenType = TokenType.TemplateLiteralStart
-                templateStates.add(TemplateState())
-            } else {
-                tokenType = if (templateStates.last().inExpr) {
+                if (!inTemplate) {
+                    tokenType = TokenType.TemplateLiteralStart
                     templateStates.add(TemplateState())
-                    TokenType.TemplateLiteralStart
                 } else {
-                    templateStates.removeLast()
-                    TokenType.TemplateLiteralEnd
-                }
-            }
-        } else if (inTemplate && templateStates.last().let { it.inExpr && it.openBracketCount == 0 } && char == '}') {
-            consume()
-            tokenType = TokenType.TemplateLiteralExprEnd
-            templateStates.last().inExpr = false
-        } else if (inTemplate && !templateStates.last().inExpr) {
-            when {
-                isDone -> {
-                    tokenType = TokenType.UnterminatedTemplateLiteral
-                    templateStates.removeLast()
-                }
-                has(2) && match(templateExprStart) -> {
-                    tokenType = TokenType.TemplateLiteralExprStart
-                    consume(2)
-                    templateStates.last().inExpr = true
-                }
-                else -> {
-                    while (has(2) && !match(templateExprStart) && char != '`') {
-                        if (match(escapedDollar) || match(escapedGrave))
-                            consume()
-                        consume()
+                    tokenType = if (templateStates.last().inExpr) {
+                        templateStates.add(TemplateState())
+                        TokenType.TemplateLiteralStart
+                    } else {
+                        templateStates.removeLast()
+                        TokenType.TemplateLiteralEnd
                     }
-                    tokenType = TokenType.TemplateLiteralString
                 }
-            }
-        } else if (isIdentStart()) {
-            do {
-                consumeIdentChar()
-            } while (isIdentMiddle())
-
-            tokenType = keywordFromStr(source.substring(valueStartCursor, cursor))
-        } else if (isNumberLiteralStart()) {
-            tokenType = TokenType.NumericLiteral
-            if (char == '0') {
+            } else if (inTemplate && templateStates.last().let { it.inExpr && it.openBracketCount == 0 } && char == '}') {
                 consume()
-                when (char) {
-                    '.' -> {
-                        consume()
-                        while (char.isDigit())
+                tokenType = TokenType.TemplateLiteralExprEnd
+                templateStates.last().inExpr = false
+            } else if (inTemplate && !templateStates.last().inExpr) {
+                when {
+                    isDone -> {
+                        tokenType = TokenType.UnterminatedTemplateLiteral
+                        templateStates.removeLast()
+                    }
+                    has(2) && match(templateExprStart) -> {
+                        tokenType = TokenType.TemplateLiteralExprStart
+                        consume(2)
+                        templateStates.last().inExpr = true
+                    }
+                    else -> {
+                        while (has(2) && !match(templateExprStart) && char != '`') {
+                            if (match(escapedDollar) || match(escapedGrave))
+                                consume()
                             consume()
+                        }
+                        tokenType = TokenType.TemplateLiteralString
+                    }
+                }
+            } else if (isIdentStart()) {
+                do {
+                    consumeIdentChar()
+                } while (isIdentMiddle())
+
+                tokenType = keywordFromStr(source.substring(valueStartCursor, cursor))
+            } else if (isNumberLiteralStart()) {
+                tokenType = TokenType.NumericLiteral
+                if (char == '0') {
+                    consume()
+                    when (char) {
+                        '.' -> {
+                            consume()
+                            while (char.isDigit())
+                                consume()
+                            if (char == 'e' || char == 'E')
+                                consumeExponent()
+                        }
+                        'e', 'E' -> consumeExponent()
+                        'o', 'O' -> {
+                            consume()
+                            while (char in '0'..'7')
+                                consume()
+                            if (char == 'n') {
+                                consume()
+                                tokenType = TokenType.BigIntLiteral
+                            }
+                        }
+                        'b', 'B' -> {
+                            consume()
+                            while (char == '0' || char == '1')
+                                consume()
+                            if (char == 'n') {
+                                consume()
+                                tokenType = TokenType.BigIntLiteral
+                            }
+                        }
+                        'x', 'X' -> {
+                            consume()
+                            while (char.isHexDigit())
+                                consume()
+                            if (char == 'n') {
+                                consume()
+                                tokenType = TokenType.BigIntLiteral
+                            }
+                        }
+                        'n' -> {
+                            consume()
+                            tokenType = TokenType.BigIntLiteral
+                        }
+                        else -> {
+                            if (char.isDigit()) {
+                                // Octal without 'O' prefix
+                                // TODO: Prevent in strict mode
+                                do {
+                                    consume()
+                                } while (char in '0'..'7')
+                            }
+                        }
+                    }
+                } else {
+                    while (char.isDigit() || char == '_')
+                        consume()
+                    if (char == 'n') {
+                        consume()
+                        tokenType = TokenType.BigIntLiteral
+                    } else {
+                        if (char == '.') {
+                            consume()
+                            while (char.isDigit() || char == '_')
+                                consume()
+                        }
                         if (char == 'e' || char == 'E')
                             consumeExponent()
                     }
-                    'e', 'E' -> consumeExponent()
-                    'o', 'O' -> {
-                        consume()
-                        while (char in '0'..'7')
-                            consume()
-                        if (char == 'n') {
-                            consume()
-                            tokenType = TokenType.BigIntLiteral
-                        }
-                    }
-                    'b', 'B' -> {
-                        consume()
-                        while (char == '0' || char == '1')
-                            consume()
-                        if (char == 'n') {
-                            consume()
-                            tokenType = TokenType.BigIntLiteral
-                        }
-                    }
-                    'x', 'X' -> {
-                        consume()
-                        while (char.isHexDigit())
-                            consume()
-                        if (char == 'n') {
-                            consume()
-                            tokenType = TokenType.BigIntLiteral
-                        }
-                    }
-                    'n' -> {
-                        consume()
-                        tokenType = TokenType.BigIntLiteral
-                    }
-                    else -> {
-                        if (char.isDigit()) {
-                            // Octal without 'O' prefix
-                            // TODO: Prevent in strict mode
-                            do {
-                                consume()
-                            } while (char in '0'..'7')
-                        }
-                    }
                 }
-            } else {
-                while (char.isDigit() || char == '_')
+            } else if (char == '"' || char == '\'') {
+                val stopChar = char
+                consume()
+                while (char != stopChar && char != '\n' && !isDone) {
+                    if (char == '\\')
+                        consume()
                     consume()
-                if (char == 'n') {
-                    consume()
-                    tokenType = TokenType.BigIntLiteral
+                }
+                tokenType = if (char != stopChar) {
+                    TokenType.UnterminatedStringLiteral
                 } else {
-                    if (char == '.') {
-                        consume()
-                        while (char.isDigit() || char == '_')
-                            consume()
+                    consume()
+                    TokenType.StringLiteral
+                }
+            } else if (char == '/' && lastToken.type !in slashMeansDivision) {
+                consume()
+                tokenType = TokenType.RegExpLiteral
+
+                while (!isDone) {
+                    if (char == '[') {
+                        regexIsInCharClass = true
+                    } else if (char == ']') {
+                        regexIsInCharClass = false
+                    } else if (!regexIsInCharClass && char == '/') {
+                        break
                     }
-                    if (char == 'e' || char == 'E')
-                        consumeExponent()
-                }
-            }
-        } else if (char == '"' || char == '\'') {
-            val stopChar = char
-            consume()
-            while (char != stopChar && char != '\n' && !isDone) {
-                if (char == '\\')
-                    consume()
-                consume()
-            }
-            tokenType = if (char != stopChar) {
-                TokenType.UnterminatedStringLiteral
-            } else {
-                consume()
-                TokenType.StringLiteral
-            }
-        } else if (char == '/' && lastToken.type !in slashMeansDivision) {
-            consume()
-            tokenType = TokenType.RegExpLiteral
 
-            while (!isDone) {
-                if (char == '[') {
-                    regexIsInCharClass = true
-                } else if (char == ']') {
-                    regexIsInCharClass = false
-                } else if (!regexIsInCharClass && char == '/') {
-                    break
-                }
-
-                if (has(2) && (match(escapedSlash) || match(escapedOpenBracket) ||
-                        match(escapedBackslash) || (regexIsInCharClass && match(escapedCloseBracket)))
-                ) {
+                    if (has(2) && (match(escapedSlash) || match(escapedOpenBracket) ||
+                            match(escapedBackslash) || (regexIsInCharClass && match(escapedCloseBracket)))
+                    ) {
+                        consume()
+                    }
                     consume()
                 }
-                consume()
-            }
 
-            if (isDone) {
-                tokenType = TokenType.UnterminatedRegexLiteral
+                if (isDone) {
+                    tokenType = TokenType.UnterminatedRegexLiteral
+                } else {
+                    consume()
+                }
             } else {
-                consume()
-            }
-        } else {
-            val type = matchSymbolicToken()
-            tokenType = type
+                val type = matchSymbolicToken()
+                tokenType = type
 
-            if (type == TokenType.Invalid) {
-                consume()
-            } else {
-                consume(type.string.length)
+                if (type == TokenType.Invalid) {
+                    consume()
+                } else {
+                    consume(type.string.length)
+                }
             }
+
+            if (templateStates.isNotEmpty() && templateStates.last().inExpr) {
+                if (tokenType == TokenType.OpenCurly) {
+                    templateStates.last().openBracketCount++
+                } else if (tokenType == TokenType.CloseCurly) {
+                    templateStates.last().openBracketCount--
+                }
+            }
+
+            val value = if (tokenType == TokenType.StringLiteral) {
+                source.substring(valueStartCursor + 1, cursor - 1)
+            } else source.substring(valueStartCursor, cursor)
+
+            lastToken = Token(
+                tokenType,
+                valueStartLocation,
+                TokenLocation(cursor, lineNum, columnNum),
+                afterNewline,
+                value,
+                value, // TODO: Raw strings
+            )
+
+            return lastToken
+        } catch (e: Throwable) {
+            return Token(
+                TokenType.Invalid,
+                TokenLocation(cursor, lineNum, columnNum),
+                TokenLocation(cursor, lineNum, columnNum),
+                false,
+                e.message!!,
+                "",
+            )
         }
-
-        if (templateStates.isNotEmpty() && templateStates.last().inExpr) {
-            if (tokenType == TokenType.OpenCurly) {
-                templateStates.last().openBracketCount++
-            } else if (tokenType == TokenType.CloseCurly) {
-                templateStates.last().openBracketCount--
-            }
-        }
-
-        val value = if (tokenType == TokenType.StringLiteral) {
-            source.substring(valueStartCursor + 1, cursor - 1)
-        } else source.substring(valueStartCursor, cursor)
-
-        lastToken = Token(
-            tokenType,
-            valueStartLocation,
-            TokenLocation(cursor, lineNum, columnNum),
-            afterNewline,
-            value,
-            value, // TODO: Raw strings
-        )
-
-        return lastToken
     }
 
     private fun isIdentStart() = char.isIdStart() || char == '_' || char == '$' || (has(2) && match(charArrayOf('\\', 'u')))
@@ -262,21 +272,21 @@ class Lexer(private val source: String) {
                 consume()
                 for (i in 0 until 5) {
                     if (!has(1))
-                        TODO()
+                        throw Error("Unexpected EOF in unicode escape sequence")
                     if (char == '}') {
                         if (i == 0)
-                            TODO()
+                            throw Error("Brace-enclosed unicode escape sequence cannot be empty")
                         consume()
                         return
                     }
                     if (!char.isHexDigit())
-                        TODO()
+                        throw Error("Unexpected char '$char' in brace-enclosed unicode escape sequence")
                     consume()
                 }
             } else {
                 for (i in 0 until 4) {
                     if (!char.isHexDigit())
-                        TODO()
+                        throw Error("Unexpected char '$char' in unicode escape sequence")
                     consume()
                 }
             }

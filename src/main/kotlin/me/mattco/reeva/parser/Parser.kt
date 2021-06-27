@@ -42,7 +42,6 @@ class Parser(val source: String) {
     lateinit var scope: Scope
 
     private fun initLexer() {
-        Thread.currentThread().name = "Parser Thread"
         Reeva.threadPool.submit {
             Thread.currentThread().name = "Lexer Thread"
             try {
@@ -1679,6 +1678,9 @@ class Parser(val source: String) {
         token = if (receivedTokenList.isNotEmpty()) {
             receivedTokenList.removeFirst()
         } else tokenQueue.take()
+        token.error()?.also {
+            throw ParsingException(it, token.start, token.end)
+        }
         return old
     }
 
