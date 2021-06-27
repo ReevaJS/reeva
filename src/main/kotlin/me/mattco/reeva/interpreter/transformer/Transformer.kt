@@ -191,7 +191,7 @@ class Transformer : ASTVisitor {
 
     private fun iterateForEach(decl: ASTNode, body: ASTNode) {
         iterateValues {
-            val needsScope = decl is VariableDeclarationNode || decl is LexicalDeclarationNode
+            val needsScope = decl is LexicalDeclarationNode
 
             if (needsScope)
                 generator.add(PushLexicalEnv)
@@ -200,7 +200,7 @@ class Transformer : ASTVisitor {
             visit(body)
 
             if (needsScope)
-                generator.add(PopLexicalEnv)
+                generator.addIfNotTerminated(PopLexicalEnv)
         }
     }
 
@@ -1127,7 +1127,7 @@ class Transformer : ASTVisitor {
         generator.exitBreakableScope()
         generator.exitContinuableScope()
 
-        generator.add(Jump(headBlock))
+        generator.addIfNotTerminated(Jump(headBlock))
 
         generator.currentBlock = isExhaustedBlock
     }
