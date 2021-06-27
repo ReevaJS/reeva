@@ -1079,6 +1079,7 @@ class Transformer : ASTVisitor {
                 generator.add(Star(indexReg))
 
                 visit(argument.expression)
+                generator.add(GetIterator)
                 iterateValues {
                     generator.add(StaArray(arrayReg, indexReg))
                     generator.add(Ldar(indexReg))
