@@ -146,6 +146,7 @@ class Transformer : ASTVisitor {
 
         val bodyBlock = generator.makeBlock()
         val doneBlock = generator.makeBlock()
+        var incrementerBlock: Block? = null
 
         if (node.condition != null) {
             generator.add(Jump(testBlock!!))
@@ -154,15 +155,21 @@ class Transformer : ASTVisitor {
             generator.add(JumpIfTrue(bodyBlock, doneBlock))
         }
 
+        if (node.incrementer != null)
+            incrementerBlock = generator.makeBlock()
+
         generator.currentBlock = bodyBlock
         generator.enterBreakableScope(doneBlock)
-        generator.enterContinuableScope(testBlock ?: bodyBlock)
+        generator.enterContinuableScope(incrementerBlock ?: testBlock ?: bodyBlock)
         visit(node.body)
         generator.exitBreakableScope()
         generator.exitContinuableScope()
 
-        if (node.incrementer != null)
+        if (node.incrementer != null) {
+            generator.add(Jump(incrementerBlock!!))
+            generator.currentBlock = incrementerBlock
             visit(node.incrementer)
+        }
 
         generator.add(Jump(testBlock ?: bodyBlock))
 
