@@ -828,7 +828,7 @@ class Transformer : ASTVisitor {
         when (node.op) {
             UnaryOperator.Void -> generator.add(LdaUndefined)
             UnaryOperator.Typeof -> generator.add(TypeOf)
-            UnaryOperator.Plus -> TODO()
+            UnaryOperator.Plus -> generator.add(ToNumber)
             UnaryOperator.Minus -> generator.add(Negate)
             UnaryOperator.BitwiseNot -> generator.add(BitwiseNot)
             UnaryOperator.Not -> generator.add(ToBooleanLogicalNot)
