@@ -1,13 +1,14 @@
 package me.mattco.reeva.runtime.objects
 
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.primitives.JSNumber
 import me.mattco.reeva.runtime.primitives.JSString
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 
-data class PropertyKey private constructor(internal val value: Any) {
+class PropertyKey private constructor(internal val value: Any) {
     val isString: Boolean
         get() = value is String
     val isSymbol: Boolean
@@ -67,7 +68,8 @@ data class PropertyKey private constructor(internal val value: Any) {
                 if (long != null) {
                     if (long in 0..Int.MAX_VALUE)
                         return PropertyKey(long.toInt())
-                    return PropertyKey(long)
+                    if (long in 0 until Operations.MAX_ARRAY_INDEX)
+                        return PropertyKey(long)
                 }
                 return PropertyKey(string)
             }

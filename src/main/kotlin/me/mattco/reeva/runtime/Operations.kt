@@ -51,6 +51,7 @@ object Operations {
     const val MAX_15BIT_INT = 1 shl 15
     const val MAX_8BIT_INT = 1 shl 8
     const val MAX_7BIT_INT = 1 shl 7
+    const val MAX_ARRAY_INDEX = MAX_32BIT_INT - 1L
 
     val MAX_64BIT_INT = BigInteger(
         1, byteArrayOf(

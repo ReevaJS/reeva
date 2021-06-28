@@ -90,9 +90,13 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
             return true
         }
 
-        if (property.isInt && property.asInt >= 0 ||
-            (property.isString && property.asString.toIntOrNull().let { it != null && it >= 0 })
-        ) {
+        val arrayIndex = when {
+            property.isInt -> property.asInt.toLong()
+            property.isLong -> property.asLong
+            else -> null
+        }
+
+        if (arrayIndex != null) {
             val oldLenDesc = getOwnPropertyDescriptor("length")
             expect(oldLenDesc != null)
             ecmaAssert(oldLenDesc.isDataDescriptor)
@@ -103,7 +107,7 @@ open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = re
             }
             ecmaAssert(oldLen >= 0)
 
-            val index = Operations.toUint32(realm, property.asValue).asInt
+            val index = arrayIndex % Operations.MAX_32BIT_INT
             if (index >= oldLen && !oldLenDesc.isWritable)
                 return false
 
