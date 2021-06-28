@@ -22,25 +22,25 @@ class Parser(val source: String) {
     private var inBreakContext = false
     private val labelStack = LabelStack()
 
-    val reporter = ErrorReporter(this)
+    internal val reporter = ErrorReporter(this)
 
     private val tokenQueue = LinkedBlockingQueue<Token>()
     private val receivedTokenList = LinkedList<Token>()
     private var lastConsumedToken = Token.INVALID
 
-    var token: Token = Token.INVALID
+    private var token: Token = Token.INVALID
 
-    val tokenType: TokenType
+    private val tokenType: TokenType
         inline get() = token.type
-    val isDone: Boolean
+    private val isDone: Boolean
         inline get() = token === Token.INVALID
 
-    val sourceStart: TokenLocation
+    internal val sourceStart: TokenLocation
         inline get() = token.start
-    val sourceEnd: TokenLocation
+    internal val sourceEnd: TokenLocation
         inline get() = token.end
 
-    lateinit var scope: Scope
+    internal lateinit var scope: Scope
 
     private fun initLexer() {
         Reeva.threadPool.submit {
@@ -79,9 +79,28 @@ class Parser(val source: String) {
         }
     }
 
-    @Throws(ParsingException::class)
-    fun parseModule(): ModuleNode {
+    fun parseModule(): ParsingResult {
         TODO()
+    }
+
+    fun parseFunction(expectedKind: Operations.FunctionKind): ParsingResult {
+        return try {
+            initLexer()
+
+            val globalScope = GlobalScope()
+            scope = globalScope
+
+            val function = parseFunctionDeclaration()
+            expect(function.kind == expectedKind)
+
+            globalScope.onFinish()
+
+            ParsingResult.Success(function)
+        } catch (e: ParsingException) {
+            ParsingResult.ParseError(e.message!!, e.start, e.end)
+        } catch (e: Throwable) {
+            ParsingResult.InternalError(e)
+        }
     }
 
     private fun parseScriptImpl(): ScriptNode = nps {

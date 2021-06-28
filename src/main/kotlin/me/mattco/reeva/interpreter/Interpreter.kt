@@ -842,6 +842,10 @@ class Interpreter(
     }
 
     companion object {
-        fun wrap(info: FunctionInfo, realm: Realm) = NormalIRFunction(realm, info, null).initialize()
+        fun wrap(
+            info: FunctionInfo,
+            realm: Realm,
+            outerEnvRecord: EnvRecord? = null,
+        ) = NormalIRFunction(realm, info, outerEnvRecord).initialize()
     }
 }

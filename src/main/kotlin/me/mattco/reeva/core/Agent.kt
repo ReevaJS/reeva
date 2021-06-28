@@ -1,6 +1,7 @@
 package me.mattco.reeva.core
 
 import me.mattco.reeva.Reeva
+import me.mattco.reeva.ast.ScriptNode
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.interpreter.ExecutionResult
 import me.mattco.reeva.interpreter.Interpreter
@@ -38,7 +39,7 @@ class Agent {
                 astResult.start,
                 astResult.end
             )
-            is ParsingResult.Success -> astResult.script
+            is ParsingResult.Success -> astResult.node as ScriptNode
         }
 
         if (printAST) {

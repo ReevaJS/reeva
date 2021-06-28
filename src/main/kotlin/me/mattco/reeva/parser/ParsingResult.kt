@@ -1,9 +1,9 @@
 package me.mattco.reeva.parser
 
-import me.mattco.reeva.ast.ScriptNode
+import me.mattco.reeva.ast.ASTNode
 
 sealed class ParsingResult {
-    class Success(val script: ScriptNode) : ParsingResult()
+    class Success(val node: ASTNode) : ParsingResult()
 
     class ParseError(val reason: String, val start: TokenLocation, val end: TokenLocation) : ParsingResult()
 

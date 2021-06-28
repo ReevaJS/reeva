@@ -33,25 +33,40 @@ class Transformer : ASTVisitor {
         if (::generator.isInitialized)
             throw IllegalStateException("Cannot re-use an IRTransformer")
 
-        generator = Generator(1)
+        return when (node) {
+            is ModuleNode -> TODO()
+            is ScriptNode -> {
+                generator = Generator(1)
 
-        if (node is ModuleNode)
-            TODO()
+                globalDeclarationInstantiation(node.scope) {
+                    visit(node.statements)
+                    generator.addIfNotTerminated(Return)
+                }
 
-        expect(node is ScriptNode)
+                FunctionInfo(
+                    null,
+                    generator.finish(),
+                    1,
+                    node.scope.isStrict,
+                    isTopLevelScript = true
+                )
+            }
+            is FunctionDeclarationNode -> {
+                generator = Generator(node.parameters.size + 1)
 
-        globalDeclarationInstantiation(node.scope) {
-            visit(node.statements)
-            generator.addIfNotTerminated(Return)
+                makeFunctionInfo(
+                    node.identifier.identifierName,
+                    node.parameters,
+                    node.body,
+                    node.functionScope,
+                    node.bodyScope,
+                    node.functionScope.isStrict,
+                    false,
+                    node.kind,
+                )
+            }
+            else -> TODO()
         }
-
-        return FunctionInfo(
-            null,
-            generator.finish(),
-            1,
-            node.scope.isStrict,
-            isTopLevelScript = true
-        )
     }
 
     private fun enterScope(scope: Scope) {
@@ -663,6 +678,32 @@ class Transformer : ASTVisitor {
         val prevGenerator = generator
         generator = Generator(parameters.size + 1)
 
+        val info = makeFunctionInfo(
+            name,
+            parameters,
+            body,
+            functionScope,
+            bodyScope,
+            isStrict,
+            isLexical,
+            kind,
+        )
+
+        generator = prevGenerator
+        val closureOp = if (kind.isGenerator) ::CreateGeneratorClosure else ::CreateClosure
+        generator.add(closureOp(generator.intern(info)))
+    }
+
+    private fun makeFunctionInfo(
+        name: String,
+        parameters: ParameterList,
+        body: ASTNode,
+        functionScope: Scope,
+        bodyScope: Scope,
+        isStrict: Boolean,
+        isLexical: Boolean,
+        kind: Operations.FunctionKind,
+    ): FunctionInfo {
         functionDeclarationInstantiation(
             parameters,
             functionScope,
@@ -682,7 +723,7 @@ class Transformer : ASTVisitor {
             generator.addIfNotTerminated(Return)
         }
 
-        val info = FunctionInfo(
+        return FunctionInfo(
             name,
             generator.finish(),
             parameters.size + 1,
@@ -690,10 +731,6 @@ class Transformer : ASTVisitor {
             isTopLevelScript = false,
             parameters,
         )
-
-        generator = prevGenerator
-        val closureOp = if (kind.isGenerator) ::CreateGeneratorClosure else ::CreateClosure
-        generator.add(closureOp(generator.intern(info)))
     }
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {
