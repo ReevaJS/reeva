@@ -672,7 +672,7 @@ class Interpreter(
 
     override fun visitCreateClosure(functionInfoIndex: Int) {
         val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
-        accumulator = IRFunction(realm, newInfo).initialize()
+        accumulator = IRFunction(realm, newInfo, realm.lexEnv).initialize()
     }
 
     override fun visitCreateGeneratorClosure(functionInfoIndex: Int) {
@@ -775,7 +775,7 @@ class Interpreter(
         Throw,
     }
 
-    class IRFunction(realm: Realm, val info: FunctionInfo) : JSFunction(realm, info.isStrict) {
+    class IRFunction(realm: Realm, val info: FunctionInfo, val outerEnvRecord: EnvRecord?) : JSFunction(realm, info.isStrict) {
         override fun init() {
             super.init()
 
@@ -786,7 +786,7 @@ class Interpreter(
             val envRecord = if (info.isTopLevelScript) {
                 GlobalEnvRecord(realm, info.isStrict)
             } else {
-                FunctionEnvRecord(realm, info.isStrict, realm.lexEnv, this)
+                FunctionEnvRecord(realm, info.isStrict, outerEnvRecord!!, this)
             }
 
             return realm.withEnv(envRecord) {
@@ -799,6 +799,9 @@ class Interpreter(
         }
     }
 
+    // This does not need an outerEnvRecord field as it's envrecord is initialized in the
+    // init method, which is invoked immediately after construction (so realm.lexEnv is
+    // guaranteed to not be null)
     class IRGeneratorFunction(realm: Realm, val info: FunctionInfo) : JSFunction(realm, info.isStrict) {
         lateinit var generatorObject: JSGeneratorObject
         lateinit var envRecord: EnvRecord
@@ -823,6 +826,6 @@ class Interpreter(
     }
 
     companion object {
-        fun wrap(info: FunctionInfo, realm: Realm) = IRFunction(realm, info).initialize()
+        fun wrap(info: FunctionInfo, realm: Realm) = IRFunction(realm, info, null).initialize()
     }
 }
