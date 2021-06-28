@@ -7,10 +7,6 @@ import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 
-/**
- * Represents a key in a JSObject's property map. This class is extremely useless
- * at the moment, but will be used later on when Symbol support is added
- */
 data class PropertyKey private constructor(internal val value: Any) {
     val isString: Boolean
         get() = value is String
