@@ -3261,11 +3261,11 @@ object Operations {
         Frozen,
     }
 
-    enum class FunctionKind(val prefix: String) {
+    enum class FunctionKind(val prefix: String, val isAsync: Boolean = false, val isGenerator: Boolean = false) {
         Normal("function"),
-        Generator("function*"),
-        Async("async function"),
-        AsyncGenerator("async function*"),
+        Async("async function", isAsync = true),
+        Generator("function*", isGenerator = true),
+        AsyncGenerator("async function*", isAsync = true, isGenerator = true),
     }
 
     enum class IteratorHint {

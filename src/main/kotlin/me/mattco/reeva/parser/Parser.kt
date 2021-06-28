@@ -5,6 +5,7 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 import java.util.*
@@ -669,10 +670,10 @@ class Parser(val source: String) {
      *     function BindingIdentifier ( FormalParameters ) { FunctionBody }
      *     [+Default] function ( FormalParameters ) { FunctionBody }
      */
-    private fun parseFunctionDeclaration(): StatementNode = nps {
+    private fun parseFunctionDeclaration(): FunctionDeclarationNode = nps {
         val declarationScope = scope.parentHoistingScope
-        val (identifier, params, body, functionScope, bodyScope, type) = parseFunctionHelper(isDeclaration = true)
-        FunctionDeclarationNode(identifier!!, params, body, functionScope, bodyScope, type).also {
+        val (identifier, params, body, functionScope, bodyScope, kind) = parseFunctionHelper(isDeclaration = true)
+        FunctionDeclarationNode(identifier!!, params, body, functionScope, bodyScope, kind).also {
             it.scope = declarationScope
 
             it.variable = Variable(
@@ -702,7 +703,7 @@ class Parser(val source: String) {
         val body: BlockNode,
         val functionScope: Scope,
         val bodyScope: Scope,
-        val type: FunctionType,
+        val type: Operations.FunctionKind,
     ) : ASTNodeBase()
 
     private fun parseFunctionHelper(isDeclaration: Boolean): FunctionTemp = nps {
@@ -719,10 +720,10 @@ class Parser(val source: String) {
         } else false
 
         val type = when {
-            isAsync && isGenerator -> FunctionType.AsyncGenerator
-            isAsync -> FunctionType.Async
-            isGenerator -> FunctionType.Generator
-            else -> FunctionType.Normal
+            isAsync && isGenerator -> Operations.FunctionKind.AsyncGenerator
+            isAsync -> Operations.FunctionKind.Async
+            isGenerator -> Operations.FunctionKind.Generator
+            else -> Operations.FunctionKind.Normal
         }
 
         // TODO: Allow no identifier in default export
@@ -1340,11 +1341,11 @@ class Parser(val source: String) {
                     reporter.unexpectedToken(tokenType)
 
                 val type = if (identifier == "get") {
-                    MethodDefinitionNode.Type.Getter
-                } else MethodDefinitionNode.Type.Setter
+                    MethodDefinitionNode.Kind.Getter
+                } else MethodDefinitionNode.Kind.Setter
 
                 type to true
-            } else MethodDefinitionNode.Type.Normal to false
+            } else MethodDefinitionNode.Kind.Normal to false
 
             val methodName = if (needsNewName) parsePropertyName() else name
 
@@ -1580,7 +1581,7 @@ class Parser(val source: String) {
             }
         }
 
-        ArrowFunctionNode(parameters, body, functionScope, bodyScope, FunctionType.Normal).also {
+        ArrowFunctionNode(parameters, body, functionScope, bodyScope, Operations.FunctionKind.Normal).also {
             it.scope = scope
             scope = scope.outer!!
             if (functionScope != bodyScope)

@@ -4,6 +4,7 @@ import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.statements.ASTListNode
 import me.mattco.reeva.ast.statements.BlockNode
 import me.mattco.reeva.parser.Scope
+import me.mattco.reeva.runtime.Operations
 
 typealias ArgumentList = ASTListNode<ArgumentNode>
 
@@ -45,20 +46,13 @@ class Parameter(
     }
 }
 
-enum class FunctionType(val isAsync: Boolean = false, val isGenerator: Boolean = false) {
-    Normal,
-    Async(isAsync = true),
-    Generator(isGenerator = true),
-    AsyncGenerator(isAsync = true, isGenerator = true),
-}
-
 class FunctionDeclarationNode(
     val identifier: BindingIdentifierNode,
     val parameters: ParameterList,
     val body: BlockNode,
     val functionScope: Scope,
     val bodyScope: Scope,
-    val type: FunctionType,
+    val kind: Operations.FunctionKind,
 ) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), StatementNode {
     override var variable by identifier::variable
 }
@@ -69,7 +63,7 @@ class FunctionExpressionNode(
     val body: BlockNode,
     val functionScope: Scope,
     val bodyScope: Scope,
-    val type: FunctionType,
+    val kind: Operations.FunctionKind,
 ) : NodeWithScope(listOfNotNull(identifier) + parameters + body), ExpressionNode
 
 class ArrowFunctionNode(
@@ -77,5 +71,5 @@ class ArrowFunctionNode(
     val body: ASTNode, // BlockNode or ExpressionNode
     val functionScope: Scope,
     val bodyScope: Scope,
-    val type: FunctionType,
+    val kind: Operations.FunctionKind,
 ) : NodeWithScope(parameters + body), ExpressionNode

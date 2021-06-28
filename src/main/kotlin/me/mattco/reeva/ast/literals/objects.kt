@@ -5,6 +5,7 @@ import me.mattco.reeva.ast.expressions.SuperCallExpressionNode
 import me.mattco.reeva.ast.statements.ASTListNode
 import me.mattco.reeva.ast.statements.BlockNode
 import me.mattco.reeva.parser.Scope
+import me.mattco.reeva.runtime.Operations
 
 typealias PropertyDefinitionList = ASTListNode<Property>
 
@@ -41,7 +42,7 @@ class MethodDefinitionNode(
     val body: BlockNode,
     val functionScope: Scope,
     val bodyScope: Scope,
-    val type: Type
+    val kind: Kind
 ) : NodeWithScope(listOf(propName) + parameters + body) {
     fun isConstructor(): Boolean {
         return propName.type == PropertyName.Type.Identifier && propName.expression.let {
@@ -52,7 +53,7 @@ class MethodDefinitionNode(
     fun containsSuperCall() = parameters.any { it.containsAny<SuperCallExpressionNode>() } ||
         body.containsAny<SuperCallExpressionNode>()
 
-    enum class Type {
+    enum class Kind {
         Normal,
         Getter,
         Setter,
@@ -60,11 +61,11 @@ class MethodDefinitionNode(
         Async,
         AsyncGenerator;
 
-        fun toFunctionType() = when (this) {
-            Generator -> FunctionType.Generator
-            Async -> FunctionType.Async
-            AsyncGenerator -> FunctionType.AsyncGenerator
-            else -> FunctionType.Normal
+        fun toFunctionKind() = when (this) {
+            Generator -> Operations.FunctionKind.Generator
+            Async -> Operations.FunctionKind.Async
+            AsyncGenerator -> Operations.FunctionKind.AsyncGenerator
+            else -> Operations.FunctionKind.Normal
         }
     }
 }

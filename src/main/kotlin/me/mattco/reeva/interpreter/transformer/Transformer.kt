@@ -9,6 +9,7 @@ import me.mattco.reeva.interpreter.JumpTable
 import me.mattco.reeva.interpreter.transformer.opcodes.*
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 import java.math.BigInteger
@@ -467,9 +468,9 @@ class Transformer : ASTVisitor {
             node.body,
             node.functionScope,
             node.bodyScope,
-            node.scope.isStrict,
+            node.functionScope.isStrict,
             false,
-            node.type,
+            node.kind,
         )
     }
 
@@ -480,9 +481,9 @@ class Transformer : ASTVisitor {
             node.body,
             node.functionScope,
             node.bodyScope,
-            node.scope.isStrict,
+            node.functionScope.isStrict,
             true,
-            node.type,
+            node.kind,
         )
     }
 
@@ -639,7 +640,7 @@ class Transformer : ASTVisitor {
                 function.bodyScope,
                 function.scope.isStrict || function.functionScope.isStrict || function.bodyScope.isStrict,
                 false, // TODO
-                function.type,
+                function.kind,
             )
 
             storeVariable(function.variable, function.scope)
@@ -654,9 +655,9 @@ class Transformer : ASTVisitor {
         bodyScope: Scope,
         isStrict: Boolean,
         isLexical: Boolean,
-        type: FunctionType,
+        kind: Operations.FunctionKind,
     ) {
-        if (type.isAsync)
+        if (kind.isAsync)
             TODO()
 
         val prevGenerator = generator
@@ -691,7 +692,7 @@ class Transformer : ASTVisitor {
         )
 
         generator = prevGenerator
-        val closureOp = if (type.isGenerator) ::CreateGeneratorClosure else ::CreateClosure
+        val closureOp = if (kind.isGenerator) ::CreateGeneratorClosure else ::CreateClosure
         generator.add(closureOp(generator.intern(info)))
     }
 
@@ -1254,22 +1255,22 @@ class Transformer : ASTVisitor {
                             method.body,
                             method.functionScope,
                             method.bodyScope,
-                            method.type.toFunctionType(),
+                            method.kind.toFunctionKind(),
                         )
                         functionNode.scope = method.scope
                         visitFunctionExpression(functionNode)
                     }
 
-                    when (method.type) {
-                        MethodDefinitionNode.Type.Normal -> storeObjectProperty(
+                    when (method.kind) {
+                        MethodDefinitionNode.Kind.Normal -> storeObjectProperty(
                             objectReg,
                             method.propName,
                             ::makeFunction
                         )
-                        MethodDefinitionNode.Type.Getter, MethodDefinitionNode.Type.Setter -> {
+                        MethodDefinitionNode.Kind.Getter, MethodDefinitionNode.Kind.Setter -> {
                             val propertyReg = generator.reserveRegister()
                             val methodReg = generator.reserveRegister()
-                            val op = if (method.type == MethodDefinitionNode.Type.Getter) {
+                            val op = if (method.kind == MethodDefinitionNode.Kind.Getter) {
                                 ::DefineGetterProperty
                             } else ::DefineSetterProperty
 
