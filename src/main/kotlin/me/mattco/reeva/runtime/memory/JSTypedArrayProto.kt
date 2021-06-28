@@ -22,6 +22,32 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         defineNativeAccessor("byteLength", attrs { +conf - enum }, ::getByteLength)
         defineNativeAccessor("byteOffset", attrs { +conf - enum }, ::getByteOffset)
         defineNativeAccessor("length", attrs { +conf - enum }, ::getLength)
+
+        defineNativeFunction("at", 1, ::at)
+        defineNativeFunction("copyWithin", 2, ::copyWithin)
+        defineNativeFunction("entries", 0, ::entries)
+        defineNativeFunction("every", 1, ::every)
+        defineNativeFunction("fill", 1, ::fill)
+        defineNativeFunction("filter", 1, ::filter)
+        defineNativeFunction("find", 1, ::find)
+        defineNativeFunction("findIndex", 1, ::findIndex)
+        defineNativeFunction("forEach", 1, ::forEach)
+        defineNativeFunction("includes", 1, ::includes)
+//        defineNativeFunction("indexOf", 1, ::indexOf)
+        defineNativeFunction("join", 1, ::join)
+//        defineNativeFunction("keys", 0, ::keys)
+        defineNativeFunction("lastIndexOf", 1, ::lastIndexOf)
+//        defineNativeFunction("map", 1, ::map)
+        defineNativeFunction("reduce", 1, ::reduce)
+        defineNativeFunction("reduceRight", 1, ::reduceRight)
+        defineNativeFunction("reverse", 0, ::reverse)
+//        defineNativeFunction("set", 1, ::set)
+//        defineNativeFunction("slice", 2, ::slice)
+        defineNativeFunction("some", 1, ::some)
+//        defineNativeFunction("sort", 1, ::sort)
+//        defineNativeFunction("subarray", 2, ::subarray)
+//        defineNativeFunction("toString", 0, ::toString)
+//        defineNativeFunction("values", 0, ::values)
     }
 
     private fun `get@@toStringTag`(realm: Realm, thisValue: JSValue): JSValue {
@@ -78,8 +104,8 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
     private fun copyWithin(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
-        val buffer = Operations.validateTypedArray(realm, thisValue)
         expect(thisValue is JSObject)
+        Operations.validateTypedArray(realm, thisValue)
 
         val (target, start, end) = arguments.takeArgs(0..2)
         val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength)
@@ -93,6 +119,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         if (count <= 0)
             return thisValue
 
+        val buffer = thisValue.getSlotAs<JSValue>(SlotName.ViewedArrayBuffer)
         if (Operations.isDetachedBuffer(buffer))
             Errors.TODO("%TypedArray%.prototype.copyWithin").throwTypeError(realm)
 
@@ -140,16 +167,14 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
     }
 
     private fun every(realm: Realm, arguments: JSArguments): JSValue {
+        Operations.validateTypedArray(realm, arguments.thisValue)
         return JSArrayProto.genericArrayEvery(realm, arguments, lengthProducer, indicesProducer)
     }
 
     private fun fill(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
-        val buffer = Operations.validateTypedArray(realm, thisValue)
+        Operations.validateTypedArray(realm, thisValue)
         expect(thisValue is JSObject)
-
-        if (Operations.isDetachedBuffer(buffer))
-            Errors.TODO("%TypedArray%.prototype.fill isDetachedBuffer")
 
         val (valueArg, start, end) = arguments.takeArgs(0..2)
         val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength).toLong()
@@ -160,8 +185,13 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         val relativeEnd = if (end == JSUndefined) len.toValue() else end.toIntegerOrInfinity(realm)
         val final = Operations.mapWrappedArrayIndex(relativeEnd, len)
 
-        while (k < final)
+        if (Operations.isDetachedBuffer(thisValue.getSlotAs(SlotName.ViewedArrayBuffer)))
+            Errors.TODO("%TypedArray%.prototype.fill isDetachedBuffer").throwTypeError(realm)
+
+        while (k < final) {
             Operations.set(realm, thisValue, k.key(), value, true)
+            k++
+        }
 
         return thisValue
     }
@@ -210,31 +240,31 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         return JSArrayProto.genericArrayIncludes(realm, arguments, lengthProducer, indicesProducer)
     }
 
-//    private fun indexOf(arguments: JSArguments): JSValue {
+//    private fun indexOf(realm: Realm, arguments: JSArguments): JSValue {
 //        return JSArrayProto.genericArrayIndexOf(thisValue, arguments, lengthProducer, indicesProducer)
 //    }
 
-    private fun join(arguments: JSArguments): JSValue {
+    private fun join(realm: Realm, arguments: JSArguments): JSValue {
         return JSArrayProto.genericArrayJoin(realm, arguments, lengthProducer)
     }
 
-    private fun lastIndexOf(arguments: JSArguments): JSValue {
+    private fun lastIndexOf(realm: Realm, arguments: JSArguments): JSValue {
         return JSArrayProto.genericArrayLastIndexOf(realm, arguments, lengthProducer, indicesProducer)
     }
 
-    private fun reduce(arguments: JSArguments): JSValue {
+    private fun reduce(realm: Realm, arguments: JSArguments): JSValue {
         return JSArrayProto.genericArrayReduce(realm, arguments, lengthProducer, indicesProducer, false)
     }
 
-    private fun reduceRight(arguments: JSArguments): JSValue {
+    private fun reduceRight(realm: Realm, arguments: JSArguments): JSValue {
         return JSArrayProto.genericArrayReduce(realm, arguments, lengthProducer, indicesProducer, true)
     }
 
-    private fun reverse(arguments: JSArguments): JSValue {
+    private fun reverse(realm: Realm, arguments: JSArguments): JSValue {
         return JSArrayProto.genericArrayReverse(realm, arguments, lengthProducer, indicesProducer)
     }
 
-    private fun some(arguments: JSArguments): JSValue {
+    private fun some(realm: Realm, arguments: JSArguments): JSValue {
         return JSArrayProto.genericArraySome(realm, arguments, lengthProducer, indicesProducer)
     }
 

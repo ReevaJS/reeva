@@ -2711,14 +2711,13 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("22.2.4.3")
-    fun validateTypedArray(realm: Realm, obj: JSValue): JSObject {
+    fun validateTypedArray(realm: Realm, obj: JSValue) {
         if (!requireInternalSlot(obj, SlotName.TypedArrayName))
             Errors.TODO("validateTypedArray requireInternalSlot").throwTypeError(realm)
         ecmaAssert(obj.hasSlot(SlotName.ViewedArrayBuffer))
         val buffer = obj.getSlotAs<JSObject>(SlotName.ViewedArrayBuffer)
         if (isDetachedBuffer(buffer))
-            Errors.TODO("validateTypedArray isDetachedBuffer")
-        return buffer
+            Errors.TODO("validateTypedArray isDetachedBuffer").throwTypeError(realm)
     }
 
     @JvmStatic
