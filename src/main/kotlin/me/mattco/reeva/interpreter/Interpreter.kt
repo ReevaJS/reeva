@@ -645,10 +645,7 @@ class Interpreter(
 
     override fun visitCreateClosure(functionInfoIndex: Int) {
         val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
-        val function = IRFunction(function.realm, newInfo).initialize()
-        accumulator = function
-        val functionEnv = FunctionEnvRecord(realm, newInfo.isStrict, realm.lexEnv, function)
-        function.envRecord = functionEnv
+        accumulator = IRFunction(function.realm, newInfo).initialize()
     }
 
     override fun visitCreateRestParam() {
@@ -742,6 +739,7 @@ class Interpreter(
 
     class IRFunction(realm: Realm, val info: FunctionInfo) : JSFunction(realm, info.isStrict) {
         lateinit var envRecord: EnvRecord
+            private set
 
         override fun init() {
             super.init()
@@ -750,6 +748,11 @@ class Interpreter(
         }
 
         override fun evaluate(arguments: JSArguments): JSValue {
+            envRecord = if (info.isTopLevelScript) {
+                GlobalEnvRecord(realm, info.isStrict)
+            } else {
+                FunctionEnvRecord(realm, info.isStrict, realm.lexEnv, this)
+            }
             val args = listOf(arguments.thisValue) + arguments
             val result = Interpreter(this, args).interpret()
             if (result is EvaluationResult.RuntimeError)
@@ -759,10 +762,6 @@ class Interpreter(
     }
 
     companion object {
-        fun wrap(info: FunctionInfo, realm: Realm): JSFunction {
-            return IRFunction(realm, info).initialize().also {
-                it.envRecord = GlobalEnvRecord(realm, info.isStrict)
-            }
-        }
+        fun wrap(info: FunctionInfo, realm: Realm) = IRFunction(realm, info).initialize()
     }
 }
