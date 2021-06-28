@@ -691,7 +691,7 @@ class Interpreter(
 
     override fun visitCreateGeneratorClosure(functionInfoIndex: Int) {
         val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
-        accumulator = GeneratorIRFunction(realm, newInfo).initialize()
+        accumulator = GeneratorIRFunction(realm, newInfo, realm.lexEnv).initialize()
     }
 
     override fun visitCreateRestParam() {
@@ -792,10 +792,11 @@ class Interpreter(
     abstract class IRFunction(
         realm: Realm,
         val info: FunctionInfo,
+        val outerEnvRecord: EnvRecord?,
         prototype: JSValue = realm.functionProto,
     ) : JSFunction(realm, info.isStrict, prototype)
 
-    class NormalIRFunction(realm: Realm, info: FunctionInfo, val outerEnvRecord: EnvRecord?) : IRFunction(realm, info) {
+    class NormalIRFunction(realm: Realm, info: FunctionInfo, outerEnvRecord: EnvRecord?) : IRFunction(realm, info, outerEnvRecord) {
         override fun init() {
             super.init()
 
@@ -819,17 +820,18 @@ class Interpreter(
         }
     }
 
-    // This does not need an outerEnvRecord field as it's envrecord is initialized in the
-    // init method, which is invoked immediately after construction (so realm.lexEnv is
-    // guaranteed to not be null)
-    class GeneratorIRFunction(realm: Realm, info: FunctionInfo) : IRFunction(realm, info, realm.generatorFunctionProto) {
+    class GeneratorIRFunction(
+        realm: Realm,
+        info: FunctionInfo,
+        outerEnvRecord: EnvRecord?,
+    ) : IRFunction(realm, info, outerEnvRecord, realm.generatorFunctionProto) {
         lateinit var generatorObject: JSGeneratorObject
         lateinit var envRecord: EnvRecord
 
         override fun init() {
             super.init()
 
-            envRecord = FunctionEnvRecord(realm, info.isStrict, realm.lexEnv, this)
+            envRecord = FunctionEnvRecord(realm, info.isStrict, outerEnvRecord!!, this)
 
             defineOwnProperty("prototype", realm.functionProto)
         }
@@ -837,7 +839,7 @@ class Interpreter(
         override fun evaluate(arguments: JSArguments): JSValue {
             if (!::generatorObject.isInitialized) {
                 expect(!info.isTopLevelScript)
-                val interpreter = Interpreter(realm, this, arguments)
+                val interpreter = Interpreter(realm, this, listOf(arguments.thisValue, *arguments.toTypedArray()))
                 generatorObject = JSGeneratorObject.create(realm, interpreter, envRecord)
             }
 
@@ -850,6 +852,11 @@ class Interpreter(
             info: FunctionInfo,
             realm: Realm,
             outerEnvRecord: EnvRecord? = null,
-        ) = NormalIRFunction(realm, info, outerEnvRecord).initialize()
+            kind: Operations.FunctionKind = Operations.FunctionKind.Normal
+        ) = when (kind) {
+            Operations.FunctionKind.Normal -> NormalIRFunction(realm, info, outerEnvRecord).initialize()
+            Operations.FunctionKind.Generator -> GeneratorIRFunction(realm, info, outerEnvRecord).initialize()
+            else -> TODO()
+        }
     }
 }

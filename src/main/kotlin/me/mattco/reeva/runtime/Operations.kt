@@ -2405,7 +2405,7 @@ object Operations {
         // after the entire script has stopped running (for example, if a function
         // containing a new Function call is executed on the JVM side). This will
         // somehow have to climb up the EnvRecord stack of the calling function.
-        val function = Interpreter.wrap(ir, realm, realm.globalEnv)
+        val function = Interpreter.wrap(ir, realm, realm.globalEnv, kind)
         function.setPrototype(proto)
 
         setFunctionName(realm, function, "anonymous".key())
