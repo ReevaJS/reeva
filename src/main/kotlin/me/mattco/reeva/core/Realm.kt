@@ -168,15 +168,15 @@ class Realm {
     }
 
     internal fun <T> withEnv(env: EnvRecord, block: () -> T): T {
-        val savedVarEnv = varEnv
-        val savedLexEnv = lexEnv
+        val savedVarEnv = varEnvBacker
+        val savedLexEnv = lexEnvBacker
         varEnv = env
         lexEnv = env
         return try {
             block()
         } finally {
-            varEnv = savedVarEnv
-            lexEnv = savedLexEnv
+            varEnvBacker = savedVarEnv
+            lexEnvBacker = savedLexEnv
         }
     }
 
