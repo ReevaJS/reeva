@@ -67,7 +67,7 @@ object Errors {
     object IterableBadNext : Error("iterator must have a callable \"next\" method")
     object NonObjectIteratorReturn : Error("result of <iterator>.next() must be an object")
     class InvalidArrayLength(length: Any) : Error("array length $length is too large")
-    object CalleePropertyAccess : Error("\"callee\" property may not be accessed on unmapped arguments object")
+    object CalleePropertyAccess : Error("\"callee\" property may not be accessed on unmapped arguments objects")
     class NotACtor(value: String) : Error("$value is not a constructor")
     class NotCallable(value: String) : Error("$value is not callable")
     class BadOperator(op: String, lhs: JSValue.Type, rhs: JSValue.Type) : Error("cannot apply operator $op to types $lhs and $rhs")

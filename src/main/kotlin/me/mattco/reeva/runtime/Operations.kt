@@ -4,12 +4,15 @@ package me.mattco.reeva.runtime
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.ASTNode
+import me.mattco.reeva.ast.ParameterList
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
+import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.jvmcompat.JSClassInstanceObject
 import me.mattco.reeva.jvmcompat.JSClassObject
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.arrays.JSArrayObject
+import me.mattco.reeva.runtime.builtins.JSMappedArgumentsObject
 import me.mattco.reeva.runtime.builtins.JSProxyObject
 import me.mattco.reeva.runtime.builtins.JSUnmappedArgumentsObject
 import me.mattco.reeva.runtime.builtins.promises.JSCapabilitiesExecutor
@@ -1935,7 +1938,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("9.4.4.6")
-    fun createUnmappedArgumentsObject(realm: Realm, arguments: JSArguments): JSValue {
+    fun createUnmappedArgumentsObject(realm: Realm, arguments: List<JSValue>): JSValue {
         val obj = JSUnmappedArgumentsObject.create(realm)
         definePropertyOrThrow(
             realm,
@@ -1953,69 +1956,82 @@ object Operations {
             Descriptor(realm.arrayProto.get("values"), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         )
 
-        val throwTypeError = object : JSNativeFunction(realm, "", 0) {
-            override fun evaluate(arguments: JSArguments): JSValue {
-                expect(arguments.newTarget == JSUndefined)
-                Errors.CalleePropertyAccess.throwTypeError(realm)
-            }
+        val calleeGetter = JSNativeFunction.fromLambda(realm, "get callee", 0) { r, _ ->
+            Errors.CalleePropertyAccess.throwTypeError(r)
         }
+
+        val calleeSetter = JSNativeFunction.fromLambda(realm, "set callee", 1) { r, _ ->
+            Errors.CalleePropertyAccess.throwTypeError(r)
+        }
+
         definePropertyOrThrow(
             realm,
             obj,
             "callee".key(),
-            Descriptor(
-                JSAccessor(throwTypeError, throwTypeError),
-                Descriptor.HAS_CONFIGURABLE or Descriptor.HAS_ENUMERABLE
-            )
+            Descriptor(JSAccessor(calleeGetter, calleeSetter), 0),
         )
 
         return obj
     }
 
-    //  TODO
-//    @JvmStatic @ECMAImpl("9.4.4.7")
-//    fun createMappedArgumentsObject(
-//        function: JSFunction,
-//        formals: FormalParametersNode,
-//        arguments: JSArguments,
-//        env: EnvRecord
-//    ): JSMappedArgumentsObject {
-//        ecmaAssert(formals.restParameter == null)
-//        // TODO
-////        ecmaAssert(formals.functionParameters.parameters.all { it.bindingElement.binding.initializer == null })
-//
-//        val realm = Reeva.activeAgent.activeRealm
-//        val obj = JSMappedArgumentsObject.create(realm)
-//        val map = JSObject.create(realm)
-//        obj.parameterMap = map
-//
-//        val parameterNames = formals.boundNames()
-//        arguments.forEachIndexed { index, arg ->
-//            createDataPropertyOrThrow(obj, index.key(), arg)
-//        }
-//
-//        definePropertyOrThrow(obj, "length".key(), Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE))
-//
-//        val mappedNames = mutableListOf<String>()
-//        parameterNames.reversed().forEachIndexed { index, name ->
-//            if (name !in mappedNames) {
-//                mappedNames.add(name)
-//                if (index < arguments.size) {
-//                    val getter = makeArgGetter(name, env)
-//                    val setter = makeArgSetter(name, env)
-//                    map.defineNativeAccessor(index.key(), Descriptor.CONFIGURABLE or Descriptor.HAS_ENUMERABLE, getter, setter)
-//                }
-//            }
-//        }
-//
-//        definePropertyOrThrow(obj, Realm.`@@iterator`.key(), Descriptor(
-//            realm.arrayProto.get("values"),
-//            Descriptor.CONFIGURABLE or Descriptor.WRITABLE
-//        ))
-//        definePropertyOrThrow(obj, "callee".key(), Descriptor(function, Descriptor.CONFIGURABLE or Descriptor.WRITABLE))
-//
-//        return obj
-//    }
+    @JvmStatic @ECMAImpl("9.4.4.7")
+    fun createMappedArgumentsObject(
+        realm: Realm,
+        function: JSObject,
+        parameters: ParameterList,
+        arguments: List<JSValue>,
+        envRecord: EnvRecord,
+    ): JSMappedArgumentsObject {
+        val obj = JSMappedArgumentsObject.create(realm)
+        val map = JSObject.create(realm, JSNull)
+        obj.parameterMap = map
+
+        for ((index, argument) in arguments.withIndex())
+            createDataPropertyOrThrow(realm, obj, PropertyKey.from(index), argument)
+
+        definePropertyOrThrow(
+            realm,
+            obj,
+            "length".key(),
+            Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        )
+
+        val mappedNames = mutableSetOf<String>()
+
+        for (index in parameters.lastIndex downTo 0) {
+            val name = parameters[index].identifier.identifierName
+            if (name !in mappedNames) {
+                mappedNames.add(name)
+                if (index < arguments.size) {
+                    val getter = JSNativeFunction.fromLambda(realm, "", 0) { _, _ ->
+                        envRecord.getBindingValue(name, false)
+                    }
+                    val setter = JSNativeFunction.fromLambda(realm, "", 1) { _, args ->
+                        envRecord.setMutableBinding(name, args.argument(0), false)
+                        JSUndefined
+                    }
+
+                    map.defineOwnProperty(index, JSAccessor(getter, setter), Descriptor.CONFIGURABLE)
+                }
+            }
+        }
+
+        definePropertyOrThrow(
+            realm,
+            obj,
+            Realm.`@@iterator`,
+            Descriptor(realm.arrayProto.get("values"), Descriptor.CONFIGURABLE or Descriptor.WRITABLE),
+        )
+
+        definePropertyOrThrow(
+            realm,
+            obj,
+            "callee".key(),
+            Descriptor(function, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        )
+
+        return obj
+    }
 
     @JvmStatic
     @ECMAImpl("9.4.5.9")

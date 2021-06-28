@@ -15,7 +15,6 @@ import me.mattco.reeva.interpreter.transformer.opcodes.Literal
 import me.mattco.reeva.interpreter.transformer.opcodes.Register
 import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject
-import me.mattco.reeva.runtime.builtins.JSMappedArgumentsObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.generators.JSGeneratorObject
 import me.mattco.reeva.runtime.iterators.JSObjectPropertyIterator
@@ -68,9 +67,12 @@ class JumpTable private constructor(
 
 class Interpreter(
     private val realm: Realm,
-    private val info: FunctionInfo,
+    private val function: IRFunction,
     private val arguments: List<JSValue>
 ) : IrOpcodeVisitor() {
+    private val info: FunctionInfo
+        get() = function.info
+
     private val registers = Registers(info.argCount + info.code.registerCount)
     private var accumulator by registers::accumulator
     private var isDone = false
@@ -647,18 +649,23 @@ class Interpreter(
     }
 
     override fun visitCreateMappedArgumentsObject() {
-        val argsObject = JSMappedArgumentsObject.create(realm, realm.varEnv, info.parameters!!, arguments.drop(1))
+        val argsObject = Operations.createMappedArgumentsObject(realm, function, info.parameters!!, arguments.drop(1), realm.varEnv)
+        createArgumentsBinding(argsObject)
+    }
+
+    override fun visitCreateUnmappedArgumentsObject() {
+        val argsObject = Operations.createUnmappedArgumentsObject(realm, arguments.drop(1))
+        createArgumentsBinding(argsObject)
+    }
+
+    private fun createArgumentsBinding(obj: JSValue) {
         val varEnv = realm.varEnv
         if (varEnv.isStrict) {
             varEnv.createImmutableBinding("arguments", false)
         } else {
             varEnv.createMutableBinding("arguments", false)
         }
-        varEnv.initializeBinding("arguments", argsObject)
-    }
-
-    override fun visitCreateUnmappedArgumentsObject() {
-        // TODO
+        varEnv.initializeBinding("arguments", obj)
     }
 
     override fun visitGetIterator() {
@@ -679,12 +686,12 @@ class Interpreter(
 
     override fun visitCreateClosure(functionInfoIndex: Int) {
         val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
-        accumulator = IRFunction(realm, newInfo, realm.lexEnv).initialize()
+        accumulator = NormalIRFunction(realm, newInfo, realm.lexEnv).initialize()
     }
 
     override fun visitCreateGeneratorClosure(functionInfoIndex: Int) {
         val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
-        accumulator = IRGeneratorFunction(realm, newInfo).initialize()
+        accumulator = GeneratorIRFunction(realm, newInfo).initialize()
     }
 
     override fun visitCreateRestParam() {
@@ -782,7 +789,9 @@ class Interpreter(
         Throw,
     }
 
-    class IRFunction(realm: Realm, val info: FunctionInfo, val outerEnvRecord: EnvRecord?) : JSFunction(realm, info.isStrict) {
+    abstract class IRFunction(realm: Realm, val info: FunctionInfo) : JSFunction(realm, info.isStrict)
+
+    class NormalIRFunction(realm: Realm, info: FunctionInfo, val outerEnvRecord: EnvRecord?) : IRFunction(realm, info) {
         override fun init() {
             super.init()
 
@@ -798,7 +807,7 @@ class Interpreter(
 
             return realm.withEnv(envRecord) {
                 val args = listOf(arguments.thisValue) + arguments
-                val result = Interpreter(realm, info, args).interpret()
+                val result = Interpreter(realm, this, args).interpret()
                 if (result is EvaluationResult.RuntimeError)
                     throw ThrowException(result.value)
                 result.value
@@ -809,7 +818,7 @@ class Interpreter(
     // This does not need an outerEnvRecord field as it's envrecord is initialized in the
     // init method, which is invoked immediately after construction (so realm.lexEnv is
     // guaranteed to not be null)
-    class IRGeneratorFunction(realm: Realm, val info: FunctionInfo) : JSFunction(realm, info.isStrict) {
+    class GeneratorIRFunction(realm: Realm, info: FunctionInfo) : IRFunction(realm, info) {
         lateinit var generatorObject: JSGeneratorObject
         lateinit var envRecord: EnvRecord
 
@@ -824,7 +833,7 @@ class Interpreter(
         override fun evaluate(arguments: JSArguments): JSValue {
             if (!::generatorObject.isInitialized) {
                 expect(!info.isTopLevelScript)
-                val interpreter = Interpreter(realm, info, arguments)
+                val interpreter = Interpreter(realm, this, arguments)
                 generatorObject = JSGeneratorObject.create(realm, interpreter, envRecord)
             }
 
@@ -833,6 +842,6 @@ class Interpreter(
     }
 
     companion object {
-        fun wrap(info: FunctionInfo, realm: Realm) = IRFunction(realm, info, null).initialize()
+        fun wrap(info: FunctionInfo, realm: Realm) = NormalIRFunction(realm, info, null).initialize()
     }
 }

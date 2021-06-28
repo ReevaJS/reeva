@@ -1,54 +1,17 @@
 package me.mattco.reeva.runtime.builtins
 
-import me.mattco.reeva.ast.ParameterList
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.SlotName
-import me.mattco.reeva.runtime.functions.JSFunction
-import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.objects.PropertyKey
-import me.mattco.reeva.runtime.primitives.JSAccessor
 import me.mattco.reeva.runtime.primitives.JSEmpty
-import me.mattco.reeva.runtime.primitives.JSNull
-import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.ecmaAssert
 
-class JSMappedArgumentsObject private constructor(
-    realm: Realm,
-    private val envRecord: EnvRecord,
-    private val parameters: ParameterList,
-    private val arguments: List<JSValue>,
-) : JSObject(realm, realm.objectProto) {
+class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     var parameterMap by lateinitSlot<JSObject>(SlotName.ParameterMap)
-
-    override fun init() {
-        super.init()
-
-        @Suppress("RemoveRedundantQualifierName")
-        parameterMap = JSObject.create(realm, JSNull)
-
-        for ((index, argument) in arguments.withIndex())
-            Operations.createDataPropertyOrThrow(realm, this, PropertyKey.from(index), argument)
-
-        val mappedNames = mutableSetOf<String>()
-
-        for (index in parameters.lastIndex downTo 0) {
-            val name = parameters[index].identifier.identifierName
-            if (name !in mappedNames) {
-                mappedNames.add(name)
-                if (index < arguments.size) {
-                    val getter = makeArgGetter(name)
-                    val setter = makeArgSetter(name)
-
-                    parameterMap.defineOwnProperty(index, JSAccessor(getter, setter), Descriptor.CONFIGURABLE)
-                }
-            }
-        }
-    }
 
     override fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
         val desc = super.getOwnPropertyDescriptor(property) ?: return null
@@ -115,25 +78,7 @@ class JSMappedArgumentsObject private constructor(
         return result
     }
 
-    private fun makeArgGetter(name: String): JSFunction {
-        return JSNativeFunction.fromLambda(realm, "", 0) { _, _ ->
-            envRecord.getBindingValue(name, false)
-        }
-    }
-
-    private fun makeArgSetter(name: String): JSFunction {
-        return JSNativeFunction.fromLambda(realm, "", 1) { _, args ->
-            envRecord.setMutableBinding(name, args.argument(0), false)
-            JSUndefined
-        }
-    }
-
     companion object {
-        fun create(
-            realm: Realm,
-            envRecord: EnvRecord,
-            parameters: ParameterList,
-            arguments: List<JSValue>
-        ) = JSMappedArgumentsObject(realm, envRecord, parameters, arguments).initialize()
+        fun create(realm: Realm) = JSMappedArgumentsObject(realm).initialize()
     }
 }
