@@ -94,11 +94,11 @@ class Transformer : ASTVisitor {
         visit(node.condition)
 
         if (node.falseBlock == null) {
-            generator.ifHelper(::JumpIfTrue) {
+            generator.ifHelper(::JumpIfToBooleanTrue) {
                 visit(node.trueBlock)
             }
         } else {
-            generator.ifElseHelper(::JumpIfTrue, {
+            generator.ifElseHelper(::JumpIfToBooleanTrue, {
                 visit(node.trueBlock)
             }, {
                 visit(node.falseBlock)
@@ -113,7 +113,7 @@ class Transformer : ASTVisitor {
         generator.currentBlock = headBlock
         visit(node.body)
         visit(node.condition)
-        generator.add(JumpIfTrue(headBlock, doneBlock))
+        generator.add(JumpIfToBooleanTrue(headBlock, doneBlock))
         generator.currentBlock = doneBlock
     }
 
@@ -124,7 +124,7 @@ class Transformer : ASTVisitor {
 
         generator.currentBlock = testBlock
         visit(node.condition)
-        generator.add(JumpIfTrue(bodyBlock, doneBlock))
+        generator.add(JumpIfToBooleanTrue(bodyBlock, doneBlock))
         generator.currentBlock = bodyBlock
         visit(node.body)
         generator.add(Jump(testBlock))
@@ -152,7 +152,7 @@ class Transformer : ASTVisitor {
             generator.add(Jump(testBlock!!))
             generator.currentBlock = testBlock
             visit(node.condition)
-            generator.add(JumpIfTrue(bodyBlock, doneBlock))
+            generator.add(JumpIfToBooleanTrue(bodyBlock, doneBlock))
         }
 
         if (node.incrementer != null)
@@ -951,8 +951,7 @@ class Transformer : ASTVisitor {
 
     override fun visitConditionalExpression(node: ConditionalExpressionNode) {
         visit(node.predicate)
-        generator.add(ToBoolean)
-        generator.ifElseHelper(::JumpIfTrue, {
+        generator.ifElseHelper(::JumpIfToBooleanTrue, {
             visit(node.ifTrue)
         }, {
             visit(node.ifFalse)
