@@ -110,6 +110,7 @@ class Transformer : ASTVisitor {
         val headBlock = generator.makeBlock()
         val doneBlock = generator.makeBlock()
 
+        generator.add(Jump(headBlock))
         generator.currentBlock = headBlock
         visit(node.body)
         visit(node.condition)
@@ -122,6 +123,7 @@ class Transformer : ASTVisitor {
         val bodyBlock = generator.makeBlock()
         val doneBlock = generator.makeBlock()
 
+        generator.add(Jump(testBlock))
         generator.currentBlock = testBlock
         visit(node.condition)
         generator.add(JumpIfToBooleanTrue(bodyBlock, doneBlock))
