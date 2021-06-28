@@ -18,7 +18,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     override fun init() {
         super.init()
 
-        defineNativeAccessor(Realm.`@@species`.key(), attrs { +conf -enum }, ::`get@@species`, null, "get [Symbol.species]")
+        defineNativeAccessor(Realm.`@@species`.key(), attrs { +conf -enum }, ::`get@@species`, null, "[Symbol.species]")
         defineNativeFunction("isArray", 1, Descriptor.CONFIGURABLE or Descriptor.WRITABLE, ::isArray)
         defineNativeFunction("from", 1, ::from)
         defineNativeFunction("of", 0, ::of)
