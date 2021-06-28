@@ -111,10 +111,7 @@ class JSRegExpObject private constructor(
                     else -> throw e
                 }.throwSyntaxError(realm)
             } catch (e: SyntaxException) {
-                when (e.message) {
-                    ErrorMessages.END_PATTERN_AT_ESCAPE -> Errors.RegExp.BadEscape
-                    else -> throw e
-                }.throwSyntaxError(realm)
+                Errors.Custom("Bad RegExp pattern: ${e.message}").throwSyntaxError(realm)
             }
         }
 
