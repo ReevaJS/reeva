@@ -16,6 +16,8 @@ import me.mattco.reeva.runtime.builtins.regexp.JSRegExpStringIteratorProto
 import me.mattco.reeva.runtime.errors.*
 import me.mattco.reeva.runtime.functions.JSFunctionCtor
 import me.mattco.reeva.runtime.functions.JSFunctionProto
+import me.mattco.reeva.runtime.functions.generators.JSGeneratorFunctionProto
+import me.mattco.reeva.runtime.functions.generators.JSGeneratorObjectProto
 import me.mattco.reeva.runtime.global.JSConsole
 import me.mattco.reeva.runtime.global.JSConsoleProto
 import me.mattco.reeva.runtime.iterators.*
@@ -69,6 +71,8 @@ class Realm {
     val objectPropertyIteratorProto by lazy { JSObjectPropertyIteratorProto.create(this) }
     val listIteratorProto by lazy { JSListIteratorProto.create(this) }
     val regExpStringIteratorProto by lazy { JSRegExpStringIteratorProto.create(this) }
+    val generatorObjectProto by lazy { JSGeneratorObjectProto.create(this) }
+    val generatorFunctionProto by lazy { JSGeneratorFunctionProto.create(this) }
     val consoleProto by lazy { JSConsoleProto.create(this) }
 
     val dataViewProto by lazy { JSDataViewProto.create(this) }

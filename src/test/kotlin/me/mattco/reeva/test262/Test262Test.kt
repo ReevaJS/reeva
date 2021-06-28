@@ -142,7 +142,6 @@ class Test262Test(
 
     companion object {
         private val excludedFeatures = listOf(
-            "generators",
             "async-functions",
             "async-iteration",
             "class-static-methods-private",

@@ -1,8 +1,8 @@
 package me.mattco.reeva.core.environment
 
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.ecmaAssert
@@ -11,7 +11,7 @@ class FunctionEnvRecord(
     realm: Realm,
     isStrict: Boolean,
     outer: EnvRecord,
-    val functionObject: Interpreter.IRFunction,
+    val functionObject: JSFunction,
 ) : DeclarativeEnvRecord(realm, isStrict, outer) {
     private lateinit var thisValue: JSValue
     private lateinit var thisBindingStatus: BindingStatus

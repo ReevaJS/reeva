@@ -476,6 +476,10 @@ object Return : Opcode() {
     override val isTerminator = true
 }
 
+class Yield(val continuationBlock: Block) : Opcode() {
+    override val isTerminator = true
+}
+
 /**
  * Throws the value in the accumulator
  */
@@ -557,6 +561,14 @@ object ForInEnumerate : Opcode()
  * functionInfoIndex: the constant pool index entry with the FunctionInfo object
  */
 class CreateClosure(val functionInfoIndex: Index) : Opcode()
+
+/**
+ * Creates a generator function object, referencing a FunctionInfo object stored
+ * in the constant pool
+ *
+ * functionInfoIndex: the constant pool index entry with the FunctionInfo object
+ */
+class CreateGeneratorClosure(val functionInfoIndex: Index) : Opcode()
 
 /**
  * Collects excess parameters into an array

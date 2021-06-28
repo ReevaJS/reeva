@@ -96,6 +96,7 @@ abstract class IrOpcodeVisitor {
             is Jump -> visitJump(opcode.ifBlock)
 
             Return -> visitReturn()
+            is Yield -> visitYield(opcode.continuationBlock)
             Throw -> visitThrow()
             is ThrowConstReassignment -> visitThrowConstReassignment(opcode.nameIndex)
             is ThrowUseBeforeInitIfEmpty -> visitThrowUseBeforeInitIfEmpty(opcode.nameIndex)
@@ -111,6 +112,7 @@ abstract class IrOpcodeVisitor {
             IteratorResultValue -> visitIteratorResultValue()
             ForInEnumerate -> visitForInEnumerate()
             is CreateClosure -> visitCreateClosure(opcode.functionInfoIndex)
+            is CreateGeneratorClosure -> visitCreateGeneratorClosure(opcode.functionInfoIndex)
             CreateRestParam -> visitCreateRestParam()
             DebugBreakpoint -> visitDebugBreakpoint()
         }
@@ -276,6 +278,8 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitReturn()
 
+    abstract fun visitYield(continuationBlock: Block)
+
     abstract fun visitThrow()
 
     abstract fun visitThrowConstReassignment(nameIndex: Index)
@@ -301,6 +305,8 @@ abstract class IrOpcodeVisitor {
     abstract fun visitIteratorResultValue()
 
     abstract fun visitCreateClosure(functionInfoIndex: Int)
+
+    abstract fun visitCreateGeneratorClosure(functionInfoIndex: Int)
 
     abstract fun visitCreateRestParam()
 

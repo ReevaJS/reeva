@@ -687,7 +687,8 @@ class Transformer : ASTVisitor {
         )
 
         generator = prevGenerator
-        generator.add(CreateClosure(generator.intern(info)))
+        val closureOp = if (type.isGenerator) ::CreateGeneratorClosure else ::CreateClosure
+        generator.add(closureOp(generator.intern(info)))
     }
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {
@@ -1164,7 +1165,15 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitYieldExpression(node: YieldExpressionNode) {
-        TODO()
+        if (node.expression == null) {
+            generator.add(LdaUndefined)
+        } else {
+            visit(node.expression)
+        }
+
+        val continuationBlock = generator.makeBlock()
+        generator.add(Yield(continuationBlock))
+        generator.currentBlock = continuationBlock
     }
 
     override fun visitParenthesizedExpression(node: ParenthesizedExpressionNode) {

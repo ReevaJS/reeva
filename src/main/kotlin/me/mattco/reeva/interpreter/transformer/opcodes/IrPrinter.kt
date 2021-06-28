@@ -169,6 +169,7 @@ class IrPrinter(private val info: FunctionInfo) {
             is JumpFromTable -> append(stringifyIndex(opcode.table))
             is Jump -> append(stringifyBlockIndex(opcode.ifBlock))
 
+            is Yield -> append(stringifyBlockIndex(opcode.continuationBlock))
             is ThrowConstReassignment -> append(stringifyIndex(opcode.nameIndex))
             is ThrowUseBeforeInitIfEmpty -> append(stringifyIndex(opcode.nameIndex))
 

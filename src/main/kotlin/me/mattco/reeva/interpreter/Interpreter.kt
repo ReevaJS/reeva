@@ -16,6 +16,7 @@ import me.mattco.reeva.interpreter.transformer.opcodes.Register
 import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.functions.JSFunction
+import me.mattco.reeva.runtime.functions.generators.JSGeneratorObject
 import me.mattco.reeva.runtime.iterators.JSObjectPropertyIterator
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
@@ -65,16 +66,14 @@ class JumpTable private constructor(
 }
 
 class Interpreter(
-    private val function: IRFunction,
-    private val arguments: List<JSValue>,
+    private val realm: Realm,
+    private val info: FunctionInfo,
+    private val arguments: List<JSValue>
 ) : IrOpcodeVisitor() {
-    private val info = function.info
-    private val realm: Realm
-        get() = function.realm
-
     private val registers = Registers(info.argCount + info.code.registerCount)
     private var accumulator by registers::accumulator
     private var isDone = false
+    private var isSuspended = false
     private var exception: ThrowException? = null
     private val mappedCPool = Array<JSValue?>(info.code.constantPool.size) { null }
 
@@ -85,16 +84,9 @@ class Interpreter(
     private var currentBlock = info.code.blocks[0]
     private var ip = 0
 
-    fun interpret(): EvaluationResult {
-        val initialVarEnv = realm.varEnv
-        val initialLexEnv = realm.lexEnv
-        realm.varEnv = function.envRecord
-        realm.lexEnv = function.envRecord
-
-        lexicalDepthStack.add(lexicalDepth)
-
+    fun interpretImpl(): EvaluationResult {
         try {
-            while (!isDone) {
+            while (!isDone && !isSuspended) {
                 try {
                     visit(currentBlock[ip++])
                 } catch (e: ThrowException) {
@@ -117,14 +109,44 @@ class Interpreter(
         } catch (e: Throwable) {
             println("Exception in FunctionInfo ${info.name}, block=${currentBlock.index} opcode ${ip - 1}")
             throw e
-        } finally {
-            realm.varEnv = initialVarEnv
-            realm.lexEnv = initialLexEnv
         }
 
         return if (exception != null) {
             EvaluationResult.RuntimeError(exception!!.value)
         } else EvaluationResult.Success(accumulator)
+    }
+
+    fun interpret(): EvaluationResult {
+        lexicalDepthStack.add(lexicalDepth)
+        return interpretImpl()
+    }
+
+    fun reenterGeneratorFunction(entryMode: GeneratorEntryMode, value: JSValue): JSValue? {
+        if (isDone)
+            return null
+
+        isSuspended = false
+
+        when (entryMode) {
+            GeneratorEntryMode.Next -> {
+                accumulator = value
+            }
+            GeneratorEntryMode.Return -> {
+                isDone = true
+                return value
+            }
+            GeneratorEntryMode.Throw -> {
+                TODO()
+            }
+        }
+
+        val result = interpret()
+
+        if (result is EvaluationResult.RuntimeError)
+            throw ThrowException(result.value)
+
+        expect(result is EvaluationResult.Success)
+        return result.value
     }
 
     private fun jumpTo(block: Block) {
@@ -216,7 +238,7 @@ class Interpreter(
     }
 
     override fun visitCreateArray() {
-        accumulator = JSArrayObject.create(function.realm)
+        accumulator = JSArrayObject.create(realm)
     }
 
     override fun visitStaArrayIndex(arrayReg: Register, index: Literal) {
@@ -231,7 +253,7 @@ class Interpreter(
     }
 
     override fun visitCreateObject() {
-        accumulator = JSObject.create(function.realm)
+        accumulator = JSObject.create(realm)
     }
 
     override fun visitAdd(lhsReg: Register) {
@@ -582,6 +604,11 @@ class Interpreter(
         isDone = true
     }
 
+    override fun visitYield(continuationBlock: Block) {
+        isSuspended = true
+        jumpTo(continuationBlock)
+    }
+
     override fun visitThrow() {
         throw ThrowException(accumulator)
     }
@@ -645,7 +672,12 @@ class Interpreter(
 
     override fun visitCreateClosure(functionInfoIndex: Int) {
         val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
-        accumulator = IRFunction(function.realm, newInfo).initialize()
+        accumulator = IRFunction(realm, newInfo).initialize()
+    }
+
+    override fun visitCreateGeneratorClosure(functionInfoIndex: Int) {
+        val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
+        accumulator = IRGeneratorFunction(realm, newInfo).initialize()
     }
 
     override fun visitCreateRestParam() {
@@ -695,13 +727,6 @@ class Interpreter(
         }
     }
 
-    enum class CallMode {
-        Normal,
-        OneArg,
-        LastSpread,
-        Spread,
-    }
-
     private fun getMappedConstant(index: Int): JSValue {
         return mappedCPool[index] ?: when (val value = info.code.constantPool[index]) {
             is Int -> JSNumber(value)
@@ -737,10 +762,20 @@ class Interpreter(
         }
     }
 
-    class IRFunction(realm: Realm, val info: FunctionInfo) : JSFunction(realm, info.isStrict) {
-        lateinit var envRecord: EnvRecord
-            private set
+    enum class CallMode {
+        Normal,
+        OneArg,
+        LastSpread,
+        Spread,
+    }
 
+    enum class GeneratorEntryMode {
+        Next,
+        Return,
+        Throw,
+    }
+
+    class IRFunction(realm: Realm, val info: FunctionInfo) : JSFunction(realm, info.isStrict) {
         override fun init() {
             super.init()
 
@@ -748,16 +783,50 @@ class Interpreter(
         }
 
         override fun evaluate(arguments: JSArguments): JSValue {
-            envRecord = if (info.isTopLevelScript) {
+            val envRecord = if (info.isTopLevelScript) {
                 GlobalEnvRecord(realm, info.isStrict)
             } else {
                 FunctionEnvRecord(realm, info.isStrict, realm.lexEnv, this)
             }
-            val args = listOf(arguments.thisValue) + arguments
-            val result = Interpreter(this, args).interpret()
-            if (result is EvaluationResult.RuntimeError)
-                throw ThrowException(result.value)
-            return result.value
+
+            val savedVarEnv = realm.varEnv
+            val savedLexEnv = realm.lexEnv
+            realm.varEnv = envRecord
+            realm.lexEnv = envRecord
+
+            return try {
+                val args = listOf(arguments.thisValue) + arguments
+                val result = Interpreter(realm, info, args).interpret()
+                if (result is EvaluationResult.RuntimeError)
+                    throw ThrowException(result.value)
+                result.value
+            } finally {
+                realm.varEnv = savedVarEnv
+                realm.lexEnv = savedLexEnv
+            }
+        }
+    }
+
+    class IRGeneratorFunction(realm: Realm, val info: FunctionInfo) : JSFunction(realm, info.isStrict) {
+        lateinit var generatorObject: JSGeneratorObject
+        lateinit var envRecord: EnvRecord
+
+        override fun init() {
+            super.init()
+
+            envRecord = FunctionEnvRecord(realm, info.isStrict, realm.lexEnv, this)
+
+            defineOwnProperty("prototype", realm.functionProto)
+        }
+
+        override fun evaluate(arguments: JSArguments): JSValue {
+            if (!::generatorObject.isInitialized) {
+                expect(!info.isTopLevelScript)
+                val interpreter = Interpreter(realm, info, arguments)
+                generatorObject = JSGeneratorObject.create(realm, interpreter, envRecord)
+            }
+
+            return generatorObject
         }
     }
 
