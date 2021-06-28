@@ -927,6 +927,7 @@ class Parser(val source: String) {
     ): BindingIdentifierNode = nps {
         BindingIdentifierNode(parseIdentifier()).also {
             it.scope = if (varType == Variable.Type.Var) scope.parentHoistingScope else scope
+            it.declaredScope = scope
 
             if (addVar && !disableAutoScoping) {
                 val variable = Variable(

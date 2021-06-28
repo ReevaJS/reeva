@@ -611,7 +611,6 @@ class Transformer : ASTVisitor {
             if (varDecl is FunctionDeclarationNode || varDecl.variable.name in instantiatedVarNames)
                 continue
 
-            instantiatedVarNames.add(varDecl.variable.name)
             val variable = varDecl.variable
 
             if (variable.name !in instantiatedVarNames) {

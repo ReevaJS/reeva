@@ -94,14 +94,25 @@ open class Scope(val outer: Scope? = null) {
     }
 
     private fun searchForUseBeforeDecl() {
-        // TODO: Improving this is not trivial, but it would be nice
-
-        for (node in pendingReferences) {
+        outer@ for (node in pendingReferences) {
             val refStart = node.sourceStart.index
             val varStart = node.targetVar.source.sourceStart.index
 
+            // If the declaration of the variable comes after the use of the variable in
+            // the source code, it's likely that it is used before the declaration
             if (refStart < varStart)
                 node.targetVar.possiblyUsedBeforeDecl = true
+
+            // If the scope of the reference doesn't have the scope of the target somewhere
+            // in its scope hierarchy, it is likely relying on var hoisting (or just an error)
+            var scope: Scope? = node.scope
+            while (scope != null) {
+                if (scope == node.targetVar.declaredScope)
+                    continue@outer
+                scope = scope.outer
+            }
+
+            node.targetVar.possiblyUsedBeforeDecl = true
         }
 
         childScopes.forEach(Scope::searchForUseBeforeDecl)
@@ -151,6 +162,8 @@ data class Variable(
 
     val scope: Scope
         get() = source.scope
+    val declaredScope: Scope
+        get() = source.declaredScope
 
     enum class Mode {
         Declared,

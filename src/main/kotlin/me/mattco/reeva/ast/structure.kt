@@ -35,7 +35,12 @@ fun <T : ASTNode> T.withPosition(start: TokenLocation, end: TokenLocation) = app
 fun <T : ASTNode> T.withPosition(node: ASTNode) = withPosition(node.sourceStart, node.sourceEnd)
 
 open class NodeWithScope(children: List<ASTNode> = emptyList()) : ASTNodeBase(children) {
+    private var declaredScopeBacker: Scope? = null
     lateinit var scope: Scope
+
+    var declaredScope: Scope
+        get() = declaredScopeBacker ?: scope
+        set(value) { declaredScopeBacker = value }
 }
 
 abstract class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
