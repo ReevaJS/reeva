@@ -92,7 +92,7 @@ class Interpreter(
                 } catch (e: ThrowException) {
                     val handler = currentBlock.handler
                     if (handler != null) {
-                        val lexicalEnvsToRemove = lexicalDepth - lexicalDepthStack.removeLast()
+                        val lexicalEnvsToRemove = lexicalDepth - lexicalDepthStack.last()
                         expect(lexicalEnvsToRemove >= 0)
                         repeat(lexicalEnvsToRemove) {
                             realm.lexEnv = realm.lexEnv.outer!!
