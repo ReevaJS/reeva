@@ -748,6 +748,9 @@ class Parser(val source: String) {
             parseBlock(pushNewScope = false)
         }
 
+        if (body.hasUseStrict)
+            functionScope.hasUseStrictDirective = true
+
         FunctionTemp(identifier, params, body, functionScope, bodyScope, type).also {
             scope = scope.outer!!
             if (bodyScope != functionScope)
@@ -950,18 +953,22 @@ class Parser(val source: String) {
     private fun checkForAndConsumeUseStrict(): Boolean {
         return if (match(TokenType.StringLiteral) && token.literals == "use strict") {
             consume()
+            if (match(TokenType.Semicolon))
+                consume()
             true
         } else false
     }
 
     private fun parseBlock(pushNewScope: Boolean = true): BlockNode = nps {
         consume(TokenType.OpenCurly)
+        val isStrict = checkForAndConsumeUseStrict()
+
         if (pushNewScope)
             scope = Scope(scope)
 
         val statements = parseStatementList()
         consume(TokenType.CloseCurly)
-        BlockNode(statements).also {
+        BlockNode(statements, isStrict).also {
             it.scope = scope
             if (pushNewScope)
                 scope = scope.outer!!

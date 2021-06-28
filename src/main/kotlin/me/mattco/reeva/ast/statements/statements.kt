@@ -13,7 +13,7 @@ open class ASTListNode<T : ASTNode>(
 
 class BlockStatementNode(val block: BlockNode) : ASTNodeBase(listOf(block)), StatementNode
 
-class BlockNode(val statements: StatementList) : NodeWithScope(statements), StatementNode
+class BlockNode(val statements: StatementList, val hasUseStrict: Boolean) : NodeWithScope(statements), StatementNode
 
 class EmptyStatementNode : ASTNodeBase(), StatementNode
 
