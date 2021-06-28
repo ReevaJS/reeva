@@ -789,20 +789,12 @@ class Interpreter(
                 FunctionEnvRecord(realm, info.isStrict, realm.lexEnv, this)
             }
 
-            val savedVarEnv = realm.varEnv
-            val savedLexEnv = realm.lexEnv
-            realm.varEnv = envRecord
-            realm.lexEnv = envRecord
-
-            return try {
+            return realm.withEnv(envRecord) {
                 val args = listOf(arguments.thisValue) + arguments
                 val result = Interpreter(realm, info, args).interpret()
                 if (result is EvaluationResult.RuntimeError)
                     throw ThrowException(result.value)
                 result.value
-            } finally {
-                realm.varEnv = savedVarEnv
-                realm.lexEnv = savedLexEnv
             }
         }
     }

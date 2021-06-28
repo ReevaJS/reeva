@@ -33,19 +33,11 @@ class JSGeneratorObject(
     val envRecord: EnvRecord,
 ) : JSObject(realm, realm.generatorObjectProto) {
     fun next(realm: Realm, mode: Interpreter.GeneratorEntryMode, value: JSValue): JSValue {
-        val savedVarEnv = realm.varEnv
-        val savedLexEnv = realm.lexEnv
-        realm.varEnv = envRecord
-        realm.lexEnv = envRecord
-
-        return try {
+        return realm.withEnv(envRecord) {
             val result = interpreter.reenterGeneratorFunction(mode, value)
             if (result == null) {
                 Operations.createIterResultObject(realm, JSUndefined, true)
             } else Operations.createIterResultObject(realm, result, false)
-        } finally {
-            realm.varEnv = savedVarEnv
-            realm.lexEnv = savedLexEnv
         }
     }
 

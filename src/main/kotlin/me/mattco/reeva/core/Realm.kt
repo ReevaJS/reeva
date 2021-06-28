@@ -159,12 +159,25 @@ class Realm {
         globalObject = obj
     }
 
-    fun getOffsetLexEnv(offset: Int): EnvRecord {
+    internal fun getOffsetLexEnv(offset: Int): EnvRecord {
         var env = lexEnv
         repeat(offset) {
             env = env.outer!!
         }
         return env
+    }
+
+    internal fun <T> withEnv(env: EnvRecord, block: () -> T): T {
+        val savedVarEnv = varEnv
+        val savedLexEnv = lexEnv
+        varEnv = env
+        lexEnv = env
+        return try {
+            block()
+        } finally {
+            varEnv = savedVarEnv
+            lexEnv = savedLexEnv
+        }
     }
 
     internal fun clearEnvRecords() {
