@@ -10,6 +10,7 @@ class JSGeneratorFunctionProto(realm: Realm) : JSObject(realm, realm.functionPro
         super.init()
 
         defineOwnProperty("prototype", realm.generatorObjectProto, Descriptor.CONFIGURABLE)
+        defineOwnProperty("constructor", realm.generatorFunctionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty(Realm.`@@toStringTag`, "GeneratorFunction".toValue(), Descriptor.CONFIGURABLE)
     }
 

@@ -16,6 +16,7 @@ import me.mattco.reeva.runtime.builtins.regexp.JSRegExpStringIteratorProto
 import me.mattco.reeva.runtime.errors.*
 import me.mattco.reeva.runtime.functions.JSFunctionCtor
 import me.mattco.reeva.runtime.functions.JSFunctionProto
+import me.mattco.reeva.runtime.functions.generators.JSGeneratorFunctionCtor
 import me.mattco.reeva.runtime.functions.generators.JSGeneratorFunctionProto
 import me.mattco.reeva.runtime.functions.generators.JSGeneratorObjectProto
 import me.mattco.reeva.runtime.global.JSConsole
@@ -106,6 +107,7 @@ class Realm {
     val stringCtor by lazy { JSStringCtor.create(this) }
     val regExpCtor by lazy { JSRegExpCtor.create(this) }
     val functionCtor by lazy { JSFunctionCtor.create(this) }
+    val generatorFunctionCtor by lazy { JSGeneratorFunctionCtor.create(this) }
     val arrayCtor by lazy { JSArrayCtor.create(this) }
     val setCtor by lazy { JSSetCtor.create(this) }
     val mapCtor by lazy { JSMapCtor.create(this) }
@@ -199,6 +201,7 @@ class Realm {
         // These can't be in the init method of the objects due to circularity
         objectCtor.defineOwnProperty("prototype", objectProto, Descriptor.HAS_BASIC)
         functionCtor.defineOwnProperty("prototype", functionProto, Descriptor.HAS_BASIC)
+        generatorFunctionCtor.defineOwnProperty("prototype", generatorFunctionProto, Descriptor.HAS_BASIC)
         numberCtor.defineOwnProperty("prototype", numberProto, Descriptor.HAS_BASIC)
         bigIntCtor.defineOwnProperty("prototype", bigIntProto, Descriptor.HAS_BASIC)
         stringCtor.defineOwnProperty("prototype", stringProto, Descriptor.HAS_BASIC)

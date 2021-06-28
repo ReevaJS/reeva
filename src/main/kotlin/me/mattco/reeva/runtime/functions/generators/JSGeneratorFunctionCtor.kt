@@ -6,12 +6,6 @@ import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 
 class JSGeneratorFunctionCtor(realm: Realm) : JSNativeFunction(realm, "GeneratorFunction", 1, realm.functionCtor) {
-    override fun init() {
-        super.init()
-
-        defineOwnProperty("prototype", realm.generatorFunctionProto)
-    }
-
     override fun evaluate(arguments: JSArguments): JSValue {
         TODO()
     }

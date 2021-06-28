@@ -789,7 +789,11 @@ class Interpreter(
         Throw,
     }
 
-    abstract class IRFunction(realm: Realm, val info: FunctionInfo) : JSFunction(realm, info.isStrict)
+    abstract class IRFunction(
+        realm: Realm,
+        val info: FunctionInfo,
+        prototype: JSValue = realm.functionProto,
+    ) : JSFunction(realm, info.isStrict, prototype)
 
     class NormalIRFunction(realm: Realm, info: FunctionInfo, val outerEnvRecord: EnvRecord?) : IRFunction(realm, info) {
         override fun init() {
@@ -818,7 +822,7 @@ class Interpreter(
     // This does not need an outerEnvRecord field as it's envrecord is initialized in the
     // init method, which is invoked immediately after construction (so realm.lexEnv is
     // guaranteed to not be null)
-    class GeneratorIRFunction(realm: Realm, info: FunctionInfo) : IRFunction(realm, info) {
+    class GeneratorIRFunction(realm: Realm, info: FunctionInfo) : IRFunction(realm, info, realm.generatorFunctionProto) {
         lateinit var generatorObject: JSGeneratorObject
         lateinit var envRecord: EnvRecord
 
