@@ -251,7 +251,7 @@ class Transformer : ASTVisitor {
         val handlerScope = generator.handlerScope
         if (handlerScope != null) {
             if (handlerScope.catchBlock != null) {
-                generator.add(Jump(handlerScope.catchBlock.handler!!))
+                generator.add(Jump(handlerScope.catchBlock))
             } else {
                 generator.add(Star(handlerScope.scratchRegister(generator)))
                 generator.add(LdaInt(JumpTable.THROW))
