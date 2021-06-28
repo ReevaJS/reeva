@@ -190,6 +190,7 @@ enum class TokenType(val string: String, val category: Category = Category.None)
             This,
             Super,
             RegExpLiteral,
+            Yield,
             *unaryPrefixTokens.toTypedArray(),
         )
 

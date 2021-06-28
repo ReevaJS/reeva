@@ -58,6 +58,13 @@ class MethodDefinitionNode(
         Setter,
         Generator,
         Async,
-        AsyncGenerator,
+        AsyncGenerator;
+
+        fun toFunctionType() = when (this) {
+            Generator -> FunctionType.Generator
+            Async -> FunctionType.Async
+            AsyncGenerator -> FunctionType.AsyncGenerator
+            else -> FunctionType.Normal
+        }
     }
 }

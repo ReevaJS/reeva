@@ -671,8 +671,8 @@ class Parser(val source: String) {
      */
     private fun parseFunctionDeclaration(): StatementNode = nps {
         val declarationScope = scope.parentHoistingScope
-        val (identifier, params, body, functionScope, bodyScope) = parseFunctionHelper(isDeclaration = true)
-        FunctionDeclarationNode(identifier!!, params, body, functionScope, bodyScope).also {
+        val (identifier, params, body, functionScope, bodyScope, type) = parseFunctionHelper(isDeclaration = true)
+        FunctionDeclarationNode(identifier!!, params, body, functionScope, bodyScope, type).also {
             it.scope = declarationScope
 
             it.variable = Variable(
@@ -690,8 +690,8 @@ class Parser(val source: String) {
      *     function BindingIdentifier? ( FormalParameters ) { FunctionBody }
      */
     private fun parseFunctionExpression(): ExpressionNode = nps {
-        val (identifier, params, body, functionScope, bodyScope) = parseFunctionHelper(isDeclaration = false)
-        FunctionExpressionNode(identifier, params, body, functionScope, bodyScope).also {
+        val (identifier, params, body, functionScope, bodyScope, isGenerator) = parseFunctionHelper(isDeclaration = false)
+        FunctionExpressionNode(identifier, params, body, functionScope, bodyScope, isGenerator).also {
             it.scope = scope
         }
     }
@@ -702,6 +702,7 @@ class Parser(val source: String) {
         val body: BlockNode,
         val functionScope: Scope,
         val bodyScope: Scope,
+        val type: FunctionType,
     ) : ASTNodeBase()
 
     private fun parseFunctionHelper(isDeclaration: Boolean): FunctionTemp = nps {
@@ -717,8 +718,12 @@ class Parser(val source: String) {
             true
         } else false
 
-        if (isGenerator || isAsync)
-            TODO()
+        val type = when {
+            isAsync && isGenerator -> FunctionType.AsyncGenerator
+            isAsync -> FunctionType.Async
+            isGenerator -> FunctionType.Generator
+            else -> FunctionType.Normal
+        }
 
         // TODO: Allow no identifier in default export
         val identifier = when {
@@ -743,7 +748,7 @@ class Parser(val source: String) {
             parseBlock(pushNewScope = false)
         }
 
-        FunctionTemp(identifier, params, body, functionScope, bodyScope).also {
+        FunctionTemp(identifier, params, body, functionScope, bodyScope, type).also {
             scope = scope.outer!!
             if (bodyScope != functionScope)
                 scope = scope.outer!!
@@ -1146,6 +1151,29 @@ class Parser(val source: String) {
         ArgumentList(arguments)
     }
 
+    private fun parseYieldExpression(): ExpressionNode = nps {
+        expect(inYieldContext)
+
+        consume(TokenType.Yield)
+        val isYieldStar = if (match(TokenType.Mul)) {
+            consume()
+            true
+        } else false
+
+        if (match(TokenType.Semicolon)) {
+            consume()
+            return@nps YieldExpressionNode(null, isYieldStar)
+        }
+
+        if (token.afterNewline)
+            return@nps YieldExpressionNode(null, isYieldStar)
+
+        if (tokenType.isExpressionToken)
+            return@nps YieldExpressionNode(parseExpression(0), isYieldStar)
+
+        reporter.expected("expression", tokenType)
+    }
+
     private fun parsePrimaryExpression(): ExpressionNode = nps {
         if (tokenType.isUnaryToken)
             return@nps parseUnaryExpression()
@@ -1190,6 +1218,7 @@ class Parser(val source: String) {
             TokenType.RegExpLiteral -> parseRegExpLiteral()
             TokenType.TemplateLiteralStart -> parseTemplateLiteral()
             TokenType.New -> parseNewExpression()
+            TokenType.Yield -> parseYieldExpression()
             else -> reporter.expected("primary expression", tokenType)
         }
     }
@@ -1544,7 +1573,7 @@ class Parser(val source: String) {
             }
         }
 
-        ArrowFunctionNode(parameters, body, functionScope, bodyScope).also {
+        ArrowFunctionNode(parameters, body, functionScope, bodyScope, FunctionType.Normal).also {
             it.scope = scope
             scope = scope.outer!!
             if (functionScope != bodyScope)

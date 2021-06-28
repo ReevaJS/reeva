@@ -45,23 +45,23 @@ class Parameter(
     }
 }
 
-open class GenericFunctionDeclarationNode(
+enum class FunctionType(val isAsync: Boolean = false, val isGenerator: Boolean = false) {
+    Normal,
+    Async(isAsync = true),
+    Generator(isGenerator = true),
+    AsyncGenerator(isAsync = true, isGenerator = true),
+}
+
+class FunctionDeclarationNode(
     val identifier: BindingIdentifierNode,
     val parameters: ParameterList,
     val body: BlockNode,
     val functionScope: Scope,
     val bodyScope: Scope,
+    val type: FunctionType,
 ) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), StatementNode {
     override var variable by identifier::variable
 }
-
-class FunctionDeclarationNode(
-    identifier: BindingIdentifierNode,
-    parameters: ParameterList,
-    body: BlockNode,
-    functionScope: Scope,
-    bodyScope: Scope
-) : GenericFunctionDeclarationNode(identifier, parameters, body, functionScope, bodyScope)
 
 class FunctionExpressionNode(
     val identifier: BindingIdentifierNode?,
@@ -69,6 +69,7 @@ class FunctionExpressionNode(
     val body: BlockNode,
     val functionScope: Scope,
     val bodyScope: Scope,
+    val type: FunctionType,
 ) : NodeWithScope(listOfNotNull(identifier) + parameters + body), ExpressionNode
 
 class ArrowFunctionNode(
@@ -76,4 +77,5 @@ class ArrowFunctionNode(
     val body: ASTNode, // BlockNode or ExpressionNode
     val functionScope: Scope,
     val bodyScope: Scope,
+    val type: FunctionType,
 ) : NodeWithScope(parameters + body), ExpressionNode

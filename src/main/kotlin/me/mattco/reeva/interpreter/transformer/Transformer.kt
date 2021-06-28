@@ -464,6 +464,7 @@ class Transformer : ASTVisitor {
             node.bodyScope,
             node.scope.isStrict,
             false,
+            node.type,
         )
     }
 
@@ -476,6 +477,7 @@ class Transformer : ASTVisitor {
             node.bodyScope,
             node.scope.isStrict,
             true,
+            node.type,
         )
     }
 
@@ -632,6 +634,7 @@ class Transformer : ASTVisitor {
                 function.bodyScope,
                 function.scope.isStrict || function.functionScope.isStrict || function.bodyScope.isStrict,
                 false, // TODO
+                function.type,
             )
 
             storeVariable(function.variable, function.scope)
@@ -646,7 +649,11 @@ class Transformer : ASTVisitor {
         bodyScope: Scope,
         isStrict: Boolean,
         isLexical: Boolean,
+        type: FunctionType,
     ) {
+        if (type.isAsync)
+            TODO()
+
         val prevGenerator = generator
         generator = Generator(parameters.size + 1)
 
@@ -1232,6 +1239,7 @@ class Transformer : ASTVisitor {
                             method.body,
                             method.functionScope,
                             method.bodyScope,
+                            method.type.toFunctionType(),
                         )
                         functionNode.scope = method.scope
                         visitFunctionExpression(functionNode)
