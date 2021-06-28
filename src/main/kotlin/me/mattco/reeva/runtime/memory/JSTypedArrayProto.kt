@@ -57,6 +57,25 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         return (thisValue as JSObject).getSlotAs<Int>(SlotName.ArrayLength).toValue()
     }
 
+    private fun at(realm: Realm, arguments: JSArguments): JSValue {
+        val thisValue = arguments.thisValue
+        expect(thisValue is JSObject)
+        Operations.validateTypedArray(realm, thisValue)
+        val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength)
+        val relativeIndex = Operations.toIntegerOrInfinity(realm, arguments.argument(0))
+
+        val k = if (relativeIndex.isPositiveInfinity || relativeIndex.asLong >= 0) {
+            relativeIndex.asLong
+        } else {
+            len + relativeIndex.asLong
+        }
+
+        if (k < 0 || k >= len)
+            return JSUndefined
+
+        return thisValue.get(k)
+    }
+
     private fun copyWithin(realm: Realm, arguments: JSArguments): JSValue {
         val thisValue = arguments.thisValue
         val buffer = Operations.validateTypedArray(realm, thisValue)

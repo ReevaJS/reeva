@@ -8,10 +8,7 @@ import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.objects.Descriptor
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.*
-import me.mattco.reeva.utils.Errors
-import me.mattco.reeva.utils.ecmaAssert
-import me.mattco.reeva.utils.key
-import me.mattco.reeva.utils.toValue
+import me.mattco.reeva.utils.*
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.streams.toList
@@ -22,6 +19,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.stringCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        defineNativeFunction("at", 1, ::at)
         defineNativeFunction("charAt", 1, ::charAt)
         defineNativeFunction("charCodeAt", 1, ::charCodeAt)
         defineNativeFunction("codePointAt", 1, ::codePointAt)
@@ -45,6 +43,25 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         defineNativeFunction("trimEnd", 0, ::trimEnd)
         defineNativeFunction("trimStart", 0, ::trimStart)
         defineNativeFunction("valueOf", 0, ::valueOf)
+    }
+
+    fun at(realm: Realm, arguments: JSArguments): JSValue {
+        val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
+        val str = Operations.toString(realm, obj).string
+        val len = str.length
+        val relativeIndex = Operations.toIntegerOrInfinity(realm, arguments.argument(0))
+
+        val k = if (relativeIndex.isPositiveInfinity || relativeIndex.asLong >= 0) {
+            relativeIndex.asLong
+        } else {
+            len + relativeIndex.asLong
+        }
+
+        if (k < 0 || k >= len)
+            return JSUndefined
+
+        expect(k < Int.MAX_VALUE)
+        return str[k.toInt()].toValue()
     }
 
     fun charAt(realm: Realm, arguments: JSArguments): JSValue {

@@ -25,6 +25,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         defineNativeProperty("length".key(), Descriptor.WRITABLE, ::getLength, ::setLength)
 
         val unscopables = create(realm, JSNull)
+        Operations.createDataPropertyOrThrow(realm, unscopables, "at".key(), JSTrue)
         Operations.createDataPropertyOrThrow(realm, unscopables, "copyWithin".key(), JSTrue)
         Operations.createDataPropertyOrThrow(realm, unscopables, "entries".key(), JSTrue)
         Operations.createDataPropertyOrThrow(realm, unscopables, "fill".key(), JSTrue)
@@ -37,6 +38,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         Operations.createDataPropertyOrThrow(realm, unscopables, "values".key(), JSTrue)
         defineOwnProperty(Realm.`@@unscopables`, unscopables, Descriptor.CONFIGURABLE)
 
+        defineNativeFunction("at", 1, ::at)
         defineNativeFunction("concat", 1, ::concat)
         defineNativeFunction("copyWithin", 2, ::copyWithin)
         defineNativeFunction("entries", 0, ::entries)
@@ -45,7 +47,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         defineNativeFunction("filter", 1, ::filter)
         defineNativeFunction("find", 1, ::find)
         defineNativeFunction("findIndex", 1, ::findIndex)
-        defineNativeFunction("flat", 1, ::flat)
+        defineNativeFunction("flat", 0, ::flat)
         defineNativeFunction("flatMap", 1, ::flatMap)
         defineNativeFunction("forEach", 1, ::forEach)
         defineNativeFunction("includes", 1, ::includes)
@@ -70,6 +72,23 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         // value of the Array.prototype.values property.
         // https://tc39.es/ecma262/#sec-array.prototype-@@iterator
         defineOwnProperty(Realm.`@@iterator`, internalGet("values".key())!!.getRawValue())
+    }
+
+    fun at(realm: Realm, arguments: JSArguments): JSValue {
+        val thisObj = Operations.toObject(realm, arguments.thisValue)
+        val len = Operations.lengthOfArrayLike(realm, thisObj)
+        val relativeIndex = Operations.toIntegerOrInfinity(realm, arguments.argument(0))
+
+        val k = if (relativeIndex.isPositiveInfinity || relativeIndex.asLong >= 0) {
+            relativeIndex.asLong
+        } else {
+            len + relativeIndex.asLong
+        }
+
+        if (k < 0 || k >= len)
+            return JSUndefined
+
+        return thisObj.get(k)
     }
 
     fun concat(realm: Realm, arguments: JSArguments): JSValue {
