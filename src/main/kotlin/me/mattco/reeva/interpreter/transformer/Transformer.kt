@@ -20,6 +20,9 @@ data class FunctionInfo(
     val argCount: Int,
     val isStrict: Boolean,
     val isTopLevelScript: Boolean,
+
+    // Only necessary if the function requires a mapped arguments object
+    val parameters: ParameterList? = null,
 )
 
 class Transformer : ASTVisitor {
@@ -683,7 +686,8 @@ class Transformer : ASTVisitor {
             generator.finish(),
             parameters.size + 1,
             isStrict,
-            isTopLevelScript = false
+            isTopLevelScript = false,
+            parameters,
         )
 
         generator = prevGenerator

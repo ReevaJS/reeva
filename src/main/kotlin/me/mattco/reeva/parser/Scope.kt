@@ -80,6 +80,7 @@ open class Scope(val outer: Scope? = null) {
         searchForUseBeforeDecl()
         onFinishImpl()
         pendingReferences.clear()
+        childScopes.forEach(Scope::onFinish)
     }
 
     private fun processUnlinkedNodes() {
@@ -134,8 +135,11 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
 
     private fun searchForArgumentsReference(scope: Scope): Boolean {
         for (node in scope.pendingReferences) {
-            if (node.boundName() == "arguments" && node.targetVar.mode == Variable.Mode.Global)
+            if (node.boundName() == "arguments" && node.targetVar.mode == Variable.Mode.Global) {
+                node.targetVar.mode = Variable.Mode.Declared
+                node.targetVar.scope = this
                 return true
+            }
         }
 
         return scope.childScopes.filter { it !is HoistingScope }.any { searchForArgumentsReference(it) }
@@ -155,13 +159,14 @@ open class GlobalScope : HoistingScope() {
 data class Variable(
     val name: String,
     val type: Type,
-    val mode: Mode,
+    var mode: Mode,
     var source: VariableSourceNode,
 ) {
     var possiblyUsedBeforeDecl = false
 
-    val scope: Scope
+    var scope: Scope
         get() = source.scope
+        set(value) { source.scope = value }
     val declaredScope: Scope
         get() = source.declaredScope
 

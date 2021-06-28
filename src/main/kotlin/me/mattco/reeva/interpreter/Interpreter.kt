@@ -15,6 +15,7 @@ import me.mattco.reeva.interpreter.transformer.opcodes.Literal
 import me.mattco.reeva.interpreter.transformer.opcodes.Register
 import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.arrays.JSArrayObject
+import me.mattco.reeva.runtime.builtins.JSMappedArgumentsObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.generators.JSGeneratorObject
 import me.mattco.reeva.runtime.iterators.JSObjectPropertyIterator
@@ -646,7 +647,14 @@ class Interpreter(
     }
 
     override fun visitCreateMappedArgumentsObject() {
-        // TODO
+        val argsObject = JSMappedArgumentsObject.create(realm, realm.varEnv, info.parameters!!, arguments.drop(1))
+        val varEnv = realm.varEnv
+        if (varEnv.isStrict) {
+            varEnv.createImmutableBinding("arguments", false)
+        } else {
+            varEnv.createMutableBinding("arguments", false)
+        }
+        varEnv.initializeBinding("arguments", argsObject)
     }
 
     override fun visitCreateUnmappedArgumentsObject() {
@@ -656,7 +664,6 @@ class Interpreter(
     override fun visitGetIterator() {
         accumulator = Operations.getIterator(realm, Operations.toObject(realm, accumulator))
     }
-
 
     override fun visitIteratorNext() {
         accumulator = Operations.iteratorNext(accumulator as Operations.IteratorRecord)
