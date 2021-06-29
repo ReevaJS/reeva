@@ -6,6 +6,12 @@ import me.mattco.reeva.interpreter.ExecutionResult
 import me.mattco.reeva.runtime.toPrintableString
 import java.io.File
 
+val test262Helpers = listOf(
+    "assert.js",
+    "sta.js",
+    "propertyHelper.js",
+)
+
 fun main() {
     Reeva.setup()
 
@@ -13,7 +19,7 @@ fun main() {
     Reeva.setAgent(agent)
     val realm = Reeva.makeRealm()
 
-//     val test262Script = File("./demo/test262.js").readText()
+//     val test262Script = collectTest262Script()
 //     val test262Result = agent.run(test262Script, realm)
 //     if (test262Result.isError) {
 //         println(test262Result)
@@ -32,6 +38,15 @@ fun main() {
     }
 
     Reeva.teardown()
+}
+
+private fun collectTest262Script(): String {
+    return buildString {
+        test262Helpers.forEach {
+            append(File(Test262Runner.harnessDirectory, it).readText())
+            append('\n');
+        }
+    }
 }
 
 // PARSER BENCHMARK

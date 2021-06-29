@@ -30,16 +30,16 @@ class Test262Test(
 
             println("File: ${Test262Runner.testDirectoryStr}$name")
 
-            var requiredScript = Test262Runner.pretestScript
+            val requiredScript = buildString {
+                append(Test262Runner.pretestScript)
 
-            metadata.includes?.forEach { include ->
-                requiredScript += '\n'
-                requiredScript += File(Test262Runner.harnessDirectory, include).readText()
+                metadata.includes?.forEach { include ->
+                    append('\n')
+                    append(File(Test262Runner.harnessDirectory, include).readText())
+                }
             }
 
             val realm = Reeva.makeRealm()
-            realm.initObjects()
-            realm.setGlobalObject(Test262GlobalObject.create(realm))
 
             val isModule = metadata.flags != null && Flag.Module in metadata.flags
             if (isModule)
