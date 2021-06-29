@@ -19,6 +19,8 @@ class Agent {
     var printAST = false
     var printIR = false
 
+    var hostHooks = HostHooks()
+
     val byteOrder: ByteOrder = ByteOrder.nativeOrder()
     val isLittleEndian: Boolean
         get() = byteOrder == ByteOrder.LITTLE_ENDIAN
@@ -76,7 +78,7 @@ class Agent {
         }
     }
 
-    internal fun addMicrotask(task: () -> Unit) {
+    fun addMicrotask(task: () -> Unit) {
         pendingMicrotasks.addFirst(task)
     }
 

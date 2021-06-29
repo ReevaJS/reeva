@@ -6,7 +6,6 @@ import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.ASTNode
 import me.mattco.reeva.ast.FunctionDeclarationNode
 import me.mattco.reeva.ast.ParameterList
-import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.EnvRecord
@@ -2336,13 +2335,6 @@ object Operations {
     }
 
     @JvmStatic
-    @ECMAImpl("19.2.1.2")
-    fun hostEnsureCanCompileStrings(callerRealm: Realm, calleeRealm: Realm): Boolean {
-        // TODO: Allow this to be provided by the user of this library
-        return true
-    }
-
-    @JvmStatic
     @ECMAImpl("20.2.1.1.1")
     fun createDynamicFunction(
         realm: Realm,
@@ -2354,7 +2346,7 @@ object Operations {
         val agent = Reeva.activeAgent
 
         // TODO: Figure out the caller vs callee realm separation
-        hostEnsureCanCompileStrings(realm, realm)
+        agent.hostHooks.ensureCanCompileStrings(realm, realm)
 
         val newTarget = if (newTarget_ == JSUndefined) constructor else newTarget_ as JSObject
 
@@ -3121,9 +3113,9 @@ object Operations {
         promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<PromiseReaction>())
         promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<PromiseReaction>())
         promise.setSlot(SlotName.PromiseState, PromiseState.Rejected)
-        if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled)) {
-            hostPromiseRejectionTracker(realm, promise, "reject")
-        }
+
+        if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled))
+            Reeva.activeAgent.hostHooks.promiseRejectionTracker(realm, promise, "reject")
 
         return triggerPromiseReactions(reactions, reason)
     }
@@ -3133,24 +3125,9 @@ object Operations {
     fun triggerPromiseReactions(reactions: List<PromiseReaction>, argument: JSValue): JSValue {
         reactions.forEach { reaction ->
             val job = newPromiseReactionJob(reaction, argument)
-            hostEnqueuePromiseJob(job.job, job.realm)
+            Reeva.activeAgent.hostHooks.enqueuePromiseJob(job.job, job.realm)
         }
         return JSUndefined
-    }
-
-    @JvmStatic
-    @ECMAImpl("26.6.1.9")
-    fun hostPromiseRejectionTracker(realm: Realm, promise: JSObject, operation: String) {
-        if (operation == "reject") {
-            Reeva.activeAgent.addMicrotask {
-                // If promise does not have any handlers by the time this microtask is ran, it
-                // will not have any handlers, and we can print a warning
-                if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled)) {
-                    val result = promise.getSlotAs<JSValue>(SlotName.PromiseResult)
-                    println("\u001b[31mUnhandled promise rejection: ${toString(realm, result)}\u001B[0m")
-                }
-            }
-        }
     }
 
     @JvmStatic
@@ -3257,26 +3234,19 @@ object Operations {
             PromiseState.Fulfilled -> {
                 val fulfillJob =
                     newPromiseReactionJob(fulfillReaction, promise.getSlotAs(SlotName.PromiseResult))
-                hostEnqueuePromiseJob(fulfillJob.job, fulfillJob.realm)
+                Reeva.activeAgent.hostHooks.enqueuePromiseJob(fulfillJob.job, fulfillJob.realm)
             }
             else -> {
                 if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled))
-                    hostPromiseRejectionTracker(realm, promise, "handle")
+                    Reeva.activeAgent.hostHooks.promiseRejectionTracker(realm, promise, "handle")
                 val rejectJob = newPromiseReactionJob(rejectReaction, promise.getSlotAs(SlotName.PromiseResult))
-                hostEnqueuePromiseJob(rejectJob.job, rejectJob.realm)
+                Reeva.activeAgent.hostHooks.enqueuePromiseJob(rejectJob.job, rejectJob.realm)
             }
         }
 
         promise.setSlot(SlotName.PromiseIsHandled, true)
 
         return resultCapability?.promise ?: JSUndefined
-    }
-
-    @JvmStatic
-    @ECMAImpl("8.4.4")
-    fun hostEnqueuePromiseJob(job: () -> Unit, realm: Realm?) {
-        // TODO: Use realm?
-        Reeva.activeAgent.addMicrotask(job)
     }
 
     enum class ToPrimitiveHint(private val _text: String) {

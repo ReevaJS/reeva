@@ -1,5 +1,6 @@
 package me.mattco.reeva.runtime.builtins.promises
 
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.runtime.JSArguments
@@ -41,7 +42,7 @@ class JSResolveFunction private constructor(
             return Operations.fulfillPromise(promise, resolution)
 
         val job = Operations.newPromiseResolveThenableJob(realm, promise, resolution, thenAction)
-        Operations.hostEnqueuePromiseJob(job.job, job.realm)
+        Reeva.activeAgent.hostHooks.enqueuePromiseJob(job.job, job.realm)
 
         return JSUndefined
     }
