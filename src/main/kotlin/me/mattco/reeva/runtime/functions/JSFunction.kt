@@ -6,8 +6,6 @@ import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.objects.JSObject
-import me.mattco.reeva.runtime.primitives.JSNull
-import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.expect
 
@@ -21,21 +19,12 @@ abstract class JSFunction(
 
     abstract fun evaluate(arguments: JSArguments): JSValue
 
-    open fun getNewThisValue(oldThis: JSValue): JSValue {
-        return when {
-            isStrict -> oldThis
-            oldThis == JSUndefined || oldThis == JSNull -> realm.globalObject
-            else -> Operations.toObject(realm, oldThis)
-        }
-    }
-
     fun call(arguments: JSArguments): JSValue {
         return Reeva.activeAgent.inCallScope(this) {
             // TODO: Should this throw an error? Or will we never get here to due
             // the guard in Operations.call
             expect(isCallable)
-            val newThis = getNewThisValue(arguments.thisValue)
-            evaluate(arguments.withThisValue(newThis))
+            evaluate(arguments)
         }
     }
 
