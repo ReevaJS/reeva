@@ -1880,24 +1880,22 @@ object Operations {
      * spec requires a loop from 0 to a very large number (usually
      * 2 ^ 53 - 1) in order to do hasProperty checks.
      */
-    fun objectIndices(obj: JSObject, includePrototypes: Boolean = true): SortedSet<Long> {
+    fun objectIndices(obj: JSObject, includePrototypes: Boolean = true) = sequence {
         // special-case string
         if (obj is JSStringObject) {
-            return TreeSet<Long>().apply {
-                for (i in obj.string.string.indices)
-                    add(i.toLong())
-            }
+            for (i in obj.string.string.indices)
+                yield(i.toLong())
+            return@sequence
         }
 
-        val indices = obj.indexedProperties.indices()
+        yieldAll(obj.indexedProperties.indices())
         if (includePrototypes) {
             var proto = obj.getPrototype()
             while (proto != JSNull) {
-                indices.addAll((proto as JSObject).indexedProperties.indices())
+                yieldAll((proto as JSObject).indexedProperties.indices())
                 proto = proto.getPrototype()
             }
         }
-        return indices
     }
 
     fun arrayCreate(realm: Realm, length: Int, proto: JSValue = realm.arrayProto): JSObject {

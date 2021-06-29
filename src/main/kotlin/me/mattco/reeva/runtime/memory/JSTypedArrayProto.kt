@@ -12,7 +12,11 @@ import kotlin.math.min
 class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     // For use with the generic array methods
     private val lengthProducer = { realm: Realm, obj: JSObject -> getLength(realm, obj).asLong }
-    private val indicesProducer = { obj: JSObject -> 0L..lengthProducer(realm, obj) }
+    private val indicesProducer = { obj: JSObject ->
+        sequence {
+            yieldAll(0L until lengthProducer(realm, obj))
+        }
+    }
 
     override fun init() {
         super.init()

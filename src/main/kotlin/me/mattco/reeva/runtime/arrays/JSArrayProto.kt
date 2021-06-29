@@ -534,7 +534,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             realm: Realm,
             arguments: JSArguments,
             lengthProducer: (realm: Realm, obj: JSObject) -> Long,
-            indicesProducer: (obj: JSObject) -> Iterable<Long>
+            indicesProducer: (obj: JSObject) -> Sequence<Long>
         ): JSValue {
             val (callback, thisArg) = arguments.takeArgs(0..1)
 
@@ -562,7 +562,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             realm: Realm,
             arguments: JSArguments,
             lengthProducer: (realm: Realm, obj: JSObject) -> Long,
-            indicesProducer: (obj: JSObject) -> Iterable<Long>
+            indicesProducer: (obj: JSObject) -> Sequence<Long>
         ): JSValue {
             val thisObj = Operations.toObject(realm, arguments.thisValue)
             val length = lengthProducer(realm, thisObj)
@@ -589,7 +589,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             realm: Realm,
             arguments: JSArguments,
             lengthProducer: (realm: Realm, obj: JSObject) -> Long,
-            indicesProducer: (obj: JSObject) -> Iterable<Long>
+            indicesProducer: (obj: JSObject) -> Sequence<Long>
         ): JSValue {
             val thisObj = Operations.toObject(realm, arguments.thisValue)
             val length = lengthProducer(realm, thisObj)
@@ -616,7 +616,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             realm: Realm,
             arguments: JSArguments,
             lengthProducer: (realm: Realm, obj: JSObject) -> Long,
-            indicesProducer: (obj: JSObject) -> Iterable<Long>
+            indicesProducer: (obj: JSObject) -> Sequence<Long>
         ): JSValue {
             val obj = Operations.toObject(realm, arguments.thisValue)
             val length = lengthProducer(realm, obj)
@@ -640,7 +640,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             realm: Realm,
             arguments: JSArguments,
             lengthProducer: (realm: Realm, obj: JSObject) -> Long,
-            indicesProducer: (obj: JSObject) -> Iterable<Long>
+            indicesProducer: (obj: JSObject) -> Sequence<Long>
         ): JSValue {
             val obj = arguments.thisValue.toObject(realm)
             val length = lengthProducer(realm, obj)
@@ -691,7 +691,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             realm: Realm,
             arguments: JSArguments,
             lengthProducer: (realm: Realm, obj: JSObject) -> Long,
-            indicesProducer: (obj: JSObject) -> Iterable<Long>
+            indicesProducer: (obj: JSObject) -> Sequence<Long>
         ): JSValue {
             val obj = Operations.toObject(realm, arguments.thisValue)
             val length = lengthProducer(realm, obj)
@@ -711,9 +711,10 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                 min(fromNumber, length - 1L)
             } else length + fromNumber
 
-            indicesProducer(obj).reversed().filter {
+            // TODO: Don't collect all indices to call .asReversed()
+            indicesProducer(obj).filter {
                 it <= limit
-            }.forEach {
+            }.toList().asReversed().forEach {
                 val value = obj.get(it)
                 if (Operations.strictEqualityComparison(searchElement, value) == JSTrue)
                     return it.toValue()
@@ -726,7 +727,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             realm: Realm,
             arguments: JSArguments,
             lengthProducer: (realm: Realm, obj: JSObject) -> Long,
-            indicesProducer: (obj: JSObject) -> Iterable<Long>,
+            indicesProducer: (obj: JSObject) -> Sequence<Long>,
             isRight: Boolean
         ): JSValue {
             val obj = Operations.toObject(realm, arguments.thisValue)
@@ -738,7 +739,8 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             if (length == 0L && arguments.size == 1)
                 Errors.Array.ReduceEmptyArray.throwTypeError(realm)
 
-            val indices = indicesProducer(obj).let {
+            // TODO: Don't collect all indices to call .asReversed()
+            val indices = indicesProducer(obj).toList().let {
                 if (isRight) it.reversed() else it
             }.toMutableList()
 
@@ -762,7 +764,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             realm: Realm,
             arguments: JSArguments,
             lengthProducer: (realm: Realm, obj: JSObject) -> Long,
-            indicesProducer: (obj: JSObject) -> Iterable<Long>
+            indicesProducer: (obj: JSObject) -> Sequence<Long>
         ): JSValue {
             val obj = Operations.toObject(realm, arguments.thisValue)
             val length = lengthProducer(realm, obj)
@@ -826,7 +828,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             realm: Realm,
             arguments: JSArguments,
             lengthProducer: (realm: Realm, obj: JSObject) -> Long,
-            indicesProducer: (obj: JSObject) -> Iterable<Long>
+            indicesProducer: (obj: JSObject) -> Sequence<Long>
         ): JSValue {
             val obj = Operations.toObject(realm, arguments.thisValue)
             val length = lengthProducer(realm, obj)
