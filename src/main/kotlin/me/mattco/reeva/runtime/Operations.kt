@@ -6,6 +6,7 @@ import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.ASTNode
 import me.mattco.reeva.ast.FunctionDeclarationNode
 import me.mattco.reeva.ast.ParameterList
+import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.EnvRecord
@@ -2350,6 +2351,8 @@ object Operations {
         kind: FunctionKind,
         args: JSArguments
     ): JSValue {
+        val agent = Reeva.activeAgent
+
         // TODO: Figure out the caller vs callee realm separation
         hostEnsureCanCompileStrings(realm, realm)
 
@@ -2392,9 +2395,19 @@ object Operations {
             is ParsingResult.Success -> result.node as FunctionDeclarationNode
         }
 
+        if (agent.printAST) {
+            functionNode.debugPrint()
+            println("\n")
+        }
+
         val proto = getPrototypeFromConstructor(constructor, fallbackProto)
 
         val ir = Transformer().transform(functionNode)
+
+        if (agent.printIR) {
+            IrPrinter(ir).print()
+            println("\n")
+        }
 
         IrPrinter(ir).print()
         println("\n")
