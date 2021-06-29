@@ -71,6 +71,7 @@ class Agent {
         } catch (e: Throwable) {
             ExecutionResult.InternalError(e)
         } finally {
+            processMicrotasks()
             realm.clearEnvRecords()
         }
     }
@@ -79,7 +80,7 @@ class Agent {
         pendingMicrotasks.addFirst(task)
     }
 
-    internal fun processMicrotasks() {
+    fun processMicrotasks() {
         while (pendingMicrotasks.isNotEmpty() && Reeva.running)
             pendingMicrotasks.removeLast()()
     }
