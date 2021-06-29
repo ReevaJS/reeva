@@ -51,6 +51,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         defineNativeFunction("flatMap", 1, ::flatMap)
         defineNativeFunction("forEach", 1, ::forEach)
         defineNativeFunction("includes", 1, ::includes)
+        defineNativeFunction("indexOf", 1, ::indexOf)
         defineNativeFunction("join", 1, ::join)
         defineNativeFunction("keys", 1, ::keys)
         defineNativeFunction("lastIndexOf", 1, ::lastIndexOf)
@@ -265,6 +266,10 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
 
     fun includes(realm: Realm, arguments: JSArguments): JSValue {
         return genericArrayIncludes(realm, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
+    }
+
+    fun indexOf(realm: Realm, arguments: JSArguments): JSValue {
+        return genericArrayIndexOf(realm, arguments, Operations::lengthOfArrayLike, Operations::objectIndices)
     }
 
     fun join(realm: Realm, arguments: JSArguments): JSValue {
@@ -685,6 +690,39 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                         append(Operations.toString(realm, element).string)
                 }
             }.toValue()
+        }
+
+        fun genericArrayIndexOf(
+            realm: Realm,
+            arguments: JSArguments,
+            lengthProducer: (realm: Realm, obj: JSObject) -> Long,
+            indicesProducer: (obj: JSObject) -> Sequence<Long>
+        ): JSValue {
+            val obj = Operations.toObject(realm, arguments.thisValue)
+            val length = lengthProducer(realm, obj)
+            if (length == 0L)
+                return (-1).toValue()
+
+            val (searchElement, fromIndex) = arguments.takeArgs(0..1)
+            val n = Operations.toIntegerOrInfinity(realm, fromIndex).let {
+                when {
+                    it.isPositiveInfinity -> return (-1).toValue()
+                    it.isNegativeInfinity -> 0L
+                    else -> it.asLong
+                }
+            }
+
+            val k = if (n >= 0L) n else length + n
+
+            indicesProducer(obj).filter {
+                it >= k
+            }.forEach {
+                val value = obj.get(it)
+                if (Operations.strictEqualityComparison(searchElement, value) == JSTrue)
+                    return it.toValue()
+            }
+
+            return (-1).toValue()
         }
 
         fun genericArrayLastIndexOf(

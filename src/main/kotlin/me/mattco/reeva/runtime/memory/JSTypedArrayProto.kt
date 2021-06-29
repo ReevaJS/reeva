@@ -37,7 +37,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         defineNativeFunction("findIndex", 1, ::findIndex)
         defineNativeFunction("forEach", 1, ::forEach)
         defineNativeFunction("includes", 1, ::includes)
-//        defineNativeFunction("indexOf", 1, ::indexOf)
+        defineNativeFunction("indexOf", 1, ::indexOf)
         defineNativeFunction("join", 1, ::join)
 //        defineNativeFunction("keys", 0, ::keys)
         defineNativeFunction("lastIndexOf", 1, ::lastIndexOf)
@@ -244,9 +244,9 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         return JSArrayProto.genericArrayIncludes(realm, arguments, lengthProducer, indicesProducer)
     }
 
-//    private fun indexOf(realm: Realm, arguments: JSArguments): JSValue {
-//        return JSArrayProto.genericArrayIndexOf(thisValue, arguments, lengthProducer, indicesProducer)
-//    }
+    private fun indexOf(realm: Realm, arguments: JSArguments): JSValue {
+        return JSArrayProto.genericArrayIndexOf(realm, arguments, lengthProducer, indicesProducer)
+    }
 
     private fun join(realm: Realm, arguments: JSArguments): JSValue {
         return JSArrayProto.genericArrayJoin(realm, arguments, lengthProducer)
