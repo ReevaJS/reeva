@@ -36,7 +36,7 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
             Errors.Function.BindNonFunction.throwTypeError(realm)
 
         val args = if (arguments.size > 1) arguments.takeArgs(1 until arguments.size) else emptyList()
-        val function = Operations.boundFunctionCreate(realm, thisValue as JSFunction, JSArguments(args, arguments.argument(0)))
+        val function = Operations.boundFunctionCreate(realm, thisValue, JSArguments(args, arguments.argument(0)))
 
         var length = JSNumber.ZERO
 

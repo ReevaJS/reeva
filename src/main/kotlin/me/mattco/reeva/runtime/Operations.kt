@@ -3133,7 +3133,7 @@ object Operations {
     @JvmStatic
     @ECMAImpl("26.6.2.1")
     fun newPromiseReactionJob(reaction: PromiseReaction, argument: JSValue): PromiseReactionJob {
-        val handlerRealm = if (reaction.handler != null) reaction.handler.realm else null
+        val handlerRealm = if (reaction.handler != null) reaction.handler.callback.realm else null
 
         return PromiseReactionJob(handlerRealm) job@{
             val handlerResult: Any = if (reaction.handler == null) {
@@ -3143,7 +3143,7 @@ object Operations {
                     ThrowException(argument)
                 }
             } else try {
-                call(reaction.handler.realm, reaction.handler, JSUndefined, listOf(argument))
+                Reeva.activeAgent.hostHooks.callJobCallback(handlerRealm!!, reaction.handler, JSArguments(listOf(argument)))
             } catch (e: ThrowException) {
                 e
             }
@@ -3169,14 +3169,12 @@ object Operations {
         realm: Realm,
         promise: JSObject,
         thenable: JSValue,
-        then: JSValue
+        then: JobCallback
     ): PromiseReactionJob {
-        // TODO: then is always an object?
-        val thenRealm = if (then is JSObject) then.realm else realm
-        return PromiseReactionJob(thenRealm) {
+        return PromiseReactionJob(then.callback.realm) {
             val (resolveFunction, rejectFunction) = createResolvingFunctions(promise)
             try {
-                call(realm, then, thenable, listOf(resolveFunction, rejectFunction))
+                Reeva.activeAgent.hostHooks.callJobCallback(realm, then, JSArguments(listOf(resolveFunction, rejectFunction), thenable))
             } catch (e: ThrowException) {
                 call(realm, rejectFunction, JSUndefined, listOf(e.value))
             }
@@ -3217,10 +3215,10 @@ object Operations {
         resultCapability: PromiseCapability?
     ): JSValue {
         val onFulfilledCallback = if (isCallable(onFulfilled)) {
-            onFulfilled
+            Reeva.activeAgent.hostHooks.makeJobCallback(onFulfilled)
         } else null
         val onRejectedCallback = if (isCallable(onRejected)) {
-            onRejected
+            Reeva.activeAgent.hostHooks.makeJobCallback(onRejected)
         } else null
 
         val fulfillReaction = PromiseReaction(resultCapability, PromiseReaction.Type.Fulfill, onFulfilledCallback)
@@ -3248,6 +3246,8 @@ object Operations {
 
         return resultCapability?.promise ?: JSUndefined
     }
+
+    data class JobCallback(val callback: JSFunction, val hostDefined: JSValue = JSEmpty)
 
     enum class ToPrimitiveHint(private val _text: String) {
         AsDefault("default"),
@@ -3341,7 +3341,7 @@ object Operations {
     data class PromiseReaction(
         val capability: PromiseCapability?,
         val type: Type,
-        val handler: JSFunction?,
+        val handler: JobCallback?,
     ) {
         enum class Type {
             Fulfill,

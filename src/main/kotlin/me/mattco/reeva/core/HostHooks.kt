@@ -1,13 +1,22 @@
 package me.mattco.reeva.core
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.SlotName
+import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.annotations.ECMAImpl
+import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.JSObject
 
 open class HostHooks {
+    @ECMAImpl("9.5.2")
+    open fun makeJobCallback(callback: JSFunction): Operations.JobCallback {
+        return Operations.JobCallback(callback)
+    }
+
+    @ECMAImpl("9.5.3")
+    open fun callJobCallback(realm: Realm, handler: Operations.JobCallback, arguments: JSArguments): JSValue {
+        return Operations.call(realm, handler.callback, arguments)
+    }
+
     @ECMAImpl("9.5.4")
     open fun enqueuePromiseJob(job: () -> Unit, realm: Realm?) {
         Reeva.activeAgent.addMicrotask(job)
@@ -24,7 +33,7 @@ open class HostHooks {
     }
 
     @ECMAImpl("27.2.1.9")
-    fun promiseRejectionTracker(realm: Realm, promise: JSObject, operation: String) {
+    open fun promiseRejectionTracker(realm: Realm, promise: JSObject, operation: String) {
         if (operation == "reject") {
             Reeva.activeAgent.addMicrotask {
                 // If promise does not have any handlers by the time this microtask is ran, it

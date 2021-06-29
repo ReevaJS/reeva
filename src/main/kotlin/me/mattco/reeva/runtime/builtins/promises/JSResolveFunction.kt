@@ -41,7 +41,8 @@ class JSResolveFunction private constructor(
         if (!Operations.isCallable(thenAction))
             return Operations.fulfillPromise(promise, resolution)
 
-        val job = Operations.newPromiseResolveThenableJob(realm, promise, resolution, thenAction)
+        val thenJobCallback = Reeva.activeAgent.hostHooks.makeJobCallback(thenAction)
+        val job = Operations.newPromiseResolveThenableJob(realm, promise, resolution, thenJobCallback)
         Reeva.activeAgent.hostHooks.enqueuePromiseJob(job.job, job.realm)
 
         return JSUndefined
