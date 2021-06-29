@@ -30,6 +30,11 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         defineNativeFunction("valueOf", 0, ::valueOf)
     }
 
+    @ECMAImpl("10.4.7.1")
+    override fun setPrototype(newPrototype: JSValue): Boolean {
+        return Operations.setImmutablePrototype(this, newPrototype)
+    }
+
     @ECMAImpl("B.2.2.1.1")
     fun getProto(realm: Realm, thisValue: JSValue): JSValue {
         return Operations.toObject(realm, thisValue).getPrototype()
@@ -39,9 +44,11 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     fun setProto(realm: Realm, thisValue: JSValue, proto: JSValue): JSValue {
         val obj = Operations.requireObjectCoercible(realm, thisValue)
         if (proto !is JSObject && proto != JSNull)
+            return JSUndefined
+        if (obj !is JSObject)
+            return JSUndefined
+        if (!obj.setPrototype(proto))
             Errors.Object.ProtoValue.throwTypeError(realm)
-        if (obj is JSObject && !obj.setPrototype(proto))
-            Errors.TODO("set Object.prototype.__proto__").throwTypeError(realm)
         return JSUndefined
     }
 
