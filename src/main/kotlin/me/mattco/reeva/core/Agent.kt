@@ -2,7 +2,6 @@ package me.mattco.reeva.core
 
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.ScriptNode
-import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.interpreter.ExecutionResult
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.interpreter.transformer.Transformer
@@ -60,10 +59,13 @@ class Agent {
             println("\n")
         }
 
-        val globalEnv = GlobalEnvRecord(realm, ast.scope.isStrict)
-        realm.globalEnv = globalEnv
-        realm.varEnv = globalEnv
-        realm.lexEnv = globalEnv
+        // TODO: This feels out of place. The GlobalEnvRecord persists between calls to run, yet
+        // we set this property on the global object on every call. Is there a better way to
+        // store strictness?
+        realm.globalEnv.isStrict = ast.scope.isStrict
+
+        realm.varEnv = realm.globalEnv
+        realm.lexEnv = realm.globalEnv
 
         return try {
             val function = Interpreter.wrap(ir, realm)

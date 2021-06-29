@@ -6,7 +6,6 @@ import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.FunctionEnvRecord
-import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.interpreter.transformer.Block
 import me.mattco.reeva.interpreter.transformer.FunctionInfo
 import me.mattco.reeva.interpreter.transformer.opcodes.Index
@@ -805,7 +804,7 @@ class Interpreter(
 
         override fun evaluate(arguments: JSArguments): JSValue {
             val envRecord = if (info.isTopLevelScript) {
-                GlobalEnvRecord(realm, info.isStrict)
+                realm.globalEnv
             } else {
                 FunctionEnvRecord(realm, info.isStrict, outerEnvRecord!!, this)
             }

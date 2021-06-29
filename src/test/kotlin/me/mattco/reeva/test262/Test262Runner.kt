@@ -6,6 +6,9 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Agent
+import me.mattco.reeva.core.HostHooks
+import me.mattco.reeva.core.Realm
+import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.utils.expect
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -81,6 +84,12 @@ class Test262Runner {
             Reeva.setup()
 
             val agent = Agent()
+            agent.hostHooks = object : HostHooks() {
+                override fun initializeHostDefinedGlobalObject(realm: Realm): JSObject {
+                    return Test262GlobalObject.create(realm)
+                }
+            }
+
             Reeva.setAgent(agent)
         }
 

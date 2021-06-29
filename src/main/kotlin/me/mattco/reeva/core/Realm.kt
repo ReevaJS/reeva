@@ -5,6 +5,8 @@ import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.jvmcompat.JSClassProto
 import me.mattco.reeva.jvmcompat.JSPackageObject
 import me.mattco.reeva.jvmcompat.JSPackageProto
+import me.mattco.reeva.runtime.JSValue
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.arrays.JSArrayCtor
 import me.mattco.reeva.runtime.arrays.JSArrayProto
 import me.mattco.reeva.runtime.builtins.*
@@ -27,6 +29,8 @@ import me.mattco.reeva.runtime.objects.*
 import me.mattco.reeva.runtime.objects.JSObject.Companion.initialize
 import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.runtime.wrappers.*
+import me.mattco.reeva.utils.ecmaAssert
+import me.mattco.reeva.utils.expect
 import java.util.concurrent.ConcurrentHashMap
 
 class Realm {
@@ -148,17 +152,16 @@ class Realm {
     val classProto by lazy { JSClassProto.create(this) }
     val packageObj by lazy { JSPackageObject.create(this) }
 
-    val emptyShape = Shape(this)
-    val newObjectShape = Shape(this)
+    internal val emptyShape = Shape(this)
+    internal val newObjectShape = Shape(this)
 
-    fun ensureGloballyInitialized() = apply {
-        if (!::globalObject.isInitialized) {
-            initObjects()
-        }
-    }
-
-    fun setGlobalObject(obj: JSObject) = apply {
-        globalObject = obj
+    @ECMAImpl("9.3.3")
+    internal fun setGlobalObject(globalObject: JSValue, thisValue: JSValue) {
+        ecmaAssert(globalObject is JSObject)
+        val actualThisValue = thisValue.ifUndefined(globalObject)
+        expect(actualThisValue is JSObject)
+        this.globalObject = globalObject
+        globalEnv = GlobalEnvRecord(this, actualThisValue, false)
     }
 
     internal fun getOffsetLexEnv(offset: Int): EnvRecord {
@@ -183,12 +186,11 @@ class Realm {
     }
 
     internal fun clearEnvRecords() {
-        globalEnvBacker = null
         varEnvBacker = null
         lexEnvBacker = null
     }
 
-    fun initObjects() {
+    internal fun initObjects() {
         objectProto = JSObjectProto.create(this)
         functionProto = JSFunctionProto.create(this)
         functionProto.initialize()

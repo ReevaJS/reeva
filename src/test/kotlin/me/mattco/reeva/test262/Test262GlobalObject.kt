@@ -31,10 +31,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
 
         fun createRealm(realm: Realm, arguments: JSArguments): JSValue {
             val newRealm = Reeva.makeRealm()
-            newRealm.initObjects()
-            val newGlobal = Test262GlobalObject.create(newRealm)
-            newRealm.setGlobalObject(newGlobal)
-            return newGlobal.get("$262")
+            return newRealm.globalObject.get("$262")
         }
 
         fun detachArrayBuffer(realm: Realm, arguments: JSArguments): JSValue {

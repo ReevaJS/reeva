@@ -5,6 +5,7 @@ import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.objects.JSObject
+import me.mattco.reeva.runtime.primitives.JSUndefined
 
 open class HostHooks {
     @ECMAImpl("9.5.2")
@@ -20,6 +21,30 @@ open class HostHooks {
     @ECMAImpl("9.5.4")
     open fun enqueuePromiseJob(job: () -> Unit, realm: Realm?) {
         Reeva.activeAgent.addMicrotask(job)
+    }
+
+    @ECMAImpl("9.6")
+    open fun initializeHostDefinedRealm(): Realm {
+        val realm = Realm()
+        realm.initObjects()
+        val globalObject = initializeHostDefinedGlobalObject(realm)
+        val thisValue = initializeHostDefinedGlobalThisValue(realm)
+        realm.setGlobalObject(globalObject, thisValue)
+        return realm
+    }
+
+    /**
+     * Non-standard function. Used for step 7 of InitialHostDefinedRealm (9.6)
+     */
+    open fun initializeHostDefinedGlobalObject(realm: Realm): JSObject {
+        return JSGlobalObject.create(realm)
+    }
+
+    /**
+     * Non-standard function. Used for step 8 of InitialHostDefinedRealm (9.6)
+     */
+    open fun initializeHostDefinedGlobalThisValue(realm: Realm): JSValue {
+        return JSUndefined
     }
 
     /**

@@ -2,8 +2,6 @@ package me.mattco.reeva
 
 import me.mattco.reeva.core.Agent
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.JSGlobalObject
-import me.mattco.reeva.runtime.objects.JSObject
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -31,17 +29,7 @@ object Reeva {
     }
 
     @JvmStatic
-    fun makeRealm() = Realm().apply {
-        ensureGloballyInitialized()
-        setGlobalObject(JSGlobalObject.create(this))
-
-    }
-
-    @JvmStatic
-    fun makeRealm(globalObjectProvider: (Realm) -> JSObject) = Realm().apply {
-        ensureGloballyInitialized()
-        setGlobalObject(globalObjectProvider(this))
-    }
+    fun makeRealm() = activeAgent.hostHooks.initializeHostDefinedRealm()
 
     @JvmStatic
     fun setAgent(agent: Agent) {
