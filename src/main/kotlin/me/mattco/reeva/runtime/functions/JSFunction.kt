@@ -1,5 +1,6 @@
 package me.mattco.reeva.runtime.functions
 
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
@@ -29,11 +30,13 @@ abstract class JSFunction(
     }
 
     fun call(arguments: JSArguments): JSValue {
-        // TODO: Should this throw an error? Or will we never get here to due
-        // the guard in Operations.call
-        expect(isCallable)
-        val newThis = getNewThisValue(arguments.thisValue)
-        return evaluate(arguments.withThisValue(newThis))
+        return Reeva.activeAgent.inCallScope(this) {
+            // TODO: Should this throw an error? Or will we never get here to due
+            // the guard in Operations.call
+            expect(isCallable)
+            val newThis = getNewThisValue(arguments.thisValue)
+            evaluate(arguments.withThisValue(newThis))
+        }
     }
 
     fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
@@ -41,23 +44,22 @@ abstract class JSFunction(
     }
 
     fun construct(arguments: JSArguments): JSValue {
-        // TODO: Should this throw an error? Or will we never get here to due
-        // the guard in Operations.construct
-        expect(isConstructable)
+        return Reeva.activeAgent.inCallScope(this) {
+            // TODO: Should this throw an error? Or will we never get here to due
+            // the guard in Operations.construct
+            expect(isConstructable)
 
-        ecmaAssert(arguments.newTarget is JSObject)
+            ecmaAssert(arguments.newTarget is JSObject)
 
-        val thisValue = Operations.ordinaryCreateFromConstructor(
-            realm,
-            arguments.newTarget,
-            realm.objectProto,
-        )
+            val thisValue = Operations.ordinaryCreateFromConstructor(
+                realm,
+                arguments.newTarget,
+                realm.objectProto,
+            )
 
-        val result = evaluate(arguments.withThisValue(thisValue))
-        if (result is JSObject)
-            return result
-
-        return thisValue
+            val result = evaluate(arguments.withThisValue(thisValue))
+            if (result is JSObject) result else thisValue
+        }
     }
 
     fun construct(newTarget: JSValue, arguments: List<JSValue>): JSValue {

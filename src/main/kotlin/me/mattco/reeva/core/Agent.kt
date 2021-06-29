@@ -8,6 +8,7 @@ import me.mattco.reeva.interpreter.transformer.Transformer
 import me.mattco.reeva.interpreter.transformer.opcodes.IrPrinter
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.parser.ParsingResult
+import me.mattco.reeva.runtime.functions.JSFunction
 import java.nio.ByteOrder
 
 class Agent {
@@ -27,6 +28,7 @@ class Agent {
         get() = byteOrder == ByteOrder.BIG_ENDIAN
 
     private val pendingMicrotasks = ArrayDeque<() -> Unit>()
+    private val callStack = ArrayDeque<JSFunction>()
 
     init {
         Reeva.allAgents.add(this)
@@ -75,8 +77,18 @@ class Agent {
         } catch (e: Throwable) {
             ExecutionResult.InternalError(e)
         } finally {
-            processMicrotasks()
             realm.clearEnvRecords()
+        }
+    }
+
+    internal fun <T> inCallScope(function: JSFunction, block: () -> T): T {
+        callStack.add(function)
+        return try {
+            block()
+        } finally {
+            callStack.removeLast()
+            if (callStack.isEmpty())
+                processMicrotasks()
         }
     }
 
