@@ -1069,32 +1069,30 @@ class Transformer : ASTVisitor {
     override fun visitCallExpression(node: CallExpressionNode) {
         val callableReg = generator.reserveRegister()
         val receiverReg = generator.reserveRegister()
+        val target = node.target
 
-        when (val target = node.target) {
-            is MemberExpressionNode -> {
-                visit(target.lhs)
-                generator.add(Star(receiverReg))
+        if (target is MemberExpressionNode) {
+            visit(target.lhs)
+            generator.add(Star(receiverReg))
 
-                when (target.type) {
-                    MemberExpressionNode.Type.Computed -> {
-                        visit(target.rhs)
-                        generator.add(LdaKeyedProperty(receiverReg))
-                    }
-                    MemberExpressionNode.Type.NonComputed -> {
-                        val cpIndex = generator.intern((target.rhs as IdentifierNode).identifierName)
-                        generator.add(LdaNamedProperty(receiverReg, cpIndex))
-                    }
-                    MemberExpressionNode.Type.Tagged -> TODO()
+            when (target.type) {
+                MemberExpressionNode.Type.Computed -> {
+                    visit(target.rhs)
+                    generator.add(LdaKeyedProperty(receiverReg))
                 }
+                MemberExpressionNode.Type.NonComputed -> {
+                    val cpIndex = generator.intern((target.rhs as IdentifierNode).identifierName)
+                    generator.add(LdaNamedProperty(receiverReg, cpIndex))
+                }
+                MemberExpressionNode.Type.Tagged -> TODO()
+            }
 
-                generator.add(Star(callableReg))
-            }
-            else -> {
-                visit(target)
-                generator.add(Star(callableReg))
-                generator.add(LdaUndefined)
-                generator.add(Star(receiverReg))
-            }
+            generator.add(Star(callableReg))
+        } else {
+            visit(target)
+            generator.add(Star(callableReg))
+            generator.add(LdaUndefined)
+            generator.add(Star(receiverReg))
         }
 
         val (argumentsMode, argumentRegisters) = loadArguments(node.arguments)
