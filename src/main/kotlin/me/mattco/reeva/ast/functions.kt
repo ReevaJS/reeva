@@ -15,7 +15,7 @@ class ParameterList(parameters: List<Parameter> = emptyList()) : ASTListNode<Par
     }
 
     fun containsDuplicates(): Boolean {
-        return distinctBy { it.identifier.identifierName }.size == size
+        return distinctBy { it.identifier.identifierName }.size != size
     }
 }
 

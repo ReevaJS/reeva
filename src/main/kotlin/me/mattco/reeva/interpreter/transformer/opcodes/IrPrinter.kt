@@ -105,16 +105,17 @@ class IrPrinter(private val info: FunctionInfo) {
 
             is LdaGlobal -> append(stringifyIndex(opcode.name))
             is StaGlobal -> append(stringifyIndex(opcode.name))
-            is LdaCurrentEnv -> append(stringifyIndex(opcode.name))
-            is StaCurrentEnv -> append(stringifyIndex(opcode.name))
-            is LdaEnv -> {
-                append(" name:", stringifyIndex(opcode.name))
-                append(" offset:", stringifyLiteral(opcode.offset))
+            is LdaCurrentRecordSlot -> append(stringifyLiteral(opcode.slot))
+            is StaCurrentRecordSlot -> append(stringifyLiteral(opcode.slot))
+            is LdaRecordSlot -> {
+                append(" slot:", stringifyLiteral(opcode.slot))
+                append(" distance:", stringifyLiteral(opcode.distance))
             }
-            is StaEnv -> {
-                append(" name:", stringifyIndex(opcode.name))
-                append(" offset:", stringifyLiteral(opcode.offset))
+            is StaRecordSlot -> {
+                append(" slot:", stringifyLiteral(opcode.slot))
+                append(" distance:", stringifyLiteral(opcode.distance))
             }
+            is PushDeclarativeEnvRecord -> append(stringifyLiteral(opcode.numSlots))
 
             is Call -> {
                 append(" target:", stringifyRegister(opcode.targetReg))

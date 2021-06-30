@@ -28,6 +28,7 @@ data class FunctionInfo(
 
 class Transformer : ASTVisitor {
     private lateinit var generator: Generator
+    private var currentScope: Scope? = null
 
     fun transform(node: ASTNode): FunctionInfo {
         if (::generator.isInitialized)
@@ -36,7 +37,7 @@ class Transformer : ASTVisitor {
         return when (node) {
             is ModuleNode -> TODO()
             is ScriptNode -> {
-                generator = Generator(1)
+                generator = Generator(1, node.scope.inlineableRegisters)
 
                 globalDeclarationInstantiation(node.scope) {
                     visit(node.statements)
@@ -52,7 +53,7 @@ class Transformer : ASTVisitor {
                 )
             }
             is FunctionDeclarationNode -> {
-                generator = Generator(node.parameters.size + 1)
+                generator = Generator(node.parameters.size + 1, node.scope.inlineableRegisters)
 
                 makeFunctionInfo(
                     node.identifier.identifierName,
@@ -70,21 +71,25 @@ class Transformer : ASTVisitor {
     }
 
     private fun enterScope(scope: Scope) {
+        currentScope = scope
+
         if (scope.requiresEnv())
-            generator.add(PushLexicalEnv)
+            generator.add(PushDeclarativeEnvRecord(scope.nextSlot))
     }
 
     private fun exitScope(scope: Scope) {
+        currentScope = scope.outer
+
         if (!scope.requiresEnv())
             return
 
         if (generator.currentBlock.isTerminated) {
             // Insert a PopEnv before the terminating instruction. It doesn't modify the
-            // accumulator register, so this is always save
+            // accumulator register, so this is always safe
             val currentBlock = generator.currentBlock
-            currentBlock.add(currentBlock.lastIndex, PopLexicalEnv)
+            currentBlock.add(currentBlock.lastIndex, PopEnvRecord)
         } else {
-            generator.add(PopLexicalEnv)
+            generator.add(PopEnvRecord)
         }
     }
 
@@ -96,13 +101,19 @@ class Transformer : ASTVisitor {
         }
     }
 
-    override fun visitBlock(node: BlockNode) {
-        enterScope(node.scope)
+    private fun visitBlock(node: BlockNode, pushScope: Boolean) {
+        if (pushScope)
+            enterScope(node.scope)
         try {
             visitASTListNode(node.statements)
         } finally {
-            exitScope(node.scope)
+            if (pushScope)
+                exitScope(node.scope)
         }
+    }
+
+    override fun visitBlock(node: BlockNode) {
+        visitBlock(node, pushScope = true)
     }
 
     override fun visitExpressionStatement(node: ExpressionStatementNode) {
@@ -207,11 +218,11 @@ class Transformer : ASTVisitor {
             is BindingIdentifierNode -> generator.add(StaGlobal(generator.intern(node.identifierName)))
             is VariableDeclarationNode -> {
                 val declaration = node.declarations[0]
-                storeVariable(declaration.variable, declaration.scope)
+                storeVariable(declaration.variable)
             }
             is LexicalDeclarationNode -> {
                 val declaration = node.declarations[0]
-                storeVariable(declaration.variable, declaration.scope)
+                storeVariable(declaration.variable)
             }
             else -> TODO()
         }
@@ -219,16 +230,8 @@ class Transformer : ASTVisitor {
 
     private fun iterateForEach(decl: ASTNode, body: ASTNode) {
         iterateValues {
-            val needsScope = decl is LexicalDeclarationNode
-
-            if (needsScope)
-                generator.add(PushLexicalEnv)
-
             assign(decl)
             visit(body)
-
-            if (needsScope)
-                generator.addIfNotTerminated(PopLexicalEnv)
         }
     }
 
@@ -318,33 +321,26 @@ class Transformer : ASTVisitor {
         if (hasCatch) {
             generator.currentBlock = catchBlock!!
 
-            val parameter = node.catchNode!!.catchParameter
-
-            if (parameter != null) {
-                // The exception is in the accumulator
-                generator.add(PushLexicalEnv)
-                generator.add(StaCurrentEnv(generator.intern(parameter.identifierName)))
-            }
-
             if (hasFinally) {
                 // We exit above and re-enter here because we no longer have an active
                 // catch handler
                 generator.enterHandlerScope(null, finallyBlock!!)
             }
 
-            if (parameter != null) {
-                // We will have already pushed a context, so we call visitASTListNode to
-                // skip the {enter,exit}Scope calls
-                visitASTListNode(node.catchNode.block.statements)
+            val catchNode = node.catchNode!!
+            val parameter = catchNode.catchParameter
 
-                if (generator.currentBlock.isTerminated) {
-                    generator.currentBlock.add(generator.currentBlock.lastIndex, PopLexicalEnv)
-                } else {
-                    generator.add(PopLexicalEnv)
-                }
-            } else {
-                visit(node.catchNode.block)
+            enterScope(catchNode.block.scope)
+
+            if (parameter != null) {
+                // The exception is in the accumulator
+                storeVariable(parameter.variable)
             }
+
+            // We will have already pushed a context, so we don't push a scope here
+            visitBlock(node.catchNode.block, pushScope = false)
+
+            exitScope(catchNode.block.scope)
 
             if (!generator.currentBlock.isTerminated) {
                 if (hasFinally) {
@@ -439,7 +435,7 @@ class Transformer : ASTVisitor {
             generator.add(LdaUndefined)
         }
 
-        storeVariable(variable, declaration.scope)
+        storeVariable(variable)
     }
 
     override fun visitDebuggerStatement() {
@@ -460,7 +456,7 @@ class Transformer : ASTVisitor {
 
     override fun visitIdentifierReference(node: IdentifierReferenceNode) {
         val variable = node.targetVar
-        loadVariable(node.targetVar, node.scope)
+        loadVariable(node.targetVar)
         if (node.targetVar.mode == Variable.Mode.Global)
             return
 
@@ -508,38 +504,65 @@ class Transformer : ASTVisitor {
     ) {
         enterScope(scope)
 
-        val varDecls = scope.declaredVariables.filter { it.type == Variable.Type.Var }.map { it.source }
+        val variables = scope.declaredVariables
+
+        val varVariables = variables.filter { it.type == Variable.Type.Var }
+        val lexVariables = variables.filter { it.type != Variable.Type.Var }
+
+        val varNames = varVariables.map { it.name }
+        val lexNames = lexVariables.map { it.name }
+
+        val functionNames = mutableListOf<String>()
         val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
-        val declaredFunctionNames = mutableSetOf<String>()
 
-        for (varDecl in varDecls.asReversed()) {
-            if (varDecl !is FunctionDeclarationNode || varDecl.identifier.identifierName in declaredFunctionNames)
+        for (decl in varVariables.asReversed()) {
+            val source = decl.source
+
+            if (source !is FunctionDeclarationNode)
                 continue
 
-            functionsToInitialize.add(0, varDecl)
-            declaredFunctionNames.add(varDecl.identifier.identifierName)
-        }
-
-        val declaredVarNames = mutableSetOf<String>()
-
-        for (varDecl in varDecls) {
-            if (varDecl is FunctionDeclarationNode)
+            val name = decl.name
+            if (name in functionNames)
                 continue
 
-            val name = varDecl.variable.name
-            if (name !in declaredFunctionNames && name !in declaredVarNames) {
-                declaredVarNames.add(name)
-            }
+            functionNames.add(0, name)
+            functionsToInitialize.add(0, source)
         }
 
-        val lexNames = scope.declaredVariables.filter { it.type != Variable.Type.Var }.map { it.name }
+        val declaredVarNames = mutableListOf<String>()
 
-        if (declaredVarNames.isNotEmpty() || lexNames.isNotEmpty() || declaredFunctionNames.isNotEmpty()) {
-            val array = DeclarationsArray(declaredVarNames.toList(), lexNames, declaredFunctionNames.toList())
+        for (decl in varVariables) {
+            val source = decl.source
+
+            if (source is FunctionDeclarationNode)
+                continue
+
+            val name = decl.name
+            if (name in functionNames || name in declaredVarNames)
+                continue
+
+            declaredVarNames.add(name)
+        }
+
+        if (declaredVarNames.isNotEmpty() || lexNames.isNotEmpty() || functionNames.isNotEmpty()) {
+            val array = DeclarationsArray(declaredVarNames, lexNames, functionNames)
             generator.add(DeclareGlobals(generator.intern(array)))
         }
 
-        commonInstantiation(varDecls, declaredFunctionNames, functionsToInitialize)
+        for (func in functionsToInitialize) {
+            visitFunctionHelper(
+                func.identifier.identifierName,
+                func.parameters,
+                func.body,
+                func.functionScope,
+                func.bodyScope,
+                func.bodyScope.isStrict,
+                false,
+                func.kind,
+            )
+
+            storeVariable(func.variable)
+        }
 
         evaluationBlock()
 
@@ -554,29 +577,31 @@ class Transformer : ASTVisitor {
         isStrict: Boolean,
         evaluationBlock: () -> Unit,
     ) {
-        // functionScope is essentially ignored here, as the EnvRecord for it is
-        // created and stored in IRFunction::envRecord. It is pushed automatically
-        // by the interpreter and does not need to be explicitly present in the
-        // bytecode
-
         val parameterNames = parameters.map { it.identifier.identifierName }
-        val simpleParameterList = parameters.isSimple()
         val hasParameterExpressions = parameters.any { it.initializer != null }
 
-        val lexNames = bodyScope.declaredVariables.filter { it.type != Variable.Type.Var }.map { it.name }
-        val varDecls = bodyScope.declaredVariables.filter {
-            it.type == Variable.Type.Var && it.mode != Variable.Mode.Parameter
-        }.map { it.source }
+        val variables = bodyScope.declaredVariables
 
-        val functionNames = mutableSetOf<String>()
+        val varVariables = variables.filter { it.type == Variable.Type.Var }
+        val lexVariables = variables.filter { it.type != Variable.Type.Var }
+
+        val lexNames = lexVariables.map { it.name }
+
+        val functionNames = mutableListOf<String>()
         val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
 
-        for (decl in varDecls.asReversed()) {
-            if (decl !is FunctionDeclarationNode || decl.identifier.identifierName in functionNames)
+        for (decl in varVariables.asReversed()) {
+            val source = decl.source
+
+            if (source !is FunctionDeclarationNode)
                 continue
 
-            functionsToInitialize.add(0, decl)
-            functionNames.add(decl.identifier.identifierName)
+            val name = decl.name
+            if (name in functionNames)
+                continue
+
+            functionNames.add(0, name)
+            functionsToInitialize.add(0, source)
         }
 
         val argumentsObjectNeeded = when {
@@ -587,79 +612,66 @@ class Transformer : ASTVisitor {
         }
 
         if (argumentsObjectNeeded && bodyScope.possiblyReferencesArguments) {
-            if (isStrict || !simpleParameterList) {
-                generator.add(CreateUnmappedArgumentsObject)
-            } else {
-                generator.add(CreateMappedArgumentsObject)
+            TODO()
+//            if (isStrict || !parameters.isSimple()) {
+//                generator.add(CreateUnmappedArgumentsObject)
+//            } else {
+//                generator.add(CreateMappedArgumentsObject)
+//            }
+        }
+
+        enterScope(functionScope)
+
+        if (parameters.containsDuplicates())
+            TODO("Handle duplicate parameter names")
+
+        parameters.forEachIndexed { index, param ->
+            val register = index + 1
+            val variable = param.variable
+
+            when {
+                param.isRest -> {
+                    generator.add(CreateRestParam)
+                    storeVariable(variable)
+                }
+                param.initializer != null -> {
+                    generator.add(Ldar(register))
+                    generator.ifHelper(::JumpIfUndefined) {
+                        visit(param.initializer)
+                        storeVariable(variable)
+                    }
+                }
+                !variable.isInlineable -> {
+                    generator.add(Ldar(register))
+                    storeVariable(variable)
+                }
             }
         }
 
-        parameters.distinctBy { it.identifier.identifierName }.forEachIndexed { index, param ->
-            val register = index + 1
+        for (func in functionsToInitialize) {
+            visitFunctionHelper(
+                func.identifier.identifierName,
+                func.parameters,
+                func.body,
+                func.functionScope,
+                func.bodyScope,
+                isStrict,
+                false,
+                func.kind,
+            )
 
-            if (param.isRest) {
-                generator.add(CreateRestParam)
-            } else {
-                generator.add(Ldar(register))
-
-                if (param.initializer != null) {
-                    generator.ifHelper(::JumpIfUndefined) {
-                        visit(param.initializer)
-                    }
-                }
-            }
-
-            generator.add(StaCurrentEnv(generator.intern(param.variable.name)))
+            storeVariable(func.variable)
         }
 
         if (bodyScope != functionScope)
             enterScope(bodyScope)
 
-        commonInstantiation(varDecls, functionNames, functionsToInitialize)
-
         evaluationBlock()
 
         if (bodyScope != functionScope)
             exitScope(bodyScope)
-    }
 
-    private fun commonInstantiation(
-        varDecls: List<VariableSourceNode>,
-        functionNames: Set<String>,
-        functions: List<FunctionDeclarationNode>,
-    ) {
-        val instantiatedVarNames = functionNames.toMutableSet()
-
-        for (varDecl in varDecls) {
-            if (varDecl is FunctionDeclarationNode || varDecl.variable.name in instantiatedVarNames)
-                continue
-
-            val variable = varDecl.variable
-
-            if (variable.name !in instantiatedVarNames) {
-                instantiatedVarNames.add(variable.name)
-
-                if (variable.possiblyUsedBeforeDecl) {
-                    generator.add(LdaUndefined)
-                    storeVariable(variable, varDecl.scope)
-                }
-            }
-        }
-
-        for (function in functions) {
-            visitFunctionHelper(
-                function.identifier.identifierName,
-                function.parameters,
-                function.body,
-                function.functionScope,
-                function.bodyScope,
-                function.scope.isStrict || function.functionScope.isStrict || function.bodyScope.isStrict,
-                false, // TODO
-                function.kind,
-            )
-
-            storeVariable(function.variable, function.scope)
-        }
+        exitScope(functionScope)
     }
 
     private fun visitFunctionHelper(
@@ -676,7 +688,7 @@ class Transformer : ASTVisitor {
             TODO()
 
         val prevGenerator = generator
-        generator = Generator(parameters.size + 1)
+        generator = Generator(parameters.size + 1, functionScope.inlineableRegisters)
 
         val info = makeFunctionInfo(
             name,
@@ -859,7 +871,7 @@ class Transformer : ASTVisitor {
 
                 postfixGuard {
                     generator.add(op)
-                    storeVariable(target.targetVar, target.scope)
+                    storeVariable(target.targetVar)
                 }
             }
             is MemberExpressionNode -> {
@@ -916,7 +928,7 @@ class Transformer : ASTVisitor {
                     return
 
                 loadRhsIntoAcc()
-                storeVariable(lhs.targetVar, lhs.scope)
+                storeVariable(lhs.targetVar)
 
                 return
             }
@@ -945,37 +957,58 @@ class Transformer : ASTVisitor {
         }
     }
 
-    private fun loadVariable(variable: Variable, currentScope: Scope) {
+    private fun loadVariable(variable: Variable) {
         if (variable.mode == Variable.Mode.Global) {
             if (variable.name == "undefined") {
                 generator.add(LdaUndefined)
-            } else generator.add(LdaGlobal(generator.intern(variable.name)))
-        } else loadEnvVariableRef(variable, currentScope)
-    }
+            } else {
+                expect(variable.type == Variable.Type.Var)
+                generator.add(LdaGlobal(generator.intern(variable.name)))
+            }
+            return
+        }
 
-    private fun storeVariable(variable: Variable, currentScope: Scope) {
-        if (variable.mode == Variable.Mode.Global) {
-            generator.add(StaGlobal(generator.intern(variable.name)))
-        } else storeEnvVariableRef(variable, currentScope)
-    }
+        expect(variable.slot != -1)
 
-    private fun loadEnvVariableRef(variable: Variable, currentScope: Scope) {
-        val name = generator.intern(variable.name)
-        val distance = currentScope.envDistanceFrom(variable.source.scope)
-        if (distance == 0) {
-            generator.add(LdaCurrentEnv(name))
+        if (variable.isInlineable) {
+            generator.add(Ldar(variable.slot))
         } else {
-            generator.add(LdaEnv(name, distance))
+            val distance = variable.source.variable.scope.envDistanceFrom(variable.scope)
+            if (distance == 0) {
+                generator.add(LdaCurrentRecordSlot(variable.slot))
+            } else {
+                generator.add(LdaRecordSlot(variable.slot, distance))
+            }
         }
     }
 
-    private fun storeEnvVariableRef(variable: Variable, currentScope: Scope) {
-        val name = generator.intern(variable.name)
-        val distance = currentScope.envDistanceFrom(variable.source.scope)
-        if (distance == 0) {
-            generator.add(StaCurrentEnv(name))
+    private fun storeVariable(variable: Variable) {
+        if (variable.mode == Variable.Mode.Global) {
+            if (variable.name == "undefined") {
+                if (variable.scope.isStrict) {
+                    // TODO: Better error
+                    generator.add(ThrowConstReassignment(generator.intern("undefined")))
+                } else {
+                    return
+                }
+            } else {
+                expect(variable.type == Variable.Type.Var)
+                generator.add(StaGlobal(generator.intern(variable.name)))
+            }
+            return
+        }
+
+        expect(variable.slot != -1)
+
+        if (variable.isInlineable) {
+            generator.add(Star(variable.slot))
         } else {
-            generator.add(StaEnv(name, distance))
+            val distance = variable.source.variable.scope.envDistanceFrom(variable.scope)
+            if (distance == 0) {
+                generator.add(StaCurrentRecordSlot(variable.slot))
+            } else {
+                generator.add(StaRecordSlot(variable.slot, distance))
+            }
         }
     }
 
@@ -1038,12 +1071,6 @@ class Transformer : ASTVisitor {
         val receiverReg = generator.reserveRegister()
 
         when (val target = node.target) {
-            is IdentifierReferenceNode -> {
-                visit(target)
-                generator.add(Star(callableReg))
-                generator.add(LdaUndefined)
-                generator.add(Star(receiverReg))
-            }
             is MemberExpressionNode -> {
                 visit(target.lhs)
                 generator.add(Star(receiverReg))
@@ -1061,6 +1088,12 @@ class Transformer : ASTVisitor {
                 }
 
                 generator.add(Star(callableReg))
+            }
+            else -> {
+                visit(target)
+                generator.add(Star(callableReg))
+                generator.add(LdaUndefined)
+                generator.add(Star(receiverReg))
             }
         }
 

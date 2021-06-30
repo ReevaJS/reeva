@@ -61,23 +61,13 @@ class Agent {
             println("\n")
         }
 
-        // TODO: This feels out of place. The GlobalEnvRecord persists between calls to run, yet
-        // we set this property on the global object on every call. Is there a better way to
-        // store strictness?
-        realm.globalEnv.isStrict = ast.scope.isStrict
-
-        realm.varEnv = realm.globalEnv
-        realm.lexEnv = realm.globalEnv
-
         return try {
-            val function = Interpreter.wrap(ir, realm)
+            val function = Interpreter.wrap(ir, realm, realm.globalEnv)
             ExecutionResult.Success(function.call(realm.globalObject, emptyList()))
         } catch (e: ThrowException) {
             ExecutionResult.RuntimeError(realm, e.value)
         } catch (e: Throwable) {
             ExecutionResult.InternalError(e)
-        } finally {
-            realm.clearEnvRecords()
         }
     }
 

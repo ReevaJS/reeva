@@ -5,7 +5,6 @@ import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
-import me.mattco.reeva.core.environment.FunctionEnvRecord
 import me.mattco.reeva.interpreter.transformer.Block
 import me.mattco.reeva.interpreter.transformer.FunctionInfo
 import me.mattco.reeva.interpreter.transformer.opcodes.Index
@@ -67,7 +66,8 @@ class JumpTable private constructor(
 class Interpreter(
     private val realm: Realm,
     private val function: IRFunction,
-    private val arguments: List<JSValue>
+    private val arguments: List<JSValue>,
+    initialEnvRecord: EnvRecord,
 ) : IrOpcodeVisitor() {
     private val info: FunctionInfo
         get() = function.info
@@ -79,6 +79,7 @@ class Interpreter(
     private var exception: ThrowException? = null
     private val mappedCPool = Array<JSValue?>(info.code.constantPool.size) { null }
 
+    private var lexicalEnv = initialEnvRecord
     private var lexicalDepth = 0
     private val lexicalDepthStack = mutableListOf<Int>()
     private val seenHandlers = mutableSetOf<Int>()
@@ -86,7 +87,7 @@ class Interpreter(
     private var currentBlock = info.code.blocks[0]
     private var ip = 0
 
-    fun interpretImpl(): EvaluationResult {
+    private fun interpretImpl(): EvaluationResult {
         try {
             while (!isDone && !isSuspended) {
                 try {
@@ -97,7 +98,7 @@ class Interpreter(
                         val lexicalEnvsToRemove = lexicalDepth - lexicalDepthStack.last()
                         expect(lexicalEnvsToRemove >= 0)
                         repeat(lexicalEnvsToRemove) {
-                            realm.lexEnv = realm.lexEnv.outer!!
+                            lexicalEnv = lexicalEnv.outer!!
                         }
 
                         accumulator = e.value
@@ -368,64 +369,46 @@ class Interpreter(
         if (!realm.globalEnv.hasBinding(actualName))
             Errors.NotDefined(actualName).throwReferenceError(realm)
 
-        accumulator = realm.globalEnv.getBindingValue(
-            actualName,
-            realm.varEnv.isStrict,
-        )
+        accumulator = realm.globalEnv.getBinding(actualName)
     }
 
     override fun visitStaGlobal(name: Index) {
-        realm.globalEnv.setMutableBinding(
-            loadConstant(name),
-            accumulator,
-            realm.varEnv.isStrict,
-        )
+        realm.globalEnv.setBinding(loadConstant<String>(name), accumulator)
     }
 
-    override fun visitLdaCurrentEnv(name: Index) {
-        // The current env will always be the lexical env. Even at the top-level
-        // of a function, the lexEnv will be equal to the varEnv, so we can still
-        // access this through .lexEnv
-        accumulator = realm.lexEnv.getBindingValue(
-            loadConstant(name),
-            realm.varEnv.isStrict,
-        )
+    override fun visitLdaCurrentRecordSlot(slot: Literal) {
+        accumulator = lexicalEnv.getBinding(slot)
     }
 
-    override fun visitStaCurrentEnv(name: Index) {
-        // The current env will always be the lexical env. Even at the top-level
-        // of a function, the lexEnv will be equal to the varEnv, so we can still
-        // access this through .lexEnv
-        realm.lexEnv.setMutableBinding(
-            loadConstant(name),
-            accumulator,
-            realm.varEnv.isStrict,
-        )
+    override fun visitStaCurrentRecordSlot(slot: Literal) {
+        lexicalEnv.setBinding(slot, accumulator)
     }
 
-    override fun visitLdaEnv(name: Index, offset: Literal) {
-        accumulator = realm.getOffsetLexEnv(offset).getBindingValue(
-            loadConstant(name),
-            realm.varEnv.isStrict,
-        )
+    override fun visitLdaRecordSlot(slot: Literal, distance: Literal) {
+        var env = lexicalEnv
+        repeat(distance) { env = env.outer!! }
+        accumulator = env.getBinding(slot)
     }
 
-    override fun visitStaEnv(name: Index, offset: Literal) {
-        realm.getOffsetLexEnv(offset).setMutableBinding(
-            loadConstant(name),
-            accumulator,
-            realm.varEnv.isStrict,
-        )
+    override fun visitStaRecordSlot(slot: Literal, distance: Literal) {
+        var env = lexicalEnv
+        repeat(distance) { env = env.outer!! }
+        env.setBinding(slot, accumulator)
     }
 
-    override fun visitPushLexicalEnv() {
+    override fun visitPushWithEnvRecord() {
         lexicalDepth++
-        realm.lexEnv = DeclarativeEnvRecord(realm, realm.varEnv.isStrict, realm.lexEnv)
+        TODO()
     }
 
-    override fun visitPopEnv() {
+    override fun visitPushDeclarativeEnvRecord(numSlots: Literal) {
+        lexicalDepth++
+        lexicalEnv = DeclarativeEnvRecord(realm, lexicalEnv, numSlots)
+    }
+
+    override fun visitPopEnvRecord() {
         lexicalDepth--
-        realm.lexEnv = realm.lexEnv.outer!!
+        lexicalEnv = lexicalEnv.outer!!
     }
 
     override fun visitCall(targetReg: Register, receiverReg: Register, argumentRegs: List<Register>) {
@@ -648,23 +631,26 @@ class Interpreter(
     }
 
     override fun visitCreateMappedArgumentsObject() {
-        val argsObject = Operations.createMappedArgumentsObject(realm, function, info.parameters!!, arguments.drop(1), realm.varEnv)
-        createArgumentsBinding(argsObject)
+        TODO()
+//        val argsObject = Operations.createMappedArgumentsObject(realm, function, info.parameters!!, arguments.drop(1), realm.varEnv)
+//        createArgumentsBinding(argsObject)
     }
 
     override fun visitCreateUnmappedArgumentsObject() {
-        val argsObject = Operations.createUnmappedArgumentsObject(realm, arguments.drop(1))
-        createArgumentsBinding(argsObject)
+        TODO()
+//        val argsObject = Operations.createUnmappedArgumentsObject(realm, arguments.drop(1))
+//        createArgumentsBinding(argsObject)
     }
 
     private fun createArgumentsBinding(obj: JSValue) {
-        val varEnv = realm.varEnv
-        if (varEnv.isStrict) {
-            varEnv.createImmutableBinding("arguments", false)
-        } else {
-            varEnv.createMutableBinding("arguments", false)
-        }
-        varEnv.initializeBinding("arguments", obj)
+        TODO()
+//        val varEnv = realm.varEnv
+//        if (info.isStrict) {
+//            varEnv.createImmutableBinding("arguments", false)
+//        } else {
+//            varEnv.createMutableBinding("arguments", false)
+//        }
+//        varEnv.initializeBinding("arguments", obj)
     }
 
     override fun visitGetIterator() {
@@ -685,12 +671,12 @@ class Interpreter(
 
     override fun visitCreateClosure(functionInfoIndex: Int) {
         val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
-        accumulator = NormalIRFunction(realm, newInfo, realm.lexEnv).initialize()
+        accumulator = NormalIRFunction(realm, newInfo, lexicalEnv).initialize()
     }
 
     override fun visitCreateGeneratorClosure(functionInfoIndex: Int) {
         val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
-        accumulator = GeneratorIRFunction(realm, newInfo, realm.lexEnv).initialize()
+        accumulator = GeneratorIRFunction(realm, newInfo, lexicalEnv).initialize()
     }
 
     override fun visitCreateRestParam() {
@@ -724,18 +710,19 @@ class Interpreter(
         val lexNames = array.lexIterator().toList()
         val funcNames = array.funcIterator().toList()
 
+        // TODO: This is not spec compliant
         for (name in lexNames) {
-            if (realm.globalEnv.hasRestrictedGlobalProperty(name))
+            if (realm.globalEnv.hasBinding(name))
                 Errors.RestrictedGlobalPropertyName(name).throwSyntaxError(realm)
         }
 
         for (name in funcNames) {
-            if (!realm.globalEnv.canDeclareGlobalFunction(name))
+            if (realm.globalEnv.hasBinding(name))
                 Errors.InvalidGlobalFunction(name).throwTypeError(realm)
         }
 
         for (name in varNames) {
-            if (!realm.globalEnv.canDeclareGlobalVar(name))
+            if (realm.globalEnv.hasBinding(name))
                 Errors.InvalidGlobalVar(name).throwTypeError(realm)
         }
     }
@@ -791,11 +778,11 @@ class Interpreter(
     abstract class IRFunction(
         realm: Realm,
         val info: FunctionInfo,
-        val outerEnvRecord: EnvRecord?,
+        val outerEnvRecord: EnvRecord,
         prototype: JSValue = realm.functionProto,
     ) : JSFunction(realm, info.isStrict, prototype)
 
-    class NormalIRFunction(realm: Realm, info: FunctionInfo, outerEnvRecord: EnvRecord?) : IRFunction(realm, info, outerEnvRecord) {
+    class NormalIRFunction(realm: Realm, info: FunctionInfo, outerEnvRecord: EnvRecord) : IRFunction(realm, info, outerEnvRecord) {
         override fun init() {
             super.init()
 
@@ -803,34 +790,23 @@ class Interpreter(
         }
 
         override fun evaluate(arguments: JSArguments): JSValue {
-            val envRecord = if (info.isTopLevelScript) {
-                realm.globalEnv
-            } else {
-                FunctionEnvRecord(realm, info.isStrict, outerEnvRecord!!, this)
-            }
-
-            return realm.withEnv(envRecord) {
-                val args = listOf(arguments.thisValue) + arguments
-                val result = Interpreter(realm, this, args).interpret()
-                if (result is EvaluationResult.RuntimeError)
-                    throw ThrowException(result.value)
-                result.value
-            }
+            val args = listOf(arguments.thisValue) + arguments
+            val result = Interpreter(realm, this, args, outerEnvRecord).interpret()
+            if (result is EvaluationResult.RuntimeError)
+                throw ThrowException(result.value)
+            return result.value
         }
     }
 
     class GeneratorIRFunction(
         realm: Realm,
         info: FunctionInfo,
-        outerEnvRecord: EnvRecord?,
+        outerEnvRecord: EnvRecord,
     ) : IRFunction(realm, info, outerEnvRecord, realm.generatorFunctionProto) {
         lateinit var generatorObject: JSGeneratorObject
-        lateinit var envRecord: EnvRecord
 
         override fun init() {
             super.init()
-
-            envRecord = FunctionEnvRecord(realm, info.isStrict, outerEnvRecord!!, this)
 
             defineOwnProperty("prototype", realm.functionProto)
         }
@@ -838,8 +814,8 @@ class Interpreter(
         override fun evaluate(arguments: JSArguments): JSValue {
             if (!::generatorObject.isInitialized) {
                 expect(!info.isTopLevelScript)
-                val interpreter = Interpreter(realm, this, listOf(arguments.thisValue, *arguments.toTypedArray()))
-                generatorObject = JSGeneratorObject.create(realm, interpreter, envRecord)
+                val interpreter = Interpreter(realm, this, listOf(arguments.thisValue, *arguments.toTypedArray()), outerEnvRecord)
+                generatorObject = JSGeneratorObject.create(realm, interpreter, outerEnvRecord)
             }
 
             return generatorObject
@@ -850,7 +826,7 @@ class Interpreter(
         fun wrap(
             info: FunctionInfo,
             realm: Realm,
-            outerEnvRecord: EnvRecord? = null,
+            outerEnvRecord: EnvRecord,
             kind: Operations.FunctionKind = Operations.FunctionKind.Normal
         ) = when (kind) {
             Operations.FunctionKind.Normal -> NormalIRFunction(realm, info, outerEnvRecord).initialize()

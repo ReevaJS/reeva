@@ -281,7 +281,11 @@ class Parser(val source: String) {
             declarations.add(
                 Declaration(identifier, initializer)
                     .withPosition(start, lastConsumedToken.end)
-                    .also { it.scope = scope }
+                    .also {
+                        it.scope = if (type == Variable.Type.Var) {
+                            scope.parentHoistingScope
+                        } else scope
+                    }
             )
 
             if (match(TokenType.Comma)) {
@@ -614,24 +618,32 @@ class Parser(val source: String) {
         consume(TokenType.OpenParen)
 
         var initializer: ASTNode? = null
-        var initRequiresOwnScope = false
+        val outerScope = scope
+        var initializerScope: Scope? = null
 
         if (!match(TokenType.Semicolon)) {
             if (tokenType.isExpressionToken) {
                 initializer = nps { parseExpression(0, false, setOf(TokenType.In)) }
                 if (matchForEach())
-                    return@nps parseForEachStatement(initializer)
+                    return@nps parseForEachStatement(initializer, Scope(scope))
             } else if (tokenType.isVariableDeclarationToken) {
                 if (matchAny(TokenType.Let, TokenType.Const)) {
-                    initRequiresOwnScope = true
-                    scope = Scope(scope)
+                    // Parse the upcoming variable declaration in the block's scope. The
+                    // spec creates a separate scope for it, but as the declaration can't
+                    // have initializers, I'm not sure if that's necessary
+                    initializerScope = Scope(scope)
+                    scope = initializerScope
                 }
+
                 initializer = parseVariableDeclaration(isForEachLoop = true)
-                if (matchForEach())
-                    return@nps parseForEachStatement(initializer).also {
-                        if (initRequiresOwnScope)
-                            scope = scope.outer!!
-                    }
+
+                if (matchForEach()) {
+                    // Be sure to parse the expression of the for-each in the outerScope
+                    if (scope == initializerScope)
+                        scope = outerScope
+
+                    return@nps parseForEachStatement(initializer, initializerScope ?: Scope(scope))
+                }
             } else {
                 reporter.unexpectedToken(tokenType)
             }
@@ -649,17 +661,13 @@ class Parser(val source: String) {
             parseStatement()
         }
 
-        val initScope = if (initRequiresOwnScope) {
-            scope
-        } else null
-
-        ForStatementNode(initScope, initializer, condition, update, body).also {
-            if (initRequiresOwnScope)
+        ForStatementNode(initializerScope, initializer, condition, update, body).also {
+            if (initializerScope != null)
                 scope = scope.outer!!
         }
     }
 
-    private fun parseForEachStatement(initializer: ASTNode): StatementNode = nps {
+    private fun parseForEachStatement(initializer: ASTNode, blockScope: Scope): StatementNode = nps {
         if ((initializer is VariableDeclarationNode && initializer.declarations.size > 1) ||
             (initializer is LexicalDeclarationNode && initializer.declarations.size > 1)
         ) {
@@ -670,16 +678,22 @@ class Parser(val source: String) {
         val rhs = parseExpression(0)
         consume(TokenType.CloseParen)
 
+        scope = blockScope
 
         val body = inBreakContinueContext {
-            parseStatement()
+            if (match(TokenType.OpenCurly)) {
+                parseBlock(pushNewScope = false)
+            } else parseStatement()
         }
 
         if (isIn) {
             ForInNode(initializer, rhs, body)
         } else {
             ForOfNode(initializer, rhs, body)
-        }.also { it.scope = scope }
+        }.also {
+            it.scope = scope
+            scope = scope.outer!!
+        }
     }
 
     private fun matchForEach() = match(TokenType.In) || (match(TokenType.Identifier) && token.literals == "of")

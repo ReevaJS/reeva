@@ -1987,55 +1987,56 @@ object Operations {
         arguments: List<JSValue>,
         envRecord: EnvRecord,
     ): JSMappedArgumentsObject {
-        val obj = JSMappedArgumentsObject.create(realm)
-        val map = JSObject.create(realm, JSNull)
-        obj.parameterMap = map
-
-        for ((index, argument) in arguments.withIndex())
-            createDataPropertyOrThrow(realm, obj, PropertyKey.from(index), argument)
-
-        definePropertyOrThrow(
-            realm,
-            obj,
-            "length".key(),
-            Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        )
-
-        val mappedNames = mutableSetOf<String>()
-
-        for (index in parameters.lastIndex downTo 0) {
-            val name = parameters[index].identifier.identifierName
-            if (name !in mappedNames) {
-                mappedNames.add(name)
-                if (index < arguments.size) {
-                    val getter = JSNativeFunction.fromLambda(realm, "", 0) { _, _ ->
-                        envRecord.getBindingValue(name, false)
-                    }
-                    val setter = JSNativeFunction.fromLambda(realm, "", 1) { _, args ->
-                        envRecord.setMutableBinding(name, args.argument(0), false)
-                        JSUndefined
-                    }
-
-                    map.defineOwnProperty(index, JSAccessor(getter, setter), Descriptor.CONFIGURABLE)
-                }
-            }
-        }
-
-        definePropertyOrThrow(
-            realm,
-            obj,
-            Realm.`@@iterator`,
-            Descriptor(realm.arrayProto.get("values"), Descriptor.CONFIGURABLE or Descriptor.WRITABLE),
-        )
-
-        definePropertyOrThrow(
-            realm,
-            obj,
-            "callee".key(),
-            Descriptor(function, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        )
-
-        return obj
+        TODO()
+//        val obj = JSMappedArgumentsObject.create(realm)
+//        val map = JSObject.create(realm, JSNull)
+//        obj.parameterMap = map
+//
+//        for ((index, argument) in arguments.withIndex())
+//            createDataPropertyOrThrow(realm, obj, PropertyKey.from(index), argument)
+//
+//        definePropertyOrThrow(
+//            realm,
+//            obj,
+//            "length".key(),
+//            Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+//        )
+//
+//        val mappedNames = mutableSetOf<String>()
+//
+//        for (index in parameters.lastIndex downTo 0) {
+//            val name = parameters[index].identifier.identifierName
+//            if (name !in mappedNames) {
+//                mappedNames.add(name)
+//                if (index < arguments.size) {
+//                    val getter = JSNativeFunction.fromLambda(realm, "", 0) { _, _ ->
+//                        envRecord.getBindingValue(name, false)
+//                    }
+//                    val setter = JSNativeFunction.fromLambda(realm, "", 1) { _, args ->
+//                        envRecord.setMutableBinding(name, args.argument(0), false)
+//                        JSUndefined
+//                    }
+//
+//                    map.defineOwnProperty(index, JSAccessor(getter, setter), Descriptor.CONFIGURABLE)
+//                }
+//            }
+//        }
+//
+//        definePropertyOrThrow(
+//            realm,
+//            obj,
+//            Realm.`@@iterator`,
+//            Descriptor(realm.arrayProto.get("values"), Descriptor.CONFIGURABLE or Descriptor.WRITABLE),
+//        )
+//
+//        definePropertyOrThrow(
+//            realm,
+//            obj,
+//            "callee".key(),
+//            Descriptor(function, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+//        )
+//
+//        return obj
     }
 
     @JvmStatic

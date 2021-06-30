@@ -52,12 +52,13 @@ abstract class IrOpcodeVisitor {
 
             is LdaGlobal -> visitLdaGlobal(opcode.name)
             is StaGlobal -> visitStaGlobal(opcode.name)
-            is LdaCurrentEnv -> visitLdaCurrentEnv(opcode.name)
-            is StaCurrentEnv -> visitStaCurrentEnv(opcode.name)
-            is LdaEnv -> visitLdaEnv(opcode.name, opcode.offset)
-            is StaEnv -> visitStaEnv(opcode.name, opcode.offset)
-            PushLexicalEnv -> visitPushLexicalEnv()
-            PopLexicalEnv -> visitPopEnv()
+            is LdaCurrentRecordSlot -> visitLdaCurrentRecordSlot(opcode.slot)
+            is StaCurrentRecordSlot -> visitStaCurrentRecordSlot(opcode.slot)
+            is LdaRecordSlot -> visitLdaRecordSlot(opcode.slot, opcode.distance)
+            is StaRecordSlot -> visitStaRecordSlot(opcode.slot, opcode.distance)
+            is PushWithEnvRecord -> visitPushWithEnvRecord()
+            is PushDeclarativeEnvRecord -> visitPushDeclarativeEnvRecord(opcode.numSlots)
+            PopEnvRecord -> visitPopEnvRecord()
 
             is Call -> visitCall(opcode.targetReg, opcode.receiverReg, opcode.argumentRegs)
             is CallWithArgArray -> visitCallWithArgArray(opcode.targetReg, opcode.receiverReg, opcode.argumentsReg)
@@ -200,17 +201,19 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitStaGlobal(name: Index)
 
-    abstract fun visitLdaCurrentEnv(name: Index)
+    abstract fun visitLdaCurrentRecordSlot(slot: Literal)
 
-    abstract fun visitStaCurrentEnv(name: Index)
+    abstract fun visitStaCurrentRecordSlot(slot: Literal)
 
-    abstract fun visitLdaEnv(name: Index, offset: Literal)
+    abstract fun visitLdaRecordSlot(slot: Literal, distance: Literal)
 
-    abstract fun visitStaEnv(name: Index, offset: Literal)
+    abstract fun visitStaRecordSlot(slot: Literal, distance: Literal)
 
-    abstract fun visitPushLexicalEnv()
+    abstract fun visitPushWithEnvRecord()
 
-    abstract fun visitPopEnv()
+    abstract fun visitPushDeclarativeEnvRecord(numSlots: Literal)
+
+    abstract fun visitPopEnvRecord()
 
     abstract fun visitCall(targetReg: Register, receiverReg: Register, argumentRegs: List<Register>)
 

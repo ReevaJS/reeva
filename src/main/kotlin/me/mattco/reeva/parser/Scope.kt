@@ -15,6 +15,11 @@ open class Scope(val outer: Scope? = null) {
 
     var possiblyReferencesArguments = false
 
+    var inlineableRegisters = 1
+        private set
+    var nextSlot = 0
+        private set
+
     val isStrict: Boolean
         get() = parentHoistingScope.hasUseStrictDirective
 
@@ -25,7 +30,7 @@ open class Scope(val outer: Scope? = null) {
 
     open fun declaredVarMode(type: Variable.Type): Variable.Mode = Variable.Mode.Declared
 
-    open fun requiresEnv(): Boolean = declaredVariables.any { it.type != Variable.Type.Var }
+    open fun requiresEnv(): Boolean = declaredVariables.any { !it.isInlineable }
 
     fun addDeclaredVariable(variable: Variable) {
         if (variable.type != Variable.Type.Var || this is HoistingScope) {
@@ -78,17 +83,27 @@ open class Scope(val outer: Scope? = null) {
     fun onFinish() {
         processUnlinkedNodes()
         searchForUseBeforeDecl()
+        allocateInlineableRegisters()
         onFinishImpl()
+
         pendingReferences.clear()
-        childScopes.forEach(Scope::onFinish)
+        childScopes.forEach { it.pendingReferences.clear() }
     }
 
     private fun processUnlinkedNodes() {
         // Attempt to connect any remaining global var references
-        for (node in pendingReferences) {
+        val iter = pendingReferences.iterator()
+        while (iter.hasNext()) {
+            val node = iter.next()
             val variable = findDeclaredVariable(node.targetVar.name)
-            if (variable != null)
+            if (variable != null) {
                 node.targetVar = variable
+
+                if (node.scope.parentHoistingScope != node.targetVar.declaredScope.parentHoistingScope)
+                    node.targetVar.isInlineable = false
+
+                iter.remove()
+            }
         }
 
         childScopes.forEach(Scope::processUnlinkedNodes)
@@ -118,15 +133,34 @@ open class Scope(val outer: Scope? = null) {
 
         childScopes.forEach(Scope::searchForUseBeforeDecl)
     }
+    
+    private fun allocateInlineableRegisters() {
+        fun assignSlots(variable: List<Variable>) {
+            variable.forEach {
+                it.slot = if (it.isInlineable) inlineableRegisters++ else nextSlot++
+            }
+        }
+
+        val parameters = declaredVariables.filter { it.mode == Variable.Mode.Parameter }
+        val locals = declaredVariables.filter { it.mode != Variable.Mode.Parameter }
+
+        assignSlots(parameters)
+        assignSlots(locals)
+
+        childScopes.forEach {
+            if (it !is HoistingScope)
+                it.inlineableRegisters = inlineableRegisters
+            it.allocateInlineableRegisters()
+        }
+    }
 
     protected open fun onFinishImpl() {
+        childScopes.forEach(Scope::onFinishImpl)
     }
 }
 
 open class HoistingScope(outer: Scope? = null) : Scope(outer) {
     var hasUseStrictDirective: Boolean = false
-
-    override fun requiresEnv() = true
 
     override fun onFinishImpl() {
         possiblyReferencesArguments = searchForArgumentsReference(this)
@@ -134,15 +168,21 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
     }
 
     private fun searchForArgumentsReference(scope: Scope): Boolean {
+        if (this is GlobalScope || scope.declaredVariables.any { it.name == "arguments" })
+            return false
+
+        var found = false
+
         for (node in scope.pendingReferences) {
-            if (node.boundName() == "arguments" && node.targetVar.mode == Variable.Mode.Global) {
+            if (node.boundName() == "arguments") {
+                node.targetVar.type = Variable.Type.Const
                 node.targetVar.mode = Variable.Mode.Declared
                 node.targetVar.scope = this
-                return true
+                found = true
             }
         }
 
-        return scope.childScopes.filter { it !is HoistingScope }.any { searchForArgumentsReference(it) }
+        return found || scope.childScopes.filter { it !is HoistingScope }.any { searchForArgumentsReference(it) }
     }
 }
 
@@ -158,7 +198,7 @@ open class GlobalScope : HoistingScope() {
 
 data class Variable(
     val name: String,
-    val type: Type,
+    var type: Type,
     var mode: Mode,
     var source: VariableSourceNode,
 ) {
@@ -169,6 +209,9 @@ data class Variable(
         set(value) { source.scope = value }
     val declaredScope: Scope
         get() = source.declaredScope
+
+    var isInlineable = true
+    var slot: Int = -1
 
     enum class Mode {
         Declared,

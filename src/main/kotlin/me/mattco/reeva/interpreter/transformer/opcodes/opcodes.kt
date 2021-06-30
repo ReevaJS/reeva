@@ -214,51 +214,19 @@ class LdaGlobal(val name: Index) : Opcode()
  */
 class StaGlobal(val name: Index) : Opcode()
 
-/**
- * Loads a named variable from the current environment into the
- * accumulator.
- *
- * name: the index in the constant pool for the name of the binding
- */
-class LdaCurrentEnv(val name: Index) : Opcode()
+class LdaCurrentRecordSlot(val slot: Literal) : Opcode()
 
-/**
- * Stores the accumulator into a named variable in the current
- * environment.
- *
- * accumulator: the value to store
- * name: the index in the constant pool for the name of the binding
- */
-class StaCurrentEnv(val name: Index) : Opcode()
+class StaCurrentRecordSlot(val slot: Literal) : Opcode()
 
-/**
- * Loads a named variable from a parent environment into the
- * accumulator.
- *
- * name: the index in the constant pool for the name of the binding
- * offset: the distance up the environment stack of the target
- *         environment (0 would be the current environment)
- */
-class LdaEnv(val name: Index, val offset: Literal) : Opcode()
+class LdaRecordSlot(val slot: Literal, val distance: Literal) : Opcode()
 
-/**
- * Stores a value into a named variable in a parent environment.
- *
- * name: the index in the constant pool for the name of the binding
- * offset: the distance up the environment stack of the target
- *         environment (0 would be the current environment)
- */
-class StaEnv(val name: Index, val offset: Literal) : Opcode()
+class StaRecordSlot(val slot: Literal, val distance: Literal) : Opcode()
 
-/**
- * Pushes a DeclarativeEnvRecord onto the env stack
- */
-object PushLexicalEnv : Opcode()
+object PushWithEnvRecord : Opcode()
 
-/**
- * Pops an EnvRecord off of the env stack
- */
-object PopLexicalEnv : Opcode()
+class PushDeclarativeEnvRecord(val numSlots: Literal) : Opcode()
+
+object PopEnvRecord : Opcode()
 
 ///////////////
 /// CALLING ///
@@ -484,6 +452,10 @@ class Yield(val continuationBlock: Block) : Opcode() {
  * Throws the value in the accumulator
  */
 object Throw : Opcode() {
+    override val isTerminator = true
+}
+
+class ThrowConstantError(val message: Index) : Opcode() {
     override val isTerminator = true
 }
 

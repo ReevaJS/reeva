@@ -1,6 +1,5 @@
 package me.mattco.reeva.core
 
-import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.core.environment.GlobalEnvRecord
 import me.mattco.reeva.jvmcompat.JSClassProto
 import me.mattco.reeva.jvmcompat.JSPackageObject
@@ -38,20 +37,10 @@ class Realm {
         private set
 
     private var globalEnvBacker: GlobalEnvRecord? = null
-    private var varEnvBacker: EnvRecord? = null
-    private var lexEnvBacker: EnvRecord? = null
 
     var globalEnv: GlobalEnvRecord
         get() = globalEnvBacker ?: throw IllegalStateException("This Realm has no global EnvRecord")
         set(value) { globalEnvBacker = value }
-
-    var varEnv: EnvRecord
-        get() = varEnvBacker ?: throw IllegalStateException("This Realm has no variable EnvRecord")
-        set(value) { varEnvBacker = value }
-
-    var lexEnv: EnvRecord
-        get() = lexEnvBacker ?: throw IllegalStateException("This Realm has no lexical EnvRecord")
-        set(value) { lexEnvBacker = value }
 
     // Special objects that have to be handled manually
     lateinit var objectProto: JSObjectProto private set
@@ -161,33 +150,7 @@ class Realm {
         val actualThisValue = thisValue.ifUndefined(globalObject)
         expect(actualThisValue is JSObject)
         this.globalObject = globalObject
-        globalEnv = GlobalEnvRecord(this, actualThisValue, false)
-    }
-
-    internal fun getOffsetLexEnv(offset: Int): EnvRecord {
-        var env = lexEnv
-        repeat(offset) {
-            env = env.outer!!
-        }
-        return env
-    }
-
-    internal fun <T> withEnv(env: EnvRecord, block: () -> T): T {
-        val savedVarEnv = varEnvBacker
-        val savedLexEnv = lexEnvBacker
-        varEnv = env
-        lexEnv = env
-        return try {
-            block()
-        } finally {
-            varEnvBacker = savedVarEnv
-            lexEnvBacker = savedLexEnv
-        }
-    }
-
-    internal fun clearEnvRecords() {
-        varEnvBacker = null
-        lexEnvBacker = null
+        globalEnv = GlobalEnvRecord(this, actualThisValue)
     }
 
     internal fun initObjects() {
