@@ -50,26 +50,29 @@ class FunctionDeclarationNode(
     val identifier: BindingIdentifierNode,
     val parameters: ParameterList,
     val body: BlockNode,
-    val functionScope: Scope,
-    val bodyScope: Scope,
     val kind: Operations.FunctionKind,
 ) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), StatementNode {
     override var variable by identifier::variable
+
+    // May be equal to body.scope if parameters.isSimple() == true
+    lateinit var functionScope: Scope
 }
 
 class FunctionExpressionNode(
     val identifier: BindingIdentifierNode?,
     val parameters: ParameterList,
     val body: BlockNode,
-    val functionScope: Scope,
-    val bodyScope: Scope,
     val kind: Operations.FunctionKind,
-) : NodeWithScope(listOfNotNull(identifier) + parameters + body), ExpressionNode
+) : NodeWithScope(listOfNotNull(identifier) + parameters + body), ExpressionNode {
+    // May be equal to body.scope if parameters.isSimple() == true
+    lateinit var functionScope: Scope
+}
 
 class ArrowFunctionNode(
     val parameters: ParameterList,
     val body: ASTNode, // BlockNode or ExpressionNode
-    val functionScope: Scope,
-    val bodyScope: Scope,
     val kind: Operations.FunctionKind,
-) : NodeWithScope(parameters + body), ExpressionNode
+) : NodeWithScope(parameters + body), ExpressionNode {
+    // May be equal to body.scope if parameters.isSimple() == true
+    lateinit var functionScope: Scope
+}

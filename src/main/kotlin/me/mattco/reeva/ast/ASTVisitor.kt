@@ -10,6 +10,7 @@ interface ASTVisitor {
             is StatementNode -> visitStatement(node)
             is ExpressionNode -> visitExpression(node)
             is ASTListNode<*> -> visitASTListNode(node)
+            is MethodDefinitionNode -> visitMethodDefinition(node)
             else -> throw IllegalArgumentException("Unrecognized ASTNode ${node.astNodeName}")
         }
     }
@@ -150,7 +151,7 @@ interface ASTVisitor {
     fun visitTryStatement(node: TryStatementNode) {
         visit(node.tryBlock)
         node.catchNode?.also {
-            it.catchParameter?.also(::visitBindingIdentifier)
+            it.parameter?.also(::visitBindingIdentifier)
             visit(it.block)
         }
         node.finallyBlock?.also(::visit)
@@ -196,6 +197,10 @@ interface ASTVisitor {
     fun visitIdentifier(node: IdentifierNode) { }
 
     fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
+        // TODO: Default handling
+    }
+
+    fun visitMethodDefinition(node: MethodDefinitionNode) {
         // TODO: Default handling
     }
 
@@ -310,7 +315,7 @@ interface ASTVisitor {
                     visit(it.value)
                 }
                 is MethodProperty -> {
-                    // TODO
+                    visit(it)
                 }
                 is ShorthandProperty -> visit(it.key)
                 is SpreadProperty -> visit(it.target)

@@ -1,7 +1,6 @@
 package me.mattco.reeva.ast.statements
 
 import me.mattco.reeva.ast.*
-import me.mattco.reeva.parser.Variable
 
 class LexicalDeclarationNode(
     val isConst: Boolean,
@@ -15,6 +14,4 @@ class VariableDeclarationNode(
 class Declaration(
     val identifier: BindingIdentifierNode,
     val initializer: ExpressionNode?
-) : VariableSourceNode(listOfNotNull(identifier, initializer)) {
-    override var variable: Variable by identifier::variable
-}
+) : VariableSourceNode(listOfNotNull(identifier, initializer))

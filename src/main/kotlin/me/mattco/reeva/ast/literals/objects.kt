@@ -40,10 +40,11 @@ class MethodDefinitionNode(
     val propName: PropertyName,
     val parameters: ParameterList,
     val body: BlockNode,
-    val functionScope: Scope,
-    val bodyScope: Scope,
     val kind: Kind
 ) : NodeWithScope(listOf(propName) + parameters + body) {
+    // May be equal to body.scope if parameters.isSimple() == true
+    lateinit var functionScope: Scope
+
     fun isConstructor(): Boolean {
         return propName.type == PropertyName.Type.Identifier && propName.expression.let {
             (it as IdentifierNode).identifierName == "constructor"

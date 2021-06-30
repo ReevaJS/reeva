@@ -60,7 +60,7 @@ class Transformer : ASTVisitor {
                     node.parameters,
                     node.body,
                     node.functionScope,
-                    node.bodyScope,
+                    node.body.scope,
                     node.functionScope.isStrict,
                     false,
                     node.kind,
@@ -164,8 +164,8 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitForStatement(node: ForStatementNode) {
-        if (node.initScope != null)
-            enterScope(node.initScope)
+        if (node.initializerScope != null)
+            enterScope(node.initializerScope!!)
 
         if (node.initializer != null)
             visit(node.initializer)
@@ -207,8 +207,8 @@ class Transformer : ASTVisitor {
 
         generator.currentBlock = doneBlock
 
-        if (node.initScope != null)
-            exitScope(node.initScope)
+        if (node.initializerScope != null)
+            exitScope(node.initializerScope!!)
     }
 
     private fun assign(node: ASTNode) {
@@ -328,7 +328,7 @@ class Transformer : ASTVisitor {
             }
 
             val catchNode = node.catchNode!!
-            val parameter = catchNode.catchParameter
+            val parameter = catchNode.parameter
 
             enterScope(catchNode.block.scope)
 
@@ -478,7 +478,7 @@ class Transformer : ASTVisitor {
             node.parameters,
             node.body,
             node.functionScope,
-            node.bodyScope,
+            node.body.scope,
             node.functionScope.isStrict,
             false,
             node.kind,
@@ -491,7 +491,7 @@ class Transformer : ASTVisitor {
             node.parameters,
             node.body,
             node.functionScope,
-            node.bodyScope,
+            if (node.body is BlockNode) node.body.scope else node.functionScope,
             node.functionScope.isStrict,
             true,
             node.kind,
@@ -555,8 +555,8 @@ class Transformer : ASTVisitor {
                 func.parameters,
                 func.body,
                 func.functionScope,
-                func.bodyScope,
-                func.bodyScope.isStrict,
+                func.body.scope,
+                func.body.scope.isStrict,
                 false,
                 func.kind,
             )
@@ -654,7 +654,7 @@ class Transformer : ASTVisitor {
                 func.parameters,
                 func.body,
                 func.functionScope,
-                func.bodyScope,
+                func.body.scope,
                 isStrict,
                 false,
                 func.kind,
@@ -1321,10 +1321,9 @@ class Transformer : ASTVisitor {
                             null,
                             method.parameters,
                             method.body,
-                            method.functionScope,
-                            method.bodyScope,
                             method.kind.toFunctionKind(),
                         )
+                        functionNode.functionScope = method.functionScope
                         functionNode.scope = method.scope
                         visitFunctionExpression(functionNode)
                     }

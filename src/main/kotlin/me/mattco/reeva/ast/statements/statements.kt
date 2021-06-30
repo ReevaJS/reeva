@@ -52,12 +52,13 @@ class SwitchClause(
 ) : ASTNodeBase(listOfNotNull(target) + (body ?: emptyList())), StatementNode
 
 class ForStatementNode(
-    val initScope: Scope?,
     val initializer: ASTNode?,
     val condition: ExpressionNode?,
     val incrementer: ExpressionNode?,
     val body: StatementNode,
 ) : ASTNodeBase(listOfNotNull(initializer, condition, incrementer, body)), StatementNode {
+    var initializerScope: Scope? = null
+
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -124,9 +125,9 @@ class TryStatementNode(
 }
 
 class CatchNode(
-    val catchParameter: BindingIdentifierNode?,
+    val parameter: BindingIdentifierNode?,
     val block: BlockNode
-) : NodeWithScope(listOfNotNull(catchParameter, block))
+) : NodeWithScope(listOfNotNull(parameter, block))
 
 class BreakStatementNode(val label: String?) : ASTNodeBase(), StatementNode
 

@@ -35,12 +35,7 @@ fun <T : ASTNode> T.withPosition(start: TokenLocation, end: TokenLocation) = app
 fun <T : ASTNode> T.withPosition(node: ASTNode) = withPosition(node.sourceStart, node.sourceEnd)
 
 open class NodeWithScope(children: List<ASTNode> = emptyList()) : ASTNodeBase(children) {
-    private var declaredScopeBacker: Scope? = null
     lateinit var scope: Scope
-
-    var declaredScope: Scope
-        get() = declaredScopeBacker ?: scope
-        set(value) { declaredScopeBacker = value }
 }
 
 abstract class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
@@ -149,7 +144,7 @@ inline fun <reified T : Any> ASTNode.childrenOfType(): List<T> {
 
 inline fun <reified T : Any> ASTNode.containsAny() = childrenOfType<T>().isNotEmpty()
 
-class ScriptNode(val statements: StatementList) : NodeWithScope(statements)
+class ScriptNode(val statements: StatementList, val hasUseStrict: Boolean) : NodeWithScope(statements)
 
 class ModuleNode(val body: StatementList) : NodeWithScope(body)
 

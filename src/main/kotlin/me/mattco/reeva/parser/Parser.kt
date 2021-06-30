@@ -40,7 +40,7 @@ class Parser(val source: String) {
     internal val sourceEnd: TokenLocation
         inline get() = token.end
 
-    internal lateinit var scope: Scope
+    private var isStrict = false
 
     private fun initLexer() {
         Reeva.threadPool.submit {
@@ -58,24 +58,15 @@ class Parser(val source: String) {
     }
 
     fun parseScript(): ParsingResult {
-        try {
+        return try {
             initLexer()
-
-            val globalScope = GlobalScope()
-            scope = globalScope
-
-            globalScope.hasUseStrictDirective = checkForAndConsumeUseStrict()
-
             val script = parseScriptImpl()
-            script.scope = globalScope
-
-            globalScope.onFinish()
-
-            return ParsingResult.Success(script)
+            ScopeResolver().resolve(script)
+            ParsingResult.Success(script)
         } catch (e: ParsingException) {
-            return ParsingResult.ParseError(e.message!!, e.start, e.end)
+            ParsingResult.ParseError(e.message!!, e.start, e.end)
         } catch (e: Throwable) {
-            return ParsingResult.InternalError(e)
+            ParsingResult.InternalError(e)
         }
     }
 
@@ -87,13 +78,8 @@ class Parser(val source: String) {
         return try {
             initLexer()
 
-            val globalScope = GlobalScope()
-            scope = globalScope
-
             val function = parseFunctionDeclaration()
             expect(function.kind == expectedKind)
-
-            globalScope.onFinish()
 
             ParsingResult.Success(function)
         } catch (e: ParsingException) {
@@ -110,7 +96,8 @@ class Parser(val source: String) {
         // ScriptBody :
         //     StatementList
 
-        ScriptNode(parseStatementList())
+        isStrict = checkForAndConsumeUseStrict()
+        ScriptNode(parseStatementList(), isStrict)
     }
 
     private fun parseModuleImpl(): ModuleNode {
@@ -254,12 +241,8 @@ class Parser(val source: String) {
      *     BindingPattern Initializer (TODO)
      */
     private fun parseVariableDeclaration(isForEachLoop: Boolean = false): StatementNode = nps {
-        val type = when (consume()) {
-            TokenType.Var -> Variable.Type.Var
-            TokenType.Let -> Variable.Type.Let
-            TokenType.Const -> Variable.Type.Const
-            else -> unreachable()
-        }
+        val type = consume()
+        expect(type == TokenType.Var || type == TokenType.Let || type == TokenType.Const)
 
         val declarations = mutableListOf<Declaration>()
 
@@ -269,23 +252,17 @@ class Parser(val source: String) {
             if (match(TokenType.OpenCurly))
                 TODO()
 
-            val identifier = parseBindingIdentifier(varType = type)
+            val identifier = parseBindingIdentifier()
 
             val initializer = if (match(TokenType.Equals)) {
                 consume()
                 parseExpression(2)
-            } else if (!isForEachLoop && type == Variable.Type.Const) {
+            } else if (!isForEachLoop && type == TokenType.Const) {
                 reporter.constMissingInitializer()
             } else null
 
             declarations.add(
-                Declaration(identifier, initializer)
-                    .withPosition(start, lastConsumedToken.end)
-                    .also {
-                        it.scope = if (type == Variable.Type.Var) {
-                            scope.parentHoistingScope
-                        } else scope
-                    }
+                Declaration(identifier, initializer).withPosition(start, lastConsumedToken.end)
             )
 
             if (match(TokenType.Comma)) {
@@ -296,10 +273,10 @@ class Parser(val source: String) {
         if (!isForEachLoop)
             asi()
 
-        if (type == Variable.Type.Var) {
+        if (type == TokenType.Var) {
             VariableDeclarationNode(declarations)
         } else {
-            LexicalDeclarationNode(isConst = type == Variable.Type.Const, declarations)
+            LexicalDeclarationNode(isConst = type == TokenType.Const, declarations)
         }
     }
 
@@ -526,17 +503,12 @@ class Parser(val source: String) {
         val catchBlock = if (match(TokenType.Catch)) {
             consume()
             val catchParam = if (match(TokenType.OpenParen)) {
-                scope = Scope(scope)
                 consume()
-                parseBindingIdentifier(Variable.Type.Let).also {
+                parseBindingIdentifier().also {
                     consume(TokenType.CloseParen)
                 }
             } else null
-            CatchNode(catchParam, parseBlock(pushNewScope = catchParam == null)).also {
-                it.scope = scope
-                if (catchParam != null)
-                    scope = scope.outer!!
-            }
+            CatchNode(catchParam, parseBlock())
         } else null
 
         val finallyBlock = if (match(TokenType.Finally)) {
@@ -618,32 +590,17 @@ class Parser(val source: String) {
         consume(TokenType.OpenParen)
 
         var initializer: ASTNode? = null
-        val outerScope = scope
-        var initializerScope: Scope? = null
 
         if (!match(TokenType.Semicolon)) {
             if (tokenType.isExpressionToken) {
                 initializer = nps { parseExpression(0, false, setOf(TokenType.In)) }
                 if (matchForEach())
-                    return@nps parseForEachStatement(initializer, Scope(scope))
+                    return@nps parseForEachStatement(initializer)
             } else if (tokenType.isVariableDeclarationToken) {
-                if (matchAny(TokenType.Let, TokenType.Const)) {
-                    // Parse the upcoming variable declaration in the block's scope. The
-                    // spec creates a separate scope for it, but as the declaration can't
-                    // have initializers, I'm not sure if that's necessary
-                    initializerScope = Scope(scope)
-                    scope = initializerScope
-                }
-
                 initializer = parseVariableDeclaration(isForEachLoop = true)
 
-                if (matchForEach()) {
-                    // Be sure to parse the expression of the for-each in the outerScope
-                    if (scope == initializerScope)
-                        scope = outerScope
-
-                    return@nps parseForEachStatement(initializer, initializerScope ?: Scope(scope))
-                }
+                if (matchForEach())
+                    return@nps parseForEachStatement(initializer)
             } else {
                 reporter.unexpectedToken(tokenType)
             }
@@ -661,13 +618,10 @@ class Parser(val source: String) {
             parseStatement()
         }
 
-        ForStatementNode(initializerScope, initializer, condition, update, body).also {
-            if (initializerScope != null)
-                scope = scope.outer!!
-        }
+        ForStatementNode(initializer, condition, update, body)
     }
 
-    private fun parseForEachStatement(initializer: ASTNode, blockScope: Scope): StatementNode = nps {
+    private fun parseForEachStatement(initializer: ASTNode): StatementNode = nps {
         if ((initializer is VariableDeclarationNode && initializer.declarations.size > 1) ||
             (initializer is LexicalDeclarationNode && initializer.declarations.size > 1)
         ) {
@@ -678,21 +632,14 @@ class Parser(val source: String) {
         val rhs = parseExpression(0)
         consume(TokenType.CloseParen)
 
-        scope = blockScope
-
         val body = inBreakContinueContext {
-            if (match(TokenType.OpenCurly)) {
-                parseBlock(pushNewScope = false)
-            } else parseStatement()
+            parseStatement()
         }
 
         if (isIn) {
             ForInNode(initializer, rhs, body)
         } else {
             ForOfNode(initializer, rhs, body)
-        }.also {
-            it.scope = scope
-            scope = scope.outer!!
         }
     }
 
@@ -704,19 +651,8 @@ class Parser(val source: String) {
      *     [+Default] function ( FormalParameters ) { FunctionBody }
      */
     private fun parseFunctionDeclaration(): FunctionDeclarationNode = nps {
-        val declarationScope = scope.parentHoistingScope
-        val (identifier, params, body, functionScope, bodyScope, kind) = parseFunctionHelper(isDeclaration = true)
-        FunctionDeclarationNode(identifier!!, params, body, functionScope, bodyScope, kind).also {
-            it.scope = declarationScope
-
-            it.variable = Variable(
-                identifier.identifierName,
-                Variable.Type.Var,
-                it.scope.declaredVarMode(Variable.Type.Var),
-                it
-            )
-            declarationScope.addDeclaredVariable(it.variable)
-        }
+        val (identifier, params, body, kind) = parseFunctionHelper(isDeclaration = true)
+        FunctionDeclarationNode(identifier!!, params, body, kind)
     }
 
     /*
@@ -724,18 +660,14 @@ class Parser(val source: String) {
      *     function BindingIdentifier? ( FormalParameters ) { FunctionBody }
      */
     private fun parseFunctionExpression(): ExpressionNode = nps {
-        val (identifier, params, body, functionScope, bodyScope, isGenerator) = parseFunctionHelper(isDeclaration = false)
-        FunctionExpressionNode(identifier, params, body, functionScope, bodyScope, isGenerator).also {
-            it.scope = scope
-        }
+        val (identifier, params, body, isGenerator) = parseFunctionHelper(isDeclaration = false)
+        FunctionExpressionNode(identifier, params, body, isGenerator)
     }
 
     private data class FunctionTemp(
         val identifier: BindingIdentifierNode?,
         val params: ParameterList,
         val body: BlockNode,
-        val functionScope: Scope,
-        val bodyScope: Scope,
         val type: Operations.FunctionKind,
     ) : ASTNodeBase()
 
@@ -761,35 +693,21 @@ class Parser(val source: String) {
 
         // TODO: Allow no identifier in default export
         val identifier = when {
-            matchIdentifier() -> parseBindingIdentifier(addVar = false)
+            matchIdentifier() -> parseBindingIdentifier()
             isDeclaration -> reporter.functionStatementNoName()
             else -> null
         }
 
-        val functionScope = HoistingScope(scope)
-        scope = functionScope
         val params = parseFunctionParameters()
-
-        val bodyScope = if (params.any { it.initializer != null }) {
-            HoistingScope(scope).also {
-                scope = it
-            }
-        } else functionScope
 
         // TODO: Static Semantics
 
-        val body = functionBoundary(isAsync, isGenerator) {
-            parseBlock(pushNewScope = false)
-        }
+        val body = parseFunctionBody(isAsync, isGenerator)
 
-        if (body.hasUseStrict)
-            functionScope.hasUseStrictDirective = true
+        if (body.hasUseStrict && !params.isSimple())
+            reporter.at(body).error("Illegal \"use strict\" directive in function with non-simple parameter list")
 
-        FunctionTemp(identifier, params, body, functionScope, bodyScope, type).also {
-            scope = scope.outer!!
-            if (bodyScope != functionScope)
-                scope = scope.outer!!
-        }
+        FunctionTemp(identifier, params, body, type)
     }
 
     /*
@@ -803,7 +721,7 @@ class Parser(val source: String) {
             if (!inDefaultContext)
                 reporter.classDeclarationNoName()
             null
-        } else parseBindingIdentifier(varType = Variable.Type.Let)
+        } else parseBindingIdentifier()
 
         ClassDeclarationNode(identifier, parseClassNode())
     }
@@ -815,7 +733,7 @@ class Parser(val source: String) {
     private fun parseClassExpression(): ExpressionNode = nps {
         consume(TokenType.Class)
         val identifier = if (matchIdentifier()) {
-            parseBindingIdentifier(addVar = false)
+            parseBindingIdentifier()
         } else null
         ClassExpressionNode(identifier, parseClassNode())
     }
@@ -915,7 +833,7 @@ class Parser(val source: String) {
             if (match(TokenType.TriplePeriod)) {
                 nps {
                     consume()
-                    val identifier = parseBindingIdentifier(varMode = Variable.Mode.Parameter)
+                    val identifier = parseBindingIdentifier()
                     if (!match(TokenType.CloseParen))
                         reporter.paramAfterRest()
                     Parameter(identifier, null, true)
@@ -925,7 +843,7 @@ class Parser(val source: String) {
                 reporter.expected("expression", tokenType)
             } else {
                 nps {
-                    val identifier = parseBindingIdentifier(varMode = Variable.Mode.Parameter)
+                    val identifier = parseBindingIdentifier()
                     val initializer = if (match(TokenType.Equals)) {
                         consume()
                         parseExpression(0)
@@ -944,8 +862,8 @@ class Parser(val source: String) {
     }
 
     private fun matchIdentifier() = match(TokenType.Identifier) ||
-        (!inYieldContext && !scope.isStrict && match(TokenType.Yield)) ||
-        (!inAsyncContext && !scope.isStrict && match(TokenType.Await))
+        (!inYieldContext && !isStrict && match(TokenType.Yield)) ||
+        (!inAsyncContext && !isStrict && match(TokenType.Await))
 
     private fun parseIdentifier(): String {
         expect(matchAny(TokenType.Identifier, TokenType.Await, TokenType.Yield))
@@ -955,33 +873,11 @@ class Parser(val source: String) {
     }
 
     private fun parseIdentifierReference(): IdentifierReferenceNode = nps {
-        IdentifierReferenceNode(parseIdentifier()).also {
-            it.scope = scope
-            if (!disableAutoScoping)
-                scope.addReference(it)
-        }
+        IdentifierReferenceNode(parseIdentifier())
     }
 
-    private fun parseBindingIdentifier(
-        varType: Variable.Type = Variable.Type.Var,
-        varMode: Variable.Mode = scope.declaredVarMode(varType),
-        addVar: Boolean = true,
-    ): BindingIdentifierNode = nps {
-        BindingIdentifierNode(parseIdentifier()).also {
-            it.scope = if (varType == Variable.Type.Var) scope.parentHoistingScope else scope
-            it.declaredScope = scope
-
-            if (addVar && !disableAutoScoping) {
-                val variable = Variable(
-                    it.identifierName,
-                    varType,
-                    varMode,
-                    it,
-                )
-                it.variable = variable
-                scope.addDeclaredVariable(variable)
-            }
-        }
+    private fun parseBindingIdentifier(): BindingIdentifierNode = nps {
+        BindingIdentifierNode(parseIdentifier())
     }
 
     private fun checkForAndConsumeUseStrict(): Boolean {
@@ -993,20 +889,19 @@ class Parser(val source: String) {
         } else false
     }
 
-    private fun parseBlock(pushNewScope: Boolean = true): BlockNode = nps {
+    private fun parseBlock(isFunctionBlock: Boolean = false): BlockNode = nps {
         consume(TokenType.OpenCurly)
+        val prevIsStrict = isStrict
         val isStrict = checkForAndConsumeUseStrict()
 
-        if (pushNewScope)
-            scope = Scope(scope)
+        if (isStrict)
+            this.isStrict = true
 
         val statements = parseStatementList()
         consume(TokenType.CloseCurly)
-        BlockNode(statements, isStrict).also {
-            it.scope = scope
-            if (pushNewScope)
-                scope = scope.outer!!
-        }
+        this.isStrict = prevIsStrict
+
+        BlockNode(statements, isStrict)
     }
 
     private fun parseExpression(
@@ -1056,13 +951,13 @@ class Parser(val source: String) {
             consume()
             if (lhs !is IdentifierReferenceNode && lhs !is MemberExpressionNode && lhs !is CallExpressionNode)
                 reporter.at(lhs).invalidLhsInAssignment()
-            if (scope.isStrict && lhs is IdentifierReferenceNode) {
+            if (isStrict && lhs is IdentifierReferenceNode) {
                 val name = lhs.identifierName
                 if (name == "eval")
                     reporter.strictAssignToEval()
                 if (name == "arguments")
                     reporter.strictAssignToArguments()
-            } else if (scope.isStrict && lhs is CallExpressionNode) {
+            } else if (isStrict && lhs is CallExpressionNode) {
                 reporter.at(lhs).invalidLhsInAssignment()
             }
 
@@ -1222,10 +1117,9 @@ class Parser(val source: String) {
         when (tokenType) {
             TokenType.OpenParen -> {
                 val cpeaapl = parseCPEAAPLNode()
-                val arrow = tryParseArrowFunction(cpeaapl)
-                if (arrow != null)
-                    return@nps arrow
-                return@nps CPEAAPLVisitor(this, cpeaapl).parseAsParenthesizedExpression()
+                if (match(TokenType.Arrow)) {
+                    tryParseArrowFunction(cpeaapl)
+                } else CPEAAPLVisitor(this, cpeaapl).parseAsParenthesizedExpression()
             }
             TokenType.This -> {
                 consume()
@@ -1382,23 +1276,11 @@ class Parser(val source: String) {
 
             val methodName = if (needsNewName) parsePropertyName() else name
 
-            val functionScope = HoistingScope(scope).also { scope = it }
-
             val params = parseFunctionParameters()
-            val bodyScope = if (params.any { it.initializer != null }) {
-                HoistingScope(scope).also { scope = it }
-            } else functionScope
 
-            val body = functionBoundary {
-                parseBlock(pushNewScope = false)
-            }
-            val methodNode = MethodDefinitionNode(methodName, params, body, functionScope, bodyScope, type).also {
-                it.scope = scope
-                scope = scope.outer!!
-                if (functionScope != bodyScope)
-                    scope = scope.outer!!
-            }
-            return@nps MethodProperty(methodNode)
+            // TODO: Async/Generator methods
+            val body = parseFunctionBody(isAsync = false, isGenerator = false)
+            return@nps MethodProperty(MethodDefinitionNode(methodName, params, body, type))
         }
 
         if (matchAny(TokenType.Comma, TokenType.CloseCurly)) {
@@ -1406,11 +1288,7 @@ class Parser(val source: String) {
                 reporter.at(name).invalidShorthandProperty()
 
             val identifier = (name.expression as IdentifierNode).identifierName
-            val node = IdentifierReferenceNode(identifier).withPosition(name).also {
-                it.scope = scope
-                if (!disableAutoScoping)
-                    scope.addReference(it)
-            }
+            val node = IdentifierReferenceNode(identifier).withPosition(name)
 
             return@nps ShorthandProperty(node)
         }
@@ -1540,7 +1418,7 @@ class Parser(val source: String) {
         val value = token.literals
         consume(TokenType.NumericLiteral)
 
-        if (value.length >= 2 && value[0] == '0' && value[1].isDigit() && scope.isStrict)
+        if (value.length >= 2 && value[0] == '0' && value[1].isDigit() && isStrict)
             reporter.strictImplicitOctal()
 
         if (matchIdentifier()) {
@@ -1590,36 +1468,18 @@ class Parser(val source: String) {
         CPEAAPLNode(parts, endsWithComma)
     }
 
-    private fun tryParseArrowFunction(node: CPEAAPLNode): ArrowFunctionNode? = nps {
-        if (!match(TokenType.Arrow))
-            return@nps null
+    private fun tryParseArrowFunction(node: CPEAAPLNode): ArrowFunctionNode = nps {
+        consume(TokenType.Arrow)
 
         if (token.afterNewline)
             reporter.arrowFunctionNewLine()
 
-        consume()
-        val functionScope = HoistingScope(scope)
-        scope = functionScope
         val parameters = CPEAAPLVisitor(this, node).parseAsParameterList()
 
-        val bodyScope = if (parameters.any { it.initializer != null }) {
-            HoistingScope(scope).also { scope = it }
-        } else functionScope
+        // TODO: Async/Generator methods
+        val body = parseFunctionBody(isAsync = false, isGenerator = false)
 
-        val body = functionBoundary {
-            if (match(TokenType.OpenCurly)) {
-                parseBlock(pushNewScope = false)
-            } else {
-                parseStatement()
-            }
-        }
-
-        ArrowFunctionNode(parameters, body, functionScope, bodyScope, Operations.FunctionKind.Normal).also {
-            it.scope = scope
-            scope = scope.outer!!
-            if (functionScope != bodyScope)
-                scope = scope.outer!!
-        }
+        ArrowFunctionNode(parameters, body, Operations.FunctionKind.Normal)
     }
 
     private fun parseUnaryExpression(): ExpressionNode = nps {
@@ -1637,9 +1497,6 @@ class Parser(val source: String) {
             TokenType.Void -> UnaryExpressionNode(expression, UnaryOperator.Void)
             TokenType.Delete -> UnaryExpressionNode(expression, UnaryOperator.Delete)
             else -> unreachable()
-        }.also {
-            if (it is UnaryExpressionNode)
-                it.scope = scope
         }
     }
 
@@ -1663,7 +1520,7 @@ class Parser(val source: String) {
         return@nps IfStatementNode(condition, trueBlock, falseBlock)
     }
 
-    private inline fun <T> functionBoundary(isAsync: Boolean = false, isGenerator: Boolean = false, block: () -> T): T {
+    private fun parseFunctionBody(isAsync: Boolean, isGenerator: Boolean): BlockNode {
         labelStack.pushFunctionBoundary()
         val previousFunctionCtx = inFunctionContext
         val previousYieldCtx = inYieldContext
@@ -1679,15 +1536,15 @@ class Parser(val source: String) {
         inBreakContext = false
         inContinueContext = false
 
-        val result = block()
+        val result = parseBlock(isFunctionBlock = true)
 
-        labelStack.popFunctionBoundary()
         inFunctionContext = previousFunctionCtx
         inYieldContext = previousYieldCtx
         inAsyncContext = previewAsyncCtx
         inDefaultContext = previousDefaultCtx
         inBreakContext = previousBreakContext
         inContinueContext = previousContinueContext
+        labelStack.popFunctionBoundary()
 
         return result
     }

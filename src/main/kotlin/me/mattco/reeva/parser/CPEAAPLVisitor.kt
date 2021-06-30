@@ -57,10 +57,6 @@ class CPEAAPLVisitor(
                 .withPosition(node)
                 .also { it.parent = node.parent }
         }
-
-        override fun visitIdentifierReference(node: IdentifierReferenceNode) {
-            node.scope.addReference(node)
-        }
     }
 
     private inner class CPEAAPLToParameterList : ASTVisitor {
@@ -95,28 +91,14 @@ class CPEAAPLVisitor(
                 if (identifier !is IdentifierReferenceNode)
                     reporter.at(node).expected("identifier")
 
-                val variable = Variable(
-                    identifier.identifierName,
-                    Variable.Type.Var,
-                    Variable.Mode.Parameter,
-                    GlobalSourceNode(),
-                )
-                parser.scope.addDeclaredVariable(variable)
-
                 if (initializer != null)
                     visit(initializer)
 
                 val index = identifier.parent.children.indexOf(identifier)
                 expect(index >= 0)
-                identifier.parent.children[index] = BindingIdentifierNode(identifier.identifierName).also {
-                    it.variable = variable
-                }
+                identifier.parent.children[index] = BindingIdentifierNode(identifier.identifierName)
 
-                Parameter(BindingIdentifierNode(identifier.identifierName), initializer, isSpread).also {
-                    it.scope = parser.scope
-                    it.variable = variable
-                    variable.source = it
-                }
+                Parameter(BindingIdentifierNode(identifier.identifierName), initializer, isSpread)
             })
         }
     }

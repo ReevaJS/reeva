@@ -99,7 +99,7 @@ open class Scope(val outer: Scope? = null) {
             if (variable != null) {
                 node.targetVar = variable
 
-                if (node.scope.parentHoistingScope != node.targetVar.declaredScope.parentHoistingScope)
+                if (node.scope.parentHoistingScope != node.targetVar.scope.parentHoistingScope)
                     node.targetVar.isInlineable = false
 
                 iter.remove()
@@ -123,7 +123,7 @@ open class Scope(val outer: Scope? = null) {
             // in its scope hierarchy, it is likely relying on var hoisting (or just an error)
             var scope: Scope? = node.scope
             while (scope != null) {
-                if (scope == node.targetVar.declaredScope)
+                if (scope == node.targetVar.scope)
                     continue@outer
                 scope = scope.outer
             }
@@ -207,8 +207,6 @@ data class Variable(
     var scope: Scope
         get() = source.scope
         set(value) { source.scope = value }
-    val declaredScope: Scope
-        get() = source.declaredScope
 
     var isInlineable = true
     var slot: Int = -1
