@@ -217,6 +217,8 @@ class Transformer : ASTVisitor {
             generator.currentBlock = testBlock
             visit(node.condition)
             generator.add(JumpIfToBooleanTrue(bodyBlock, doneBlock))
+        } else {
+            generator.add(Jump(bodyBlock))
         }
 
         if (node.incrementer != null)
