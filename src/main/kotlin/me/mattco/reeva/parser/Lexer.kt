@@ -3,6 +3,7 @@ package me.mattco.reeva.parser
 import me.mattco.reeva.utils.isHexDigit
 import me.mattco.reeva.utils.isIdContinue
 import me.mattco.reeva.utils.isIdStart
+import me.mattco.reeva.utils.isLineSeparator
 
 class Lexer(private val source: String) {
     private var lineNum = 0
@@ -51,7 +52,7 @@ class Lexer(private val source: String) {
                 }
             }
 
-            val afterNewline = '\n' in source.substring(triviaStartCursor, cursor)
+            val afterNewline = source.substring(triviaStartCursor, cursor).any { it.isLineSeparator() }
 
             val valueStartCursor = cursor
             val valueStartLocation = TokenLocation(cursor, lineNum, columnNum)

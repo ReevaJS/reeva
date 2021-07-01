@@ -13,7 +13,6 @@ fun Char.isFinalQuotePunctuation() = Character.getType(this) == Character.FINAL_
 fun Char.isFormat() = Character.getType(this) == Character.FORMAT.toInt()
 fun Char.isInitialQuotePunctuation() = Character.getType(this) == Character.INITIAL_QUOTE_PUNCTUATION.toInt()
 fun Char.isLetterNumber() = Character.getType(this) == Character.LETTER_NUMBER.toInt()
-fun Char.isLineSeparator() = Character.getType(this) == Character.LINE_SEPARATOR.toInt()
 fun Char.isLowercaseLetter() = Character.getType(this) == Character.LOWERCASE_LETTER.toInt()
 fun Char.isMathSymbol() = Character.getType(this) == Character.MATH_SYMBOL.toInt()
 fun Char.isModifierLetter() = Character.getType(this) == Character.MODIFIER_LETTER.toInt()
@@ -73,6 +72,13 @@ fun Char.isCategoryCo() = this.isPrivateUse()
 fun Char.isCategoryCn() = this.isUnassigned()
 
 /* specific categories */
+val isLineSeparatorCache = mutableMapOf<Char, Boolean>()
+fun Char.isLineSeparator() = isLineSeparatorCache.getOrPut(this) {
+    this.toInt().let {
+        it == 0x000a || it == 0x000d || it == 0x2028 || it == 0x2029
+    }
+}
+
 val isWhitespaceCache = mutableMapOf<Char, Boolean>()
 fun Char.isWhiteSpace() = isWhitespaceCache.getOrPut(this) {
     this.toInt().let {
