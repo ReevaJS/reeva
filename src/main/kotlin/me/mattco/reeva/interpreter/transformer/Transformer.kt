@@ -154,6 +154,7 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitDoWhileStatement(node: DoWhileStatementNode) {
+        val testBlock = generator.makeBlock()
         val headBlock = generator.makeBlock()
         val doneBlock = generator.makeBlock()
 
@@ -161,8 +162,10 @@ class Transformer : ASTVisitor {
         generator.currentBlock = headBlock
 
         enterBreakableScope(doneBlock, node.labels)
-        enterContinuableScope(headBlock, node.labels)
+        enterContinuableScope(testBlock, node.labels)
         visit(node.body)
+        generator.addIfNotTerminated(Jump(testBlock))
+        generator.currentBlock = testBlock
         visit(node.condition)
         exitBreakableScope()
         exitContinuableScope()
