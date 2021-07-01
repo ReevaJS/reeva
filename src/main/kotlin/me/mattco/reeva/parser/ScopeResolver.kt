@@ -68,7 +68,7 @@ class ScopeResolver : ASTVisitor {
             decl.scope = scope
             decl.variable = Variable(
                 decl.identifier.identifierName,
-                Variable.Type.Var,
+                if (node.isConst) Variable.Type.Const else Variable.Type.Let,
                 Variable.Mode.Declared,
                 decl,
             )
