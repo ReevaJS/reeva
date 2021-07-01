@@ -1,9 +1,8 @@
 package me.mattco.reeva.runtime.objects
 
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.runtime.JSValue
-import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.SlotName
+import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.index.IndexedProperties
@@ -18,6 +17,7 @@ open class JSObject protected constructor(
     prototype: JSValue = JSNull,
 ) : JSValue() {
     private val slots = EnumMap<SlotName, Any?>(SlotName::class.java)
+    private val id = Reeva.activeAgent.nextObjectId()
 
     internal val storage = mutableListOf<JSValue>()
     internal val indexedProperties = IndexedProperties(realm)
@@ -51,6 +51,43 @@ open class JSObject protected constructor(
         }
 
     open fun init() { }
+
+    fun inspect(): Inspection = buildInspection {
+        contents("Type: Object")
+        child("Class: ${this@JSObject::class.simpleName}")
+        child("ID: #$id")
+        child("Shape: #${shape.id}")
+        child("Prototype:") {
+            child(inspect(getPrototype(), simple = true))
+        }
+
+        // No need to print the property table of intrinsics, since it'll mostly be a
+        // ton of builtin methods. A possible TODO would be to detect changes in these
+        // objects from their base state and somehow only print those.
+        if (this@JSObject::class === JSObject::class) {
+            child("Properties:") {
+                val propertyTable = shape.orderedPropertyTable()
+
+                for (property in propertyTable) {
+                    child("${property.name} (attrs=${property.attributes} offset=${property.offset})") {
+                        child(inspect(storage[property.offset], simple = true))
+                    }
+                }
+            }
+        }
+
+        if (slots.isNotEmpty()) {
+            child("Slots:") {
+                for ((key, value) in slots) {
+                    child(key.name) {
+                        if (value is JSValue) {
+                            child(inspect(value, simple = true))
+                        } else child(value.toString())
+                    }
+                }
+            }
+        }
+    }
 
     @ECMAImpl("9.1.1")
     open fun getPrototype() = shape.prototype ?: JSNull

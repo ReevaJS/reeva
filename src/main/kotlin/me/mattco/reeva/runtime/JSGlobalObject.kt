@@ -72,6 +72,7 @@ open class JSGlobalObject protected constructor(
         defineNativeFunction("parseInt", 1, ::parseInt)
 
         defineNativeFunction("jvm", 1, ::jvm)
+        defineNativeFunction("inspect", 1, ::inspect)
 
         // Debug method
         // TODO
@@ -152,6 +153,12 @@ open class JSGlobalObject protected constructor(
 //            realm,
 //            ProxyClassCompiler().makeProxyClass(baseClass, interfaces)
 //        )
+    }
+
+    private fun inspect(realm: Realm, arguments: JSArguments): JSValue {
+        val value = arguments.argument(0)
+        println(inspect(value, simple = false).stringify())
+        return JSUndefined
     }
 
     companion object {

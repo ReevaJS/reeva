@@ -1,9 +1,12 @@
 package me.mattco.reeva.runtime.objects
 
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.utils.expect
 
 class Shape {
+    internal val id = Reeva.activeAgent.nextShapeId()
+
     private val transitions = mutableMapOf<Transition, Shape>()
     private lateinit var propertyTable: MutableMap<JSObject.StringOrSymbol, PropertyData>
 

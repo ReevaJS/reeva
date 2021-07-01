@@ -12,9 +12,10 @@ import me.mattco.reeva.runtime.functions.JSFunction
 import java.nio.ByteOrder
 
 class Agent {
-    // Used to ensure names of various things are unique
     @Volatile
-    private var uniqueId = 0
+    private var objectId = 0
+    @Volatile
+    private var shapeId = 0
 
     var printAST = false
     var printIR = false
@@ -91,5 +92,6 @@ class Agent {
             pendingMicrotasks.removeLast()()
     }
 
-    internal fun nextId() = uniqueId++
+    internal fun nextObjectId() = objectId++
+    internal fun nextShapeId() = shapeId++
 }
