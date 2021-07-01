@@ -63,8 +63,8 @@ class Test262Runner {
         val testDirectory = File(test262Directory, "test")
         val testDirectoryStr = testDirectory.absolutePath
         val harnessDirectory = File(test262Directory, "harness")
-        val target: File? = File(testDirectory, "language/statements/class")
-//        val target: File? = null
+//        val target: File? = File(testDirectory, "language/statements/class")
+        val target: File? = null
         lateinit var pretestScript: String
 
         val testResults = mutableListOf<TestResult>()
@@ -96,11 +96,7 @@ class Test262Runner {
         @AfterAll
         @JvmStatic
         fun teardown() {
-            val results = testResults.filter {
-                it.status != Test262Runner.TestResult.Status.Passed
-            }.sortedBy {
-                it.name
-            }
+            val results = testResults.sortedBy { it.name }
 
             File("./demo/test_results/${LocalDateTime.now()}.json").writeText(
                 Json { prettyPrint = true }.encodeToString(results)
