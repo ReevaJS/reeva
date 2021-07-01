@@ -18,9 +18,7 @@ class Parser(val source: String) {
     private var inAsyncContext = false
     private var disableAutoScoping = false
 
-    private var inContinueContext = false
-    private var inBreakContext = false
-    private val labelStack = LabelStack()
+    private val labelStateStack = mutableListOf(LabelState())
 
     internal val reporter = ErrorReporter(this)
 
@@ -160,34 +158,73 @@ class Parser(val source: String) {
      *     AsyncFunctionDeclaration
      *     AsyncGeneratorDeclaration
      */
-    private fun parseStatement(): StatementNode {
-        return when (tokenType) {
+    private fun matchLabellableStatement() = matchAny(
+        TokenType.If,
+        TokenType.For,
+        TokenType.While,
+        TokenType.Try,
+        TokenType.Switch,
+        TokenType.Do,
+        TokenType.OpenCurly,
+    )
+
+    private fun parseLabellableStatement(): StatementNode? = nps {
+        val labels = mutableSetOf<String>()
+
+        while (matchIdentifier() && peek().type == TokenType.Colon) {
+            labels.add(parseIdentifier())
+            consume(TokenType.Colon)
+        }
+
+        val type = when (tokenType) {
+            TokenType.If, TokenType.Try, TokenType.OpenCurly -> LabellableBlockType.Block
+            TokenType.Do, TokenType.While, TokenType.For -> LabellableBlockType.Loop
+            TokenType.Switch -> LabellableBlockType.Switch
+            else -> {
+                if (labels.isNotEmpty())
+                    return@nps parseStatement()
+
+                expect(matchIdentifier())
+                return@nps ExpressionStatementNode(parseExpression().also { asi() })
+            }
+        }
+
+        labelStateStack.last().pushBlock(type, labels)
+
+        when (tokenType) {
+            TokenType.If -> parseIfStatement()
+            TokenType.For -> parseNormalForAndForEachStatement()
+            TokenType.While -> parseWhileStatement()
+            TokenType.Try -> parseTryStatement()
+            TokenType.Switch -> parseSwitchStatement()
+            TokenType.Do -> parseDoWhileStatement()
             TokenType.OpenCurly -> parseBlock()
+            else -> unreachable()
+        }.also {
+            (it as Labellable).labels.addAll(labels)
+            labelStateStack.last().popBlock()
+        }
+    }
+
+    private fun parseStatement(): StatementNode {
+        if (matchIdentifier() || matchLabellableStatement())
+            return parseLabellableStatement() ?: parseStatement()
+
+        return when (tokenType) {
             TokenType.Var, TokenType.Let, TokenType.Const -> parseVariableDeclaration(false)
             TokenType.Semicolon -> nps {
                 consume()
                 EmptyStatementNode()
             }
-            TokenType.If -> parseIfStatement()
-            TokenType.Do -> parseDoWhileStatement()
-            TokenType.While -> parseWhileStatement()
-            TokenType.For -> parseNormalForAndForEachStatement()
-            TokenType.Switch -> parseSwitchStatement()
             TokenType.Continue -> parseContinueStatement()
             TokenType.Break -> parseBreakStatement()
             TokenType.Return -> parseReturnStatement()
             TokenType.With -> parseWithStatement()
             TokenType.Throw -> parseThrowStatement()
-            TokenType.Try -> parseTryStatement()
             TokenType.Debugger -> parseDebuggerStatement()
             TokenType.Function, TokenType.Async -> parseFunctionDeclaration()
             TokenType.Class -> parseClassDeclaration()
             else -> {
-                if (matchIdentifier()) {
-                    val labelledStatement = tryParseLabelledStatement()
-                    if (labelledStatement != null)
-                        return labelledStatement
-                }
                 if (tokenType.isExpressionToken) {
                     if (match(TokenType.Function))
                         reporter.functionInExpressionContext()
@@ -285,16 +322,14 @@ class Parser(val source: String) {
      *     do Statement while ( Expression ) ;
      */
     private fun parseDoWhileStatement(): StatementNode = nps {
-        inBreakContinueContext {
-            consume(TokenType.Do)
-            val statement = parseStatement()
-            consume(TokenType.While)
-            consume(TokenType.OpenParen)
-            val condition = parseExpression()
-            consume(TokenType.CloseParen)
-            asi()
-            DoWhileStatementNode(condition, statement)
-        }
+        consume(TokenType.Do)
+        val statement = parseStatement()
+        consume(TokenType.While)
+        consume(TokenType.OpenParen)
+        val condition = parseExpression()
+        consume(TokenType.CloseParen)
+        asi()
+        DoWhileStatementNode(condition, statement)
     }
 
     /*
@@ -302,15 +337,13 @@ class Parser(val source: String) {
      *     while ( Expression ) Statement
      */
     private fun parseWhileStatement(): StatementNode = nps {
-        inBreakContinueContext {
-            consume(TokenType.While)
-            consume(TokenType.OpenParen)
-            val condition = parseExpression(0)
-            consume(TokenType.CloseParen)
-            val statement = parseStatement()
-            asi()
-            WhileStatementNode(condition, statement)
-        }
+        consume(TokenType.While)
+        consume(TokenType.OpenParen)
+        val condition = parseExpression(0)
+        consume(TokenType.CloseParen)
+        val statement = parseStatement()
+        asi()
+        WhileStatementNode(condition, statement)
     }
 
     /*
@@ -332,44 +365,42 @@ class Parser(val source: String) {
      *     default : StatementList?
      */
     private fun parseSwitchStatement(): StatementNode = nps {
-        inBreakContinueContext(isContinue = false) {
-            consume(TokenType.Switch)
-            consume(TokenType.OpenParen)
-            val target = parseExpression(0)
-            consume(TokenType.CloseParen)
-            consume(TokenType.OpenCurly)
+        consume(TokenType.Switch)
+        consume(TokenType.OpenParen)
+        val target = parseExpression(0)
+        consume(TokenType.CloseParen)
+        consume(TokenType.OpenCurly)
 
-            val clauses = nps {
-                val clauses = mutableListOf<SwitchClause>()
+        val clauses = nps {
+            val clauses = mutableListOf<SwitchClause>()
 
-                while (matchSwitchClause()) {
-                    if (match(TokenType.Case)) {
-                        consume()
-                        val caseTarget = parseExpression(2)
-                        consume(TokenType.Colon)
-                        if (matchSwitchClause()) {
-                            clauses.add(SwitchClause(caseTarget, null))
-                        } else {
-                            clauses.add(SwitchClause(caseTarget, parseStatementList()))
-                        }
+            while (matchSwitchClause()) {
+                if (match(TokenType.Case)) {
+                    consume()
+                    val caseTarget = parseExpression(2)
+                    consume(TokenType.Colon)
+                    if (matchSwitchClause()) {
+                        clauses.add(SwitchClause(caseTarget, null))
                     } else {
-                        consume(TokenType.Default)
-                        consume(TokenType.Colon)
-                        if (matchSwitchClause()) {
-                            clauses.add(SwitchClause(null, null))
-                        } else {
-                            clauses.add(SwitchClause(null, parseStatementList()))
-                        }
+                        clauses.add(SwitchClause(caseTarget, parseStatementList()))
+                    }
+                } else {
+                    consume(TokenType.Default)
+                    consume(TokenType.Colon)
+                    if (matchSwitchClause()) {
+                        clauses.add(SwitchClause(null, null))
+                    } else {
+                        clauses.add(SwitchClause(null, parseStatementList()))
                     }
                 }
-
-                SwitchClauseList(clauses)
             }
 
-            consume(TokenType.CloseCurly)
-
-            SwitchStatementNode(target, clauses)
+            SwitchClauseList(clauses)
         }
+
+        consume(TokenType.CloseCurly)
+
+        SwitchStatementNode(target, clauses)
     }
 
     /*
@@ -378,23 +409,21 @@ class Parser(val source: String) {
      *     continue [no LineTerminator here] LabelIdentifier ;
      */
     private fun parseContinueStatement(): StatementNode = nps {
-        if (!inContinueContext)
-            reporter.continueOutsideOfLoop()
-
         consume(TokenType.Continue)
 
-        if (match(TokenType.Semicolon)) {
-            consume()
+        val continueToken = lastConsumedToken
+
+        if (match(TokenType.Semicolon) || token.afterNewline) {
+            if (match(TokenType.Semicolon))
+                consume()
+
+            labelStateStack.last().validateContinue(continueToken, null)
             return@nps ContinueStatementNode(null)
         }
 
-        if (token.afterNewline)
-            return@nps ContinueStatementNode(null)
-
         if (matchIdentifier()) {
             val identifier = parseIdentifier()
-            if (!labelStack.isContinueLabel(identifier))
-                reporter.invalidContinueTarget(identifier)
+            labelStateStack.last().validateContinue(continueToken, lastConsumedToken)
             return@nps ContinueStatementNode(identifier).also { asi() }
         }
 
@@ -407,23 +436,21 @@ class Parser(val source: String) {
      *     break [no LineTerminator here] LabelIdentifier ;
      */
     private fun parseBreakStatement(): StatementNode = nps {
-        if (!inBreakContext)
-            reporter.breakOutsideOfLoopOrSwitch()
-
         consume(TokenType.Break)
 
-        if (match(TokenType.Semicolon)) {
-            consume()
+        val breakToken = lastConsumedToken
+
+        if (match(TokenType.Semicolon) || token.afterNewline) {
+            if (match(TokenType.Semicolon))
+                consume()
+
+            labelStateStack.last().validateBreak(breakToken, null)
             return@nps BreakStatementNode(null)
         }
 
-        if (token.afterNewline)
-            return@nps BreakStatementNode(null)
-
         if (matchIdentifier()) {
             val identifier = parseIdentifier()
-            if (!labelStack.isBreakLabel(identifier))
-                reporter.invalidBreakTarget(identifier)
+            labelStateStack.last().validateBreak(breakToken, lastConsumedToken)
             return@nps BreakStatementNode(identifier).also { asi() }
         }
 
@@ -532,54 +559,6 @@ class Parser(val source: String) {
         DebuggerStatementNode()
     }
 
-    /*
-     * LabelledStatement :
-     *     LabelIdentifier : LabelledItem
-     *
-     * LabelIdentifier :
-     *     Identifier
-     *     [~Yield] yield
-     *     [~Await] await
-     *
-     * LabelledItem :
-     *     Statement
-     *     FunctionDeclaration
-     *
-     * TODO: FunctionDeclaration is included specifically in the
-     * LabelledItem production as it has some specific functionality
-     */
-    private fun tryParseLabelledStatement(): StatementNode? = nps<StatementNode?> {
-        expect(matchIdentifier())
-        if (peek().type != TokenType.Colon)
-            return@nps null
-
-        // We parse multiple labels in a row here
-        val labels = mutableListOf<String>()
-
-        while (matchIdentifier() && peek().type == TokenType.Colon) {
-            labels.add(parseIdentifier())
-            consume(TokenType.Colon)
-        }
-
-        var isBreakLabel = false
-        var isContinueLabel = false
-
-        if (matchAny(TokenType.Switch, TokenType.OpenCurly, TokenType.If, TokenType.Try))
-            isBreakLabel = true
-
-        if (matchAny(TokenType.Do, TokenType.While, TokenType.For)) {
-            isBreakLabel = true
-            isContinueLabel = true
-        }
-
-        if (isBreakLabel)
-            labels.forEach(labelStack::addBreakLabel)
-        if (isContinueLabel)
-            labels.forEach(labelStack::addContinueLabel)
-
-        LabelledStatementNode(labels, parseStatement())
-    }
-
     private fun matchSwitchClause() = matchAny(TokenType.Case, TokenType.Default)
 
     private fun parseNormalForAndForEachStatement(): StatementNode = nps {
@@ -614,9 +593,7 @@ class Parser(val source: String) {
 
         consume(TokenType.CloseParen)
 
-        val body = inBreakContinueContext {
-            parseStatement()
-        }
+        val body = parseStatement()
 
         ForStatementNode(initializer, condition, update, body)
     }
@@ -632,9 +609,7 @@ class Parser(val source: String) {
         val rhs = parseExpression(0)
         consume(TokenType.CloseParen)
 
-        val body = inBreakContinueContext {
-            parseStatement()
-        }
+        val body = parseStatement()
 
         if (isIn) {
             ForInNode(initializer, rhs, body)
@@ -1521,20 +1496,16 @@ class Parser(val source: String) {
     }
 
     private fun parseFunctionBody(isAsync: Boolean, isGenerator: Boolean): BlockNode {
-        labelStack.pushFunctionBoundary()
+        labelStateStack.add(LabelState())
         val previousFunctionCtx = inFunctionContext
         val previousYieldCtx = inYieldContext
         val previewAsyncCtx = inAsyncContext
         val previousDefaultCtx = inDefaultContext
-        val previousBreakContext = inBreakContext
-        val previousContinueContext = inContinueContext
 
         inFunctionContext = true
         inYieldContext = isGenerator
         inAsyncContext = isAsync
         inDefaultContext = false
-        inBreakContext = false
-        inContinueContext = false
 
         val result = parseBlock(isFunctionBlock = true)
 
@@ -1542,25 +1513,8 @@ class Parser(val source: String) {
         inYieldContext = previousYieldCtx
         inAsyncContext = previewAsyncCtx
         inDefaultContext = previousDefaultCtx
-        inBreakContext = previousBreakContext
-        inContinueContext = previousContinueContext
-        labelStack.popFunctionBoundary()
+        labelStateStack.removeLast()
 
-        return result
-    }
-
-    private inline fun <T> inBreakContinueContext(
-        isBreak: Boolean = true,
-        isContinue: Boolean = true,
-        block: () -> T
-    ): T {
-        val previousBreakContext = inBreakContext
-        val previousContinueContext = inContinueContext
-        inBreakContext = inBreakContext || isBreak
-        inContinueContext = inContinueContext || isContinue
-        val result = block()
-        inBreakContext = previousBreakContext
-        inContinueContext = previousContinueContext
         return result
     }
 
@@ -1630,6 +1584,48 @@ class Parser(val source: String) {
         val end: TokenLocation,
     ) : Throwable(message)
 
+    enum class LabellableBlockType {
+        Loop,
+        Switch,
+        Block,
+    }
+
+    data class Block(val type: LabellableBlockType, val labels: Set<String>)
+
+    inner class LabelState {
+        private val blocks = mutableListOf<Block>()
+
+        fun pushBlock(type: LabellableBlockType, labels: Set<String>) {
+            blocks.add(Block(type, labels))
+        }
+
+        fun popBlock() {
+            blocks.removeLast()
+        }
+
+        fun validateBreak(breakToken: Token, identifierToken: Token?) {
+            if (identifierToken != null) {
+                val identifier = identifierToken.literals
+                if (!blocks.any { identifier in it.labels })
+                    reporter.at(identifierToken).invalidBreakTarget(identifier)
+            } else if (blocks.none { it.type != LabellableBlockType.Block }) {
+                reporter.at(breakToken).breakOutsideOfLoopOrSwitch()
+            }
+        }
+
+        fun validateContinue(continueToken: Token, identifierToken: Token?) {
+            if (identifierToken != null) {
+                val identifier = identifierToken.literals
+                val matchingBlocks = blocks.filter { identifier in it.labels }
+                if (matchingBlocks.none { it.type == LabellableBlockType.Loop })
+                    reporter.at(identifierToken).invalidContinueTarget(identifier)
+            } else if (blocks.none { it.type != LabellableBlockType.Block }) {
+                reporter.at(continueToken).continueOutsideOfLoop()
+            }
+        }
+
+    }
+
     class LabelStack {
         private val stack = Stack<State>()
 
@@ -1657,6 +1653,12 @@ class Parser(val source: String) {
 
         fun popFunctionBoundary() {
             stack.pop()
+        }
+
+        data class Label(val name: String, val type: Type) {
+            enum class Type {
+
+            }
         }
 
         data class State(

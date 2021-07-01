@@ -4,6 +4,14 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.parser.Scope
 
+interface Labellable {
+    val labels: MutableSet<String>
+}
+
+abstract class LabellableBase(children: List<ASTNode>) : ASTNodeBase(children), StatementNode, Labellable {
+    override val labels: MutableSet<String> = mutableSetOf()
+}
+
 typealias StatementList = ASTListNode<StatementNode>
 typealias SwitchClauseList = ASTListNode<SwitchClause>
 
@@ -13,7 +21,9 @@ open class ASTListNode<T : ASTNode>(
 
 class BlockStatementNode(val block: BlockNode) : ASTNodeBase(listOf(block)), StatementNode
 
-class BlockNode(val statements: StatementList, val hasUseStrict: Boolean) : NodeWithScope(statements), StatementNode
+class BlockNode(val statements: StatementList, val hasUseStrict: Boolean) : NodeWithScope(statements), StatementNode, Labellable {
+    override var labels: MutableSet<String> = mutableSetOf()
+}
 
 class EmptyStatementNode : ASTNodeBase(), StatementNode
 
@@ -23,17 +33,17 @@ class IfStatementNode(
     val condition: ExpressionNode,
     val trueBlock: StatementNode,
     val falseBlock: StatementNode?
-) : ASTNodeBase(listOfNotNull(condition, trueBlock, falseBlock)), StatementNode
+) : LabellableBase(listOfNotNull(condition, trueBlock, falseBlock)), StatementNode
 
 class DoWhileStatementNode(
     val condition: ExpressionNode,
     val body: StatementNode
-) : ASTNodeBase(listOf(condition, body)), StatementNode
+) : LabellableBase(listOf(condition, body)), StatementNode
 
 class WhileStatementNode(
     val condition: ExpressionNode,
     val body: StatementNode
-) : ASTNodeBase(listOf(condition, body)), StatementNode
+) : LabellableBase(listOf(condition, body)), StatementNode
 
 class WithStatementNode(
     val expression: ExpressionNode,
@@ -43,20 +53,20 @@ class WithStatementNode(
 class SwitchStatementNode(
     val target: ExpressionNode,
     val clauses: SwitchClauseList,
-) : ASTNodeBase(listOfNotNull()), StatementNode
+) : LabellableBase(listOfNotNull()), StatementNode
 
 class SwitchClause(
     // null target indicates the default case
     val target: ExpressionNode?,
     val body: StatementList?,
-) : ASTNodeBase(listOfNotNull(target) + (body ?: emptyList())), StatementNode
+) : LabellableBase(listOfNotNull(target) + (body ?: emptyList())), StatementNode
 
 class ForStatementNode(
     val initializer: ASTNode?,
     val condition: ExpressionNode?,
     val incrementer: ExpressionNode?,
     val body: StatementNode,
-) : ASTNodeBase(listOfNotNull(initializer, condition, incrementer, body)), StatementNode {
+) : LabellableBase(listOfNotNull(initializer, condition, incrementer, body)), StatementNode {
     var initializerScope: Scope? = null
 
     override fun dump(indent: Int) = buildString {
@@ -83,33 +93,19 @@ class ForInNode(
     val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
-) : NodeWithScope(listOf(decl, expression, body)), StatementNode
+) : LabellableBase(listOf(decl, expression, body)), StatementNode
 
 class ForOfNode(
     val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
-) : NodeWithScope(listOf(decl, expression, body)), StatementNode
+) : LabellableBase(listOf(decl, expression, body)), StatementNode
 
 class ForAwaitOfNode(
     val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
-) : NodeWithScope(listOf(decl, expression, body)), StatementNode
-
-class LabelledStatementNode(
-    val labels: List<String>,
-    val item: StatementNode
-) : ASTNodeBase(listOf(item)), StatementNode {
-    override fun dump(indent: Int) = buildString {
-        appendIndent(indent)
-        appendName()
-        append(" (labels=")
-        append(labels.joinToString(separator = " "))
-        append(")\n")
-        item.dump(indent + 1)
-    }
-}
+) : LabellableBase(listOf(decl, expression, body)), StatementNode
 
 class ThrowStatementNode(val expr: ExpressionNode) : ASTNodeBase(listOf(expr)), StatementNode
 
@@ -117,7 +113,7 @@ class TryStatementNode(
     val tryBlock: BlockNode,
     val catchNode: CatchNode?,
     val finallyBlock: BlockNode?,
-) : ASTNodeBase(listOfNotNull(tryBlock, catchNode, finallyBlock)), StatementNode {
+) : LabellableBase(listOfNotNull(tryBlock, catchNode, finallyBlock)), StatementNode {
     init {
         if (catchNode == null && finallyBlock == null)
             throw IllegalArgumentException()

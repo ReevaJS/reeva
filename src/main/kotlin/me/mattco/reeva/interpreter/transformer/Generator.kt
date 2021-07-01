@@ -40,9 +40,6 @@ class Generator(argCount: Int, reservedRegisters: Int) {
     val handlerScope: HandlerScope?
         get() = handlerScopeStack.firstOrNull()
 
-    private val breakableScopes = mutableListOf<Block>()
-    private val continuableScopes = mutableListOf<Block>()
-
     private var nextRegister = argCount + reservedRegisters
     private var nextBlock = 1
     var currentBlock = makeBlock()
@@ -52,12 +49,6 @@ class Generator(argCount: Int, reservedRegisters: Int) {
             }
             field = value
         }
-
-    val breakableScope: Block
-        get() = breakableScopes.last()
-
-    val continuableScope: Block
-        get() = continuableScopes.last()
 
     fun makeBlock(): Block {
         val block = Block(nextBlock++)
@@ -98,22 +89,6 @@ class Generator(argCount: Int, reservedRegisters: Int) {
 
         constantPool.add(obj)
         return constantPool.lastIndex
-    }
-
-    fun enterBreakableScope(targetBlock: Block) {
-        breakableScopes.add(targetBlock)
-    }
-
-    fun exitBreakableScope() {
-        breakableScopes.removeLast()
-    }
-
-    fun enterContinuableScope(targetBlock: Block) {
-        continuableScopes.add(targetBlock)
-    }
-
-    fun exitContinuableScope() {
-        continuableScopes.removeLast()
     }
 
     fun ifHelper(op: (Block, Block) -> Opcode, negateOp: Boolean = false, ifTrue: () -> Unit) {

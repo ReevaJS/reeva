@@ -30,6 +30,11 @@ class Transformer : ASTVisitor {
     private lateinit var generator: Generator
     private var currentScope: Scope? = null
 
+    data class LabelledBlock(val labels: Set<String>, val block: Block)
+
+    private val breakableScopes = mutableListOf<LabelledBlock>()
+    private val continuableScopes = mutableListOf<LabelledBlock>()
+
     fun transform(node: ASTNode): FunctionInfo {
         if (::generator.isInitialized)
             throw IllegalStateException("Cannot re-use an IRTransformer")
@@ -105,7 +110,19 @@ class Transformer : ASTVisitor {
         if (pushScope)
             enterScope(node.scope)
         try {
+            var block: Block? = null
+            if (node.labels.isNotEmpty()) {
+                block = generator.makeBlock()
+                enterBreakableScope(block, node.labels)
+            }
+
             visitASTListNode(node.statements)
+
+            if (node.labels.isNotEmpty()) {
+                exitBreakableScope()
+                generator.add(Jump(block!!))
+                generator.currentBlock = block
+            }
         } finally {
             if (pushScope)
                 exitScope(node.scope)
@@ -142,8 +159,14 @@ class Transformer : ASTVisitor {
 
         generator.add(Jump(headBlock))
         generator.currentBlock = headBlock
+
+        enterBreakableScope(doneBlock, node.labels)
+        enterContinuableScope(headBlock, node.labels)
         visit(node.body)
         visit(node.condition)
+        exitBreakableScope()
+        exitContinuableScope()
+
         generator.add(JumpIfToBooleanTrue(headBlock, doneBlock))
         generator.currentBlock = doneBlock
     }
@@ -158,7 +181,13 @@ class Transformer : ASTVisitor {
         visit(node.condition)
         generator.add(JumpIfToBooleanTrue(bodyBlock, doneBlock))
         generator.currentBlock = bodyBlock
+
+        enterBreakableScope(doneBlock, node.labels)
+        enterContinuableScope(testBlock, node.labels)
         visit(node.body)
+        exitContinuableScope()
+        exitBreakableScope()
+
         generator.add(Jump(testBlock))
         generator.currentBlock = doneBlock
     }
@@ -191,11 +220,11 @@ class Transformer : ASTVisitor {
             incrementerBlock = generator.makeBlock()
 
         generator.currentBlock = bodyBlock
-        generator.enterBreakableScope(doneBlock)
-        generator.enterContinuableScope(incrementerBlock ?: testBlock ?: bodyBlock)
+        enterBreakableScope(doneBlock, node.labels)
+        enterContinuableScope(incrementerBlock ?: testBlock ?: bodyBlock, node.labels)
         visit(node.body)
-        generator.exitBreakableScope()
-        generator.exitContinuableScope()
+        exitBreakableScope()
+        exitContinuableScope()
 
         if (node.incrementer != null) {
             generator.add(Jump(incrementerBlock!!))
@@ -228,8 +257,8 @@ class Transformer : ASTVisitor {
         }
     }
 
-    private fun iterateForEach(decl: ASTNode, body: ASTNode) {
-        iterateValues {
+    private fun iterateForEach(labels: Set<String>, decl: ASTNode, body: ASTNode) {
+        iterateValues(labels) {
             assign(decl)
             visit(body)
         }
@@ -244,7 +273,7 @@ class Transformer : ASTVisitor {
         generator.currentBlock = isNotUndefinedBlock
 
         generator.add(ForInEnumerate)
-        iterateForEach(node.decl, node.body)
+        iterateForEach(node.labels, node.decl, node.body)
 
         generator.add(Jump(isUndefinedBlock))
         generator.currentBlock = isUndefinedBlock
@@ -253,14 +282,10 @@ class Transformer : ASTVisitor {
     override fun visitForOf(node: ForOfNode) {
         visit(node.expression)
         generator.add(GetIterator)
-        iterateForEach(node.decl, node.body)
+        iterateForEach(node.labels, node.decl, node.body)
     }
 
     override fun visitForAwaitOf(node: ForAwaitOfNode) {
-        TODO()
-    }
-
-    override fun visitLabelledStatement(node: LabelledStatementNode) {
         TODO()
     }
 
@@ -383,18 +408,20 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitBreakStatement(node: BreakStatementNode) {
-        if (node.label != null)
-            TODO()
+        val block = if (node.label != null) {
+            breakableScopes.last { node.label in it.labels }.block
+        } else breakableScopes.last().block
 
-        generator.add(Jump(generator.breakableScope))
+        generator.add(Jump(block))
         generator.currentBlock = generator.makeBlock()
     }
 
     override fun visitContinueStatement(node: ContinueStatementNode) {
-        if (node.label != null)
-            TODO()
+        val block = if (node.label != null) {
+            continuableScopes.last { node.label in it.labels }.block
+        } else continuableScopes.last().block
 
-        generator.add(Jump(generator.continuableScope))
+        generator.add(Jump(block))
         generator.currentBlock = generator.makeBlock()
     }
 
@@ -1166,7 +1193,7 @@ class Transformer : ASTVisitor {
 
                 visit(argument.expression)
                 generator.add(GetIterator)
-                iterateValues {
+                iterateValues(setOf()) {
                     generator.add(StaArray(arrayReg, indexReg))
                     generator.add(Ldar(indexReg))
                     generator.add(Inc)
@@ -1188,7 +1215,7 @@ class Transformer : ASTVisitor {
         return arrayReg
     }
 
-    private fun iterateValues(action: () -> Unit) {
+    private fun iterateValues(labels: Set<String>, action: () -> Unit) {
         val iteratorReg = generator.reserveRegister()
         generator.add(Star(iteratorReg))
 
@@ -1210,11 +1237,11 @@ class Transformer : ASTVisitor {
         generator.add(Ldar(iteratorResultReg))
         generator.add(IteratorResultValue)
 
-        generator.enterBreakableScope(isExhaustedBlock)
-        generator.enterContinuableScope(headBlock)
+        enterBreakableScope(isExhaustedBlock, labels)
+        enterContinuableScope(headBlock, labels)
         action()
-        generator.exitBreakableScope()
-        generator.exitContinuableScope()
+        exitBreakableScope()
+        exitContinuableScope()
 
         generator.addIfNotTerminated(Jump(headBlock))
 
@@ -1426,5 +1453,21 @@ class Transformer : ASTVisitor {
 
     override fun visitThisLiteral() {
         generator.add(Ldar(0))
+    }
+
+    private fun enterBreakableScope(targetBlock: Block, labels: Set<String>) {
+        breakableScopes.add(LabelledBlock(labels, targetBlock))
+    }
+
+    private fun exitBreakableScope() {
+        breakableScopes.removeLast()
+    }
+
+    private fun enterContinuableScope(targetBlock: Block, labels: Set<String>) {
+        continuableScopes.add(LabelledBlock(labels, targetBlock))
+    }
+
+    private fun exitContinuableScope() {
+        continuableScopes.removeLast()
     }
 }

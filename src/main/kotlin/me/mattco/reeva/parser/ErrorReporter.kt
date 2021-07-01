@@ -50,18 +50,14 @@ class ErrorReporter(private val parser: Parser) : Reporter() {
     override val end: TokenLocation
         get() = parser.sourceEnd
 
-    fun at(
-        sourceStart: TokenLocation = start,
-        sourceEnd: TokenLocation = end
-    ) = object : Reporter() {
+    fun at(sourceStart: TokenLocation, sourceEnd: TokenLocation) = object : Reporter() {
         override val start = sourceStart
         override val end = sourceEnd
     }
 
-    fun at(node: ASTNode) = object : Reporter() {
-        override val start = node.sourceStart
-        override val end = node.sourceEnd
-    }
+    fun at(node: ASTNode) = at(node.sourceStart, node.sourceEnd)
+
+    fun at(token: Token) = at(token.start, token.end)
 
     companion object {
         fun prettyPrintError(sourceCode: String, error: Parser.ParsingException) {

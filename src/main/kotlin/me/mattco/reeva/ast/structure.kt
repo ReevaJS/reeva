@@ -151,7 +151,6 @@ class ModuleNode(val body: StatementList) : NodeWithScope(body)
 interface StatementNode : ASTNode
 interface ExpressionNode : ASTNode
 
-
 // TODO: Remove
 class ScriptOrModuleNode(private val value: Any) {
     init {

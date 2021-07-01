@@ -27,7 +27,6 @@ interface ASTVisitor {
             is ForInNode -> visitForIn(node)
             is ForOfNode -> visitForOf(node)
             is ForAwaitOfNode -> visitForAwaitOf(node)
-            is LabelledStatementNode -> visitLabelledStatement(node)
             is ThrowStatementNode -> visitThrowStatement(node)
             is TryStatementNode -> visitTryStatement(node)
             is BreakStatementNode -> visitBreakStatement(node)
@@ -138,10 +137,6 @@ interface ASTVisitor {
         visit(node.decl)
         visit(node.expression)
         visit(node.body)
-    }
-
-    fun visitLabelledStatement(node: LabelledStatementNode) {
-        visit(node.item)
     }
 
     fun visitThrowStatement(node: ThrowStatementNode) {
