@@ -42,7 +42,7 @@ class Transformer : ASTVisitor {
         return when (node) {
             is ModuleNode -> TODO()
             is ScriptNode -> {
-                generator = Generator(1, node.scope.inlineableRegisters)
+                generator = Generator(1, node.scope.additionalInlineableRegisterCount)
 
                 globalDeclarationInstantiation(node.scope) {
                     visit(node.statements)
@@ -58,7 +58,7 @@ class Transformer : ASTVisitor {
                 )
             }
             is FunctionDeclarationNode -> {
-                generator = Generator(node.parameters.size + 1, node.scope.inlineableRegisters)
+                generator = Generator(node.parameters.size + 1, node.scope.additionalInlineableRegisterCount)
 
                 makeFunctionInfo(
                     node.identifier.identifierName,
@@ -720,7 +720,7 @@ class Transformer : ASTVisitor {
             TODO()
 
         val prevGenerator = generator
-        generator = Generator(parameters.size + 1, functionScope.inlineableRegisters)
+        generator = Generator(parameters.size + 1, functionScope.additionalInlineableRegisterCount)
 
         val info = makeFunctionInfo(
             name,

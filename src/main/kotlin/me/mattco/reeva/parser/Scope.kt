@@ -15,8 +15,8 @@ open class Scope(val outer: Scope? = null) {
 
     var possiblyReferencesArguments = false
 
-    var inlineableRegisters = 1
-        private set
+    private var nextInlineableRegister = 0
+    var additionalInlineableRegisterCount = 0
     var nextSlot = 0
         private set
 
@@ -83,7 +83,7 @@ open class Scope(val outer: Scope? = null) {
     fun onFinish() {
         processUnlinkedNodes()
         searchForUseBeforeDecl()
-        allocateInlineableRegisters()
+        allocateInlineableRegisters(1)
         onFinishImpl()
 
         pendingReferences.clear()
@@ -134,23 +134,37 @@ open class Scope(val outer: Scope? = null) {
         childScopes.forEach(Scope::searchForUseBeforeDecl)
     }
     
-    private fun allocateInlineableRegisters() {
-        fun assignSlots(variable: List<Variable>) {
-            variable.forEach {
-                it.slot = if (it.isInlineable) inlineableRegisters++ else nextSlot++
+    private fun allocateInlineableRegisters(startingRegister: Int) {
+        nextInlineableRegister = startingRegister
+
+        declaredVariables.filter {
+            it.mode == Variable.Mode.Parameter
+        }.forEachIndexed { index, variable ->
+            variable.slot = if (variable.isInlineable) {
+                nextInlineableRegister = index + 2
+                index + 1
+            } else {
+                nextSlot++
             }
         }
 
-        val parameters = declaredVariables.filter { it.mode == Variable.Mode.Parameter }
-        val locals = declaredVariables.filter { it.mode != Variable.Mode.Parameter }
-
-        assignSlots(parameters)
-        assignSlots(locals)
+        declaredVariables.filter {
+            it.mode != Variable.Mode.Parameter
+        }.forEach {
+            it.slot = if (it.isInlineable) {
+                additionalInlineableRegisterCount++
+                nextInlineableRegister++
+            } else nextSlot++
+        }
 
         childScopes.forEach {
-            if (it !is HoistingScope)
-                it.inlineableRegisters = inlineableRegisters
-            it.allocateInlineableRegisters()
+            if (it is HoistingScope) {
+                it.allocateInlineableRegisters(1)
+            } else {
+                it.allocateInlineableRegisters(nextInlineableRegister)
+                nextInlineableRegister += it.additionalInlineableRegisterCount
+                additionalInlineableRegisterCount += it.additionalInlineableRegisterCount
+            }
         }
     }
 
