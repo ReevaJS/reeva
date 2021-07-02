@@ -17,10 +17,10 @@ open class Scope(val outer: Scope? = null) {
     var possiblyReferencesArguments = false
     var functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
 
-    private var nextInlineableRegister = 0
+    protected var nextInlineableRegister = 0
     var additionalInlineableRegisterCount = 0
     var nextSlot = 0
-        private set
+        protected set
 
     val isStrict: Boolean
         get() = parentHoistingScope.hasUseStrictDirective
@@ -140,23 +140,10 @@ open class Scope(val outer: Scope? = null) {
         childScopes.forEach(Scope::searchForUseBeforeDecl)
     }
     
-    private fun allocateInlineableRegisters(startingRegister: Int) {
+    open fun allocateInlineableRegisters(startingRegister: Int) {
         nextInlineableRegister = startingRegister
 
-        declaredVariables.filter {
-            it.mode == Variable.Mode.Parameter
-        }.forEachIndexed { index, variable ->
-            variable.slot = if (variable.isInlineable) {
-                nextInlineableRegister = index + 2
-                index + 1
-            } else {
-                nextSlot++
-            }
-        }
-
-        declaredVariables.filter {
-            it.mode != Variable.Mode.Parameter
-        }.forEach {
+        declaredVariables.forEach {
             it.slot = if (it.isInlineable) {
                 additionalInlineableRegisterCount++
                 nextInlineableRegister++
@@ -164,10 +151,8 @@ open class Scope(val outer: Scope? = null) {
         }
 
         childScopes.forEach {
-            if (it is HoistingScope) {
-                it.allocateInlineableRegisters(1)
-            } else {
-                it.allocateInlineableRegisters(nextInlineableRegister)
+            it.allocateInlineableRegisters(nextInlineableRegister)
+            if (it !is HoistingScope) {
                 nextInlineableRegister += it.additionalInlineableRegisterCount
                 additionalInlineableRegisterCount += it.additionalInlineableRegisterCount
             }
@@ -185,6 +170,34 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
     override fun onFinishImpl() {
         possiblyReferencesArguments = searchForArgumentsReference(this)
         super.onFinishImpl()
+    }
+
+    override fun allocateInlineableRegisters(startingRegister: Int) {
+        val parameters = declaredVariables.filter { it.mode == Variable.Mode.Parameter }
+        val locals = declaredVariables.filter { it.mode != Variable.Mode.Parameter }
+
+        nextInlineableRegister = parameters.size + 1
+
+        parameters.forEachIndexed { index, variable ->
+            variable.slot = if (variable.isInlineable) {
+                index + 1
+            } else nextSlot++
+        }
+
+        locals.forEach {
+            it.slot = if (it.isInlineable) {
+                additionalInlineableRegisterCount++
+                nextInlineableRegister++
+            } else nextSlot++
+        }
+
+        childScopes.forEach {
+            it.allocateInlineableRegisters(nextInlineableRegister)
+            if (it !is HoistingScope) {
+                nextInlineableRegister += it.additionalInlineableRegisterCount
+                additionalInlineableRegisterCount += it.additionalInlineableRegisterCount
+            }
+        }
     }
 
     private fun searchForArgumentsReference(scope: Scope): Boolean {
