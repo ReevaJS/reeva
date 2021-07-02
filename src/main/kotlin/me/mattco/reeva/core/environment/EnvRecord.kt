@@ -1,12 +1,11 @@
 package me.mattco.reeva.core.environment
 
-import me.mattco.reeva.core.Realm
 import me.mattco.reeva.runtime.JSValue
 
 /**
  * The runtime-equivalent of the Parser's Scope objects
  */
-abstract class EnvRecord(val realm: Realm, val outer: EnvRecord?) : JSValue() {
+abstract class EnvRecord(val outer: EnvRecord?) : JSValue() {
     abstract fun hasBinding(slot: Int): Boolean
 
     abstract fun hasBinding(name: String): Boolean

@@ -150,7 +150,7 @@ class Realm {
         val actualThisValue = thisValue.ifUndefined(globalObject)
         expect(actualThisValue is JSObject)
         this.globalObject = globalObject
-        globalEnv = GlobalEnvRecord(this, actualThisValue)
+        globalEnv = GlobalEnvRecord(actualThisValue)
     }
 
     internal fun initObjects() {

@@ -403,7 +403,7 @@ class Interpreter(
 
     override fun visitPushDeclarativeEnvRecord(numSlots: Literal) {
         lexicalDepth++
-        lexicalEnv = DeclarativeEnvRecord(realm, lexicalEnv, numSlots)
+        lexicalEnv = DeclarativeEnvRecord(lexicalEnv, numSlots)
     }
 
     override fun visitPopEnvRecord() {
