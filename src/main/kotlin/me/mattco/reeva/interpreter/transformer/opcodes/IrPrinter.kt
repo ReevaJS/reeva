@@ -163,6 +163,7 @@ class IrPrinter(private val info: FunctionInfo) {
 
             is JumpIfTrue -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
             is JumpIfToBooleanTrue -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
+            is JumpIfEmpty -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
             is JumpIfNull -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
             is JumpIfUndefined -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
             is JumpIfNullish -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
@@ -171,8 +172,6 @@ class IrPrinter(private val info: FunctionInfo) {
             is Jump -> append(stringifyBlockIndex(opcode.ifBlock))
 
             is Yield -> append(stringifyBlockIndex(opcode.continuationBlock))
-            is ThrowConstReassignment -> append(stringifyIndex(opcode.nameIndex))
-            is ThrowUseBeforeInitIfEmpty -> append(stringifyIndex(opcode.nameIndex))
 
             is DefineGetterProperty -> {
                 append(" object:", stringifyRegister(opcode.objectReg))

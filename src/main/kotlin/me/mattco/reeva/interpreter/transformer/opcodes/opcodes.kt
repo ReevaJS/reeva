@@ -424,6 +424,7 @@ open class Jump(val ifBlock: Block, val elseBlock: Block? = null) : Opcode() {
 
 class JumpIfTrue(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfToBooleanTrue(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
+class JumpIfEmpty(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfNull(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfUndefined(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfNullish(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
@@ -456,20 +457,6 @@ object Throw : Opcode() {
 }
 
 class ThrowConstantError(val message: Index) : Opcode() {
-    override val isTerminator = true
-}
-
-/**
- * Throws a const reassignment error
- */
-class ThrowConstReassignment(val nameIndex: Index) : Opcode() {
-    override val isTerminator = true
-}
-
-/**
- * Throws a TypeError if the accumulator is <empty>
- */
-class ThrowUseBeforeInitIfEmpty(val nameIndex: Index) : Opcode() {
     override val isTerminator = true
 }
 

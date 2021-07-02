@@ -496,7 +496,13 @@ class Transformer : ASTVisitor {
         val useStart = node.sourceStart
         if (useStart.index < declarationStart.index && variable.type != Variable.Type.Var) {
             // We need to check if the variable has been initialized
-            generator.add(ThrowUseBeforeInitIfEmpty(generator.intern(node.identifierName)))
+            val throwBlock = generator.makeBlock()
+            val continuationBlock = generator.makeBlock()
+            generator.add(JumpIfEmpty(throwBlock, continuationBlock))
+            generator.currentBlock = throwBlock
+            val message = "cannot access lexical variable \"${node.identifierName}\" before initialization"
+            generator.add(ThrowConstantError(generator.intern(message)))
+            generator.currentBlock = continuationBlock
         }
     }
 
@@ -1027,7 +1033,8 @@ class Transformer : ASTVisitor {
             if (variable.name == "undefined") {
                 if (variable.scope.isStrict) {
                     // TODO: Better error
-                    generator.add(ThrowConstReassignment(generator.intern("undefined")))
+                    val message = generator.intern("cannot assign to constant variable \"undefined\"")
+                    generator.add(ThrowConstantError(message))
                 } else {
                     return
                 }
@@ -1054,7 +1061,8 @@ class Transformer : ASTVisitor {
 
     private fun checkForConstReassignment(node: VariableRefNode): Boolean {
         return if (node.targetVar.type == Variable.Type.Const) {
-            generator.add(ThrowConstReassignment(generator.intern(node.targetVar.name)))
+            val message = "cannot assign to constant variable \"${node.targetVar.name}\""
+            generator.add(ThrowConstantError(generator.intern(message)))
             true
         } else false
     }

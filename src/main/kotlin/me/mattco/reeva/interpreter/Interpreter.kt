@@ -556,6 +556,10 @@ class Interpreter(
         jumpTo(if (accumulator.toBoolean()) ifBlock else elseBlock)
     }
 
+    override fun visitJumpIfEmpty(ifBlock: Block, elseBlock: Block) {
+        jumpTo(if (accumulator == JSEmpty) ifBlock else elseBlock)
+    }
+
     override fun visitJumpIfNull(ifBlock: Block, elseBlock: Block) {
         jumpTo(if (accumulator == JSNull) ifBlock else elseBlock)
     }
@@ -596,15 +600,6 @@ class Interpreter(
 
     override fun visitThrow() {
         throw ThrowException(accumulator)
-    }
-
-    override fun visitThrowConstReassignment(nameIndex: Index) {
-        Errors.AssignmentToConstant(loadConstant(nameIndex)).throwTypeError(realm)
-    }
-
-    override fun visitThrowUseBeforeInitIfEmpty(nameIndex: Index) {
-        if (accumulator == JSEmpty)
-            Errors.AccessBeforeInitialization(loadConstant(nameIndex)).throwTypeError(realm)
     }
 
     override fun visitDefineGetterProperty(objectReg: Register, nameReg: Register, methodReg: Register) {

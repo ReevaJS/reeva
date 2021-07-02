@@ -89,6 +89,7 @@ abstract class IrOpcodeVisitor {
 
             is JumpIfTrue -> visitJumpIfTrue(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfToBooleanTrue -> visitJumpIfToBooleanTrue(opcode.ifBlock, opcode.elseBlock!!)
+            is JumpIfEmpty -> visitJumpIfEmpty(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfNull -> visitJumpIfNull(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfUndefined -> visitJumpIfUndefined(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfNullish -> visitJumpIfNullish(opcode.ifBlock, opcode.elseBlock!!)
@@ -99,8 +100,6 @@ abstract class IrOpcodeVisitor {
             Return -> visitReturn()
             is Yield -> visitYield(opcode.continuationBlock)
             Throw -> visitThrow()
-            is ThrowConstReassignment -> visitThrowConstReassignment(opcode.nameIndex)
-            is ThrowUseBeforeInitIfEmpty -> visitThrowUseBeforeInitIfEmpty(opcode.nameIndex)
 
             is DefineGetterProperty -> visitDefineGetterProperty(opcode.objectReg, opcode.nameReg, opcode.methodReg)
             is DefineSetterProperty -> visitDefineSetterProperty(opcode.objectReg, opcode.nameReg, opcode.methodReg)
@@ -265,6 +264,8 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitJumpIfToBooleanTrue(ifBlock: Block, elseBlock: Block)
 
+    abstract fun visitJumpIfEmpty(ifBlock: Block, elseBlock: Block)
+
     abstract fun visitJumpIfNull(ifBlock: Block, elseBlock: Block)
 
     abstract fun visitJumpIfUndefined(ifBlock: Block, elseBlock: Block)
@@ -284,10 +285,6 @@ abstract class IrOpcodeVisitor {
     abstract fun visitYield(continuationBlock: Block)
 
     abstract fun visitThrow()
-
-    abstract fun visitThrowConstReassignment(nameIndex: Index)
-
-    abstract fun visitThrowUseBeforeInitIfEmpty(nameIndex: Index)
 
     abstract fun visitDefineGetterProperty(objectReg: Register, nameReg: Register, methodReg: Register)
 
