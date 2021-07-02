@@ -1035,7 +1035,7 @@ class Transformer : ASTVisitor {
         if (variable.isInlineable) {
             generator.add(Ldar(variable.slot))
         } else {
-            val distance = variable.source.variable.scope.envDistanceFrom(variable.scope)
+            val distance = currentScope!!.envDistanceFrom(variable.scope)
             if (distance == 0) {
                 generator.add(LdaCurrentRecordSlot(variable.slot))
             } else {
@@ -1066,7 +1066,7 @@ class Transformer : ASTVisitor {
         if (variable.isInlineable) {
             generator.add(Star(variable.slot))
         } else {
-            val distance = variable.source.variable.scope.envDistanceFrom(variable.scope)
+            val distance = currentScope!!.envDistanceFrom(variable.scope)
             if (distance == 0) {
                 generator.add(StaCurrentRecordSlot(variable.slot))
             } else {
