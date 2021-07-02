@@ -207,8 +207,6 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
 }
 
 open class GlobalScope : HoistingScope() {
-    override fun requiresEnv() = false
-
     override fun declaredVarMode(type: Variable.Type): Variable.Mode {
         return if (type == Variable.Type.Var) {
             Variable.Mode.Global
