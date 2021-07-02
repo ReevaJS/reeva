@@ -558,7 +558,11 @@ class Transformer : ASTVisitor {
                 continue
 
             functionNames.add(0, name)
-            functionsToInitialize.add(0, source)
+
+            // We only care about top-level functions. Functions in nested block
+            // scopes get initialized in BlockDeclarationInstantiation
+            if (source.declaredScope == scope)
+                functionsToInitialize.add(0, source)
         }
 
         val declaredVarNames = mutableListOf<String>()
@@ -633,7 +637,11 @@ class Transformer : ASTVisitor {
                 continue
 
             functionNames.add(0, name)
-            functionsToInitialize.add(0, source)
+
+            // We only care about top-level functions. Functions in nested block
+            // scopes get initialized in BlockDeclarationInstantiation
+            if (source.declaredScope == bodyScope)
+                functionsToInitialize.add(0, source)
         }
 
         val argumentsObjectNeeded = when {

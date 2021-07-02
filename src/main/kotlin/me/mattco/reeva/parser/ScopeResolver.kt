@@ -49,14 +49,19 @@ class ScopeResolver : ASTVisitor {
 
     override fun visitVariableDeclaration(node: VariableDeclarationNode) {
         for (decl in node.declarations) {
-            decl.scope = scope.parentHoistingScope
+            val declarationScope = scope
+            val hoistedScope = scope.parentHoistingScope
+
+            decl.scope = hoistedScope
+            decl.declaredScope = declarationScope
+
             decl.variable = Variable(
                 decl.identifier.identifierName,
                 Variable.Type.Var,
-                decl.scope.declaredVarMode(Variable.Type.Var),
+                hoistedScope.declaredVarMode(Variable.Type.Var),
                 decl,
             )
-            decl.scope.addDeclaredVariable(decl.variable)
+            hoistedScope.addDeclaredVariable(decl.variable)
 
             if (decl.initializer != null)
                 visit(decl.initializer)
@@ -89,18 +94,20 @@ class ScopeResolver : ASTVisitor {
     }
 
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
-        val declarationScope = scope.parentHoistingScope
-        node.scope = declarationScope
+        val declarationScope = scope
+        val hoistedScope = scope.parentHoistingScope
+        node.scope = hoistedScope
+        node.declaredScope = declarationScope
 
         val identifier = node.identifier
-        identifier.scope = declarationScope
+        identifier.scope = hoistedScope
         identifier.variable = Variable(
             identifier.identifierName,
             Variable.Type.Var,
-            declarationScope.declaredVarMode(Variable.Type.Var),
+            hoistedScope.declaredVarMode(Variable.Type.Var),
             node,
         )
-        declarationScope.addDeclaredVariable(identifier.variable)
+        hoistedScope.addDeclaredVariable(identifier.variable)
 
         node.functionScope = visitFunctionHelper(node.parameters, node.body)
     }

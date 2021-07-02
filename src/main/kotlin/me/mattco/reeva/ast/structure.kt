@@ -46,6 +46,7 @@ abstract class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWith
 
 abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
     open lateinit var variable: Variable
+    open var declaredScope: Scope by ::scope
 }
 
 interface ASTNode {

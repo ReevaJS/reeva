@@ -725,6 +725,11 @@ class Interpreter(
             if (realm.globalEnv.hasBinding(name))
                 Errors.InvalidGlobalVar(name).throwTypeError(realm)
         }
+
+        for (name in varNames)
+            realm.globalEnv.setBinding(name, JSUndefined)
+        for (name in funcNames)
+            realm.globalEnv.setBinding(name, JSUndefined)
     }
 
     private fun getMappedConstant(index: Int): JSValue {
