@@ -63,6 +63,9 @@ class ScopeResolver : ASTVisitor {
             )
             hoistedScope.addDeclaredVariable(decl.variable)
 
+            if (hoistedScope != declarationScope)
+                declarationScope.hoistedVarDecls.add(node)
+
             if (decl.initializer != null)
                 visit(decl.initializer)
         }
@@ -100,7 +103,7 @@ class ScopeResolver : ASTVisitor {
         node.declaredScope = declarationScope
 
         if (hoistedScope != declarationScope)
-            declarationScope.addFunction(node)
+            declarationScope.functionsToInitialize.add(node)
 
         val identifier = node.identifier
         identifier.scope = hoistedScope

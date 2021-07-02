@@ -13,6 +13,10 @@ abstract class Reporter {
         } else error("expected $expected")
     }
 
+    fun variableRedeclaration(name: String, oldType: String, newType: String): Nothing =
+        error("cannot redeclare $oldType declaration \"$name\" as a $newType declaration")
+    fun duplicateDeclaration(name: String, type: String): Nothing = error("duplicate $type declaration of \"$name\"")
+
     fun arrowFunctionNewLine(): Nothing = error("arrow function cannot be separated from it's arrow by a line terminator")
     fun breakOutsideOfLoopOrSwitch(): Nothing = error("break statement must be inside of a loop or switch statement")
     fun classDeclarationNoName(): Nothing = error("class declaration must have an identifier")
@@ -22,7 +26,6 @@ abstract class Reporter {
     fun emptyParenthesizedExpression(): Nothing = error("parenthesized expression cannot be empty")
     fun forEachMultipleDeclarations(): Nothing = error("for-in/of statement cannot contain multiple variable declarations")
     fun functionInExpressionContext(): Nothing = error("function declarations are not allowed in single-statement contexts")
-    fun functionMissingParameter(): Nothing = error("missing function parameter")
     fun functionStatementNoName(): Nothing = error("function statement requires a name")
     fun identifierAfterNumericLiteral(): Nothing = error("numeric literal cannot be directly followed by an identifier")
     fun invalidBreakTarget(target: String): Nothing = error("invalid break target \"$target\"")

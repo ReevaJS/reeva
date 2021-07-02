@@ -11,6 +11,7 @@ interface ASTVisitor {
             is ExpressionNode -> visitExpression(node)
             is ASTListNode<*> -> visitASTListNode(node)
             is MethodDefinitionNode -> visitMethodDefinition(node)
+            is ScriptNode -> visitScript(node)
             else -> throw IllegalArgumentException("Unrecognized ASTNode ${node.astNodeName}")
         }
     }
@@ -83,6 +84,10 @@ interface ASTVisitor {
             is ThisLiteralNode -> visitThisLiteral()
             else -> throw IllegalArgumentException("Unrecognized ExpressionNode ${node.astNodeName}")
         }
+    }
+
+    fun visitScript(node: ScriptNode) {
+        visit(node.statements)
     }
 
     fun visitASTListNode(node: ASTListNode<*>) {
@@ -192,19 +197,35 @@ interface ASTVisitor {
     fun visitIdentifier(node: IdentifierNode) { }
 
     fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
-        // TODO: Default handling
+        for (param in node.parameters) {
+            if (param.initializer != null)
+                visit(param.initializer)
+        }
+        visit(node.body)
     }
 
     fun visitMethodDefinition(node: MethodDefinitionNode) {
-        // TODO: Default handling
+        for (param in node.parameters) {
+            if (param.initializer != null)
+                visit(param.initializer)
+        }
+        visit(node.body)
     }
 
     fun visitFunctionExpression(node: FunctionExpressionNode) {
-        // TODO: Default handling
+        for (param in node.parameters) {
+            if (param.initializer != null)
+                visit(param.initializer)
+        }
+        visit(node.body)
     }
 
     fun visitArrowFunction(node: ArrowFunctionNode) {
-        // TODO: Default handling
+        for (param in node.parameters) {
+            if (param.initializer != null)
+                visit(param.initializer)
+        }
+        visit(node.body)
     }
 
     fun visitClassDeclaration(node: ClassDeclarationNode) {

@@ -60,6 +60,7 @@ class Parser(val source: String) {
             initLexer()
             val script = parseScriptImpl()
             ScopeResolver().resolve(script)
+            EarlyErrorDetector(reporter).visit(script)
             ParsingResult.Success(script)
         } catch (e: ParsingException) {
             ParsingResult.ParseError(e.message!!, e.start, e.end)
@@ -875,6 +876,34 @@ class Parser(val source: String) {
         val statements = parseStatementList()
         consume(TokenType.CloseCurly)
         this.isStrict = prevIsStrict
+
+//        val varNames = mutableSetOf<String>()
+//        val lexNames = mutableSetOf<String>()
+//
+//        statements.forEach {
+//            if (it is VariableDeclarationNode) {
+//                it.declarations.forEach { decl ->
+//                    val name = decl.identifier.identifierName
+//                    if (name in lexNames)
+//                        reporter.at(decl.identifier).conflictingVarDeclaration(name)
+//                    varNames.add(name)
+//                }
+//            } else if (it is LexicalDeclarationNode) {
+//                it.declarations.forEach { decl ->
+//                    val name = decl.identifier.identifierName
+//                    if (name in varNames)
+//                        reporter.at(decl.identifier).conflictingLexDeclaration(name)
+//                    if (name in lexNames)
+//                        reporter.at(decl.identifier).duplicateLexDeclaration(name)
+//                    lexNames.add(name)
+//                }
+//            } else if (it is FunctionDeclarationNode) {
+//                val name = it.identifier.identifierName
+//                if (name in lexNames)
+//                    reporter.at(it.identifier).conflictingVarDeclaration(name)
+//                lexNames.add(name)
+//            }
+//        }
 
         BlockNode(statements, isStrict)
     }
