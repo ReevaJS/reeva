@@ -91,9 +91,7 @@ open class Scope(val outer: Scope? = null) {
         searchForUseBeforeDecl()
         allocateInlineableRegisters(1)
         onFinishImpl()
-
-        pendingReferences.clear()
-        childScopes.forEach { it.pendingReferences.clear() }
+        clearPendingReferences()
     }
 
     private fun processUnlinkedNodes() {
@@ -161,6 +159,11 @@ open class Scope(val outer: Scope? = null) {
 
     protected open fun onFinishImpl() {
         childScopes.forEach(Scope::onFinishImpl)
+    }
+
+    private fun clearPendingReferences() {
+        pendingReferences.clear()
+        childScopes.forEach(Scope::clearPendingReferences)
     }
 }
 
