@@ -5,6 +5,7 @@ import me.mattco.reeva.core.Agent
 import me.mattco.reeva.interpreter.ExecutionResult
 import me.mattco.reeva.runtime.toPrintableString
 import java.io.File
+import kotlin.math.max
 
 val test262Helpers = listOf(
     "assert.js",
@@ -32,12 +33,48 @@ fun main() {
     val result = agent.run(script, realm)
 
     if (result.isError) {
-        println("Script error: $result")
+        printError(result, script)
     } else {
         println("Script result: ${(result as ExecutionResult.Success).result.toPrintableString()}")
     }
 
     Reeva.teardown()
+}
+
+fun printError(result: ExecutionResult, script: String) {
+    if (result is ExecutionResult.ParseError) {
+        val reason = result.reason
+        val start = result.start
+        val end = result.end
+
+        val lines = script.lines()
+        val firstLine = (start.line - 2).coerceAtLeast(0)
+        val lastLine = (start.line + 2).coerceAtMost(lines.lastIndex)
+
+        val lineIndexWidth = max(firstLine.toString().length, lastLine.toString().length)
+
+        for (i in firstLine..lastLine) {
+            if (lines[i].isBlank())
+                continue
+
+            print("\u001b[2;37m%${lineIndexWidth}d:    \u001b[0m".format(i))
+            println(lines[i])
+            if (i == start.line) {
+                print(" ".repeat(start.column + lineIndexWidth + 5))
+                print("\u001b[31m")
+                val numCarets = if (start.line == end.line) {
+                    (end.column - start.column).coerceAtMost(lines[i].length)
+                } else lines[i].length - start.column
+                println("^".repeat(numCarets))
+                print("\u001b[0m")
+            }
+        }
+
+        println()
+        println("\u001b[31mSyntaxError: $reason\u001b[0m")
+    } else {
+        println(result.toString())
+    }
 }
 
 private fun collectTest262Script(): String {
