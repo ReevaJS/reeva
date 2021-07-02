@@ -60,7 +60,7 @@ fun inspect(value: JSValue, simple: Boolean): Inspection {
         is JSTrue -> buildInspection { contents("Type: True") }
         is JSFalse -> buildInspection { contents("Type: False") }
         is JSNumber -> buildInspection {
-            contents("Type: Number (${value.number}")
+            contents("Type: Number (${value.number})")
         }
         is JSString -> buildInspection {
             contents("Type: String (\"${value.string}\")")
