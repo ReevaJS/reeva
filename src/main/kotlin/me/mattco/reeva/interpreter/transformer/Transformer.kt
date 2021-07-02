@@ -116,6 +116,22 @@ class Transformer : ASTVisitor {
                 enterBreakableScope(block, node.labels)
             }
 
+            // BlockScopeInstantiation
+            node.scope.functionsToInitialize.forEach {
+                visitFunctionHelper(
+                    it.identifier.identifierName,
+                    it.parameters,
+                    it.body,
+                    it.functionScope,
+                    it.body.scope,
+                    it.body.scope.isStrict,
+                    false,
+                    it.kind,
+                )
+
+                storeVariable(it.variable)
+            }
+
             visitASTListNode(node.statements)
 
             if (node.labels.isNotEmpty()) {

@@ -1,5 +1,6 @@
 package me.mattco.reeva.parser
 
+import me.mattco.reeva.ast.FunctionDeclarationNode
 import me.mattco.reeva.ast.VariableRefNode
 import me.mattco.reeva.ast.VariableSourceNode
 
@@ -14,6 +15,7 @@ open class Scope(val outer: Scope? = null) {
     val pendingReferences = mutableListOf<VariableRefNode>()
 
     var possiblyReferencesArguments = false
+    var functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
 
     private var nextInlineableRegister = 0
     var additionalInlineableRegisterCount = 0
@@ -51,6 +53,10 @@ open class Scope(val outer: Scope? = null) {
             Variable.Mode.Global,
             GlobalSourceNode().also { it.scope = globalScope },
         )
+    }
+
+    fun addFunction(node: FunctionDeclarationNode) {
+        functionsToInitialize.add(node)
     }
 
     private fun findDeclaredVariable(name: String): Variable? {
