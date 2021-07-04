@@ -31,7 +31,7 @@ class Parser(val source: String) {
     private val tokenType: TokenType
         inline get() = token.type
     private val isDone: Boolean
-        inline get() = token === Token.INVALID
+        inline get() = tokenType === TokenType.Eof
 
     internal val sourceStart: TokenLocation
         inline get() = token.start
@@ -59,6 +59,8 @@ class Parser(val source: String) {
         return try {
             initLexer()
             val script = parseScriptImpl()
+            if (!isDone)
+                reporter.at(token).expected("eof")
             ScopeResolver().resolve(script)
             EarlyErrorDetector(reporter).visit(script)
             ParsingResult.Success(script)
@@ -78,6 +80,8 @@ class Parser(val source: String) {
             initLexer()
 
             val function = parseFunctionDeclaration()
+            if (!isDone)
+                reporter.at(token).expected("eof")
             expect(function.kind == expectedKind)
 
             ParsingResult.Success(function)
