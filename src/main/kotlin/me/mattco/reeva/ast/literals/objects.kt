@@ -28,6 +28,13 @@ class PropertyName(
     val expression: ExpressionNode,
     val type: Type,
 ) : ASTNodeBase(listOf(expression)) {
+    fun debugName() = when (type) {
+        Type.Identifier -> (expression as IdentifierNode).identifierName
+        Type.String -> (expression as StringLiteralNode).value
+        Type.Number -> (expression as NumericLiteralNode).value.toString()
+        Type.Computed -> "[computed method name]"
+    }
+
     enum class Type {
         Identifier, // expression is IdentifierNode
         String,     // expression is StringLiteralNode
@@ -48,19 +55,19 @@ class MethodDefinitionNode(
     fun isConstructor(): Boolean {
         return propName.type == PropertyName.Type.Identifier && propName.expression.let {
             (it as IdentifierNode).identifierName == "constructor"
-        }
+        } && kind == Kind.Normal
     }
 
     fun containsSuperCall() = parameters.any { it.containsAny<SuperCallExpressionNode>() } ||
         body.containsAny<SuperCallExpressionNode>()
 
-    enum class Kind {
+    enum class Kind(val isAsync: Boolean = false, val isGenerator: Boolean = false) {
         Normal,
         Getter,
         Setter,
-        Generator,
-        Async,
-        AsyncGenerator;
+        Async(isAsync = true),
+        Generator(isGenerator = true),
+        AsyncGenerator(isAsync = true, isGenerator = true);
 
         fun toFunctionKind() = when (this) {
             Generator -> Operations.FunctionKind.Generator

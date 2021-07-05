@@ -4,6 +4,7 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.UnaryExpressionNode
 import me.mattco.reeva.ast.literals.MethodDefinitionNode
 import me.mattco.reeva.ast.statements.*
+import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 
 class ScopeResolver : ASTVisitor {
@@ -131,6 +132,40 @@ class ScopeResolver : ASTVisitor {
     override fun visitMethodDefinition(node: MethodDefinitionNode) {
         node.scope = scope
         node.functionScope = visitFunctionHelper(node.parameters, node.body)
+    }
+
+    override fun visitClassDeclaration(node: ClassDeclarationNode) {
+        expect(node.identifier != null)
+        val identifier = node.identifier
+        node.scope = scope
+        identifier.scope = scope
+        identifier.variable = Variable(
+            identifier.identifierName,
+            Variable.Type.Var,
+            Variable.Mode.Declared,
+            node,
+        )
+        scope.addDeclaredVariable(identifier.variable)
+
+        visitClassHelper(node.classNode)
+    }
+
+    override fun visitClassExpression(node: ClassExpressionNode) {
+        visitClassHelper(node.classNode)
+    }
+
+    private fun visitClassHelper(node: ClassNode) {
+        val classScope = HoistingScope(scope)
+        scope = classScope
+        classScope.hasUseStrictDirective = true
+        node.scope = classScope
+
+        for (element in node.body) {
+            if (element is ClassMethodNode)
+                visitMethodDefinition(element.method)
+        }
+
+        scope = scope.outer!!
     }
 
     private fun visitFunctionHelper(parameters: ParameterList, body: ASTNode): Scope {

@@ -2,11 +2,16 @@ package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.literals.MethodDefinitionNode
 import me.mattco.reeva.ast.literals.PropertyName
+import me.mattco.reeva.parser.Variable
 
 class ClassDeclarationNode(
     val identifier: BindingIdentifierNode?, // can be omitted in default exports
     val classNode: ClassNode,
-) : ASTNodeBase(listOfNotNull(identifier, classNode)), StatementNode
+) : VariableSourceNode(listOfNotNull(identifier, classNode)), StatementNode {
+    override var variable: Variable
+        get() = identifier!!.variable
+        set(value) { identifier!!.variable = value }
+}
 
 class ClassExpressionNode(
     val identifier: BindingIdentifierNode?, // can always be omitted
@@ -16,14 +21,12 @@ class ClassExpressionNode(
 class ClassNode(
     val heritage: ExpressionNode?,
     val body: List<ClassElementNode>
-) : ASTNodeBase(listOfNotNull( heritage) + body)
+) : NodeWithScope(listOfNotNull( heritage) + body)
 
 sealed class ClassElementNode(
     children: List<ASTNode>,
     val isStatic: Boolean,
 ) : ASTNodeBase(children)
-
-class EmptyClassElementNode : ClassElementNode(emptyList(), false)
 
 class ClassFieldNode(
     val identifier: PropertyName,

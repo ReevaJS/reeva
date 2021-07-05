@@ -738,46 +738,124 @@ class Parser(val source: String) {
      *     ;
      */
     private fun parseClassNode(): ClassNode = nps {
-        TODO("Do this when I figure out how I want to handle class scopes")
+        val superClass = if (match(TokenType.Extends)) {
+            consume()
+            parseExpression(2)
+        } else null
 
-//        val heritage = if (tokenType.isExpressionToken) {
-//            consume()
-//
-//            // TODO: This can only be a LHSExpression, not any arbitrary expression
-//            parseExpression()
-//        } else null
-//
-//        consume(TokenType.OpenCurly)
-//        val elements = mutableListOf<ClassElementNode>()
-//
-//        // TODO: Fields
-//        while (true) {
-//            if (match(TokenType.CloseCurly)) {
-//                consume()
-//                break
-//            }
-//
-//            if (match(TokenType.Semicolon)) {
-//                consume()
-//                elements.add(EmptyClassElementNode())
-//                continue
-//            }
-//
-//            val isStatic = if (match(TokenType.Static)) {
-//                consume()
-//                true
-//            } else false
-//
-//            val method = parseMethodDefinition()
-//            elements.add(ClassMethodNode(method, isStatic))
-//        }
-//
-//        ClassNode(heritage, elements)
+        consume(TokenType.OpenCurly)
+
+        val elements = mutableListOf<ClassElementNode>()
+
+        while (!match(TokenType.CloseCurly))
+            elements.add(parseClassElement() ?: continue)
+
+        consume(TokenType.CloseCurly)
+
+        ClassNode(superClass, elements)
     }
 
-//    private fun parseMethodDefinition(): MethodDefinitionNode = nps {
-//
-//    }
+    private fun parseClassElement(): ClassElementNode? = nps {
+        if (match(TokenType.Semicolon)) {
+            consume()
+            return@nps null
+        }
+
+        var name: PropertyName
+        var kind = MethodDefinitionNode.Kind.Normal
+
+        val isStaticToken = if (match(TokenType.Static)) {
+            consume()
+            lastConsumedToken
+        } else null
+        var isStatic = isStaticToken != null
+
+        val isAsyncToken = if (match(TokenType.Async)) {
+            consume()
+            lastConsumedToken
+        } else null
+        var isAsync = isAsyncToken != null
+
+        val isGeneratorToken = if (match(TokenType.Mul)) {
+            consume()
+            lastConsumedToken
+        } else null
+        val isGenerator = isGeneratorToken != null
+
+        if (match(TokenType.Equals) || match(TokenType.OpenParen)) {
+            if (isGenerator)
+                reporter.at(isGeneratorToken!!).expected("property name", "*")
+
+            name = when {
+                isAsync -> {
+                    PropertyName(IdentifierNode("async"), PropertyName.Type.Identifier)
+                }
+                isStatic -> {
+                    isStatic = false
+                    PropertyName(IdentifierNode("static"), PropertyName.Type.Identifier)
+                }
+                else -> reporter.expected("property name", token.literals)
+            }
+
+            return parseClassFieldOrMethod(name, MethodDefinitionNode.Kind.Normal, isStatic)
+        }
+
+        name = parsePropertyName()
+
+        if (!match(TokenType.Equals) && !match(TokenType.OpenParen)) {
+            if (name.type == PropertyName.Type.Identifier) {
+                val identifier = (name.expression as IdentifierNode).identifierName
+                val isGetter = identifier == "get"
+                val isSetter = identifier == "set"
+
+                kind = when {
+                    isGetter -> MethodDefinitionNode.Kind.Getter
+                    isSetter -> MethodDefinitionNode.Kind.Setter
+                    else -> kind
+                }
+
+                if (isGetter || isSetter) {
+                    if (isAsync)
+                        reporter.at(isAsyncToken!!).classAsyncAccessor(isGetter)
+                    if (isGenerator)
+                        reporter.at(isGeneratorToken!!).classGeneratorAccessor(isGetter)
+
+                    name = parsePropertyName()
+                }
+            }
+        }
+
+        kind = when {
+            isAsync && isGenerator -> MethodDefinitionNode.Kind.AsyncGenerator
+            isAsync -> MethodDefinitionNode.Kind.Async
+            isGenerator -> MethodDefinitionNode.Kind.Generator
+            else -> kind
+        }
+
+        parseClassFieldOrMethod(name, kind, isStatic)
+    }
+
+    private fun parseClassField(name: PropertyName, isStatic: Boolean): ClassFieldNode = nps {
+        consume(TokenType.Equals)
+        ClassFieldNode(name, parseExpression(0), isStatic)
+    }
+
+    private fun parseClassMethod(name: PropertyName, kind: MethodDefinitionNode.Kind, isStatic: Boolean): ClassMethodNode = nps {
+        ClassMethodNode(parseMethodDefinition(name, kind), isStatic)
+    }
+
+    private fun parseClassFieldOrMethod(name: PropertyName, kind: MethodDefinitionNode.Kind, isStatic: Boolean): ClassElementNode = nps {
+        if (match(TokenType.Equals)) {
+            parseClassField(name, isStatic)
+        } else parseClassMethod(name, kind, isStatic)
+    }
+
+    private fun parseMethodDefinition(name: PropertyName, kind: MethodDefinitionNode.Kind): MethodDefinitionNode = nps {
+        val params = parseFunctionParameters()
+        val body = parseFunctionBody(kind.isAsync, kind.isGenerator)
+
+        MethodDefinitionNode(name, params, body, kind)
+    }
 
     /*
      * FormalParameters :
