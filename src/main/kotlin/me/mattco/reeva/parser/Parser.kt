@@ -1193,7 +1193,10 @@ class Parser(val source: String) {
         if (tokenType.isExpressionToken)
             return@nps YieldExpressionNode(parseExpression(0), isYieldStar)
 
-        reporter.expected("expression", tokenType)
+        if (isYieldStar)
+            reporter.expected("expression", tokenType)
+
+        YieldExpressionNode(null, isYieldStar)
     }
 
     private fun parsePrimaryExpression(): ExpressionNode = nps {
