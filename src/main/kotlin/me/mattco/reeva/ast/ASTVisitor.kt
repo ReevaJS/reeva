@@ -12,6 +12,7 @@ interface ASTVisitor {
             is ASTListNode<*> -> visitASTListNode(node)
             is MethodDefinitionNode -> visitMethodDefinition(node)
             is ScriptNode -> visitScript(node)
+            is PropertyName -> visitPropertyName(node)
             else -> throw IllegalArgumentException("Unrecognized ASTNode ${node.astNodeName}")
         }
     }
@@ -40,7 +41,8 @@ interface ASTVisitor {
             is ExportNode -> visitExport(node)
             is FunctionDeclarationNode -> visitFunctionDeclaration(node)
             is ClassDeclarationNode -> visitClassDeclaration(node)
-            is EmptyStatementNode -> {}
+            is EmptyStatementNode -> {
+            }
             else -> throw IllegalArgumentException("Unrecognized StatementNode ${node.astNodeName}")
         }
     }
@@ -157,9 +159,9 @@ interface ASTVisitor {
         node.finallyBlock?.also(::visit)
     }
 
-    fun visitBreakStatement(node: BreakStatementNode) { }
+    fun visitBreakStatement(node: BreakStatementNode) {}
 
-    fun visitContinueStatement(node: ContinueStatementNode) { }
+    fun visitContinueStatement(node: ContinueStatementNode) {}
 
     fun visitReturnStatement(node: ReturnStatementNode) {
         node.expression?.also(::visit)
@@ -179,22 +181,22 @@ interface ASTVisitor {
         }
     }
 
-    fun visitDebuggerStatement() { }
+    fun visitDebuggerStatement() {}
 
-    fun visitImportDeclaration(node: ImportDeclarationNode) { }
+    fun visitImportDeclaration(node: ImportDeclarationNode) {}
 
-    fun visitExport(node: ExportNode) { }
+    fun visitExport(node: ExportNode) {}
 
     fun visitArgument(node: ArgumentNode) {
         visit(node.expression)
     }
 
-    fun visitBindingIdentifier(node: BindingIdentifierNode) { }
+    fun visitBindingIdentifier(node: BindingIdentifierNode) {}
 
-    fun visitIdentifierReference(node: IdentifierReferenceNode) { }
+    fun visitIdentifierReference(node: IdentifierReferenceNode) {}
 
     // Should only ever happen in CPEAAPL nodes
-    fun visitIdentifier(node: IdentifierNode) { }
+    fun visitIdentifier(node: IdentifierNode) {}
 
     fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
         for (param in node.parameters) {
@@ -202,6 +204,15 @@ interface ASTVisitor {
                 visit(param.initializer)
         }
         visit(node.body)
+    }
+
+    fun visitPropertyName(node: PropertyName) {
+        when (node.type) {
+            PropertyName.Type.Identifier -> (node.expression as IdentifierNode).identifierName
+            PropertyName.Type.Computed -> visit(node.expression)
+            else -> {
+            }
+        }
     }
 
     fun visitMethodDefinition(node: MethodDefinitionNode) {
@@ -295,7 +306,7 @@ interface ASTVisitor {
         node.arguments.forEach { visit(it.expression) }
     }
 
-    fun visitImportCallExpression(node: ImportCallExpressionNode) { 
+    fun visitImportCallExpression(node: ImportCallExpressionNode) {
         visit(node.expression)
     }
 
@@ -311,11 +322,11 @@ interface ASTVisitor {
         node.parts.forEach(::visit)
     }
 
-    fun visitRegExpLiteral(node: RegExpLiteralNode) { }
+    fun visitRegExpLiteral(node: RegExpLiteralNode) {}
 
-    fun visitImportMetaExpression() { }
+    fun visitImportMetaExpression() {}
 
-    fun visitNewTargetExpression() { }
+    fun visitNewTargetExpression() {}
 
     fun visitArrayLiteral(node: ArrayLiteralNode) {
         node.elements.forEach {
@@ -339,15 +350,15 @@ interface ASTVisitor {
         }
     }
 
-    fun visitBooleanLiteral(node: BooleanLiteralNode) { }
+    fun visitBooleanLiteral(node: BooleanLiteralNode) {}
 
-    fun visitStringLiteral(node: StringLiteralNode) { }
+    fun visitStringLiteral(node: StringLiteralNode) {}
 
-    fun visitNumericLiteral(node: NumericLiteralNode) { }
+    fun visitNumericLiteral(node: NumericLiteralNode) {}
 
-    fun visitBigIntLiteral(node: BigIntLiteralNode) { }
+    fun visitBigIntLiteral(node: BigIntLiteralNode) {}
 
-    fun visitNullLiteral() { }
+    fun visitNullLiteral() {}
 
-    fun visitThisLiteral() { }
+    fun visitThisLiteral() {}
 }

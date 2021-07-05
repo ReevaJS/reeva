@@ -1564,11 +1564,11 @@ class Transformer : ASTVisitor {
         generator.add(Ldar(objectReg))
     }
 
-    private fun visitPropertyName(property: PropertyName) {
-        if (property.type == PropertyName.Type.Identifier) {
-            val nameIndex = generator.intern((property.expression as IdentifierNode).identifierName)
+    override fun visitPropertyName(node: PropertyName) {
+        if (node.type == PropertyName.Type.Identifier) {
+            val nameIndex = generator.intern((node.expression as IdentifierNode).identifierName)
             generator.add(LdaConstant(nameIndex))
-        } else visit(property.expression)
+        } else visit(node.expression)
     }
 
     private fun storeObjectProperty(objectReg: Int, property: PropertyName, valueProducer: () -> Unit) {
