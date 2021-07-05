@@ -627,7 +627,7 @@ class Interpreter(
 
     override fun visitCreateClassConstructor(functionInfoIndex: Int) {
         val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
-        accumulator = NormalIRFunction(realm, newInfo, lexicalEnv, defineProto = false).initialize()
+        accumulator = NormalIRFunction(realm, newInfo, lexicalEnv).initialize()
     }
 
     private fun methodDefinitionEvaluation(name: PropertyKey, method: MethodDescriptor, obj: JSObject, enumerable: Boolean) {
@@ -733,6 +733,7 @@ class Interpreter(
         val function = NormalIRFunction(realm, newInfo, lexicalEnv).initialize()
         if (newInfo.name != null)
             Operations.setFunctionName(realm, function, newInfo.name.key())
+        Operations.makeConstructor(realm, function)
         accumulator = function
     }
 
@@ -859,13 +860,6 @@ class Interpreter(
         // Class constructors cannot have their prototype property defined here
         private val defineProto: Boolean = true,
     ) : IRFunction(realm, info, outerEnvRecord) {
-        override fun init() {
-            super.init()
-
-            if (defineProto)
-                defineOwnProperty("prototype", realm.functionProto)
-        }
-
         override fun evaluate(arguments: JSArguments): JSValue {
             val args = listOf(arguments.thisValue) + arguments
             val result = Interpreter(realm, this, args, outerEnvRecord).interpret()
