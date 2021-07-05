@@ -730,12 +730,18 @@ class Interpreter(
 
     override fun visitCreateClosure(functionInfoIndex: Int) {
         val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
-        accumulator = NormalIRFunction(realm, newInfo, lexicalEnv).initialize()
+        val function = NormalIRFunction(realm, newInfo, lexicalEnv).initialize()
+        if (newInfo.name != null)
+            Operations.setFunctionName(realm, function, newInfo.name.key())
+        accumulator = function
     }
 
     override fun visitCreateGeneratorClosure(functionInfoIndex: Int) {
         val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
-        accumulator = GeneratorIRFunction(realm, newInfo, lexicalEnv).initialize()
+        val function = GeneratorIRFunction(realm, newInfo, lexicalEnv).initialize()
+        if (newInfo.name != null)
+            Operations.setFunctionName(realm, function, newInfo.name.key())
+        accumulator = function
     }
 
     override fun visitCreateRestParam() {
