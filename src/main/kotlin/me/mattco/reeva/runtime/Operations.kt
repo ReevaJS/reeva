@@ -1224,6 +1224,12 @@ object Operations {
     }
 
     @JvmStatic
+    @ECMAImpl("7.3.6")
+    fun createMethodProperty(obj: JSObject, key: PropertyKey, value: JSValue) {
+        obj.defineOwnProperty(key, Descriptor(value, Descriptor.CONFIGURABLE or Descriptor.WRITABLE))
+    }
+
+    @JvmStatic
     @ECMAImpl("7.3.7")
     fun createDataPropertyOrThrow(realm: Realm, target: JSValue, property: PropertyKey, value: JSValue): Boolean {
         if (!createDataProperty(target, property, value))
@@ -1841,30 +1847,6 @@ object Operations {
 //    }
 
     @JvmStatic
-    @JvmOverloads
-    @ECMAImpl("9.2.8")
-    fun setFunctionName(realm: Realm, function: JSFunction, name: PropertyKey, prefix: String? = null): Boolean {
-        ecmaAssert(function.isExtensible())
-        val nameString = when {
-            name.isSymbol -> name.asSymbol.description.let {
-                if (it == null) "" else "[${name.asSymbol.description}]"
-            }
-            name.isInt -> name.asInt.toString()
-            else -> name.asString
-        }.let {
-            if (prefix != null) {
-                "$prefix $it"
-            } else it
-        }
-        return definePropertyOrThrow(
-            realm,
-            function,
-            "name".toValue(),
-            Descriptor(nameString.toValue(), Descriptor.CONFIGURABLE)
-        )
-    }
-
-    @JvmStatic
     @ECMAImpl("9.4.1.3")
     fun boundFunctionCreate(realm: Realm, targetFunction: JSFunction, arguments: JSArguments): JSFunction {
         val proto = targetFunction.getPrototype()
@@ -1979,7 +1961,8 @@ object Operations {
         return obj
     }
 
-    @JvmStatic @ECMAImpl("9.4.4.7")
+    @JvmStatic
+    @ECMAImpl("9.4.4.7")
     fun createMappedArgumentsObject(
         realm: Realm,
         function: JSObject,
@@ -2155,6 +2138,74 @@ object Operations {
             position += record.codeUnitCount
         }
         return codepoints
+    }
+
+    @JvmStatic
+    @ECMAImpl("10.2.5")
+    fun makeConstructor(realm: Realm, function: JSFunction, writablePrototype: Boolean = true, prototype: JSObject? = null) {
+        // This function will be a constructor already, as [[Construct]] isn't an actual slot in Reeva
+        // ecmaAssert(!isConstructor(function))
+        ecmaAssert(function.isExtensible())
+        ecmaAssert(!hasOwnProperty(function, "prototype".key()))
+
+        val attributes = if (writablePrototype) Descriptor.WRITABLE else 0
+        function.constructorKind = JSFunction.ConstructorKind.Base
+
+        val actualPrototype = prototype ?: let {
+            JSObject.create(realm).also {
+                definePropertyOrThrow(realm, it, "constructor".key(), Descriptor(function, attributes or Descriptor.CONFIGURABLE))
+            }
+        }
+
+        definePropertyOrThrow(realm, function, "prototype".key(), Descriptor(actualPrototype, attributes))
+    }
+
+    @JvmStatic
+    @ECMAImpl("10.2.6")
+    fun makeClassConstructor(function: JSFunction) {
+        ecmaAssert(!function.isClassConstructor)
+        function.isClassConstructor = true
+    }
+
+    @JvmStatic
+    @ECMAImpl("10.2.7")
+    fun makeMethod(function: JSFunction, homeObject: JSValue) {
+        ecmaAssert(homeObject is JSObject)
+        function.homeObject = homeObject
+    }
+
+    @JvmStatic
+    @ECMAImpl("10.2.8")
+    fun defineMethodProperty(realm: Realm, key: PropertyKey, homeObject: JSValue, closure: JSFunction, enumerable: Boolean) {
+        setFunctionName(realm, closure, key)
+        var attributes = Descriptor.WRITABLE or Descriptor.CONFIGURABLE
+        if (enumerable)
+            attributes = attributes or Descriptor.ENUMERABLE
+        definePropertyOrThrow(realm, homeObject, key, Descriptor(closure, attributes))
+    }
+
+    @JvmStatic
+    @JvmOverloads
+    @ECMAImpl("10.2.9")
+    fun setFunctionName(realm: Realm, function: JSFunction, name: PropertyKey, prefix: String? = null): Boolean {
+        ecmaAssert(function.isExtensible())
+        val nameString = when {
+            name.isSymbol -> name.asSymbol.description.let {
+                if (it == null) "" else "[${name.asSymbol.description}]"
+            }
+            name.isInt -> name.asInt.toString()
+            else -> name.asString
+        }.let {
+            if (prefix != null) {
+                "$prefix $it"
+            } else it
+        }
+        return definePropertyOrThrow(
+            realm,
+            function,
+            "name".toValue(),
+            Descriptor(nameString.toValue(), Descriptor.CONFIGURABLE)
+        )
     }
 
 //    @JvmStatic @ECMAImpl("12.3.3")
