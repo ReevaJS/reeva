@@ -181,25 +181,25 @@ class Interpreter(
     }
 
     override fun visitLdaNamedProperty(objectReg: Register, nameIndex: Index) {
-        val obj = registers[objectReg] as JSObject
+        val obj = registers[objectReg].toObject(realm)
         val key = loadConstant<String>(nameIndex).key()
         accumulator = obj.get(key)
     }
 
     override fun visitLdaKeyedProperty(objectReg: Register) {
-        val obj = registers[objectReg] as JSObject
+        val obj = registers[objectReg].toObject(realm)
         val key = accumulator.toPropertyKey(realm)
         accumulator = obj.get(key)
     }
 
     override fun visitStaNamedProperty(objectReg: Register, nameIndex: Index) {
-        val obj = registers[objectReg] as JSObject
+        val obj = registers[objectReg].toObject(realm)
         val key = loadConstant<String>(nameIndex).key()
         obj.set(key, accumulator)
     }
 
     override fun visitStaKeyedProperty(objectReg: Register, nameReg: Register) {
-        val obj = registers[objectReg] as JSObject
+        val obj = registers[objectReg].toObject(realm)
         val key = registers[nameReg].toPropertyKey(realm)
         obj.set(key, accumulator)
     }
