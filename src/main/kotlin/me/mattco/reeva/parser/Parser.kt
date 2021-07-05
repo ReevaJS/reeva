@@ -30,8 +30,7 @@ class Parser(val source: String) {
 
     private val tokenType: TokenType
         inline get() = token.type
-    private val isDone: Boolean
-        inline get() = tokenType === TokenType.Eof
+    private var isDone: Boolean = source.isBlank()
 
     internal val sourceStart: TokenLocation
         inline get() = token.start
@@ -173,10 +172,13 @@ class Parser(val source: String) {
         TokenType.OpenCurly,
     )
 
-    private fun parseLabellableStatement(): StatementNode? = nps {
+    private fun parseLabellableStatement(): StatementNode = nps {
         val labels = mutableSetOf<String>()
 
-        while (matchIdentifier() && peek().type == TokenType.Colon) {
+        while (matchIdentifier()) {
+            val peeked = peek() ?: break
+            if (peeked.type != TokenType.Colon)
+                break
             labels.add(parseIdentifier())
             consume(TokenType.Colon)
         }
@@ -243,6 +245,9 @@ class Parser(val source: String) {
     }
 
     private fun asi() {
+        if (isDone)
+            return
+
         if (match(TokenType.Semicolon)) {
             consume()
             return
@@ -1217,7 +1222,7 @@ class Parser(val source: String) {
             TokenType.Class -> TODO()
             TokenType.Super -> TODO()
             TokenType.Identifier -> {
-                if (peek().type == TokenType.Arrow)
+                if (peek()?.type == TokenType.Arrow)
                     TODO()
                 parseIdentifierReference()
             }
@@ -1512,7 +1517,7 @@ class Parser(val source: String) {
 
         if (matchIdentifier()) {
             val nextToken = peek()
-            if (!nextToken.afterNewline && numericToken.end.column == nextToken.start.column - 1)
+            if (nextToken != null && !nextToken.afterNewline && numericToken.end.column == nextToken.start.column - 1)
                 reporter.identifierAfterNumericLiteral()
         }
 
@@ -1646,11 +1651,13 @@ class Parser(val source: String) {
     }
 
     private fun match(vararg types: TokenType): Boolean {
-        expect(types.isNotEmpty())
-        if (tokenType != types[0])
+        if (isDone || tokenType != types[0])
             return false
 
         ensureCachedTokenCount(types.size - 1)
+        if (isDone)
+            return false
+
         return types.drop(1).withIndex().all { (index, type) ->
             receivedTokenList[index].type == type
         }
@@ -1658,13 +1665,15 @@ class Parser(val source: String) {
 
     private fun matchAny(vararg types: TokenType): Boolean {
         ensureCachedTokenCount(1)
-        return types.any { it == tokenType }
+        return !isDone && types.any { it == tokenType }
     }
 
-    private fun peek(n: Int = 1): Token {
+    private fun peek(n: Int = 1): Token? {
         if (n == 0)
             return token
         ensureCachedTokenCount(n)
+        if (isDone)
+            return null
         return receivedTokenList[n - 1]
     }
 
@@ -1674,8 +1683,12 @@ class Parser(val source: String) {
         token = if (receivedTokenList.isNotEmpty()) {
             receivedTokenList.removeFirst()
         } else tokenQueue.take()
-        token.error()?.also {
-            throw ParsingException(it, token.start, token.end)
+        if (token.type == TokenType.Eof) {
+            isDone = true
+        } else {
+            token.error()?.also {
+                throw ParsingException(it, token.start, token.end)
+            }
         }
         return old
     }
@@ -1688,7 +1701,12 @@ class Parser(val source: String) {
 
     private fun ensureCachedTokenCount(n: Int) {
         repeat(n - receivedTokenList.size) {
-            receivedTokenList.addLast(tokenQueue.take())
+            val token = tokenQueue.take()
+            receivedTokenList.addLast(token)
+            if (token.type == TokenType.Eof) {
+                isDone = true
+                return
+            }
         }
     }
 
