@@ -43,3 +43,14 @@ class JumpTable private constructor(
         const val THROW = 2
     }
 }
+
+data class MethodDescriptor(
+    val name: String?, // null indicates a computed name
+    val isStatic: Boolean,
+    val kind: Operations.FunctionKind,
+    val isGetter: Boolean,
+    val isSetter: Boolean,
+    val methodInfo: Index,
+)
+
+data class ClassDescriptor(val methodDescriptors: List<Index>)

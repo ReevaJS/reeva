@@ -14,10 +14,11 @@ sealed class Opcode {
 /// CONSTANTS ///
 /////////////////
 
-object LdaTrue : Opcode()
-object LdaFalse : Opcode()
+object LdaEmpty : Opcode()
 object LdaUndefined : Opcode()
 object LdaNull : Opcode()
+object LdaTrue : Opcode()
+object LdaFalse : Opcode()
 object LdaZero : Opcode()
 class LdaConstant(val index: Index) : Opcode()
 class LdaInt(val int: Literal) : Opcode()
@@ -459,6 +460,20 @@ object Throw : Opcode() {
 class ThrowConstantError(val message: Index) : Opcode() {
     override val isTerminator = true
 }
+
+
+///////////////
+/// CLASSES ///
+///////////////
+
+class CreateClass(
+    val classDescriptorIndex: Index,
+    val constructor: Register,
+    val superClass: Register,
+    val args: List<Register>,
+) : Opcode()
+
+class CreateClassConstructor(val functionInfoIndex: Index) : Opcode()
 
 /////////////
 /// OTHER ///

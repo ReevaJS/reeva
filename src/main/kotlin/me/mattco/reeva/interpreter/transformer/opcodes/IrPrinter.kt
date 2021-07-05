@@ -1,9 +1,12 @@
 package me.mattco.reeva.interpreter.transformer.opcodes
 
+import me.mattco.reeva.interpreter.ClassDescriptor
 import me.mattco.reeva.interpreter.DeclarationsArray
 import me.mattco.reeva.interpreter.JumpTable
+import me.mattco.reeva.interpreter.MethodDescriptor
 import me.mattco.reeva.interpreter.transformer.Block
 import me.mattco.reeva.interpreter.transformer.FunctionInfo
+import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 
@@ -173,6 +176,19 @@ class IrPrinter(private val info: FunctionInfo) {
 
             is Yield -> append(stringifyBlockIndex(opcode.continuationBlock))
 
+            is CreateClass -> {
+                append(" descriptor:", stringifyIndex(opcode.classDescriptorIndex))
+                append(" constructor:", stringifyRegister(opcode.constructor))
+                append(" superClass:", stringifyRegister(opcode.superClass))
+                if (opcode.args.isNotEmpty()) {
+                    append(" arguments: [")
+                    for (reg in opcode.args)
+                        append(stringifyRegister(reg))
+                    append(']')
+                }
+            }
+            is CreateClassConstructor -> append(stringifyIndex(opcode.functionInfoIndex))
+
             is DefineGetterProperty -> {
                 append(" object:", stringifyRegister(opcode.objectReg))
                 append(" name:", stringifyRegister(opcode.nameReg))
@@ -218,34 +234,46 @@ class IrPrinter(private val info: FunctionInfo) {
                 val lexs = constant.lexIterator().joinToString(", ")
                 val funcs = constant.funcIterator().joinToString(", ")
 
-                if (vars.isNotBlank()) {
-                    append("var={")
-                    append(vars)
-                    append("}")
-                }
-
-                if (lexs.isNotBlank()) {
-                    append("lex={")
-                    append(lexs)
-                    append("}")
-                }
-
-                if (funcs.isNotBlank()) {
-                    append("func={")
-                    append(funcs)
-                    append("}")
-                }
+                if (vars.isNotBlank())
+                    append("var={", vars, '}')
+                if (lexs.isNotBlank())
+                    append("lex={", lexs, '}')
+                if (funcs.isNotBlank())
+                    append("func={", funcs, '}')
             }
             is JumpTable -> buildString {
                 append("JumpTable { ")
                 expect(constant.isNotEmpty())
-                for ((index, block) in constant) {
-                    append(index)
-                    append(": @")
-                    append(block.index)
-                    append(' ')
+                for ((index, block) in constant)
+                    append(index, ": @", block.index, ' ')
+                append('}')
+            }
+            is ClassDescriptor -> buildString {
+                append("ClassDescriptor {")
+                for (descriptor in constant.methodDescriptors) {
+                    append('[', descriptor, ']')
+                    if (descriptor != constant.methodDescriptors.last())
+                        append(' ')
                 }
                 append('}')
+            }
+            is MethodDescriptor -> buildString {
+                append("MethodDescriptor {")
+                if (constant.name != null)
+                    append(" name=", constant.name)
+                append(" static=", constant.isStatic)
+                when {
+                    constant.isGetter -> append(" getter")
+                    constant.isSetter -> append(" setter")
+                    else -> when (constant.kind) {
+                        Operations.FunctionKind.Async -> append(" async")
+                        Operations.FunctionKind.Generator -> append(" generator")
+                        Operations.FunctionKind.AsyncGenerator -> append(" async-generator")
+                        Operations.FunctionKind.Normal -> {}
+                    }
+                }
+
+                append(" info=", constant.methodInfo, " }")
             }
             else -> unreachable()
         }

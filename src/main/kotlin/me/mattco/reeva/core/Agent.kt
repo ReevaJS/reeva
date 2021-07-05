@@ -29,7 +29,7 @@ class Agent {
         get() = byteOrder == ByteOrder.BIG_ENDIAN
 
     private val pendingMicrotasks = ArrayDeque<() -> Unit>()
-    private val callStack = ArrayDeque<JSFunction>()
+    internal val callStack = ArrayDeque<JSFunction>()
 
     init {
         Reeva.allAgents.add(this)

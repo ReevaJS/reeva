@@ -140,12 +140,8 @@ class Interpreter(
         currentBlock = block
     }
 
-    override fun visitLdaTrue() {
-        accumulator = JSTrue
-    }
-
-    override fun visitLdaFalse() {
-        accumulator = JSFalse
+    override fun visitLdaEmpty() {
+        accumulator = JSEmpty
     }
 
     override fun visitLdaUndefined() {
@@ -154,6 +150,14 @@ class Interpreter(
 
     override fun visitLdaNull() {
         accumulator = JSNull
+    }
+
+    override fun visitLdaTrue() {
+        accumulator = JSTrue
+    }
+
+    override fun visitLdaFalse() {
+        accumulator = JSFalse
     }
 
     override fun visitLdaZero() {
@@ -562,6 +566,106 @@ class Interpreter(
         throw ThrowException(accumulator)
     }
 
+    override fun visitCreateClass(classDescriptorIndex: Index, constructorReg: Register, superClassReg: Register, argRegs: List<Register>) {
+        val classDescriptor = loadConstant<ClassDescriptor>(classDescriptorIndex)
+        val methodDescriptors = classDescriptor.methodDescriptors.map { loadConstant<MethodDescriptor>(it) }
+        val constructor = registers[constructorReg]
+        val superClass = registers[superClassReg]
+        val args = argRegs.map { registers[it] }
+
+        expect(constructor is JSFunction)
+
+        val protoParent: JSValue
+        val constructorParent: JSObject
+
+        when {
+            superClass == JSEmpty -> {
+                protoParent = realm.objectProto
+                constructorParent = realm.functionProto
+            }
+            superClass == JSNull -> {
+                protoParent = JSNull
+                constructorParent = realm.functionProto
+            }
+            !Operations.isConstructor(superClass) ->
+                Errors.NotACtor(superClass.toJSString(realm).string).throwTypeError(realm)
+            else -> {
+                protoParent = superClass.get("prototype")
+                if (protoParent != JSNull && protoParent !is JSObject)
+                    Errors.TODO("superClass.prototype invalid type").throwTypeError(realm)
+                constructorParent = superClass
+            }
+        }
+
+        val proto = JSObject.create(realm, protoParent)
+        Operations.makeClassConstructor(constructor)
+
+        // TODO
+        // Operations.setFunctionName(constructor, className)
+
+        Operations.makeConstructor(realm, constructor, false, proto)
+
+        constructor.setPrototype(constructorParent)
+        Operations.makeMethod(constructor, proto)
+
+        if (superClass != JSEmpty)
+            constructor.constructorKind = JSFunction.ConstructorKind.Derived
+
+        Operations.createMethodProperty(proto, "constructor".key(), constructor)
+
+        var argIndex = 0
+
+        for (descriptor in methodDescriptors) {
+            val name = descriptor.name?.key() ?: args[argIndex++].toPropertyKey(realm)
+            val target = if (descriptor.isStatic) constructor else proto
+            methodDefinitionEvaluation(name, descriptor, target, enumerable = false)
+            argIndex++
+        }
+
+        accumulator = constructor
+    }
+
+    override fun visitCreateClassConstructor(functionInfoIndex: Int) {
+        val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
+        accumulator = NormalIRFunction(realm, newInfo, lexicalEnv, defineProto = false).initialize()
+    }
+
+    private fun methodDefinitionEvaluation(name: PropertyKey, method: MethodDescriptor, obj: JSObject, enumerable: Boolean) {
+        val (_, _, kind, isGetter, isSetter, infoIndex) = method
+
+        val info = loadConstant<FunctionInfo>(infoIndex)
+        val closure = when (kind) {
+            Operations.FunctionKind.Normal -> NormalIRFunction(realm, info, lexicalEnv).initialize()
+            Operations.FunctionKind.Generator -> GeneratorIRFunction(realm, info, lexicalEnv).initialize()
+            else -> TODO()
+        }
+
+        Operations.makeMethod(closure, obj)
+
+        if (isGetter || isSetter) {
+            val (prefix, desc) = if (isGetter) {
+                "get" to Descriptor(JSAccessor(closure, null), Descriptor.CONFIGURABLE)
+            } else {
+                "set" to Descriptor(JSAccessor(null, closure), Descriptor.CONFIGURABLE)
+            }
+
+            Operations.setFunctionName(realm, closure, name, prefix)
+            Operations.definePropertyOrThrow(realm, obj, name, desc)
+            return
+        }
+
+        when (kind) {
+            Operations.FunctionKind.Normal -> {}
+            Operations.FunctionKind.Generator -> {
+                val prototype = JSObject.create(realm, realm.generatorObjectProto)
+                Operations.definePropertyOrThrow(realm, closure, "prototype".key(), Descriptor(prototype, Descriptor.WRITABLE))
+            }
+            else -> TODO()
+        }
+
+        Operations.defineMethodProperty(realm, name, obj, closure, enumerable)
+    }
+
     override fun visitDefineGetterProperty(objectReg: Register, nameReg: Register, methodReg: Register) {
         defineAccessor(
             registers[objectReg] as JSObject,
@@ -742,11 +846,18 @@ class Interpreter(
         prototype: JSValue = realm.functionProto,
     ) : JSFunction(realm, info.isStrict, prototype)
 
-    class NormalIRFunction(realm: Realm, info: FunctionInfo, outerEnvRecord: EnvRecord) : IRFunction(realm, info, outerEnvRecord) {
+    class NormalIRFunction(
+        realm: Realm,
+        info: FunctionInfo,
+        outerEnvRecord: EnvRecord,
+        // Class constructors cannot have their prototype property defined here
+        private val defineProto: Boolean = true,
+    ) : IRFunction(realm, info, outerEnvRecord) {
         override fun init() {
             super.init()
 
-            defineOwnProperty("prototype", realm.functionProto)
+            if (defineProto)
+                defineOwnProperty("prototype", realm.functionProto)
         }
 
         override fun evaluate(arguments: JSArguments): JSValue {

@@ -4,8 +4,10 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
+import me.mattco.reeva.interpreter.ClassDescriptor
 import me.mattco.reeva.interpreter.DeclarationsArray
 import me.mattco.reeva.interpreter.JumpTable
+import me.mattco.reeva.interpreter.MethodDescriptor
 import me.mattco.reeva.interpreter.transformer.opcodes.*
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
@@ -745,7 +747,8 @@ class Transformer : ASTVisitor {
         isStrict: Boolean,
         isLexical: Boolean,
         kind: Operations.FunctionKind,
-    ) {
+        isClassConstructor: Boolean = false,
+    ): FunctionInfo {
         if (kind.isAsync)
             TODO()
 
@@ -764,8 +767,14 @@ class Transformer : ASTVisitor {
         )
 
         generator = prevGenerator
-        val closureOp = if (kind.isGenerator) ::CreateGeneratorClosure else ::CreateClosure
+        val closureOp = when {
+            isClassConstructor -> ::CreateClassConstructor
+            kind.isGenerator -> ::CreateGeneratorClosure
+            else -> ::CreateClosure
+        }
         generator.add(closureOp(generator.intern(info)))
+
+        return info
     }
 
     private fun makeFunctionInfo(
@@ -808,11 +817,135 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {
-        TODO()
+        expect(node.identifier != null)
+        visitClassImpl(node.identifier.identifierName, node.classNode)
+        storeVariable(node.identifier.variable)
     }
 
     override fun visitClassExpression(node: ClassExpressionNode) {
-        TODO()
+        visitClassImpl(node.identifier?.identifierName, node.classNode)
+    }
+
+    private fun visitClassImpl(name: String?, node: ClassNode) {
+        val fields = mutableListOf<ClassFieldNode>()
+        val methods = mutableListOf<ClassMethodNode>()
+        var constructor: ClassMethodNode? = null
+
+        node.body.forEach {
+            if (it is ClassFieldNode) {
+                fields.add(it)
+            } else {
+                val method = it as ClassMethodNode
+                if (method.isConstructor()) {
+                    expect(constructor == null)
+                    constructor = method
+                } else {
+                    methods.add(method)
+                }
+            }
+        }
+
+        if (constructor != null) {
+            val method = constructor!!.method
+            visitFunctionHelper(
+                name ?: "<anonymous class constructor>",
+                method.parameters,
+                method.body,
+                method.functionScope,
+                method.body.scope,
+                isStrict = true,
+                isLexical = false,
+                Operations.FunctionKind.Normal,
+                isClassConstructor = true,
+            )
+        } else {
+            val info = makeEmptyFunctionInfo(name ?: "<anonymous class constructor>")
+            generator.add(CreateClassConstructor(generator.intern(info)))
+        }
+
+        val constructorReg = generator.reserveRegister()
+        generator.add(Star(constructorReg))
+
+        if (node.heritage != null) {
+            visit(node.heritage)
+        } else {
+            generator.add(LdaEmpty)
+        }
+
+        val superClassReg = generator.reserveRegister()
+        generator.add(Star(superClassReg))
+
+        // Process fields
+        if (fields.isNotEmpty())
+            TODO()
+
+        // Process methods
+        val methodDescriptors = mutableListOf<Index>()
+        val createClassArgs = mutableListOf<Register>()
+
+        for (classMethod in methods) {
+            val method = classMethod.method
+            val propName = method.propName
+            val isComputed = propName.type == PropertyName.Type.Computed
+
+            // If the name is computed, that comes before the method register
+            if (isComputed) {
+                visit(propName.expression)
+                // TODO: Cast to property name
+                val reg = generator.reserveRegister()
+                generator.add(Star(reg))
+                createClassArgs.add(reg)
+            }
+
+            val functionInfo = visitFunctionHelper(
+                propName.debugName(),
+                method.parameters,
+                method.body,
+                method.functionScope,
+                method.body.scope,
+                isStrict = true,
+                isLexical = false,
+                method.kind.toFunctionKind(),
+            )
+
+            val descriptor = MethodDescriptor(
+                if (isComputed) null else propName.debugName(),
+                classMethod.isStatic,
+                method.kind.toFunctionKind(),
+                method.kind == MethodDefinitionNode.Kind.Getter,
+                method.kind == MethodDefinitionNode.Kind.Setter,
+                generator.intern(functionInfo)
+            )
+
+            methodDescriptors.add(generator.intern(descriptor))
+
+            val closureReg = generator.reserveRegister()
+            generator.add(Star(closureReg))
+            createClassArgs.add(closureReg)
+        }
+
+        val classDescriptor = generator.intern(ClassDescriptor(methodDescriptors))
+
+        generator.add(CreateClass(classDescriptor, constructorReg, superClassReg, createClassArgs))
+    }
+
+    private fun makeEmptyFunctionInfo(name: String): FunctionInfo {
+        val block = Block(1)
+        block.add(LdaUndefined)
+        block.add(Return)
+
+        return FunctionInfo(
+            name,
+            FunctionOpcodes(
+                listOf(block),
+                emptyList(),
+                0
+            ),
+            1,
+            isStrict = true,
+            isTopLevelScript = false,
+            parameters = null
+        )
     }
 
     override fun visitBinaryExpression(node: BinaryExpressionNode) {

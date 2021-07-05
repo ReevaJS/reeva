@@ -5,10 +5,11 @@ import me.mattco.reeva.interpreter.transformer.Block
 abstract class IrOpcodeVisitor {
     open fun visit(opcode: Opcode) {
         when (opcode) {
-            LdaTrue -> visitLdaTrue()
-            LdaFalse -> visitLdaFalse()
+            LdaEmpty -> visitLdaEmpty()
             LdaUndefined -> visitLdaUndefined()
             LdaNull -> visitLdaNull()
+            LdaTrue -> visitLdaTrue()
+            LdaFalse -> visitLdaFalse()
             LdaZero -> visitLdaZero()
             is LdaConstant -> visitLdaConstant(opcode.index)
             is LdaInt -> visitLdaInt(opcode.int)
@@ -101,6 +102,9 @@ abstract class IrOpcodeVisitor {
             is Yield -> visitYield(opcode.continuationBlock)
             Throw -> visitThrow()
 
+            is CreateClass -> visitCreateClass(opcode.classDescriptorIndex, opcode.constructor, opcode.superClass, opcode.args)
+            is CreateClassConstructor -> visitCreateClassConstructor(opcode.functionInfoIndex)
+
             is DefineGetterProperty -> visitDefineGetterProperty(opcode.objectReg, opcode.nameReg, opcode.methodReg)
             is DefineSetterProperty -> visitDefineSetterProperty(opcode.objectReg, opcode.nameReg, opcode.methodReg)
             is DeclareGlobals -> visitDeclareGlobals(opcode.declarationsIndex)
@@ -118,13 +122,15 @@ abstract class IrOpcodeVisitor {
         }
     }
 
-    abstract fun visitLdaTrue()
-
-    abstract fun visitLdaFalse()
+    abstract fun visitLdaEmpty()
 
     abstract fun visitLdaUndefined()
 
     abstract fun visitLdaNull()
+
+    abstract fun visitLdaTrue()
+
+    abstract fun visitLdaFalse()
 
     abstract fun visitLdaZero()
 
@@ -285,6 +291,10 @@ abstract class IrOpcodeVisitor {
     abstract fun visitYield(continuationBlock: Block)
 
     abstract fun visitThrow()
+
+    abstract fun visitCreateClass(classDescriptorIndex: Index, constructor: Register, superClass: Register, args: List<Register>)
+
+    abstract fun visitCreateClassConstructor(functionInfoIndex: Int)
 
     abstract fun visitDefineGetterProperty(objectReg: Register, nameReg: Register, methodReg: Register)
 
