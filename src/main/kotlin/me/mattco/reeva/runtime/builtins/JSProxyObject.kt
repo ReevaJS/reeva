@@ -27,10 +27,11 @@ class JSProxyObject private constructor(
     if (target is JSFunction) realm.functionProto else realm.objectProto,
 ) {
     override val isCallable = Operations.isCallable(target)
-    override val isConstructable = Operations.isConstructor(target)
 
     val target by slot(SlotName.ProxyTarget, target)
     var handler: JSObject? by slot(SlotName.ProxyHandler, handler)
+
+    override fun isConstructor() = Operations.isConstructor(target)
 
     fun revoke() {
         expect(handler != null)

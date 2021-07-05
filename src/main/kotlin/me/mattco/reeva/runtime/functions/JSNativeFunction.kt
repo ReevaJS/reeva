@@ -24,17 +24,21 @@ abstract class JSNativeFunction protected constructor(
     }
 
     companion object {
-        fun fromLambda(realm: Realm, name: String, length: Int, lambda: NativeFunctionSignature) =
-            object : JSNativeFunction(realm, name, length) {
-                override fun evaluate(arguments: JSArguments): JSValue {
-                    if (arguments.newTarget != JSUndefined)
-                        Errors.NotACtor(name).throwTypeError(realm)
-                    return try {
-                        lambda(realm, arguments)
-                    } catch (e: InvocationTargetException) {
-                        throw e.targetException
-                    }
+        fun fromLambda(
+            realm: Realm,
+            name: String,
+            length: Int,
+            lambda: NativeFunctionSignature,
+        ) = object : JSNativeFunction(realm, name, length) {
+            override fun evaluate(arguments: JSArguments): JSValue {
+                if (arguments.newTarget != JSUndefined)
+                    Errors.NotACtor(name).throwTypeError(realm)
+                return try {
+                    lambda(realm, arguments)
+                } catch (e: InvocationTargetException) {
+                    throw e.targetException
                 }
-            }.initialize()
+            }
+        }.initialize()
     }
 }

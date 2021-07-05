@@ -17,7 +17,7 @@ class JSBoundFunction private constructor(
     boundTargetFunction.isStrict,
     prototype,
 ) {
-    override val isConstructable = boundTargetFunction.isConstructable
+    override fun isConstructor() = boundTargetFunction.isConstructor()
 
     override fun evaluate(arguments: JSArguments): JSValue {
         val newArguments = JSArguments(boundArguments + arguments, boundArguments.thisValue)

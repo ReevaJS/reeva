@@ -1032,7 +1032,7 @@ object Operations {
     @ECMAImpl("7.2.4")
     fun isConstructor(value: JSValue): Boolean {
         contract { returns(true) implies (value is JSFunction) }
-        return value is JSFunction && value.isConstructable
+        return value is JSFunction && value.isConstructor()
     }
 
     @JvmStatic
