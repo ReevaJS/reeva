@@ -1,5 +1,6 @@
 package me.mattco.reeva.parser
 
+import me.mattco.reeva.ast.BindingIdentifierNode
 import me.mattco.reeva.ast.FunctionDeclarationNode
 import me.mattco.reeva.ast.VariableRefNode
 import me.mattco.reeva.ast.VariableSourceNode
@@ -15,7 +16,6 @@ open class Scope(val outer: Scope? = null) {
     // Variables that have yet to be connected to their source
     val pendingReferences = mutableListOf<VariableRefNode>()
 
-    var possiblyReferencesArguments = false
     var functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
     var hoistedVarDecls = mutableListOf<VariableDeclarationNode>()
 
@@ -84,11 +84,10 @@ open class Scope(val outer: Scope? = null) {
         return i
     }
 
-    fun onFinish() {
+    open fun onFinish() {
         processUnlinkedNodes()
         searchForUseBeforeDecl()
-        allocateInlineableRegisters(1)
-        onFinishImpl()
+        allocateSlots(1)
         clearPendingReferences()
     }
 
@@ -136,7 +135,7 @@ open class Scope(val outer: Scope? = null) {
         childScopes.forEach(Scope::searchForUseBeforeDecl)
     }
     
-    open fun allocateInlineableRegisters(startingRegister: Int) {
+    open fun allocateSlots(startingRegister: Int) {
         nextInlineableRegister = startingRegister
 
         declaredVariables.forEach {
@@ -147,16 +146,12 @@ open class Scope(val outer: Scope? = null) {
         }
 
         childScopes.forEach {
-            it.allocateInlineableRegisters(nextInlineableRegister)
+            it.allocateSlots(nextInlineableRegister)
             if (it !is HoistingScope) {
                 nextInlineableRegister += it.additionalInlineableRegisterCount
                 additionalInlineableRegisterCount += it.additionalInlineableRegisterCount
             }
         }
-    }
-
-    protected open fun onFinishImpl() {
-        childScopes.forEach(Scope::onFinishImpl)
     }
 
     private fun clearPendingReferences() {
@@ -167,13 +162,15 @@ open class Scope(val outer: Scope? = null) {
 
 open class HoistingScope(outer: Scope? = null) : Scope(outer) {
     var hasUseStrictDirective: Boolean = false
+    var argumentsObjectMode = ArgumentsObjectMode.None
+    var argumentsObjectVariable: Variable? = null
 
-    override fun onFinishImpl() {
-        possiblyReferencesArguments = searchForArgumentsReference(this)
-        super.onFinishImpl()
+    override fun onFinish() {
+        initializeArgumentsObjectVariable(this)
+        super.onFinish()
     }
 
-    override fun allocateInlineableRegisters(startingRegister: Int) {
+    override fun allocateSlots(startingRegister: Int) {
         val parameters = declaredVariables.filter { it.mode == Variable.Mode.Parameter }
         val locals = declaredVariables.filter { it.mode != Variable.Mode.Parameter }
 
@@ -193,7 +190,7 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
         }
 
         childScopes.forEach {
-            it.allocateInlineableRegisters(nextInlineableRegister)
+            it.allocateSlots(nextInlineableRegister)
             if (it !is HoistingScope) {
                 nextInlineableRegister += it.additionalInlineableRegisterCount
                 additionalInlineableRegisterCount += it.additionalInlineableRegisterCount
@@ -201,22 +198,50 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
         }
     }
 
-    private fun searchForArgumentsReference(scope: Scope): Boolean {
-        if (this is GlobalScope || scope.declaredVariables.any { it.name == "arguments" })
-            return false
+    enum class ArgumentsObjectMode {
+        None,
+        Unmapped,
+        Mapped,
+    }
 
-        var found = false
-
-        for (node in scope.pendingReferences) {
-            if (node.boundName() == "arguments") {
-                node.targetVar.type = Variable.Type.Const
-                node.targetVar.mode = Variable.Mode.Declared
-                node.targetVar.scope = this
-                found = true
+    // TODO: Get better at OOP and refactor Scopes to not be so weirdly recursive
+    companion object {
+        private fun initializeArgumentsObjectVariable(scope: Scope) {
+            if (scope is HoistingScope && scope.argumentsObjectMode != ArgumentsObjectMode.None) {
+                val refs = searchForArgumentsReference(scope)
+                if (refs.isNotEmpty()) {
+                    val dummySourceNode = BindingIdentifierNode("arguments")
+                    dummySourceNode.scope = scope
+                    val argumentsVariable = Variable(
+                        "arguments",
+                        Variable.Type.Const,
+                        Variable.Mode.Declared,
+                        dummySourceNode,
+                    )
+                    dummySourceNode.variable = argumentsVariable
+                    scope.addDeclaredVariable(argumentsVariable)
+                    scope.argumentsObjectVariable = argumentsVariable
+                } else {
+                    scope.argumentsObjectMode = ArgumentsObjectMode.None
+                }
             }
+
+            scope.childScopes.forEach { initializeArgumentsObjectVariable(it) }
         }
 
-        return found || scope.childScopes.filter { it !is HoistingScope }.any { searchForArgumentsReference(it) }
+        private fun searchForArgumentsReference(scope: Scope): List<VariableRefNode> {
+            if (scope is GlobalScope || scope.declaredVariables.any { it.name == "arguments" })
+                return emptyList()
+
+            val refs = mutableListOf<VariableRefNode>()
+
+            for (node in scope.pendingReferences) {
+                if (node.boundName() == "arguments")
+                    refs.add(node)
+            }
+
+            return refs + scope.childScopes.filter { it !is HoistingScope }.map { searchForArgumentsReference(it) }.flatten()
+        }
     }
 }
 

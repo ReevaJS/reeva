@@ -9,6 +9,7 @@ import me.mattco.reeva.interpreter.DeclarationsArray
 import me.mattco.reeva.interpreter.JumpTable
 import me.mattco.reeva.interpreter.MethodDescriptor
 import me.mattco.reeva.interpreter.transformer.opcodes.*
+import me.mattco.reeva.parser.HoistingScope
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.parser.Variable
 import me.mattco.reeva.runtime.Operations
@@ -69,7 +70,6 @@ class Transformer : ASTVisitor {
                     node.functionScope,
                     node.body.scope,
                     node.functionScope.isStrict,
-                    false,
                     node.kind,
                 )
             }
@@ -127,7 +127,6 @@ class Transformer : ASTVisitor {
                     it.functionScope,
                     it.body.scope,
                     it.body.scope.isStrict,
-                    false,
                     it.kind,
                 )
 
@@ -536,7 +535,6 @@ class Transformer : ASTVisitor {
             node.functionScope,
             node.body.scope,
             node.functionScope.isStrict,
-            false,
             node.kind,
         )
     }
@@ -549,7 +547,6 @@ class Transformer : ASTVisitor {
             node.functionScope,
             if (node.body is BlockNode) node.body.scope else node.functionScope,
             node.functionScope.isStrict,
-            true,
             node.kind,
         )
     }
@@ -617,7 +614,6 @@ class Transformer : ASTVisitor {
                 func.functionScope,
                 func.body.scope,
                 func.body.scope.isStrict,
-                false,
                 func.kind,
             )
 
@@ -633,20 +629,11 @@ class Transformer : ASTVisitor {
         parameters: ParameterList,
         functionScope: Scope,
         bodyScope: Scope,
-        isLexical: Boolean,
         isStrict: Boolean,
         evaluationBlock: () -> Unit,
     ) {
-        val parameterNames = parameters.map { it.identifier.identifierName }
-        val hasParameterExpressions = parameters.any { it.initializer != null }
-
         val variables = bodyScope.declaredVariables
-
         val varVariables = variables.filter { it.type == Variable.Type.Var }
-        val lexVariables = variables.filter { it.type != Variable.Type.Var }
-
-        val lexNames = lexVariables.map { it.name }
-
         val functionNames = mutableListOf<String>()
         val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
 
@@ -668,20 +655,17 @@ class Transformer : ASTVisitor {
                 functionsToInitialize.add(0, source)
         }
 
-        val argumentsObjectNeeded = when {
-            isLexical -> false
-            "arguments" in parameterNames -> false
-            !hasParameterExpressions && ("arguments" in functionNames || "arguments" in lexNames) -> false
-            else -> true
-        }
-
-        if (argumentsObjectNeeded && bodyScope.possiblyReferencesArguments) {
-            TODO()
-//            if (isStrict || !parameters.isSimple()) {
-//                generator.add(CreateUnmappedArgumentsObject)
-//            } else {
-//                generator.add(CreateMappedArgumentsObject)
-//            }
+        expect(functionScope is HoistingScope)
+        when (functionScope.argumentsObjectMode) {
+            HoistingScope.ArgumentsObjectMode.None -> {}
+            HoistingScope.ArgumentsObjectMode.Unmapped -> {
+                generator.add(CreateUnmappedArgumentsObject)
+                storeVariable(functionScope.argumentsObjectVariable!!)
+            }
+            HoistingScope.ArgumentsObjectMode.Mapped -> {
+                generator.add(CreateMappedArgumentsObject)
+                storeVariable(functionScope.argumentsObjectVariable!!)
+            }
         }
 
         enterScope(functionScope)
@@ -720,7 +704,6 @@ class Transformer : ASTVisitor {
                 func.functionScope,
                 func.body.scope,
                 isStrict,
-                false,
                 func.kind,
             )
 
@@ -745,7 +728,6 @@ class Transformer : ASTVisitor {
         functionScope: Scope,
         bodyScope: Scope,
         isStrict: Boolean,
-        isLexical: Boolean,
         kind: Operations.FunctionKind,
         isClassConstructor: Boolean = false,
     ): FunctionInfo {
@@ -762,7 +744,6 @@ class Transformer : ASTVisitor {
             functionScope,
             bodyScope,
             isStrict,
-            isLexical,
             kind,
         )
 
@@ -784,14 +765,12 @@ class Transformer : ASTVisitor {
         functionScope: Scope,
         bodyScope: Scope,
         isStrict: Boolean,
-        isLexical: Boolean,
         kind: Operations.FunctionKind,
     ): FunctionInfo {
         functionDeclarationInstantiation(
             parameters,
             functionScope,
             bodyScope,
-            isLexical,
             isStrict
         ) {
             // body's scope is the same as the function's scope (the scope we receive
@@ -854,7 +833,6 @@ class Transformer : ASTVisitor {
                 method.functionScope,
                 method.body.scope,
                 isStrict = true,
-                isLexical = false,
                 Operations.FunctionKind.Normal,
                 isClassConstructor = true,
             )
@@ -904,7 +882,6 @@ class Transformer : ASTVisitor {
                 method.functionScope,
                 method.body.scope,
                 isStrict = true,
-                isLexical = false,
                 method.kind.toFunctionKind(),
             )
 

@@ -1,5 +1,6 @@
 package me.mattco.reeva.interpreter
 
+import me.mattco.reeva.ast.ParameterList
 import me.mattco.reeva.core.EvaluationResult
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
@@ -12,8 +13,12 @@ import me.mattco.reeva.interpreter.transformer.opcodes.IrOpcodeVisitor
 import me.mattco.reeva.interpreter.transformer.opcodes.Literal
 import me.mattco.reeva.interpreter.transformer.opcodes.Register
 import me.mattco.reeva.runtime.*
+import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.arrays.JSArrayObject
+import me.mattco.reeva.runtime.builtins.JSMappedArgumentsObject
+import me.mattco.reeva.runtime.builtins.JSUnmappedArgumentsObject
 import me.mattco.reeva.runtime.functions.JSFunction
+import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.functions.generators.JSGeneratorObject
 import me.mattco.reeva.runtime.iterators.JSObjectPropertyIterator
 import me.mattco.reeva.runtime.objects.Descriptor
@@ -566,7 +571,12 @@ class Interpreter(
         throw ThrowException(accumulator)
     }
 
-    override fun visitCreateClass(classDescriptorIndex: Index, constructorReg: Register, superClassReg: Register, argRegs: List<Register>) {
+    override fun visitCreateClass(
+        classDescriptorIndex: Index,
+        constructorReg: Register,
+        superClassReg: Register,
+        argRegs: List<Register>
+    ) {
         val classDescriptor = loadConstant<ClassDescriptor>(classDescriptorIndex)
         val methodDescriptors = classDescriptor.methodDescriptors.map { loadConstant<MethodDescriptor>(it) }
         val constructor = registers[constructorReg]
@@ -630,7 +640,12 @@ class Interpreter(
         accumulator = NormalIRFunction(realm, newInfo, lexicalEnv).initialize()
     }
 
-    private fun methodDefinitionEvaluation(name: PropertyKey, method: MethodDescriptor, obj: JSObject, enumerable: Boolean) {
+    private fun methodDefinitionEvaluation(
+        name: PropertyKey,
+        method: MethodDescriptor,
+        obj: JSObject,
+        enumerable: Boolean
+    ) {
         val (_, _, kind, isGetter, isSetter, infoIndex) = method
 
         val info = loadConstant<FunctionInfo>(infoIndex)
@@ -655,10 +670,16 @@ class Interpreter(
         }
 
         when (kind) {
-            Operations.FunctionKind.Normal -> {}
+            Operations.FunctionKind.Normal -> {
+            }
             Operations.FunctionKind.Generator -> {
                 val prototype = JSObject.create(realm, realm.generatorObjectProto)
-                Operations.definePropertyOrThrow(realm, closure, "prototype".key(), Descriptor(prototype, Descriptor.WRITABLE))
+                Operations.definePropertyOrThrow(
+                    realm,
+                    closure,
+                    "prototype".key(),
+                    Descriptor(prototype, Descriptor.WRITABLE)
+                )
             }
             else -> TODO()
         }
@@ -690,26 +711,108 @@ class Interpreter(
     }
 
     override fun visitCreateMappedArgumentsObject() {
-        TODO()
-//        val argsObject = Operations.createMappedArgumentsObject(realm, function, info.parameters!!, arguments.drop(1), realm.varEnv)
-//        createArgumentsBinding(argsObject)
+        // TODO: Create a mapped arguments object
+        // accumulator = createMappedArgumentsObject(realm, function, info.parameters!!, arguments.drop(1), lexicalEnv)
+        accumulator = createUnmappedArgumentsObject(realm, arguments.drop(1))
     }
 
     override fun visitCreateUnmappedArgumentsObject() {
-        TODO()
-//        val argsObject = Operations.createUnmappedArgumentsObject(realm, arguments.drop(1))
-//        createArgumentsBinding(argsObject)
+        accumulator = createUnmappedArgumentsObject(realm, arguments.drop(1))
     }
 
-    private fun createArgumentsBinding(obj: JSValue) {
-        TODO()
-//        val varEnv = realm.varEnv
-//        if (info.isStrict) {
-//            varEnv.createImmutableBinding("arguments", false)
-//        } else {
-//            varEnv.createMutableBinding("arguments", false)
-//        }
-//        varEnv.initializeBinding("arguments", obj)
+    @ECMAImpl("9.4.4.6")
+    private fun createUnmappedArgumentsObject(realm: Realm, arguments: List<JSValue>): JSValue {
+        val obj = JSUnmappedArgumentsObject.create(realm)
+        Operations.definePropertyOrThrow(
+            realm,
+            obj,
+            "length".key(),
+            Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        )
+        arguments.forEachIndexed { index, value ->
+            Operations.createDataPropertyOrThrow(realm, obj, index.key(), value)
+        }
+        Operations.definePropertyOrThrow(
+            realm,
+            obj,
+            Realm.`@@iterator`.key(),
+            Descriptor(realm.arrayProto.get("values"), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        )
+
+        val calleeGetter = JSNativeFunction.fromLambda(realm, "get callee", 0) { r, _ ->
+            Errors.CalleePropertyAccess.throwTypeError(r)
+        }
+
+        val calleeSetter = JSNativeFunction.fromLambda(realm, "set callee", 1) { r, _ ->
+            Errors.CalleePropertyAccess.throwTypeError(r)
+        }
+
+        Operations.definePropertyOrThrow(
+            realm,
+            obj,
+            "callee".key(),
+            Descriptor(JSAccessor(calleeGetter, calleeSetter), 0),
+        )
+
+        return obj
+    }
+
+    @ECMAImpl("9.4.4.7")
+    private fun createMappedArgumentsObject(
+        realm: Realm,
+        function: JSObject,
+        parameters: ParameterList,
+        arguments: List<JSValue>,
+        envRecord: EnvRecord,
+    ): JSMappedArgumentsObject {
+        val obj = JSMappedArgumentsObject.create(realm)
+        val map = JSObject.create(realm, JSNull)
+        obj.parameterMap = map
+
+        for ((index, argument) in arguments.withIndex())
+            Operations.createDataPropertyOrThrow(realm, obj, PropertyKey.from(index), argument)
+
+        Operations.definePropertyOrThrow(
+            realm,
+            obj,
+            "length".key(),
+            Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        )
+
+        val mappedNames = mutableSetOf<String>()
+
+        for (index in parameters.lastIndex downTo 0) {
+            val name = parameters[index].identifier.identifierName
+            if (name !in mappedNames) {
+                mappedNames.add(name)
+                if (index < arguments.size) {
+                    val getter = JSNativeFunction.fromLambda(realm, "", 0) { _, _ ->
+                        TODO()
+                    }
+                    val setter = JSNativeFunction.fromLambda(realm, "", 1) { _, _ ->
+                        TODO()
+                    }
+
+                    map.defineOwnProperty(index, JSAccessor(getter, setter), Descriptor.CONFIGURABLE)
+                }
+            }
+        }
+
+        Operations.definePropertyOrThrow(
+            realm,
+            obj,
+            Realm.`@@iterator`,
+            Descriptor(realm.arrayProto.get("values"), Descriptor.CONFIGURABLE or Descriptor.WRITABLE),
+        )
+
+        Operations.definePropertyOrThrow(
+            realm,
+            obj,
+            "callee".key(),
+            Descriptor(function, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        )
+
+        return obj
     }
 
     override fun visitGetIterator() {
@@ -885,7 +988,8 @@ class Interpreter(
         override fun evaluate(arguments: JSArguments): JSValue {
             if (!::generatorObject.isInitialized) {
                 expect(!info.isTopLevelScript)
-                val interpreter = Interpreter(realm, this, listOf(arguments.thisValue, *arguments.toTypedArray()), outerEnvRecord)
+                val interpreter =
+                    Interpreter(realm, this, listOf(arguments.thisValue, *arguments.toTypedArray()), outerEnvRecord)
                 generatorObject = JSGeneratorObject.create(realm, interpreter, outerEnvRecord)
             }
 

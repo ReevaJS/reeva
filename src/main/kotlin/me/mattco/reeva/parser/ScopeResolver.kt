@@ -116,23 +116,23 @@ class ScopeResolver : ASTVisitor {
         )
         hoistedScope.addDeclaredVariable(identifier.variable)
 
-        node.functionScope = visitFunctionHelper(node.parameters, node.body)
+        node.functionScope = visitFunctionHelper(node.parameters, node.body, isLexical = false)
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
         node.scope = scope
-        node.functionScope = visitFunctionHelper(node.parameters, node.body)
+        node.functionScope = visitFunctionHelper(node.parameters, node.body, isLexical = false)
     }
 
     override fun visitArrowFunction(node: ArrowFunctionNode) {
         node.scope = scope
-        node.functionScope = visitFunctionHelper(node.parameters, node.body)
+        node.functionScope = visitFunctionHelper(node.parameters, node.body, isLexical = true)
     }
 
     override fun visitMethodDefinition(node: MethodDefinitionNode) {
         node.scope = scope
         visit(node.propName)
-        node.functionScope = visitFunctionHelper(node.parameters, node.body)
+        node.functionScope = visitFunctionHelper(node.parameters, node.body, isLexical = true)
     }
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {
@@ -169,15 +169,27 @@ class ScopeResolver : ASTVisitor {
         scope = scope.outer!!
     }
 
-    private fun visitFunctionHelper(parameters: ParameterList, body: ASTNode): Scope {
+    private fun visitFunctionHelper(parameters: ParameterList, body: ASTNode, isLexical: Boolean): Scope {
         val functionScope = HoistingScope(scope)
         scope = functionScope
 
         if (body is BlockNode && body.hasUseStrict)
             functionScope.hasUseStrictDirective = true
 
+        var hasParameterExpressions = false
+        var hasSimpleParams = true
+        var hasArgumentsIdentifier = false
+
         for (param in parameters) {
             val paramIdent = param.identifier
+
+            if (paramIdent.identifierName == "arguments")
+                hasArgumentsIdentifier = true
+            if (param.initializer != null)
+                hasParameterExpressions = true
+            if (!param.isSimple())
+                hasSimpleParams = false
+
             paramIdent.variable = Variable(
                 param.identifier.identifierName,
                 Variable.Type.Let,
@@ -208,6 +220,25 @@ class ScopeResolver : ASTVisitor {
             scope = scope.outer!!
 
         scope = scope.outer!!
+
+        for (variable in bodyScope.declaredVariables) {
+            val name = when {
+                variable.source is FunctionDeclarationNode -> variable.name
+                variable.type != Variable.Type.Var -> variable.name
+                else -> continue
+            }
+
+            if (name == "arguments")
+                hasArgumentsIdentifier = true
+        }
+
+        val argumentsObjectNeeded = !isLexical && !hasParameterExpressions && !hasArgumentsIdentifier
+
+        functionScope.argumentsObjectMode = when {
+            !argumentsObjectNeeded -> HoistingScope.ArgumentsObjectMode.None
+            bodyScope.isStrict || !hasSimpleParams -> HoistingScope.ArgumentsObjectMode.Unmapped
+            else -> HoistingScope.ArgumentsObjectMode.Mapped
+        }
 
         return functionScope
     }

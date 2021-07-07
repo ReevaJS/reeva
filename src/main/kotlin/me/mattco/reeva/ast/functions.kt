@@ -40,6 +40,8 @@ class Parameter(
 ) : VariableSourceNode(listOfNotNull(identifier, initializer)) {
     override var variable by identifier::variable
 
+    fun isSimple() = !isRest && initializer == null
+
     init {
         if (isRest && initializer != null)
             throw IllegalArgumentException()
