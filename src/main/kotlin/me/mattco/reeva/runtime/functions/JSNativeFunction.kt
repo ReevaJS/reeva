@@ -14,8 +14,11 @@ abstract class JSNativeFunction protected constructor(
     realm: Realm,
     private val name: String,
     private val length: Int,
-    prototype: JSValue = realm.functionProto
+    prototype: JSValue = realm.functionProto,
+    private val isConstructor: Boolean = true
 ) : JSFunction(realm, prototype = prototype) {
+    override fun isConstructor() = isConstructor
+
     override fun init() {
         super.init()
 
@@ -29,7 +32,7 @@ abstract class JSNativeFunction protected constructor(
             name: String,
             length: Int,
             lambda: NativeFunctionSignature,
-        ) = object : JSNativeFunction(realm, name, length) {
+        ) = object : JSNativeFunction(realm, name, length, isConstructor = false) {
             override fun evaluate(arguments: JSArguments): JSValue {
                 if (arguments.newTarget != JSUndefined)
                     Errors.NotACtor(name).throwTypeError(realm)
