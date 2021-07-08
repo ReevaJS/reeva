@@ -780,7 +780,7 @@ class Transformer : ASTVisitor {
                 visitASTListNode(body.statements)
             } else visit(body)
 
-            if (body !is ExpressionStatementNode)
+            if (body is BlockNode)
                 generator.addIfNotTerminated(LdaUndefined)
             generator.addIfNotTerminated(Return)
         }

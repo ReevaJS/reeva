@@ -952,7 +952,7 @@ class Parser(val source: String) {
         } else false
     }
 
-    private fun parseBlock(isFunctionBlock: Boolean = false): BlockNode = nps {
+    private fun parseBlock(): BlockNode = nps {
         consume(TokenType.OpenCurly)
         val prevIsStrict = isStrict
         val isStrict = checkForAndConsumeUseStrict()
@@ -963,34 +963,6 @@ class Parser(val source: String) {
         val statements = parseStatementList()
         consume(TokenType.CloseCurly)
         this.isStrict = prevIsStrict
-
-//        val varNames = mutableSetOf<String>()
-//        val lexNames = mutableSetOf<String>()
-//
-//        statements.forEach {
-//            if (it is VariableDeclarationNode) {
-//                it.declarations.forEach { decl ->
-//                    val name = decl.identifier.identifierName
-//                    if (name in lexNames)
-//                        reporter.at(decl.identifier).conflictingVarDeclaration(name)
-//                    varNames.add(name)
-//                }
-//            } else if (it is LexicalDeclarationNode) {
-//                it.declarations.forEach { decl ->
-//                    val name = decl.identifier.identifierName
-//                    if (name in varNames)
-//                        reporter.at(decl.identifier).conflictingLexDeclaration(name)
-//                    if (name in lexNames)
-//                        reporter.at(decl.identifier).duplicateLexDeclaration(name)
-//                    lexNames.add(name)
-//                }
-//            } else if (it is FunctionDeclarationNode) {
-//                val name = it.identifier.identifierName
-//                if (name in lexNames)
-//                    reporter.at(it.identifier).conflictingVarDeclaration(name)
-//                lexNames.add(name)
-//            }
-//        }
 
         BlockNode(statements, isStrict)
     }
@@ -1570,8 +1542,10 @@ class Parser(val source: String) {
 
         val parameters = CPEAAPLVisitor(this, node).parseAsParameterList()
 
-        // TODO: Async/Generator methods
-        val body = parseFunctionBody(isAsync = false, isGenerator = false)
+        // TODO: Async/Generator functions
+        val body = if (match(TokenType.OpenCurly)) {
+            parseFunctionBody(isAsync = false, isGenerator = false)
+        } else parseExpression(2)
 
         ArrowFunctionNode(parameters, body, Operations.FunctionKind.Normal)
     }
@@ -1626,7 +1600,7 @@ class Parser(val source: String) {
         inAsyncContext = isAsync
         inDefaultContext = false
 
-        val result = parseBlock(isFunctionBlock = true)
+        val result = parseBlock()
 
         inFunctionContext = previousFunctionCtx
         inYieldContext = previousYieldCtx
