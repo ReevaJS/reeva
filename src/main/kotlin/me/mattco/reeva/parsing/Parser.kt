@@ -5,6 +5,10 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
+import me.mattco.reeva.parsing.lexer.Lexer
+import me.mattco.reeva.parsing.lexer.Token
+import me.mattco.reeva.parsing.lexer.TokenLocation
+import me.mattco.reeva.parsing.lexer.TokenType
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable

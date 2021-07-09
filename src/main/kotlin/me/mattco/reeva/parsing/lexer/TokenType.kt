@@ -1,4 +1,4 @@
-package me.mattco.reeva.parsing
+package me.mattco.reeva.parsing.lexer
 
 enum class TokenType(val string: String, val category: Category = Category.None) {
     Add("+", Category.Operator),

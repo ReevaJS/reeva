@@ -1,4 +1,4 @@
-package me.mattco.reeva.parsing
+package me.mattco.reeva.parsing.lexer
 
 import me.mattco.reeva.mfbt.StringToFP
 import me.mattco.reeva.utils.expect

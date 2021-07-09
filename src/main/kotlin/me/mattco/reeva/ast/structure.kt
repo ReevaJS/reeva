@@ -2,8 +2,8 @@ package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.statements.StatementList
 import me.mattco.reeva.parsing.Scope
-import me.mattco.reeva.parsing.TokenLocation
 import me.mattco.reeva.parsing.Variable
+import me.mattco.reeva.parsing.lexer.TokenLocation
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.newline
 import me.mattco.reeva.utils.unreachable

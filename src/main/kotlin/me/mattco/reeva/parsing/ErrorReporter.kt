@@ -1,6 +1,9 @@
 package me.mattco.reeva.parsing
 
 import me.mattco.reeva.ast.ASTNode
+import me.mattco.reeva.parsing.lexer.Token
+import me.mattco.reeva.parsing.lexer.TokenLocation
+import me.mattco.reeva.parsing.lexer.TokenType
 import me.mattco.reeva.utils.expect
 
 abstract class Reporter {
