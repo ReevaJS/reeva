@@ -1202,7 +1202,7 @@ class Parser(val source: String) {
                 consume()
                 ThisLiteralNode()
             }
-            TokenType.Class -> TODO()
+            TokenType.Class -> parseClassExpression()
             TokenType.Super -> TODO()
             TokenType.Identifier -> {
                 if (peek()?.type == TokenType.Arrow)
