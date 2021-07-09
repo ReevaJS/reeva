@@ -28,6 +28,7 @@ abstract class Reporter {
     fun classGeneratorField(): Nothing = error("class declaration field cannot be a generator")
     fun constMissingInitializer(): Nothing = error("const variable declaration must have an initializer")
     fun continueOutsideOfLoop(): Nothing = error("continue statement must be inside of a loop")
+    fun duplicateClassConstructor(): Nothing = error("class cannot have multiple constructors")
     fun emptyTemplateLiteralExpr(): Nothing = error("empty template literal expression")
     fun emptyParenthesizedExpression(): Nothing = error("parenthesized expression cannot be empty")
     fun forEachMultipleDeclarations(): Nothing = error("for-in/of statement cannot contain multiple variable declarations")

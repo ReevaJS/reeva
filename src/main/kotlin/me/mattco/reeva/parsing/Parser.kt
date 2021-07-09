@@ -762,6 +762,10 @@ class Parser(val source: String) {
         while (!match(TokenType.CloseCurly))
             elements.add(parseClassElement() ?: continue)
 
+        val constructors = elements.filterIsInstance<ClassMethodNode>().filter { it.isConstructor() }
+        if (constructors.size > 1)
+            reporter.at(constructors.last()).duplicateClassConstructor()
+
         consume(TokenType.CloseCurly)
 
         ClassNode(superClass, elements)
