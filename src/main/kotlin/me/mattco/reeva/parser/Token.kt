@@ -1,5 +1,6 @@
 package me.mattco.reeva.parser
 
+import me.mattco.reeva.mfbt.StringToFP
 import me.mattco.reeva.utils.expect
 
 // A basic unit of a script. This class is also used to communicate
@@ -15,17 +16,7 @@ data class Token(
 ) {
     fun doubleValue(): Double {
         expect(type == TokenType.NumericLiteral)
-
-        if (literals[0] == '0' && literals.length >= 2) {
-            when (literals[1]) {
-                'x', 'X' -> return literals.substring(2).toLong(16).toDouble()
-                'o', 'O' -> return literals.substring(2).toLong(8).toDouble()
-                'b', 'B' -> return literals.substring(2).toLong(2).toDouble()
-                else -> expect(!literals[1].isDigit()) // Handled in parser
-            }
-        }
-
-        return literals.filterNot { it == '_' }.toDouble()
+        return StringToFP(literals.filter { it != '_' }).parse() ?: TODO()
     }
 
     fun error() = if (type == TokenType.Invalid) literals else null
