@@ -1,6 +1,6 @@
 package me.mattco.reeva.core
 
-import me.mattco.reeva.parser.TokenLocation
+import me.mattco.reeva.parsing.TokenLocation
 import me.mattco.reeva.runtime.JSValue
 
 sealed class EvaluationResult(val value: JSValue) {

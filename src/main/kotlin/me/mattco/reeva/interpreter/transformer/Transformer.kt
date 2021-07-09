@@ -9,9 +9,9 @@ import me.mattco.reeva.interpreter.DeclarationsArray
 import me.mattco.reeva.interpreter.JumpTable
 import me.mattco.reeva.interpreter.MethodDescriptor
 import me.mattco.reeva.interpreter.transformer.opcodes.*
-import me.mattco.reeva.parser.HoistingScope
-import me.mattco.reeva.parser.Scope
-import me.mattco.reeva.parser.Variable
+import me.mattco.reeva.parsing.HoistingScope
+import me.mattco.reeva.parsing.Scope
+import me.mattco.reeva.parsing.Variable
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable

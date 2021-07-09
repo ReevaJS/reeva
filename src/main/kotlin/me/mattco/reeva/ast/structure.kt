@@ -1,9 +1,9 @@
 package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.statements.StatementList
-import me.mattco.reeva.parser.Scope
-import me.mattco.reeva.parser.TokenLocation
-import me.mattco.reeva.parser.Variable
+import me.mattco.reeva.parsing.Scope
+import me.mattco.reeva.parsing.TokenLocation
+import me.mattco.reeva.parsing.Variable
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.newline
 import me.mattco.reeva.utils.unreachable

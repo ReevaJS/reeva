@@ -1,7 +1,7 @@
 package me.mattco.reeva.interpreter
 
 import me.mattco.reeva.core.Realm
-import me.mattco.reeva.parser.TokenLocation
+import me.mattco.reeva.parsing.TokenLocation
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.toJSString
 import me.mattco.reeva.runtime.toPrintableString

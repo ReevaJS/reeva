@@ -14,8 +14,8 @@ import me.mattco.reeva.jvmcompat.JSClassInstanceObject
 import me.mattco.reeva.jvmcompat.JSClassObject
 import me.mattco.reeva.mfbt.Dtoa
 import me.mattco.reeva.mfbt.StringToFP
-import me.mattco.reeva.parser.Parser
-import me.mattco.reeva.parser.ParsingResult
+import me.mattco.reeva.parsing.Parser
+import me.mattco.reeva.parsing.ParsingResult
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.arrays.JSArrayObject
 import me.mattco.reeva.runtime.builtins.JSProxyObject

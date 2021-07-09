@@ -1,4 +1,4 @@
-package me.mattco.reeva.parser
+package me.mattco.reeva.parsing
 
 import me.mattco.reeva.utils.isHexDigit
 import me.mattco.reeva.utils.isIdContinue

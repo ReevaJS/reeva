@@ -2,7 +2,7 @@ package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.literals.MethodDefinitionNode
 import me.mattco.reeva.ast.literals.PropertyName
-import me.mattco.reeva.parser.Variable
+import me.mattco.reeva.parsing.Variable
 
 class ClassDeclarationNode(
     val identifier: BindingIdentifierNode?, // can be omitted in default exports

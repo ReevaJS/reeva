@@ -6,8 +6,8 @@ import me.mattco.reeva.interpreter.ExecutionResult
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.interpreter.transformer.Transformer
 import me.mattco.reeva.interpreter.transformer.opcodes.IrPrinter
-import me.mattco.reeva.parser.Parser
-import me.mattco.reeva.parser.ParsingResult
+import me.mattco.reeva.parsing.Parser
+import me.mattco.reeva.parsing.ParsingResult
 import me.mattco.reeva.runtime.functions.JSFunction
 import java.nio.ByteOrder
 

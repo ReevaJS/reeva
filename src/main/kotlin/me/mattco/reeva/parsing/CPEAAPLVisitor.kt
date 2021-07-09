@@ -1,4 +1,4 @@
-package me.mattco.reeva.parser
+package me.mattco.reeva.parsing
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.AssignmentExpressionNode

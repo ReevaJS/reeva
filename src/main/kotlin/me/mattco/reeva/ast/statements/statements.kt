@@ -2,7 +2,7 @@ package me.mattco.reeva.ast.statements
 
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
-import me.mattco.reeva.parser.Scope
+import me.mattco.reeva.parsing.Scope
 
 interface Labellable {
     val labels: MutableSet<String>

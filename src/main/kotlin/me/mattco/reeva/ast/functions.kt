@@ -3,7 +3,7 @@ package me.mattco.reeva.ast
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.statements.ASTListNode
 import me.mattco.reeva.ast.statements.BlockNode
-import me.mattco.reeva.parser.Scope
+import me.mattco.reeva.parsing.Scope
 import me.mattco.reeva.runtime.Operations
 
 typealias ArgumentList = ASTListNode<ArgumentNode>
