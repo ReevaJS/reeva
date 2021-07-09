@@ -30,22 +30,28 @@ class Test262Test(
 
             println("File: ${Test262Runner.testDirectoryStr}$name")
 
-            val requiredScript = buildString {
-                append(Test262Runner.pretestScript)
+            val requiredScript = if (metadata.flags == null || Flag.Raw !in metadata.flags) {
+                buildString {
+                    append(Test262Runner.pretestScript)
 
-                metadata.includes?.forEach { include ->
-                    append('\n')
-                    append(File(Test262Runner.harnessDirectory, include).readText())
+                    metadata.includes?.forEach { include ->
+                        append('\n')
+                        append(File(Test262Runner.harnessDirectory, include).readText())
+                    }
+
+                    append("\n\n")
                 }
-            }
+            } else ""
 
             val realm = Reeva.makeRealm()
 
-            val isModule = metadata.flags != null && Flag.Module in metadata.flags
-            if (isModule)
-                TODO()
+            if (metadata.flags != null) {
+                Assumptions.assumeTrue(Flag.Module !in metadata.flags)
+                Assumptions.assumeTrue(Flag.Async !in metadata.flags)
+            }
+            val isModule = false
 
-            val pretestResult = agent.run("$requiredScript\n\n", realm)
+            val pretestResult = agent.run(requiredScript, realm)
 
             Assertions.assertTrue(!pretestResult.isError) {
                 "Expected pretest to run without exception, but received $pretestResult"
