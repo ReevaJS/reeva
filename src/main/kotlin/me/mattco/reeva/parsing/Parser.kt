@@ -183,7 +183,7 @@ class Parser(val source: String) {
             val peeked = peek() ?: break
             if (peeked.type != TokenType.Colon)
                 break
-            labels.add(parseIdentifier())
+            labels.add(parseIdentifierString())
             consume(TokenType.Colon)
         }
 
@@ -303,7 +303,7 @@ class Parser(val source: String) {
             if (match(TokenType.OpenCurly))
                 TODO()
 
-            val identifier = parseBindingIdentifier()
+            val identifier = parseIdentifier()
 
             val initializer = if (match(TokenType.Equals)) {
                 consume()
@@ -436,7 +436,7 @@ class Parser(val source: String) {
         }
 
         if (matchIdentifier()) {
-            val identifier = parseIdentifier()
+            val identifier = parseIdentifierString()
             labelStateStack.last().validateContinue(continueToken, lastConsumedToken)
             return@nps ContinueStatementNode(identifier).also { asi() }
         }
@@ -463,7 +463,7 @@ class Parser(val source: String) {
         }
 
         if (matchIdentifier()) {
-            val identifier = parseIdentifier()
+            val identifier = parseIdentifierString()
             labelStateStack.last().validateBreak(breakToken, lastConsumedToken)
             return@nps BreakStatementNode(identifier).also { asi() }
         }
@@ -545,8 +545,11 @@ class Parser(val source: String) {
             consume()
             val catchParam = if (match(TokenType.OpenParen)) {
                 consume()
-                parseBindingIdentifier().also {
-                    consume(TokenType.CloseParen)
+                nps {
+                    parseIdentifier().let {
+                        consume(TokenType.CloseParen)
+                        CatchParameter(it)
+                    }
                 }
             } else null
             CatchNode(catchParam, parseBlock())
@@ -654,7 +657,7 @@ class Parser(val source: String) {
     }
 
     private data class FunctionTemp(
-        val identifier: BindingIdentifierNode?,
+        val identifier: IdentifierNode?,
         val params: ParameterList,
         val body: BlockNode,
         val type: Operations.FunctionKind,
@@ -682,7 +685,7 @@ class Parser(val source: String) {
 
         // TODO: Allow no identifier in default export
         val identifier = when {
-            matchIdentifier() -> parseBindingIdentifier()
+            matchIdentifier() -> parseIdentifier()
             isDeclaration -> reporter.functionStatementNoName()
             else -> null
         }
@@ -710,7 +713,7 @@ class Parser(val source: String) {
             if (!inDefaultContext)
                 reporter.classDeclarationNoName()
             null
-        } else parseBindingIdentifier()
+        } else parseIdentifier()
 
         ClassDeclarationNode(identifier, parseClassNode())
     }
@@ -722,7 +725,7 @@ class Parser(val source: String) {
     private fun parseClassExpression(): ExpressionNode = nps {
         consume(TokenType.Class)
         val identifier = if (matchIdentifier()) {
-            parseBindingIdentifier()
+            parseIdentifier()
         } else null
         ClassExpressionNode(identifier, parseClassNode())
     }
@@ -813,7 +816,7 @@ class Parser(val source: String) {
 
         if (!match(TokenType.Equals) && !match(TokenType.OpenParen)) {
             if (name.type == PropertyName.Type.Identifier) {
-                val identifier = (name.expression as IdentifierNode).identifierName
+                val identifier = (name.expression as IdentifierNode).name
                 val isGetter = identifier == "get"
                 val isSetter = identifier == "set"
 
@@ -900,7 +903,7 @@ class Parser(val source: String) {
             if (match(TokenType.TriplePeriod)) {
                 nps {
                     consume()
-                    val identifier = parseBindingIdentifier()
+                    val identifier = parseIdentifier()
                     if (!match(TokenType.CloseParen))
                         reporter.paramAfterRest()
                     Parameter(identifier, null, true)
@@ -910,7 +913,7 @@ class Parser(val source: String) {
                 reporter.expected("expression", tokenType)
             } else {
                 nps {
-                    val identifier = parseBindingIdentifier()
+                    val identifier = parseIdentifier()
                     val initializer = if (match(TokenType.Equals)) {
                         consume()
                         parseExpression(0)
@@ -932,19 +935,23 @@ class Parser(val source: String) {
         (!inYieldContext && !isStrict && match(TokenType.Yield)) ||
         (!inAsyncContext && !isStrict && match(TokenType.Await))
 
-    private fun parseIdentifier(): String {
-        expect(matchAny(TokenType.Identifier, TokenType.Await, TokenType.Yield))
+    private fun matchIdentifierName(): Boolean {
+        return match(TokenType.Identifier) || tokenType.category == TokenType.Category.Keyword
+    }
+
+    private fun parseIdentifierString(): String {
+        expect(matchIdentifierName())
         val identifier = token.literals
         consume()
         return identifier
     }
 
     private fun parseIdentifierReference(): IdentifierReferenceNode = nps {
-        IdentifierReferenceNode(parseIdentifier())
+        IdentifierReferenceNode(parseIdentifierString())
     }
 
-    private fun parseBindingIdentifier(): BindingIdentifierNode = nps {
-        BindingIdentifierNode(parseIdentifier())
+    private fun parseIdentifier(): IdentifierNode = nps {
+        IdentifierNode(parseIdentifierString())
     }
 
     private fun checkForAndConsumeUseStrict(): Boolean {
@@ -1081,7 +1088,7 @@ class Parser(val source: String) {
                     reporter.expected("identifier", tokenType)
                 MemberExpressionNode(
                     lhs,
-                    nps { parseIdentifierName() },
+                    nps { parseIdentifier() },
                     MemberExpressionNode.Type.NonComputed
                 ).withPosition(lhs.sourceStart, lastConsumedToken.end)
             }
@@ -1333,7 +1340,7 @@ class Parser(val source: String) {
                 if (name.type != PropertyName.Type.Identifier)
                     reporter.unexpectedToken(tokenType)
 
-                val identifier = (name.expression as IdentifierNode).identifierName
+                val identifier = (name.expression as IdentifierNode).name
                 if (identifier != "get" && identifier != "set")
                     reporter.unexpectedToken(tokenType)
 
@@ -1357,7 +1364,7 @@ class Parser(val source: String) {
             if (name.type != PropertyName.Type.Identifier)
                 reporter.at(name).invalidShorthandProperty()
 
-            val identifier = (name.expression as IdentifierNode).identifierName
+            val identifier = (name.expression as IdentifierNode).name
             val node = IdentifierReferenceNode(identifier).withPosition(name)
 
             return@nps ShorthandProperty(node)
@@ -1402,20 +1409,10 @@ class Parser(val source: String) {
                 PropertyName(parseNumericLiteral(), PropertyName.Type.Number)
             }
             matchIdentifierName() -> {
-                PropertyName(parseIdentifierName(), PropertyName.Type.Identifier)
+                PropertyName(parseIdentifier(), PropertyName.Type.Identifier)
             }
             else -> reporter.unexpectedToken(tokenType)
         }
-    }
-
-    private fun matchIdentifierName(): Boolean {
-        return match(TokenType.Identifier) || tokenType.category == TokenType.Category.Keyword
-    }
-
-    private fun parseIdentifierName(): IdentifierNode = nps {
-        val identifier = token.literals
-        consume()
-        IdentifierNode(identifier)
     }
 
     /*
@@ -1733,47 +1730,5 @@ class Parser(val source: String) {
                 reporter.at(continueToken).continueOutsideOfLoop()
             }
         }
-
-    }
-
-    class LabelStack {
-        private val stack = Stack<State>()
-
-        init {
-            stack.push(State())
-        }
-
-        // Returns false if the label already exists, true otherwise
-        fun addBreakLabel(label: String): Boolean {
-            return stack.peek().breakableLabels.add(label)
-        }
-
-        // Returns false if the label already exists, true otherwise
-        fun addContinueLabel(label: String): Boolean {
-            return stack.peek().continuableLabels.add(label)
-        }
-
-        fun isBreakLabel(label: String) = label in stack.peek().breakableLabels
-
-        fun isContinueLabel(label: String) = label in stack.peek().continuableLabels
-
-        fun pushFunctionBoundary() {
-            stack.push(State())
-        }
-
-        fun popFunctionBoundary() {
-            stack.pop()
-        }
-
-        data class Label(val name: String, val type: Type) {
-            enum class Type {
-
-            }
-        }
-
-        data class State(
-            val breakableLabels: MutableSet<String> = mutableSetOf(),
-            val continuableLabels: MutableSet<String> = mutableSetOf(),
-        )
     }
 }

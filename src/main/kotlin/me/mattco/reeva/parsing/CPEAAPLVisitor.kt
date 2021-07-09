@@ -54,7 +54,7 @@ class CPEAAPLVisitor(
         override fun visitIdentifier(node: IdentifierNode) {
             val index = node.parent.children.indexOf(node)
             expect(index >= 0, node.sourceStart.toString())
-            node.parent.children[index] = IdentifierReferenceNode(node.identifierName)
+            node.parent.children[index] = IdentifierReferenceNode(node.name)
                 .withPosition(node)
                 .also { it.parent = node.parent }
         }
@@ -62,10 +62,6 @@ class CPEAAPLVisitor(
 
     private inner class CPEAAPLToParameterList : ASTVisitor {
         fun convert(): ParameterList {
-            // General note: because we initially parse all of the CPEAAPL parts
-            // in a regular expression context, any identifier will be
-            // IdentifierReferenceNodes instead of BindingIdentifierNodes.
-
             for (part in node.parts) {
                 // TODO: Relax this to ExpressionNode when we add destructuring support
                 if (part.node !is IdentifierReferenceNode)
@@ -97,9 +93,9 @@ class CPEAAPLVisitor(
 
                 val index = identifier.parent.children.indexOf(identifier)
                 expect(index >= 0)
-                identifier.parent.children[index] = BindingIdentifierNode(identifier.identifierName)
+                identifier.parent.children[index] = IdentifierNode(identifier.identifierName)
 
-                Parameter(BindingIdentifierNode(identifier.identifierName), initializer, isSpread)
+                Parameter(IdentifierNode(identifier.identifierName), initializer, isSpread)
             })
         }
     }

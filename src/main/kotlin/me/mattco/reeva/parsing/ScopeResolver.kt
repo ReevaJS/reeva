@@ -5,7 +5,6 @@ import me.mattco.reeva.ast.expressions.UnaryExpressionNode
 import me.mattco.reeva.ast.literals.MethodDefinitionNode
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.utils.expect
-import me.mattco.reeva.utils.unreachable
 
 class ScopeResolver : ASTVisitor {
     private lateinit var scope: Scope
@@ -13,13 +12,13 @@ class ScopeResolver : ASTVisitor {
     fun resolve(script: ScriptNode) {
         val globalScope = GlobalScope()
         scope = globalScope
-        globalScope.hasUseStrictDirective = script.hasUseStrict
+        globalScope.isStrict = script.hasUseStrict
 
         script.scope = scope
 
         visit(script.statements)
 
-        scope.onFinish()
+        scope.finish()
     }
 
     fun resolve(function: FunctionDeclarationNode) {
@@ -30,7 +29,7 @@ class ScopeResolver : ASTVisitor {
 
         visit(function)
 
-        scope.onFinish()
+        scope.finish()
     }
 
     override fun visitBlock(node: BlockNode) {
@@ -50,22 +49,16 @@ class ScopeResolver : ASTVisitor {
 
     override fun visitVariableDeclaration(node: VariableDeclarationNode) {
         for (decl in node.declarations) {
-            val declarationScope = scope
-            val hoistedScope = scope.parentHoistingScope
+            val declaredScope = scope
+            val hoistedScope = scope.outerHoistingScope
 
-            decl.scope = hoistedScope
-            decl.declaredScope = declarationScope
+            decl.type = VariableType.Var
+            decl.mode = if (hoistedScope is GlobalScope) {
+                VariableMode.Global
+            } else VariableMode.Declared
 
-            decl.variable = Variable(
-                decl.identifier.identifierName,
-                Variable.Type.Var,
-                hoistedScope.declaredVarMode(Variable.Type.Var),
-                decl,
-            )
-            hoistedScope.addDeclaredVariable(decl.variable)
-
-            if (hoistedScope != declarationScope)
-                declarationScope.hoistedVarDecls.add(node)
+            declaredScope.addVariableSource(decl)
+            hoistedScope.addHoistedVariable(decl)
 
             if (decl.initializer != null)
                 visit(decl.initializer)
@@ -73,48 +66,34 @@ class ScopeResolver : ASTVisitor {
     }
 
     override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
+        val type = if (node.isConst) VariableType.Const else VariableType.Let
+
         for (decl in node.declarations) {
-            decl.scope = scope
-            decl.variable = Variable(
-                decl.identifier.identifierName,
-                if (node.isConst) Variable.Type.Const else Variable.Type.Let,
-                Variable.Mode.Declared,
-                decl,
-            )
-            decl.scope.addDeclaredVariable(decl.variable)
+            scope.addVariableSource(decl)
+
+            decl.type = type
+            decl.mode = VariableMode.Declared
 
             if (decl.initializer != null)
                 visit(decl.initializer)
         }
     }
 
-    override fun visitBindingIdentifier(node: BindingIdentifierNode) {
-        unreachable()
-    }
-
     override fun visitIdentifierReference(node: IdentifierReferenceNode) {
-        node.scope = scope
-        scope.addReference(node)
+        scope.addVariableReference(node)
     }
 
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
-        val declarationScope = scope
-        val hoistedScope = scope.parentHoistingScope
-        node.scope = hoistedScope
-        node.declaredScope = declarationScope
+        val declaredScope = scope
+        val hoistedScope = scope.outerHoistingScope
 
-        if (hoistedScope != declarationScope)
-            declarationScope.functionsToInitialize.add(node)
+        node.type = VariableType.Var
+        node.mode = if (hoistedScope is GlobalScope) {
+            VariableMode.Global
+        } else VariableMode.Declared
 
-        val identifier = node.identifier
-        identifier.scope = hoistedScope
-        identifier.variable = Variable(
-            identifier.identifierName,
-            Variable.Type.Var,
-            hoistedScope.declaredVarMode(Variable.Type.Var),
-            node,
-        )
-        hoistedScope.addDeclaredVariable(identifier.variable)
+        declaredScope.addVariableSource(node)
+        hoistedScope.addHoistedVariable(node)
 
         node.functionScope = visitFunctionHelper(node.parameters, node.body, isLexical = false)
     }
@@ -137,16 +116,9 @@ class ScopeResolver : ASTVisitor {
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {
         expect(node.identifier != null)
-        val identifier = node.identifier
-        node.scope = scope
-        identifier.scope = scope
-        identifier.variable = Variable(
-            identifier.identifierName,
-            Variable.Type.Var,
-            Variable.Mode.Declared,
-            node,
-        )
-        scope.addDeclaredVariable(identifier.variable)
+        node.mode = VariableMode.Declared
+        node.type = VariableType.Const
+        scope.addVariableSource(node)
 
         visitClassHelper(node.classNode)
     }
@@ -156,9 +128,12 @@ class ScopeResolver : ASTVisitor {
     }
 
     private fun visitClassHelper(node: ClassNode) {
+        if (node.heritage != null)
+            visit(node.heritage)
+
         val classScope = HoistingScope(scope)
         scope = classScope
-        classScope.hasUseStrictDirective = true
+        classScope.isStrict = true
         node.scope = classScope
 
         for (element in node.body) {
@@ -174,30 +149,24 @@ class ScopeResolver : ASTVisitor {
         scope = functionScope
 
         if (body is BlockNode && body.hasUseStrict)
-            functionScope.hasUseStrictDirective = true
+            functionScope.isStrict = true
 
         var hasParameterExpressions = false
         var hasSimpleParams = true
         var hasArgumentsIdentifier = false
 
         for (param in parameters) {
-            val paramIdent = param.identifier
+            param.type = VariableType.Var
+            param.mode = VariableMode.Parameter
 
-            if (paramIdent.identifierName == "arguments")
+            if (param.name() == "arguments")
                 hasArgumentsIdentifier = true
             if (param.initializer != null)
                 hasParameterExpressions = true
             if (!param.isSimple())
                 hasSimpleParams = false
 
-            paramIdent.variable = Variable(
-                param.identifier.identifierName,
-                Variable.Type.Let,
-                Variable.Mode.Parameter,
-                param.identifier,
-            )
-            paramIdent.scope = scope
-            functionScope.addDeclaredVariable(paramIdent.variable)
+            scope.addVariableSource(param)
 
             if (param.initializer != null)
                 visit(param.initializer)
@@ -209,35 +178,29 @@ class ScopeResolver : ASTVisitor {
             }
         } else functionScope
 
-        if (body is BlockNode)
-            body.scope = bodyScope
-
         if (body is BlockNode) {
+            body.scope = bodyScope
             visitBlock(body, pushScope = false)
-        } else visit(body)
+        } else {
+            visit(body)
+        }
 
         if (bodyScope != functionScope)
             scope = scope.outer!!
 
         scope = scope.outer!!
 
-        for (variable in bodyScope.declaredVariables) {
-            val name = when {
-                variable.source is FunctionDeclarationNode -> variable.name
-                variable.type != Variable.Type.Var -> variable.name
-                else -> continue
-            }
-
-            if (name == "arguments")
+        for (variable in bodyScope.variableSources) {
+            if (variable.name() == "arguments")
                 hasArgumentsIdentifier = true
         }
 
         val argumentsObjectNeeded = !isLexical && !hasParameterExpressions && !hasArgumentsIdentifier
 
-        functionScope.argumentsObjectMode = when {
-            !argumentsObjectNeeded -> HoistingScope.ArgumentsObjectMode.None
-            bodyScope.isStrict || !hasSimpleParams -> HoistingScope.ArgumentsObjectMode.Unmapped
-            else -> HoistingScope.ArgumentsObjectMode.Mapped
+        functionScope.argumentsMode = when {
+            !argumentsObjectNeeded -> HoistingScope.ArgumentsMode.None
+            bodyScope.isStrict || !hasSimpleParams -> HoistingScope.ArgumentsMode.Unmapped
+            else -> HoistingScope.ArgumentsMode.Mapped
         }
 
         return functionScope
@@ -252,15 +215,11 @@ class ScopeResolver : ASTVisitor {
         if (catchNode != null) {
             val parameter = catchNode.parameter
             if (parameter != null) {
+                parameter.type = VariableType.Let
+                parameter.mode = VariableMode.Declared
+
                 scope = Scope(scope)
-                parameter.scope = scope
-                parameter.variable = Variable(
-                    parameter.identifierName,
-                    Variable.Type.Let,
-                    Variable.Mode.Declared,
-                    parameter,
-                )
-                scope.addDeclaredVariable(parameter.variable)
+                scope.addVariableSource(parameter)
 
                 visitBlock(catchNode.block, pushScope = false)
 

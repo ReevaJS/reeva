@@ -12,6 +12,8 @@ class VariableDeclarationNode(
 ) : ASTNodeBase(declarations), StatementNode
 
 class Declaration(
-    val identifier: BindingIdentifierNode,
+    val identifier: IdentifierNode,
     val initializer: ExpressionNode?
-) : VariableSourceNode(listOfNotNull(identifier, initializer))
+) : VariableSourceNode(listOfNotNull(initializer)) {
+    override fun name() = identifier.name
+}

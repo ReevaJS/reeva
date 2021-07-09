@@ -2,7 +2,6 @@ package me.mattco.reeva.ast
 
 import me.mattco.reeva.ast.statements.StatementList
 import me.mattco.reeva.parsing.Scope
-import me.mattco.reeva.parsing.Variable
 import me.mattco.reeva.parsing.lexer.TokenLocation
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.newline
@@ -39,14 +38,43 @@ open class NodeWithScope(children: List<ASTNode> = emptyList()) : ASTNodeBase(ch
 }
 
 abstract class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
-    open lateinit var targetVar: Variable
+    lateinit var source: VariableSourceNode
 
-    abstract fun boundName(): String
+    abstract fun name(): String
 }
 
 abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
-    open lateinit var variable: Variable
-    open var declaredScope: Scope by ::scope
+    open var hoistedScope: Scope by ::scope
+
+    var slot: Int = -1
+    var isInlineable = true
+
+    lateinit var type: VariableType
+    lateinit var mode: VariableMode
+
+    abstract fun name(): String
+}
+
+// Variables not declared by the user
+class GlobalSourceNode(private val name: String) : VariableSourceNode() {
+    init {
+        mode = VariableMode.Global
+        type = VariableType.Var
+    }
+
+    override fun name() = name
+}
+
+enum class VariableMode {
+    Declared,
+    Parameter,
+    Global,
+}
+
+enum class VariableType {
+    Var,
+    Let,
+    Const
 }
 
 interface ASTNode {

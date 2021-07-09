@@ -121,9 +121,15 @@ class TryStatementNode(
 }
 
 class CatchNode(
-    val parameter: BindingIdentifierNode?,
+    val parameter: CatchParameter?,
     val block: BlockNode
 ) : NodeWithScope(listOfNotNull(parameter, block))
+
+class CatchParameter(
+    val identifier: IdentifierNode
+) : VariableSourceNode(listOf(identifier)) {
+    override fun name() = identifier.name
+}
 
 class BreakStatementNode(val label: String?) : ASTNodeBase(), StatementNode
 

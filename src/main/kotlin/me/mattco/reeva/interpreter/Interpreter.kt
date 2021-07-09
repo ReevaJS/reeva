@@ -782,7 +782,7 @@ class Interpreter(
         val mappedNames = mutableSetOf<String>()
 
         for (index in parameters.lastIndex downTo 0) {
-            val name = parameters[index].identifier.identifierName
+            val name = parameters[index].identifier.name
             if (name !in mappedNames) {
                 mappedNames.add(name)
                 if (index < arguments.size) {

@@ -37,24 +37,24 @@ class EarlyErrorDetector(private val reporter: ErrorReporter) : ASTVisitor {
     }
 
     private fun visitScope(scope: Scope) {
-        val varNames = mutableMapOf<String, Variable>()
-        val lexNames = mutableMapOf<String, Variable>()
-        val funcNames = mutableMapOf<String, Variable>()
+        val varNames = mutableMapOf<String, VariableSourceNode>()
+        val lexNames = mutableMapOf<String, VariableSourceNode>()
+        val funcNames = mutableMapOf<String, VariableSourceNode>()
 
-        val decls = scope.declaredVariables.toMutableList()
-        decls.addAll(scope.functionsToInitialize.map { it.variable })
-        decls.addAll(scope.hoistedVarDecls.map { it.declarations }.flatten().map { it.variable })
+        val decls = scope.variableSources.toMutableList()
+        if (scope is HoistingScope)
+            decls.addAll(scope.hoistedVariables)
 
-        decls.sortBy { it.source.sourceStart.index }
+        decls.sortBy { it.sourceStart.index }
 
         decls.forEach {
-            val name = it.name
+            val name = it.name()
 
-            if (it.type == Variable.Type.Var) {
-                val isFunction = it.source is FunctionDeclarationNode
+            if (it.type == VariableType.Var) {
+                val isFunction = it is FunctionDeclarationNode
                 if (isFunction) {
                     if (name in lexNames)
-                        reporter.at(it.source).variableRedeclaration(name, "lexical", "function")
+                        reporter.at(it).variableRedeclaration(name, "lexical", "function")
 
                     // This is a fun Early Error:
                     // If two function declarations exist for a scope, it is an error, but _only_ if that scope
@@ -71,33 +71,33 @@ class EarlyErrorDetector(private val reporter: ErrorReporter) : ASTVisitor {
                     // Also, the situation described above only occurs if the code is in strict mode. However,
                     // if either of the functions are not plain functions (generator, async, etc), then it is
                     // always an error regardless of strictness.
-                    if (name in funcNames && it.scope == funcNames[name]!!.scope && it.scope != it.scope.parentHoistingScope) {
+                    if (name in funcNames && it.scope == funcNames[name]!!.scope && it.scope != it.scope.outerHoistingScope) {
                         if (it.scope.isStrict) {
-                            reporter.at(it.source).duplicateDeclaration(name, "function")
+                            reporter.at(it).duplicateDeclaration(name, "function")
                         } else {
-                            val thisFunc = it.source as FunctionDeclarationNode
-                            val otherFunc = funcNames[name]!!.source as FunctionDeclarationNode
+                            val thisFunc = it as FunctionDeclarationNode
+                            val otherFunc = funcNames[name]!! as FunctionDeclarationNode
 
                             if (thisFunc.kind != Operations.FunctionKind.Normal || otherFunc.kind != Operations.FunctionKind.Normal)
-                                reporter.at(it.source).duplicateDeclaration(name, "function")
+                                reporter.at(it).duplicateDeclaration(name, "function")
                         }
                     }
 
                     funcNames[name] = it
                 } else {
                     if (name in lexNames)
-                        reporter.at(it.source).variableRedeclaration(name, "lexical", "variable")
+                        reporter.at(it).variableRedeclaration(name, "lexical", "variable")
                     if (name in funcNames)
-                        reporter.at(it.source).variableRedeclaration(name, "function", "lexical")
+                        reporter.at(it).variableRedeclaration(name, "function", "lexical")
                     varNames[name] = it
                 }
             } else {
                 if (name in varNames)
-                    reporter.at(it.source).variableRedeclaration(name, "variable", "lexical")
+                    reporter.at(it).variableRedeclaration(name, "variable", "lexical")
                 if (name in lexNames)
-                    reporter.at(it.source).duplicateDeclaration(name, "lexical")
-                if (name in funcNames && funcNames[name]!!.source.declaredScope == it.source.declaredScope)
-                    reporter.at(it.source).variableRedeclaration(name, "function", "lexical")
+                    reporter.at(it).duplicateDeclaration(name, "lexical")
+                if (name in funcNames)
+                    reporter.at(it).variableRedeclaration(name, "function", "lexical")
                 lexNames[name] = it
             }
         }

@@ -11,7 +11,6 @@ import me.mattco.reeva.interpreter.MethodDescriptor
 import me.mattco.reeva.interpreter.transformer.opcodes.*
 import me.mattco.reeva.parsing.HoistingScope
 import me.mattco.reeva.parsing.Scope
-import me.mattco.reeva.parsing.Variable
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
@@ -45,9 +44,9 @@ class Transformer : ASTVisitor {
         return when (node) {
             is ModuleNode -> TODO()
             is ScriptNode -> {
-                generator = Generator(1, node.scope.additionalInlineableRegisterCount)
+                generator = Generator(1, node.scope.inlineableRegisterCount)
 
-                globalDeclarationInstantiation(node.scope) {
+                globalDeclarationInstantiation(node.scope as HoistingScope) {
                     visit(node.statements)
                     generator.addIfNotTerminated(Return)
                 }
@@ -61,10 +60,10 @@ class Transformer : ASTVisitor {
                 )
             }
             is FunctionDeclarationNode -> {
-                generator = Generator(node.parameters.size + 1, node.scope.additionalInlineableRegisterCount)
+                generator = Generator(node.parameters.size + 1, node.scope.inlineableRegisterCount)
 
                 makeFunctionInfo(
-                    node.identifier.identifierName,
+                    node.identifier.name,
                     node.parameters,
                     node.body,
                     node.functionScope,
@@ -81,7 +80,7 @@ class Transformer : ASTVisitor {
         currentScope = scope
 
         if (scope.requiresEnv())
-            generator.add(PushDeclarativeEnvRecord(scope.nextSlot))
+            generator.add(PushDeclarativeEnvRecord(scope.slotCount))
     }
 
     private fun exitScope(scope: Scope) {
@@ -119,9 +118,9 @@ class Transformer : ASTVisitor {
             }
 
             // BlockScopeInstantiation
-            node.scope.functionsToInitialize.forEach {
+            node.scope.variableSources.filterIsInstance<FunctionDeclarationNode>().forEach {
                 visitFunctionHelper(
-                    it.identifier.identifierName,
+                    it.name(),
                     it.parameters,
                     it.body,
                     it.functionScope,
@@ -130,7 +129,7 @@ class Transformer : ASTVisitor {
                     it.kind,
                 )
 
-                storeVariable(it.variable)
+                storeToSource(it)
             }
 
             visitASTListNode(node.statements)
@@ -266,14 +265,13 @@ class Transformer : ASTVisitor {
         when (node) {
             // TODO: This branch shouldn't be necessary
             is IdentifierReferenceNode -> generator.add(StaGlobal(generator.intern(node.identifierName)))
-            is BindingIdentifierNode -> generator.add(StaGlobal(generator.intern(node.identifierName)))
             is VariableDeclarationNode -> {
                 val declaration = node.declarations[0]
-                storeVariable(declaration.variable)
+                storeToSource(declaration)
             }
             is LexicalDeclarationNode -> {
                 val declaration = node.declarations[0]
-                storeVariable(declaration.variable)
+                storeToSource(declaration)
             }
             else -> TODO()
         }
@@ -381,7 +379,7 @@ class Transformer : ASTVisitor {
 
             if (parameter != null) {
                 // The exception is in the accumulator
-                storeVariable(parameter.variable)
+                storeToSource(parameter)
             }
 
             // We will have already pushed a context, so we don't push a scope here
@@ -476,15 +474,13 @@ class Transformer : ASTVisitor {
     }
 
     private fun visitDeclaration(declaration: Declaration) {
-        val variable = declaration.variable
-
         if (declaration.initializer != null) {
             visit(declaration.initializer)
         } else {
             generator.add(LdaUndefined)
         }
 
-        storeVariable(variable)
+        storeToSource(declaration)
     }
 
     override fun visitDebuggerStatement() {
@@ -499,28 +495,22 @@ class Transformer : ASTVisitor {
         TODO()
     }
 
-    override fun visitBindingIdentifier(node: BindingIdentifierNode) {
-        TODO()
-    }
-
     override fun visitIdentifierReference(node: IdentifierReferenceNode) {
-        val variable = node.targetVar
-        loadVariable(node.targetVar)
-        if (node.targetVar.mode == Variable.Mode.Global)
+        loadFromSource(node.source)
+        if (node.source.isInlineable)
             return
 
-        val declarationStart = node.targetVar.source.sourceStart
-        val useStart = node.sourceStart
-        if (useStart.index < declarationStart.index && variable.type != Variable.Type.Var) {
-            // We need to check if the variable has been initialized
-            val throwBlock = generator.makeBlock()
-            val continuationBlock = generator.makeBlock()
-            generator.add(JumpIfEmpty(throwBlock, continuationBlock))
-            generator.currentBlock = throwBlock
-            val message = "cannot access lexical variable \"${node.identifierName}\" before initialization"
-            generator.add(ThrowConstantError(generator.intern(message)))
-            generator.currentBlock = continuationBlock
-        }
+        if (node.source.mode == VariableMode.Global || node.source.type == VariableType.Var)
+            return
+
+        // We need to check if the variable has been initialized
+        val throwBlock = generator.makeBlock()
+        val continuationBlock = generator.makeBlock()
+        generator.add(JumpIfEmpty(throwBlock, continuationBlock))
+        generator.currentBlock = throwBlock
+        val message = "cannot access lexical variable \"${node.identifierName}\" before initialization"
+        generator.add(ThrowConstantError(generator.intern(message)))
+        generator.currentBlock = continuationBlock
     }
 
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
@@ -529,7 +519,7 @@ class Transformer : ASTVisitor {
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
         visitFunctionHelper(
-            node.identifier?.identifierName ?: "<anonymous>",
+            node.identifier?.name ?: "<anonymous>",
             node.parameters,
             node.body,
             node.functionScope,
@@ -552,29 +542,27 @@ class Transformer : ASTVisitor {
     }
 
     private fun globalDeclarationInstantiation(
-        scope: Scope,
+        scope: HoistingScope,
         evaluationBlock: () -> Unit
     ) {
         enterScope(scope)
 
-        val variables = scope.declaredVariables
+        val variables = scope.variableSources
 
-        val varVariables = variables.filter { it.type == Variable.Type.Var }
-        val lexVariables = variables.filter { it.type != Variable.Type.Var }
+        val varVariables = variables.filter { it.type == VariableType.Var }
+        val lexVariables = variables.filter { it.type != VariableType.Var }
 
-        val varNames = varVariables.map { it.name }
-        val lexNames = lexVariables.map { it.name }
+        val varNames = varVariables.map { it.name() }
+        val lexNames = lexVariables.map { it.name() }
 
         val functionNames = mutableListOf<String>()
         val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
 
         for (decl in varVariables.asReversed()) {
-            val source = decl.source
-
-            if (source !is FunctionDeclarationNode)
+            if (decl !is FunctionDeclarationNode)
                 continue
 
-            val name = decl.name
+            val name = decl.name()
             if (name in functionNames)
                 continue
 
@@ -582,19 +570,17 @@ class Transformer : ASTVisitor {
 
             // We only care about top-level functions. Functions in nested block
             // scopes get initialized in BlockDeclarationInstantiation
-            if (source.declaredScope == scope)
-                functionsToInitialize.add(0, source)
+            if (decl !in scope.hoistedVariables)
+                functionsToInitialize.add(0, decl)
         }
 
         val declaredVarNames = mutableListOf<String>()
 
         for (decl in varVariables) {
-            val source = decl.source
-
-            if (source is FunctionDeclarationNode)
+            if (decl is FunctionDeclarationNode)
                 continue
 
-            val name = decl.name
+            val name = decl.name()
             if (name in functionNames || name in declaredVarNames)
                 continue
 
@@ -608,7 +594,7 @@ class Transformer : ASTVisitor {
 
         for (func in functionsToInitialize) {
             visitFunctionHelper(
-                func.identifier.identifierName,
+                func.identifier.name,
                 func.parameters,
                 func.body,
                 func.functionScope,
@@ -617,7 +603,7 @@ class Transformer : ASTVisitor {
                 func.kind,
             )
 
-            storeVariable(func.variable)
+            storeToSource(func)
         }
 
         evaluationBlock()
@@ -632,18 +618,17 @@ class Transformer : ASTVisitor {
         isStrict: Boolean,
         evaluationBlock: () -> Unit,
     ) {
-        val variables = bodyScope.declaredVariables
-        val varVariables = variables.filter { it.type == Variable.Type.Var }
+        expect(bodyScope is HoistingScope)
+        val variables = bodyScope.variableSources
+        val varVariables = variables.filter { it.type == VariableType.Var }
         val functionNames = mutableListOf<String>()
         val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
 
         for (decl in varVariables.asReversed()) {
-            val source = decl.source
-
-            if (source !is FunctionDeclarationNode)
+            if (decl !is FunctionDeclarationNode)
                 continue
 
-            val name = decl.name
+            val name = decl.name()
             if (name in functionNames)
                 continue
 
@@ -651,20 +636,20 @@ class Transformer : ASTVisitor {
 
             // We only care about top-level functions. Functions in nested block
             // scopes get initialized in BlockDeclarationInstantiation
-            if (source.declaredScope == bodyScope)
-                functionsToInitialize.add(0, source)
+            if (decl !in bodyScope.hoistedVariables)
+                functionsToInitialize.add(0, decl)
         }
 
         expect(functionScope is HoistingScope)
-        when (functionScope.argumentsObjectMode) {
-            HoistingScope.ArgumentsObjectMode.None -> {}
-            HoistingScope.ArgumentsObjectMode.Unmapped -> {
+        when (functionScope.argumentsMode) {
+            HoistingScope.ArgumentsMode.None -> {}
+            HoistingScope.ArgumentsMode.Unmapped -> {
                 generator.add(CreateUnmappedArgumentsObject)
-                storeVariable(functionScope.argumentsObjectVariable!!)
+                storeToSource(functionScope.argumentsSource)
             }
-            HoistingScope.ArgumentsObjectMode.Mapped -> {
+            HoistingScope.ArgumentsMode.Mapped -> {
                 generator.add(CreateMappedArgumentsObject)
-                storeVariable(functionScope.argumentsObjectVariable!!)
+                storeToSource(functionScope.argumentsSource)
             }
         }
 
@@ -675,30 +660,29 @@ class Transformer : ASTVisitor {
 
         parameters.forEachIndexed { index, param ->
             val register = index + 1
-            val variable = param.variable
 
             when {
                 param.isRest -> {
                     generator.add(CreateRestParam)
-                    storeVariable(variable)
+                    storeToSource(param)
                 }
                 param.initializer != null -> {
                     generator.add(Ldar(register))
                     generator.ifHelper(::JumpIfUndefined) {
                         visit(param.initializer)
-                        storeVariable(variable)
+                        storeToSource(param)
                     }
                 }
-                !variable.isInlineable -> {
+                !param.isInlineable -> {
                     generator.add(Ldar(register))
-                    storeVariable(variable)
+                    storeToSource(param)
                 }
             }
         }
 
         for (func in functionsToInitialize) {
             visitFunctionHelper(
-                func.identifier.identifierName,
+                func.identifier.name,
                 func.parameters,
                 func.body,
                 func.functionScope,
@@ -707,7 +691,7 @@ class Transformer : ASTVisitor {
                 func.kind,
             )
 
-            storeVariable(func.variable)
+            storeToSource(func)
         }
 
         if (bodyScope != functionScope)
@@ -735,7 +719,7 @@ class Transformer : ASTVisitor {
             TODO()
 
         val prevGenerator = generator
-        generator = Generator(parameters.size + 1, functionScope.additionalInlineableRegisterCount)
+        generator = Generator(parameters.size + 1, functionScope.inlineableRegisterCount)
 
         val info = makeFunctionInfo(
             name,
@@ -797,12 +781,12 @@ class Transformer : ASTVisitor {
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {
         expect(node.identifier != null)
-        visitClassImpl(node.identifier.identifierName, node.classNode)
-        storeVariable(node.identifier.variable)
+        visitClassImpl(node.identifier.name, node.classNode)
+        storeToSource(node)
     }
 
     override fun visitClassExpression(node: ClassExpressionNode) {
-        visitClassImpl(node.identifier?.identifierName, node.classNode)
+        visitClassImpl(node.identifier?.name, node.classNode)
     }
 
     private fun visitClassImpl(name: String?, node: ClassNode) {
@@ -995,7 +979,7 @@ class Transformer : ASTVisitor {
                     if (expr.type == MemberExpressionNode.Type.Computed) {
                         visit(expr.rhs)
                     } else {
-                        val cpIndex = generator.intern((expr.rhs as IdentifierNode).identifierName)
+                        val cpIndex = generator.intern((expr.rhs as IdentifierNode).name)
                         generator.add(LdaConstant(cpIndex))
                     }
 
@@ -1043,7 +1027,7 @@ class Transformer : ASTVisitor {
 
                 postfixGuard {
                     generator.add(op)
-                    storeVariable(target.targetVar)
+                    storeToSource(target.source)
                 }
             }
             is MemberExpressionNode -> {
@@ -1064,7 +1048,7 @@ class Transformer : ASTVisitor {
                         }
                     }
                     MemberExpressionNode.Type.NonComputed -> {
-                        val nameIndex = generator.intern((target.rhs as IdentifierNode).identifierName)
+                        val nameIndex = generator.intern((target.rhs as IdentifierNode).name)
                         generator.add(LdaNamedProperty(objectReg, nameIndex))
                         postfixGuard {
                             generator.add(ToNumeric)
@@ -1100,7 +1084,7 @@ class Transformer : ASTVisitor {
                     return
 
                 loadRhsIntoAcc()
-                storeVariable(lhs.targetVar)
+                storeToSource(lhs.source)
 
                 return
             }
@@ -1119,7 +1103,7 @@ class Transformer : ASTVisitor {
                     }
                     MemberExpressionNode.Type.NonComputed -> {
                         loadRhsIntoAcc()
-                        val nameIndex = generator.intern((lhs.rhs as IdentifierNode).identifierName)
+                        val nameIndex = generator.intern((lhs.rhs as IdentifierNode).name)
                         generator.add(StaNamedProperty(objectReg, nameIndex))
                     }
                     MemberExpressionNode.Type.Tagged -> TODO()
@@ -1129,35 +1113,35 @@ class Transformer : ASTVisitor {
         }
     }
 
-    private fun loadVariable(variable: Variable) {
-        if (variable.mode == Variable.Mode.Global) {
-            if (variable.name == "undefined") {
+    private fun loadFromSource(source: VariableSourceNode) {
+        if (source.mode == VariableMode.Global) {
+            if (source.name() == "undefined") {
                 generator.add(LdaUndefined)
             } else {
-                expect(variable.type == Variable.Type.Var)
-                generator.add(LdaGlobal(generator.intern(variable.name)))
+                expect(source.type == VariableType.Var)
+                generator.add(LdaGlobal(generator.intern(source.name())))
             }
             return
         }
 
-        expect(variable.slot != -1)
+        expect(source.slot != -1)
 
-        if (variable.isInlineable) {
-            generator.add(Ldar(variable.slot))
+        if (source.isInlineable) {
+            generator.add(Ldar(source.slot))
         } else {
-            val distance = currentScope!!.envDistanceFrom(variable.scope)
+            val distance = currentScope!!.envDistanceFrom(source.scope)
             if (distance == 0) {
-                generator.add(LdaCurrentRecordSlot(variable.slot))
+                generator.add(LdaCurrentRecordSlot(source.slot))
             } else {
-                generator.add(LdaRecordSlot(variable.slot, distance))
+                generator.add(LdaRecordSlot(source.slot, distance))
             }
         }
     }
 
-    private fun storeVariable(variable: Variable) {
-        if (variable.mode == Variable.Mode.Global) {
-            if (variable.name == "undefined") {
-                if (variable.scope.isStrict) {
+    private fun storeToSource(source: VariableSourceNode) {
+        if (source.mode == VariableMode.Global) {
+            if (source.name() == "undefined") {
+                if (source.scope.isStrict) {
                     // TODO: Better error
                     val message = generator.intern("cannot assign to constant variable \"undefined\"")
                     generator.add(ThrowConstantError(message))
@@ -1165,29 +1149,29 @@ class Transformer : ASTVisitor {
                     return
                 }
             } else {
-                expect(variable.type == Variable.Type.Var)
-                generator.add(StaGlobal(generator.intern(variable.name)))
+                expect(source.type == VariableType.Var)
+                generator.add(StaGlobal(generator.intern(source.name())))
             }
             return
         }
 
-        expect(variable.slot != -1)
+        expect(source.slot != -1)
 
-        if (variable.isInlineable) {
-            generator.add(Star(variable.slot))
+        if (source.isInlineable) {
+            generator.add(Star(source.slot))
         } else {
-            val distance = currentScope!!.envDistanceFrom(variable.scope)
+            val distance = currentScope!!.envDistanceFrom(source.scope)
             if (distance == 0) {
-                generator.add(StaCurrentRecordSlot(variable.slot))
+                generator.add(StaCurrentRecordSlot(source.slot))
             } else {
-                generator.add(StaRecordSlot(variable.slot, distance))
+                generator.add(StaRecordSlot(source.slot, distance))
             }
         }
     }
 
     private fun checkForConstReassignment(node: VariableRefNode): Boolean {
-        return if (node.targetVar.type == Variable.Type.Const) {
-            val message = "cannot assign to constant variable \"${node.targetVar.name}\""
+        return if (node.source.type == VariableType.Const) {
+            val message = "cannot assign to constant variable \"${node.source.name()}\""
             generator.add(ThrowConstantError(generator.intern(message)))
             true
         } else false
@@ -1229,7 +1213,7 @@ class Transformer : ASTVisitor {
                 generator.add(LdaKeyedProperty(objectReg))
             }
             MemberExpressionNode.Type.NonComputed -> {
-                val cpIndex = generator.intern((node.rhs as IdentifierNode).identifierName)
+                val cpIndex = generator.intern((node.rhs as IdentifierNode).name)
                 generator.add(LdaNamedProperty(objectReg, cpIndex))
             }
             MemberExpressionNode.Type.Tagged -> TODO()
@@ -1255,7 +1239,7 @@ class Transformer : ASTVisitor {
                     generator.add(LdaKeyedProperty(receiverReg))
                 }
                 MemberExpressionNode.Type.NonComputed -> {
-                    val cpIndex = generator.intern((target.rhs as IdentifierNode).identifierName)
+                    val cpIndex = generator.intern((target.rhs as IdentifierNode).name)
                     generator.add(LdaNamedProperty(receiverReg, cpIndex))
                 }
                 MemberExpressionNode.Type.Tagged -> TODO()
@@ -1543,7 +1527,7 @@ class Transformer : ASTVisitor {
 
     override fun visitPropertyName(node: PropertyName) {
         if (node.type == PropertyName.Type.Identifier) {
-            val nameIndex = generator.intern((node.expression as IdentifierNode).identifierName)
+            val nameIndex = generator.intern((node.expression as IdentifierNode).name)
             generator.add(LdaConstant(nameIndex))
         } else visit(node.expression)
     }
@@ -1551,7 +1535,7 @@ class Transformer : ASTVisitor {
     private fun storeObjectProperty(objectReg: Int, property: PropertyName, valueProducer: () -> Unit) {
         if (property.type == PropertyName.Type.Identifier) {
             valueProducer()
-            val name = (property.expression as IdentifierNode).identifierName
+            val name = (property.expression as IdentifierNode).name
             generator.add(StaNamedProperty(objectReg, generator.intern(name)))
             return
         }

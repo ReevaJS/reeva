@@ -5,6 +5,7 @@ import me.mattco.reeva.ast.statements.ASTListNode
 import me.mattco.reeva.ast.statements.BlockNode
 import me.mattco.reeva.parsing.Scope
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.utils.expect
 
 typealias ArgumentList = ASTListNode<ArgumentNode>
 
@@ -15,7 +16,7 @@ class ParameterList(parameters: List<Parameter> = emptyList()) : ASTListNode<Par
     }
 
     fun containsDuplicates(): Boolean {
-        return distinctBy { it.identifier.identifierName }.size != size
+        return distinctBy { it.identifier.name }.size != size
     }
 }
 
@@ -34,34 +35,34 @@ class ArgumentNode(
 }
 
 class Parameter(
-    val identifier: BindingIdentifierNode,
+    val identifier: IdentifierNode,
     val initializer: ExpressionNode?,
     val isRest: Boolean
 ) : VariableSourceNode(listOfNotNull(identifier, initializer)) {
-    override var variable by identifier::variable
-
     fun isSimple() = !isRest && initializer == null
 
+    override fun name() = identifier.name
+
     init {
-        if (isRest && initializer != null)
-            throw IllegalArgumentException()
+        if (isRest)
+            expect(initializer == null)
     }
 }
 
 class FunctionDeclarationNode(
-    val identifier: BindingIdentifierNode,
+    val identifier: IdentifierNode,
     val parameters: ParameterList,
     val body: BlockNode,
     val kind: Operations.FunctionKind,
 ) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), StatementNode {
-    override var variable by identifier::variable
-
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
+
+    override fun name() = identifier.name
 }
 
 class FunctionExpressionNode(
-    val identifier: BindingIdentifierNode?,
+    val identifier: IdentifierNode?,
     val parameters: ParameterList,
     val body: BlockNode,
     val kind: Operations.FunctionKind,

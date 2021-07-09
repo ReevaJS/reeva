@@ -50,7 +50,6 @@ interface ASTVisitor {
     fun visitExpression(node: ExpressionNode) {
         when (node) {
             is ArgumentNode -> visitArgument(node)
-            is BindingIdentifierNode -> visitBindingIdentifier(node)
             is IdentifierReferenceNode -> visitIdentifierReference(node)
             is IdentifierNode -> visitIdentifier(node)
             is FunctionExpressionNode -> visitFunctionExpression(node)
@@ -153,7 +152,7 @@ interface ASTVisitor {
     fun visitTryStatement(node: TryStatementNode) {
         visit(node.tryBlock)
         node.catchNode?.also {
-            it.parameter?.also(::visitBindingIdentifier)
+            it.parameter?.identifier?.also(::visitIdentifier)
             visit(it.block)
         }
         node.finallyBlock?.also(::visit)
@@ -191,8 +190,6 @@ interface ASTVisitor {
         visit(node.expression)
     }
 
-    fun visitBindingIdentifier(node: BindingIdentifierNode) {}
-
     fun visitIdentifierReference(node: IdentifierReferenceNode) {}
 
     // Should only ever happen in CPEAAPL nodes
@@ -208,7 +205,7 @@ interface ASTVisitor {
 
     fun visitPropertyName(node: PropertyName) {
         when (node.type) {
-            PropertyName.Type.Identifier -> (node.expression as IdentifierNode).identifierName
+            PropertyName.Type.Identifier -> (node.expression as IdentifierNode).name
             PropertyName.Type.Computed -> visit(node.expression)
             else -> {
             }
