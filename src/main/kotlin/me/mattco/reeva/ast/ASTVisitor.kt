@@ -341,9 +341,7 @@ interface ASTVisitor {
                     visit(it.key.expression)
                     visit(it.value)
                 }
-                is MethodProperty -> {
-                    visit(it)
-                }
+                is MethodProperty -> visit(it.method)
                 is ShorthandProperty -> visit(it.key)
                 is SpreadProperty -> visit(it.target)
             }

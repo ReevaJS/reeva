@@ -1,6 +1,7 @@
 package me.mattco.reeva.parser
 
 import me.mattco.reeva.ast.*
+import me.mattco.reeva.ast.literals.MethodDefinitionNode
 import me.mattco.reeva.ast.statements.BlockNode
 import me.mattco.reeva.runtime.Operations
 
@@ -28,6 +29,11 @@ class EarlyErrorDetector(private val reporter: ErrorReporter) : ASTVisitor {
     override fun visitArrowFunction(node: ArrowFunctionNode) {
         visitScope(node.scope)
         super.visitArrowFunction(node)
+    }
+
+    override fun visitMethodDefinition(node: MethodDefinitionNode) {
+        visitScope(node.scope)
+        super.visitMethodDefinition(node)
     }
 
     private fun visitScope(scope: Scope) {
