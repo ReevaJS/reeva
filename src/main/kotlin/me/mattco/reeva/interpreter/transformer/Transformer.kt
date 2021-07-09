@@ -876,7 +876,7 @@ class Transformer : ASTVisitor {
             }
 
             val functionInfo = visitFunctionHelper(
-                propName.debugName(),
+                propName.asString(),
                 method.parameters,
                 method.body,
                 method.functionScope,
@@ -886,7 +886,7 @@ class Transformer : ASTVisitor {
             )
 
             val descriptor = MethodDescriptor(
-                if (isComputed) null else propName.debugName(),
+                if (isComputed) null else propName.asString(),
                 classMethod.isStatic,
                 method.kind.toFunctionKind(),
                 method.kind == MethodDefinitionNode.Kind.Getter,

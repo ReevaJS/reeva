@@ -311,7 +311,11 @@ object Operations {
     @ECMAImpl("6.1.6.1.20")
     fun numericToString(value: JSValue): String {
         expect(value is JSNumber)
-        return Dtoa.toShortest(value.number) ?: TODO()
+        return numberToString(value.number)
+    }
+
+    fun numberToString(value: Double): String {
+        return Dtoa.toShortest(value) ?: TODO()
     }
 
     @JvmStatic
@@ -654,11 +658,15 @@ object Operations {
             JSNull, JSFalse -> JSNumber.ZERO
             JSTrue -> JSNumber(1)
             is JSNumber -> return value
-            is JSString -> (StringToFP(value.string).parse() ?: java.lang.Double.NaN).toValue()
+            is JSString -> (stringToNumber(value.string)).toValue()
             is JSSymbol, is JSBigInt -> Errors.FailedToNumber(value.type).throwTypeError(realm)
             is JSObject -> toNumber(realm, toPrimitive(realm, value, ToPrimitiveHint.AsNumber))
             else -> unreachable()
         }
+    }
+
+    fun stringToNumber(string: String): Double {
+        return StringToFP(string).parse() ?: java.lang.Double.NaN
     }
 
     @JvmStatic

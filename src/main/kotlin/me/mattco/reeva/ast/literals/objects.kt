@@ -6,7 +6,6 @@ import me.mattco.reeva.ast.statements.ASTListNode
 import me.mattco.reeva.ast.statements.BlockNode
 import me.mattco.reeva.parser.Scope
 import me.mattco.reeva.runtime.Operations
-import kotlin.math.floor
 
 typealias PropertyDefinitionList = ASTListNode<Property>
 
@@ -29,14 +28,10 @@ class PropertyName(
     val expression: ExpressionNode,
     val type: Type,
 ) : ASTNodeBase(listOf(expression)) {
-    fun debugName() = when (type) {
+    fun asString() = when (type) {
         Type.Identifier -> (expression as IdentifierNode).identifierName
         Type.String -> (expression as StringLiteralNode).value
-        Type.Number -> (expression as NumericLiteralNode).value.let {
-            if (floor(it) == it && it >= Int.MIN_VALUE && it <= Int.MAX_VALUE) {
-                it.toInt().toString()
-            } else it.toString()
-        }
+        Type.Number -> Operations.numberToString((expression as NumericLiteralNode).value)
         Type.Computed -> "[computed method name]"
     }
 
