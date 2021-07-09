@@ -5,22 +5,20 @@ package me.mattco.reeva.runtime
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.ASTNode
 import me.mattco.reeva.ast.FunctionDeclarationNode
-import me.mattco.reeva.ast.ParameterList
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
-import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.interpreter.transformer.Transformer
 import me.mattco.reeva.interpreter.transformer.opcodes.IrPrinter
 import me.mattco.reeva.jvmcompat.JSClassInstanceObject
 import me.mattco.reeva.jvmcompat.JSClassObject
+import me.mattco.reeva.mfbt.Dtoa
+import me.mattco.reeva.mfbt.StringToFP
 import me.mattco.reeva.parser.Parser
 import me.mattco.reeva.parser.ParsingResult
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.arrays.JSArrayObject
-import me.mattco.reeva.runtime.builtins.JSMappedArgumentsObject
 import me.mattco.reeva.runtime.builtins.JSProxyObject
-import me.mattco.reeva.runtime.builtins.JSUnmappedArgumentsObject
 import me.mattco.reeva.runtime.builtins.promises.JSCapabilitiesExecutor
 import me.mattco.reeva.runtime.builtins.promises.JSPromiseObject
 import me.mattco.reeva.runtime.builtins.promises.JSRejectFunction
@@ -30,7 +28,6 @@ import me.mattco.reeva.runtime.builtins.regexp.JSRegExpProto
 import me.mattco.reeva.runtime.errors.JSSyntaxErrorObject
 import me.mattco.reeva.runtime.functions.JSBoundFunction
 import me.mattco.reeva.runtime.functions.JSFunction
-import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.iterators.JSArrayIterator
 import me.mattco.reeva.runtime.memory.DataBlock
 import me.mattco.reeva.runtime.memory.JSIntegerIndexedObject
@@ -314,22 +311,7 @@ object Operations {
     @ECMAImpl("6.1.6.1.20")
     fun numericToString(value: JSValue): String {
         expect(value is JSNumber)
-        if (value.isNaN)
-            return "NaN"
-        if (value.isZero)
-            return "0"
-        if (value.number < 0)
-            return "-" + numericToString(JSNumber(-value.number))
-        if (value.isPositiveInfinity)
-            return "Infinity"
-
-        // TODO: Better conversion, preferably V8's algorithm
-        // (mfbt/double-conversion/double-conversion.{h,cc}
-        if (value.isInt)
-            return value.asInt.toString()
-        if (value.isLong)
-            return value.asLong.toString()
-        return value.asDouble.toString()
+        return Dtoa.toShortest(value.number) ?: TODO()
     }
 
     @JvmStatic
@@ -672,22 +654,7 @@ object Operations {
             JSNull, JSFalse -> JSNumber.ZERO
             JSTrue -> JSNumber(1)
             is JSNumber -> return value
-            // TODO: spec-compliant string printing
-            is JSString -> when (value.string) {
-                "+Infinity", "Infinity" -> JSNumber.POSITIVE_INFINITY
-                "-Infinity" -> JSNumber.NEGATIVE_INFINITY
-                else -> if ('.' in value.string) {
-                    try {
-                        java.lang.Double.parseDouble(value.string).toValue()
-                    } catch (e: NumberFormatException) {
-                        JSNumber.NaN
-                    }
-                } else try {
-                    Integer.parseInt(value.string).toValue()
-                } catch (e: NumberFormatException) {
-                    JSNumber.NaN
-                }
-            }
+            is JSString -> (StringToFP(value.string).parse() ?: java.lang.Double.NaN).toValue()
             is JSSymbol, is JSBigInt -> Errors.FailedToNumber(value.type).throwTypeError(realm)
             is JSObject -> toNumber(realm, toPrimitive(realm, value, ToPrimitiveHint.AsNumber))
             else -> unreachable()
@@ -891,7 +858,6 @@ object Operations {
             JSNull -> "null"
             JSTrue -> "true"
             JSFalse -> "false"
-            // TODO: Make sure to follow all of JS's number conversion rules here
             is JSNumber -> numericToString(value)
             is JSSymbol -> Errors.FailedSymbolToString.throwTypeError(realm)
             is JSBigInt -> bigintToString(value)

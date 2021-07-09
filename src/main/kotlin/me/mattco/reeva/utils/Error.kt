@@ -199,6 +199,8 @@ object Errors {
 
     object Number {
         class InvalidRadix(radix: Int) : Error("invalid radix: $radix")
+        class PrecisionOutOfRange(precision: String) : Error("precision $precision is out of range")
+        class RadixOutOfRange(radix: Int) : Error("radix $radix is out of range")
     }
 
     object Object {
