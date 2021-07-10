@@ -451,6 +451,15 @@ class Transformer : ASTVisitor {
             visit(node.expression)
             if (generator.currentBlock.isTerminated)
                 return
+            if (generator.isDerivedClassConstructor) {
+                generator.ifHelper(::JumpIfUndefined) {
+                    val temp = generator.reserveRegister()
+                    generator.add(Star(temp))
+                    generator.add(Ldar(0))
+                    generator.add(ThrowSuperNotInitializedIfEmpty)
+                    generator.add(Ldar(temp))
+                }
+            }
         } else {
             generator.add(LdaUndefined)
         }
