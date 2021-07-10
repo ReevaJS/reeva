@@ -30,7 +30,7 @@ open class Scope(val outer: Scope? = null) {
         outer?.childScopes?.add(this)
     }
 
-    fun requiresEnv() = variableSources.any { !it.isInlineable }
+    open fun requiresEnv() = variableSources.any { !it.isInlineable }
 
     fun addVariableSource(source: VariableSourceNode) {
         source.scope = this
@@ -51,6 +51,13 @@ open class Scope(val outer: Scope? = null) {
             reference.source = GlobalSourceNode(reference.name())
             pendingVariableReferences.add(reference)
         }
+    }
+
+    fun getReceiverOrNewTargetScope(): HoistingScope {
+        var receiverScope = outerHoistingScope
+        while (receiverScope.isLexical)
+            receiverScope = receiverScope.outer!!.outerHoistingScope
+        return receiverScope
     }
 
     fun envDistanceFrom(ancestorScope: Scope): Int {
@@ -88,7 +95,7 @@ open class Scope(val outer: Scope? = null) {
         return scope
     }
 
-    private fun connectPendingReferences(source: VariableSourceNode) {
+    protected fun connectPendingReferences(source: VariableSourceNode) {
         for (reference in pendingVariableReferences) {
             if (reference.name() == source.name()) {
                 reference.source = source
@@ -110,7 +117,7 @@ open class Scope(val outer: Scope? = null) {
     }
 }
 
-open class HoistingScope(outer: Scope? = null) : Scope(outer) {
+open class HoistingScope(outer: Scope? = null, val isLexical: Boolean = false) : Scope(outer) {
     override var isStrict = false
 
     override var nextInlineableRegister = Interpreter.RESERVED_REGISTERS
@@ -120,8 +127,12 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
     // as var declarations in a nested block
     val hoistedVariables = mutableListOf<VariableSourceNode>()
 
+    var receiverVariable: VariableSourceNode? = null
+
     var argumentsMode = ArgumentsMode.None
     lateinit var argumentsSource: VariableSourceNode
+
+    override fun requiresEnv() = super.requiresEnv() || receiverVariable?.isInlineable == false
 
     fun addHoistedVariable(source: VariableSourceNode) {
         if (source.scope == this)
@@ -129,6 +140,26 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
 
         hoistedVariables.add(source)
         source.hoistedScope = this
+    }
+
+    fun addReceiverReference(node: VariableRefNode) {
+        val declaredScope = node.scope
+        val receiverScope = getReceiverOrNewTargetScope()
+
+        if (receiverScope.receiverVariable == null) {
+            val receiverVariable = FakeSourceNode("*this")
+            receiverVariable.mode = VariableMode.Parameter
+            receiverVariable.type = VariableType.Const
+            receiverVariable.scope = receiverScope
+            receiverScope.receiverVariable = receiverVariable
+            receiverScope.connectPendingReferences(receiverVariable)
+        }
+
+        val sourceVariable = receiverScope.receiverVariable!!
+        node.source = sourceVariable
+
+        if (receiverScope != declaredScope)
+            receiverScope.receiverVariable!!.isInlineable = false
     }
 
     override fun finish() {
@@ -164,6 +195,12 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
         val locals = variableSources.filter { it.mode != VariableMode.Parameter }
 
         nextInlineableRegister = Interpreter.RESERVED_REGISTERS + parameters.size
+
+        when (receiverVariable?.isInlineable) {
+            true -> receiverVariable!!.slot = 0
+            false -> receiverVariable!!.slot = nextSlot++
+            else -> {}
+        }
 
         parameters.forEachIndexed { index, source ->
             source.slot = if (source.isInlineable) {

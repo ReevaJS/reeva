@@ -210,9 +210,9 @@ class IrPrinter(private val info: FunctionInfo) {
 
     private fun stringifyRegister(register: Register): String {
         return when {
-            register == Interpreter.RECEIVER_REGISTER -> " <this>"
+            register == Interpreter.RECEIVER_REGISTER -> " <receiver>"
             register == Interpreter.NEW_TARGET_REGISTER -> " <new.target>"
-            register < info.argCount -> " a${register - 1}"
+            register < info.argCount -> " a${register - Interpreter.RESERVED_REGISTERS}"
             else -> " r${register - info.argCount}"
         }
     }

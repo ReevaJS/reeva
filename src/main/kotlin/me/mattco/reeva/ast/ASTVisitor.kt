@@ -74,7 +74,7 @@ interface ASTVisitor {
             is TemplateLiteralNode -> visitTemplateLiteral(node)
             is RegExpLiteralNode -> visitRegExpLiteral(node)
             is ImportMetaExpressionNode -> visitImportMetaExpression()
-            is NewTargetExpressionNode -> visitNewTargetExpression()
+            is NewTargetNode -> visitNewTargetExpression(node)
             is ArrayLiteralNode -> visitArrayLiteral(node)
             is ObjectLiteralNode -> visitObjectLiteral(node)
             is BooleanLiteralNode -> visitBooleanLiteral(node)
@@ -82,7 +82,7 @@ interface ASTVisitor {
             is NumericLiteralNode -> visitNumericLiteral(node)
             is BigIntLiteralNode -> visitBigIntLiteral(node)
             is NullLiteralNode -> visitNullLiteral()
-            is ThisLiteralNode -> visitThisLiteral()
+            is ThisLiteralNode -> visitThisLiteral(node)
             else -> throw IllegalArgumentException("Unrecognized ExpressionNode ${node.astNodeName}")
         }
     }
@@ -323,7 +323,7 @@ interface ASTVisitor {
 
     fun visitImportMetaExpression() {}
 
-    fun visitNewTargetExpression() {}
+    fun visitNewTargetExpression(node: NewTargetNode) {}
 
     fun visitArrayLiteral(node: ArrayLiteralNode) {
         node.elements.forEach {
@@ -355,5 +355,5 @@ interface ASTVisitor {
 
     fun visitNullLiteral() {}
 
-    fun visitThisLiteral() {}
+    fun visitThisLiteral(node: ThisLiteralNode) {}
 }

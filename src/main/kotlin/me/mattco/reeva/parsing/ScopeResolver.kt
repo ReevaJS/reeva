@@ -1,8 +1,10 @@
 package me.mattco.reeva.parsing
 
 import me.mattco.reeva.ast.*
+import me.mattco.reeva.ast.expressions.NewTargetNode
 import me.mattco.reeva.ast.expressions.UnaryExpressionNode
 import me.mattco.reeva.ast.literals.MethodDefinitionNode
+import me.mattco.reeva.ast.literals.ThisLiteralNode
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.utils.expect
 
@@ -145,7 +147,7 @@ class ScopeResolver : ASTVisitor {
     }
 
     private fun visitFunctionHelper(parameters: ParameterList, body: ASTNode, isLexical: Boolean): Scope {
-        val functionScope = HoistingScope(scope)
+        val functionScope = HoistingScope(scope, isLexical)
         scope = functionScope
 
         if (body is BlockNode && body.hasUseStrict)
@@ -173,7 +175,9 @@ class ScopeResolver : ASTVisitor {
         }
 
         val bodyScope = if (body is BlockNode && !parameters.isSimple()) {
-            HoistingScope(scope).also {
+            // The body scope shouldn't be a target for the receiver or new.target
+            // sources
+            HoistingScope(scope, isLexical = true).also {
                 scope = it
             }
         } else functionScope
@@ -294,5 +298,14 @@ class ScopeResolver : ASTVisitor {
     override fun visitUnaryExpression(node: UnaryExpressionNode) {
         node.scope = scope
         super.visitUnaryExpression(node)
+    }
+
+    override fun visitThisLiteral(node: ThisLiteralNode) {
+        node.scope = scope
+        scope.outerHoistingScope.addReceiverReference(node)
+    }
+
+    override fun visitNewTargetExpression(node: NewTargetNode) {
+        node.scope = scope
     }
 }

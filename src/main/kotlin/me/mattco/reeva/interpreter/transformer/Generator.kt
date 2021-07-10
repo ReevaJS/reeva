@@ -34,7 +34,7 @@ data class FunctionOpcodes(
 
 class Generator(
     argCount: Int,
-    reservedRegisters: Int,
+    additionalInlineableRegisterCount: Int,
     val isDerivedClassConstructor: Boolean = false,
 ) {
     private val blocks = mutableListOf<Block>()
@@ -44,7 +44,7 @@ class Generator(
     val handlerScope: HandlerScope?
         get() = handlerScopeStack.firstOrNull()
 
-    private var nextRegister = argCount + reservedRegisters
+    private var nextRegister = argCount + additionalInlineableRegisterCount
     private var nextBlock = 1
     var currentBlock = makeBlock()
         set(value) {

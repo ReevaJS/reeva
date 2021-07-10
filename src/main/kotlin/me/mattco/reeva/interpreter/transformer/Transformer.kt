@@ -54,7 +54,7 @@ class Transformer : ASTVisitor {
                     generator.finish(),
                     Interpreter.RESERVED_REGISTERS,
                     node.scope.isStrict,
-                    isTopLevelScript = true
+                    isTopLevelScript = true,
                 )
             }
             is FunctionDeclarationNode -> {
@@ -629,6 +629,8 @@ class Transformer : ASTVisitor {
         evaluationBlock: () -> Unit,
     ) {
         expect(bodyScope is HoistingScope)
+        expect(functionScope is HoistingScope)
+
         val variables = bodyScope.variableSources
         val varVariables = variables.filter { it.type == VariableType.Var }
         val functionNames = mutableListOf<String>()
@@ -650,7 +652,6 @@ class Transformer : ASTVisitor {
                 functionsToInitialize.add(0, decl)
         }
 
-        expect(functionScope is HoistingScope)
         when (functionScope.argumentsMode) {
             HoistingScope.ArgumentsMode.None -> {
             }
@@ -668,6 +669,13 @@ class Transformer : ASTVisitor {
 
         if (parameters.containsDuplicates())
             TODO("Handle duplicate parameter names")
+
+        val receiver = functionScope.receiverVariable
+
+        if (receiver != null && !receiver.isInlineable) {
+            generator.add(Ldar(0))
+            storeToSource(receiver)
+        }
 
         parameters.forEachIndexed { index, param ->
             val register = Interpreter.RESERVED_REGISTERS + index
@@ -791,10 +799,12 @@ class Transformer : ASTVisitor {
             generator.addIfNotTerminated(Return)
         }
 
+        val scope = functionScope as HoistingScope
+
         return FunctionInfo(
             name,
             generator.finish(),
-            parameters.size + Interpreter.RESERVED_REGISTERS,
+            Interpreter.RESERVED_REGISTERS + parameters.size,
             isStrict,
             isTopLevelScript = false,
             parameters,
@@ -1516,8 +1526,9 @@ class Transformer : ASTVisitor {
         TODO()
     }
 
-    override fun visitNewTargetExpression() {
-        TODO()
+    override fun visitNewTargetExpression(node: NewTargetNode) {
+        // new.target is always inline
+        generator.add(Ldar(Interpreter.NEW_TARGET_REGISTER))
     }
 
     override fun visitArrayLiteral(node: ArrayLiteralNode) {
@@ -1657,8 +1668,8 @@ class Transformer : ASTVisitor {
         generator.add(LdaNull)
     }
 
-    override fun visitThisLiteral() {
-        generator.add(Ldar(0))
+    override fun visitThisLiteral(node: ThisLiteralNode) {
+        loadFromSource(node.source)
         if (generator.isDerivedClassConstructor)
             generator.add(ThrowSuperNotInitializedIfEmpty)
     }

@@ -55,14 +55,17 @@ abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeW
     abstract fun name(): String
 }
 
-// Variables not declared by the user
-class GlobalSourceNode(private val name: String) : VariableSourceNode() {
+// Variable not declared by the user, created at scope resolution time.
+// The names of fake source nodes will always start with an asterisk
+open class FakeSourceNode(private val name: String) : VariableSourceNode() {
+    override fun name() = name
+}
+
+class GlobalSourceNode(name: String) : FakeSourceNode(name) {
     init {
         mode = VariableMode.Global
         type = VariableType.Var
     }
-
-    override fun name() = name
 }
 
 enum class VariableMode {

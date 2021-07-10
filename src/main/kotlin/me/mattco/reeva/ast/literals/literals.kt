@@ -3,6 +3,7 @@ package me.mattco.reeva.ast.literals
 import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.ASTNodeBase
 import me.mattco.reeva.ast.ExpressionNode
+import me.mattco.reeva.ast.VariableRefNode
 
 sealed class BooleanLiteralNode (val value: Boolean) : ASTNodeBase(), ExpressionNode {
     override fun dump(indent: Int) = buildString {
@@ -57,4 +58,6 @@ class BigIntLiteralNode(val value: String, val type: Type) : ASTNodeBase(), Expr
 
 class NullLiteralNode : ASTNodeBase(), ExpressionNode
 
-class ThisLiteralNode : ASTNodeBase(), ExpressionNode
+class ThisLiteralNode : VariableRefNode(), ExpressionNode {
+    override fun name() = "*this"
+}

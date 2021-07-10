@@ -739,11 +739,11 @@ class Interpreter(
     override fun visitCreateMappedArgumentsObject() {
         // TODO: Create a mapped arguments object
         // accumulator = createMappedArgumentsObject(realm, function, info.parameters!!, arguments.drop(RESERVED_REGISTERS), lexicalEnv)
-        accumulator = createUnmappedArgumentsObject(realm, arguments.drop(RESERVED_REGISTERS))
+        accumulator = createUnmappedArgumentsObject(realm, arguments.drop(Interpreter.RESERVED_REGISTERS))
     }
 
     override fun visitCreateUnmappedArgumentsObject() {
-        accumulator = createUnmappedArgumentsObject(realm, arguments.drop(RESERVED_REGISTERS))
+        accumulator = createUnmappedArgumentsObject(realm, arguments.drop(Interpreter.RESERVED_REGISTERS))
     }
 
     @ECMAImpl("9.4.4.6")
@@ -1015,7 +1015,12 @@ class Interpreter(
             if (!::generatorObject.isInitialized) {
                 expect(!info.isTopLevelScript)
                 val interpreter =
-                    Interpreter(realm, this, listOf(arguments.thisValue, *arguments.toTypedArray()), outerEnvRecord)
+                    Interpreter(
+                        realm,
+                        this,
+                        listOf(arguments.thisValue, arguments.newTarget, *arguments.toTypedArray()),
+                        outerEnvRecord,
+                    )
                 generatorObject = JSGeneratorObject.create(realm, interpreter, outerEnvRecord)
             }
 
