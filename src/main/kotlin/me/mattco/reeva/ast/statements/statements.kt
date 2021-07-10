@@ -21,7 +21,11 @@ open class ASTListNode<T : ASTNode>(
 
 class BlockStatementNode(val block: BlockNode) : ASTNodeBase(listOf(block)), StatementNode
 
-class BlockNode(val statements: StatementList, val hasUseStrict: Boolean) : NodeWithScope(statements), StatementNode, Labellable {
+// useStrict is an ASTNode so that we can point to it during errors in case it is
+// invalid (i.e. in functions with non-simple parameter lists).
+class BlockNode(val statements: StatementList, val useStrict: ASTNode?) : NodeWithScope(statements), StatementNode, Labellable {
+    val hasUseStrict: Boolean get() = useStrict != null
+
     override var labels: MutableSet<String> = mutableSetOf()
 }
 

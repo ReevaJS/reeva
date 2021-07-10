@@ -101,7 +101,7 @@ class Parser(val source: String) {
         // ScriptBody :
         //     StatementList
 
-        isStrict = checkForAndConsumeUseStrict()
+        isStrict = checkForAndConsumeUseStrict() != null
         ScriptNode(parseStatementList(), isStrict)
     }
 
@@ -691,12 +691,10 @@ class Parser(val source: String) {
 
         val params = parseFunctionParameters()
 
-        // TODO: Static Semantics
-
         val body = parseFunctionBody(isAsync, isGenerator)
 
         if (body.hasUseStrict && !params.isSimple())
-            reporter.at(body).error("Illegal \"use strict\" directive in function with non-simple parameter list")
+            reporter.at(body.useStrict!!).invalidUseStrict()
 
         FunctionTemp(identifier, params, body, type)
     }
@@ -877,6 +875,9 @@ class Parser(val source: String) {
         val params = parseFunctionParameters()
         val body = parseFunctionBody(kind.isAsync, kind.isGenerator)
 
+        if (!params.isSimple() && body.hasUseStrict)
+            reporter.at(body.useStrict!!).invalidUseStrict()
+
         MethodDefinitionNode(name, params, body, kind)
     }
 
@@ -965,28 +966,28 @@ class Parser(val source: String) {
         IdentifierNode(parseIdentifierString())
     }
 
-    private fun checkForAndConsumeUseStrict(): Boolean {
-        return if (match(TokenType.StringLiteral) && token.literals == "use strict") {
+    private fun checkForAndConsumeUseStrict(): ASTNode? = nps {
+        return@nps if (match(TokenType.StringLiteral) && token.literals == "use strict") {
             consume()
             if (match(TokenType.Semicolon))
                 consume()
-            true
-        } else false
+            StringLiteralNode("use strict")
+        } else null
     }
 
     private fun parseBlock(): BlockNode = nps {
         consume(TokenType.OpenCurly)
         val prevIsStrict = isStrict
-        val isStrict = checkForAndConsumeUseStrict()
+        val useStrict = checkForAndConsumeUseStrict()
 
-        if (isStrict)
+        if (useStrict != null)
             this.isStrict = true
 
         val statements = parseStatementList()
         consume(TokenType.CloseCurly)
         this.isStrict = prevIsStrict
 
-        BlockNode(statements, isStrict)
+        BlockNode(statements, useStrict)
     }
 
     private fun parseExpression(

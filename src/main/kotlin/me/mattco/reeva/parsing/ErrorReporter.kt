@@ -36,6 +36,7 @@ abstract class Reporter {
     fun invalidContinueTarget(target: String): Nothing = error("invalid continue target \"$target\"")
     fun invalidLhsInAssignment(): Nothing = error("invalid left-hand-side in assignment expression")
     fun invalidShorthandProperty(): Nothing = error("object shorthand property must be an identifier name")
+    fun invalidUseStrict(): Nothing = error("invalid \"use strict\" directive in function with non-simple parameter list")
     fun paramAfterRest(): Nothing = error("function rest parameter must be the last parameter")
     fun restParamInitializer(): Nothing = error("rest parameter cannot have an initializer")
     fun strictAssignToArguments(): Nothing = error("cannot assign to \"arguments\" in strict-mode code")
