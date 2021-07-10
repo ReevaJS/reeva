@@ -875,7 +875,7 @@ class Interpreter(
     }
 
     override fun visitCreateRestParam() {
-        accumulator = Operations.createArrayFromList(realm, arguments.takeLast(arguments.size - info.argCount + RESERVED_REGISTERS))
+        accumulator = Operations.createArrayFromList(realm, arguments.drop(info.argCount - 1))
     }
 
     override fun visitDebugBreakpoint() {
