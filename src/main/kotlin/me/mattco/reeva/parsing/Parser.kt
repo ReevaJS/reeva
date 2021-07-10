@@ -1165,8 +1165,9 @@ class Parser(val source: String) {
 
     private fun parseNewExpression(): ExpressionNode = nps {
         consume(TokenType.New)
-        val target = parseExpression(TokenType.New.operatorPrecedence, false, setOf(TokenType.OpenParen))
-        NewExpressionNode(target, parseArguments())
+        val target = parseExpression(TokenType.New.operatorPrecedence, excludedTokens = setOf(TokenType.OpenParen))
+        val arguments = if (match(TokenType.OpenParen)) parseArguments() else ArgumentList()
+        NewExpressionNode(target, arguments)
     }
 
     private fun parseArguments(): ArgumentList = nps {
