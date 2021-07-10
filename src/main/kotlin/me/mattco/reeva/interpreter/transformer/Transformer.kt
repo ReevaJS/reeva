@@ -453,13 +453,12 @@ class Transformer : ASTVisitor {
                 return
             if (generator.isDerivedClassConstructor) {
                 generator.ifHelper(::JumpIfUndefined) {
-                    val temp = generator.reserveRegister()
-                    generator.add(Star(temp))
-                    generator.add(Ldar(0))
+                    generator.add(Ldar(Interpreter.RECEIVER_REGISTER))
                     generator.add(ThrowSuperNotInitializedIfEmpty)
-                    generator.add(Ldar(temp))
                 }
             }
+        } else if (generator.isDerivedClassConstructor) {
+            generator.add(Ldar(Interpreter.RECEIVER_REGISTER))
         } else {
             generator.add(LdaUndefined)
         }
@@ -673,7 +672,7 @@ class Transformer : ASTVisitor {
         val receiver = functionScope.receiverVariable
 
         if (receiver != null && !receiver.isInlineable) {
-            generator.add(Ldar(0))
+            generator.add(Ldar(Interpreter.RECEIVER_REGISTER))
             storeToSource(receiver)
         }
 
@@ -790,7 +789,7 @@ class Transformer : ASTVisitor {
             if (classConstructorKind == JSFunction.ConstructorKind.Derived) {
                 expect(body is BlockNode)
                 // TODO: Check to see if this is redundant
-                generator.addIfNotTerminated(Ldar(0))
+                generator.addIfNotTerminated(Ldar(Interpreter.RECEIVER_REGISTER))
                 generator.addIfNotTerminated(ThrowSuperNotInitializedIfEmpty)
             } else if (body is BlockNode) {
                 generator.addIfNotTerminated(LdaUndefined)
@@ -1443,7 +1442,7 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitSuperPropertyExpression(node: SuperPropertyExpressionNode) {
-        generator.add(Ldar(0))
+        generator.add(Ldar(Interpreter.RECEIVER_REGISTER))
         generator.add(ThrowSuperNotInitializedIfEmpty)
         generator.add(GetSuperBase)
         val objectReg = generator.reserveRegister()
