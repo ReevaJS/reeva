@@ -1619,7 +1619,12 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("9.1.6.2")
-    fun isCompatiblePropertyDescriptor(realm: Realm, extensible: Boolean, desc: Descriptor, current: Descriptor?): Boolean {
+    fun isCompatiblePropertyDescriptor(
+        realm: Realm,
+        extensible: Boolean,
+        desc: Descriptor,
+        current: Descriptor?
+    ): Boolean {
         return validateAndApplyPropertyDescriptor(realm, null, null, extensible, desc, current)
     }
 
@@ -2017,7 +2022,12 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("10.2.5")
-    fun makeConstructor(realm: Realm, function: JSFunction, writablePrototype: Boolean = true, prototype: JSObject? = null) {
+    fun makeConstructor(
+        realm: Realm,
+        function: JSFunction,
+        writablePrototype: Boolean = true,
+        prototype: JSObject? = null
+    ) {
         // This function will be a constructor already, as [[Construct]] isn't an actual slot in Reeva
         // ecmaAssert(!isConstructor(function))
         ecmaAssert(function.isExtensible())
@@ -2028,7 +2038,12 @@ object Operations {
 
         val actualPrototype = prototype ?: let {
             JSObject.create(realm).also {
-                definePropertyOrThrow(realm, it, "constructor".key(), Descriptor(function, attributes or Descriptor.CONFIGURABLE))
+                definePropertyOrThrow(
+                    realm,
+                    it,
+                    "constructor".key(),
+                    Descriptor(function, attributes or Descriptor.CONFIGURABLE)
+                )
             }
         }
 
@@ -2051,7 +2066,13 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("10.2.8")
-    fun defineMethodProperty(realm: Realm, key: PropertyKey, homeObject: JSValue, closure: JSFunction, enumerable: Boolean) {
+    fun defineMethodProperty(
+        realm: Realm,
+        key: PropertyKey,
+        homeObject: JSValue,
+        closure: JSFunction,
+        enumerable: Boolean
+    ) {
         setFunctionName(realm, closure, key)
         var attributes = Descriptor.WRITABLE or Descriptor.CONFIGURABLE
         if (enumerable)
@@ -2337,6 +2358,12 @@ object Operations {
         // somehow have to climb up the EnvRecord stack of the calling function.
         val function = Interpreter.wrap(ir, realm, realm.globalEnv, kind)
         function.setPrototype(proto)
+        definePropertyOrThrow(
+            realm,
+            function,
+            "length".key(),
+            Descriptor(functionNode.parameters.size.toValue(), Descriptor.CONFIGURABLE)
+        )
 
         setFunctionName(realm, function, "anonymous".key())
 
@@ -2722,7 +2749,8 @@ object Operations {
 
         val expectedKey = arrayBuffer.getSlotAs<JSValue>(SlotName.ArrayBufferDetachKey)
         if (!expectedKey.sameValue(key))
-            Errors.ArrayBuffer.BadDetachKey(expectedKey.toPrintableString(), key.toPrintableString()).throwTypeError(realm)
+            Errors.ArrayBuffer.BadDetachKey(expectedKey.toPrintableString(), key.toPrintableString())
+                .throwTypeError(realm)
 
         arrayBuffer.setSlot(SlotName.ArrayBufferData, null)
         arrayBuffer.setSlot(SlotName.ArrayBufferByteLength, 0)
@@ -3070,7 +3098,11 @@ object Operations {
                     ThrowException(argument)
                 }
             } else try {
-                Reeva.activeAgent.hostHooks.callJobCallback(handlerRealm!!, reaction.handler, JSArguments(listOf(argument)))
+                Reeva.activeAgent.hostHooks.callJobCallback(
+                    handlerRealm!!,
+                    reaction.handler,
+                    JSArguments(listOf(argument))
+                )
             } catch (e: ThrowException) {
                 e
             }
@@ -3101,7 +3133,11 @@ object Operations {
         return PromiseReactionJob(then.callback.realm) {
             val (resolveFunction, rejectFunction) = createResolvingFunctions(promise)
             try {
-                Reeva.activeAgent.hostHooks.callJobCallback(realm, then, JSArguments(listOf(resolveFunction, rejectFunction), thenable))
+                Reeva.activeAgent.hostHooks.callJobCallback(
+                    realm,
+                    then,
+                    JSArguments(listOf(resolveFunction, rejectFunction), thenable)
+                )
             } catch (e: ThrowException) {
                 call(realm, rejectFunction, JSUndefined, listOf(e.value))
             }
