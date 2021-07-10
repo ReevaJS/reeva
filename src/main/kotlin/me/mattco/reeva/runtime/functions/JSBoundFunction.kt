@@ -20,15 +20,22 @@ class JSBoundFunction private constructor(
     override fun isConstructor() = boundTargetFunction.isConstructor()
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        val newArguments = JSArguments(boundArguments + arguments, boundArguments.thisValue)
-        val newTarget = arguments.newTarget
-        if (newTarget == JSUndefined)
-            return Operations.call(realm, boundTargetFunction, newArguments)
+        val args = boundArguments + arguments
+
+        if (arguments.newTarget == JSUndefined) {
+            // [[Call]]
+            return Operations.call(realm, boundTargetFunction, boundArguments.thisValue, args)
+        }
+
+        // [[Construct]]
         ecmaAssert(Operations.isConstructor(boundTargetFunction))
+        val newTarget = if (this.sameValue(arguments.newTarget)) {
+            boundTargetFunction
+        } else arguments.newTarget
         return Operations.construct(
             boundTargetFunction,
-            newArguments,
-            if (sameValue(newTarget)) boundTargetFunction else newTarget
+            args,
+            newTarget,
         )
     }
 
