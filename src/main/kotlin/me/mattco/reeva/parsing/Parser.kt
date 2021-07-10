@@ -10,8 +10,7 @@ import me.mattco.reeva.parsing.lexer.Token
 import me.mattco.reeva.parsing.lexer.TokenLocation
 import me.mattco.reeva.parsing.lexer.TokenType
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.utils.expect
-import me.mattco.reeva.utils.unreachable
+import me.mattco.reeva.utils.*
 import java.util.*
 import java.util.concurrent.LinkedBlockingQueue
 
@@ -856,11 +855,19 @@ class Parser(val source: String) {
         ClassFieldNode(name, parseExpression(0), isStatic)
     }
 
-    private fun parseClassMethod(name: PropertyName, kind: MethodDefinitionNode.Kind, isStatic: Boolean): ClassMethodNode = nps {
+    private fun parseClassMethod(
+        name: PropertyName,
+        kind: MethodDefinitionNode.Kind,
+        isStatic: Boolean
+    ): ClassMethodNode = nps {
         ClassMethodNode(parseMethodDefinition(name, kind), isStatic)
     }
 
-    private fun parseClassFieldOrMethod(name: PropertyName, kind: MethodDefinitionNode.Kind, isStatic: Boolean): ClassElementNode = nps {
+    private fun parseClassFieldOrMethod(
+        name: PropertyName,
+        kind: MethodDefinitionNode.Kind,
+        isStatic: Boolean
+    ): ClassElementNode = nps {
         if (match(TokenType.Equals)) {
             parseClassField(name, isStatic)
         } else parseClassMethod(name, kind, isStatic)
@@ -1224,7 +1231,7 @@ class Parser(val source: String) {
                 FalseNode()
             }
             TokenType.Function -> parseFunctionExpression()
-            TokenType.StringLiteral -> StringLiteralNode(token.literals).also { consume() }
+            TokenType.StringLiteral -> parseStringLiteral()
             TokenType.NullLiteral -> {
                 consume()
                 NullLiteralNode()
@@ -1250,6 +1257,104 @@ class Parser(val source: String) {
         RegExpLiteralNode(source, flags)
     }
 
+    private fun parseStringLiteral(): ExpressionNode = nps {
+        consume(TokenType.StringLiteral)
+        val string = lastConsumedToken.literals
+
+        if (string.isBlank())
+            return@nps StringLiteralNode(string)
+
+        val builder = StringBuilder()
+        var cursor = 0
+
+        while (cursor < string.length) {
+            var char = string[cursor++]
+            if (char == '\\') {
+                char = string[cursor++]
+                // TODO: Octal escapes in non-string mode code
+                when (char) {
+                    '\'' -> builder.append('\'')
+                    '"' -> builder.append('"')
+                    '\\' -> builder.append('\\')
+                    'b' -> builder.append('\b')
+                    'n' -> builder.append('\n')
+                    't' -> builder.append('\t')
+                    'r' -> builder.append('\r')
+                    'v' -> builder.append(11.toChar())
+                    'f' -> builder.append(12.toChar())
+                    'x' -> {
+                        if (string.length - cursor < 2)
+                            reporter.at(lastConsumedToken).stringInvalidHexEscape()
+
+                        val char1 = string[cursor++]
+                        val char2 = string[cursor++]
+
+                        if (!char1.isHexDigit() || !char2.isHexDigit())
+                            reporter.at(lastConsumedToken).stringInvalidHexEscape()
+
+                        val digit1 = char1.hexValue()
+                        val digit2 = char2.hexValue()
+
+                        builder.append(((digit1 shl 4) or digit2).toChar())
+                    }
+                    'u' -> {
+                        if (string[cursor] == '{') {
+                            cursor++
+                            if (string[cursor] == '}')
+                                reporter.at(lastConsumedToken).stringEmptyUnicodeEscape()
+
+                            var codePoint = 0
+
+                            while (true) {
+                                if (cursor > string.lastIndex)
+                                    reporter.at(lastConsumedToken).stringUnicodeCodepointMissingBrace()
+                                char = string[cursor++]
+                                if (char == '}')
+                                    break
+                                if (char == '_')
+                                    reporter.at(lastConsumedToken).stringInvalidUnicodeNumericSeparator()
+                                if (!char.isHexDigit())
+                                    reporter.at(lastConsumedToken).stringUnicodeCodepointMissingBrace()
+
+                                val oldValue = codePoint
+                                codePoint = (codePoint shl 4) or char.hexValue()
+                                if (codePoint < oldValue)
+                                    reporter.at(lastConsumedToken).stringBigUnicodeCodepointEscape()
+                            }
+
+                            if (codePoint > 0x10ffff)
+                                reporter.at(lastConsumedToken).stringBigUnicodeCodepointEscape()
+
+                            builder.appendCodePoint(codePoint)
+                        } else {
+                            var codePoint = 0
+
+                            repeat(4) {
+                                if (cursor > string.lastIndex)
+                                    reporter.at(lastConsumedToken).stringUnicodeMissingDigits()
+                                char = string[cursor++]
+                                if (!char.isHexDigit())
+                                    reporter.at(lastConsumedToken).stringUnicodeMissingDigits()
+                                codePoint = (codePoint shl 4) or char.hexValue()
+                            }
+
+                            builder.appendCodePoint(codePoint)
+                        }
+                    }
+                    else -> if (!char.isLineSeparator()) {
+                        builder.append(char)
+                    }
+                }
+            } else if (char.isLineSeparator()) {
+                reporter.at(lastConsumedToken).stringUnescapedLineBreak()
+            } else {
+                builder.append(char)
+            }
+        }
+
+        StringLiteralNode(builder.toString())
+    }
+
     private fun parseTemplateLiteral(): ExpressionNode = nps {
         consume(TokenType.TemplateLiteralStart)
 
@@ -1264,6 +1369,7 @@ class Parser(val source: String) {
         while (!isDone && !matchAny(TokenType.TemplateLiteralEnd, TokenType.UnterminatedTemplateLiteral)) {
             if (match(TokenType.TemplateLiteralString)) {
                 nps {
+                    // TODO: String literal parsing
                     StringLiteralNode(token.literals).also { consume() }
                 }.also(expressions::add)
             } else if (match(TokenType.TemplateLiteralExprStart)) {
@@ -1405,9 +1511,7 @@ class Parser(val source: String) {
                 return@nps PropertyName(expr, PropertyName.Type.Computed)
             }
             match(TokenType.StringLiteral) -> {
-                PropertyName(nps {
-                    StringLiteralNode(token.literals).also { consume() }
-                }, PropertyName.Type.String)
+                PropertyName(parseStringLiteral(), PropertyName.Type.String)
             }
             match(TokenType.NumericLiteral) -> {
                 PropertyName(parseNumericLiteral(), PropertyName.Type.Number)

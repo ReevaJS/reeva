@@ -182,7 +182,11 @@ class Lexer(private val source: String) {
             } else if (char == '"' || char == '\'') {
                 val stopChar = char
                 consume()
-                while (char != stopChar && char != '\n' && !isDone) {
+
+                // Note: Line breaks are invalid in string literals, but this is
+                // handled with a nice error message in the parser, as well as
+                // string unescaping
+                while (char != stopChar && !isDone) {
                     if (char == '\\')
                         consume()
                     consume()
