@@ -1424,7 +1424,19 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitSuperPropertyExpression(node: SuperPropertyExpressionNode) {
-        TODO()
+        generator.add(Ldar(0))
+        generator.add(ThrowSuperNotInitializedIfEmpty)
+        generator.add(GetSuperBase)
+        val objectReg = generator.reserveRegister()
+        generator.add(Star(objectReg))
+
+        if (node.isComputed) {
+            visit(node.target)
+            generator.add(LdaKeyedProperty(objectReg))
+        } else {
+            val cpIndex = generator.intern((node.target as IdentifierNode).name)
+            generator.add(LdaNamedProperty(objectReg, cpIndex))
+        }
     }
 
     override fun visitSuperCallExpression(node: SuperCallExpressionNode) {

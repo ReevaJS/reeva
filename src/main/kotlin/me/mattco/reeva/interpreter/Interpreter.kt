@@ -645,6 +645,17 @@ class Interpreter(
         accumulator = Reeva.activeAgent.callStack.last().getPrototype()
     }
 
+    override fun visitGetSuperBase() {
+        val homeObject = Reeva.activeAgent.callStack.last().homeObject
+        if (homeObject == JSUndefined) {
+            accumulator = JSUndefined
+            return
+        }
+
+        ecmaAssert(homeObject is JSObject)
+        accumulator = homeObject.getPrototype()
+    }
+
     override fun visitThrowSuperNotInitializedIfEmpty() {
         if (accumulator == JSEmpty)
             Errors.Class.DerivedSuper.throwReferenceError(realm)

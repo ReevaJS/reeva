@@ -477,6 +477,8 @@ class CreateClassConstructor(val functionInfoIndex: Index) : Opcode()
 
 object GetSuperConstructor : Opcode()
 
+object GetSuperBase : Opcode()
+
 object ThrowSuperNotInitializedIfEmpty : Opcode()
 
 object ThrowSuperInitializedIfNotEmpty : Opcode()

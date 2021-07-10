@@ -105,6 +105,7 @@ abstract class IrOpcodeVisitor {
             is CreateClass -> visitCreateClass(opcode.classDescriptorIndex, opcode.constructor, opcode.superClass, opcode.args)
             is CreateClassConstructor -> visitCreateClassConstructor(opcode.functionInfoIndex)
             GetSuperConstructor -> visitGetSuperConstructor()
+            GetSuperBase -> visitGetSuperBase()
             is ThrowSuperNotInitializedIfEmpty -> visitThrowSuperNotInitializedIfEmpty()
             is ThrowSuperInitializedIfNotEmpty -> visitThrowSuperInitializedIfNotEmpty()
 
@@ -300,6 +301,8 @@ abstract class IrOpcodeVisitor {
     abstract fun visitCreateClassConstructor(functionInfoIndex: Int)
 
     abstract fun visitGetSuperConstructor()
+
+    abstract fun visitGetSuperBase()
 
     abstract fun visitThrowSuperNotInitializedIfEmpty()
 
