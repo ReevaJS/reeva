@@ -812,7 +812,7 @@ class Parser(val source: String) {
                 else -> reporter.expected("property name", token.literals)
             }
 
-            return parseClassFieldOrMethod(name, MethodDefinitionNode.Kind.Normal, isStatic)
+            return@nps parseClassFieldOrMethod(name, MethodDefinitionNode.Kind.Normal, isStatic)
         }
 
         name = parsePropertyName()
@@ -1426,7 +1426,7 @@ class Parser(val source: String) {
         val list = PropertyDefinitionList(properties).withPosition(propertiesStart, lastConsumedToken.end)
         consume(TokenType.CloseCurly)
 
-        return ObjectLiteralNode(list).withPosition(objectStart, lastConsumedToken.end)
+        return@nps ObjectLiteralNode(list).withPosition(objectStart, lastConsumedToken.end)
     }
 
     /*
@@ -1723,7 +1723,7 @@ class Parser(val source: String) {
     // Helper for setting source positions of AST. Stands for
     // node parsing scope; the name is short to prevent long
     // non-local return labels (i.e. "return@nodeParsingScope")
-    private inline fun <T : ASTNode?> nps(block: () -> T): T {
+    private inline fun <T : ASTNode?> nps(crossinline block: () -> T): T {
         val start = sourceStart
         val node = block()
         if (node == null)
