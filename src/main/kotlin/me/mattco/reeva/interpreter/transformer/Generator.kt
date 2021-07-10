@@ -32,7 +32,11 @@ data class FunctionOpcodes(
     val registerCount: Int,
 )
 
-class Generator(argCount: Int, reservedRegisters: Int) {
+class Generator(
+    argCount: Int,
+    reservedRegisters: Int,
+    val isDerivedClassConstructor: Boolean = false,
+) {
     private val blocks = mutableListOf<Block>()
     private val constantPool = mutableListOf<Any>()
 

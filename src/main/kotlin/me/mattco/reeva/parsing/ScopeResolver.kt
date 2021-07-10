@@ -111,7 +111,7 @@ class ScopeResolver : ASTVisitor {
     override fun visitMethodDefinition(node: MethodDefinitionNode) {
         node.scope = scope
         visit(node.propName)
-        node.functionScope = visitFunctionHelper(node.parameters, node.body, isLexical = true)
+        node.functionScope = visitFunctionHelper(node.parameters, node.body, isLexical = false)
     }
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {

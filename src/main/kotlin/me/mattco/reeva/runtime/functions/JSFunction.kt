@@ -49,14 +49,19 @@ abstract class JSFunction(
 
             ecmaAssert(arguments.newTarget is JSObject)
 
-            val thisValue = Operations.ordinaryCreateFromConstructor(
-                realm,
-                arguments.newTarget,
-                realm.objectProto,
-            )
+            val thisValue = if (constructorKind == ConstructorKind.Base) {
+                Operations.ordinaryCreateFromConstructor(
+                    realm,
+                    arguments.newTarget,
+                    realm.objectProto,
+                )
+            } else JSEmpty
 
             val result = evaluate(arguments.withThisValue(thisValue))
-            if (result is JSObject) result else thisValue
+            if (result !is JSObject) {
+                expect(thisValue !is JSEmpty)
+                thisValue
+            } else result
         }
     }
 

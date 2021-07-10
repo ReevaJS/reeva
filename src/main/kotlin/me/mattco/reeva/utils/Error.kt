@@ -118,7 +118,7 @@ object Errors {
     }
 
     object Class {
-        object DerivedSuper : Error("derived class must call super() before using \"this\"")
+        object DerivedSuper : Error("derived class must call super() before returning or using \"this\"")
         object BadExtends : Error("class extends target must be a constructor or null")
         object BadExtendsProto : Error("class extends target must be a prototype which is an object or null")
         object BadSuperFunc : Error("super call on non-constructable super")

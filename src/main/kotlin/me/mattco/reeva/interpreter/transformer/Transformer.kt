@@ -12,6 +12,7 @@ import me.mattco.reeva.interpreter.transformer.opcodes.*
 import me.mattco.reeva.parsing.HoistingScope
 import me.mattco.reeva.parsing.Scope
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 import java.math.BigInteger
@@ -69,7 +70,7 @@ class Transformer : ASTVisitor {
                     node.functionScope,
                     node.body.scope,
                     node.functionScope.isStrict,
-                    node.kind,
+                    classConstructorKind = null,
                 )
             }
             else -> TODO()
@@ -642,7 +643,8 @@ class Transformer : ASTVisitor {
 
         expect(functionScope is HoistingScope)
         when (functionScope.argumentsMode) {
-            HoistingScope.ArgumentsMode.None -> {}
+            HoistingScope.ArgumentsMode.None -> {
+            }
             HoistingScope.ArgumentsMode.Unmapped -> {
                 generator.add(CreateUnmappedArgumentsObject)
                 storeToSource(functionScope.argumentsSource)
@@ -713,13 +715,17 @@ class Transformer : ASTVisitor {
         bodyScope: Scope,
         isStrict: Boolean,
         kind: Operations.FunctionKind,
-        isClassConstructor: Boolean = false,
+        classConstructorKind: JSFunction.ConstructorKind? = null,
     ): FunctionInfo {
         if (kind.isAsync)
             TODO()
 
         val prevGenerator = generator
-        generator = Generator(parameters.size + 1, functionScope.inlineableRegisterCount)
+        generator = Generator(
+            parameters.size + 1,
+            functionScope.inlineableRegisterCount,
+            classConstructorKind == JSFunction.ConstructorKind.Derived,
+        )
 
         val info = makeFunctionInfo(
             name,
@@ -728,12 +734,12 @@ class Transformer : ASTVisitor {
             functionScope,
             bodyScope,
             isStrict,
-            kind,
+            classConstructorKind,
         )
 
         generator = prevGenerator
         val closureOp = when {
-            isClassConstructor -> ::CreateClassConstructor
+            classConstructorKind != null -> ::CreateClassConstructor
             kind.isGenerator -> ::CreateGeneratorClosure
             else -> ::CreateClosure
         }
@@ -749,7 +755,7 @@ class Transformer : ASTVisitor {
         functionScope: Scope,
         bodyScope: Scope,
         isStrict: Boolean,
-        kind: Operations.FunctionKind,
+        classConstructorKind: JSFunction.ConstructorKind?,
     ): FunctionInfo {
         functionDeclarationInstantiation(
             parameters,
@@ -764,8 +770,15 @@ class Transformer : ASTVisitor {
                 visitASTListNode(body.statements)
             } else visit(body)
 
-            if (body is BlockNode)
+            if (classConstructorKind == JSFunction.ConstructorKind.Derived) {
+                expect(body is BlockNode)
+                // TODO: Check to see if this is redundant
+                generator.addIfNotTerminated(Ldar(0))
+                generator.addIfNotTerminated(ThrowSuperNotInitializedIfEmpty)
+            } else if (body is BlockNode) {
                 generator.addIfNotTerminated(LdaUndefined)
+            }
+
             generator.addIfNotTerminated(Return)
         }
 
@@ -808,8 +821,13 @@ class Transformer : ASTVisitor {
             }
         }
 
+        val constructorKind = if (node.heritage == null) {
+            JSFunction.ConstructorKind.Base
+        } else JSFunction.ConstructorKind.Derived
+
         if (constructor != null) {
             val method = constructor!!.method
+
             visitFunctionHelper(
                 name ?: "<anonymous class constructor>",
                 method.parameters,
@@ -818,10 +836,14 @@ class Transformer : ASTVisitor {
                 method.body.scope,
                 isStrict = true,
                 Operations.FunctionKind.Normal,
-                isClassConstructor = true,
+                classConstructorKind = constructorKind,
             )
         } else {
-            val info = makeEmptyFunctionInfo(name ?: "<anonymous class constructor>")
+            val info = makeImplicitClassConstructor(
+                name ?: "<anonymous class constructor>",
+                constructorKind,
+
+                )
             generator.add(CreateClassConstructor(generator.intern(info)))
         }
 
@@ -890,19 +912,38 @@ class Transformer : ASTVisitor {
         generator.add(CreateClass(classDescriptor, constructorReg, superClassReg, createClassArgs))
     }
 
-    private fun makeEmptyFunctionInfo(name: String): FunctionInfo {
-        val block = Block(1)
-        block.add(LdaUndefined)
-        block.add(Return)
+    private fun makeImplicitClassConstructor(
+        name: String,
+        constructorKind: JSFunction.ConstructorKind,
+    ): FunctionInfo {
+        // One for the receiver...
+        var argCount = 1
+        if (constructorKind == JSFunction.ConstructorKind.Derived) {
+            // ...and one for the rest param, if necessary
+            argCount++
+        }
+
+        val generator = Generator(argCount, 0, constructorKind == JSFunction.ConstructorKind.Derived)
+
+        if (constructorKind == JSFunction.ConstructorKind.Base) {
+            generator.add(LdaUndefined)
+            generator.add(Return)
+        } else {
+            // Initialize the super constructor
+            val paramReg = generator.reserveRegister()
+            val targetReg = generator.reserveRegister()
+            generator.add(CreateRestParam)
+            generator.add(Star(paramReg))
+            generator.add(GetSuperConstructor)
+            generator.add(Star(targetReg))
+            generator.add(ConstructWithArgArray(targetReg, targetReg, paramReg))
+            generator.add(Return)
+        }
 
         return FunctionInfo(
             name,
-            FunctionOpcodes(
-                listOf(block),
-                emptyList(),
-                0
-            ),
-            1,
+            generator.finish(),
+            argCount,
             isStrict = true,
             isTopLevelScript = false,
             parameters = null
@@ -1388,7 +1429,21 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitSuperCallExpression(node: SuperCallExpressionNode) {
-        TODO()
+        val targetReg = generator.reserveRegister()
+        generator.add(GetSuperConstructor)
+        generator.add(ThrowSuperNotInitializedIfEmpty)
+        generator.add(Star(targetReg))
+
+        val (argumentsMode, argumentRegisters) = loadArguments(node.arguments)
+
+        if (argumentsMode == ArgumentsMode.Normal) {
+            generator.add(Construct(targetReg, targetReg, argumentRegisters))
+        } else {
+            expect(argumentRegisters.size == 1)
+            generator.add(ConstructWithArgArray(targetReg, targetReg, argumentRegisters[0]))
+        }
+
+        generator.add(Star(0))
     }
 
     override fun visitImportCallExpression(node: ImportCallExpressionNode) {
@@ -1584,6 +1639,8 @@ class Transformer : ASTVisitor {
 
     override fun visitThisLiteral() {
         generator.add(Ldar(0))
+        if (generator.isDerivedClassConstructor)
+            generator.add(ThrowSuperNotInitializedIfEmpty)
     }
 
     private fun enterBreakableScope(targetBlock: Block, labels: Set<String>) {

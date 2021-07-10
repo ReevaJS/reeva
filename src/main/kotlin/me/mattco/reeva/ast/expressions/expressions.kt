@@ -4,7 +4,6 @@ import me.mattco.reeva.ast.ASTNode.Companion.appendIndent
 import me.mattco.reeva.ast.ASTNodeBase
 import me.mattco.reeva.ast.ArgumentList
 import me.mattco.reeva.ast.ExpressionNode
-import me.mattco.reeva.ast.NodeWithScope
 
 class AssignmentExpressionNode(
     val lhs: ExpressionNode,
@@ -75,7 +74,7 @@ class OptionalExpressionNode : ASTNodeBase(), ExpressionNode
 
 class SuperPropertyExpressionNode(
     val target: ExpressionNode,
-    val computed: Boolean,
+    val isComputed: Boolean,
 ) : ASTNodeBase(listOf(target)), ExpressionNode {
     override val isInvalidAssignmentTarget: Boolean = false
 
@@ -83,7 +82,7 @@ class SuperPropertyExpressionNode(
         appendIndent(indent)
         appendName()
         append(" (computed=")
-        append(computed)
+        append(isComputed)
         append(")\n")
         append(target.dump(indent + 1))
     }

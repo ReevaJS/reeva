@@ -1,5 +1,6 @@
 package me.mattco.reeva.interpreter
 
+import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.ParameterList
 import me.mattco.reeva.core.EvaluationResult
 import me.mattco.reeva.core.Realm
@@ -615,11 +616,11 @@ class Interpreter(
 
         Operations.makeConstructor(realm, constructor, false, proto)
 
-        constructor.setPrototype(constructorParent)
-        Operations.makeMethod(constructor, proto)
-
         if (superClass != JSEmpty)
             constructor.constructorKind = JSFunction.ConstructorKind.Derived
+
+        constructor.setPrototype(constructorParent)
+        Operations.makeMethod(constructor, proto)
 
         Operations.createMethodProperty(proto, "constructor".key(), constructor)
 
@@ -638,6 +639,20 @@ class Interpreter(
     override fun visitCreateClassConstructor(functionInfoIndex: Int) {
         val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
         accumulator = NormalIRFunction(realm, newInfo, lexicalEnv).initialize()
+    }
+
+    override fun visitGetSuperConstructor() {
+        accumulator = Reeva.activeAgent.callStack.last().getPrototype()
+    }
+
+    override fun visitThrowSuperNotInitializedIfEmpty() {
+        if (accumulator == JSEmpty)
+            Errors.Class.DerivedSuper.throwReferenceError(realm)
+    }
+
+    override fun visitThrowSuperInitializedIfNotEmpty() {
+        if (accumulator != JSEmpty)
+            Errors.Class.DuplicateSuperCall.throwReferenceError(realm)
     }
 
     private fun methodDefinitionEvaluation(

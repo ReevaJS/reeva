@@ -104,6 +104,9 @@ abstract class IrOpcodeVisitor {
 
             is CreateClass -> visitCreateClass(opcode.classDescriptorIndex, opcode.constructor, opcode.superClass, opcode.args)
             is CreateClassConstructor -> visitCreateClassConstructor(opcode.functionInfoIndex)
+            GetSuperConstructor -> visitGetSuperConstructor()
+            is ThrowSuperNotInitializedIfEmpty -> visitThrowSuperNotInitializedIfEmpty()
+            is ThrowSuperInitializedIfNotEmpty -> visitThrowSuperInitializedIfNotEmpty()
 
             is DefineGetterProperty -> visitDefineGetterProperty(opcode.objectReg, opcode.nameReg, opcode.methodReg)
             is DefineSetterProperty -> visitDefineSetterProperty(opcode.objectReg, opcode.nameReg, opcode.methodReg)
@@ -295,6 +298,12 @@ abstract class IrOpcodeVisitor {
     abstract fun visitCreateClass(classDescriptorIndex: Index, constructor: Register, superClass: Register, args: List<Register>)
 
     abstract fun visitCreateClassConstructor(functionInfoIndex: Int)
+
+    abstract fun visitGetSuperConstructor()
+
+    abstract fun visitThrowSuperNotInitializedIfEmpty()
+
+    abstract fun visitThrowSuperInitializedIfNotEmpty()
 
     abstract fun visitDefineGetterProperty(objectReg: Register, nameReg: Register, methodReg: Register)
 

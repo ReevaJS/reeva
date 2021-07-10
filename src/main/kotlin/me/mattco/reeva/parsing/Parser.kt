@@ -885,6 +885,30 @@ class Parser(val source: String) {
         MethodDefinitionNode(name, params, body, kind)
     }
 
+    private fun parseSuperExpression(): ExpressionNode = nps {
+        consume(TokenType.Super)
+
+        when (tokenType) {
+            TokenType.Period -> {
+                consume()
+                if (match(TokenType.Hash))
+                    reporter.at(token).error("Reeva does not support private identifier")
+                if (!match(TokenType.Identifier))
+                    reporter.at(token).expected("identifier", tokenType)
+                val identifier = parseIdentifier()
+                SuperPropertyExpressionNode(identifier, isComputed = false)
+            }
+            TokenType.OpenBracket -> {
+                consume()
+                val expression = parseExpression(0)
+                consume(TokenType.CloseBracket)
+                SuperPropertyExpressionNode(expression, isComputed = true)
+            }
+            TokenType.OpenParen -> SuperCallExpressionNode(parseArguments())
+            else -> reporter.at(token).expected("super property or super call", tokenType)
+        }
+    }
+
     /*
      * FormalParameters :
      *     [empty]
@@ -1238,7 +1262,7 @@ class Parser(val source: String) {
                 ThisLiteralNode()
             }
             TokenType.Class -> parseClassExpression()
-            TokenType.Super -> TODO()
+            TokenType.Super -> parseSuperExpression()
             TokenType.Identifier -> {
                 if (peek()?.type == TokenType.Arrow)
                     TODO()
