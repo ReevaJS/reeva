@@ -13,7 +13,11 @@ import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.utils.*
 import java.util.*
 import java.util.concurrent.LinkedBlockingQueue
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
+@OptIn(ExperimentalContracts::class)
 class Parser(val source: String) {
     private var inDefaultContext = false
     private var inFunctionContext = false
@@ -962,8 +966,26 @@ class Parser(val source: String) {
         IdentifierReferenceNode(parseIdentifierString())
     }
 
-    private fun parseIdentifier(): IdentifierNode = nps {
-        IdentifierNode(parseIdentifierString())
+    private val strictProtectedNames = setOf(
+        "implements", "interface", "let", "package", "private", "protected", "public", "static", "yield"
+    )
+
+    private fun parseIdentifier(): IdentifierNode {
+        var string: String
+        val node = nps {
+            string = parseIdentifierString()
+            IdentifierNode(string)
+        }
+
+        val unescaped = unescapeString(string)
+        if (isStrict && unescaped in strictProtectedNames)
+            reporter.at(node).identifierStrictReservedWord(unescaped)
+
+        val matchedToken = TokenType.values().firstOrNull { it.isIdentifierNameToken && it.string == unescaped }
+        if (matchedToken != null)
+            reporter.at(node).identifierReservedWord(unescaped)
+
+        return node
     }
 
     private fun checkForAndConsumeUseStrict(): ASTNode? = nps {
@@ -1260,10 +1282,12 @@ class Parser(val source: String) {
 
     private fun parseStringLiteral(): ExpressionNode = nps {
         consume(TokenType.StringLiteral)
-        val string = lastConsumedToken.literals
+        StringLiteralNode(unescapeString(lastConsumedToken.literals))
+    }
 
+    private fun unescapeString(string: String): String {
         if (string.isBlank())
-            return@nps StringLiteralNode(string)
+            return string
 
         val builder = StringBuilder()
         var cursor = 0
@@ -1353,7 +1377,7 @@ class Parser(val source: String) {
             }
         }
 
-        StringLiteralNode(builder.toString())
+        return builder.toString()
     }
 
     private fun parseTemplateLiteral(): ExpressionNode = nps {
@@ -1370,8 +1394,7 @@ class Parser(val source: String) {
         while (!isDone && !matchAny(TokenType.TemplateLiteralEnd, TokenType.UnterminatedTemplateLiteral)) {
             if (match(TokenType.TemplateLiteralString)) {
                 nps {
-                    // TODO: String literal parsing
-                    StringLiteralNode(token.literals).also { consume() }
+                    StringLiteralNode(unescapeString(token.literals)).also { consume() }
                 }.also(expressions::add)
             } else if (match(TokenType.TemplateLiteralExprStart)) {
                 consume()
@@ -1725,6 +1748,9 @@ class Parser(val source: String) {
     // node parsing scope; the name is short to prevent long
     // non-local return labels (i.e. "return@nodeParsingScope")
     private inline fun <T : ASTNode?> nps(crossinline block: () -> T): T {
+        contract {
+            callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+        }
         val start = sourceStart
         val node = block()
         if (node == null)

@@ -32,6 +32,8 @@ abstract class Reporter {
     fun functionInExpressionContext(): Nothing = error("function declarations are not allowed in single-statement contexts")
     fun functionStatementNoName(): Nothing = error("function statement requires a name")
     fun identifierAfterNumericLiteral(): Nothing = error("numeric literal cannot be directly followed by an identifier")
+    fun identifierStrictReservedWord(identifier: String): Nothing = error("\"$identifier\" is a reserved word in strict-mode code and cannot be an identifier")
+    fun identifierReservedWord(identifier: String): Nothing = error("\"$identifier\" is a reserved word and cannot be an identifier")
     fun invalidBreakTarget(target: String): Nothing = error("invalid break target \"$target\"")
     fun invalidContinueTarget(target: String): Nothing = error("invalid continue target \"$target\"")
     fun invalidLhsInAssignment(): Nothing = error("invalid left-hand-side in assignment expression")
