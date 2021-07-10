@@ -177,6 +177,7 @@ class Realm {
         setCtor.defineOwnProperty("prototype", setProto, Descriptor.HAS_BASIC)
         mapCtor.defineOwnProperty("prototype", mapProto, Descriptor.HAS_BASIC)
         dateCtor.defineOwnProperty("prototype", dateProto, Descriptor.HAS_BASIC)
+        promiseCtor.defineOwnProperty("prototype", promiseProto, Descriptor.HAS_BASIC)
 
         dataViewCtor.defineOwnProperty("prototype", dataViewProto, Descriptor.HAS_BASIC)
         arrayBufferCtor.defineOwnProperty("prototype", arrayBufferProto, Descriptor.HAS_BASIC)
