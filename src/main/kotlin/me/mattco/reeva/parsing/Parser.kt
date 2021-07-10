@@ -89,7 +89,8 @@ class Parser(val source: String) {
             if (!isDone)
                 reporter.at(token).expected("eof")
             expect(function.kind == expectedKind)
-
+            ScopeResolver().resolve(function)
+            EarlyErrorDetector(reporter).visit(function)
             ParsingResult.Success(function)
         } catch (e: ParsingException) {
             ParsingResult.ParseError(e.message!!, e.start, e.end)
