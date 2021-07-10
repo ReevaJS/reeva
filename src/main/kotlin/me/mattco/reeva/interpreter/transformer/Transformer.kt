@@ -4,10 +4,7 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
-import me.mattco.reeva.interpreter.ClassDescriptor
-import me.mattco.reeva.interpreter.DeclarationsArray
-import me.mattco.reeva.interpreter.JumpTable
-import me.mattco.reeva.interpreter.MethodDescriptor
+import me.mattco.reeva.interpreter.*
 import me.mattco.reeva.interpreter.transformer.opcodes.*
 import me.mattco.reeva.parsing.HoistingScope
 import me.mattco.reeva.parsing.Scope
@@ -45,7 +42,7 @@ class Transformer : ASTVisitor {
         return when (node) {
             is ModuleNode -> TODO()
             is ScriptNode -> {
-                generator = Generator(1, node.scope.inlineableRegisterCount)
+                generator = Generator(Interpreter.RESERVED_REGISTERS, node.scope.inlineableRegisterCount)
 
                 globalDeclarationInstantiation(node.scope as HoistingScope) {
                     visit(node.statements)
@@ -55,13 +52,16 @@ class Transformer : ASTVisitor {
                 FunctionInfo(
                     null,
                     generator.finish(),
-                    1,
+                    Interpreter.RESERVED_REGISTERS,
                     node.scope.isStrict,
                     isTopLevelScript = true
                 )
             }
             is FunctionDeclarationNode -> {
-                generator = Generator(node.parameters.size + 1, node.scope.inlineableRegisterCount)
+                generator = Generator(
+                    Interpreter.RESERVED_REGISTERS + node.parameters.size,
+                    node.scope.inlineableRegisterCount,
+                )
 
                 makeFunctionInfo(
                     node.identifier.name,
@@ -661,7 +661,7 @@ class Transformer : ASTVisitor {
             TODO("Handle duplicate parameter names")
 
         parameters.forEachIndexed { index, param ->
-            val register = index + 1
+            val register = Interpreter.RESERVED_REGISTERS + index
 
             when {
                 param.isRest -> {
@@ -722,7 +722,7 @@ class Transformer : ASTVisitor {
 
         val prevGenerator = generator
         generator = Generator(
-            parameters.size + 1,
+            parameters.size + Interpreter.RESERVED_REGISTERS,
             functionScope.inlineableRegisterCount,
             classConstructorKind == JSFunction.ConstructorKind.Derived,
         )
@@ -785,7 +785,7 @@ class Transformer : ASTVisitor {
         return FunctionInfo(
             name,
             generator.finish(),
-            parameters.size + 1,
+            parameters.size + Interpreter.RESERVED_REGISTERS,
             isStrict,
             isTopLevelScript = false,
             parameters,
@@ -842,8 +842,7 @@ class Transformer : ASTVisitor {
             val info = makeImplicitClassConstructor(
                 name ?: "<anonymous class constructor>",
                 constructorKind,
-
-                )
+            )
             generator.add(CreateClassConstructor(generator.intern(info)))
         }
 
@@ -916,8 +915,8 @@ class Transformer : ASTVisitor {
         name: String,
         constructorKind: JSFunction.ConstructorKind,
     ): FunctionInfo {
-        // One for the receiver...
-        var argCount = 1
+        // One for the receiver, one for the new.target, ...
+        var argCount = Interpreter.RESERVED_REGISTERS
         if (constructorKind == JSFunction.ConstructorKind.Derived) {
             // ...and one for the rest param, if necessary
             argCount++
@@ -936,7 +935,7 @@ class Transformer : ASTVisitor {
             generator.add(Star(paramReg))
             generator.add(GetSuperConstructor)
             generator.add(Star(targetReg))
-            generator.add(ConstructWithArgArray(targetReg, targetReg, paramReg))
+            generator.add(ConstructWithArgArray(targetReg, Interpreter.NEW_TARGET_REGISTER, paramReg))
             generator.add(Return)
         }
 
@@ -1437,10 +1436,10 @@ class Transformer : ASTVisitor {
         val (argumentsMode, argumentRegisters) = loadArguments(node.arguments)
 
         if (argumentsMode == ArgumentsMode.Normal) {
-            generator.add(Construct(targetReg, targetReg, argumentRegisters))
+            generator.add(Construct(targetReg, Interpreter.NEW_TARGET_REGISTER, argumentRegisters))
         } else {
             expect(argumentRegisters.size == 1)
-            generator.add(ConstructWithArgArray(targetReg, targetReg, argumentRegisters[0]))
+            generator.add(ConstructWithArgArray(targetReg, Interpreter.NEW_TARGET_REGISTER, argumentRegisters[0]))
         }
 
         generator.add(Star(0))

@@ -1,6 +1,7 @@
 package me.mattco.reeva.parsing
 
 import me.mattco.reeva.ast.*
+import me.mattco.reeva.interpreter.Interpreter
 
 open class Scope(val outer: Scope? = null) {
     val outerHoistingScope = outerScopeOfType<HoistingScope>()
@@ -112,7 +113,7 @@ open class Scope(val outer: Scope? = null) {
 open class HoistingScope(outer: Scope? = null) : Scope(outer) {
     override var isStrict = false
 
-    override var nextInlineableRegister = 1
+    override var nextInlineableRegister = Interpreter.RESERVED_REGISTERS
     override var nextSlot = 0
 
     // Variables that are only "effectively" declared in this scope, such
@@ -162,11 +163,11 @@ open class HoistingScope(outer: Scope? = null) : Scope(outer) {
         val parameters = variableSources.filter { it.mode == VariableMode.Parameter }
         val locals = variableSources.filter { it.mode != VariableMode.Parameter }
 
-        nextInlineableRegister = parameters.size + 1
+        nextInlineableRegister = Interpreter.RESERVED_REGISTERS + parameters.size
 
         parameters.forEachIndexed { index, source ->
             source.slot = if (source.isInlineable) {
-                index + 1
+                Interpreter.RESERVED_REGISTERS + index
             } else nextSlot++
         }
 

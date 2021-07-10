@@ -727,12 +727,12 @@ class Interpreter(
 
     override fun visitCreateMappedArgumentsObject() {
         // TODO: Create a mapped arguments object
-        // accumulator = createMappedArgumentsObject(realm, function, info.parameters!!, arguments.drop(1), lexicalEnv)
-        accumulator = createUnmappedArgumentsObject(realm, arguments.drop(1))
+        // accumulator = createMappedArgumentsObject(realm, function, info.parameters!!, arguments.drop(RESERVED_REGISTERS), lexicalEnv)
+        accumulator = createUnmappedArgumentsObject(realm, arguments.drop(RESERVED_REGISTERS))
     }
 
     override fun visitCreateUnmappedArgumentsObject() {
-        accumulator = createUnmappedArgumentsObject(realm, arguments.drop(1))
+        accumulator = createUnmappedArgumentsObject(realm, arguments.drop(RESERVED_REGISTERS))
     }
 
     @ECMAImpl("9.4.4.6")
@@ -864,7 +864,7 @@ class Interpreter(
     }
 
     override fun visitCreateRestParam() {
-        accumulator = Operations.createArrayFromList(realm, arguments.takeLast(arguments.size - info.argCount + 1))
+        accumulator = Operations.createArrayFromList(realm, arguments.takeLast(arguments.size - info.argCount + RESERVED_REGISTERS))
     }
 
     override fun visitDebugBreakpoint() {
@@ -979,7 +979,7 @@ class Interpreter(
         private val defineProto: Boolean = true,
     ) : IRFunction(realm, info, outerEnvRecord) {
         override fun evaluate(arguments: JSArguments): JSValue {
-            val args = listOf(arguments.thisValue) + arguments
+            val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
             val result = Interpreter(realm, this, args, outerEnvRecord).interpret()
             if (result is EvaluationResult.RuntimeError)
                 throw ThrowException(result.value)
@@ -1013,6 +1013,10 @@ class Interpreter(
     }
 
     companion object {
+        const val RECEIVER_REGISTER = 0
+        const val NEW_TARGET_REGISTER = 1
+        const val RESERVED_REGISTERS = 2
+
         fun wrap(
             info: FunctionInfo,
             realm: Realm,
