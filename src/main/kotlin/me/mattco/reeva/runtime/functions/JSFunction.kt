@@ -7,6 +7,7 @@ import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSEmpty
+import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.expect
 
@@ -33,6 +34,8 @@ abstract class JSFunction(
             // TODO: Should this throw an error? Or will we never get here to due
             // the guard in Operations.call
             expect(isCallable)
+            if (isClassConstructor)
+                Errors.Class.CtorRequiresNew.throwTypeError(realm)
             evaluate(arguments)
         }
     }
