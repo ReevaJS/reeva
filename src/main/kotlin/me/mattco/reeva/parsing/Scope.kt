@@ -119,6 +119,7 @@ open class Scope(val outer: Scope? = null) {
 
 open class HoistingScope(outer: Scope? = null, val isLexical: Boolean = false) : Scope(outer) {
     override var isStrict = false
+    var isDerivedClassConstructor = false
 
     override var nextInlineableRegister = Interpreter.RESERVED_REGISTERS
     override var nextSlot = 0

@@ -1670,7 +1670,10 @@ class Transformer : ASTVisitor {
 
     override fun visitThisLiteral(node: ThisLiteralNode) {
         loadFromSource(node.source)
-        if (generator.isDerivedClassConstructor)
+        var scope = node.scope
+        while (scope !is HoistingScope || scope.isLexical)
+            scope = scope.outer!!
+        if (scope.isDerivedClassConstructor)
             generator.add(ThrowSuperNotInitializedIfEmpty)
     }
 

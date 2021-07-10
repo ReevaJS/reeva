@@ -139,8 +139,11 @@ class ScopeResolver : ASTVisitor {
         node.scope = classScope
 
         for (element in node.body) {
-            if (element is ClassMethodNode)
+            if (element is ClassMethodNode) {
                 visitMethodDefinition(element.method)
+                if (element.isConstructor())
+                    (element.method.functionScope as HoistingScope).isDerivedClassConstructor = true
+            }
         }
 
         scope = scope.outer!!
