@@ -7,6 +7,7 @@ import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.runtime.objects.JSObject
 import me.mattco.reeva.runtime.primitives.JSEmpty
+import me.mattco.reeva.runtime.primitives.JSUndefined
 import me.mattco.reeva.utils.Errors
 import me.mattco.reeva.utils.ecmaAssert
 import me.mattco.reeva.utils.expect
@@ -61,10 +62,12 @@ abstract class JSFunction(
             } else JSEmpty
 
             val result = evaluate(arguments.withThisValue(thisValue))
-            if (result !is JSObject) {
-                expect(thisValue !is JSEmpty)
-                thisValue
-            } else result
+            when {
+                result is JSObject -> result
+                constructorKind == ConstructorKind.Base -> thisValue
+                result != JSUndefined -> Errors.Class.ReturnObjectFromDerivedCtor.throwTypeError(realm)
+                else -> thisValue
+            }
         }
     }
 

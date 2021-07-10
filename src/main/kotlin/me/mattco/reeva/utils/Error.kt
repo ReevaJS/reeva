@@ -124,7 +124,7 @@ object Errors {
         object BadSuperFunc : Error("super call on non-constructable super")
         object DuplicateSuperCall : Error("duplicate super() call in derived class constructor")
         object CtorRequiresNew : Error("cannot call class constructor without \"new\" keyword")
-        object ReturnObjectFromDerivedCtor : Error("derived class cannot return a non-object from its constructor")
+        object ReturnObjectFromDerivedCtor : Error("derived class must return an object or undefined from its constructor")
     }
 
     class DataBlock {
