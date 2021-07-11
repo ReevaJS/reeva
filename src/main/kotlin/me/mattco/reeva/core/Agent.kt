@@ -28,8 +28,8 @@ class Agent {
     val isBigEndian: Boolean
         get() = byteOrder == ByteOrder.BIG_ENDIAN
 
-    private val pendingMicrotasks = ArrayDeque<() -> Unit>()
     internal val callStack = ArrayDeque<JSFunction>()
+    val microtaskQueue = MicrotaskQueue(this)
 
     init {
         Reeva.allAgents.add(this)
@@ -79,17 +79,8 @@ class Agent {
         } finally {
             callStack.removeLast()
             if (callStack.isEmpty())
-                processMicrotasks()
+                microtaskQueue.checkpoint()
         }
-    }
-
-    fun addMicrotask(task: () -> Unit) {
-        pendingMicrotasks.addFirst(task)
-    }
-
-    fun processMicrotasks() {
-        while (pendingMicrotasks.isNotEmpty() && Reeva.running)
-            pendingMicrotasks.removeLast()()
     }
 
     internal fun nextObjectId() = objectId++
