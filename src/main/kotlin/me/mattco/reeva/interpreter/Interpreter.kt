@@ -195,6 +195,10 @@ class Interpreter(
         accumulator = JSNumber(int)
     }
 
+    override fun visitLdaClosure() {
+        accumulator = Reeva.activeAgent.callStack.last()
+    }
+
     override fun visitLdar(reg: Register) {
         accumulator = registers[reg]
     }
@@ -205,7 +209,7 @@ class Interpreter(
 
     override fun visitLdaNamedProperty(objectReg: Register, nameIndex: Index) {
         val obj = registers[objectReg].toObject(realm)
-        val key = loadConstant<String>(nameIndex).key()
+        val key = loadConstant<Any>(nameIndex).key()
         accumulator = obj.get(key)
     }
 
@@ -217,7 +221,7 @@ class Interpreter(
 
     override fun visitStaNamedProperty(objectReg: Register, nameIndex: Index) {
         val obj = registers[objectReg].toObject(realm)
-        val key = loadConstant<String>(nameIndex).key()
+        val key = loadConstant<Any>(nameIndex).key()
         obj.set(key, accumulator)
     }
 

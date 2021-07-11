@@ -13,6 +13,7 @@ abstract class IrOpcodeVisitor {
             LdaZero -> visitLdaZero()
             is LdaConstant -> visitLdaConstant(opcode.index)
             is LdaInt -> visitLdaInt(opcode.int)
+            LdaClosure -> visitLdaClosure()
 
             is Ldar -> visitLdar(opcode.reg)
             is Star -> visitStar(opcode.reg)
@@ -143,6 +144,8 @@ abstract class IrOpcodeVisitor {
     abstract fun visitLdaConstant(index: Index)
 
     abstract fun visitLdaInt(int: Literal)
+
+    abstract fun visitLdaClosure()
 
     abstract fun visitLdar(reg: Register)
 

@@ -229,7 +229,12 @@ class Realm {
         lateinit var `@@toStringTag`: JSSymbol private set
         lateinit var `@@unscopables`: JSSymbol private set
 
+        internal lateinit var `@@classInstanceFields`: JSSymbol private set
+
         fun setupSymbols() {
+            if (::`@@asyncIterator`.isInitialized)
+                return
+
             `@@asyncIterator` = JSSymbol("Symbol.asyncIterator").also { wellknownSymbols["@@asyncIterator"] = it }
             `@@hasInstance` = JSSymbol("Symbol.hasInstance").also { wellknownSymbols["@@hasInstance"] = it }
             `@@isConcatSpreadable` = JSSymbol("Symbol.isConcatSpreadable").also { wellknownSymbols["@@isConcatSpreadable"] = it }
@@ -243,6 +248,8 @@ class Realm {
             `@@toPrimitive` = JSSymbol("Symbol.toPrimitive").also { wellknownSymbols["@@toPrimitive"] = it }
             `@@toStringTag` = JSSymbol("Symbol.toStringTag").also { wellknownSymbols["@@toStringTag"] = it }
             `@@unscopables` = JSSymbol("Symbol.unscopables").also { wellknownSymbols["@@unscopables"] = it }
+
+            `@@classInstanceFields` = JSSymbol("Symbol.classInstanceFields")
         }
     }
 }

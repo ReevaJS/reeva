@@ -4,6 +4,7 @@ import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
 import me.mattco.reeva.ast.statements.*
+import me.mattco.reeva.core.Realm
 import me.mattco.reeva.interpreter.*
 import me.mattco.reeva.interpreter.transformer.opcodes.*
 import me.mattco.reeva.parsing.HoistingScope
@@ -776,6 +777,7 @@ class Transformer : ASTVisitor {
         isStrict: Boolean,
         isAsync: Boolean,
         classConstructorKind: JSFunction.ConstructorKind?,
+        hasClassFields: Boolean = false,
     ): FunctionInfo {
         functionDeclarationInstantiation(
             parameters,
@@ -783,6 +785,12 @@ class Transformer : ASTVisitor {
             bodyScope,
             isStrict
         ) {
+            if (hasClassFields && classConstructorKind == JSFunction.ConstructorKind.Base) {
+                // We can't load fields here if we are in a derived constructor as super() hasn't
+                // been called
+                callClassInstanceFieldInitializer()
+            }
+
             // body's scope is the same as the function's scope (the scope we receive
             // as a parameter). We don't want to re-enter the same scope, so we explicitly
             // call visitASTListNode instead, which skips the {enter,exit}Scope calls.
@@ -824,13 +832,18 @@ class Transformer : ASTVisitor {
     }
 
     private fun visitClassImpl(name: String?, node: ClassNode) {
-        val fields = mutableListOf<ClassFieldNode>()
+        val instanceFields = mutableListOf<ClassFieldNode>()
+        val staticFields = mutableListOf<ClassFieldNode>()
         val methods = mutableListOf<ClassMethodNode>()
         var constructor: ClassMethodNode? = null
 
         node.body.forEach {
             if (it is ClassFieldNode) {
-                fields.add(it)
+                if (it.isStatic) {
+                    staticFields.add(it)
+                } else {
+                    instanceFields.add(it)
+                }
             } else {
                 val method = it as ClassMethodNode
                 if (method.isConstructor()) {
@@ -863,6 +876,7 @@ class Transformer : ASTVisitor {
             val info = makeImplicitClassConstructor(
                 name ?: "<anonymous class constructor>",
                 constructorKind,
+                instanceFields.isNotEmpty(),
             )
             generator.add(CreateClassConstructor(generator.intern(info)))
         }
@@ -878,10 +892,6 @@ class Transformer : ASTVisitor {
 
         val superClassReg = generator.reserveRegister()
         generator.add(Star(superClassReg))
-
-        // Process fields
-        if (fields.isNotEmpty())
-            TODO()
 
         // Process methods
         val methodDescriptors = mutableListOf<Index>()
@@ -930,11 +940,89 @@ class Transformer : ASTVisitor {
         val classDescriptor = generator.intern(ClassDescriptor(methodDescriptors))
 
         generator.add(CreateClass(classDescriptor, constructorReg, superClassReg, createClassArgs))
+
+        // Process fields
+        // Instance fields are initialized in a dedicated method, whereas static fields
+        // are created on the class after it is created with CreateClass
+
+        if (instanceFields.isEmpty() && staticFields.isEmpty())
+            return
+
+        val classReg = generator.reserveRegister()
+        generator.add(Star(classReg))
+
+        if (instanceFields.isNotEmpty()) {
+            val classInstanceSymbol = generator.intern(Realm.`@@classInstanceFields`)
+            val instanceFieldInitializerMethod = makeClassFieldInitializerMethod(instanceFields)
+            generator.add(CreateClosure(generator.intern(instanceFieldInitializerMethod)))
+            generator.add(StaNamedProperty(constructorReg, classInstanceSymbol))
+        }
+
+        for (field in staticFields)
+            storeClassField(field, classReg)
+
+        generator.add(Ldar(classReg))
+    }
+
+    private fun makeClassFieldInitializerMethod(fields: List<ClassFieldNode>): FunctionInfo {
+        val prevGenerator = generator
+        generator = Generator(Interpreter.RESERVED_REGISTERS, 0)
+
+        for (field in fields)
+            storeClassField(field, Interpreter.RECEIVER_REGISTER)
+
+        generator.add(LdaUndefined)
+        generator.add(Return)
+
+        return FunctionInfo(
+            "<class instance field initializer>",
+            generator.finish(),
+            Interpreter.RESERVED_REGISTERS,
+            isStrict = true,
+            isTopLevelScript = false,
+            isAsync = false,
+        ).also {
+            this.generator = prevGenerator
+        }
+    }
+
+    private fun storeClassField(field: ClassFieldNode, targetReg: Register) {
+        fun loadValue() {
+            if (field.initializer != null) {
+                visit(field.initializer)
+            } else {
+                generator.add(LdaUndefined)
+            }
+        }
+
+        if (field.identifier.type == PropertyName.Type.Identifier) {
+            val index = generator.intern((field.identifier.expression as IdentifierNode).name)
+            loadValue()
+            generator.add(StaNamedProperty(targetReg, index))
+        } else {
+            visit(field.identifier.expression)
+            val nameReg = generator.reserveRegister()
+            generator.add(Star(nameReg))
+            loadValue()
+            generator.add(StaKeyedProperty(targetReg, nameReg))
+        }
+    }
+
+    private fun callClassInstanceFieldInitializer() {
+        val symbolIndex = generator.intern(Realm.`@@classInstanceFields`)
+        generator.add(LdaClosure)
+        val closureReg = generator.reserveRegister()
+        generator.add(Star(closureReg))
+        generator.add(LdaNamedProperty(closureReg, symbolIndex))
+        val targetReg = generator.reserveRegister()
+        generator.add(Star(targetReg))
+        generator.add(Call(targetReg, Interpreter.RECEIVER_REGISTER, emptyList()))
     }
 
     private fun makeImplicitClassConstructor(
         name: String,
         constructorKind: JSFunction.ConstructorKind,
+        hasInstanceFields: Boolean,
     ): FunctionInfo {
         // One for the receiver, one for the new.target, ...
         var argCount = Interpreter.RESERVED_REGISTERS
@@ -943,9 +1031,12 @@ class Transformer : ASTVisitor {
             argCount++
         }
 
-        val generator = Generator(argCount, 0, constructorKind == JSFunction.ConstructorKind.Derived)
+        val prevGenerator = generator
+        generator = Generator(argCount, 0, constructorKind == JSFunction.ConstructorKind.Derived)
 
         if (constructorKind == JSFunction.ConstructorKind.Base) {
+            if (hasInstanceFields)
+                callClassInstanceFieldInitializer()
             generator.add(LdaUndefined)
             generator.add(Return)
         } else {
@@ -957,6 +1048,8 @@ class Transformer : ASTVisitor {
             generator.add(GetSuperConstructor)
             generator.add(Star(targetReg))
             generator.add(ConstructWithArgArray(targetReg, Interpreter.NEW_TARGET_REGISTER, paramReg))
+            if (hasInstanceFields)
+                callClassInstanceFieldInitializer()
             generator.add(Return)
         }
 
@@ -968,7 +1061,9 @@ class Transformer : ASTVisitor {
             isTopLevelScript = false,
             isAsync = false,
             parameters = null
-        )
+        ).also {
+            this.generator = prevGenerator
+        }
     }
 
     override fun visitBinaryExpression(node: BinaryExpressionNode) {

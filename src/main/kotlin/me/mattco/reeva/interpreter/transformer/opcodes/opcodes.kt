@@ -23,6 +23,8 @@ object LdaZero : Opcode()
 class LdaConstant(val index: Index) : Opcode()
 class LdaInt(val int: Literal) : Opcode()
 
+object LdaClosure : Opcode()
+
 ///////////////////////////
 /// REGISTER OPERATIONS ///
 ///////////////////////////

@@ -4,6 +4,7 @@ import me.mattco.reeva.interpreter.*
 import me.mattco.reeva.interpreter.transformer.Block
 import me.mattco.reeva.interpreter.transformer.FunctionInfo
 import me.mattco.reeva.runtime.Operations
+import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 
@@ -276,6 +277,7 @@ class IrPrinter(private val info: FunctionInfo) {
 
                 append(" info=", constant.methodInfo, " }")
             }
+            is JSSymbol -> "Symbol (${constant.description})"
             else -> unreachable()
         }
     }

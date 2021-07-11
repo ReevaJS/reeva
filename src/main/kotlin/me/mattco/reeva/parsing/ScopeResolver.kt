@@ -143,6 +143,11 @@ class ScopeResolver : ASTVisitor {
                 visitMethodDefinition(element.method)
                 if (element.isConstructor())
                     (element.method.functionScope as HoistingScope).isDerivedClassConstructor = true
+            } else {
+                expect(element is ClassFieldNode)
+                visitPropertyName(element.identifier)
+                if (element.initializer != null)
+                    visit(element.initializer)
             }
         }
 
