@@ -11,21 +11,23 @@ class MicrotaskQueue(private val owningAgent: Agent) {
     private val activeQueue = LinkedBlockingQueue<() -> Unit>()
     private val queueThreadSleeping = AtomicBoolean(false)
 
-    init {
-        thread(name = "MicrotaskQueue Thread") {
-            Reeva.setAgent(owningAgent)
+    internal val thread = thread(name = "MicrotaskQueue Thread") {
+        Reeva.setAgent(owningAgent)
 
-            while (Reeva.running) {
-                if (activeQueue.isEmpty()) {
-                    queueThreadSleeping.set(true)
-                    Thread.sleep(MILLIS_TO_WAIT_WHEN_NOT_BUSY)
-                    continue
-                }
-
-                queueThreadSleeping.set(false)
-                val task = activeQueue.take()
-                task()
+        while (Reeva.running) {
+            if (activeQueue.isEmpty()) {
+                queueThreadSleeping.set(true)
+                Thread.sleep(MILLIS_TO_WAIT_WHEN_NOT_BUSY)
+                continue
             }
+
+            queueThreadSleeping.set(false)
+            val task = activeQueue.take()
+            task()
+
+            // Make sure we keep processing any additional microtasks that may
+            // have been submitted by the task above
+            checkpoint()
         }
     }
 

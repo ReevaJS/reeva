@@ -5,7 +5,6 @@ import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.runtime.JSArguments
 import me.mattco.reeva.runtime.JSValue
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.runtime.SlotName
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.functions.JSNativeFunction
 import me.mattco.reeva.runtime.objects.JSObject
@@ -34,26 +33,9 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         if (!Operations.isCallable(executor))
             Errors.Promise.CtorFirstArgCallable.throwTypeError(realm)
 
-        val promise = Operations.ordinaryCreateFromConstructor(
-            realm,
-            arguments.newTarget,
-            realm.promiseProto,
-            listOf(
-                SlotName.PromiseState,
-                SlotName.PromiseResult,
-                SlotName.PromiseFulfillReactions,
-                SlotName.PromiseRejectReactions,
-                SlotName.PromiseIsHandled,
-            )
-        )
-
-        promise.setSlot(SlotName.PromiseState, Operations.PromiseState.Pending)
-        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<Operations.PromiseReaction>())
-        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<Operations.PromiseReaction>())
-        promise.setSlot(SlotName.PromiseIsHandled, false)
-        promise.setSlot(SlotName.PromiseResult, JSUndefined)
-
+        val promise = Operations.createPromise(realm, arguments.newTarget)
         val (resolveFunction, rejectFunction) = Operations.createResolvingFunctions(promise)
+
         try {
             Operations.call(realm, executor, JSUndefined, listOf(resolveFunction, rejectFunction))
         } catch (e: ThrowException) {

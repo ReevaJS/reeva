@@ -31,6 +31,8 @@ fun main() {
 
     val script = File("./demo/index.js").readText()
     val result = agent.run(script, realm)
+    agent.microtaskQueue.blockUntilEmpty()
+    Reeva.teardown()
 
     if (result.isError) {
         printError(result, script)
@@ -38,7 +40,6 @@ fun main() {
         println("Script result: ${(result as ExecutionResult.Success).result.toPrintableString()}")
     }
 
-    Reeva.teardown()
 }
 
 fun printError(result: ExecutionResult, script: String) {

@@ -22,17 +22,17 @@ class JSGeneratorObjectProto(realm: Realm) : JSObject(realm, realm.iteratorProto
 
     private fun next(realm: Realm, arguments: JSArguments): JSValue {
         val generator = thisGeneratorObject(realm, arguments.thisValue, "next")
-        return generator.next(realm, Interpreter.GeneratorEntryMode.Next, arguments.argument(0))
+        return generator.next(realm, Interpreter.SuspendedEntryMode.Next, arguments.argument(0))
     }
 
     private fun `return`(realm: Realm, arguments: JSArguments): JSValue {
         val generator = thisGeneratorObject(realm, arguments.thisValue, "return")
-        return generator.next(realm, Interpreter.GeneratorEntryMode.Return, arguments.argument(0))
+        return generator.next(realm, Interpreter.SuspendedEntryMode.Return, arguments.argument(0))
     }
 
     private fun `throw`(realm: Realm, arguments: JSArguments): JSValue {
         val generator = thisGeneratorObject(realm, arguments.thisValue, "throw")
-        return generator.next(realm, Interpreter.GeneratorEntryMode.Throw, arguments.argument(0))
+        return generator.next(realm, Interpreter.SuspendedEntryMode.Throw, arguments.argument(0))
     }
 
     companion object {

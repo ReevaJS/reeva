@@ -1279,7 +1279,8 @@ class Parser(val source: String) {
                 consume()
                 FalseNode()
             }
-            TokenType.Function -> parseFunctionExpression()
+            TokenType.Async, TokenType.Function -> parseFunctionExpression()
+            TokenType.Await -> parseAwaitExpression()
             TokenType.StringLiteral -> parseStringLiteral()
             TokenType.NullLiteral -> {
                 consume()
@@ -1304,6 +1305,11 @@ class Parser(val source: String) {
         } else ""
 
         RegExpLiteralNode(source, flags)
+    }
+
+    private fun parseAwaitExpression(): ExpressionNode = nps {
+        consume(TokenType.Await)
+        AwaitExpressionNode(parseExpression(2))
     }
 
     private fun parseStringLiteral(): ExpressionNode = nps {

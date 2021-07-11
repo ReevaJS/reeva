@@ -450,6 +450,10 @@ class Yield(val continuationBlock: Block) : Opcode() {
     override val isTerminator = true
 }
 
+class Await(val continuationBlock: Block) : Opcode() {
+    override val isTerminator = true
+}
+
 /**
  * Throws the value in the accumulator
  */
@@ -551,6 +555,14 @@ class CreateClosure(val functionInfoIndex: Index) : Opcode()
  * functionInfoIndex: the constant pool index entry with the FunctionInfo object
  */
 class CreateGeneratorClosure(val functionInfoIndex: Index) : Opcode()
+
+/**
+ * Creates an async function object, referencing a FunctionInfo object stored
+ * in the constant pool
+ *
+ * functionInfoIndex: the constant pool index entry with the FunctionInfo object
+ */
+class CreateAsyncClosure(val functionInfoIndex: Index) : Opcode()
 
 /**
  * Collects excess parameters into an array

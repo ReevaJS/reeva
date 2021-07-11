@@ -172,6 +172,7 @@ class IrPrinter(private val info: FunctionInfo) {
             is Jump -> append(stringifyBlockIndex(opcode.ifBlock))
 
             is Yield -> append(stringifyBlockIndex(opcode.continuationBlock))
+            is Await -> append(stringifyBlockIndex(opcode.continuationBlock))
 
             is CreateClass -> {
                 append(" descriptor:", stringifyIndex(opcode.classDescriptorIndex))
@@ -198,6 +199,8 @@ class IrPrinter(private val info: FunctionInfo) {
             }
             is DeclareGlobals -> append(stringifyIndex(opcode.declarationsIndex))
             is CreateClosure -> append(stringifyIndex(opcode.functionInfoIndex))
+            is CreateGeneratorClosure -> append(stringifyIndex(opcode.functionInfoIndex))
+            is CreateAsyncClosure -> append(stringifyIndex(opcode.functionInfoIndex))
             else -> {
             }
         }

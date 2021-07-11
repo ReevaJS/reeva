@@ -21,6 +21,7 @@ data class FunctionInfo(
     val argCount: Int,
     val isStrict: Boolean,
     val isTopLevelScript: Boolean,
+    val isAsync: Boolean,
 
     // Only necessary if the function requires a mapped arguments object
     val parameters: ParameterList? = null,
@@ -55,6 +56,7 @@ class Transformer : ASTVisitor {
                     Interpreter.RESERVED_REGISTERS,
                     node.scope.isStrict,
                     isTopLevelScript = true,
+                    isAsync = false,
                 )
             }
             is FunctionDeclarationNode -> {
@@ -70,6 +72,7 @@ class Transformer : ASTVisitor {
                     node.functionScope,
                     node.body.scope,
                     node.functionScope.isStrict,
+                    isAsync = node.kind.isAsync,
                     classConstructorKind = null,
                 )
             }
@@ -733,9 +736,6 @@ class Transformer : ASTVisitor {
         kind: Operations.FunctionKind,
         classConstructorKind: JSFunction.ConstructorKind? = null,
     ): FunctionInfo {
-        if (kind.isAsync)
-            TODO()
-
         val prevGenerator = generator
         generator = Generator(
             parameters.size + Interpreter.RESERVED_REGISTERS,
@@ -750,13 +750,16 @@ class Transformer : ASTVisitor {
             functionScope,
             bodyScope,
             isStrict,
+            isAsync = kind.isAsync,
             classConstructorKind,
         )
 
         generator = prevGenerator
         val closureOp = when {
             classConstructorKind != null -> ::CreateClassConstructor
+            kind.isGenerator && kind.isAsync -> TODO()
             kind.isGenerator -> ::CreateGeneratorClosure
+            kind.isAsync -> ::CreateAsyncClosure
             else -> ::CreateClosure
         }
         generator.add(closureOp(generator.intern(info)))
@@ -771,6 +774,7 @@ class Transformer : ASTVisitor {
         functionScope: Scope,
         bodyScope: Scope,
         isStrict: Boolean,
+        isAsync: Boolean,
         classConstructorKind: JSFunction.ConstructorKind?,
     ): FunctionInfo {
         functionDeclarationInstantiation(
@@ -798,14 +802,13 @@ class Transformer : ASTVisitor {
             generator.addIfNotTerminated(Return)
         }
 
-        val scope = functionScope as HoistingScope
-
         return FunctionInfo(
             name,
             generator.finish(),
             Interpreter.RESERVED_REGISTERS + parameters.size,
             isStrict,
             isTopLevelScript = false,
+            isAsync,
             parameters,
         )
     }
@@ -963,6 +966,7 @@ class Transformer : ASTVisitor {
             argCount,
             isStrict = true,
             isTopLevelScript = false,
+            isAsync = false,
             parameters = null
         )
     }
@@ -1236,7 +1240,10 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitAwaitExpression(node: AwaitExpressionNode) {
-        TODO()
+        visit(node.expression)
+        val continuationBlock = generator.makeBlock()
+        generator.add(Await(continuationBlock))
+        generator.currentBlock = continuationBlock
     }
 
     override fun visitArgument(node: ArgumentNode) {

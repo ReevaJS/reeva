@@ -3060,6 +3060,30 @@ object Operations {
     }
 
     @JvmStatic
+    fun createPromise(realm: Realm, ctor: JSValue = realm.promiseCtor, proto: JSObject = realm.promiseProto): JSObject {
+        val promise = Operations.ordinaryCreateFromConstructor(
+            realm,
+            ctor,
+            proto,
+            listOf(
+                SlotName.PromiseState,
+                SlotName.PromiseResult,
+                SlotName.PromiseFulfillReactions,
+                SlotName.PromiseRejectReactions,
+                SlotName.PromiseIsHandled,
+            )
+        )
+
+        promise.setSlot(SlotName.PromiseState, Operations.PromiseState.Pending)
+        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<Operations.PromiseReaction>())
+        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<Operations.PromiseReaction>())
+        promise.setSlot(SlotName.PromiseIsHandled, false)
+        promise.setSlot(SlotName.PromiseResult, JSUndefined)
+
+        return promise
+    }
+
+    @JvmStatic
     @ECMAImpl("26.6.1.7")
     internal fun rejectPromise(realm: Realm, promise: JSObject, reason: JSValue): JSValue {
         ecmaAssert(promise.getSlot(SlotName.PromiseState) == PromiseState.Pending)

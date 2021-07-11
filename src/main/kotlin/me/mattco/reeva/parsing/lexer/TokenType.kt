@@ -187,6 +187,8 @@ enum class TokenType(val string: String, val category: Category = Category.None)
             OpenBracket,
             OpenParen,
             Function,
+            Async,
+            Await,
             Class,
             This,
             Super,

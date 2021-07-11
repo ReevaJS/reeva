@@ -3,6 +3,7 @@ package me.mattco.reeva.interpreter
 import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.ParameterList
 import me.mattco.reeva.core.EvaluationResult
+import me.mattco.reeva.core.MicrotaskQueue
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.core.ThrowException
 import me.mattco.reeva.core.environment.DeclarativeEnvRecord
@@ -40,10 +41,13 @@ class Interpreter(
 
     private val registers = Registers(info.argCount + info.code.registerCount)
     private var accumulator by registers::accumulator
-    private var isDone = false
-    private var isSuspended = false
     private var exception: ThrowException? = null
     private val mappedCPool = Array<JSValue?>(info.code.constantPool.size) { null }
+    private var isSuspended = false
+    private var isDone = false
+
+    private var pendingPromise: JSObject? = null
+    private var resultPromise: JSObject? = null
 
     private var lexicalEnv = initialEnvRecord
     private var lexicalDepth = 0
@@ -53,7 +57,12 @@ class Interpreter(
     private var currentBlock = info.code.blocks[0]
     private var ip = 0
 
-    private fun interpretImpl(): EvaluationResult {
+    init {
+        if (info.isAsync)
+            resultPromise = Operations.createPromise(realm)
+    }
+
+    internal fun interpretImpl(): EvaluationResult {
         try {
             while (!isDone && !isSuspended) {
                 try {
@@ -90,32 +99,40 @@ class Interpreter(
         return interpretImpl()
     }
 
-    fun reenterGeneratorFunction(entryMode: GeneratorEntryMode, value: JSValue): JSValue? {
+    fun reenterSuspendedFunction(entryMode: SuspendedEntryMode, value: JSValue): EvaluationResult? {
         if (isDone)
             return null
 
         isSuspended = false
 
         when (entryMode) {
-            GeneratorEntryMode.Next -> {
+            SuspendedEntryMode.Next -> {
                 accumulator = value
             }
-            GeneratorEntryMode.Return -> {
+            SuspendedEntryMode.Return -> {
                 isDone = true
-                return value
+                return EvaluationResult.Success(value)
             }
-            GeneratorEntryMode.Throw -> {
+            SuspendedEntryMode.Throw -> {
                 TODO()
+            }
+            SuspendedEntryMode.Await -> {
+                expect(pendingPromise != null)
+                expect(Thread.currentThread() == Reeva.activeAgent.microtaskQueue.thread)
+                var state: Operations.PromiseState
+
+                while (true) {
+                    state = pendingPromise!!.getSlotAs(SlotName.PromiseState)
+                    if (state != Operations.PromiseState.Pending)
+                        break
+                    Thread.sleep(MicrotaskQueue.MILLIS_TO_WAIT_WHEN_NOT_BUSY)
+                }
+
+                accumulator = pendingPromise!!.getSlotAs(SlotName.PromiseResult)
             }
         }
 
-        val result = interpret()
-
-        if (result is EvaluationResult.RuntimeError)
-            throw ThrowException(result.value)
-
-        expect(result is EvaluationResult.Success)
-        return result.value
+        return interpretImpl()
     }
 
     private fun jumpTo(block: Block) {
@@ -561,9 +578,28 @@ class Interpreter(
 
     override fun visitReturn() {
         isDone = true
+
+        if (info.isAsync) {
+            Operations.fulfillPromise(resultPromise!!, accumulator)
+            accumulator = resultPromise!!
+        }
     }
 
     override fun visitYield(continuationBlock: Block) {
+        isSuspended = true
+        jumpTo(continuationBlock)
+    }
+
+    override fun visitAwait(continuationBlock: Block) {
+        if (!Operations.isPromise(accumulator))
+            TODO("Awaited non-promise")
+
+        // Save the awaited Promise...
+        pendingPromise = accumulator as JSObject
+
+        // ...and return the result promise from this function call
+        accumulator = resultPromise!!
+
         isSuspended = true
         jumpTo(continuationBlock)
     }
@@ -874,6 +910,15 @@ class Interpreter(
         accumulator = function
     }
 
+    override fun visitCreateAsyncClosure(functionInfoIndex: Int) {
+        val newInfo = loadConstant<FunctionInfo>(functionInfoIndex)
+        val function = AsyncIRFunction(realm, newInfo, lexicalEnv).initialize()
+        if (newInfo.name != null)
+            Operations.setFunctionName(realm, function, newInfo.name.key())
+        Operations.makeConstructor(realm, function)
+        accumulator = function
+    }
+
     override fun visitCreateRestParam() {
         accumulator = Operations.createArrayFromList(realm, arguments.drop(info.argCount - 1))
     }
@@ -969,10 +1014,11 @@ class Interpreter(
         Spread,
     }
 
-    enum class GeneratorEntryMode {
+    enum class SuspendedEntryMode {
         Next,
         Return,
         Throw,
+        Await,
     }
 
     abstract class IRFunction(
@@ -986,8 +1032,6 @@ class Interpreter(
         realm: Realm,
         info: FunctionInfo,
         outerEnvRecord: EnvRecord,
-        // Class constructors cannot have their prototype property defined here
-        private val defineProto: Boolean = true,
     ) : IRFunction(realm, info, outerEnvRecord) {
         override fun evaluate(arguments: JSArguments): JSValue {
             val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
@@ -1025,6 +1069,36 @@ class Interpreter(
             }
 
             return generatorObject
+        }
+    }
+
+    class AsyncIRFunction(
+        realm: Realm,
+        info: FunctionInfo,
+        outerEnvRecord: EnvRecord,
+    ) : IRFunction(realm, info, outerEnvRecord) {
+        override fun evaluate(arguments: JSArguments): JSValue {
+            val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
+            val interpreter = Interpreter(realm, this, args, outerEnvRecord)
+            val result = interpreter.interpret()
+
+            if (result is EvaluationResult.RuntimeError)
+                throw ThrowException(result.value)
+
+            if (interpreter.isSuspended) {
+                // We've awaited a promise
+                fun addMicrotask() {
+                    Reeva.activeAgent.microtaskQueue.addMicrotask {
+                        interpreter.reenterSuspendedFunction(SuspendedEntryMode.Await, JSEmpty)!!
+                        if (interpreter.isSuspended)
+                            addMicrotask()
+                    }
+                }
+
+                addMicrotask()
+            }
+
+            return result.value
         }
     }
 

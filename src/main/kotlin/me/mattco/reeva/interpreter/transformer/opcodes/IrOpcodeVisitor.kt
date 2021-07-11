@@ -100,6 +100,7 @@ abstract class IrOpcodeVisitor {
 
             Return -> visitReturn()
             is Yield -> visitYield(opcode.continuationBlock)
+            is Await -> visitAwait(opcode.continuationBlock)
             Throw -> visitThrow()
 
             is CreateClass -> visitCreateClass(opcode.classDescriptorIndex, opcode.constructor, opcode.superClass, opcode.args)
@@ -121,6 +122,7 @@ abstract class IrOpcodeVisitor {
             ForInEnumerate -> visitForInEnumerate()
             is CreateClosure -> visitCreateClosure(opcode.functionInfoIndex)
             is CreateGeneratorClosure -> visitCreateGeneratorClosure(opcode.functionInfoIndex)
+            is CreateAsyncClosure -> visitCreateAsyncClosure(opcode.functionInfoIndex)
             CreateRestParam -> visitCreateRestParam()
             DebugBreakpoint -> visitDebugBreakpoint()
         }
@@ -294,6 +296,8 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitYield(continuationBlock: Block)
 
+    abstract fun visitAwait(continuationBlock: Block)
+
     abstract fun visitThrow()
 
     abstract fun visitCreateClass(classDescriptorIndex: Index, constructor: Register, superClass: Register, args: List<Register>)
@@ -329,6 +333,8 @@ abstract class IrOpcodeVisitor {
     abstract fun visitCreateClosure(functionInfoIndex: Int)
 
     abstract fun visitCreateGeneratorClosure(functionInfoIndex: Int)
+
+    abstract fun visitCreateAsyncClosure(functionInfoIndex: Int)
 
     abstract fun visitCreateRestParam()
 
