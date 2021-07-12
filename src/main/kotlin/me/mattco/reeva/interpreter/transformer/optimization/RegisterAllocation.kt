@@ -94,17 +94,6 @@ class RegisterAllocation : Pass {
         }
     }
 
-    private fun assignRegisters(info: OptInfo) {
-        for (block in info.opcodes.blocks) {
-            for (opcode in block) {
-                for (readReg in opcode.readRegisters())
-                    opcode.replaceRegisters(readReg, newRegisters[readReg])
-                for (writeReg in opcode.writeRegisters())
-                    opcode.replaceRegisters(writeReg, newRegisters[writeReg])
-            }
-        }
-    }
-
     override fun evaluate(info: OptInfo) {
         if (info.opcodes.registerCount <= Interpreter.RESERVED_REGISTERS + 1)
             return
@@ -129,7 +118,6 @@ class RegisterAllocation : Pass {
 
         initializeLiveness(info)
         reduceRegisters(info)
-        // assignRegisters(info)
 
         info.opcodes.registerCount = (newRegisters.maxOrNull()!! + 1).coerceAtLeast(Interpreter.RESERVED_REGISTERS)
     }
