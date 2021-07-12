@@ -92,10 +92,8 @@ abstract class IrOpcodeVisitor {
             is JumpIfTrue -> visitJumpIfTrue(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfToBooleanTrue -> visitJumpIfToBooleanTrue(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfEmpty -> visitJumpIfEmpty(opcode.ifBlock, opcode.elseBlock!!)
-            is JumpIfNull -> visitJumpIfNull(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfUndefined -> visitJumpIfUndefined(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfNullish -> visitJumpIfNullish(opcode.ifBlock, opcode.elseBlock!!)
-            is JumpIfObject -> visitJumpIfObject(opcode.ifBlock, opcode.elseBlock!!)
             is JumpFromTable -> visitJumpFromTable(opcode.table)
             is Jump -> visitJump(opcode.ifBlock)
 
@@ -281,13 +279,9 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitJumpIfEmpty(ifBlock: Block, elseBlock: Block)
 
-    abstract fun visitJumpIfNull(ifBlock: Block, elseBlock: Block)
-
     abstract fun visitJumpIfUndefined(ifBlock: Block, elseBlock: Block)
 
     abstract fun visitJumpIfNullish(ifBlock: Block, elseBlock: Block)
-
-    abstract fun visitJumpIfObject(ifBlock: Block, elseBlock: Block)
 
     abstract fun visitJumpFromTable(table: Index)
 

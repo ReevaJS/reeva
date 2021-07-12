@@ -551,20 +551,12 @@ class Interpreter(
         jumpTo(if (accumulator == JSEmpty) ifBlock else elseBlock)
     }
 
-    override fun visitJumpIfNull(ifBlock: Block, elseBlock: Block) {
-        jumpTo(if (accumulator == JSNull) ifBlock else elseBlock)
-    }
-
     override fun visitJumpIfUndefined(ifBlock: Block, elseBlock: Block) {
         jumpTo(if (accumulator == JSUndefined) ifBlock else elseBlock)
     }
 
     override fun visitJumpIfNullish(ifBlock: Block, elseBlock: Block) {
         jumpTo(if (accumulator.isNullish) ifBlock else elseBlock)
-    }
-
-    override fun visitJumpIfObject(ifBlock: Block, elseBlock: Block) {
-        jumpTo(if (accumulator is JSObject) ifBlock else elseBlock)
     }
 
     override fun visitJumpFromTable(tableIndex: Index) {

@@ -165,10 +165,8 @@ class IrPrinter(private val info: FunctionInfo) {
             is JumpIfTrue -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
             is JumpIfToBooleanTrue -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
             is JumpIfEmpty -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
-            is JumpIfNull -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
             is JumpIfUndefined -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
             is JumpIfNullish -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
-            is JumpIfObject -> append(stringifyBlockIndex(opcode.ifBlock), " else:", stringifyBlockIndex(opcode.elseBlock!!))
             is JumpFromTable -> append(stringifyIndex(opcode.table))
             is Jump -> append(stringifyBlockIndex(opcode.ifBlock))
 

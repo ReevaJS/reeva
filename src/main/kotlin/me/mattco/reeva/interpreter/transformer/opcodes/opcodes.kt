@@ -428,10 +428,8 @@ open class Jump(val ifBlock: Block, val elseBlock: Block? = null) : Opcode() {
 class JumpIfTrue(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfToBooleanTrue(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfEmpty(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
-class JumpIfNull(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfUndefined(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfNullish(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
-class JumpIfObject(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 
 class JumpFromTable(val table: Index) : Opcode() {
     override val isTerminator = true
