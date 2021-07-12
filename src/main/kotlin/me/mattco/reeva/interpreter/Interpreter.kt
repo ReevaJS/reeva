@@ -52,7 +52,7 @@ class Interpreter(
     private var lexicalEnv = initialEnvRecord
     private var lexicalDepth = 0
     private val lexicalDepthStack = mutableListOf<Int>()
-    private val seenHandlers = mutableSetOf<Int>()
+    private val seenHandlers = mutableSetOf<String>()
 
     private var currentBlock = info.code.blocks[0]
     private var ip = 0
@@ -85,7 +85,7 @@ class Interpreter(
                 }
             }
         } catch (e: Throwable) {
-            println("Exception in FunctionInfo ${info.name}, block=${currentBlock.index} opcode ${ip - 1}")
+            println("Exception in FunctionInfo ${info.name}, block=${currentBlock.name} opcode ${ip - 1}")
             throw e
         }
 
@@ -136,8 +136,8 @@ class Interpreter(
     }
 
     private fun jumpTo(block: Block) {
-        val currentHandler = currentBlock.handler?.index
-        val newHandler = block.handler?.index
+        val currentHandler = currentBlock.handler?.name
+        val newHandler = block.handler?.name
 
         if (currentHandler != newHandler) {
             when {
@@ -535,8 +535,8 @@ class Interpreter(
         accumulator = Operations.toString(realm, accumulator)
     }
 
-    override fun visitJump(ifBlock: Block) {
-        jumpTo(ifBlock)
+    override fun visitJumpAbsolute(block: Block) {
+        jumpTo(block)
     }
 
     override fun visitJumpIfTrue(ifBlock: Block, elseBlock: Block) {

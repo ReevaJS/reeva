@@ -89,13 +89,13 @@ abstract class IrOpcodeVisitor {
             ToObject -> visitToObject()
             ToString -> visitToString()
 
+            is JumpAbsolute -> visitJumpAbsolute(opcode.ifBlock)
             is JumpIfTrue -> visitJumpIfTrue(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfToBooleanTrue -> visitJumpIfToBooleanTrue(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfEmpty -> visitJumpIfEmpty(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfUndefined -> visitJumpIfUndefined(opcode.ifBlock, opcode.elseBlock!!)
             is JumpIfNullish -> visitJumpIfNullish(opcode.ifBlock, opcode.elseBlock!!)
             is JumpFromTable -> visitJumpFromTable(opcode.table)
-            is Jump -> visitJump(opcode.ifBlock)
 
             Return -> visitReturn()
             is Yield -> visitYield(opcode.continuationBlock)
@@ -285,7 +285,7 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitJumpFromTable(table: Index)
 
-    abstract fun visitJump(ifBlock: Block)
+    abstract fun visitJumpAbsolute(block: Block)
     
     abstract fun visitForInEnumerate()
 

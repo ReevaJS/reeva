@@ -7,6 +7,8 @@ import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.interpreter.*
 import me.mattco.reeva.interpreter.transformer.opcodes.*
+import me.mattco.reeva.interpreter.transformer.optimization.OptInfo
+import me.mattco.reeva.interpreter.transformer.optimization.Pass
 import me.mattco.reeva.parsing.HoistingScope
 import me.mattco.reeva.parsing.Scope
 import me.mattco.reeva.runtime.Operations
@@ -41,7 +43,7 @@ class Transformer : ASTVisitor {
         if (::generator.isInitialized)
             throw IllegalStateException("Cannot re-use an IRTransformer")
 
-        return when (node) {
+        val info = when (node) {
             is ModuleNode -> TODO()
             is ScriptNode -> {
                 generator = Generator(Interpreter.RESERVED_REGISTERS, node.scope.inlineableRegisterCount)
@@ -58,7 +60,9 @@ class Transformer : ASTVisitor {
                     node.scope.isStrict,
                     isTopLevelScript = true,
                     isAsync = false,
-                )
+                ).also {
+                    Pass.OptimizationPipeline.evaluate(OptInfo(it.code))
+                }
             }
             is FunctionDeclarationNode -> {
                 generator = Generator(
@@ -79,6 +83,8 @@ class Transformer : ASTVisitor {
             }
             else -> TODO()
         }
+
+        return info
     }
 
     private fun enterScope(scope: Scope) {
@@ -141,7 +147,7 @@ class Transformer : ASTVisitor {
 
             if (node.labels.isNotEmpty()) {
                 exitBreakableScope()
-                generator.add(Jump(block!!))
+                generator.add(JumpAbsolute(block!!))
                 generator.currentBlock = block
             }
         } finally {
@@ -179,13 +185,13 @@ class Transformer : ASTVisitor {
         val headBlock = generator.makeBlock()
         val doneBlock = generator.makeBlock()
 
-        generator.add(Jump(headBlock))
+        generator.add(JumpAbsolute(headBlock))
         generator.currentBlock = headBlock
 
         enterBreakableScope(doneBlock, node.labels)
         enterContinuableScope(testBlock, node.labels)
         visit(node.body)
-        generator.addIfNotTerminated(Jump(testBlock))
+        generator.addIfNotTerminated(JumpAbsolute(testBlock))
         generator.currentBlock = testBlock
         visit(node.condition)
         exitBreakableScope()
@@ -200,7 +206,7 @@ class Transformer : ASTVisitor {
         val bodyBlock = generator.makeBlock()
         val doneBlock = generator.makeBlock()
 
-        generator.add(Jump(testBlock))
+        generator.add(JumpAbsolute(testBlock))
         generator.currentBlock = testBlock
         visit(node.condition)
         generator.add(JumpIfToBooleanTrue(bodyBlock, doneBlock))
@@ -212,7 +218,7 @@ class Transformer : ASTVisitor {
         exitContinuableScope()
         exitBreakableScope()
 
-        generator.add(Jump(testBlock))
+        generator.add(JumpAbsolute(testBlock))
         generator.currentBlock = doneBlock
     }
 
@@ -234,12 +240,12 @@ class Transformer : ASTVisitor {
         var incrementerBlock: Block? = null
 
         if (node.condition != null) {
-            generator.add(Jump(testBlock!!))
+            generator.add(JumpAbsolute(testBlock!!))
             generator.currentBlock = testBlock
             visit(node.condition)
             generator.add(JumpIfToBooleanTrue(bodyBlock, doneBlock))
         } else {
-            generator.add(Jump(bodyBlock))
+            generator.add(JumpAbsolute(bodyBlock))
         }
 
         if (node.incrementer != null)
@@ -253,12 +259,12 @@ class Transformer : ASTVisitor {
         exitContinuableScope()
 
         if (node.incrementer != null) {
-            generator.add(Jump(incrementerBlock!!))
+            generator.add(JumpAbsolute(incrementerBlock!!))
             generator.currentBlock = incrementerBlock
             visit(node.incrementer)
         }
 
-        generator.add(Jump(testBlock ?: bodyBlock))
+        generator.add(JumpAbsolute(testBlock ?: bodyBlock))
 
         generator.currentBlock = doneBlock
 
@@ -300,7 +306,7 @@ class Transformer : ASTVisitor {
         generator.add(ForInEnumerate)
         iterateForEach(node.labels, node.decl, node.body)
 
-        generator.add(Jump(isUndefinedBlock))
+        generator.add(JumpAbsolute(isUndefinedBlock))
         generator.currentBlock = isUndefinedBlock
     }
 
@@ -323,12 +329,12 @@ class Transformer : ASTVisitor {
         val handlerScope = generator.handlerScope
         if (handlerScope != null) {
             if (handlerScope.catchBlock != null) {
-                generator.add(Jump(handlerScope.catchBlock))
+                generator.add(JumpAbsolute(handlerScope.catchBlock))
             } else {
                 generator.add(Star(handlerScope.scratchRegister(generator)))
                 generator.add(LdaInt(JumpTable.THROW))
                 generator.add(Star(handlerScope.actionRegister(generator)))
-                generator.add(Jump(handlerScope.finallyBlock!!))
+                generator.add(JumpAbsolute(handlerScope.finallyBlock!!))
             }
         } else {
             generator.add(Throw)
@@ -351,7 +357,7 @@ class Transformer : ASTVisitor {
 
         generator.enterHandlerScope(catchBlock, finallyBlock)
         val tryBlock = generator.makeBlock()
-        generator.add(Jump(tryBlock))
+        generator.add(JumpAbsolute(tryBlock))
         generator.currentBlock = tryBlock
         visit(node.tryBlock)
 
@@ -360,10 +366,10 @@ class Transformer : ASTVisitor {
                 val handlerScope = generator.handlerScope!!
                 generator.add(LdaInt(JumpTable.FALLTHROUGH))
                 generator.add(Star(handlerScope.actionRegister(generator)))
-                generator.add(Jump(finallyBlock!!))
+                generator.add(JumpAbsolute(finallyBlock!!))
             }
         } else {
-            generator.addIfNotTerminated(Jump(doneBlock))
+            generator.addIfNotTerminated(JumpAbsolute(doneBlock))
         }
 
         val finallyHandlerScope = generator.exitHandlerScope()
@@ -396,9 +402,9 @@ class Transformer : ASTVisitor {
                 if (hasFinally) {
                     generator.add(LdaInt(JumpTable.FALLTHROUGH))
                     generator.add(Star(finallyHandlerScope.actionRegister(generator)))
-                    generator.add(Jump(finallyBlock!!))
+                    generator.add(JumpAbsolute(finallyBlock!!))
                 } else {
-                    generator.add(Jump(doneBlock))
+                    generator.add(JumpAbsolute(doneBlock))
                 }
             }
 
@@ -437,7 +443,7 @@ class Transformer : ASTVisitor {
             breakableScopes.last { node.label in it.labels }.block
         } else breakableScopes.last().block
 
-        generator.add(Jump(block))
+        generator.add(JumpAbsolute(block))
         generator.currentBlock = generator.makeBlock()
     }
 
@@ -446,7 +452,7 @@ class Transformer : ASTVisitor {
             continuableScopes.last { node.label in it.labels }.block
         } else continuableScopes.last().block
 
-        generator.add(Jump(block))
+        generator.add(JumpAbsolute(block))
         generator.currentBlock = generator.makeBlock()
     }
 
@@ -472,7 +478,7 @@ class Transformer : ASTVisitor {
             generator.add(Star(handlerScope.scratchRegister(generator)))
             generator.add(LdaInt(JumpTable.RETURN))
             generator.add(Star(handlerScope.actionRegister(generator)))
-            generator.add(Jump(handlerScope.finallyBlock))
+            generator.add(JumpAbsolute(handlerScope.finallyBlock))
         } else {
             generator.add(Return)
         }
@@ -818,7 +824,9 @@ class Transformer : ASTVisitor {
             isTopLevelScript = false,
             isAsync,
             parameters,
-        )
+        ).also {
+            Pass.OptimizationPipeline.evaluate(OptInfo(it.code))
+        }
     }
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {
@@ -1392,7 +1400,7 @@ class Transformer : ASTVisitor {
         }
 
         if (node.isOptional) {
-            generator.add(Jump(continuationBlock!!))
+            generator.add(JumpAbsolute(continuationBlock!!))
             generator.currentBlock = continuationBlock
         }
     }
@@ -1431,7 +1439,7 @@ class Transformer : ASTVisitor {
         }
 
         if (node.isOptional) {
-            generator.add(Jump(continuationBlock!!))
+            generator.add(JumpAbsolute(continuationBlock!!))
             generator.currentBlock = continuationBlock
         }
     }
@@ -1527,7 +1535,7 @@ class Transformer : ASTVisitor {
         val isExhaustedBlock = generator.makeBlock()
         val isNotExhaustedBlock = generator.makeBlock()
 
-        generator.add(Jump(headBlock))
+        generator.add(JumpAbsolute(headBlock))
 
         generator.currentBlock = headBlock
         val iteratorResultReg = generator.reserveRegister()
@@ -1547,7 +1555,7 @@ class Transformer : ASTVisitor {
         exitBreakableScope()
         exitContinuableScope()
 
-        generator.addIfNotTerminated(Jump(headBlock))
+        generator.addIfNotTerminated(JumpAbsolute(headBlock))
 
         generator.currentBlock = isExhaustedBlock
     }

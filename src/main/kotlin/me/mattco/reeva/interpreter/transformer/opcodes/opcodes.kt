@@ -6,8 +6,8 @@ typealias Register = Int
 typealias Index = Int
 typealias Literal = Int
 
-sealed class Opcode {
-    open val isTerminator = false
+sealed class Opcode(val isTerminator: Boolean = false, val isThrowing: Boolean = false) {
+    open fun replaceReferences(from: Block, to: Block) {}
 }
 
 /////////////////
@@ -49,7 +49,7 @@ class Star(val reg: Register) : Opcode()
  * objectReg: the register containing the object
  * nameIndex: the constant pool index of the name. Must be a string literal
  */
-class LdaNamedProperty(val objectReg: Register, val nameIndex: Index) : Opcode()
+class LdaNamedProperty(val objectReg: Register, val nameIndex: Index) : Opcode(isThrowing = true)
 
 /**
  * Load a computed property from an object into the accumulator.
@@ -57,7 +57,7 @@ class LdaNamedProperty(val objectReg: Register, val nameIndex: Index) : Opcode()
  * accumulator: the computed property value
  * objectReg: the register containing object
  */
-class LdaKeyedProperty(val objectReg: Register) : Opcode()
+class LdaKeyedProperty(val objectReg: Register) : Opcode(isThrowing = true)
 
 /**
  * Store a literal property into an object.
@@ -66,7 +66,7 @@ class LdaKeyedProperty(val objectReg: Register) : Opcode()
  * objectReg: the register containing the object
  * nameIndex: the constant pool index of the name. Must be a string literal
  */
-class StaNamedProperty(val objectReg: Register, val nameIndex: Index) : Opcode()
+class StaNamedProperty(val objectReg: Register, val nameIndex: Index) : Opcode(isThrowing = true)
 
 /**
  * Store a computed property into an object.
@@ -75,7 +75,7 @@ class StaNamedProperty(val objectReg: Register, val nameIndex: Index) : Opcode()
  * objectReg: the register containing the object
  * nameReg: the register containing the computed property value
  */
-class StaKeyedProperty(val objectReg: Register, val nameReg: Register) : Opcode()
+class StaKeyedProperty(val objectReg: Register, val nameReg: Register) : Opcode(isThrowing = true)
 
 /////////////////////////////
 /// OBJECT/ARRAY LITERALS ///
@@ -93,7 +93,7 @@ object CreateArray : Opcode()
  * arrayReg: the register containing the array
  * index: the literal array index to insert the value into
  */
-class StaArrayIndex(val arrayReg: Register, val index: Literal) : Opcode()
+class StaArrayIndex(val arrayReg: Register, val index: Literal) : Opcode(isThrowing = true)
 
 /**
  * Store a value into an array.
@@ -102,7 +102,7 @@ class StaArrayIndex(val arrayReg: Register, val index: Literal) : Opcode()
  * arrayReg: the register containing the array
  * indexReg: the literal array index to insert the value into
  */
-class StaArray(val arrayReg: Register, val indexReg: Register) : Opcode()
+class StaArray(val arrayReg: Register, val indexReg: Register) : Opcode(isThrowing = true)
 
 /**
  * Creates an empty object and loads it into the accumulator
@@ -120,42 +120,42 @@ object CreateObject : Opcode()
  * operation, and the accumulator holds the RHS value.
  */
 
-class Add(val lhsReg: Register) : Opcode()
-class Sub(val lhsReg: Register) : Opcode()
-class Mul(val lhsReg: Register) : Opcode()
-class Div(val lhsReg: Register) : Opcode()
-class Mod(val lhsReg: Register) : Opcode()
-class Exp(val lhsReg: Register) : Opcode()
-class BitwiseOr(val lhsReg: Register) : Opcode()
-class BitwiseXor(val lhsReg: Register) : Opcode()
-class BitwiseAnd(val lhsReg: Register) : Opcode()
-class ShiftLeft(val lhsReg: Register) : Opcode()
-class ShiftRight(val lhsReg: Register) : Opcode()
-class ShiftRightUnsigned(val lhsReg: Register) : Opcode()
+class Add(val lhsReg: Register) : Opcode(isThrowing = true)
+class Sub(val lhsReg: Register) : Opcode(isThrowing = true)
+class Mul(val lhsReg: Register) : Opcode(isThrowing = true)
+class Div(val lhsReg: Register) : Opcode(isThrowing = true)
+class Mod(val lhsReg: Register) : Opcode(isThrowing = true)
+class Exp(val lhsReg: Register) : Opcode(isThrowing = true)
+class BitwiseOr(val lhsReg: Register) : Opcode(isThrowing = true)
+class BitwiseXor(val lhsReg: Register) : Opcode(isThrowing = true)
+class BitwiseAnd(val lhsReg: Register) : Opcode(isThrowing = true)
+class ShiftLeft(val lhsReg: Register) : Opcode(isThrowing = true)
+class ShiftRight(val lhsReg: Register) : Opcode(isThrowing = true)
+class ShiftRightUnsigned(val lhsReg: Register) : Opcode(isThrowing = true)
 
 /**
  * Increments the value in the accumulator. This is NOT a generic
  * operation; the value in the accumulator must be numeric.
  */
-object Inc : Opcode()
+object Inc : Opcode(isThrowing = true)
 
 /**
  * Decrements the value in the accumulator. This is NOT a generic
  * operation; the value in the accumulator must be numeric.
  */
-object Dec : Opcode()
+object Dec : Opcode(isThrowing = true)
 
 /**
  * Negates the value in the accumulator. This is NOT a generic
  * operation; the value in the accumulator must be numeric.
  */
-object Negate : Opcode()
+object Negate : Opcode(isThrowing = true)
 
 /**
  * Bitwise-nots the value in the accumulator. This is NOT a generic
  * operation; the value in the accumulator must be numeric.
  */
-object BitwiseNot : Opcode()
+object BitwiseNot : Opcode(isThrowing = true)
 
 /**
  * Appends the string in the accumulator to another string.
@@ -170,7 +170,7 @@ class StringAppend(val lhsStringReg: Register) : Opcode()
  * Converts the accumulator to a boolean using the ToBoolean
  * operation, then inverts it.
  */
-object ToBooleanLogicalNot : Opcode()
+object ToBooleanLogicalNot : Opcode(isThrowing = true)
 
 /**
  * Inverts the boolean in the accumulator.
@@ -197,7 +197,7 @@ class DeletePropertyStrict(val objectReg: Register) : Opcode()
  * accumulator: the property which will be deleted
  * objectReg: the register containing the target object
  */
-class DeletePropertySloppy(val objectReg: Register) : Opcode()
+class DeletePropertySloppy(val objectReg: Register) : Opcode(isThrowing = true)
 
 /////////////
 /// SCOPE ///
@@ -208,14 +208,14 @@ class DeletePropertySloppy(val objectReg: Register) : Opcode()
  *
  * name: the name of the global variable
  */
-class LdaGlobal(val name: Index) : Opcode()
+class LdaGlobal(val name: Index) : Opcode(isThrowing = true)
 
 /**
  * Stores the value in the accumulator into a global variable.
  *
  * name: the name of the global variable
  */
-class StaGlobal(val name: Index) : Opcode()
+class StaGlobal(val name: Index) : Opcode(isThrowing = true)
 
 class LdaCurrentRecordSlot(val slot: Literal) : Opcode()
 
@@ -242,7 +242,8 @@ object PopEnvRecord : Opcode()
  * receiverReg: the receiver
  * argumentRegs: a variable number of argument registers
  */
-class Call(val targetReg: Register, val receiverReg: Register, val argumentRegs: List<Register>) : Opcode()
+class Call(val targetReg: Register, val receiverReg: Register, val argumentRegs: List<Register>) :
+    Opcode(isThrowing = true)
 
 /**
  * Calls a value with the arguments in an array.
@@ -251,7 +252,8 @@ class Call(val targetReg: Register, val receiverReg: Register, val argumentRegs:
  * receiverReg: the register containing the receiver
  * argumentReg: the register containing the array of arguments
  */
-class CallWithArgArray(val targetReg: Register, val receiverReg: Register, val argumentsReg: Register) : Opcode()
+class CallWithArgArray(val targetReg: Register, val receiverReg: Register, val argumentsReg: Register) :
+    Opcode(isThrowing = true)
 
 /////////////////////
 /// CONSTRUCTIONS ///
@@ -264,7 +266,8 @@ class CallWithArgArray(val targetReg: Register, val receiverReg: Register, val a
  * newTargetReg: the register containing the new.target
  * argumentReg: the register containing the array of arguments
  */
-class Construct(val targetReg: Register, val newTargetReg: Register, val argumentRegs: List<Register>) : Opcode()
+class Construct(val targetReg: Register, val newTargetReg: Register, val argumentRegs: List<Register>) :
+    Opcode(isThrowing = true)
 
 /**
  * Constructs a value with the arguments in an array.
@@ -273,7 +276,8 @@ class Construct(val targetReg: Register, val newTargetReg: Register, val argumen
  * newTargetReg: the register containing the new.target
  * argumentReg: the register containing the array of arguments
  */
-class ConstructWithArgArray(val targetReg: Register, val newTargetReg: Register, val argumentsReg: Register) : Opcode()
+class ConstructWithArgArray(val targetReg: Register, val newTargetReg: Register, val argumentsReg: Register) :
+    Opcode(isThrowing = true)
 
 ///////////////
 /// TESTING ///
@@ -285,7 +289,7 @@ class ConstructWithArgArray(val targetReg: Register, val newTargetReg: Register,
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestEqual(val lhsReg: Register) : Opcode()
+class TestEqual(val lhsReg: Register) : Opcode(isThrowing = true)
 
 /**
  * Tests if a value is not weakly equal to the accumulator
@@ -293,7 +297,7 @@ class TestEqual(val lhsReg: Register) : Opcode()
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestNotEqual(val lhsReg: Register) : Opcode()
+class TestNotEqual(val lhsReg: Register) : Opcode(isThrowing = true)
 
 /**
  * Tests if a value is strictly equal to the accumulator
@@ -317,7 +321,7 @@ class TestNotEqualStrict(val lhsReg: Register) : Opcode()
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestLessThan(val lhsReg: Register) : Opcode()
+class TestLessThan(val lhsReg: Register) : Opcode(isThrowing = true)
 
 /**
  * Tests if a value is greater than the accumulator
@@ -325,7 +329,7 @@ class TestLessThan(val lhsReg: Register) : Opcode()
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestGreaterThan(val lhsReg: Register) : Opcode()
+class TestGreaterThan(val lhsReg: Register) : Opcode(isThrowing = true)
 
 /**
  * Tests if a value is less than or equal to the accumulator
@@ -333,7 +337,7 @@ class TestGreaterThan(val lhsReg: Register) : Opcode()
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestLessThanOrEqual(val lhsReg: Register) : Opcode()
+class TestLessThanOrEqual(val lhsReg: Register) : Opcode(isThrowing = true)
 
 /**
  * Tests if a value is greater than or equal to the accumulator
@@ -341,7 +345,7 @@ class TestLessThanOrEqual(val lhsReg: Register) : Opcode()
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestGreaterThanOrEqual(val lhsReg: Register) : Opcode()
+class TestGreaterThanOrEqual(val lhsReg: Register) : Opcode(isThrowing = true)
 
 /**
  * Tests if a value is the same object in the accumulator
@@ -357,7 +361,7 @@ class TestReferenceEqual(val lhsReg: Register) : Opcode()
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestInstanceOf(val lhsReg: Register) : Opcode()
+class TestInstanceOf(val lhsReg: Register) : Opcode(isThrowing = false)
 
 /**
  * Tests if a value is 'in' the accumulator
@@ -365,7 +369,7 @@ class TestInstanceOf(val lhsReg: Register) : Opcode()
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestIn(val lhsReg: Register) : Opcode()
+class TestIn(val lhsReg: Register) : Opcode(isThrowing = false)
 
 /**
  * Tests if a value is nullish
@@ -395,45 +399,49 @@ object TestUndefined : Opcode()
 /**
  * Convert the accumulator to a boolean using ToBoolean()
  */
-object ToBoolean : Opcode()
+object ToBoolean : Opcode(isThrowing = true)
 
 /**
  * Convert the accumulator to a number using ToNumber()
  */
-object ToNumber : Opcode()
+object ToNumber : Opcode(isThrowing = true)
 
 /**
  * Convert the accumulator to a number using ToNumeric()
  */
-object ToNumeric : Opcode()
+object ToNumeric : Opcode(isThrowing = true)
 
 /**
  * Convert the accumulator to an object using ToObject()
  */
-object ToObject : Opcode()
+object ToObject : Opcode(isThrowing = true)
 
 /**
  * Convert the accumulator to a string using ToString()
  */
-object ToString : Opcode()
+object ToString : Opcode(isThrowing = true)
 
 /////////////
 /// JUMPS ///
 /////////////
 
-open class Jump(val ifBlock: Block, val elseBlock: Block? = null) : Opcode() {
-    override val isTerminator = true
+abstract class Jump(var ifBlock: Block, var elseBlock: Block? = null) : Opcode(isTerminator = true) {
+    override fun replaceReferences(from: Block, to: Block) {
+        if (ifBlock == from)
+            ifBlock = to
+        if (elseBlock == from)
+            elseBlock = to
+    }
 }
 
+class JumpAbsolute(ifBlock: Block) : Jump(ifBlock, null)
 class JumpIfTrue(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfToBooleanTrue(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfEmpty(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfUndefined(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfNullish(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 
-class JumpFromTable(val table: Index) : Opcode() {
-    override val isTerminator = true
-}
+class JumpFromTable(val table: Index) : Opcode(isTerminator = true)
 
 ////////////////////////////
 /// SPECIAL CONTROL FLOW ///
@@ -442,28 +450,28 @@ class JumpFromTable(val table: Index) : Opcode() {
 /**
  * Return the value in the accumulator
  */
-object Return : Opcode() {
-    override val isTerminator = true
+object Return : Opcode(isTerminator = true)
+
+class Yield(var continuationBlock: Block) : Opcode(isTerminator = true) {
+    override fun replaceReferences(from: Block, to: Block) {
+        if (continuationBlock == from)
+            continuationBlock = to
+    }
 }
 
-class Yield(val continuationBlock: Block) : Opcode() {
-    override val isTerminator = true
-}
-
-class Await(val continuationBlock: Block) : Opcode() {
-    override val isTerminator = true
+class Await(var continuationBlock: Block) : Opcode(isTerminator = true) {
+    override fun replaceReferences(from: Block, to: Block) {
+        if (continuationBlock == from)
+            continuationBlock = to
+    }
 }
 
 /**
  * Throws the value in the accumulator
  */
-object Throw : Opcode() {
-    override val isTerminator = true
-}
+object Throw : Opcode(isTerminator = true, isThrowing = true)
 
-class ThrowConstantError(val message: Index) : Opcode() {
-    override val isTerminator = true
-}
+class ThrowConstantError(val message: Index) : Opcode(isTerminator = true)
 
 
 ///////////////
@@ -479,13 +487,13 @@ class CreateClass(
 
 class CreateClassConstructor(val functionInfoIndex: Index) : Opcode()
 
-object GetSuperConstructor : Opcode()
+object GetSuperConstructor : Opcode(isThrowing = true)
 
 object GetSuperBase : Opcode()
 
-object ThrowSuperNotInitializedIfEmpty : Opcode()
+object ThrowSuperNotInitializedIfEmpty : Opcode(isThrowing = true)
 
-object ThrowSuperInitializedIfNotEmpty : Opcode()
+object ThrowSuperInitializedIfNotEmpty : Opcode(isThrowing = true)
 
 /////////////
 /// OTHER ///
@@ -498,7 +506,8 @@ object ThrowSuperInitializedIfNotEmpty : Opcode()
  * nameReg: the property name register
  * methodReg: the method register
  */
-class DefineGetterProperty(val objectReg: Register, val nameReg: Register, val methodReg: Register) : Opcode()
+class DefineGetterProperty(val objectReg: Register, val nameReg: Register, val methodReg: Register) :
+    Opcode(isThrowing = true)
 
 /**
  * Defines a setter function on an object
@@ -507,7 +516,8 @@ class DefineGetterProperty(val objectReg: Register, val nameReg: Register, val m
  * nameReg: the property name register
  * methodReg: the method register
  */
-class DefineSetterProperty(val objectReg: Register, val nameReg: Register, val methodReg: Register) : Opcode()
+class DefineSetterProperty(val objectReg: Register, val nameReg: Register, val methodReg: Register) :
+    Opcode(isThrowing = true)
 
 /**
  * Declare global names
@@ -530,15 +540,15 @@ object CreateUnmappedArgumentsObject : Opcode()
  * Sets the accumulator to the result of calling
  * <accumulator>[Symbol.iterator]()
  */
-object GetIterator : Opcode()
+object GetIterator : Opcode(isThrowing = true)
 
-object IteratorNext : Opcode()
+object IteratorNext : Opcode(isThrowing = true)
 
-object IteratorResultDone : Opcode()
+object IteratorResultDone : Opcode(isThrowing = true)
 
-object IteratorResultValue : Opcode()
+object IteratorResultValue : Opcode(isThrowing = true)
 
-object ForInEnumerate : Opcode()
+object ForInEnumerate : Opcode(isThrowing = true)
 
 /**
  * Creates a function object, referencing a FunctionInfo object stored
@@ -567,7 +577,7 @@ class CreateAsyncClosure(val functionInfoIndex: Index) : Opcode()
 /**
  * Collects excess parameters into an array
  */
-object CreateRestParam : Opcode()
+object CreateRestParam : Opcode(isThrowing = true)
 
 /**
  * TODO

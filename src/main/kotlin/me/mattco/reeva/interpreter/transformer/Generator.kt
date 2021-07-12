@@ -1,6 +1,6 @@
 package me.mattco.reeva.interpreter.transformer
 
-import me.mattco.reeva.interpreter.transformer.opcodes.Jump
+import me.mattco.reeva.interpreter.transformer.opcodes.JumpAbsolute
 import me.mattco.reeva.interpreter.transformer.opcodes.Opcode
 import me.mattco.reeva.interpreter.transformer.opcodes.Register
 import me.mattco.reeva.utils.expect
@@ -27,8 +27,8 @@ class HandlerScope(
 }
 
 data class FunctionOpcodes(
-    val blocks: List<Block>,
-    val constantPool: List<Any>,
+    val blocks: MutableList<Block>,
+    val constantPool: MutableList<Any>,
     val registerCount: Int,
 )
 
@@ -105,7 +105,7 @@ class Generator(
         add(op(firstBlock, secondBlock))
         currentBlock = trueBlock
         ifTrue()
-        addIfNotTerminated(Jump(doneBlock))
+        addIfNotTerminated(JumpAbsolute(doneBlock))
         currentBlock = doneBlock
     }
 
@@ -117,10 +117,10 @@ class Generator(
         add(op(trueBlock, falseBlock))
         currentBlock = trueBlock
         ifTrue()
-        addIfNotTerminated(Jump(doneBlock, null))
+        addIfNotTerminated(JumpAbsolute(doneBlock))
         currentBlock = falseBlock
         ifFalse()
-        addIfNotTerminated(Jump(doneBlock, null))
+        addIfNotTerminated(JumpAbsolute(doneBlock))
         currentBlock = doneBlock
     }
 

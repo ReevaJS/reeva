@@ -41,10 +41,10 @@ class IrPrinter(private val info: FunctionInfo) {
     }
 
     private fun stringifyBlock(block: Block) = buildString {
-        append(block.index)
+        append(block.name)
         if (block.handler != null) {
             append(" (handler=@")
-            append(block.handler!!.index)
+            append(block.handler!!.name)
             append(")")
         }
         append(":\n")
@@ -221,7 +221,7 @@ class IrPrinter(private val info: FunctionInfo) {
 
     private fun stringifyLiteral(literal: Literal) = " #$literal"
 
-    private fun stringifyBlockIndex(block: Block) = " @${block.index}"
+    private fun stringifyBlockIndex(block: Block) = " @${block.name}"
 
     private fun stringifyConstant(constant: Any): String {
         return when (constant) {
@@ -245,7 +245,7 @@ class IrPrinter(private val info: FunctionInfo) {
                 append("JumpTable { ")
                 expect(constant.isNotEmpty())
                 for ((index, block) in constant)
-                    append(index, ": @", block.index, ' ')
+                    append(index, ": @", block.name, ' ')
                 append('}')
             }
             is ClassDescriptor -> buildString {
