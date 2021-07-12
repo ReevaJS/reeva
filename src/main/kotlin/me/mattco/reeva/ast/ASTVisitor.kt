@@ -65,7 +65,6 @@ interface ASTVisitor {
             is ConditionalExpressionNode -> visitConditionalExpression(node)
             is MemberExpressionNode -> visitMemberExpression(node)
             is NewExpressionNode -> visitNewExpression(node)
-            is OptionalExpressionNode -> visitOptionalExpression(node)
             is SuperPropertyExpressionNode -> visitSuperPropertyExpression(node)
             is SuperCallExpressionNode -> visitSuperCallExpression(node)
             is ImportCallExpressionNode -> visitImportCallExpression(node)
@@ -289,10 +288,6 @@ interface ASTVisitor {
     fun visitNewExpression(node: NewExpressionNode) {
         visit(node.target)
         node.arguments.forEach { visit(it.expression) }
-    }
-
-    fun visitOptionalExpression(node: OptionalExpressionNode) {
-        TODO()
     }
 
     fun visitSuperPropertyExpression(node: SuperPropertyExpressionNode) {

@@ -23,6 +23,7 @@ class Parser(val source: String) {
     private var inFunctionContext = false
     private var inYieldContext = false
     private var inAsyncContext = false
+    private var inDerivedClassContext = false
     private var disableAutoScoping = false
 
     private val labelStateStack = mutableListOf(LabelState())
@@ -1084,6 +1085,8 @@ class Parser(val source: String) {
             consume()
             if (lhs !is IdentifierReferenceNode && lhs !is MemberExpressionNode && lhs !is CallExpressionNode)
                 reporter.at(lhs).invalidLhsInAssignment()
+            if (lhs is MemberExpressionNode && lhs.isOptional)
+                reporter.at(lhs).invalidLhsInAssignment()
             if (isStrict && lhs is IdentifierReferenceNode) {
                 val name = lhs.identifierName
                 if (name == "eval")
@@ -1099,7 +1102,7 @@ class Parser(val source: String) {
         }
 
         return when (tokenType) {
-            TokenType.OpenParen -> parseCallExpression(lhs)
+            TokenType.OpenParen -> parseCallExpression(lhs, isOptional = false)
             TokenType.Add -> makeBinaryExpr(BinaryOperator.Add)
             TokenType.Sub -> makeBinaryExpr(BinaryOperator.Sub)
             TokenType.BitwiseAnd -> makeBinaryExpr(BinaryOperator.BitwiseAnd)
@@ -1148,19 +1151,14 @@ class Parser(val source: String) {
                 MemberExpressionNode(
                     lhs,
                     nps { parseIdentifier() },
-                    MemberExpressionNode.Type.NonComputed
+                    MemberExpressionNode.Type.NonComputed,
+                    isOptional = false,
                 ).withPosition(lhs.sourceStart, lastConsumedToken.end)
             }
-            TokenType.OpenBracket -> {
-                consume()
-                val rhs = parseExpression(0)
-                consume(TokenType.CloseBracket)
-                return MemberExpressionNode(
-                    lhs,
-                    rhs,
-                    MemberExpressionNode.Type.Computed,
-                ).withPosition(lhs.sourceStart, lastConsumedToken.end)
-            }
+            TokenType.OpenBracket -> parseBracketedExpression(lhs, isOptional = false).withPosition(
+                lhs.sourceStart,
+                lastConsumedToken.end
+            )
             TokenType.Inc -> {
                 consume()
                 UpdateExpressionNode(lhs, isIncrement = true, isPostfix = true)
@@ -1172,6 +1170,7 @@ class Parser(val source: String) {
                     .withPosition(lhs.sourceStart, lastConsumedToken.end)
             }
             TokenType.QuestionMark -> parseConditional(lhs).withPosition(lhs.sourceStart, lastConsumedToken.end)
+            TokenType.OptionalChain -> parseOptionalChain(lhs).withPosition(lhs.sourceStart, lastConsumedToken.end)
             else -> unreachable()
         }
     }
@@ -1184,8 +1183,38 @@ class Parser(val source: String) {
         ConditionalExpressionNode(lhs, ifTrue, ifFalse)
     }
 
-    private fun parseCallExpression(lhs: ExpressionNode): ExpressionNode = nps {
-        CallExpressionNode(lhs, parseArguments())
+    private fun parseBracketedExpression(lhs: ExpressionNode, isOptional: Boolean): ExpressionNode = nps {
+        consume()
+        val rhs = parseExpression(0)
+        consume(TokenType.CloseBracket)
+        MemberExpressionNode(
+            lhs,
+            rhs,
+            MemberExpressionNode.Type.Computed,
+            isOptional,
+        )
+    }
+
+    private fun parseOptionalChain(lhs: ExpressionNode): ExpressionNode = nps {
+        consume(TokenType.OptionalChain)
+        when (tokenType) {
+            TokenType.OpenParen -> parseCallExpression(lhs, isOptional = true)
+            TokenType.OpenBracket -> parseBracketedExpression(lhs, isOptional = true)
+            else -> {
+                if (!matchIdentifierName())
+                    reporter.expected("identifier", tokenType)
+                MemberExpressionNode(
+                    lhs,
+                    nps { parseIdentifier() },
+                    MemberExpressionNode.Type.NonComputed,
+                    isOptional = true,
+                ).withPosition(lhs.sourceStart, lastConsumedToken.end)
+            }
+        }
+    }
+
+    private fun parseCallExpression(lhs: ExpressionNode, isOptional: Boolean): ExpressionNode = nps {
+        CallExpressionNode(lhs, parseArguments(), isOptional)
     }
 
     private fun parseNewExpression(): ExpressionNode = nps {

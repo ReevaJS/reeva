@@ -245,6 +245,7 @@ enum class TokenType(val string: String, val category: Category = Category.None)
             In,
             Instanceof,
             QuestionMark,
+            OptionalChain,
         )
 
         private val statementTokens = setOf(

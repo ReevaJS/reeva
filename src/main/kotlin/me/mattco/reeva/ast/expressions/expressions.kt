@@ -27,6 +27,7 @@ class AwaitExpressionNode(val expression: ExpressionNode) : ASTNodeBase(listOf(e
 class CallExpressionNode(
     val target: ExpressionNode,
     val arguments: ArgumentList,
+    val isOptional: Boolean,
 ) : ASTNodeBase(listOf(target) + arguments), ExpressionNode
 
 // Note that this name deviates from the spec because I think this is
@@ -45,6 +46,7 @@ class MemberExpressionNode(
     val lhs: ExpressionNode,
     val rhs: ExpressionNode,
     val type: Type,
+    val isOptional: Boolean,
 ) : ASTNodeBase(listOf(lhs, rhs)), ExpressionNode {
     override val isInvalidAssignmentTarget = false
 
@@ -69,8 +71,6 @@ class NewExpressionNode(
     val target: ExpressionNode,
     val arguments: ArgumentList,
 ) : ASTNodeBase(listOfNotNull(target) + arguments), ExpressionNode
-
-class OptionalExpressionNode : ASTNodeBase(), ExpressionNode
 
 class SuperPropertyExpressionNode(
     val target: ExpressionNode,

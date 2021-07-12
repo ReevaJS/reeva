@@ -1246,6 +1246,7 @@ class Transformer : ASTVisitor {
                 return
             }
             is MemberExpressionNode -> {
+                expect(!lhs.isOptional)
                 val objectReg = generator.reserveRegister()
                 visit(lhs.lhs)
                 generator.add(Star(objectReg))
@@ -1361,27 +1362,39 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitMemberExpression(node: MemberExpressionNode) {
-        // TODO: Deal with assigning to a MemberExpression
-
         val objectReg = generator.reserveRegister()
+        loadMemberExpression(node, objectReg)
+    }
+
+    private fun loadMemberExpression(node: MemberExpressionNode, receiverReg: Register) {
         visit(node.lhs)
-        generator.add(Star(objectReg))
+        generator.add(Star(receiverReg))
+
+        val continuationBlock = if (node.isOptional) {
+            val ifUndefinedBlock = generator.makeBlock()
+            val ifNotUndefined = generator.makeBlock()
+
+            generator.add(JumpIfUndefined(ifUndefinedBlock, ifNotUndefined))
+            generator.currentBlock = ifNotUndefined
+            ifUndefinedBlock
+        } else null
 
         when (node.type) {
             MemberExpressionNode.Type.Computed -> {
                 visit(node.rhs)
-                generator.add(LdaKeyedProperty(objectReg))
+                generator.add(LdaKeyedProperty(receiverReg))
             }
             MemberExpressionNode.Type.NonComputed -> {
                 val cpIndex = generator.intern((node.rhs as IdentifierNode).name)
-                generator.add(LdaNamedProperty(objectReg, cpIndex))
+                generator.add(LdaNamedProperty(receiverReg, cpIndex))
             }
             MemberExpressionNode.Type.Tagged -> TODO()
         }
-    }
 
-    private fun requiredRegisters(arguments: ArgumentList): Int {
-        return if (argumentsMode(arguments) == ArgumentsMode.Spread) 1 else arguments.size
+        if (node.isOptional) {
+            generator.add(Jump(continuationBlock!!))
+            generator.currentBlock = continuationBlock
+        }
     }
 
     override fun visitCallExpression(node: CallExpressionNode) {
@@ -1390,28 +1403,23 @@ class Transformer : ASTVisitor {
         val target = node.target
 
         if (target is MemberExpressionNode) {
-            visit(target.lhs)
-            generator.add(Star(receiverReg))
-
-            when (target.type) {
-                MemberExpressionNode.Type.Computed -> {
-                    visit(target.rhs)
-                    generator.add(LdaKeyedProperty(receiverReg))
-                }
-                MemberExpressionNode.Type.NonComputed -> {
-                    val cpIndex = generator.intern((target.rhs as IdentifierNode).name)
-                    generator.add(LdaNamedProperty(receiverReg, cpIndex))
-                }
-                MemberExpressionNode.Type.Tagged -> TODO()
-            }
-
+            loadMemberExpression(target, receiverReg)
             generator.add(Star(callableReg))
         } else {
-            visit(target)
-            generator.add(Star(callableReg))
             generator.add(LdaUndefined)
             generator.add(Star(receiverReg))
+            visit(target)
+            generator.add(Star(callableReg))
         }
+
+        val continuationBlock = if (node.isOptional) {
+            val ifUndefinedBlock = generator.makeBlock()
+            val ifNotUndefined = generator.makeBlock()
+
+            generator.add(JumpIfUndefined(ifUndefinedBlock, ifNotUndefined))
+            generator.currentBlock = ifNotUndefined
+            ifUndefinedBlock
+        } else null
 
         val (argumentsMode, argumentRegisters) = loadArguments(node.arguments)
 
@@ -1420,6 +1428,11 @@ class Transformer : ASTVisitor {
         } else {
             expect(argumentRegisters.size == 1)
             generator.add(CallWithArgArray(callableReg, receiverReg, argumentRegisters[0]))
+        }
+
+        if (node.isOptional) {
+            generator.add(Jump(continuationBlock!!))
+            generator.currentBlock = continuationBlock
         }
     }
 
@@ -1537,10 +1550,6 @@ class Transformer : ASTVisitor {
         generator.addIfNotTerminated(Jump(headBlock))
 
         generator.currentBlock = isExhaustedBlock
-    }
-
-    override fun visitOptionalExpression(node: OptionalExpressionNode) {
-        TODO()
     }
 
     override fun visitSuperPropertyExpression(node: SuperPropertyExpressionNode) {
