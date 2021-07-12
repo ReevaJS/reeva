@@ -15,7 +15,7 @@ class IrPrinter(private val info: FunctionInfo) {
         } else "function \"${info.name}\""
         println("FunctionInfo for $name")
 
-        println("Parameter count: ${info.argCount}")
+        println("Parameter count: ${info.code.argCount}")
         println("Register count: ${info.code.registerCount}")
         println("Opcode count: ${info.code.blocks.sumOf { it.size }}")
 
@@ -214,8 +214,8 @@ class IrPrinter(private val info: FunctionInfo) {
         return when {
             register == Interpreter.RECEIVER_REGISTER -> " <receiver>"
             register == Interpreter.NEW_TARGET_REGISTER -> " <new.target>"
-            register < info.argCount -> " a${register - Interpreter.RESERVED_REGISTERS}"
-            else -> " r${register - info.argCount}"
+            register < info.code.argCount -> " a${register - Interpreter.RESERVED_REGISTERS}"
+            else -> " r${register - info.code.argCount}"
         }
     }
 

@@ -39,7 +39,7 @@ class Interpreter(
     private val info: FunctionInfo
         get() = function.info
 
-    private val registers = Registers(info.argCount + info.code.registerCount)
+    private val registers = Registers(info.code.argCount + info.code.registerCount)
     private var accumulator by registers::accumulator
     private var exception: ThrowException? = null
     private val mappedCPool = Array<JSValue?>(info.code.constantPool.size) { null }
@@ -916,7 +916,7 @@ class Interpreter(
     }
 
     override fun visitCreateRestParam() {
-        accumulator = Operations.createArrayFromList(realm, arguments.drop(info.argCount - 1))
+        accumulator = Operations.createArrayFromList(realm, arguments.drop(info.code.argCount - 1))
     }
 
     override fun visitDebugBreakpoint() {
@@ -985,12 +985,12 @@ class Interpreter(
     inner class Registers(size: Int) {
         var accumulator: JSValue = JSEmpty
         private val registers = Array(size) {
-            if (it < info.argCount) JSUndefined else JSEmpty
+            if (it < info.code.argCount) JSUndefined else JSEmpty
         }
 
         init {
             for ((index, argument) in arguments.withIndex()) {
-                if (index >= info.argCount)
+                if (index >= info.code.argCount)
                     break
                 registers[index] = argument
             }

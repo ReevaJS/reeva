@@ -74,7 +74,7 @@ object MergeBlocks : Pass {
             for (block in opcodes.blocks) {
                 for (opcode in block) {
                     for (entry in blocks) {
-                        opcode.replaceReferences(entry, replacement)
+                        opcode.replaceBlock(entry, replacement)
                     }
                 }
             }

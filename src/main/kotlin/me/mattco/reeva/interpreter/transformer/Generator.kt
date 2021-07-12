@@ -29,11 +29,12 @@ class HandlerScope(
 data class FunctionOpcodes(
     val blocks: MutableList<Block>,
     val constantPool: MutableList<Any>,
-    val registerCount: Int,
+    var registerCount: Int,
+    val argCount: Int,
 )
 
 class Generator(
-    argCount: Int,
+    private val argCount: Int,
     additionalInlineableRegisterCount: Int,
     val isDerivedClassConstructor: Boolean = false,
 ) {
@@ -128,5 +129,6 @@ class Generator(
         blocks,
         constantPool,
         nextRegister,
+        argCount,
     )
 }

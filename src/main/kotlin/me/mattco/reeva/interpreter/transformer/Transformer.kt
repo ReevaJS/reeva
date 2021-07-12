@@ -21,7 +21,6 @@ import kotlin.math.floor
 data class FunctionInfo(
     val name: String?,
     val code: FunctionOpcodes,
-    val argCount: Int,
     val isStrict: Boolean,
     val isTopLevelScript: Boolean,
     val isAsync: Boolean,
@@ -56,7 +55,6 @@ class Transformer : ASTVisitor {
                 FunctionInfo(
                     null,
                     generator.finish(),
-                    Interpreter.RESERVED_REGISTERS,
                     node.scope.isStrict,
                     isTopLevelScript = true,
                     isAsync = false,
@@ -819,7 +817,6 @@ class Transformer : ASTVisitor {
         return FunctionInfo(
             name,
             generator.finish(),
-            Interpreter.RESERVED_REGISTERS + parameters.size,
             isStrict,
             isTopLevelScript = false,
             isAsync,
@@ -985,7 +982,6 @@ class Transformer : ASTVisitor {
         return FunctionInfo(
             "<class instance field initializer>",
             generator.finish(),
-            Interpreter.RESERVED_REGISTERS,
             isStrict = true,
             isTopLevelScript = false,
             isAsync = false,
@@ -1024,7 +1020,7 @@ class Transformer : ASTVisitor {
         generator.add(LdaNamedProperty(closureReg, symbolIndex))
         val targetReg = generator.reserveRegister()
         generator.add(Star(targetReg))
-        generator.add(Call(targetReg, Interpreter.RECEIVER_REGISTER, emptyList()))
+        generator.add(Call(targetReg, Interpreter.RECEIVER_REGISTER, mutableListOf()))
     }
 
     private fun makeImplicitClassConstructor(
@@ -1064,7 +1060,6 @@ class Transformer : ASTVisitor {
         return FunctionInfo(
             name,
             generator.finish(),
-            argCount,
             isStrict = true,
             isTopLevelScript = false,
             isAsync = false,
@@ -1471,12 +1466,12 @@ class Transformer : ASTVisitor {
         } else ArgumentsMode.Normal
     }
 
-    private fun loadArguments(arguments: ArgumentList): Pair<ArgumentsMode, List<Register>> {
+    private fun loadArguments(arguments: ArgumentList): Pair<ArgumentsMode, MutableList<Register>> {
         val mode = argumentsMode(arguments)
         val registers = mutableListOf<Register>()
 
         return if (mode == ArgumentsMode.Spread) {
-            return ArgumentsMode.Spread to listOf(loadArgumentsWithSpread(arguments))
+            return ArgumentsMode.Spread to mutableListOf(loadArgumentsWithSpread(arguments))
         } else {
             for (argument in arguments) {
                 visit(argument.expression)

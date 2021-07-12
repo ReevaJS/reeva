@@ -7,7 +7,11 @@ typealias Index = Int
 typealias Literal = Int
 
 sealed class Opcode(val isTerminator: Boolean = false, val isThrowing: Boolean = false) {
-    open fun replaceReferences(from: Block, to: Block) {}
+    open fun readRegisters(): List<Register> = emptyList()
+    open fun writeRegisters(): List<Register> = emptyList()
+
+    open fun replaceBlock(from: Block, to: Block) {}
+    open fun replaceRegisters(from: Register, to: Register) {}
 }
 
 /////////////////
@@ -34,14 +38,28 @@ object LdaClosure : Opcode()
  *
  * reg: the register containing the value to load into the accumulator
  */
-class Ldar(val reg: Register) : Opcode()
+class Ldar(var reg: Register) : Opcode() {
+    override fun readRegisters() = listOf(reg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (reg == from)
+            reg = to
+    }
+}
 
 /**
  * Store the value in the accumulator into a register
  *
  * reg: the register which the accumulator will be stored to
  */
-class Star(val reg: Register) : Opcode()
+class Star(var reg: Register) : Opcode() {
+    override fun writeRegisters() = listOf(reg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (reg == from)
+            reg = to
+    }
+}
 
 /**
  * Load a literal property from an object into the accumulator.
@@ -49,7 +67,14 @@ class Star(val reg: Register) : Opcode()
  * objectReg: the register containing the object
  * nameIndex: the constant pool index of the name. Must be a string literal
  */
-class LdaNamedProperty(val objectReg: Register, val nameIndex: Index) : Opcode(isThrowing = true)
+class LdaNamedProperty(var objectReg: Register, val nameIndex: Index) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(objectReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (objectReg == from)
+            objectReg = to
+    }
+}
 
 /**
  * Load a computed property from an object into the accumulator.
@@ -57,7 +82,14 @@ class LdaNamedProperty(val objectReg: Register, val nameIndex: Index) : Opcode(i
  * accumulator: the computed property value
  * objectReg: the register containing object
  */
-class LdaKeyedProperty(val objectReg: Register) : Opcode(isThrowing = true)
+class LdaKeyedProperty(var objectReg: Register) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(objectReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (objectReg == from)
+            objectReg = to
+    }
+}
 
 /**
  * Store a literal property into an object.
@@ -66,7 +98,14 @@ class LdaKeyedProperty(val objectReg: Register) : Opcode(isThrowing = true)
  * objectReg: the register containing the object
  * nameIndex: the constant pool index of the name. Must be a string literal
  */
-class StaNamedProperty(val objectReg: Register, val nameIndex: Index) : Opcode(isThrowing = true)
+class StaNamedProperty(var objectReg: Register, val nameIndex: Index) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(objectReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (objectReg == from)
+            objectReg = to
+    }
+}
 
 /**
  * Store a computed property into an object.
@@ -75,7 +114,16 @@ class StaNamedProperty(val objectReg: Register, val nameIndex: Index) : Opcode(i
  * objectReg: the register containing the object
  * nameReg: the register containing the computed property value
  */
-class StaKeyedProperty(val objectReg: Register, val nameReg: Register) : Opcode(isThrowing = true)
+class StaKeyedProperty(var objectReg: Register, var nameReg: Register) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(objectReg, nameReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (objectReg == from)
+            objectReg = to
+        if (nameReg == from)
+            nameReg = to
+    }
+}
 
 /////////////////////////////
 /// OBJECT/ARRAY LITERALS ///
@@ -93,7 +141,14 @@ object CreateArray : Opcode()
  * arrayReg: the register containing the array
  * index: the literal array index to insert the value into
  */
-class StaArrayIndex(val arrayReg: Register, val index: Literal) : Opcode(isThrowing = true)
+class StaArrayIndex(var arrayReg: Register, val index: Literal) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(arrayReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (arrayReg == from)
+            arrayReg = to
+    }
+}
 
 /**
  * Store a value into an array.
@@ -102,7 +157,14 @@ class StaArrayIndex(val arrayReg: Register, val index: Literal) : Opcode(isThrow
  * arrayReg: the register containing the array
  * indexReg: the literal array index to insert the value into
  */
-class StaArray(val arrayReg: Register, val indexReg: Register) : Opcode(isThrowing = true)
+class StaArray(var arrayReg: Register, val indexReg: Register) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(arrayReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (arrayReg == from)
+            arrayReg = to
+    }
+}
 
 /**
  * Creates an empty object and loads it into the accumulator
@@ -120,18 +182,27 @@ object CreateObject : Opcode()
  * operation, and the accumulator holds the RHS value.
  */
 
-class Add(val lhsReg: Register) : Opcode(isThrowing = true)
-class Sub(val lhsReg: Register) : Opcode(isThrowing = true)
-class Mul(val lhsReg: Register) : Opcode(isThrowing = true)
-class Div(val lhsReg: Register) : Opcode(isThrowing = true)
-class Mod(val lhsReg: Register) : Opcode(isThrowing = true)
-class Exp(val lhsReg: Register) : Opcode(isThrowing = true)
-class BitwiseOr(val lhsReg: Register) : Opcode(isThrowing = true)
-class BitwiseXor(val lhsReg: Register) : Opcode(isThrowing = true)
-class BitwiseAnd(val lhsReg: Register) : Opcode(isThrowing = true)
-class ShiftLeft(val lhsReg: Register) : Opcode(isThrowing = true)
-class ShiftRight(val lhsReg: Register) : Opcode(isThrowing = true)
-class ShiftRightUnsigned(val lhsReg: Register) : Opcode(isThrowing = true)
+sealed class BinaryOpcode(var lhsReg: Register) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(lhsReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (lhsReg == from)
+            lhsReg = to
+    }
+}
+
+class Add(lhsReg: Register) : BinaryOpcode(lhsReg)
+class Sub(lhsReg: Register) : BinaryOpcode(lhsReg)
+class Mul(lhsReg: Register) : BinaryOpcode(lhsReg)
+class Div(lhsReg: Register) : BinaryOpcode(lhsReg)
+class Mod(lhsReg: Register) : BinaryOpcode(lhsReg)
+class Exp(lhsReg: Register) : BinaryOpcode(lhsReg)
+class BitwiseOr(lhsReg: Register) : BinaryOpcode(lhsReg)
+class BitwiseXor(lhsReg: Register) : BinaryOpcode(lhsReg)
+class BitwiseAnd(lhsReg: Register) : BinaryOpcode(lhsReg)
+class ShiftLeft(lhsReg: Register) : BinaryOpcode(lhsReg)
+class ShiftRight(lhsReg: Register) : BinaryOpcode(lhsReg)
+class ShiftRightUnsigned(lhsReg: Register) : BinaryOpcode(lhsReg)
 
 /**
  * Increments the value in the accumulator. This is NOT a generic
@@ -164,7 +235,14 @@ object BitwiseNot : Opcode(isThrowing = true)
  * lhsStringReg: the register with the string that will be the LHS of the
  *               string concatenation operation
  */
-class StringAppend(val lhsStringReg: Register) : Opcode()
+class StringAppend(var lhsStringReg: Register) : Opcode() {
+    override fun readRegisters() = listOf(lhsStringReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (lhsStringReg == from)
+            lhsStringReg = to
+    }
+}
 
 /**
  * Converts the accumulator to a boolean using the ToBoolean
@@ -189,7 +267,14 @@ object TypeOf : Opcode()
  * accumulator: the property which will be deleted
  * objectReg: the register containing the target object
  */
-class DeletePropertyStrict(val objectReg: Register) : Opcode()
+class DeletePropertyStrict(var objectReg: Register) : Opcode() {
+    override fun readRegisters() = listOf(objectReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (objectReg == from)
+            objectReg = to
+    }
+}
 
 /**
  * Delete a property following sloppy-mode semantics.
@@ -197,7 +282,14 @@ class DeletePropertyStrict(val objectReg: Register) : Opcode()
  * accumulator: the property which will be deleted
  * objectReg: the register containing the target object
  */
-class DeletePropertySloppy(val objectReg: Register) : Opcode(isThrowing = true)
+class DeletePropertySloppy(var objectReg: Register) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(objectReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (objectReg == from)
+            objectReg = to
+    }
+}
 
 /////////////
 /// SCOPE ///
@@ -242,8 +334,24 @@ object PopEnvRecord : Opcode()
  * receiverReg: the receiver
  * argumentRegs: a variable number of argument registers
  */
-class Call(val targetReg: Register, val receiverReg: Register, val argumentRegs: List<Register>) :
-    Opcode(isThrowing = true)
+class Call(
+    var targetReg: Register,
+    var receiverReg: Register,
+    val argumentRegs: MutableList<Register>,
+) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(targetReg, receiverReg) + argumentRegs
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (targetReg == from)
+            targetReg = to
+        if (receiverReg == from)
+            receiverReg = to
+        argumentRegs.forEachIndexed { index, reg ->
+            if (reg == from)
+                argumentRegs[index] = to
+        }
+    }
+}
 
 /**
  * Calls a value with the arguments in an array.
@@ -252,8 +360,22 @@ class Call(val targetReg: Register, val receiverReg: Register, val argumentRegs:
  * receiverReg: the register containing the receiver
  * argumentReg: the register containing the array of arguments
  */
-class CallWithArgArray(val targetReg: Register, val receiverReg: Register, val argumentsReg: Register) :
-    Opcode(isThrowing = true)
+class CallWithArgArray(
+    var targetReg: Register,
+    var receiverReg: Register,
+    var argumentsReg: Register,
+) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(targetReg, receiverReg, argumentsReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (targetReg == from)
+            targetReg = to
+        if (receiverReg == from)
+            receiverReg = to
+        if (argumentsReg == from)
+            argumentsReg = to
+    }
+}
 
 /////////////////////
 /// CONSTRUCTIONS ///
@@ -266,8 +388,24 @@ class CallWithArgArray(val targetReg: Register, val receiverReg: Register, val a
  * newTargetReg: the register containing the new.target
  * argumentReg: the register containing the array of arguments
  */
-class Construct(val targetReg: Register, val newTargetReg: Register, val argumentRegs: List<Register>) :
-    Opcode(isThrowing = true)
+class Construct(
+    var targetReg: Register,
+    var newTargetReg: Register,
+    val argumentRegs: MutableList<Register>,
+) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(targetReg, newTargetReg) + argumentRegs
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (targetReg == from)
+            targetReg = to
+        if (newTargetReg == from)
+            newTargetReg = to
+        argumentRegs.forEachIndexed { index, reg ->
+            if (reg == from)
+                argumentRegs[index] = to
+        }
+    }
+}
 
 /**
  * Constructs a value with the arguments in an array.
@@ -276,12 +414,35 @@ class Construct(val targetReg: Register, val newTargetReg: Register, val argumen
  * newTargetReg: the register containing the new.target
  * argumentReg: the register containing the array of arguments
  */
-class ConstructWithArgArray(val targetReg: Register, val newTargetReg: Register, val argumentsReg: Register) :
-    Opcode(isThrowing = true)
+class ConstructWithArgArray(
+    var targetReg: Register,
+    var newTargetReg: Register,
+    var argumentsReg: Register,
+) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(targetReg, newTargetReg, argumentsReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (targetReg == from)
+            targetReg = to
+        if (newTargetReg == from)
+            newTargetReg = to
+        if (argumentsReg == from)
+            argumentsReg = to
+    }
+}
 
 ///////////////
 /// TESTING ///
 ///////////////
+
+sealed class TestOpcode(var lhsReg: Register, isThrowing: Boolean = true) : Opcode(isThrowing = isThrowing) {
+    override fun readRegisters() = listOf(lhsReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (lhsReg == from)
+            lhsReg = to
+    }
+}
 
 /**
  * Tests if a value is weakly equal to the accumulator
@@ -289,7 +450,7 @@ class ConstructWithArgArray(val targetReg: Register, val newTargetReg: Register,
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestEqual(val lhsReg: Register) : Opcode(isThrowing = true)
+class TestEqual(lhsReg: Register) : TestOpcode(lhsReg)
 
 /**
  * Tests if a value is not weakly equal to the accumulator
@@ -297,7 +458,7 @@ class TestEqual(val lhsReg: Register) : Opcode(isThrowing = true)
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestNotEqual(val lhsReg: Register) : Opcode(isThrowing = true)
+class TestNotEqual(lhsReg: Register) : TestOpcode(lhsReg)
 
 /**
  * Tests if a value is strictly equal to the accumulator
@@ -305,7 +466,7 @@ class TestNotEqual(val lhsReg: Register) : Opcode(isThrowing = true)
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestEqualStrict(val lhsReg: Register) : Opcode()
+class TestEqualStrict(lhsReg: Register) : TestOpcode(lhsReg, isThrowing = false)
 
 /**
  * Tests if a value is strictly not equal to the accumulator
@@ -313,7 +474,7 @@ class TestEqualStrict(val lhsReg: Register) : Opcode()
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestNotEqualStrict(val lhsReg: Register) : Opcode()
+class TestNotEqualStrict(lhsReg: Register) : TestOpcode(lhsReg, isThrowing = false)
 
 /**
  * Tests if a value is less than the accumulator
@@ -321,7 +482,7 @@ class TestNotEqualStrict(val lhsReg: Register) : Opcode()
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestLessThan(val lhsReg: Register) : Opcode(isThrowing = true)
+class TestLessThan(lhsReg: Register) : TestOpcode(lhsReg)
 
 /**
  * Tests if a value is greater than the accumulator
@@ -329,7 +490,7 @@ class TestLessThan(val lhsReg: Register) : Opcode(isThrowing = true)
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestGreaterThan(val lhsReg: Register) : Opcode(isThrowing = true)
+class TestGreaterThan(lhsReg: Register) : TestOpcode(lhsReg)
 
 /**
  * Tests if a value is less than or equal to the accumulator
@@ -337,7 +498,7 @@ class TestGreaterThan(val lhsReg: Register) : Opcode(isThrowing = true)
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestLessThanOrEqual(val lhsReg: Register) : Opcode(isThrowing = true)
+class TestLessThanOrEqual(lhsReg: Register) : TestOpcode(lhsReg)
 
 /**
  * Tests if a value is greater than or equal to the accumulator
@@ -345,7 +506,7 @@ class TestLessThanOrEqual(val lhsReg: Register) : Opcode(isThrowing = true)
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestGreaterThanOrEqual(val lhsReg: Register) : Opcode(isThrowing = true)
+class TestGreaterThanOrEqual(lhsReg: Register) : TestOpcode(lhsReg)
 
 /**
  * Tests if a value is the same object in the accumulator
@@ -353,7 +514,7 @@ class TestGreaterThanOrEqual(val lhsReg: Register) : Opcode(isThrowing = true)
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestReferenceEqual(val lhsReg: Register) : Opcode()
+class TestReferenceEqual(lhsReg: Register) : TestOpcode(lhsReg, isThrowing = false)
 
 /**
  * Tests if a value is an instance of the value in the accumulator
@@ -361,7 +522,7 @@ class TestReferenceEqual(val lhsReg: Register) : Opcode()
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestInstanceOf(val lhsReg: Register) : Opcode(isThrowing = false)
+class TestInstanceOf(lhsReg: Register) : TestOpcode(lhsReg)
 
 /**
  * Tests if a value is 'in' the accumulator
@@ -369,7 +530,7 @@ class TestInstanceOf(val lhsReg: Register) : Opcode(isThrowing = false)
  * accumulator: the rhs of the operation
  * lhsReg: the lhs of the operation
  */
-class TestIn(val lhsReg: Register) : Opcode(isThrowing = false)
+class TestIn(lhsReg: Register) : TestOpcode(lhsReg)
 
 /**
  * Tests if a value is nullish
@@ -426,7 +587,7 @@ object ToString : Opcode(isThrowing = true)
 /////////////
 
 abstract class Jump(var ifBlock: Block, var elseBlock: Block? = null) : Opcode(isTerminator = true) {
-    override fun replaceReferences(from: Block, to: Block) {
+    override fun replaceBlock(from: Block, to: Block) {
         if (ifBlock == from)
             ifBlock = to
         if (elseBlock == from)
@@ -453,14 +614,14 @@ class JumpFromTable(val table: Index) : Opcode(isTerminator = true)
 object Return : Opcode(isTerminator = true)
 
 class Yield(var continuationBlock: Block) : Opcode(isTerminator = true) {
-    override fun replaceReferences(from: Block, to: Block) {
+    override fun replaceBlock(from: Block, to: Block) {
         if (continuationBlock == from)
             continuationBlock = to
     }
 }
 
 class Await(var continuationBlock: Block) : Opcode(isTerminator = true) {
-    override fun replaceReferences(from: Block, to: Block) {
+    override fun replaceBlock(from: Block, to: Block) {
         if (continuationBlock == from)
             continuationBlock = to
     }
@@ -480,10 +641,23 @@ class ThrowConstantError(val message: Index) : Opcode(isTerminator = true)
 
 class CreateClass(
     val classDescriptorIndex: Index,
-    val constructor: Register,
-    val superClass: Register,
-    val args: List<Register>,
-) : Opcode()
+    var constructor: Register,
+    var superClass: Register,
+    val args: MutableList<Register>,
+) : Opcode() {
+    override fun readRegisters() = listOf(constructor, superClass) + args
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (constructor == from)
+            constructor = to
+        if (superClass == from)
+            superClass = to
+        args.forEachIndexed { index, reg ->
+            if (reg == from)
+                args[index] = to
+        }
+    }
+}
 
 class CreateClassConstructor(val functionInfoIndex: Index) : Opcode()
 
@@ -506,8 +680,22 @@ object ThrowSuperInitializedIfNotEmpty : Opcode(isThrowing = true)
  * nameReg: the property name register
  * methodReg: the method register
  */
-class DefineGetterProperty(val objectReg: Register, val nameReg: Register, val methodReg: Register) :
-    Opcode(isThrowing = true)
+class DefineGetterProperty(
+    var objectReg: Register,
+    var nameReg: Register,
+    var methodReg: Register,
+) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(objectReg, nameReg, methodReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (objectReg == from)
+            objectReg = to
+        if (nameReg == from)
+            nameReg = to
+        if (methodReg == from)
+            methodReg = to
+    }
+}
 
 /**
  * Defines a setter function on an object
@@ -516,8 +704,22 @@ class DefineGetterProperty(val objectReg: Register, val nameReg: Register, val m
  * nameReg: the property name register
  * methodReg: the method register
  */
-class DefineSetterProperty(val objectReg: Register, val nameReg: Register, val methodReg: Register) :
-    Opcode(isThrowing = true)
+class DefineSetterProperty(
+    var objectReg: Register,
+    var nameReg: Register,
+    var methodReg: Register,
+) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(objectReg, nameReg, methodReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (objectReg == from)
+            objectReg = to
+        if (nameReg == from)
+            nameReg = to
+        if (methodReg == from)
+            methodReg = to
+    }
+}
 
 /**
  * Declare global names

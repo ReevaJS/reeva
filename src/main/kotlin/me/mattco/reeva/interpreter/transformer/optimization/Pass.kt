@@ -11,6 +11,7 @@ interface Pass {
             RemoveHandlers.evaluate(info)
             GenerateCFG.evaluate(info)
             PlaceBlocks.evaluate(info)
+            RegisterAllocation().evaluate(info)
         }
     }
 }
