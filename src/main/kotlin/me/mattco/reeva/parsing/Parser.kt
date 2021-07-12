@@ -1219,6 +1219,13 @@ class Parser(val source: String) {
 
     private fun parseNewExpression(): ExpressionNode = nps {
         consume(TokenType.New)
+        if (match(TokenType.Period, TokenType.Identifier)) {
+            consume()
+            consume()
+            if (lastConsumedToken.literals != "target")
+                reporter.at(lastConsumedToken).invalidNewMetaProperty()
+            return@nps NewTargetNode()
+        }
         val target = parseExpression(TokenType.New.operatorPrecedence, excludedTokens = setOf(TokenType.OpenParen))
         val arguments = if (match(TokenType.OpenParen)) parseArguments() else ArgumentList()
         NewExpressionNode(target, arguments)
@@ -1319,7 +1326,10 @@ class Parser(val source: String) {
             TokenType.OpenBracket -> parseArrayLiteral()
             TokenType.RegExpLiteral -> parseRegExpLiteral()
             TokenType.TemplateLiteralStart -> parseTemplateLiteral()
-            TokenType.New -> parseNewExpression()
+            TokenType.New -> parseNewExpression().also {
+                if (it is NewTargetNode && !inFunctionContext)
+                    reporter.at(it).newTargetOutsideOfFunction()
+            }
             TokenType.Yield -> parseYieldExpression()
             else -> reporter.expected("primary expression", tokenType)
         }
