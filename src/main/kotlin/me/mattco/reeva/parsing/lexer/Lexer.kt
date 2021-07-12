@@ -478,7 +478,9 @@ class Lexer(private val source: String) {
             } else TokenType.Period
             '?' -> if (has(1)) {
                 when (peek(1)) {
-                    '.' -> TokenType.OptionalChain
+                    '.' -> if (has(2) && !peek(2).isDigit()) {
+                        TokenType.OptionalChain
+                    } else TokenType.QuestionMark
                     '?' -> if (has(2) && peek(2) == '=') TokenType.CoalesceEquals else TokenType.Coalesce
                     else -> TokenType.QuestionMark
                 }
