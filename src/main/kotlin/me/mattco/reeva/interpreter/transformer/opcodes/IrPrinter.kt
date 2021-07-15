@@ -205,7 +205,7 @@ class IrPrinter(private val info: FunctionInfo) {
         }
     }
 
-    private fun stringifyIndex(index: Index): String {
+    private fun stringifyIndex(index: ConstantIndex): String {
         val constantString = stringifyConstant(info.code.constantPool[index])
         return " [$index] ($constantString)"
     }

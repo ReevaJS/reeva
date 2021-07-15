@@ -17,8 +17,8 @@ abstract class IrOpcodeVisitor {
 
             is Ldar -> visitLdar(opcode.reg)
             is Star -> visitStar(opcode.reg)
-            is LdaNamedProperty -> visitLdaNamedProperty(opcode.objectReg, opcode.nameIndex)
-            is LdaKeyedProperty -> visitLdaKeyedProperty(opcode.objectReg)
+            is LdaNamedProperty -> visitLdaNamedProperty(opcode.objectReg, opcode.nameIndex, opcode.typeIndex)
+            is LdaKeyedProperty -> visitLdaKeyedProperty(opcode.objectReg, opcode.typeIndex)
             is StaNamedProperty -> visitStaNamedProperty(opcode.objectReg, opcode.nameIndex)
             is StaKeyedProperty -> visitStaKeyedProperty(opcode.objectReg, opcode.nameReg)
 
@@ -139,7 +139,7 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitLdaZero()
 
-    abstract fun visitLdaConstant(index: Index)
+    abstract fun visitLdaConstant(index: ConstantIndex)
 
     abstract fun visitLdaInt(int: Literal)
 
@@ -149,11 +149,11 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitStar(reg: Register)
 
-    abstract fun visitLdaNamedProperty(objectReg: Register, nameIndex: Index)
+    abstract fun visitLdaNamedProperty(objectReg: Register, nameIndex: ConstantIndex, typeIndex: FeedbackIndex)
 
-    abstract fun visitLdaKeyedProperty(objectReg: Register)
+    abstract fun visitLdaKeyedProperty(objectReg: Register, typeIndex: FeedbackIndex)
 
-    abstract fun visitStaNamedProperty(objectReg: Register, nameIndex: Index)
+    abstract fun visitStaNamedProperty(objectReg: Register, nameIndex: ConstantIndex)
 
     abstract fun visitStaKeyedProperty(objectReg: Register, nameReg: Register)
 
@@ -209,9 +209,9 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitDeletePropertyStrict(objectReg: Register)
 
-    abstract fun visitLdaGlobal(name: Index)
+    abstract fun visitLdaGlobal(name: ConstantIndex)
 
-    abstract fun visitStaGlobal(name: Index)
+    abstract fun visitStaGlobal(name: ConstantIndex)
 
     abstract fun visitLdaCurrentRecordSlot(slot: Literal)
 
@@ -283,7 +283,7 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitJumpIfNullish(ifBlock: Block, elseBlock: Block)
 
-    abstract fun visitJumpFromTable(table: Index)
+    abstract fun visitJumpFromTable(table: ConstantIndex)
 
     abstract fun visitJumpAbsolute(block: Block)
     
@@ -297,7 +297,7 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitThrow()
 
-    abstract fun visitCreateClass(classDescriptorIndex: Index, constructor: Register, superClass: Register, args: List<Register>)
+    abstract fun visitCreateClass(classDescriptorIndex: ConstantIndex, constructor: Register, superClass: Register, args: List<Register>)
 
     abstract fun visitCreateClassConstructor(functionInfoIndex: Int)
 
@@ -313,7 +313,7 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitDefineSetterProperty(objectReg: Register, nameReg: Register, methodReg: Register)
 
-    abstract fun visitDeclareGlobals(declarationsIndex: Index)
+    abstract fun visitDeclareGlobals(declarationsIndex: ConstantIndex)
 
     abstract fun visitCreateMappedArgumentsObject()
 

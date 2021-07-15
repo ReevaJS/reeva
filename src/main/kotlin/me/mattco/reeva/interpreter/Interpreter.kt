@@ -185,7 +185,7 @@ class Interpreter(
         accumulator = JSNumber.ZERO
     }
 
-    override fun visitLdaConstant(index: Index) {
+    override fun visitLdaConstant(index: ConstantIndex) {
         accumulator = getMappedConstant(index)
     }
 
@@ -205,19 +205,23 @@ class Interpreter(
         registers[reg] = accumulator
     }
 
-    override fun visitLdaNamedProperty(objectReg: Register, nameIndex: Index) {
+    override fun visitLdaNamedProperty(objectReg: Register, nameIndex: ConstantIndex, typeIndex: FeedbackIndex) {
         val obj = registers[objectReg].toObject(realm)
         val key = loadConstant<Any>(nameIndex).key()
+        val typeSlot = feedback.slot<Feedback.TypeSlot>(typeIndex)
         accumulator = obj.get(key)
+        typeSlot.update(accumulator)
     }
 
-    override fun visitLdaKeyedProperty(objectReg: Register) {
+    override fun visitLdaKeyedProperty(objectReg: Register, typeIndex: FeedbackIndex) {
         val obj = registers[objectReg].toObject(realm)
         val key = accumulator.toPropertyKey(realm)
+        val typeSlot = feedback.slot<Feedback.TypeSlot>(typeIndex)
         accumulator = obj.get(key)
+        typeSlot.update(accumulator)
     }
 
-    override fun visitStaNamedProperty(objectReg: Register, nameIndex: Index) {
+    override fun visitStaNamedProperty(objectReg: Register, nameIndex: ConstantIndex) {
         val obj = registers[objectReg].toObject(realm)
         val key = loadConstant<Any>(nameIndex).key()
         obj.set(key, accumulator)
@@ -353,7 +357,7 @@ class Interpreter(
         accumulator = JSTrue
     }
 
-    override fun visitLdaGlobal(name: Index) {
+    override fun visitLdaGlobal(name: ConstantIndex) {
         val actualName = loadConstant<String>(name)
         if (!realm.globalEnv.hasBinding(actualName))
             Errors.NotDefined(actualName).throwReferenceError(realm)
@@ -361,7 +365,7 @@ class Interpreter(
         accumulator = realm.globalEnv.getBinding(actualName)
     }
 
-    override fun visitStaGlobal(name: Index) {
+    override fun visitStaGlobal(name: ConstantIndex) {
         realm.globalEnv.setBinding(loadConstant<String>(name), accumulator)
     }
 
@@ -557,7 +561,7 @@ class Interpreter(
         jumpTo(if (accumulator.isNullish) ifBlock else elseBlock)
     }
 
-    override fun visitJumpFromTable(tableIndex: Index) {
+    override fun visitJumpFromTable(tableIndex: ConstantIndex) {
         val table = loadConstant<JumpTable>(tableIndex)
         jumpTo(table[accumulator.asInt]!!)
     }
@@ -603,7 +607,7 @@ class Interpreter(
     }
 
     override fun visitCreateClass(
-        classDescriptorIndex: Index,
+        classDescriptorIndex: ConstantIndex,
         constructorReg: Register,
         superClassReg: Register,
         argRegs: List<Register>
@@ -761,7 +765,7 @@ class Interpreter(
         )
     }
 
-    override fun visitDeclareGlobals(declarationsIndex: Index) {
+    override fun visitDeclareGlobals(declarationsIndex: ConstantIndex) {
         val array = loadConstant<DeclarationsArray>(declarationsIndex)
         declareGlobals(array)
     }

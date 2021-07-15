@@ -1,7 +1,7 @@
 package me.mattco.reeva.interpreter
 
 import me.mattco.reeva.interpreter.transformer.Block
-import me.mattco.reeva.interpreter.transformer.opcodes.Index
+import me.mattco.reeva.interpreter.transformer.opcodes.ConstantIndex
 import me.mattco.reeva.runtime.Operations
 
 class DeclarationsArray(
@@ -50,7 +50,7 @@ data class MethodDescriptor(
     val kind: Operations.FunctionKind,
     val isGetter: Boolean,
     val isSetter: Boolean,
-    val methodInfo: Index,
+    val methodInfo: ConstantIndex,
 )
 
-data class ClassDescriptor(val methodDescriptors: List<Index>)
+data class ClassDescriptor(val methodDescriptors: List<ConstantIndex>)

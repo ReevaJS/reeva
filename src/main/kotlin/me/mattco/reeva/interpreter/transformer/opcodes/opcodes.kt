@@ -3,7 +3,7 @@ package me.mattco.reeva.interpreter.transformer.opcodes
 import me.mattco.reeva.interpreter.transformer.Block
 
 typealias Register = Int
-typealias Index = Int
+typealias ConstantIndex = Int
 typealias Literal = Int
 typealias FeedbackIndex = Int
 
@@ -25,7 +25,7 @@ object LdaNull : Opcode()
 object LdaTrue : Opcode()
 object LdaFalse : Opcode()
 object LdaZero : Opcode()
-class LdaConstant(val index: Index) : Opcode()
+class LdaConstant(val index: ConstantIndex) : Opcode()
 class LdaInt(val int: Literal) : Opcode()
 
 object LdaClosure : Opcode()
@@ -68,7 +68,11 @@ class Star(var reg: Register) : Opcode() {
  * objectReg: the register containing the object
  * nameIndex: the constant pool index of the name. Must be a string literal
  */
-class LdaNamedProperty(var objectReg: Register, val nameIndex: Index) : Opcode(isThrowing = true) {
+class LdaNamedProperty(
+    var objectReg: Register,
+    val nameIndex: ConstantIndex,
+    val typeIndex: FeedbackIndex,
+) : Opcode(isThrowing = true) {
     override fun readRegisters() = listOf(objectReg)
 
     override fun replaceRegisters(from: Register, to: Register) {
@@ -83,7 +87,7 @@ class LdaNamedProperty(var objectReg: Register, val nameIndex: Index) : Opcode(i
  * accumulator: the computed property value
  * objectReg: the register containing object
  */
-class LdaKeyedProperty(var objectReg: Register) : Opcode(isThrowing = true) {
+class LdaKeyedProperty(var objectReg: Register, val typeIndex: FeedbackIndex) : Opcode(isThrowing = true) {
     override fun readRegisters() = listOf(objectReg)
 
     override fun replaceRegisters(from: Register, to: Register) {
@@ -99,7 +103,7 @@ class LdaKeyedProperty(var objectReg: Register) : Opcode(isThrowing = true) {
  * objectReg: the register containing the object
  * nameIndex: the constant pool index of the name. Must be a string literal
  */
-class StaNamedProperty(var objectReg: Register, val nameIndex: Index) : Opcode(isThrowing = true) {
+class StaNamedProperty(var objectReg: Register, val nameIndex: ConstantIndex) : Opcode(isThrowing = true) {
     override fun readRegisters() = listOf(objectReg)
 
     override fun replaceRegisters(from: Register, to: Register) {
@@ -301,14 +305,14 @@ class DeletePropertySloppy(var objectReg: Register) : Opcode(isThrowing = true) 
  *
  * name: the name of the global variable
  */
-class LdaGlobal(val name: Index) : Opcode(isThrowing = true)
+class LdaGlobal(val name: ConstantIndex) : Opcode(isThrowing = true)
 
 /**
  * Stores the value in the accumulator into a global variable.
  *
  * name: the name of the global variable
  */
-class StaGlobal(val name: Index) : Opcode(isThrowing = true)
+class StaGlobal(val name: ConstantIndex) : Opcode(isThrowing = true)
 
 class LdaCurrentRecordSlot(val slot: Literal) : Opcode()
 
@@ -603,7 +607,7 @@ class JumpIfEmpty(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfUndefined(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 class JumpIfNullish(ifBlock: Block, elseBlock: Block) : Jump(ifBlock, elseBlock)
 
-class JumpFromTable(val table: Index) : Opcode(isTerminator = true)
+class JumpFromTable(val table: ConstantIndex) : Opcode(isTerminator = true)
 
 ////////////////////////////
 /// SPECIAL CONTROL FLOW ///
@@ -633,7 +637,7 @@ class Await(var continuationBlock: Block) : Opcode(isTerminator = true) {
  */
 object Throw : Opcode(isTerminator = true, isThrowing = true)
 
-class ThrowConstantError(val message: Index) : Opcode(isTerminator = true)
+class ThrowConstantError(val message: ConstantIndex) : Opcode(isTerminator = true)
 
 
 ///////////////
@@ -641,7 +645,7 @@ class ThrowConstantError(val message: Index) : Opcode(isTerminator = true)
 ///////////////
 
 class CreateClass(
-    val classDescriptorIndex: Index,
+    val classDescriptorIndex: ConstantIndex,
     var constructor: Register,
     var superClass: Register,
     val args: MutableList<Register>,
@@ -660,7 +664,7 @@ class CreateClass(
     }
 }
 
-class CreateClassConstructor(val functionInfoIndex: Index) : Opcode()
+class CreateClassConstructor(val functionInfoIndex: ConstantIndex) : Opcode()
 
 object GetSuperConstructor : Opcode(isThrowing = true)
 
@@ -725,7 +729,7 @@ class DefineSetterProperty(
 /**
  * Declare global names
  */
-class DeclareGlobals(val declarationsIndex: Index) : Opcode()
+class DeclareGlobals(val declarationsIndex: ConstantIndex) : Opcode()
 
 /**
  * Creates a mapped arguments objects and inserts it into the scope
@@ -759,7 +763,7 @@ object ForInEnumerate : Opcode(isThrowing = true)
  *
  * functionInfoIndex: the constant pool index entry with the FunctionInfo object
  */
-class CreateClosure(val functionInfoIndex: Index) : Opcode()
+class CreateClosure(val functionInfoIndex: ConstantIndex) : Opcode()
 
 /**
  * Creates a generator function object, referencing a FunctionInfo object stored
@@ -767,7 +771,7 @@ class CreateClosure(val functionInfoIndex: Index) : Opcode()
  *
  * functionInfoIndex: the constant pool index entry with the FunctionInfo object
  */
-class CreateGeneratorClosure(val functionInfoIndex: Index) : Opcode()
+class CreateGeneratorClosure(val functionInfoIndex: ConstantIndex) : Opcode()
 
 /**
  * Creates an async function object, referencing a FunctionInfo object stored
@@ -775,7 +779,7 @@ class CreateGeneratorClosure(val functionInfoIndex: Index) : Opcode()
  *
  * functionInfoIndex: the constant pool index entry with the FunctionInfo object
  */
-class CreateAsyncClosure(val functionInfoIndex: Index) : Opcode()
+class CreateAsyncClosure(val functionInfoIndex: ConstantIndex) : Opcode()
 
 /**
  * Collects excess parameters into an array

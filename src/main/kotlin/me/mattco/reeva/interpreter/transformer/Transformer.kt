@@ -899,7 +899,7 @@ class Transformer : ASTVisitor {
         generator.add(Star(superClassReg))
 
         // Process methods
-        val methodDescriptors = mutableListOf<Index>()
+        val methodDescriptors = mutableListOf<ConstantIndex>()
         val createClassArgs = mutableListOf<Register>()
 
         for (classMethod in methods) {
@@ -1017,7 +1017,7 @@ class Transformer : ASTVisitor {
         generator.add(LdaClosure)
         val closureReg = generator.reserveRegister()
         generator.add(Star(closureReg))
-        generator.add(LdaNamedProperty(closureReg, symbolIndex))
+        generator.add(LdaNamedProperty(closureReg, symbolIndex, generator.reserveFeedbackSlot()))
         val targetReg = generator.reserveRegister()
         generator.add(Star(targetReg))
         generator.add(Call(targetReg, Interpreter.RECEIVER_REGISTER, mutableListOf()))
@@ -1213,7 +1213,7 @@ class Transformer : ASTVisitor {
                         val keyReg = generator.reserveRegister()
                         visit(target.rhs)
                         generator.add(Star(keyReg))
-                        generator.add(LdaKeyedProperty(objectReg))
+                        generator.add(LdaKeyedProperty(objectReg, generator.reserveRegister()))
                         postfixGuard {
                             generator.add(ToNumeric)
                             generator.add(op)
@@ -1222,7 +1222,7 @@ class Transformer : ASTVisitor {
                     }
                     MemberExpressionNode.Type.NonComputed -> {
                         val nameIndex = generator.intern((target.rhs as IdentifierNode).name)
-                        generator.add(LdaNamedProperty(objectReg, nameIndex))
+                        generator.add(LdaNamedProperty(objectReg, nameIndex, generator.reserveFeedbackSlot()))
                         postfixGuard {
                             generator.add(ToNumeric)
                             generator.add(op)
@@ -1398,11 +1398,11 @@ class Transformer : ASTVisitor {
         when (node.type) {
             MemberExpressionNode.Type.Computed -> {
                 visit(node.rhs)
-                generator.add(LdaKeyedProperty(receiverReg))
+                generator.add(LdaKeyedProperty(receiverReg, generator.reserveFeedbackSlot()))
             }
             MemberExpressionNode.Type.NonComputed -> {
                 val cpIndex = generator.intern((node.rhs as IdentifierNode).name)
-                generator.add(LdaNamedProperty(receiverReg, cpIndex))
+                generator.add(LdaNamedProperty(receiverReg, cpIndex, generator.reserveFeedbackSlot()))
             }
             MemberExpressionNode.Type.Tagged -> TODO()
         }
@@ -1577,10 +1577,10 @@ class Transformer : ASTVisitor {
 
         if (node.isComputed) {
             visit(node.target)
-            generator.add(LdaKeyedProperty(objectReg))
+            generator.add(LdaKeyedProperty(objectReg, generator.reserveFeedbackSlot()))
         } else {
             val cpIndex = generator.intern((node.target as IdentifierNode).name)
-            generator.add(LdaNamedProperty(objectReg, cpIndex))
+            generator.add(LdaNamedProperty(objectReg, cpIndex, generator.reserveFeedbackSlot()))
         }
     }
 
