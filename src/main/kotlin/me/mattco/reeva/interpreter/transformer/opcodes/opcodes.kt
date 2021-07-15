@@ -5,6 +5,7 @@ import me.mattco.reeva.interpreter.transformer.Block
 typealias Register = Int
 typealias Index = Int
 typealias Literal = Int
+typealias FeedbackIndex = Int
 
 sealed class Opcode(val isTerminator: Boolean = false, val isThrowing: Boolean = false) {
     open fun readRegisters(): List<Register> = emptyList()
@@ -182,7 +183,7 @@ object CreateObject : Opcode()
  * operation, and the accumulator holds the RHS value.
  */
 
-sealed class BinaryOpcode(var lhsReg: Register) : Opcode(isThrowing = true) {
+sealed class BinaryOpcode(var lhsReg: Register, val feedbackIndex: FeedbackIndex) : Opcode(isThrowing = true) {
     override fun readRegisters() = listOf(lhsReg)
 
     override fun replaceRegisters(from: Register, to: Register) {
@@ -191,18 +192,18 @@ sealed class BinaryOpcode(var lhsReg: Register) : Opcode(isThrowing = true) {
     }
 }
 
-class Add(lhsReg: Register) : BinaryOpcode(lhsReg)
-class Sub(lhsReg: Register) : BinaryOpcode(lhsReg)
-class Mul(lhsReg: Register) : BinaryOpcode(lhsReg)
-class Div(lhsReg: Register) : BinaryOpcode(lhsReg)
-class Mod(lhsReg: Register) : BinaryOpcode(lhsReg)
-class Exp(lhsReg: Register) : BinaryOpcode(lhsReg)
-class BitwiseOr(lhsReg: Register) : BinaryOpcode(lhsReg)
-class BitwiseXor(lhsReg: Register) : BinaryOpcode(lhsReg)
-class BitwiseAnd(lhsReg: Register) : BinaryOpcode(lhsReg)
-class ShiftLeft(lhsReg: Register) : BinaryOpcode(lhsReg)
-class ShiftRight(lhsReg: Register) : BinaryOpcode(lhsReg)
-class ShiftRightUnsigned(lhsReg: Register) : BinaryOpcode(lhsReg)
+class Add(lhsReg: Register, feedbackIndex: FeedbackIndex) : BinaryOpcode(lhsReg, feedbackIndex)
+class Sub(lhsReg: Register, feedbackIndex: FeedbackIndex) : BinaryOpcode(lhsReg, feedbackIndex)
+class Mul(lhsReg: Register, feedbackIndex: FeedbackIndex) : BinaryOpcode(lhsReg, feedbackIndex)
+class Div(lhsReg: Register, feedbackIndex: FeedbackIndex) : BinaryOpcode(lhsReg, feedbackIndex)
+class Mod(lhsReg: Register, feedbackIndex: FeedbackIndex) : BinaryOpcode(lhsReg, feedbackIndex)
+class Exp(lhsReg: Register, feedbackIndex: FeedbackIndex) : BinaryOpcode(lhsReg, feedbackIndex)
+class BitwiseOr(lhsReg: Register, feedbackIndex: FeedbackIndex) : BinaryOpcode(lhsReg, feedbackIndex)
+class BitwiseXor(lhsReg: Register, feedbackIndex: FeedbackIndex) : BinaryOpcode(lhsReg, feedbackIndex)
+class BitwiseAnd(lhsReg: Register, feedbackIndex: FeedbackIndex) : BinaryOpcode(lhsReg, feedbackIndex)
+class ShiftLeft(lhsReg: Register, feedbackIndex: FeedbackIndex) : BinaryOpcode(lhsReg, feedbackIndex)
+class ShiftRight(lhsReg: Register, feedbackIndex: FeedbackIndex) : BinaryOpcode(lhsReg, feedbackIndex)
+class ShiftRightUnsigned(lhsReg: Register, feedbackIndex: FeedbackIndex) : BinaryOpcode(lhsReg, feedbackIndex)
 
 /**
  * Increments the value in the accumulator. This is NOT a generic

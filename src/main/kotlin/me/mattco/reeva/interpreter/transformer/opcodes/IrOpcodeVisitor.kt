@@ -27,18 +27,18 @@ abstract class IrOpcodeVisitor {
             is StaArray -> visitStaArray(opcode.arrayReg, opcode.indexReg)
             CreateObject -> visitCreateObject()
 
-            is Add -> visitAdd(opcode.lhsReg)
-            is Sub -> visitSub(opcode.lhsReg)
-            is Mul -> visitMul(opcode.lhsReg)
-            is Div -> visitDiv(opcode.lhsReg)
-            is Mod -> visitMod(opcode.lhsReg)
-            is Exp -> visitExp(opcode.lhsReg)
-            is BitwiseOr -> visitBitwiseOr(opcode.lhsReg)
-            is BitwiseXor -> visitBitwiseXor(opcode.lhsReg)
-            is BitwiseAnd -> visitBitwiseAnd(opcode.lhsReg)
-            is ShiftLeft -> visitShiftLeft(opcode.lhsReg)
-            is ShiftRight -> visitShiftRight(opcode.lhsReg)
-            is ShiftRightUnsigned -> visitShiftRightUnsigned(opcode.lhsReg)
+            is Add -> visitAdd(opcode.lhsReg, opcode.feedbackIndex)
+            is Sub -> visitSub(opcode.lhsReg, opcode.feedbackIndex)
+            is Mul -> visitMul(opcode.lhsReg, opcode.feedbackIndex)
+            is Div -> visitDiv(opcode.lhsReg, opcode.feedbackIndex)
+            is Mod -> visitMod(opcode.lhsReg, opcode.feedbackIndex)
+            is Exp -> visitExp(opcode.lhsReg, opcode.feedbackIndex)
+            is BitwiseOr -> visitBitwiseOr(opcode.lhsReg, opcode.feedbackIndex)
+            is BitwiseXor -> visitBitwiseXor(opcode.lhsReg, opcode.feedbackIndex)
+            is BitwiseAnd -> visitBitwiseAnd(opcode.lhsReg, opcode.feedbackIndex)
+            is ShiftLeft -> visitShiftLeft(opcode.lhsReg, opcode.feedbackIndex)
+            is ShiftRight -> visitShiftRight(opcode.lhsReg, opcode.feedbackIndex)
+            is ShiftRightUnsigned -> visitShiftRightUnsigned(opcode.lhsReg, opcode.feedbackIndex)
 
             Inc -> visitInc()
             Dec -> visitDec()
@@ -165,29 +165,29 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitCreateObject()
 
-    abstract fun visitAdd(lhsReg: Register)
+    abstract fun visitAdd(lhsReg: Register, feedbackIndex: FeedbackIndex)
 
-    abstract fun visitSub(lhsReg: Register)
+    abstract fun visitSub(lhsReg: Register, feedbackIndex: FeedbackIndex)
 
-    abstract fun visitMul(lhsReg: Register)
+    abstract fun visitMul(lhsReg: Register, feedbackIndex: FeedbackIndex)
 
-    abstract fun visitDiv(lhsReg: Register)
+    abstract fun visitDiv(lhsReg: Register, feedbackIndex: FeedbackIndex)
 
-    abstract fun visitMod(lhsReg: Register)
+    abstract fun visitMod(lhsReg: Register, feedbackIndex: FeedbackIndex)
 
-    abstract fun visitExp(lhsReg: Register)
+    abstract fun visitExp(lhsReg: Register, feedbackIndex: FeedbackIndex)
 
-    abstract fun visitBitwiseOr(lhsReg: Register)
+    abstract fun visitBitwiseOr(lhsReg: Register, feedbackIndex: FeedbackIndex)
 
-    abstract fun visitBitwiseXor(lhsReg: Register)
+    abstract fun visitBitwiseXor(lhsReg: Register, feedbackIndex: FeedbackIndex)
 
-    abstract fun visitBitwiseAnd(lhsReg: Register)
+    abstract fun visitBitwiseAnd(lhsReg: Register, feedbackIndex: FeedbackIndex)
 
-    abstract fun visitShiftLeft(lhsReg: Register)
+    abstract fun visitShiftLeft(lhsReg: Register, feedbackIndex: FeedbackIndex)
 
-    abstract fun visitShiftRight(lhsReg: Register)
+    abstract fun visitShiftRight(lhsReg: Register, feedbackIndex: FeedbackIndex)
 
-    abstract fun visitShiftRightUnsigned(lhsReg: Register)
+    abstract fun visitShiftRightUnsigned(lhsReg: Register, feedbackIndex: FeedbackIndex)
 
     abstract fun visitInc()
 

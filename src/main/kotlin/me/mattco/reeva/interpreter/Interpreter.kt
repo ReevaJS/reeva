@@ -10,10 +10,7 @@ import me.mattco.reeva.core.environment.DeclarativeEnvRecord
 import me.mattco.reeva.core.environment.EnvRecord
 import me.mattco.reeva.interpreter.transformer.Block
 import me.mattco.reeva.interpreter.transformer.FunctionInfo
-import me.mattco.reeva.interpreter.transformer.opcodes.Index
-import me.mattco.reeva.interpreter.transformer.opcodes.IrOpcodeVisitor
-import me.mattco.reeva.interpreter.transformer.opcodes.Literal
-import me.mattco.reeva.interpreter.transformer.opcodes.Register
+import me.mattco.reeva.interpreter.transformer.opcodes.*
 import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.arrays.JSArrayObject
@@ -34,6 +31,7 @@ class Interpreter(
     private val realm: Realm,
     private val function: IRFunction,
     private val arguments: List<JSValue>,
+    val feedback: Feedback,
     initialEnvRecord: EnvRecord,
 ) : IrOpcodeVisitor() {
     private val info: FunctionInfo
@@ -250,52 +248,52 @@ class Interpreter(
         accumulator = JSObject.create(realm)
     }
 
-    override fun visitAdd(lhsReg: Register) {
-        binaryOp("+", lhsReg)
+    override fun visitAdd(lhsReg: Register, feedbackIndex: FeedbackIndex) {
+        binaryOp("+", lhsReg, feedbackIndex)
     }
 
-    override fun visitSub(lhsReg: Register) {
-        binaryOp("-", lhsReg)
+    override fun visitSub(lhsReg: Register, feedbackIndex: FeedbackIndex) {
+        binaryOp("-", lhsReg, feedbackIndex)
     }
 
-    override fun visitMul(lhsReg: Register) {
-        binaryOp("*", lhsReg)
+    override fun visitMul(lhsReg: Register, feedbackIndex: FeedbackIndex) {
+        binaryOp("*", lhsReg, feedbackIndex)
     }
 
-    override fun visitDiv(lhsReg: Register) {
-        binaryOp("/", lhsReg)
+    override fun visitDiv(lhsReg: Register, feedbackIndex: FeedbackIndex) {
+        binaryOp("/", lhsReg, feedbackIndex)
     }
 
-    override fun visitMod(lhsReg: Register) {
-        binaryOp("%", lhsReg)
+    override fun visitMod(lhsReg: Register, feedbackIndex: FeedbackIndex) {
+        binaryOp("%", lhsReg, feedbackIndex)
     }
 
-    override fun visitExp(lhsReg: Register) {
-        binaryOp("**", lhsReg)
+    override fun visitExp(lhsReg: Register, feedbackIndex: FeedbackIndex) {
+        binaryOp("**", lhsReg, feedbackIndex)
     }
 
-    override fun visitBitwiseOr(lhsReg: Register) {
-        binaryOp("|", lhsReg)
+    override fun visitBitwiseOr(lhsReg: Register, feedbackIndex: FeedbackIndex) {
+        binaryOp("|", lhsReg, feedbackIndex)
     }
 
-    override fun visitBitwiseXor(lhsReg: Register) {
-        binaryOp("^", lhsReg)
+    override fun visitBitwiseXor(lhsReg: Register, feedbackIndex: FeedbackIndex) {
+        binaryOp("^", lhsReg, feedbackIndex)
     }
 
-    override fun visitBitwiseAnd(lhsReg: Register) {
-        binaryOp("&", lhsReg)
+    override fun visitBitwiseAnd(lhsReg: Register, feedbackIndex: FeedbackIndex) {
+        binaryOp("&", lhsReg, feedbackIndex)
     }
 
-    override fun visitShiftLeft(lhsReg: Register) {
-        binaryOp("<<", lhsReg)
+    override fun visitShiftLeft(lhsReg: Register, feedbackIndex: FeedbackIndex) {
+        binaryOp("<<", lhsReg, feedbackIndex)
     }
 
-    override fun visitShiftRight(lhsReg: Register) {
-        binaryOp(">>", lhsReg)
+    override fun visitShiftRight(lhsReg: Register, feedbackIndex: FeedbackIndex) {
+        binaryOp(">>", lhsReg, feedbackIndex)
     }
 
-    override fun visitShiftRightUnsigned(lhsReg: Register) {
-        binaryOp(">>>", lhsReg)
+    override fun visitShiftRightUnsigned(lhsReg: Register, feedbackIndex: FeedbackIndex) {
+        binaryOp(">>>", lhsReg, feedbackIndex)
     }
 
     override fun visitInc() {
@@ -936,9 +934,11 @@ class Interpreter(
         )
     }
 
-    private fun binaryOp(op: String, lhsReg: Register) {
+    private fun binaryOp(op: String, lhsReg: Register, feedbackIndex: FeedbackIndex) {
         val lhs = registers[lhsReg]
+        val feedbackSlot = feedback.slot<Feedback.TypeSlot>(feedbackIndex)
         accumulator = Operations.applyStringOrNumericBinaryOperator(realm, lhs, accumulator, op)
+        feedbackSlot.update(accumulator)
     }
 
     private fun declareGlobals(array: DeclarationsArray) {
@@ -1022,7 +1022,9 @@ class Interpreter(
         val info: FunctionInfo,
         val outerEnvRecord: EnvRecord,
         prototype: JSValue = realm.functionProto,
-    ) : JSFunction(realm, info.isStrict, prototype)
+    ) : JSFunction(realm, info.isStrict, prototype) {
+        val feedback = Feedback(info.code.feedbackCount)
+    }
 
     class NormalIRFunction(
         realm: Realm,
@@ -1031,7 +1033,7 @@ class Interpreter(
     ) : IRFunction(realm, info, outerEnvRecord) {
         override fun evaluate(arguments: JSArguments): JSValue {
             val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
-            val result = Interpreter(realm, this, args, outerEnvRecord).interpret()
+            val result = Interpreter(realm, this, args, feedback, outerEnvRecord).interpret()
             if (result is EvaluationResult.RuntimeError)
                 throw ThrowException(result.value)
             return result.value
@@ -1059,6 +1061,7 @@ class Interpreter(
                         realm,
                         this,
                         listOf(arguments.thisValue, arguments.newTarget, *arguments.toTypedArray()),
+                        feedback,
                         outerEnvRecord,
                     )
                 generatorObject = JSGeneratorObject.create(realm, interpreter, outerEnvRecord)
@@ -1075,7 +1078,7 @@ class Interpreter(
     ) : IRFunction(realm, info, outerEnvRecord) {
         override fun evaluate(arguments: JSArguments): JSValue {
             val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
-            val interpreter = Interpreter(realm, this, args, outerEnvRecord)
+            val interpreter = Interpreter(realm, this, args, feedback, outerEnvRecord)
             val result = interpreter.interpret()
 
             if (result is EvaluationResult.RuntimeError)

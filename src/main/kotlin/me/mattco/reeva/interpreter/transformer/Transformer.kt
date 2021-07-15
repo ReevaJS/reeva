@@ -1070,7 +1070,7 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitBinaryExpression(node: BinaryExpressionNode) {
-        val op = when (node.operator) {
+        val opWithFeedback = when (node.operator) {
             BinaryOperator.Add -> ::Add
             BinaryOperator.Sub -> ::Sub
             BinaryOperator.Mul -> ::Mul
@@ -1083,6 +1083,19 @@ class Transformer : ASTVisitor {
             BinaryOperator.Shl -> ::ShiftLeft
             BinaryOperator.Shr -> ::ShiftRight
             BinaryOperator.UShr -> ::ShiftRightUnsigned
+            else -> null
+        }
+
+        if (opWithFeedback != null) {
+            visit(node.lhs)
+            val lhsReg = generator.reserveRegister()
+            generator.add(Star(lhsReg))
+            visit(node.rhs)
+            generator.add(opWithFeedback(lhsReg, generator.reserveFeedbackSlot()))
+            return
+        }
+
+        val op = when (node.operator) {
             BinaryOperator.StrictEquals -> ::TestEqualStrict
             BinaryOperator.StrictNotEquals -> ::TestNotEqualStrict
             BinaryOperator.SloppyEquals -> ::TestEqual
@@ -1114,10 +1127,10 @@ class Transformer : ASTVisitor {
                 }
                 return
             }
+            else -> unreachable()
         }
 
         visit(node.lhs)
-
         val lhsReg = generator.reserveRegister()
         generator.add(Star(lhsReg))
         visit(node.rhs)

@@ -31,6 +31,7 @@ data class FunctionOpcodes(
     val constantPool: MutableList<Any>,
     var registerCount: Int,
     val argCount: Int,
+    val feedbackCount: Int,
 )
 
 class Generator(
@@ -55,6 +56,8 @@ class Generator(
             field = value
         }
 
+    private var nextFeedbackSlot = 0
+
     fun makeBlock(): Block {
         val block = Block(nextBlock++)
         blocks.add(block)
@@ -76,6 +79,8 @@ class Generator(
     }
 
     fun reserveRegister() = nextRegister++
+
+    fun reserveFeedbackSlot() = nextFeedbackSlot++
 
     fun add(opcode: Opcode) {
         expect(!currentBlock.isTerminated)
@@ -130,5 +135,6 @@ class Generator(
         constantPool,
         nextRegister,
         argCount,
+        nextFeedbackSlot,
     )
 }
