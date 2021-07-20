@@ -158,7 +158,6 @@ class IrPrinter(private val info: FunctionInfo) {
             is TestGreaterThan -> append(stringifyRegister(opcode.lhsReg))
             is TestLessThanOrEqual -> append(stringifyRegister(opcode.lhsReg))
             is TestGreaterThanOrEqual -> append(stringifyRegister(opcode.lhsReg))
-            is TestReferenceEqual -> append(stringifyRegister(opcode.lhsReg))
             is TestInstanceOf -> append(stringifyRegister(opcode.lhsReg))
             is TestIn -> append(stringifyRegister(opcode.lhsReg))
 

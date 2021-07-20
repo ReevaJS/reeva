@@ -514,14 +514,6 @@ class TestLessThanOrEqual(lhsReg: Register) : TestOpcode(lhsReg)
 class TestGreaterThanOrEqual(lhsReg: Register) : TestOpcode(lhsReg)
 
 /**
- * Tests if a value is the same object in the accumulator
- *
- * accumulator: the rhs of the operation
- * lhsReg: the lhs of the operation
- */
-class TestReferenceEqual(lhsReg: Register) : TestOpcode(lhsReg, isThrowing = false)
-
-/**
  * Tests if a value is an instance of the value in the accumulator
  *
  * accumulator: the rhs of the operation
@@ -537,35 +529,9 @@ class TestInstanceOf(lhsReg: Register) : TestOpcode(lhsReg)
  */
 class TestIn(lhsReg: Register) : TestOpcode(lhsReg)
 
-/**
- * Tests if a value is nullish
- *
- * accumulator: the rhs of the operation
- */
-object TestNullish : Opcode()
-
-/**
- * Tests if a value is null
- *
- * accumulator: the rhs of the operation
- */
-object TestNull : Opcode()
-
-/**
- * Tests if a value is undefined
- *
- * accumulator: the rhs of the operation
- */
-object TestUndefined : Opcode()
-
 ///////////////////
 /// CONVERSIONS ///
 ///////////////////
-
-/**
- * Convert the accumulator to a boolean using ToBoolean()
- */
-object ToBoolean : Opcode(isThrowing = true)
 
 /**
  * Convert the accumulator to a number using ToNumber()
@@ -576,11 +542,6 @@ object ToNumber : Opcode(isThrowing = true)
  * Convert the accumulator to a number using ToNumeric()
  */
 object ToNumeric : Opcode(isThrowing = true)
-
-/**
- * Convert the accumulator to an object using ToObject()
- */
-object ToObject : Opcode(isThrowing = true)
 
 /**
  * Convert the accumulator to a string using ToString()

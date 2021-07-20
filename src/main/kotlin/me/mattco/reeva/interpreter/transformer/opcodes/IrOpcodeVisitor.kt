@@ -47,7 +47,6 @@ abstract class IrOpcodeVisitor {
 
             is StringAppend -> visitStringAppend(opcode.lhsStringReg)
             ToBooleanLogicalNot -> visitToBooleanLogicalNot()
-            LogicalNot -> visitLogicalNot()
             TypeOf -> visitTypeOf()
             is DeletePropertySloppy -> visitDeletePropertySloppy(opcode.objectReg)
             is DeletePropertyStrict -> visitDeletePropertyStrict(opcode.objectReg)
@@ -76,17 +75,11 @@ abstract class IrOpcodeVisitor {
             is TestGreaterThan -> visitTestGreaterThan(opcode.lhsReg)
             is TestLessThanOrEqual -> visitTestLessThanOrEqual(opcode.lhsReg)
             is TestGreaterThanOrEqual -> visitTestGreaterThanOrEqual(opcode.lhsReg)
-            is TestReferenceEqual -> visitTestReferenceEqual(opcode.lhsReg)
             is TestInstanceOf -> visitTestInstanceOf(opcode.lhsReg)
             is TestIn -> visitTestIn(opcode.lhsReg)
-            TestNullish -> visitTestNullish()
-            TestNull -> visitTestNull()
-            TestUndefined -> visitTestUndefined()
 
-            ToBoolean -> visitToBoolean()
             ToNumber -> visitToNumber()
             ToNumeric -> visitToNumeric()
-            ToObject -> visitToObject()
             ToString -> visitToString()
 
             is JumpAbsolute -> visitJumpAbsolute(opcode.ifBlock)
@@ -201,8 +194,6 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitToBooleanLogicalNot()
 
-    abstract fun visitLogicalNot()
-
     abstract fun visitTypeOf()
 
     abstract fun visitDeletePropertySloppy(objectReg: Register)
@@ -251,25 +242,13 @@ abstract class IrOpcodeVisitor {
 
     abstract fun visitTestGreaterThanOrEqual(lhsReg: Register)
 
-    abstract fun visitTestReferenceEqual(lhsReg: Register)
-
     abstract fun visitTestInstanceOf(lhsReg: Register)
 
     abstract fun visitTestIn(lhsReg: Register)
 
-    abstract fun visitTestNullish()
-
-    abstract fun visitTestNull()
-
-    abstract fun visitTestUndefined()
-
-    abstract fun visitToBoolean()
-
     abstract fun visitToNumber()
 
     abstract fun visitToNumeric()
-
-    abstract fun visitToObject()
 
     abstract fun visitToString()
 

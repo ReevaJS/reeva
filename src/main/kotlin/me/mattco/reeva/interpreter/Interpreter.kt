@@ -331,10 +331,6 @@ class Interpreter(
         accumulator = (!Operations.toBoolean(accumulator)).toValue()
     }
 
-    override fun visitLogicalNot() {
-        accumulator = (!accumulator.asBoolean).toValue()
-    }
-
     override fun visitTypeOf() {
         accumulator = Operations.typeofOperator(accumulator)
     }
@@ -492,10 +488,6 @@ class Interpreter(
         accumulator = if (result == JSFalse) JSTrue else JSFalse
     }
 
-    override fun visitTestReferenceEqual(lhsReg: Register) {
-        accumulator = (accumulator == registers[lhsReg]).toValue()
-    }
-
     override fun visitTestInstanceOf(lhsReg: Register) {
         accumulator = Operations.instanceofOperator(realm, registers[lhsReg], accumulator)
     }
@@ -505,32 +497,12 @@ class Interpreter(
         accumulator = Operations.hasProperty(accumulator, rval).toValue()
     }
 
-    override fun visitTestNullish() {
-        accumulator = accumulator.let { it == JSNull || it == JSUndefined }.toValue()
-    }
-
-    override fun visitTestNull() {
-        accumulator = (accumulator == JSNull).toValue()
-    }
-
-    override fun visitTestUndefined() {
-        accumulator = (accumulator == JSUndefined).toValue()
-    }
-
-    override fun visitToBoolean() {
-        accumulator = Operations.toBoolean(accumulator).toValue()
-    }
-
     override fun visitToNumber() {
         accumulator = Operations.toNumber(realm, accumulator)
     }
 
     override fun visitToNumeric() {
         accumulator = Operations.toNumeric(realm, accumulator)
-    }
-
-    override fun visitToObject() {
-        accumulator = Operations.toObject(realm, accumulator)
     }
 
     override fun visitToString() {
