@@ -7,14 +7,14 @@ import me.mattco.reeva.utils.expect
 
 object LivenessAnalysis : Pass {
     override fun evaluate(opcodes: FunctionOpcodes) {
-        expect(opcodes.cfg.entryBlock == opcodes.blocks.first())
+        expect(opcodes.analysis.entryBlock == opcodes.blocks.first())
         calculateBlockLiveness(opcodes)
     }
 
     private fun calculateLivenessForBlock(opcodes: FunctionOpcodes, block: Block, seenBlocks: MutableSet<Block>) {
         seenBlocks.add(block)
 
-        val (inLiveness, outLiveness) = opcodes.cfg.blockLiveness[block]!!
+        val (inLiveness, outLiveness) = opcodes.analysis.blockLiveness[block]!!
         outLiveness.addAll(inLiveness)
         val liveRegisters = inLiveness.toMutableSet()
 
@@ -29,16 +29,16 @@ object LivenessAnalysis : Pass {
             }
         }
 
-        val successors = opcodes.cfg.forward[block]
+        val successors = opcodes.analysis.forwardCFG[block]
         if (successors == null) {
             outLiveness.clear()
             return
         }
 
         for (successor in successors) {
-            val isBackEdge = opcodes.cfg.backEdges[block]?.contains(successor) == true
+            val isBackEdge = opcodes.analysis.backEdges[block]?.contains(successor) == true
             if (!isBackEdge) {
-                val successorInRegisters = opcodes.cfg.blockLiveness[successor]!!.inLiveness
+                val successorInRegisters = opcodes.analysis.blockLiveness[successor]!!.inLiveness
 
                 if (successor in seenBlocks) {
                     val copy = successorInRegisters.toSet()
@@ -55,9 +55,9 @@ object LivenessAnalysis : Pass {
 
     private fun calculateBlockLiveness(opcodes: FunctionOpcodes) {
         for (block in opcodes.blocks)
-            opcodes.cfg.blockLiveness[block] = BlockLiveness(mutableSetOf(), mutableSetOf())
+            opcodes.analysis.blockLiveness[block] = BlockLiveness(mutableSetOf(), mutableSetOf())
 
-        calculateLivenessForBlock(opcodes, opcodes.cfg.entryBlock, mutableSetOf())
+        calculateLivenessForBlock(opcodes, opcodes.analysis.entryBlock, mutableSetOf())
     }
 
     // private fun reduceBlockLivenessHelper(opcodes: FunctionOpcodes, block: Block, seenBlocks: MutableList<Block>) {

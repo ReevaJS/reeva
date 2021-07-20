@@ -2,15 +2,15 @@ package me.mattco.reeva.interpreter.transformer.optimization
 
 import me.mattco.reeva.interpreter.JumpTable
 import me.mattco.reeva.interpreter.transformer.Block
-import me.mattco.reeva.interpreter.transformer.CFG
+import me.mattco.reeva.interpreter.transformer.Analysis
 import me.mattco.reeva.interpreter.transformer.FunctionOpcodes
 import me.mattco.reeva.interpreter.transformer.opcodes.*
 import me.mattco.reeva.utils.getOrPut
 
 object GenerateCFG : Pass {
     override fun evaluate(opcodes: FunctionOpcodes) {
-        val cfg = CFG(opcodes.blocks.first())
-        opcodes.cfg = cfg
+        val analysis = Analysis(opcodes.blocks.first())
+        opcodes.analysis = analysis
         val firstBlock = opcodes.blocks.first()
 
         val seenBlocks = mutableSetOf(firstBlock)
@@ -18,13 +18,13 @@ object GenerateCFG : Pass {
         val iterators = mutableListOf<Iterator<Opcode>>(firstBlock.iterator())
 
         fun enterBlock(fromBlock: Block, toBlock: Block, exported: Boolean = false) {
-            val entry = cfg.forward.getOrPut(fromBlock, ::mutableSetOf)
+            val entry = analysis.forwardCFG.getOrPut(fromBlock, ::mutableSetOf)
             entry.add(toBlock)
-            val inverseEntry = cfg.inverted.getOrPut(toBlock, ::mutableSetOf)
+            val inverseEntry = analysis.invertedCFG.getOrPut(toBlock, ::mutableSetOf)
             inverseEntry.add(fromBlock)
 
             if (exported)
-                cfg.exportedBlocks.add(toBlock)
+                analysis.exportedBlocks.add(toBlock)
 
             if (toBlock !in seenBlocks) {
                 seenBlocks.add(toBlock)

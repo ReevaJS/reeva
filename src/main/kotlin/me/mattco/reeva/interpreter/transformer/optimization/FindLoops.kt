@@ -7,7 +7,7 @@ import me.mattco.reeva.utils.getOrPut
 
 object FindLoops : Pass {
     override fun evaluate(opcodes: FunctionOpcodes) {
-        expect(opcodes.cfg.entryBlock == opcodes.blocks.first())
+        expect(opcodes.analysis.entryBlock == opcodes.blocks.first())
         calculateBackEdges(opcodes)
     }
 
@@ -16,7 +16,7 @@ object FindLoops : Pass {
 
         for (loop in loops) {
             // The back edge is from the end of the loop to the front of the loop
-            val backEdges = opcodes.cfg.backEdges.getOrPut(loop.last(), ::mutableSetOf)
+            val backEdges = opcodes.analysis.backEdges.getOrPut(loop.last(), ::mutableSetOf)
             backEdges.add(loop.first())
         }
     }
@@ -24,7 +24,7 @@ object FindLoops : Pass {
     private fun findLoops(opcodes: FunctionOpcodes, startingBlock: Block, loopChain: List<Block> = listOf()): List<List<Block>> {
         val chains = mutableListOf<List<Block>>()
 
-        val toBlocks = opcodes.cfg.forward[startingBlock] ?: return chains
+        val toBlocks = opcodes.analysis.forwardCFG[startingBlock] ?: return chains
         for (toBlock in toBlocks) {
             val existingIndex = loopChain.indexOf(toBlock)
             if (existingIndex != -1) {

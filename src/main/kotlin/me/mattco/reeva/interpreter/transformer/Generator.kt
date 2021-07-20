@@ -31,11 +31,11 @@ data class BlockLiveness(
     val outrLiveness: MutableSet<Register>,
 )
 
-class CFG(var entryBlock: Block) {
+class Analysis(var entryBlock: Block) {
     // Map of blocks to the blocks it jumps to
-    val forward = mutableMapOf<Block, MutableSet<Block>>()
+    val forwardCFG = mutableMapOf<Block, MutableSet<Block>>()
     // Map of blocks to the blocks that jump to it
-    val inverted = mutableMapOf<Block, MutableSet<Block>>()
+    val invertedCFG = mutableMapOf<Block, MutableSet<Block>>()
 
     val backEdges = mutableMapOf<Block, MutableSet<Block>>()
 
@@ -51,7 +51,7 @@ data class FunctionOpcodes(
     var registerCount: Int,
     val argCount: Int,
     val feedbackCount: Int,
-    var cfg: CFG = CFG(blocks.first()),
+    var analysis: Analysis = Analysis(blocks.first()),
 )
 
 class Generator(

@@ -5,7 +5,7 @@ import me.mattco.reeva.interpreter.transformer.FunctionOpcodes
 
 object PlaceBlocks : Pass {
     override fun evaluate(opcodes: FunctionOpcodes) {
-        val cfg = opcodes.cfg
+        val cfg = opcodes.analysis
 
         val reachableBlocks = mutableSetOf<Block>()
 
@@ -15,7 +15,7 @@ object PlaceBlocks : Pass {
 
             reachableBlocks.add(block)
 
-            cfg.forward[block]?.forEach(::visit)
+            cfg.forwardCFG[block]?.forEach(::visit)
         }
 
         visit(opcodes.blocks.first())

@@ -8,13 +8,13 @@ import me.mattco.reeva.utils.expect
 
 object MergeBlocks : Pass {
     override fun evaluate(opcodes: FunctionOpcodes) {
-        val cfg = opcodes.cfg
+        val cfg = opcodes.analysis
 
         var blocksToMerge = mutableSetOf<Block>()
         val blocksToReplace = mutableMapOf<Block, Block>()
         val blocksToRemove = mutableSetOf<Block>()
 
-        for (entry in cfg.forward) {
+        for (entry in cfg.forwardCFG) {
             if (entry.value.size != 1)
                 continue
 
@@ -29,7 +29,7 @@ object MergeBlocks : Pass {
                 continue
             }
 
-            if (cfg.inverted[destinationBlock]?.size != 1)
+            if (cfg.invertedCFG[destinationBlock]?.size != 1)
                 continue
 
             if (entry.key.handler != destinationBlock.handler)
@@ -93,7 +93,7 @@ object MergeBlocks : Pass {
 
             while (true) {
                 val last = successors.last()
-                val entry = cfg.forward[last] ?: break
+                val entry = cfg.forwardCFG[last] ?: break
                 val successor = entry.first()
                 successors.add(successor)
                 if (successor in blocksToMerge) {
@@ -104,7 +104,7 @@ object MergeBlocks : Pass {
             val blocksToMergeCopy = blocksToMerge.toMutableSet()
 
             for (last in blocksToMerge) {
-                val entry = cfg.forward[last] ?: continue
+                val entry = cfg.forwardCFG[last] ?: continue
                 val successor = entry.first()
                 val index = successors.indexOf(successor)
                 if (index != -1) {
