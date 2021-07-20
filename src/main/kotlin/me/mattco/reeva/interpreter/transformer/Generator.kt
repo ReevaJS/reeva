@@ -26,6 +26,11 @@ class HandlerScope(
     }
 }
 
+data class BlockLiveness(
+    val inLiveness: MutableSet<Register>,
+    val outrLiveness: MutableSet<Register>,
+)
+
 class CFG(var entryBlock: Block) {
     // Map of blocks to the blocks it jumps to
     val forward = mutableMapOf<Block, MutableSet<Block>>()
@@ -33,8 +38,11 @@ class CFG(var entryBlock: Block) {
     val inverted = mutableMapOf<Block, MutableSet<Block>>()
 
     val backEdges = mutableMapOf<Block, MutableSet<Block>>()
+
     // Blocks which are exported via a Yield terminator
     val exportedBlocks = mutableSetOf<Block>()
+
+    val blockLiveness = mutableMapOf<Block, BlockLiveness>()
 }
 
 data class FunctionOpcodes(

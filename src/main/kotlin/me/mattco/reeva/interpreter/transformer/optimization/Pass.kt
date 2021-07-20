@@ -14,16 +14,11 @@ interface Pass {
             GenerateCFG.evaluate(opcodes)
             PlaceBlocks.evaluate(opcodes)
             FindLoops.evaluate(opcodes)
-
-
-            // IrPrinter(FunctionInfo("whatever", opcodes, false, false, false, null)).print()
+            LivenessAnalysis.evaluate(opcodes)
 
             // TODO: This corrupts registers in loop contexts (i.e. it doesn't know how to
             // track register liveness across back-edges)
-
             // RegisterAllocation().evaluate(info)
-
-            // RegisterAllocation2().evaluate(info)
         }
     }
 }
