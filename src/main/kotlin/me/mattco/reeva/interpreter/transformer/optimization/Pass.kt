@@ -13,6 +13,7 @@ interface Pass {
             RemoveHandlers.evaluate(opcodes)
             GenerateCFG.evaluate(opcodes)
             PlaceBlocks.evaluate(opcodes)
+            FindLoops.evaluate(opcodes)
 
 
             // IrPrinter(FunctionInfo("whatever", opcodes, false, false, false, null)).print()
