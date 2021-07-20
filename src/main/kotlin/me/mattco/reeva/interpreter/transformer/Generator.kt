@@ -26,12 +26,24 @@ class HandlerScope(
     }
 }
 
+class CFG(var entryBlock: Block) {
+    // Map of blocks to the blocks it jumps to
+    val forward = mutableMapOf<Block, MutableSet<Block>>()
+    // Map of blocks to the blocks that jump to it
+    val inverted = mutableMapOf<Block, MutableSet<Block>>()
+
+    val backEdges = mutableMapOf<Block, MutableSet<Block>>()
+    // Blocks which are exported via a Yield terminator
+    val exportedBlocks = mutableSetOf<Block>()
+}
+
 data class FunctionOpcodes(
     val blocks: MutableList<Block>,
     val constantPool: MutableList<Any>,
     var registerCount: Int,
     val argCount: Int,
     val feedbackCount: Int,
+    var cfg: CFG = CFG(blocks.first()),
 )
 
 class Generator(

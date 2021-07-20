@@ -1,20 +1,21 @@
 package me.mattco.reeva.interpreter.transformer.optimization
 
-import me.mattco.reeva.interpreter.transformer.FunctionInfo
-import me.mattco.reeva.interpreter.transformer.opcodes.IrPrinter
+import me.mattco.reeva.interpreter.transformer.FunctionOpcodes
 
 interface Pass {
-    fun evaluate(info: OptInfo)
+    fun evaluate(opcodes: FunctionOpcodes)
 
     object OptimizationPipeline : Pass {
-        override fun evaluate(info: OptInfo) {
-            RemoveHandlers.evaluate(info)
-            GenerateCFG.evaluate(info)
-            MergeBlocks.evaluate(info)
-            RemoveHandlers.evaluate(info)
-            GenerateCFG.evaluate(info)
-            PlaceBlocks.evaluate(info)
-            IrPrinter(FunctionInfo("whatever", info.opcodes, false, false, false, null)).print()
+        override fun evaluate(opcodes: FunctionOpcodes) {
+            RemoveHandlers.evaluate(opcodes)
+            GenerateCFG.evaluate(opcodes)
+            MergeBlocks.evaluate(opcodes)
+            RemoveHandlers.evaluate(opcodes)
+            GenerateCFG.evaluate(opcodes)
+            PlaceBlocks.evaluate(opcodes)
+
+
+            // IrPrinter(FunctionInfo("whatever", opcodes, false, false, false, null)).print()
 
             // TODO: This corrupts registers in loop contexts (i.e. it doesn't know how to
             // track register liveness across back-edges)

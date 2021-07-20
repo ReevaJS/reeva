@@ -7,7 +7,6 @@ import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.core.Realm
 import me.mattco.reeva.interpreter.*
 import me.mattco.reeva.interpreter.transformer.opcodes.*
-import me.mattco.reeva.interpreter.transformer.optimization.OptInfo
 import me.mattco.reeva.interpreter.transformer.optimization.Pass
 import me.mattco.reeva.parsing.HoistingScope
 import me.mattco.reeva.parsing.Scope
@@ -59,7 +58,7 @@ class Transformer : ASTVisitor {
                     isTopLevelScript = true,
                     isAsync = false,
                 ).also {
-                    Pass.OptimizationPipeline.evaluate(OptInfo(it.code))
+                    Pass.OptimizationPipeline.evaluate(it.code)
                 }
             }
             is FunctionDeclarationNode -> {
@@ -822,7 +821,7 @@ class Transformer : ASTVisitor {
             isAsync,
             parameters,
         ).also {
-            Pass.OptimizationPipeline.evaluate(OptInfo(it.code))
+            Pass.OptimizationPipeline.evaluate(it.code)
         }
     }
 

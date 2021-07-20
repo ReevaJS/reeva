@@ -1,10 +1,11 @@
 package me.mattco.reeva.interpreter.transformer.optimization
 
 import me.mattco.reeva.interpreter.transformer.Block
+import me.mattco.reeva.interpreter.transformer.FunctionOpcodes
 
 object PlaceBlocks : Pass {
-    override fun evaluate(info: OptInfo) {
-        val cfg = info.cfg
+    override fun evaluate(opcodes: FunctionOpcodes) {
+        val cfg = opcodes.cfg
 
         val reachableBlocks = mutableSetOf<Block>()
 
@@ -14,12 +15,12 @@ object PlaceBlocks : Pass {
 
             reachableBlocks.add(block)
 
-            cfg[block]?.forEach(::visit)
+            cfg.forward[block]?.forEach(::visit)
         }
 
-        visit(info.opcodes.blocks.first())
+        visit(opcodes.blocks.first())
 
-        info.opcodes.blocks.clear()
-        info.opcodes.blocks.addAll(reachableBlocks)
+        opcodes.blocks.clear()
+        opcodes.blocks.addAll(reachableBlocks)
     }
 }

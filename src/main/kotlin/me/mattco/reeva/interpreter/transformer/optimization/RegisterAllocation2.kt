@@ -1,13 +1,12 @@
 package me.mattco.reeva.interpreter.transformer.optimization
 
 import me.mattco.reeva.interpreter.transformer.Block
+import me.mattco.reeva.interpreter.transformer.FunctionOpcodes
 import me.mattco.reeva.interpreter.transformer.opcodes.Register
 import me.mattco.reeva.utils.expect
-import me.mattco.reeva.utils.getOrPut
 
 class RegisterAllocation2 : Pass {
     private val blockLiveness = mutableMapOf<Block, BlockLiveness>()
-    private val backEdges = mutableMapOf<Block, MutableSet<Block>>()
 
     data class BlockLiveness(
         val inLiveness: MutableSet<Register>,
@@ -15,33 +14,7 @@ class RegisterAllocation2 : Pass {
         val usedRegisters: MutableSet<Register>,
     )
 
-    private fun calculateBackEdges(info: OptInfo) {
-        val loops = findLoops(info, info.opcodes.blocks.first())
-
-        for (loop in loops) {
-            // The back edge is from the end of the loop to the front of the loop
-            val backEdges = this.backEdges.getOrPut(loop.last(), ::mutableSetOf)
-            backEdges.add(loop.first())
-        }
-    }
-
-    private fun findLoops(info: OptInfo, startingBlock: Block, loopChain: List<Block> = listOf()): List<List<Block>> {
-        val chains = mutableListOf<List<Block>>()
-
-        val toBlocks = info.cfg[startingBlock] ?: return chains
-        for (toBlock in toBlocks) {
-            val existingIndex = loopChain.indexOf(toBlock)
-            if (existingIndex != -1) {
-                chains.add(loopChain.drop(existingIndex))
-            } else {
-                chains.addAll(findLoops(info, toBlock, loopChain + listOf(toBlock)))
-            }
-        }
-
-        return chains
-    }
-
-    private fun calculateLivenessForBlock(info: OptInfo, block: Block, seenBlocks: MutableSet<Block>) {
+    private fun calculateLivenessForBlock(opcodes: FunctionOpcodes, block: Block, seenBlocks: MutableSet<Block>) {
         seenBlocks.add(block)
 
         val (inLiveness, outLiveness, usedRegisters) = blockLiveness[block]!!
@@ -61,14 +34,14 @@ class RegisterAllocation2 : Pass {
             }
         }
 
-        val successors = info.cfg[block]
+        val successors = opcodes.cfg.forward[block]
         if (successors == null) {
             outLiveness.clear()
             return
         }
 
         for (successor in successors) {
-            val isBackEdge = backEdges[block]?.contains(successor) == true
+            val isBackEdge = opcodes.cfg.backEdges[block]?.contains(successor) == true
             if (!isBackEdge) {
                 val successorInRegisters = blockLiveness[successor]!!.inLiveness
 
@@ -78,26 +51,26 @@ class RegisterAllocation2 : Pass {
                     successorInRegisters.addAll(copy.intersect(outLiveness))
                 } else {
                     successorInRegisters.addAll(outLiveness)
-                    calculateLivenessForBlock(info, successor, seenBlocks)
+                    calculateLivenessForBlock(opcodes, successor, seenBlocks)
                 }
 
             }
         }
     }
 
-    private fun calculateBlockLiveness(info: OptInfo) {
-        for (block in info.opcodes.blocks)
+    private fun calculateBlockLiveness(opcodes: FunctionOpcodes) {
+        for (block in opcodes.blocks)
             blockLiveness[block] = BlockLiveness(mutableSetOf(), mutableSetOf(), mutableSetOf())
 
-        calculateLivenessForBlock(info, info.entryBlock, mutableSetOf())
+        calculateLivenessForBlock(opcodes, opcodes.cfg.entryBlock, mutableSetOf())
     }
 
-    private fun reduceBlockLivenessHelper(info: OptInfo, block: Block, seenBlocks: MutableList<Block>) {
+    private fun reduceBlockLivenessHelper(opcodes: FunctionOpcodes, block: Block, seenBlocks: MutableList<Block>) {
         seenBlocks.add(block)
 
         val (inLiveness, outLiveness, usedRegisters) = blockLiveness[block]!!
 
-        val successors = info.cfg[block]
+        val successors = opcodes.cfg.forward[block]
         if (successors == null) {
             expect(outLiveness.isEmpty())
             inLiveness.retainAll(usedRegisters)
@@ -109,7 +82,7 @@ class RegisterAllocation2 : Pass {
         for (successor in successors) {
             val successorLiveness = blockLiveness[successor]!!
             if (successor !in seenBlocks) {
-                reduceBlockLivenessHelper(info, successor, seenBlocks)
+                reduceBlockLivenessHelper(opcodes, successor, seenBlocks)
                 newOutLiveness.addAll(successorLiveness.inLiveness)
             } else {
                 val relevantRegisters = successorLiveness.inLiveness.intersect(successorLiveness.usedRegisters)
@@ -125,15 +98,14 @@ class RegisterAllocation2 : Pass {
         inLiveness.retainAll(outLiveness.union(usedRegisters))
     }
 
-    private fun reduceBlockLiveness(info: OptInfo) {
-        reduceBlockLivenessHelper(info, info.entryBlock, mutableListOf())
+    private fun reduceBlockLiveness(opcodes: FunctionOpcodes) {
+        reduceBlockLivenessHelper(opcodes, opcodes.cfg.entryBlock, mutableListOf())
     }
 
-    override fun evaluate(info: OptInfo) {
-        expect(info.entryBlock == info.opcodes.blocks.first())
+    override fun evaluate(opcodes: FunctionOpcodes) {
+        expect(opcodes.cfg.entryBlock == opcodes.blocks.first())
 
-        calculateBackEdges(info)
-        calculateBlockLiveness(info)
-        reduceBlockLiveness(info)
+        calculateBlockLiveness(opcodes)
+        reduceBlockLiveness(opcodes)
     }
 }

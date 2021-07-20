@@ -2,6 +2,7 @@ package me.mattco.reeva.interpreter.transformer.optimization
 
 import me.mattco.reeva.interpreter.Interpreter
 import me.mattco.reeva.interpreter.transformer.Block
+import me.mattco.reeva.interpreter.transformer.FunctionOpcodes
 import me.mattco.reeva.interpreter.transformer.opcodes.Register
 import me.mattco.reeva.utils.expect
 
@@ -35,14 +36,14 @@ class RegisterAllocation : Pass {
         var end: Location? = null,
     )
 
-    private fun initializeLiveness(info: OptInfo) {
-        for (block in info.opcodes.blocks) {
+    private fun initializeLiveness(opcodes: FunctionOpcodes) {
+        for (block in opcodes.blocks) {
             for ((index, opcode) in block.withIndex()) {
                 val readRegisters = opcode.readRegisters()
                 val writeRegisters = opcode.writeRegisters()
 
                 for (readReg in readRegisters) {
-                    if (readReg < info.opcodes.argCount)
+                    if (readReg < opcodes.argCount)
                         continue
 
                     expect(registerHasBeenWritten[readReg], "Register $readReg read before it has been written to")
@@ -50,7 +51,7 @@ class RegisterAllocation : Pass {
                 }
 
                 for (writeReg in writeRegisters) {
-                    if (writeReg < info.opcodes.argCount)
+                    if (writeReg < opcodes.argCount)
                         continue
 
                     registerHasBeenWritten[writeReg] = true
@@ -65,11 +66,11 @@ class RegisterAllocation : Pass {
         }
     }
 
-    private fun reduceRegisters(info: OptInfo) {
-        for (block in info.opcodes.blocks) {
+    private fun reduceRegisters(opcodes: FunctionOpcodes) {
+        for (block in opcodes.blocks) {
             for ((index, opcode) in block.withIndex()) {
                 for (readReg in opcode.readRegisters()) {
-                    if (readReg < info.opcodes.argCount)
+                    if (readReg < opcodes.argCount)
                         continue
 
                     val liveness = registerLiveness[readReg]
@@ -81,7 +82,7 @@ class RegisterAllocation : Pass {
                 }
 
                 for (writeReg in opcode.writeRegisters()) {
-                    if (writeReg < info.opcodes.argCount)
+                    if (writeReg < opcodes.argCount)
                         continue
 
                     val liveness = registerLiveness[writeReg]
@@ -94,11 +95,11 @@ class RegisterAllocation : Pass {
         }
     }
 
-    override fun evaluate(info: OptInfo) {
-        if (info.opcodes.registerCount <= Interpreter.RESERVED_REGISTERS + 1)
+    override fun evaluate(opcodes: FunctionOpcodes) {
+        if (opcodes.registerCount <= Interpreter.RESERVED_REGISTERS + 1)
             return
 
-        repeat(info.opcodes.registerCount) {
+        repeat(opcodes.registerCount) {
             registerLiveness.add(LiveRange(it))
             registerHasBeenWritten.add(false)
             newRegisters.add(-1)
@@ -106,19 +107,19 @@ class RegisterAllocation : Pass {
         }
 
         // Exclude arguments from this allocation
-        val opcodeStart = info.opcodes.blocks.first().let { Location(it, 0) }
-        val opcodeEnd = info.opcodes.blocks.last().let { Location(it, it.lastIndex) }
+        val opcodeStart = opcodes.blocks.first().let { Location(it, 0) }
+        val opcodeEnd = opcodes.blocks.last().let { Location(it, it.lastIndex) }
 
-        repeat(info.opcodes.argCount) {
+        repeat(opcodes.argCount) {
             newRegisters[it] = it
             freeRegisters[it] = true
             registerHasBeenWritten[it] = true
             registerLiveness[it] = LiveRange(it, opcodeStart, opcodeEnd)
         }
 
-        initializeLiveness(info)
-        reduceRegisters(info)
+        initializeLiveness(opcodes)
+        reduceRegisters(opcodes)
 
-        info.opcodes.registerCount = (newRegisters.maxOrNull()!! + 1).coerceAtLeast(Interpreter.RESERVED_REGISTERS)
+        opcodes.registerCount = (newRegisters.maxOrNull()!! + 1).coerceAtLeast(Interpreter.RESERVED_REGISTERS)
     }
 }
