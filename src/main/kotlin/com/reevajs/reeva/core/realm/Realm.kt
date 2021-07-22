@@ -22,6 +22,9 @@ import com.reevajs.reeva.runtime.functions.generators.JSGeneratorFunctionProto
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObjectProto
 import com.reevajs.reeva.runtime.global.JSConsole
 import com.reevajs.reeva.runtime.global.JSConsoleProto
+import com.reevajs.reeva.runtime.intl.JSIntlObject
+import com.reevajs.reeva.runtime.intl.JSLocaleCtor
+import com.reevajs.reeva.runtime.intl.JSLocaleProto
 import com.reevajs.reeva.runtime.iterators.*
 import com.reevajs.reeva.runtime.memory.*
 import com.reevajs.reeva.runtime.objects.*
@@ -111,6 +114,8 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val syntaxErrorProto by lazy { JSSyntaxErrorProto.create(this) }
     val uriErrorProto by lazy { JSURIErrorProto.create(this) }
 
+    val localeProto by lazy { JSLocaleProto.create(this) }
+
     val objectCtor by lazy { JSObjectCtor.create(this) }
     val numberCtor by lazy { JSNumberCtor.create(this) }
     val bigIntCtor by lazy { JSBigIntCtor.create(this) }
@@ -150,6 +155,8 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val syntaxErrorCtor by lazy { JSSyntaxErrorCtor.create(this) }
     val uriErrorCtor by lazy { JSURIErrorCtor.create(this) }
 
+    val localeCtor by lazy { JSLocaleCtor.create(this) }
+
     val throwTypeError by lazy {
         JSNativeFunction.fromLambda(this, "", 0) { realm, _ ->
             Errors.CalleePropertyAccess.throwTypeError(realm)
@@ -159,6 +166,7 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val mathObj by lazy { JSMathObject.create(this) }
     val reflectObj by lazy { JSReflectObject.create(this) }
     val jsonObj by lazy { JSONObject.create(this) }
+    val intlObj by lazy { JSIntlObject.create(this) }
     val consoleObj by lazy { JSConsole.create(this) }
 
     val packageProto by lazy { JSPackageProto.create(this) }
@@ -226,6 +234,8 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
         referenceErrorCtor.defineOwnProperty("prototype", referenceErrorProto, Descriptor.HAS_BASIC)
         syntaxErrorCtor.defineOwnProperty("prototype", syntaxErrorProto, Descriptor.HAS_BASIC)
         uriErrorCtor.defineOwnProperty("prototype", uriErrorProto, Descriptor.HAS_BASIC)
+
+        localeCtor.defineOwnProperty("prototype", localeProto, Descriptor.HAS_BASIC)
 
         functionProto.defineOwnProperty("constructor", functionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
 

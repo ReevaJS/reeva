@@ -29,7 +29,7 @@ fun main() {
     agent.printIR = true
     Agent.setAgent(agent)
 
-    val sourceInfo = FileSourceInfo(File("./demo/index.mjs"))
+    val sourceInfo = FileSourceInfo(File("./demo/index.js"))
     val executable = agent.compile(realm, sourceInfo)
 
     if (executable.hasError) {

@@ -51,6 +51,7 @@ open class JSGlobalObject protected constructor(
 
         defineOwnProperty("Math", realm.mathObj, attrs)
         defineOwnProperty("JSON", realm.jsonObj, attrs)
+        defineOwnProperty("Intl", realm.intlObj, attrs)
         defineOwnProperty("console", realm.consoleObj, attrs)
 
         defineOwnProperty("Int8Array", realm.int8ArrayCtor, attrs)

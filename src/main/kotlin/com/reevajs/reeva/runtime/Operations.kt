@@ -1344,7 +1344,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.3.17")
-    fun createArrayFromList(realm: Realm, elements: List<JSValue>): JSValue {
+    fun createArrayFromList(realm: Realm, elements: List<JSValue>): JSObject {
         val array = arrayCreate(realm, elements.size)
         elements.forEachIndexed { index, value ->
             createDataPropertyOrThrow(realm, array, index.toValue(), value)

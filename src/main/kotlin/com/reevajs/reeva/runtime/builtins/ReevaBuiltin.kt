@@ -11,6 +11,7 @@ import com.reevajs.reeva.runtime.errors.JSErrorProto
 import com.reevajs.reeva.runtime.functions.JSFunctionProto
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObjectProto
 import com.reevajs.reeva.runtime.global.JSConsoleProto
+import com.reevajs.reeva.runtime.intl.JSLocaleProto
 import com.reevajs.reeva.runtime.iterators.*
 import com.reevajs.reeva.runtime.memory.*
 import com.reevajs.reeva.runtime.objects.JSObjectCtor
@@ -171,6 +172,20 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     JSONGetSymbolToStringTag(JSONObject::class.java, "getSymbolToStringTag", "JSON[@@toStringTag]"),
 
     ListIteratorProtoNext(JSListIteratorProto::class.java, "next", "ListIterator.prototype.next"),
+
+    LocaleProtoGetBaseName(JSLocaleProto::class.java, "getBaseName", "Locale.prototype.getBaseName"),
+    LocaleProtoGetCalendar(JSLocaleProto::class.java, "getCalendar", "Locale.prototype.getCalendar"),
+    LocaleProtoGetCaseFirst(JSLocaleProto::class.java, "getCaseFirst", "Locale.prototype.getCaseFirst"),
+    LocaleProtoGetCollation(JSLocaleProto::class.java, "getCollation", "Locale.prototype.getCollation"),
+    LocaleProtoGetHourCycle(JSLocaleProto::class.java, "getHourCycle", "Locale.prototype.getHourCycle"),
+    LocaleProtoGetNumeric(JSLocaleProto::class.java, "getNumeric", "Locale.prototype.getNumeric"),
+    LocaleProtoGetNumberingSystem(JSLocaleProto::class.java, "getNumberingSystem", "Locale.prototype.getNumberingSystem"),
+    LocaleProtoGetLanguage(JSLocaleProto::class.java, "getLanguage", "Locale.prototype.getLanguage"),
+    LocaleProtoGetScript(JSLocaleProto::class.java, "getScript", "Locale.prototype.getScript"),
+    LocaleProtoGetRegion(JSLocaleProto::class.java, "getRegion", "Locale.prototype.getRegion"),
+    LocaleProtoMaximize(JSLocaleProto::class.java, "maximize", "Locale.prototype.maximize"),
+    LocaleProtoMinimize(JSLocaleProto::class.java, "minimize", "Locale.prototype.minimize"),
+    LocaleProtoToString(JSLocaleProto::class.java, "toString", "Locale.prototype.toString"),
 
     MapCtorGetSymbolSpecies(JSMapCtor::class.java, "getSymbolSpecies", "Map[@@species]"),
     MapProtoClear(JSMapProto::class.java, "clear", "Map.prototype.clear"),

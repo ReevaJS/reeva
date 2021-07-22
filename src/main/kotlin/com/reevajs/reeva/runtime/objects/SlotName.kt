@@ -33,4 +33,9 @@ enum class SlotName {
     TypedArrayKind, // non-standard
     TypedArrayName,
     ViewedArrayBuffer,
+
+    // Intl slots
+    InitializedLocale, // JSUndefined
+    Locale, // String
+    ULocale, // ULocale
 }
