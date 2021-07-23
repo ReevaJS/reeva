@@ -271,25 +271,186 @@ class Transformer : ASTVisitor {
 
     private fun assign(node: ASTNode) {
         when (node) {
-            // TODO: This branch shouldn't be necessary
-            is IdentifierReferenceNode -> generator.add(StaGlobal(generator.intern(node.identifierName)))
-            is VariableDeclarationNode -> {
-                val declaration = node.declarations[0]
-                storeToSource(declaration)
+            is VariableSourceNode -> storeToSource(node)
+            is BindingPatternNode -> {
+                val valueReg = generator.reserveRegister()
+                generator.add(Star(valueReg))
+                assignToBindingPattern(node, valueReg)
             }
-            is LexicalDeclarationNode -> {
-                val declaration = node.declarations[0]
-                storeToSource(declaration)
-            }
+            is DestructuringDeclaration -> assign(node.pattern)
+            is IdentifierReferenceNode -> storeToSource(node.source)
             else -> TODO()
         }
+    }
+
+    private fun assignToBindingPattern(node: BindingPatternNode, valueReg: Register) {
+        when (node.kind) {
+            BindingKind.Object -> assignToObjectBindingPattern(node, valueReg)
+            BindingKind.Array -> assignToArrayBindingPattern(node, valueReg)
+        }
+    }
+
+    private fun assignToObjectBindingPattern(node: BindingPatternNode, valueReg: Register) {
+        val excludedPropertyNames = mutableListOf<Register>()
+        val properties = node.bindingProperties
+        val hasRest = properties.lastOrNull() is BindingRestProperty
+
+        for (property in properties) {
+            val alias = when (property) {
+                is BindingRestProperty -> {
+                    generator.add(CopyObjectExcludingProperties(valueReg, excludedPropertyNames))
+                    storeToSource(property.declaration)
+                    return
+                }
+                is SimpleBindingProperty -> {
+                    val name = generator.intern(property.declaration.identifier.name)
+                    if (hasRest) {
+                        val excludedNameReg = generator.reserveRegister()
+                        generator.add(LdaConstant(name))
+                        generator.add(Star(excludedNameReg))
+                        excludedPropertyNames.add(excludedNameReg)
+                    }
+                    generator.add(LdaNamedProperty(valueReg, name, generator.reserveFeedbackSlot()))
+
+                    if (property.initializer != null)
+                        generator.ifHelper(::JumpIfUndefined) { visit(property.initializer) }
+
+                    property.alias ?: BindingDeclarationOrPattern(property.declaration)
+                }
+                is ComputedBindingProperty -> {
+                    expect(property.name.type != PropertyName.Type.Identifier)
+                    visit(property.name.expression)
+
+                    if (hasRest) {
+                        val excludedNameReg = generator.reserveRegister()
+                        generator.add(Star(excludedNameReg))
+                        excludedPropertyNames.add(excludedNameReg)
+                    }
+
+                    generator.add(LdaKeyedProperty(valueReg, generator.reserveFeedbackSlot()))
+
+                    if (property.initializer != null)
+                        generator.ifHelper(::JumpIfUndefined) { visit(property.initializer) }
+
+                    property.alias
+                }
+            }
+
+            assign(alias.node)
+        }
+    }
+
+    private fun assignToArrayBindingPattern(node: BindingPatternNode, valueReg: Register) {
+        val isIteratorExhaustedRegister = generator.reserveRegister()
+        val iteratorReg = generator.reserveRegister()
+        generator.add(Ldar(valueReg))
+        generator.add(GetIterator)
+        generator.add(Star(iteratorReg))
+        var first = true
+        val tempIteratorResultReg = generator.reserveRegister()
+
+        for (entry in node.bindingElements) {
+            if (entry is BindingRestElement) {
+                if (first) {
+                    // Iterator hasn't been called, so we can skip the exhaustion check
+
+                    // Reuse the temp reg
+                    iteratorToArray(iteratorReg, tempIteratorResultReg)
+                } else {
+                    generator.add(Ldar(isIteratorExhaustedRegister))
+                    generator.ifElseHelper(::JumpIfTrue, {
+                        generator.add(CreateArray)
+                    }, {
+                        iteratorToArray(iteratorReg)
+                    })
+                }
+
+                assign(entry.declaration.node)
+
+                return
+            }
+
+            // In the first iteration of the loop, a few things are true which can save
+            // us some bytecode:
+            //  - the iterator result is still in the accumulator, so we can avoid a load
+            //  - the iterator is not yet exhausted, which can save us a jump and some
+            //    creation
+
+            val iteratorIsExhaustedBlock = generator.makeBlock()
+
+            if (!first) {
+                val iteratorIsNotExhaustedBlock = generator.makeBlock()
+
+                generator.add(Ldar(isIteratorExhaustedRegister))
+                generator.add(JumpIfTrue(iteratorIsExhaustedBlock, iteratorIsNotExhaustedBlock))
+
+                generator.currentBlock = iteratorIsNotExhaustedBlock
+                generator.add(Ldar(iteratorReg))
+            }
+
+            generator.add(IteratorNext)
+            generator.add(Star(tempIteratorResultReg))
+            generator.add(IteratorResultDone)
+            generator.add(Star(isIteratorExhaustedRegister))
+
+            // We still have to check for exhaustion here. If the iterator is exhausted,
+            // we need to bail before trying to get the value
+            val noBailBlock = generator.makeBlock()
+            generator.add(JumpIfTrue(iteratorIsExhaustedBlock, noBailBlock))
+            generator.currentBlock = noBailBlock
+
+            // Get the next value in the iterator
+            generator.add(Ldar(tempIteratorResultReg))
+            generator.add(IteratorResultValue)
+
+            val createBindingBlock = generator.makeBlock()
+            generator.add(JumpAbsolute(createBindingBlock))
+
+            // The iterator is exhausted, so we just load undefined and continue binding
+            generator.currentBlock = iteratorIsExhaustedBlock
+            generator.add(LdaUndefined)
+            generator.add(JumpAbsolute(createBindingBlock))
+
+            // Create the actual binding. The value which this entry must bind is now in the
+            // accumulator. We can proceed, processing the alias as a nested  destructuring
+            // pattern if necessary.
+            generator.currentBlock = createBindingBlock
+
+            when (entry) {
+                is BindingRestElement -> unreachable()
+                is BindingElisionElement -> { /* no-op */ }
+                is SimpleBindingElement -> assign(entry.alias.node)
+            }
+
+            first = false
+        }
+    }
+
+    private fun iteratorToArray(iteratorReg: Register, arrayReg: Register = generator.reserveRegister()) {
+        val indexReg = generator.reserveRegister()
+        generator.add(LdaInt(0))
+        generator.add(Star(indexReg))
+
+        generator.add(CreateArray)
+        generator.add(Star(arrayReg))
+        generator.add(Ldar(iteratorReg))
+
+        iterateValues(setOf(), iteratorReg) {
+            generator.add(StaArray(arrayReg, indexReg))
+        }
+
+        generator.add(Ldar(arrayReg))
     }
 
     private fun iterateForEach(node: ForEachNode) {
         iterateValues(node.labels) {
             if (node.initializerScope != null)
                 enterScope(node.initializerScope!!)
-            assign(node.decl)
+            when (val decl = node.decl) {
+                is VariableDeclarationNode -> assign(decl.declarations[0])
+                is LexicalDeclarationNode -> assign(decl.declarations[0])
+                else -> assign(decl)
+            }
             visit(node.body)
             if (node.initializerScope != null)
                 exitScope(node.initializerScope!!)
@@ -495,12 +656,15 @@ class Transformer : ASTVisitor {
 
     private fun visitDeclaration(declaration: Declaration) {
         if (declaration.initializer != null) {
-            visit(declaration.initializer)
+            visit(declaration.initializer!!)
         } else {
             generator.add(LdaUndefined)
         }
 
-        storeToSource(declaration)
+        when (declaration) {
+            is NamedDeclaration -> assign(declaration)
+            is DestructuringDeclaration -> assign(declaration.pattern)
+        }
     }
 
     override fun visitDebuggerStatement() {
@@ -1518,9 +1682,6 @@ class Transformer : ASTVisitor {
                 generator.add(GetIterator)
                 iterateValues(setOf()) {
                     generator.add(StaArray(arrayReg, indexReg))
-                    generator.add(Ldar(indexReg))
-                    generator.add(Inc)
-                    generator.add(Star(indexReg))
                 }
             } else {
                 visit(argument.expression)
@@ -1528,9 +1689,6 @@ class Transformer : ASTVisitor {
                     generator.add(StaArrayIndex(arrayReg, index))
                 } else {
                     generator.add(StaArray(arrayReg, indexReg))
-                    generator.add(Ldar(indexReg))
-                    generator.add(Inc)
-                    generator.add(Star(indexReg))
                 }
             }
         }
@@ -1538,8 +1696,11 @@ class Transformer : ASTVisitor {
         return arrayReg
     }
 
-    private fun iterateValues(labels: Set<String>, action: () -> Unit) {
-        val iteratorReg = generator.reserveRegister()
+    private fun iterateValues(
+        labels: Set<String>,
+        iteratorReg: Register = generator.reserveRegister(),
+        action: () -> Unit,
+    ) {
         generator.add(Star(iteratorReg))
 
         val headBlock = generator.makeBlock()

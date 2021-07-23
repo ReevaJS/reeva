@@ -9,11 +9,7 @@ interface ASTVisitor {
         when (node) {
             is StatementNode -> visitStatement(node)
             is ExpressionNode -> visitExpression(node)
-            is ASTListNode<*> -> visitASTListNode(node)
-            is MethodDefinitionNode -> visitMethodDefinition(node)
-            is ScriptNode -> visitScript(node)
-            is PropertyName -> visitPropertyName(node)
-            else -> throw IllegalArgumentException("Unrecognized ASTNode ${node.astNodeName}")
+            else -> visitOther(node)
         }
     }
 
@@ -83,6 +79,27 @@ interface ASTVisitor {
             is NullLiteralNode -> visitNullLiteral()
             is ThisLiteralNode -> visitThisLiteral(node)
             else -> throw IllegalArgumentException("Unrecognized ExpressionNode ${node.astNodeName}")
+        }
+    }
+
+    fun visitOther(node: ASTNode) {
+        when (node) {
+            is ASTListNode<*> -> visitASTListNode(node)
+            is MethodDefinitionNode -> visitMethodDefinition(node)
+            is ScriptNode -> visitScript(node)
+            is PropertyName -> visitPropertyName(node)
+            is NamedDeclaration -> visitNamedDeclaration(node)
+            is DestructuringDeclaration -> visitDestructuringDeclaration(node)
+            is BindingPatternNode -> visitBindingPattern(node)
+            is BindingDeclaration -> visitBindingDeclaration(node)
+            is BindingDeclarationOrPattern -> visitBindingDeclarationOrPattern(node)
+            is BindingRestProperty -> visitBindingRestProperty(node)
+            is SimpleBindingProperty -> visitSimpleBindingProperty(node)
+            is ComputedBindingProperty -> visitComputedBindingProperty(node)
+            is BindingRestElement -> visitBindingRestElement(node)
+            is SimpleBindingElement -> visitSimpleBindingElement(node)
+            is BindingElisionElement -> visitBindingElisionElement(node)
+            else -> throw IllegalArgumentException("Unrecognized ASTNode ${node.astNodeName}")
         }
     }
 
@@ -166,18 +183,75 @@ interface ASTVisitor {
     }
 
     fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
-        node.declarations.forEach { binding ->
-            visit(binding.identifier)
-            binding.initializer?.also(::visit)
-        }
+        node.declarations.forEach(::visitDeclaration)
     }
 
     fun visitVariableDeclaration(node: VariableDeclarationNode) {
-        node.declarations.forEach { declaration ->
-            visit(declaration.identifier)
-            declaration.initializer?.also(::visit)
+        node.declarations.forEach(::visitDeclaration)
+    }
+
+    private fun visitDeclaration(declaration: Declaration) {
+        when (declaration) {
+            is NamedDeclaration -> visit(declaration.identifier)
+            is DestructuringDeclaration -> visit(declaration.pattern)
         }
     }
+
+    fun visitNamedDeclaration(declaration: NamedDeclaration) {
+        visit(declaration.identifier)
+        declaration.initializer?.let(::visit)
+    }
+
+    fun visitDestructuringDeclaration(declaration: DestructuringDeclaration) {
+        visit(declaration.pattern)
+        declaration.initializer?.let(::visit)
+    }
+
+    fun visitBindingPattern(node: BindingPatternNode) {
+        when (node.kind) {
+            BindingKind.Object -> node.bindingProperties.forEach(::visit)
+            BindingKind.Array -> node.bindingElements.forEach(::visit)
+        }
+    }
+
+    fun visitBindingDeclaration(node: BindingDeclaration) {
+        visit(node.identifier)
+    }
+
+    fun visitBindingDeclarationOrPattern(node: BindingDeclarationOrPattern) {
+        visit(node.node)
+    }
+
+    fun visitBindingRestProperty(node: BindingRestProperty) {
+        visit(node.declaration)
+    }
+
+    fun visitSimpleBindingProperty(node: SimpleBindingProperty) {
+        visit(node.declaration)
+        if (node.alias != null)
+            visit(node.alias)
+        if (node.initializer != null)
+            visit(node.initializer)
+    }
+
+    fun visitComputedBindingProperty(node: ComputedBindingProperty) {
+        visit(node.name)
+        visit(node.alias)
+        if (node.initializer != null)
+            visit(node.initializer)
+    }
+
+    fun visitBindingRestElement(node: BindingRestElement) {
+        visit(node.declaration)
+    }
+
+    fun visitSimpleBindingElement(node: SimpleBindingElement) {
+        visit(node.alias)
+        if (node.initializer != null)
+            visit(node.initializer)
+    }
+
+    fun visitBindingElisionElement(node: BindingElisionElement) {}
 
     fun visitDebuggerStatement() {}
 

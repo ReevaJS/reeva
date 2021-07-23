@@ -156,18 +156,22 @@ class StaArrayIndex(var arrayReg: Register, val index: Literal) : Opcode(isThrow
 }
 
 /**
- * Store a value into an array.
+ * Store a value into an array and increment the index register.
  *
  * accumulator: the value to store into the array
  * arrayReg: the register containing the array
  * indexReg: the literal array index to insert the value into
  */
-class StaArray(var arrayReg: Register, val indexReg: Register) : Opcode(isThrowing = true) {
-    override fun readRegisters() = listOf(arrayReg)
+class StaArray(var arrayReg: Register, var indexReg: Register) : Opcode(isThrowing = true) {
+    override fun readRegisters() = listOf(arrayReg, indexReg)
+
+    override fun writeRegisters() = listOf(indexReg)
 
     override fun replaceRegisters(from: Register, to: Register) {
         if (arrayReg == from)
             arrayReg = to
+        if (indexReg == from)
+            indexReg = to
     }
 }
 
@@ -175,6 +179,19 @@ class StaArray(var arrayReg: Register, val indexReg: Register) : Opcode(isThrowi
  * Creates an empty object and loads it into the accumulator
  */
 object CreateObject : Opcode()
+
+class CopyObjectExcludingProperties(var targetReg: Register, val excludedPropertyNames: MutableList<Register>) : Opcode() {
+    override fun readRegisters() = excludedPropertyNames + listOf(targetReg)
+
+    override fun replaceRegisters(from: Register, to: Register) {
+        if (targetReg == from)
+            targetReg = to
+
+        excludedPropertyNames.replaceAll {
+            if (it == from) to else it
+        }
+    }
+}
 
 /////////////////////////
 /// BINARY OPERATIONS ///

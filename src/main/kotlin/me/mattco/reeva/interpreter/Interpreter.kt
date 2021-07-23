@@ -246,10 +246,26 @@ class Interpreter(
         val array = registers[arrayReg] as JSObject
         val index = (registers[indexReg] as JSNumber).asInt
         array.indexedProperties.set(array, index, accumulator)
+        registers[indexReg] = JSNumber(index + 1)
     }
 
     override fun visitCreateObject() {
         accumulator = JSObject.create(realm)
+    }
+
+    override fun visitCopyObjectExcludingProperties(targetReg: Register, excludedPropertyNames: List<Register>) {
+        val target = registers[targetReg] as JSObject
+        val excludedNames = excludedPropertyNames.map { registers[it].toPropertyKey(realm) }.toSet()
+        val ownPropertyNames = target.ownPropertyKeys()
+
+        val newObj = JSObject.create(realm)
+
+        for (name in ownPropertyNames) {
+            if (name !in excludedNames)
+                newObj.set(name, target.get(name))
+        }
+
+        accumulator = newObj
     }
 
     override fun visitAdd(lhsReg: Register, feedbackIndex: FeedbackIndex) {
