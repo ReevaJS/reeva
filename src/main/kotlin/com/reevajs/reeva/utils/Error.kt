@@ -171,7 +171,7 @@ object Errors {
         object Locale {
             object InvalidLocaleType : Error("invalid type in locales list")
             class InvalidLanguageTag(tag: String) : Error("invalid language tag: \"$tag\"")
-            class InvalidLocaleOption(option: String, value: String) : Error("invalid value $value for option $option")
+            class InvalidLocaleOption(option: String, value: String) : Error("invalid value \"$value\" for option $option")
             class InvalidLocaleLanguage(language: String) : Error("invalid locale language: \"$language\"")
             class InvalidLocaleScript(script: String) : Error("invalid locale script: \"$script\"")
             class InvalidLocaleRegion(region: String) : Error("invalid locale region: \"$region\"")

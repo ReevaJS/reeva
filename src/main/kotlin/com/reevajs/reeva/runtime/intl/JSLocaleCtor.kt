@@ -38,9 +38,13 @@ class JSLocaleCtor(realm: Realm) : JSNativeFunction(realm, "Locale", 1) {
 
         for ((name, key, possibleValues, isBool) in optionsData) {
             val value = IntlAOs.getOption(realm, options, name, isBool, possibleValues) ?: continue
-            if (ULocale.toLegacyType(ULocale.toLegacyKey(key), value) == null)
+            if (value.isBlank())
                 Errors.Intl.Locale.InvalidLocaleOption(name, value).throwRangeError(realm)
-            builder.setUnicodeLocaleKeyword(key, value)
+            try {
+                builder.setUnicodeLocaleKeyword(key, value)
+            } catch (e: IllformedLocaleException) {
+                Errors.Intl.Locale.InvalidLocaleOption(name, value).throwRangeError(realm)
+            }
         }
 
         val ulocale = ULocale.createCanonical(builder.build())
