@@ -40,7 +40,6 @@ class Test262Test(
         val agent = Agent.activeAgent
 
         try {
-            Assumptions.assumeTrue(metadata.features?.any { "intl" in it.lowercase() } != true)
             Assumptions.assumeTrue(metadata.features?.any { it in excludedFeatures } != true)
 
             println("File: ${Test262Runner.testDirectoryStr}$name")

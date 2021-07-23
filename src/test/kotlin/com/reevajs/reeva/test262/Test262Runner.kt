@@ -23,10 +23,9 @@ class Test262Runner {
     fun test262testProvider(): List<DynamicTest> {
         val target = target ?: testDirectory
         val files = if (!target.isDirectory) listOf(target) else target.walkTopDown().onEnter {
-            it.name != "intl402" && it.name != "annexB"
+            it.name != "annexB"
         }.filter {
             !it.isDirectory && !(it.name.endsWith("_FIXTURE.js") || it.name.endsWith("_FIXTURE.json")) &&
-                "S13.2.1_A1_T1.js" !in it.name && // the nested function call test
                 "S7.8.5_A2.1_T2.js" !in it.name // a regexp test that hangs
         }.toList().sortedBy { it.absolutePath }
 
