@@ -13,7 +13,7 @@ interface Pass {
             RemoveHandlers.evaluate(opcodes)
             GenerateCFG.evaluate(opcodes)
             PlaceBlocks.evaluate(opcodes)
-            FindLoops.evaluate(opcodes)
+            FindLoops().evaluate(opcodes)
             LivenessAnalysis.evaluate(opcodes)
 
             // TODO: This corrupts registers in loop contexts (i.e. it doesn't know how to
