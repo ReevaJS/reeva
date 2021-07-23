@@ -48,9 +48,10 @@ class JSLocaleCtor(realm: Realm) : JSNativeFunction(realm, "Locale", 1) {
             realm,
             arguments.newTarget,
             realm.localeProto,
-            listOf(SlotName.InitializedLocale, SlotName.ULocale),
+            listOf(SlotName.InitializedLocale, SlotName.ULocale, SlotName.Locale),
         )
         localeObject.setSlot(SlotName.ULocale, ulocale)
+        localeObject.setSlot(SlotName.Locale, ulocale.toLanguageTag())
 
         return localeObject
     }

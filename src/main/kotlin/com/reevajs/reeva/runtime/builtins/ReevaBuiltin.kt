@@ -11,6 +11,7 @@ import com.reevajs.reeva.runtime.errors.JSErrorProto
 import com.reevajs.reeva.runtime.functions.JSFunctionProto
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObjectProto
 import com.reevajs.reeva.runtime.global.JSConsoleProto
+import com.reevajs.reeva.runtime.intl.JSIntlObject
 import com.reevajs.reeva.runtime.intl.JSLocaleProto
 import com.reevajs.reeva.runtime.intl.JSNumberFormatCtor
 import com.reevajs.reeva.runtime.intl.JSNumberFormatProto
@@ -166,6 +167,8 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
 
     GlobalEval(JSGlobalObject::class.java, "eval", "eval"),
     GlobalParseInt(JSGlobalObject::class.java, "parseInt", "parseInt"),
+
+    IntlGetCanonicalLocales(JSIntlObject::class.java, "getCanonicalLocales", "Intl.getCanonicalLocales"),
 
     IteratorProtoSymbolIterator(JSIteratorProto::class.java, "symbolIterator", "Iterator.prototype[@@iterator]"),
 
