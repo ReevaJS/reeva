@@ -20,7 +20,7 @@ object LivenessAnalysis : Pass {
 
         for (opcode in block) {
             for (readReg in opcode.readRegisters()) {
-                expect(readReg in liveRegisters)
+                expect(readReg in liveRegisters || readReg < opcodes.argCount)
             }
 
             for (writeReg in opcode.writeRegisters()) {

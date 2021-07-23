@@ -28,7 +28,7 @@ class HandlerScope(
 
 data class BlockLiveness(
     val inLiveness: MutableSet<Register>,
-    val outrLiveness: MutableSet<Register>,
+    val outLiveness: MutableSet<Register>,
 )
 
 class Analysis(var entryBlock: Block) {
