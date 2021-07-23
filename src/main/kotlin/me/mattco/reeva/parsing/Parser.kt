@@ -305,10 +305,9 @@ class Parser(val source: String) {
         while (true) {
             val start = sourceStart
 
-            if (match(TokenType.OpenCurly))
-                TODO()
-
-            val identifier = parseIdentifier()
+            val target = if (matchBindingPattern()) {
+                parseBindingPattern()
+            } else parseIdentifier()
 
             val initializer = if (match(TokenType.Equals)) {
                 consume()
@@ -317,9 +316,14 @@ class Parser(val source: String) {
                 reporter.constMissingInitializer()
             } else null
 
-            declarations.add(
-                Declaration(identifier, initializer).withPosition(start, lastConsumedToken.end)
-            )
+            val declaration = if (target is BindingPatternNode) {
+                DestructuringDeclaration(target, initializer)
+            } else {
+                expect(target is IdentifierNode)
+                NamedDeclaration(target, initializer)
+            }.withPosition(start, lastConsumedToken.end)
+
+            declarations.add(declaration)
 
             if (match(TokenType.Comma)) {
                 consume()
@@ -335,6 +339,129 @@ class Parser(val source: String) {
             LexicalDeclarationNode(isConst = type == TokenType.Const, declarations)
         }
     }
+
+    private fun matchBindingPattern() = matchAny(TokenType.OpenCurly, TokenType.OpenBracket)
+
+    private fun parseBindingPattern(): BindingPatternNode = nps {
+        if (match(TokenType.OpenCurly)) {
+            parseObjectBindingPattern()
+        } else parseArrayBindingPattern()
+    }
+
+    private fun parseBindingDeclaration(): BindingDeclaration = nps {
+        BindingDeclaration(parseIdentifier())
+    }
+
+    private fun parseObjectBindingPattern(): BindingPatternNode = nps {
+        consume(TokenType.OpenCurly)
+
+        val bindingEntries = mutableListOf<BindingProperty>()
+
+        while (!match(TokenType.CloseCurly)) {
+            if (match(TokenType.TriplePeriod)) {
+                consume()
+                if (!matchIdentifier())
+                    reporter.at(token).expected("identifier")
+
+                val identifier = parseIdentifier()
+                val declaration = BindingDeclaration(identifier).withPosition(identifier)
+
+                bindingEntries.add(BindingRestProperty(declaration))
+                break
+            }
+
+            if (matchIdentifier()) {
+                val identifier = parseBindingDeclaration()
+
+                val alias = if (match(TokenType.Colon)) {
+                    consume()
+
+                    if (matchBindingPattern()) {
+                        parseBindingPattern()
+                    } else {
+                        parseBindingDeclaration()
+                    }.let(::BindingDeclarationOrPattern)
+                } else null
+
+                bindingEntries.add(SimpleBindingProperty(identifier, alias, parseInitializer()))
+            } else if (matchPropertyName()) {
+                val identifier = parsePropertyName()
+
+                val alias = if (match(TokenType.Colon)) {
+                    consume()
+
+                    if (matchBindingPattern()) {
+                        parseBindingPattern()
+                    } else {
+                        parseBindingDeclaration()
+                    }.let(::BindingDeclarationOrPattern)
+                } else {
+                    reporter.at(token).missingBindingElement()
+                }
+
+                bindingEntries.add(ComputedBindingProperty(identifier, alias, parseInitializer()))
+            } else {
+                reporter.at(token).expected("property name or rest property", tokenType)
+            }
+
+            if (match(TokenType.Comma)) {
+                consume()
+            } else break
+        }
+
+        consume(TokenType.CloseCurly)
+
+        BindingPatternNode(BindingKind.Object, bindingEntries)
+    }
+
+    private fun parseArrayBindingPattern(): BindingPatternNode = nps {
+        consume(TokenType.OpenBracket)
+
+        val bindingEntries = mutableListOf<BindingElement>()
+
+        while (!match(TokenType.CloseBracket)) {
+            while (match(TokenType.Comma)) {
+                consume()
+                bindingEntries.add(BindingElisionElement())
+            }
+
+            if (match(TokenType.TriplePeriod)) {
+                consume()
+                val declaration = if (matchIdentifier()) {
+                    parseBindingDeclaration()
+                } else if (!matchBindingPattern()) {
+                    reporter.at(token).expected("binding pattern or identifier", tokenType)
+                } else {
+                    parseBindingPattern()
+                }
+                bindingEntries.add(BindingRestElement(BindingDeclarationOrPattern(declaration)))
+                break
+            }
+
+            val alias = if (matchIdentifier()) {
+                parseBindingDeclaration()
+            } else if (!matchBindingPattern()) {
+                reporter.at(token).expected("binding pattern or identifier", tokenType)
+            } else {
+                parseBindingPattern()
+            }
+
+            bindingEntries.add(SimpleBindingElement(BindingDeclarationOrPattern(alias), parseInitializer()))
+
+            if (match(TokenType.Comma)) {
+                consume()
+            } else break
+        }
+
+        consume(TokenType.CloseBracket)
+
+        BindingPatternNode(BindingKind.Array, bindingEntries)
+    }
+
+    private fun parseInitializer() = if (match(TokenType.Equals)) {
+        consume()
+        parseExpression(2)
+    } else null
 
     /*
      * DoWhileStatement :

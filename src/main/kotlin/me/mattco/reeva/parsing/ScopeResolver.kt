@@ -7,6 +7,7 @@ import me.mattco.reeva.ast.literals.MethodDefinitionNode
 import me.mattco.reeva.ast.literals.ThisLiteralNode
 import me.mattco.reeva.ast.statements.*
 import me.mattco.reeva.utils.expect
+import me.mattco.reeva.utils.unreachable
 
 class ScopeResolver : ASTVisitor {
     private lateinit var scope: Scope
@@ -51,19 +52,11 @@ class ScopeResolver : ASTVisitor {
 
     override fun visitVariableDeclaration(node: VariableDeclarationNode) {
         for (decl in node.declarations) {
-            val declaredScope = scope
-            val hoistedScope = scope.outerHoistingScope
-
-            decl.type = VariableType.Var
-            decl.mode = if (hoistedScope is GlobalScope) {
+            val mode = if (scope.outerHoistingScope is GlobalScope) {
                 VariableMode.Global
             } else VariableMode.Declared
 
-            declaredScope.addVariableSource(decl)
-            hoistedScope.addHoistedVariable(decl)
-
-            if (decl.initializer != null)
-                visit(decl.initializer)
+            visitDeclaration(decl, mode, VariableType.Var)
         }
     }
 
@@ -71,14 +64,110 @@ class ScopeResolver : ASTVisitor {
         val type = if (node.isConst) VariableType.Const else VariableType.Let
 
         for (decl in node.declarations) {
-            scope.addVariableSource(decl)
-
-            decl.type = type
-            decl.mode = VariableMode.Declared
-
-            if (decl.initializer != null)
-                visit(decl.initializer)
+            visitDeclaration(decl, VariableMode.Declared, type)
         }
+    }
+
+    private fun visitDeclaration(declaration: Declaration, mode: VariableMode, type: VariableType) {
+        when (declaration) {
+            is NamedDeclaration -> {
+                scope.addVariableSource(declaration)
+                if (type == VariableType.Var)
+                    scope.outerHoistingScope.addHoistedVariable(declaration)
+
+                declaration.type = type
+                declaration.mode = mode
+            }
+            is DestructuringDeclaration -> {
+                visitBindingPattern(declaration.pattern, mode, type)
+            }
+        }
+
+        declaration.initializer?.let(::visit)
+    }
+
+    private fun visitBindingPattern(pattern: BindingPatternNode, mode: VariableMode, type: VariableType) {
+        when (pattern.kind) {
+            BindingKind.Object -> pattern.bindingProperties.forEach { visitBindingProperty(it, mode, type) }
+            BindingKind.Array -> pattern.bindingElements.forEach { visitBindingElement(it, mode, type) }
+        }
+    }
+
+    private fun visitBindingProperty(node: BindingProperty, mode: VariableMode, type: VariableType) {
+        when (node) {
+            is BindingRestProperty -> visitBindingDeclaration(node.declaration, mode, type)
+            is SimpleBindingProperty -> {
+                visitBindingDeclaration(node.declaration, mode, type)
+                if (node.alias != null)
+                    visitBindingDeclarationOrPattern(node.alias, mode, type)
+                node.initializer?.let(::visit)
+            }
+            is ComputedBindingProperty -> {
+                visit(node.name)
+                visitBindingDeclarationOrPattern(node.alias, mode, type)
+                node.initializer?.let(::visit)
+            }
+        }
+    }
+
+    private fun visitBindingElement(node: BindingElement, mode: VariableMode, type: VariableType) {
+        when (node) {
+            is BindingElisionElement -> { /* no-op */ }
+            is BindingRestElement -> visitBindingDeclarationOrPattern(node.declaration, mode, type)
+            is SimpleBindingElement -> {
+                visitBindingDeclarationOrPattern(node.alias, mode, type)
+                node.initializer?.let(::visit)
+            }
+        }
+    }
+
+    private fun visitBindingDeclarationOrPattern(node: BindingDeclarationOrPattern, mode: VariableMode, type: VariableType) {
+        if (node.isBindingPattern) {
+            visitBindingPattern(node.asBindingPattern, mode, type)
+        } else {
+            visitBindingDeclaration(node.asBindingDeclaration, mode, type)
+        }
+    }
+
+    private fun visitBindingDeclaration(node: BindingDeclaration, mode: VariableMode, type: VariableType) {
+        scope.addVariableSource(node)
+        if (type == VariableType.Var)
+            scope.outerHoistingScope.addHoistedVariable(node)
+
+        node.type = type
+        node.mode = mode
+    }
+
+    override fun visitBindingDeclaration(node: BindingDeclaration) {
+        unreachable()
+    }
+
+    override fun visitBindingDeclarationOrPattern(node: BindingDeclarationOrPattern) {
+        unreachable()
+    }
+
+    override fun visitBindingRestProperty(node: BindingRestProperty) {
+        unreachable()
+    }
+
+    override fun visitSimpleBindingProperty(node: SimpleBindingProperty) {
+        unreachable()
+    }
+
+    override fun visitComputedBindingProperty(node: ComputedBindingProperty) {
+        unreachable()
+    }
+
+    override fun visitBindingRestElement(node: BindingRestElement) {
+        unreachable()
+    }
+
+    override fun visitSimpleBindingElement(node: SimpleBindingElement) {
+        unreachable()
+    }
+
+    override fun visitBindingElisionElement(node: BindingElisionElement) {
+        unreachable()
     }
 
     override fun visitIdentifierReference(node: IdentifierReferenceNode) {

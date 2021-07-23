@@ -86,6 +86,15 @@ class IrPrinter(private val info: FunctionInfo) {
                 append(" array:", stringifyRegister(opcode.arrayReg))
                 append(" index:", stringifyRegister(opcode.indexReg))
             }
+            is CopyObjectExcludingProperties -> {
+                append(" target:", stringifyRegister(opcode.targetReg))
+                if (opcode.excludedPropertyNames.isNotEmpty()) {
+                    append(" excluded: [")
+                    for (reg in opcode.excludedPropertyNames)
+                        append(stringifyRegister(reg))
+                    append(']')
+                }
+            }
 
             is Add -> append(stringifyRegister(opcode.lhsReg))
             is Sub -> append(stringifyRegister(opcode.lhsReg))

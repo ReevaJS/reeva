@@ -26,6 +26,7 @@ abstract class IrOpcodeVisitor {
             is StaArrayIndex -> visitStaArrayIndex(opcode.arrayReg, opcode.index)
             is StaArray -> visitStaArray(opcode.arrayReg, opcode.indexReg)
             CreateObject -> visitCreateObject()
+            is CopyObjectExcludingProperties -> visitCopyObjectExcludingProperties(opcode.targetReg, opcode.excludedPropertyNames)
 
             is Add -> visitAdd(opcode.lhsReg, opcode.feedbackIndex)
             is Sub -> visitSub(opcode.lhsReg, opcode.feedbackIndex)
@@ -157,6 +158,8 @@ abstract class IrOpcodeVisitor {
     abstract fun visitStaArray(arrayReg: Register, indexReg: Register)
 
     abstract fun visitCreateObject()
+
+    abstract fun visitCopyObjectExcludingProperties(targetReg: Register, excludedPropertyNames: List<Register>)
 
     abstract fun visitAdd(lhsReg: Register, feedbackIndex: FeedbackIndex)
 

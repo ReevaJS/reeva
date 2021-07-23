@@ -11,9 +11,18 @@ class VariableDeclarationNode(
     val declarations: List<Declaration>,
 ) : ASTNodeBase(declarations), StatementNode
 
-class Declaration(
-    val identifier: IdentifierNode,
+sealed interface Declaration : ASTNode {
     val initializer: ExpressionNode?
-) : VariableSourceNode(listOfNotNull(initializer)) {
+}
+
+class DestructuringDeclaration(
+    val pattern: BindingPatternNode,
+    override val initializer: ExpressionNode?,
+) : ASTNodeBase(listOfNotNull(pattern, initializer)), Declaration
+
+class NamedDeclaration(
+    val identifier: IdentifierNode,
+    override val initializer: ExpressionNode?,
+) : VariableSourceNode(listOfNotNull(identifier, identifier)), Declaration {
     override fun name() = identifier.name
 }

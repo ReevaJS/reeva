@@ -8,7 +8,7 @@ import me.mattco.reeva.runtime.primitives.JSSymbol
 import me.mattco.reeva.utils.expect
 import me.mattco.reeva.utils.unreachable
 
-class PropertyKey private constructor(internal val value: Any) {
+data class PropertyKey private constructor(internal val value: Any) {
     val isString: Boolean
         get() = value is String
     val isSymbol: Boolean
