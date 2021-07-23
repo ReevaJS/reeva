@@ -270,36 +270,33 @@ class ScopeResolver : ASTVisitor {
     }
 
     override fun visitForIn(node: ForInNode) {
-        visitForEach(node.decl, node.expression, node.body)
+        visitForEach(node)
     }
 
     override fun visitForOf(node: ForOfNode) {
-        visitForEach(node.decl, node.expression, node.body)
+        visitForEach(node)
     }
 
     override fun visitForAwaitOf(node: ForAwaitOfNode) {
-        visitForEach(node.decl, node.expression, node.body)
+        visitForEach(node)
     }
 
-    private fun visitForEach(decl: ASTNode, expression: ExpressionNode, body: StatementNode) {
-        val needScope = decl is VariableDeclarationNode || decl is LexicalDeclarationNode || body is BlockNode
+    private fun visitForEach(node: ForEachNode) {
+        visit(node.expression)
 
-        val blockScope = Scope(scope)
-        if (needScope)
-            scope = blockScope
+        val decl = node.decl
+        val body = node.body
+
+        val needsDeclScope = decl is VariableDeclarationNode || decl is LexicalDeclarationNode || body is BlockNode
+        if (needsDeclScope) {
+            scope = Scope(scope)
+            node.initializerScope = scope
+        }
 
         visit(decl)
-        if (needScope)
-            scope = scope.outer!!
-        visit(expression)
-        if (needScope)
-            scope = blockScope
+        visit(body)
 
-        if (body is BlockNode) {
-            visitBlock(body, pushScope = false)
-        } else visit(body)
-
-        if (needScope)
+        if (needsDeclScope)
             scope = scope.outer!!
     }
 

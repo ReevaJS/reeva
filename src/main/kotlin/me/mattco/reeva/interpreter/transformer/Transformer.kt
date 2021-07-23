@@ -285,10 +285,14 @@ class Transformer : ASTVisitor {
         }
     }
 
-    private fun iterateForEach(labels: Set<String>, decl: ASTNode, body: ASTNode) {
-        iterateValues(labels) {
-            assign(decl)
-            visit(body)
+    private fun iterateForEach(node: ForEachNode) {
+        iterateValues(node.labels) {
+            if (node.initializerScope != null)
+                enterScope(node.initializerScope!!)
+            assign(node.decl)
+            visit(node.body)
+            if (node.initializerScope != null)
+                exitScope(node.initializerScope!!)
         }
     }
 
@@ -301,7 +305,7 @@ class Transformer : ASTVisitor {
         generator.currentBlock = isNotUndefinedBlock
 
         generator.add(ForInEnumerate)
-        iterateForEach(node.labels, node.decl, node.body)
+        iterateForEach(node)
 
         generator.add(JumpAbsolute(isUndefinedBlock))
         generator.currentBlock = isUndefinedBlock
@@ -310,7 +314,7 @@ class Transformer : ASTVisitor {
     override fun visitForOf(node: ForOfNode) {
         visit(node.expression)
         generator.add(GetIterator)
-        iterateForEach(node.labels, node.decl, node.body)
+        iterateForEach(node)
     }
 
     override fun visitForAwaitOf(node: ForAwaitOfNode) {

@@ -93,23 +93,31 @@ class ForStatementNode(
     }
 }
 
-class ForInNode(
+sealed class ForEachNode(
     val decl: ASTNode,
     val expression: ExpressionNode,
     val body: StatementNode
-) : LabellableBase(listOf(decl, expression, body)), StatementNode
+) : LabellableBase(listOf(decl, expression, body)), StatementNode {
+    var initializerScope: Scope? = null
+}
+
+class ForInNode(
+    decl: ASTNode,
+    expression: ExpressionNode,
+    body: StatementNode
+) : ForEachNode(decl, expression, body)
 
 class ForOfNode(
-    val decl: ASTNode,
-    val expression: ExpressionNode,
-    val body: StatementNode
-) : LabellableBase(listOf(decl, expression, body)), StatementNode
+    decl: ASTNode,
+    expression: ExpressionNode,
+    body: StatementNode
+) : ForEachNode(decl, expression, body)
 
 class ForAwaitOfNode(
-    val decl: ASTNode,
-    val expression: ExpressionNode,
-    val body: StatementNode
-) : LabellableBase(listOf(decl, expression, body)), StatementNode
+    decl: ASTNode,
+    expression: ExpressionNode,
+    body: StatementNode
+) : ForEachNode(decl, expression, body)
 
 class ThrowStatementNode(val expr: ExpressionNode) : ASTNodeBase(listOf(expr)), StatementNode
 
