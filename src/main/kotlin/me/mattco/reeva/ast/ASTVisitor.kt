@@ -22,6 +22,7 @@ interface ASTVisitor {
             is DoWhileStatementNode -> visitDoWhileStatement(node)
             is WhileStatementNode -> visitWhileStatement(node)
             is ForStatementNode -> visitForStatement(node)
+            is SwitchStatementNode -> visitSwitchStatement(node)
             is ForInNode -> visitForIn(node)
             is ForOfNode -> visitForOf(node)
             is ForAwaitOfNode -> visitForAwaitOf(node)
@@ -144,6 +145,14 @@ interface ASTVisitor {
         node.condition?.also(::visit)
         node.incrementer?.also(::visit)
         visit(node.body)
+    }
+
+    fun visitSwitchStatement(node: SwitchStatementNode) {
+        visit(node.target)
+        node.clauses.forEach {
+            it.target?.let(::visit)
+            it.body?.let(::visit)
+        }
     }
 
     fun visitForIn(node: ForInNode) {

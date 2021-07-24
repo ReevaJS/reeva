@@ -269,6 +269,62 @@ class Transformer : ASTVisitor {
             exitScope(node.initializerScope!!)
     }
 
+    override fun visitSwitchStatement(node: SwitchStatementNode) {
+        visit(node.target)
+        val targetReg = generator.reserveRegister()
+        generator.add(Star(targetReg))
+
+        val caseBlocks = mutableListOf<Block>()
+        var defaultBlock: Block? = null
+        var nextTestBlock = generator.makeBlock()
+        generator.add(JumpAbsolute(nextTestBlock))
+
+        for (clause in node.clauses) {
+            val caseBlock = generator.makeBlock()
+            if (clause.target == null) {
+                defaultBlock = caseBlock
+            } else {
+                generator.currentBlock = nextTestBlock
+                visit(clause.target)
+                generator.add(TestEqualStrict(targetReg))
+                nextTestBlock = generator.makeBlock()
+                generator.add(JumpIfTrue(caseBlock, nextTestBlock))
+            }
+            caseBlocks.add(caseBlock)
+        }
+
+        generator.currentBlock = nextTestBlock
+        val endBlock = generator.makeBlock()
+
+        if (defaultBlock != null) {
+            generator.add(JumpAbsolute(defaultBlock))
+        } else {
+            generator.add(LdaUndefined)
+            generator.add(JumpAbsolute(endBlock))
+        }
+
+        enterBreakableScope(endBlock, node.labels)
+
+        for ((index, clause) in node.clauses.withIndex()) {
+            val currentBlock = caseBlocks[index]
+            generator.currentBlock = currentBlock
+            generator.add(LdaUndefined)
+            if (clause.body != null)
+                visit(clause.body)
+            if (!generator.currentBlock.isTerminated) {
+                if (index == caseBlocks.lastIndex) {
+                    generator.add(JumpAbsolute(endBlock))
+                } else {
+                    generator.add(JumpAbsolute(caseBlocks[index + 1]))
+                }
+            }
+        }
+
+        exitBreakableScope()
+
+        generator.currentBlock = endBlock
+    }
+
     private fun assign(node: ASTNode, bindingPatternReg: Register? = null) {
         when (node) {
             is VariableSourceNode -> storeToSource(node)
