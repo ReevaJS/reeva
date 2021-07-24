@@ -97,9 +97,11 @@ class ScopeResolver : ASTVisitor {
         when (node) {
             is BindingRestProperty -> visitBindingDeclaration(node.declaration, mode, type)
             is SimpleBindingProperty -> {
-                visitBindingDeclaration(node.declaration, mode, type)
-                if (node.alias != null)
+                if (node.alias != null) {
                     visitBindingDeclarationOrPattern(node.alias, mode, type)
+                } else {
+                    visitBindingDeclaration(node.declaration, mode, type)
+                }
                 node.initializer?.let(::visit)
             }
             is ComputedBindingProperty -> {
@@ -255,20 +257,24 @@ class ScopeResolver : ASTVisitor {
         var hasArgumentsIdentifier = false
 
         for (param in parameters) {
-            param.type = VariableType.Var
-            param.mode = VariableMode.Parameter
+            when (param) {
+                is SimpleParameter -> {
+                    if (param.identifier.name == "arguments")
+                        hasArgumentsIdentifier = true
+                    if (param.initializer != null)
+                        hasParameterExpressions = true
+                }
+                is BindingParameter -> {
+                    // TODO: Check for "arguments" name recursively
+                    if (param.initializer != null)
+                        hasParameterExpressions = true
+                }
+                is RestParameter -> {
+                    hasSimpleParams = false
+                }
+            }
 
-            if (param.name() == "arguments")
-                hasArgumentsIdentifier = true
-            if (param.initializer != null)
-                hasParameterExpressions = true
-            if (!param.isSimple())
-                hasSimpleParams = false
-
-            scope.addVariableSource(param)
-
-            if (param.initializer != null)
-                visit(param.initializer)
+            visit(param)
         }
 
         val bodyScope = if (body is BlockNode && !parameters.isSimple()) {
@@ -305,6 +311,22 @@ class ScopeResolver : ASTVisitor {
         }
 
         return functionScope
+    }
+
+    override fun visitSimpleParameter(node: SimpleParameter) {
+        node.type = VariableType.Var
+        node.mode = VariableMode.Parameter
+        node.scope = scope
+        scope.addVariableSource(node)
+        super.visitSimpleParameter(node)
+    }
+
+    override fun visitRestParameter(node: RestParameter) {
+        visitBindingDeclarationOrPattern(node.declaration, VariableMode.Parameter, VariableType.Var)
+    }
+
+    override fun visitBindingParameter(node: BindingParameter) {
+        visitBindingPattern(node.pattern, VariableMode.Parameter, VariableType.Var)
     }
 
     override fun visitTryStatement(node: TryStatementNode) {

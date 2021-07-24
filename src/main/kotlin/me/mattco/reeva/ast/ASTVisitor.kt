@@ -99,6 +99,9 @@ interface ASTVisitor {
             is BindingRestElement -> visitBindingRestElement(node)
             is SimpleBindingElement -> visitSimpleBindingElement(node)
             is BindingElisionElement -> visitBindingElisionElement(node)
+            is SimpleParameter -> visitSimpleParameter(node)
+            is BindingParameter -> visitBindingParameter(node)
+            is RestParameter -> visitRestParameter(node)
             else -> throw IllegalArgumentException("Unrecognized ASTNode ${node.astNodeName}")
         }
     }
@@ -269,11 +272,22 @@ interface ASTVisitor {
     fun visitIdentifier(node: IdentifierNode) {}
 
     fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
-        for (param in node.parameters) {
-            if (param.initializer != null)
-                visit(param.initializer)
-        }
+        node.parameters.forEach(::visit)
         visit(node.body)
+    }
+
+    fun visitSimpleParameter(node: SimpleParameter) {
+        visit(node.identifier)
+        node.initializer?.let(::visit)
+    }
+
+    fun visitRestParameter(node: RestParameter) {
+        visit(node.declaration)
+    }
+
+    fun visitBindingParameter(node: BindingParameter) {
+        visit(node.pattern)
+        node.initializer?.let(::visit)
     }
 
     fun visitPropertyName(node: PropertyName) {
@@ -286,26 +300,17 @@ interface ASTVisitor {
     }
 
     fun visitMethodDefinition(node: MethodDefinitionNode) {
-        for (param in node.parameters) {
-            if (param.initializer != null)
-                visit(param.initializer)
-        }
+        node.parameters.forEach(::visit)
         visit(node.body)
     }
 
     fun visitFunctionExpression(node: FunctionExpressionNode) {
-        for (param in node.parameters) {
-            if (param.initializer != null)
-                visit(param.initializer)
-        }
+        node.parameters.forEach(::visit)
         visit(node.body)
     }
 
     fun visitArrowFunction(node: ArrowFunctionNode) {
-        for (param in node.parameters) {
-            if (param.initializer != null)
-                visit(param.initializer)
-        }
+        node.parameters.forEach(::visit)
         visit(node.body)
     }
 

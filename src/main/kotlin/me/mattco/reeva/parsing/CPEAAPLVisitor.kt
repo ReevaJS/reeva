@@ -95,7 +95,7 @@ class CPEAAPLVisitor(
                 expect(index >= 0)
                 identifier.parent.children[index] = IdentifierNode(identifier.identifierName)
 
-                Parameter(IdentifierNode(identifier.identifierName), initializer, isSpread)
+                SimpleParameter(IdentifierNode(identifier.identifierName), initializer)
             })
         }
     }

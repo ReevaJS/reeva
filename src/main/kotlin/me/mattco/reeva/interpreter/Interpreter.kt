@@ -1,7 +1,6 @@
 package me.mattco.reeva.interpreter
 
 import me.mattco.reeva.Reeva
-import me.mattco.reeva.ast.ParameterList
 import me.mattco.reeva.core.EvaluationResult
 import me.mattco.reeva.core.MicrotaskQueue
 import me.mattco.reeva.core.Realm
@@ -14,7 +13,6 @@ import me.mattco.reeva.interpreter.transformer.opcodes.*
 import me.mattco.reeva.runtime.*
 import me.mattco.reeva.runtime.annotations.ECMAImpl
 import me.mattco.reeva.runtime.arrays.JSArrayObject
-import me.mattco.reeva.runtime.builtins.JSMappedArgumentsObject
 import me.mattco.reeva.runtime.builtins.JSUnmappedArgumentsObject
 import me.mattco.reeva.runtime.functions.JSFunction
 import me.mattco.reeva.runtime.functions.JSNativeFunction
@@ -805,63 +803,63 @@ class Interpreter(
         return obj
     }
 
-    @ECMAImpl("9.4.4.7")
-    private fun createMappedArgumentsObject(
-        realm: Realm,
-        function: JSObject,
-        parameters: ParameterList,
-        arguments: List<JSValue>,
-        envRecord: EnvRecord,
-    ): JSMappedArgumentsObject {
-        val obj = JSMappedArgumentsObject.create(realm)
-        val map = JSObject.create(realm, JSNull)
-        obj.parameterMap = map
-
-        for ((index, argument) in arguments.withIndex())
-            Operations.createDataPropertyOrThrow(realm, obj, PropertyKey.from(index), argument)
-
-        Operations.definePropertyOrThrow(
-            realm,
-            obj,
-            "length".key(),
-            Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        )
-
-        val mappedNames = mutableSetOf<String>()
-
-        for (index in parameters.lastIndex downTo 0) {
-            val name = parameters[index].identifier.name
-            if (name !in mappedNames) {
-                mappedNames.add(name)
-                if (index < arguments.size) {
-                    val getter = JSNativeFunction.fromLambda(realm, "", 0) { _, _ ->
-                        TODO()
-                    }
-                    val setter = JSNativeFunction.fromLambda(realm, "", 1) { _, _ ->
-                        TODO()
-                    }
-
-                    map.defineOwnProperty(index, JSAccessor(getter, setter), Descriptor.CONFIGURABLE)
-                }
-            }
-        }
-
-        Operations.definePropertyOrThrow(
-            realm,
-            obj,
-            Realm.`@@iterator`,
-            Descriptor(realm.arrayProto.get("values"), Descriptor.CONFIGURABLE or Descriptor.WRITABLE),
-        )
-
-        Operations.definePropertyOrThrow(
-            realm,
-            obj,
-            "callee".key(),
-            Descriptor(function, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        )
-
-        return obj
-    }
+    // @ECMAImpl("9.4.4.7")
+    // private fun createMappedArgumentsObject(
+    //     realm: Realm,
+    //     function: JSObject,
+    //     parameters: ParameterList,
+    //     arguments: List<JSValue>,
+    //     envRecord: EnvRecord,
+    // ): JSMappedArgumentsObject {
+    //     val obj = JSMappedArgumentsObject.create(realm)
+    //     val map = JSObject.create(realm, JSNull)
+    //     obj.parameterMap = map
+    //
+    //     for ((index, argument) in arguments.withIndex())
+    //         Operations.createDataPropertyOrThrow(realm, obj, PropertyKey.from(index), argument)
+    //
+    //     Operations.definePropertyOrThrow(
+    //         realm,
+    //         obj,
+    //         "length".key(),
+    //         Descriptor(arguments.size.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    //     )
+    //
+    //     val mappedNames = mutableSetOf<String>()
+    //
+    //     for (index in parameters.lastIndex downTo 0) {
+    //         val name = parameters[index].identifier.name
+    //         if (name !in mappedNames) {
+    //             mappedNames.add(name)
+    //             if (index < arguments.size) {
+    //                 val getter = JSNativeFunction.fromLambda(realm, "", 0) { _, _ ->
+    //                     TODO()
+    //                 }
+    //                 val setter = JSNativeFunction.fromLambda(realm, "", 1) { _, _ ->
+    //                     TODO()
+    //                 }
+    //
+    //                 map.defineOwnProperty(index, JSAccessor(getter, setter), Descriptor.CONFIGURABLE)
+    //             }
+    //         }
+    //     }
+    //
+    //     Operations.definePropertyOrThrow(
+    //         realm,
+    //         obj,
+    //         Realm.`@@iterator`,
+    //         Descriptor(realm.arrayProto.get("values"), Descriptor.CONFIGURABLE or Descriptor.WRITABLE),
+    //     )
+    //
+    //     Operations.definePropertyOrThrow(
+    //         realm,
+    //         obj,
+    //         "callee".key(),
+    //         Descriptor(function, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+    //     )
+    //
+    //     return obj
+    // }
 
     override fun visitGetIterator() {
         accumulator = Operations.getIterator(realm, Operations.toObject(realm, accumulator))
