@@ -1875,7 +1875,7 @@ class Transformer : ASTVisitor {
                     }
 
                     when (method.kind) {
-                        MethodDefinitionNode.Kind.Normal -> storeObjectProperty(
+                        MethodDefinitionNode.Kind.Normal, MethodDefinitionNode.Kind.Generator -> storeObjectProperty(
                             objectReg,
                             method.propName,
                             ::makeFunction

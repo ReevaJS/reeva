@@ -1672,11 +1672,16 @@ class Parser(val source: String) {
             return@nps SpreadProperty(parseExpression(2))
         }
 
+        val isGeneratorToken = if (match(TokenType.Mul)) {
+            consume()
+            lastConsumedToken
+        } else null
+
         val name = parsePropertyName()
 
         if (matchPropertyName() || match(TokenType.OpenParen)) {
             val (type, needsNewName) = if (matchPropertyName()) {
-                if (name.type != PropertyName.Type.Identifier)
+                if (name.type != PropertyName.Type.Identifier || isGeneratorToken != null)
                     reporter.unexpectedToken(tokenType)
 
                 val identifier = (name.expression as IdentifierNode).name
@@ -1688,6 +1693,8 @@ class Parser(val source: String) {
                 } else MethodDefinitionNode.Kind.Setter
 
                 type to true
+            } else if (isGeneratorToken != null) {
+                MethodDefinitionNode.Kind.Generator to false
             } else MethodDefinitionNode.Kind.Normal to false
 
             val methodName = if (needsNewName) parsePropertyName() else name
@@ -1695,7 +1702,7 @@ class Parser(val source: String) {
             val params = parseFunctionParameters()
 
             // TODO: Async/Generator methods
-            val body = parseFunctionBody(isAsync = false, isGenerator = false)
+            val body = parseFunctionBody(isAsync = false, isGenerator = isGeneratorToken != null)
             return@nps MethodProperty(MethodDefinitionNode(methodName, params, body, type))
         }
 
