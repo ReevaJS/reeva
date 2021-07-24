@@ -5,18 +5,21 @@ import me.mattco.reeva.ast.statements.ASTListNode
 import me.mattco.reeva.ast.statements.BlockNode
 import me.mattco.reeva.parsing.Scope
 import me.mattco.reeva.runtime.Operations
-import me.mattco.reeva.utils.expect
+import me.mattco.reeva.utils.duplicates
 
 typealias ArgumentList = ASTListNode<ArgumentNode>
 
 class ParameterList(parameters: List<Parameter> = emptyList()) : ASTListNode<Parameter>(parameters) {
     fun isSimple(): Boolean {
         // TODO: Eventually check for destructuring patterns
-        return all { it.initializer == null && !it.isRest }
+        return all { it.isSimple }
     }
 
     fun containsDuplicates(): Boolean {
-        return distinctBy { it.identifier.name }.size != size
+        return filterIsInstance<SimpleParameter>()
+            .map { it.identifier.name }
+            .duplicates()
+            .isNotEmpty()
     }
 }
 
@@ -34,19 +37,28 @@ class ArgumentNode(
     }
 }
 
-class Parameter(
+sealed interface Parameter : ASTNode {
+    val isSimple: Boolean
+}
+
+class SimpleParameter(
     val identifier: IdentifierNode,
     val initializer: ExpressionNode?,
-    val isRest: Boolean
-) : VariableSourceNode(listOfNotNull(identifier, initializer)) {
-    fun isSimple() = !isRest && initializer == null
+) : VariableSourceNode(listOfNotNull(identifier, initializer)), Parameter {
+    override val isSimple = initializer == null
 
     override fun name() = identifier.name
+}
 
-    init {
-        if (isRest)
-            expect(initializer == null)
-    }
+class RestParameter(val declaration: BindingDeclarationOrPattern) : ASTNodeBase(), Parameter {
+    override val isSimple = false
+}
+
+class BindingParameter(
+    val pattern: BindingPatternNode,
+    val initializer: ExpressionNode?,
+) : ASTNodeBase(), Parameter {
+    override val isSimple = false
 }
 
 class FunctionDeclarationNode(

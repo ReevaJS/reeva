@@ -1072,23 +1072,24 @@ class Parser(val source: String) {
             if (match(TokenType.TriplePeriod)) {
                 nps {
                     consume()
-                    val identifier = parseIdentifier()
+                    val declaration = if (matchIdentifier()) {
+                        BindingDeclaration(parseIdentifier())
+                    } else parseBindingPattern()
                     if (!match(TokenType.CloseParen))
                         reporter.paramAfterRest()
-                    Parameter(identifier, null, true)
+
+                    RestParameter(BindingDeclarationOrPattern(declaration))
                 }.also(parameters::add)
                 break
+            }
+
+            if (matchBindingPattern()) {
+                val pattern = parseBindingPattern()
+                parameters.add(BindingParameter(pattern, parseInitializer()))
             } else if (!matchIdentifier()) {
-                reporter.expected("expression", tokenType)
+                reporter.at(token).expected("identifier")
             } else {
-                nps {
-                    val identifier = parseIdentifier()
-                    val initializer = if (match(TokenType.Equals)) {
-                        consume()
-                        parseExpression(0)
-                    } else null
-                    Parameter(identifier, initializer, false)
-                }.also(parameters::add)
+                parameters.add(SimpleParameter(parseIdentifier(), parseInitializer()))
             }
 
             if (!match(TokenType.Comma))

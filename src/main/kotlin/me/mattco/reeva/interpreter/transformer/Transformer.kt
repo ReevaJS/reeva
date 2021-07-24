@@ -269,12 +269,13 @@ class Transformer : ASTVisitor {
             exitScope(node.initializerScope!!)
     }
 
-    private fun assign(node: ASTNode) {
+    private fun assign(node: ASTNode, bindingPatternReg: Register? = null) {
         when (node) {
             is VariableSourceNode -> storeToSource(node)
             is BindingPatternNode -> {
-                val valueReg = generator.reserveRegister()
-                generator.add(Star(valueReg))
+                val valueReg = bindingPatternReg ?: generator.reserveRegister()
+                if (bindingPatternReg == null)
+                    generator.add(Star(valueReg))
                 assignToBindingPattern(node, valueReg)
             }
             is DestructuringDeclaration -> assign(node.pattern)
@@ -854,21 +855,32 @@ class Transformer : ASTVisitor {
         parameters.forEachIndexed { index, param ->
             val register = Interpreter.RESERVED_REGISTERS + index
 
-            when {
-                param.isRest -> {
-                    generator.add(CreateRestParam)
-                    storeToSource(param)
-                }
-                param.initializer != null -> {
-                    generator.add(Ldar(register))
-                    generator.ifHelper(::JumpIfUndefined) {
-                        visit(param.initializer)
+            when (param) {
+                is SimpleParameter -> {
+                    if (param.initializer != null) {
+                        generator.add(Ldar(register))
+                        generator.ifHelper(::JumpIfUndefined) {
+                            visit(param.initializer)
+                            storeToSource(param)
+                        }
+                    } else if (!param.isInlineable) {
+                        generator.add(Ldar(register))
                         storeToSource(param)
                     }
                 }
-                !param.isInlineable -> {
-                    generator.add(Ldar(register))
-                    storeToSource(param)
+                is BindingParameter -> {
+                    if (param.initializer != null) {
+                        generator.add(Ldar(register))
+                        generator.ifHelper(::JumpIfUndefined) {
+                            visit(param.initializer)
+                            generator.add(Star(register))
+                        }
+                    }
+                    assign(param.pattern, register)
+                }
+                is RestParameter -> {
+                    generator.add(CreateRestParam)
+                    assign(param.declaration.node)
                 }
             }
         }
