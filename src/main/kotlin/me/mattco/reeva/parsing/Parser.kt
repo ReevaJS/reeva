@@ -307,7 +307,7 @@ class Parser(val source: String) {
 
             val target = if (matchBindingPattern()) {
                 parseBindingPattern()
-            } else parseIdentifier()
+            } else parseBindingIdentifier()
 
             val initializer = if (match(TokenType.Equals)) {
                 consume()
@@ -349,7 +349,7 @@ class Parser(val source: String) {
     }
 
     private fun parseBindingDeclaration(): BindingDeclaration = nps {
-        BindingDeclaration(parseIdentifier())
+        BindingDeclaration(parseBindingIdentifier())
     }
 
     private fun parseObjectBindingPattern(): BindingPatternNode = nps {
@@ -363,7 +363,7 @@ class Parser(val source: String) {
                 if (!matchIdentifier())
                     reporter.at(token).expected("identifier")
 
-                val identifier = parseIdentifier()
+                val identifier = parseBindingIdentifier()
                 val declaration = BindingDeclaration(identifier).withPosition(identifier)
 
                 bindingEntries.add(BindingRestProperty(declaration))
@@ -823,7 +823,7 @@ class Parser(val source: String) {
 
         // TODO: Allow no identifier in default export
         val identifier = when {
-            matchIdentifier() -> parseIdentifier()
+            matchIdentifier() -> parseBindingIdentifier()
             isDeclaration -> reporter.functionStatementNoName()
             else -> null
         }
@@ -861,7 +861,7 @@ class Parser(val source: String) {
     private fun parseClassExpression(): ExpressionNode = nps {
         consume(TokenType.Class)
         val identifier = if (matchIdentifier()) {
-            parseIdentifier()
+            parseBindingIdentifier()
         } else null
         ClassExpressionNode(identifier, parseClassNode())
     }
@@ -1079,7 +1079,7 @@ class Parser(val source: String) {
                 nps {
                     consume()
                     val declaration = if (matchIdentifier()) {
-                        BindingDeclaration(parseIdentifier())
+                        BindingDeclaration(parseBindingIdentifier())
                     } else parseBindingPattern()
                     if (!match(TokenType.CloseParen))
                         reporter.paramAfterRest()
@@ -1095,7 +1095,7 @@ class Parser(val source: String) {
             } else if (!matchIdentifier()) {
                 reporter.at(token).expected("identifier")
             } else {
-                parameters.add(SimpleParameter(parseIdentifier(), parseInitializer()))
+                parameters.add(SimpleParameter(parseBindingIdentifier(), parseInitializer()))
             }
 
             if (!match(TokenType.Comma))
@@ -1130,7 +1130,11 @@ class Parser(val source: String) {
         "implements", "interface", "let", "package", "private", "protected", "public", "static", "yield"
     )
 
-    private fun parseIdentifier(): IdentifierNode {
+    private fun parseIdentifier(): IdentifierNode = nps {
+        IdentifierNode(parseIdentifierString())
+    }
+
+    private fun parseBindingIdentifier(): IdentifierNode {
         var string: String
         val node = nps {
             string = parseIdentifierString()
