@@ -678,10 +678,16 @@ class Parser(val source: String) {
             val catchParam = if (match(TokenType.OpenParen)) {
                 consume()
                 nps {
-                    parseIdentifier().let {
-                        consume(TokenType.CloseParen)
-                        CatchParameter(it)
+                    val declaration = if (matchIdentifier()) {
+                        BindingDeclaration(parseIdentifier())
+                    } else if (matchBindingPattern()) {
+                        parseBindingPattern()
+                    } else {
+                        reporter.at(token).expected("identifier or binding pattern")
                     }
+                    CatchParameter(BindingDeclarationOrPattern(declaration))
+                }.also {
+                    consume(TokenType.CloseParen)
                 }
             } else null
             CatchNode(catchParam, parseBlock())

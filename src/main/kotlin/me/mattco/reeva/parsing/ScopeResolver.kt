@@ -338,14 +338,9 @@ class ScopeResolver : ASTVisitor {
         if (catchNode != null) {
             val parameter = catchNode.parameter
             if (parameter != null) {
-                parameter.type = VariableType.Let
-                parameter.mode = VariableMode.Declared
-
                 scope = Scope(scope)
-                scope.addVariableSource(parameter)
-
+                visitBindingDeclarationOrPattern(parameter.declaration, VariableMode.Declared, VariableType.Let)
                 visitBlock(catchNode.block, pushScope = false)
-
                 scope = scope.outer!!
             } else {
                 visitBlock(catchNode.block)

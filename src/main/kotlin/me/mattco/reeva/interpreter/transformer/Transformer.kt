@@ -553,7 +553,7 @@ class Transformer : ASTVisitor {
 
             if (parameter != null) {
                 // The exception is in the accumulator
-                storeToSource(parameter)
+                assign(parameter.declaration.node)
             }
 
             // We will have already pushed a context, so we don't push a scope here

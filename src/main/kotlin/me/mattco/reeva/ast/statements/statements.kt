@@ -138,10 +138,8 @@ class CatchNode(
 ) : NodeWithScope(listOfNotNull(parameter, block))
 
 class CatchParameter(
-    val identifier: IdentifierNode
-) : VariableSourceNode(listOf(identifier)) {
-    override fun name() = identifier.name
-}
+    val declaration: BindingDeclarationOrPattern,
+) : ASTNodeBase()
 
 class BreakStatementNode(val label: String?) : ASTNodeBase(), StatementNode
 

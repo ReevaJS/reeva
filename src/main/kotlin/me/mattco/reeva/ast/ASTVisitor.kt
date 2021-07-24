@@ -171,7 +171,7 @@ interface ASTVisitor {
     fun visitTryStatement(node: TryStatementNode) {
         visit(node.tryBlock)
         node.catchNode?.also {
-            it.parameter?.identifier?.also(::visitIdentifier)
+            it.parameter?.declaration?.let(::visit)
             visit(it.block)
         }
         node.finallyBlock?.also(::visit)
