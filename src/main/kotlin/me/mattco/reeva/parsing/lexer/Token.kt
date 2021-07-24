@@ -23,7 +23,6 @@ data class Token(
 
     companion object {
         val INVALID = Token(TokenType.Invalid, TokenLocation.EMPTY, TokenLocation.EMPTY, false, "", "")
-        val EOF = Token(TokenType.Eof, TokenLocation.EMPTY, TokenLocation.EMPTY, false, "", "")
     }
 }
 

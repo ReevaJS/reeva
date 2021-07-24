@@ -13,17 +13,21 @@ class Lexer(private val source: String) {
     private val templateStates = mutableListOf<TemplateState>()
     private var regexIsInCharClass = false
 
-    var isDone = cursor >= source.length
+    private var isDone = cursor >= source.length
     private var char = if (isDone) 0.toChar() else source[cursor]
 
     fun getTokens(): List<Token> {
         val list = mutableListOf<Token>()
-        while (!isDone)
-            list.add(nextToken())
+        while (true) {
+            val next = nextToken()
+            list.add(next)
+            if (next.type == TokenType.Eof)
+                break
+        }
         return list
     }
 
-    fun nextToken(): Token {
+    private fun nextToken(): Token {
         try {
             val triviaStartCursor = cursor
             val inTemplate = templateStates.isNotEmpty()

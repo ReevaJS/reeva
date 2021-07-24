@@ -1,6 +1,5 @@
 package me.mattco.reeva.parsing
 
-import me.mattco.reeva.Reeva
 import me.mattco.reeva.ast.*
 import me.mattco.reeva.ast.expressions.*
 import me.mattco.reeva.ast.literals.*
@@ -11,8 +10,6 @@ import me.mattco.reeva.parsing.lexer.TokenLocation
 import me.mattco.reeva.parsing.lexer.TokenType
 import me.mattco.reeva.runtime.Operations
 import me.mattco.reeva.utils.*
-import java.util.*
-import java.util.concurrent.LinkedBlockingQueue
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -23,22 +20,23 @@ class Parser(val source: String) {
     private var inFunctionContext = false
     private var inYieldContext = false
     private var inAsyncContext = false
-    private var inDerivedClassContext = false
     private var disableAutoScoping = false
 
     private val labelStateStack = mutableListOf(LabelState())
 
     internal val reporter = ErrorReporter(this)
 
-    private val tokenQueue = LinkedBlockingQueue<Token>()
-    private val receivedTokenList = LinkedList<Token>()
-    private var lastConsumedToken = Token.INVALID
-
-    private var token: Token = Token.INVALID
+    private val tokens = mutableListOf<Token>()
+    private var tokenCursor = 0
+    private val token: Token
+        get() = tokens[tokenCursor]
+    private val lastToken: Token
+        get() = tokens[(tokenCursor - 1).coerceAtLeast(0)]
 
     private val tokenType: TokenType
         inline get() = token.type
-    private var isDone: Boolean = source.isBlank()
+    private val isDone: Boolean
+        get() = tokenType == TokenType.Eof
 
     internal val sourceStart: TokenLocation
         inline get() = token.start
@@ -48,26 +46,18 @@ class Parser(val source: String) {
     private var isStrict = false
 
     private fun initLexer() {
-        Reeva.threadPool.submit {
-            Thread.currentThread().name = "Lexer Thread"
-            try {
-                val lexer = Lexer(source)
-                while (!lexer.isDone)
-                    tokenQueue.add(lexer.nextToken())
-                tokenQueue.add(Token.EOF)
-            } catch (e: Throwable) {
-                e.printStackTrace()
-            }
-        }
-        consume()
+        tokens.addAll(Lexer(source).getTokens())
     }
 
     fun parseScript(): ParsingResult {
         return try {
             initLexer()
-            val script = parseScriptImpl()
+            val script = if (tokens.size == 1) {
+                // The script is empty
+                ScriptNode(StatementList(), false)
+            } else parseScriptImpl()
             if (!isDone)
-                reporter.at(token).expected("eof")
+                reporter.at(token).unexpectedToken(tokenType)
             ScopeResolver().resolve(script)
             EarlyErrorDetector(reporter).visit(script)
             ParsingResult.Success(script)
@@ -78,17 +68,13 @@ class Parser(val source: String) {
         }
     }
 
-    fun parseModule(): ParsingResult {
-        TODO()
-    }
-
     fun parseFunction(expectedKind: Operations.FunctionKind): ParsingResult {
         return try {
             initLexer()
 
             val function = parseFunctionDeclaration()
             if (!isDone)
-                reporter.at(token).expected("eof")
+                reporter.at(token).unexpectedToken(tokenType)
             expect(function.kind == expectedKind)
             ScopeResolver().resolve(function)
             EarlyErrorDetector(reporter).visit(function)
@@ -109,10 +95,6 @@ class Parser(val source: String) {
 
         isStrict = checkForAndConsumeUseStrict() != null
         ScriptNode(parseStatementList(), isStrict)
-    }
-
-    private fun parseModuleImpl(): ModuleNode {
-        TODO()
     }
 
     /*
@@ -171,7 +153,7 @@ class Parser(val source: String) {
      *     AsyncFunctionDeclaration
      *     AsyncGeneratorDeclaration
      */
-    private fun matchLabellableStatement() = matchAny(
+    private fun matchLabellableStatement() = matches(
         TokenType.If,
         TokenType.For,
         TokenType.While,
@@ -223,8 +205,11 @@ class Parser(val source: String) {
     }
 
     private fun parseStatement(): StatementNode {
+        if (isDone)
+            reporter.at(lastToken).expected("statement", "eof")
+
         if (matchIdentifier() || matchLabellableStatement())
-            return parseLabellableStatement() ?: parseStatement()
+            return parseLabellableStatement()
 
         return when (tokenType) {
             TokenType.Var, TokenType.Let, TokenType.Const -> parseVariableDeclaration(false)
@@ -263,7 +248,7 @@ class Parser(val source: String) {
         }
         if (token.afterNewline)
             return
-        if (matchAny(TokenType.CloseCurly, TokenType.Eof))
+        if (matches(TokenType.CloseCurly, TokenType.Eof))
             return
 
         reporter.expected(TokenType.Semicolon, tokenType)
@@ -321,7 +306,7 @@ class Parser(val source: String) {
             } else {
                 expect(target is IdentifierNode)
                 NamedDeclaration(target, initializer)
-            }.withPosition(start, lastConsumedToken.end)
+            }.withPosition(start, lastToken.end)
 
             declarations.add(declaration)
 
@@ -340,7 +325,7 @@ class Parser(val source: String) {
         }
     }
 
-    private fun matchBindingPattern() = matchAny(TokenType.OpenCurly, TokenType.OpenBracket)
+    private fun matchBindingPattern() = matches(TokenType.OpenCurly, TokenType.OpenBracket)
 
     private fun parseBindingPattern(): BindingPatternNode = nps {
         if (match(TokenType.OpenCurly)) {
@@ -557,7 +542,7 @@ class Parser(val source: String) {
     private fun parseContinueStatement(): StatementNode = nps {
         consume(TokenType.Continue)
 
-        val continueToken = lastConsumedToken
+        val continueToken = lastToken
 
         if (match(TokenType.Semicolon) || token.afterNewline) {
             if (match(TokenType.Semicolon))
@@ -569,7 +554,7 @@ class Parser(val source: String) {
 
         if (matchIdentifier()) {
             val identifier = parseIdentifierString()
-            labelStateStack.last().validateContinue(continueToken, lastConsumedToken)
+            labelStateStack.last().validateContinue(continueToken, lastToken)
             return@nps ContinueStatementNode(identifier).also { asi() }
         }
 
@@ -584,7 +569,7 @@ class Parser(val source: String) {
     private fun parseBreakStatement(): StatementNode = nps {
         consume(TokenType.Break)
 
-        val breakToken = lastConsumedToken
+        val breakToken = lastToken
 
         if (match(TokenType.Semicolon) || token.afterNewline) {
             if (match(TokenType.Semicolon))
@@ -596,7 +581,7 @@ class Parser(val source: String) {
 
         if (matchIdentifier()) {
             val identifier = parseIdentifierString()
-            labelStateStack.last().validateBreak(breakToken, lastConsumedToken)
+            labelStateStack.last().validateBreak(breakToken, lastToken)
             return@nps BreakStatementNode(identifier).also { asi() }
         }
 
@@ -641,7 +626,7 @@ class Parser(val source: String) {
 
     /*
      * ThrowStatement :
-     *     throw [no LineTerminator here] Expresion ;
+     *     throw [no LineTerminator here] Expression ;
      */
     private fun parseThrowStatement(): StatementNode = nps {
         consume(TokenType.Throw)
@@ -714,7 +699,7 @@ class Parser(val source: String) {
         DebuggerStatementNode()
     }
 
-    private fun matchSwitchClause() = matchAny(TokenType.Case, TokenType.Default)
+    private fun matchSwitchClause() = matches(TokenType.Case, TokenType.Default)
 
     private fun parseNormalForAndForEachStatement(): StatementNode = nps {
         consume(TokenType.For)
@@ -918,19 +903,19 @@ class Parser(val source: String) {
 
         val isStaticToken = if (match(TokenType.Static)) {
             consume()
-            lastConsumedToken
+            lastToken
         } else null
         var isStatic = isStaticToken != null
 
         val isAsyncToken = if (match(TokenType.Async)) {
             consume()
-            lastConsumedToken
+            lastToken
         } else null
-        var isAsync = isAsyncToken != null
+        val isAsync = isAsyncToken != null
 
         val isGeneratorToken = if (match(TokenType.Mul)) {
             consume()
-            lastConsumedToken
+            lastToken
         } else null
         val isGenerator = isGeneratorToken != null
 
@@ -1181,6 +1166,9 @@ class Parser(val source: String) {
         leftAssociative: Boolean = false,
         excludedTokens: Set<TokenType> = emptySet(),
     ): ExpressionNode = nps {
+        if (isDone)
+            reporter.at(lastToken).expected("expression", "eof")
+
         // TODO: Template literal handling
 
         var expression = parsePrimaryExpression()
@@ -1216,7 +1204,7 @@ class Parser(val source: String) {
         fun makeBinaryExpr(op: BinaryOperator): ExpressionNode {
             consume()
             return BinaryExpressionNode(lhs, parseExpression(minPrecedence, leftAssociative), op)
-                .withPosition(lhs.sourceStart, lastConsumedToken.end)
+                .withPosition(lhs.sourceStart, lastToken.end)
         }
 
         fun makeAssignExpr(op: BinaryOperator?): ExpressionNode {
@@ -1236,7 +1224,7 @@ class Parser(val source: String) {
             }
 
             return AssignmentExpressionNode(lhs, parseExpression(minPrecedence, leftAssociative), op)
-                .withPosition(lhs.sourceStart, lastConsumedToken.end)
+                .withPosition(lhs.sourceStart, lastToken.end)
         }
 
         return when (tokenType) {
@@ -1291,24 +1279,24 @@ class Parser(val source: String) {
                     nps { parseIdentifier() },
                     MemberExpressionNode.Type.NonComputed,
                     isOptional = false,
-                ).withPosition(lhs.sourceStart, lastConsumedToken.end)
+                ).withPosition(lhs.sourceStart, lastToken.end)
             }
             TokenType.OpenBracket -> parseBracketedExpression(lhs, isOptional = false).withPosition(
                 lhs.sourceStart,
-                lastConsumedToken.end
+                lastToken.end
             )
             TokenType.Inc -> {
                 consume()
                 UpdateExpressionNode(lhs, isIncrement = true, isPostfix = true)
-                    .withPosition(lhs.sourceStart, lastConsumedToken.end)
+                    .withPosition(lhs.sourceStart, lastToken.end)
             }
             TokenType.Dec -> {
                 consume()
                 UpdateExpressionNode(lhs, isIncrement = false, isPostfix = true)
-                    .withPosition(lhs.sourceStart, lastConsumedToken.end)
+                    .withPosition(lhs.sourceStart, lastToken.end)
             }
-            TokenType.QuestionMark -> parseConditional(lhs).withPosition(lhs.sourceStart, lastConsumedToken.end)
-            TokenType.OptionalChain -> parseOptionalChain(lhs).withPosition(lhs.sourceStart, lastConsumedToken.end)
+            TokenType.QuestionMark -> parseConditional(lhs).withPosition(lhs.sourceStart, lastToken.end)
+            TokenType.OptionalChain -> parseOptionalChain(lhs).withPosition(lhs.sourceStart, lastToken.end)
             else -> unreachable()
         }
     }
@@ -1346,7 +1334,7 @@ class Parser(val source: String) {
                     nps { parseIdentifier() },
                     MemberExpressionNode.Type.NonComputed,
                     isOptional = true,
-                ).withPosition(lhs.sourceStart, lastConsumedToken.end)
+                ).withPosition(lhs.sourceStart, lastToken.end)
             }
         }
     }
@@ -1357,11 +1345,11 @@ class Parser(val source: String) {
 
     private fun parseNewExpression(): ExpressionNode = nps {
         consume(TokenType.New)
-        if (match(TokenType.Period, TokenType.Identifier)) {
+        if (has(2) && match(TokenType.Period) && peek()?.type == TokenType.Identifier) {
             consume()
             consume()
-            if (lastConsumedToken.literals != "target")
-                reporter.at(lastConsumedToken).invalidNewMetaProperty()
+            if (lastToken.literals != "target")
+                reporter.at(lastToken).invalidNewMetaProperty()
             return@nps NewTargetNode()
         }
         val target = parseExpression(TokenType.New.operatorPrecedence, excludedTokens = setOf(TokenType.OpenParen))
@@ -1382,7 +1370,7 @@ class Parser(val source: String) {
             } else false
             val node = nps {
                 ArgumentNode(parseExpression(2), isSpread)
-                    .withPosition(start, lastConsumedToken.end)
+                    .withPosition(start, lastToken.end)
             }
             arguments.add(node)
             if (!match(TokenType.Comma))
@@ -1491,7 +1479,7 @@ class Parser(val source: String) {
 
     private fun parseStringLiteral(): ExpressionNode = nps {
         consume(TokenType.StringLiteral)
-        StringLiteralNode(unescapeString(lastConsumedToken.literals))
+        StringLiteralNode(unescapeString(lastToken.literals))
     }
 
     private fun unescapeString(string: String): String {
@@ -1518,13 +1506,13 @@ class Parser(val source: String) {
                     'f' -> builder.append(12.toChar())
                     'x' -> {
                         if (string.length - cursor < 2)
-                            reporter.at(lastConsumedToken).stringInvalidHexEscape()
+                            reporter.at(lastToken).stringInvalidHexEscape()
 
                         val char1 = string[cursor++]
                         val char2 = string[cursor++]
 
                         if (!char1.isHexDigit() || !char2.isHexDigit())
-                            reporter.at(lastConsumedToken).stringInvalidHexEscape()
+                            reporter.at(lastToken).stringInvalidHexEscape()
 
                         val digit1 = char1.hexValue()
                         val digit2 = char2.hexValue()
@@ -1535,29 +1523,29 @@ class Parser(val source: String) {
                         if (string[cursor] == '{') {
                             cursor++
                             if (string[cursor] == '}')
-                                reporter.at(lastConsumedToken).stringEmptyUnicodeEscape()
+                                reporter.at(lastToken).stringEmptyUnicodeEscape()
 
                             var codePoint = 0
 
                             while (true) {
                                 if (cursor > string.lastIndex)
-                                    reporter.at(lastConsumedToken).stringUnicodeCodepointMissingBrace()
+                                    reporter.at(lastToken).stringUnicodeCodepointMissingBrace()
                                 char = string[cursor++]
                                 if (char == '}')
                                     break
                                 if (char == '_')
-                                    reporter.at(lastConsumedToken).stringInvalidUnicodeNumericSeparator()
+                                    reporter.at(lastToken).stringInvalidUnicodeNumericSeparator()
                                 if (!char.isHexDigit())
-                                    reporter.at(lastConsumedToken).stringUnicodeCodepointMissingBrace()
+                                    reporter.at(lastToken).stringUnicodeCodepointMissingBrace()
 
                                 val oldValue = codePoint
                                 codePoint = (codePoint shl 4) or char.hexValue()
                                 if (codePoint < oldValue)
-                                    reporter.at(lastConsumedToken).stringBigUnicodeCodepointEscape()
+                                    reporter.at(lastToken).stringBigUnicodeCodepointEscape()
                             }
 
                             if (codePoint > 0x10ffff)
-                                reporter.at(lastConsumedToken).stringBigUnicodeCodepointEscape()
+                                reporter.at(lastToken).stringBigUnicodeCodepointEscape()
 
                             builder.appendCodePoint(codePoint)
                         } else {
@@ -1565,10 +1553,10 @@ class Parser(val source: String) {
 
                             repeat(4) {
                                 if (cursor > string.lastIndex)
-                                    reporter.at(lastConsumedToken).stringUnicodeMissingDigits()
+                                    reporter.at(lastToken).stringUnicodeMissingDigits()
                                 char = string[cursor++]
                                 if (!char.isHexDigit())
-                                    reporter.at(lastConsumedToken).stringUnicodeMissingDigits()
+                                    reporter.at(lastToken).stringUnicodeMissingDigits()
                                 codePoint = (codePoint shl 4) or char.hexValue()
                             }
 
@@ -1580,7 +1568,7 @@ class Parser(val source: String) {
                     }
                 }
             } else if (char.isLineSeparator()) {
-                reporter.at(lastConsumedToken).stringUnescapedLineBreak()
+                reporter.at(lastToken).stringUnescapedLineBreak()
             } else {
                 builder.append(char)
             }
@@ -1600,7 +1588,7 @@ class Parser(val source: String) {
         if (!match(TokenType.TemplateLiteralString))
             addEmptyString()
 
-        while (!isDone && !matchAny(TokenType.TemplateLiteralEnd, TokenType.UnterminatedTemplateLiteral)) {
+        while (!matches(TokenType.TemplateLiteralEnd, TokenType.UnterminatedTemplateLiteral)) {
             if (match(TokenType.TemplateLiteralString)) {
                 nps {
                     StringLiteralNode(unescapeString(token.literals)).also { consume() }
@@ -1656,10 +1644,10 @@ class Parser(val source: String) {
             } else break
         }
 
-        val list = PropertyDefinitionList(properties).withPosition(propertiesStart, lastConsumedToken.end)
+        val list = PropertyDefinitionList(properties).withPosition(propertiesStart, lastToken.end)
         consume(TokenType.CloseCurly)
 
-        return@nps ObjectLiteralNode(list).withPosition(objectStart, lastConsumedToken.end)
+        return@nps ObjectLiteralNode(list).withPosition(objectStart, lastToken.end)
     }
 
     /*
@@ -1678,7 +1666,7 @@ class Parser(val source: String) {
 
         val isGeneratorToken = if (match(TokenType.Mul)) {
             consume()
-            lastConsumedToken
+            lastToken
         } else null
 
         val name = parsePropertyName()
@@ -1710,7 +1698,7 @@ class Parser(val source: String) {
             return@nps MethodProperty(MethodDefinitionNode(methodName, params, body, type))
         }
 
-        if (matchAny(TokenType.Comma, TokenType.CloseCurly)) {
+        if (matches(TokenType.Comma, TokenType.CloseCurly)) {
             if (name.type != PropertyName.Type.Identifier)
                 reporter.at(name).invalidShorthandProperty()
 
@@ -1727,7 +1715,7 @@ class Parser(val source: String) {
     }
 
     private fun matchPropertyName() = matchIdentifierName() ||
-        matchAny(TokenType.OpenBracket, TokenType.StringLiteral, TokenType.NumericLiteral)
+        matches(TokenType.OpenBracket, TokenType.StringLiteral, TokenType.NumericLiteral)
 
     /*
      * PropertyName :
@@ -1854,7 +1842,7 @@ class Parser(val source: String) {
         var endsWithComma = true
 
         while (tokenType.isExpressionToken || match(TokenType.TriplePeriod)) {
-            var isSpread = false
+            val isSpread: Boolean
 
             nps {
                 isSpread = if (match(TokenType.TriplePeriod)) {
@@ -1969,49 +1957,37 @@ class Parser(val source: String) {
         }
         val start = sourceStart
         val node = block()
-        if (node == null)
+        if (node == null) {
+            // Weird compiler bug: we have to return node here instead of 'null',
+            // because null apparently doesn't satisfy the non-null T even though
+            // it extends a nullable type.
             return node
+        }
         node.sourceStart = start
-        node.sourceEnd = lastConsumedToken.end
+        node.sourceEnd = lastToken.end
         return node
     }
 
-    private fun match(vararg types: TokenType): Boolean {
-        if (isDone || tokenType != types[0])
-            return false
-
-        ensureCachedTokenCount(types.size - 1)
-        if (isDone)
-            return false
-
-        return types.drop(1).withIndex().all { (index, type) ->
-            receivedTokenList[index].type == type
-        }
+    private fun match(type: TokenType): Boolean {
+        return tokenType == type
     }
 
-    private fun matchAny(vararg types: TokenType): Boolean {
-        ensureCachedTokenCount(1)
-        return !isDone && types.any { it == tokenType }
+    private fun matches(vararg types: TokenType): Boolean {
+        return types.any { it == tokenType }
     }
+
+    private fun has(n: Int) = tokenCursor + n - 1 <= tokens.lastIndex
 
     private fun peek(n: Int = 1): Token? {
-        if (n == 0)
-            return token
-        ensureCachedTokenCount(n)
-        if (isDone)
+        if (!has(n))
             return null
-        return receivedTokenList[n - 1]
+        return tokens[tokenCursor + n]
     }
 
     private fun consume(): TokenType {
         val old = tokenType
-        lastConsumedToken = token
-        token = if (receivedTokenList.isNotEmpty()) {
-            receivedTokenList.removeFirst()
-        } else tokenQueue.take()
-        if (token.type == TokenType.Eof) {
-            isDone = true
-        } else {
+        tokenCursor++
+        if (!isDone) {
             token.error()?.also {
                 throw ParsingException(it, token.start, token.end)
             }
@@ -2023,17 +1999,6 @@ class Parser(val source: String) {
         if (tokenType != type)
             reporter.expected(type, tokenType)
         consume()
-    }
-
-    private fun ensureCachedTokenCount(n: Int) {
-        repeat(n - receivedTokenList.size) {
-            val token = tokenQueue.take()
-            receivedTokenList.addLast(token)
-            if (token.type == TokenType.Eof) {
-                isDone = true
-                return
-            }
-        }
     }
 
     class ParsingException(
