@@ -43,6 +43,8 @@ class Parser(val source: String) {
     internal val sourceEnd: TokenLocation
         inline get() = token.end
 
+    private val nonArrowFunctionParens = mutableSetOf<Int>()
+
     private var isStrict = false
 
     private fun initLexer() {
@@ -1409,16 +1411,28 @@ class Parser(val source: String) {
         YieldExpressionNode(null, isYieldStar)
     }
 
+    private fun parseParenthesizedExpression(): ExpressionNode = nps {
+        consume(TokenType.OpenParen)
+        val expr = parseExpression(0)
+        consume(TokenType.CloseParen)
+        expr
+    }
+
     private fun parsePrimaryExpression(): ExpressionNode = nps {
         if (tokenType.isUnaryToken)
             return@nps parseUnaryExpression()
 
         when (tokenType) {
             TokenType.OpenParen -> {
-                val cpeaapl = parseCPEAAPLNode()
-                if (match(TokenType.Arrow)) {
-                    tryParseArrowFunction(cpeaapl)
-                } else CPEAAPLVisitor(this, cpeaapl).parseAsParenthesizedExpression()
+                val index = token.start.index
+                if (index !in nonArrowFunctionParens) {
+                    val arrow = tryParseArrowFunction()
+                    if (arrow != null)
+                        return@nps arrow
+                    nonArrowFunctionParens.add(index)
+                }
+
+                parseParenthesizedExpression()
             }
             TokenType.This -> {
                 consume()
@@ -1427,8 +1441,11 @@ class Parser(val source: String) {
             TokenType.Class -> parseClassExpression()
             TokenType.Super -> parseSuperExpression()
             TokenType.Identifier -> {
-                if (peek()?.type == TokenType.Arrow)
-                    TODO()
+                if (peek()?.type == TokenType.Arrow) {
+                    val arrow = tryParseArrowFunction()
+                    if (arrow != null)
+                        return@nps arrow
+                }
                 parseIdentifierReference()
             }
             TokenType.NumericLiteral -> parseNumericLiteral()
@@ -1833,58 +1850,37 @@ class Parser(val source: String) {
         NumericLiteralNode(numericToken.doubleValue())
     }
 
-    private fun parseCPEAAPLNode(): CPEAAPLNode = nps {
-        val prevDisableScoping = disableAutoScoping
-        disableAutoScoping = true
+    private fun tryParseArrowFunction(): ArrowFunctionNode? = nps {
+        val savedCursor = tokenCursor
 
-        consume(TokenType.OpenParen)
-        val parts = mutableListOf<CPEAAPLPart>()
-        var endsWithComma = true
-
-        while (tokenType.isExpressionToken || match(TokenType.TriplePeriod)) {
-            val isSpread: Boolean
-
-            nps {
-                isSpread = if (match(TokenType.TriplePeriod)) {
-                    consume()
-                    true
-                } else false
-
-                val expression = parseExpression(2)
-                CPEAAPLPart(expression, isSpread)
-            }.also(parts::add)
-
-            if (isSpread)
-                break
-
-            if (!match(TokenType.Comma)) {
-                endsWithComma = false
-                break
+        try {
+            val parameters = if (match(TokenType.OpenParen)) {
+                parseFunctionParameters()
+            } else {
+                val identifier = parseBindingIdentifier()
+                ParameterList(listOf(SimpleParameter(identifier, null)))
             }
 
+            if (!match(TokenType.Arrow)) {
+                tokenCursor = savedCursor
+                return@nps null
+            }
+
+            if (token.afterNewline)
+                reporter.arrowFunctionNewLine()
+
             consume()
+
+            // TODO: Async/Generator functions
+            val body = if (match(TokenType.OpenCurly)) {
+                parseFunctionBody(isAsync = false, isGenerator = false)
+            } else parseExpression(2)
+
+            ArrowFunctionNode(parameters, body, Operations.FunctionKind.Normal)
+        } catch (e: ParsingException) {
+            tokenCursor = savedCursor
+            null
         }
-
-        consume(TokenType.CloseParen)
-        disableAutoScoping = prevDisableScoping
-
-        CPEAAPLNode(parts, endsWithComma)
-    }
-
-    private fun tryParseArrowFunction(node: CPEAAPLNode): ArrowFunctionNode = nps {
-        consume(TokenType.Arrow)
-
-        if (token.afterNewline)
-            reporter.arrowFunctionNewLine()
-
-        val parameters = CPEAAPLVisitor(this, node).parseAsParameterList()
-
-        // TODO: Async/Generator functions
-        val body = if (match(TokenType.OpenCurly)) {
-            parseFunctionBody(isAsync = false, isGenerator = false)
-        } else parseExpression(2)
-
-        ArrowFunctionNode(parameters, body, Operations.FunctionKind.Normal)
     }
 
     private fun parseUnaryExpression(): ExpressionNode = nps {
