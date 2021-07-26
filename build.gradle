@@ -19,7 +19,7 @@ dependencies {
     implementation ("org.jetbrains.kotlin:kotlin-reflect") {
         exclude module: "kotlin-stdlib"
     }
-    implementation 'com.github.ReevaJS:mfbt:66475ec10e'
+    implementation 'com.github.ReevaJS:mfbt:78080dba4e'
     implementation 'org.ow2.asm:asm:8.0.1'
     implementation 'org.ow2.asm:asm-tree:8.0.1'
     implementation 'org.ow2.asm:asm-commons:8.0.1'
