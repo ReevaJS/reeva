@@ -11,10 +11,7 @@ import com.reevajs.reeva.runtime.errors.JSErrorProto
 import com.reevajs.reeva.runtime.functions.JSFunctionProto
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObjectProto
 import com.reevajs.reeva.runtime.global.JSConsoleProto
-import com.reevajs.reeva.runtime.intl.JSIntlObject
-import com.reevajs.reeva.runtime.intl.JSLocaleProto
-import com.reevajs.reeva.runtime.intl.JSNumberFormatCtor
-import com.reevajs.reeva.runtime.intl.JSNumberFormatProto
+import com.reevajs.reeva.runtime.intl.*
 import com.reevajs.reeva.runtime.iterators.*
 import com.reevajs.reeva.runtime.memory.*
 import com.reevajs.reeva.runtime.objects.JSObjectCtor
@@ -295,6 +292,9 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     ObjectProtoValueOf(JSObjectProto::class.java, "valueOf", "Object.prototype.valueOf"),
 
     ObjectPropertyIteratorProtoNext(JSObjectPropertyIteratorProto::class.java, "next", "ObjectPropertyIterator.prototype.next"),
+
+    PluralRulesCtorSupportedLocalesOf(JSPluralRulesCtor::class.java, "supportedLocalesOf", "PluralRules.supportedLocalesOf"),
+    PluralRulesProtoSelect(JSPluralRulesProto::class.java, "select", "PluralRules.prototype.select"),
 
     PromiseCtorAll(JSPromiseCtor::class.java, "all", "Promise.all"),
     PromiseCtorAllSettled(JSPromiseCtor::class.java, "allSettled", "Promise.allSettled"),

@@ -1,11 +1,10 @@
 package com.reevajs.reeva.runtime.intl
 
 import com.ibm.icu.number.FormattedNumber
+import com.ibm.icu.number.IntegerWidth
 import com.ibm.icu.number.LocalizedNumberFormatter
-import com.ibm.icu.text.Collator
-import com.ibm.icu.text.ConstrainedFieldPosition
-import com.ibm.icu.text.NumberFormat
-import com.ibm.icu.text.NumberingSystem
+import com.ibm.icu.number.Precision
+import com.ibm.icu.text.*
 import com.ibm.icu.util.*
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
@@ -39,6 +38,7 @@ object IntlAOs {
     )
 
     val numberFormatAvailableLocales = NumberFormat.getAvailableULocales().map(ULocale::toLanguageTag).toSet()
+    val pluralRulesAvailableLocales = PluralRules.getAvailableULocales().map(ULocale::toLanguageTag).toSet()
 
     @ECMAImpl("6.2.2")
     fun isStructurallyValidLanguageTag(locale: String): Boolean {
@@ -641,5 +641,23 @@ object IntlAOs {
         for (availableLocale in availableLocales)
             builder.addSupportedULocale(ULocale.forLanguageTag(availableLocale))
         return builder.build()
+    }
+
+    fun setDigitOptionsToFormatter(
+        numberFormatter: LocalizedNumberFormatter,
+        options: NumberFormatDigitOptions,
+    ): LocalizedNumberFormatter {
+        var result = numberFormatter
+        if (options.minimumIntegerDigits > 1)
+            result = result.integerWidth(IntegerWidth.zeroFillTo(options.minimumIntegerDigits))
+
+        if (options.minimumSignificantDigits < 0)
+            return result
+
+        val precision = if (options.minimumSignificantDigits > 0) {
+            Precision.minMaxSignificantDigits(options.minimumSignificantDigits, options.maximumSignificantDigits)
+        } else Precision.minMaxFraction(options.minimumFractionDigits, options.maximumFractionDigits)
+
+        return result.precision(precision)
     }
 }

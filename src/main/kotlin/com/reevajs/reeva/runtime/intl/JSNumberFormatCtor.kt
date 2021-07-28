@@ -174,20 +174,7 @@ class JSNumberFormatCtor(realm: Realm) : JSNativeFunction(realm, "NumberFormat",
             notation == Notation.Compact,
         )
 
-        if (digitOptions.minimumIntegerDigits > 1)
-            numberFormatter = numberFormatter.integerWidth(IntegerWidth.zeroFillTo(digitOptions.minimumIntegerDigits))
-
-        if (digitOptions.roundingType != IntlAOs.RoundingType.CompactRounding) {
-            val precision = if (digitOptions.minimumSignificantDigits > 0) {
-                Precision.minMaxSignificantDigits(
-                    digitOptions.minimumSignificantDigits,
-                    digitOptions.maximumSignificantDigits
-                )
-            } else {
-                Precision.minMaxFraction(digitOptions.minimumFractionDigits, digitOptions.maximumFractionDigits)
-            }
-            numberFormatter = numberFormatter.precision(precision)
-        }
+        numberFormatter = IntlAOs.setDigitOptionsToFormatter(numberFormatter, digitOptions)
 
         val compactDisplayStr = IntlAOs.getOption(
             realm,

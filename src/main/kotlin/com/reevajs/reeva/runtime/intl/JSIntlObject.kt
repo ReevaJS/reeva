@@ -14,6 +14,7 @@ class JSIntlObject(realm: Realm) : JSObject(realm, realm.objectProto) {
 
         defineOwnProperty("Locale", realm.localeCtor)
         defineOwnProperty("NumberFormat", realm.numberFormatCtor)
+        defineOwnProperty("PluralRules", realm.pluralRulesCtor)
         defineBuiltin("getCanonicalLocales", 1, ReevaBuiltin.IntlGetCanonicalLocales)
     }
 
