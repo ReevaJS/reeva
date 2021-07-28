@@ -173,6 +173,11 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     JSONStringify(JSONObject::class.java, "stringify", "JSON.stringify"),
     JSONGetSymbolToStringTag(JSONObject::class.java, "getSymbolToStringTag", "JSON[@@toStringTag]"),
 
+    ListFormatCtorSupportedLocalesOf(JSListFormatCtor::class.java, "supportedLocalesOf", "ListFormat.supportedLocalesOf"),
+    ListFormatProtoFormat(JSListFormatProto::class.java, "format", "ListFormat.prototype.format"),
+    ListFormatProtoFormatToParts(JSListFormatProto::class.java, "formatToParts", "ListFormat.prototype.formatToParts"),
+    ListFormatProtoResolvedOptions(JSListFormatProto::class.java, "resolvedOptions", "ListFormat.prototype.resolvedOptions"),
+
     ListIteratorProtoNext(JSListIteratorProto::class.java, "next", "ListIterator.prototype.next"),
 
     LocaleProtoGetBaseName(JSLocaleProto::class.java, "getBaseName", "Locale.prototype.getBaseName"),

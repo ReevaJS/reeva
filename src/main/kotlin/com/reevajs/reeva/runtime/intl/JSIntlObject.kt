@@ -12,6 +12,7 @@ class JSIntlObject(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {
         super.init()
 
+        defineOwnProperty("ListFormat", realm.listFormatCtor)
         defineOwnProperty("Locale", realm.localeCtor)
         defineOwnProperty("NumberFormat", realm.numberFormatCtor)
         defineOwnProperty("PluralRules", realm.pluralRulesCtor)

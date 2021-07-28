@@ -167,6 +167,7 @@ object Errors {
 
     object Intl {
         class ValueOutOfRange(value: String, property: String) : Error("value $value is out of range for option $property")
+        object OptionsNotObject : Error("expected objects object to be an object or undefined")
 
         object Locale {
             object InvalidLocaleType : Error("invalid type in locales list")
@@ -176,6 +177,10 @@ object Errors {
             class InvalidLocaleScript(script: String) : Error("invalid locale script: \"$script\"")
             class InvalidLocaleRegion(region: String) : Error("invalid locale region: \"$region\"")
             object InvalidLocaleTagType : Error("expected first argument of Locale constructor to be object or non-empty string")
+        }
+
+        object ListFormat {
+            class FormatNonString(methodName: String, type: String) : Error("Intl.ListFormat.prototype.$methodName expected list of strings, but found $type")
         }
 
         object NumberFormat {

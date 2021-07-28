@@ -115,6 +115,7 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val localeProto by lazy { JSLocaleProto.create(this) }
     val numberFormatProto by lazy { JSNumberFormatProto.create(this) }
     val pluralRulesProto by lazy { JSPluralRulesProto.create(this) }
+    val listFormatProto by lazy { JSListFormatProto.create(this) }
 
     val objectCtor by lazy { JSObjectCtor.create(this) }
     val numberCtor by lazy { JSNumberCtor.create(this) }
@@ -158,6 +159,7 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val localeCtor by lazy { JSLocaleCtor.create(this) }
     val numberFormatCtor by lazy { JSNumberFormatCtor.create(this) }
     val pluralRulesCtor by lazy { JSPluralRulesCtor.create(this) }
+    val listFormatCtor by lazy { JSListFormatCtor.create(this) }
 
     val throwTypeError by lazy {
         JSNativeFunction.fromLambda(this, "", 0) { realm, _ ->
@@ -240,6 +242,7 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
         localeCtor.defineOwnProperty("prototype", localeProto, Descriptor.HAS_BASIC)
         numberFormatCtor.defineOwnProperty("prototype", numberFormatProto, Descriptor.HAS_BASIC)
         pluralRulesCtor.defineOwnProperty("prototype", pluralRulesProto, Descriptor.HAS_BASIC)
+        listFormatCtor.defineOwnProperty("prototype", listFormatProto, Descriptor.HAS_BASIC)
 
         functionProto.defineOwnProperty("constructor", functionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
 

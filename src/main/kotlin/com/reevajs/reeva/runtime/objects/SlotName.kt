@@ -38,10 +38,14 @@ enum class SlotName {
     InitializedLocale, // JSUndefined
     InitializedNumberFormat, // JSUndefined
     InitializedPluralRules, // JSUndefined
+    InitializedListFormat, // JSUndefined
     Locale, // String
     ULocale, // ULocale
     NumberFormatter, // LocalizedNumberFormatter
     BoundFormat, // JSFunction
     PluralRules, // PluralRules
     PluralType, // PluralRules.PluralType
+    ListFormatter, // ListFormatter
+    ListFormatterType, // String
+    ListFormatterStyle, // String
 }

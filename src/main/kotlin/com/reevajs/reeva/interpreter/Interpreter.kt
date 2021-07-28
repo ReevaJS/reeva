@@ -324,7 +324,7 @@ class Interpreter(
     }
 
     override fun visitTypeOf() {
-        push(Operations.typeofOperator(popValue()))
+        push(Operations.typeofOperator(popValue()).toValue())
     }
 
     override fun visitTypeOfGlobal(opcode: TypeOfGlobal) {

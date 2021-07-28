@@ -2224,7 +2224,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("12.5.5")
-    fun typeofOperator(value: JSValue): JSValue {
+    fun typeofOperator(value: JSValue): String {
         return when (value) {
             JSUndefined -> "undefined"
             JSNull -> "object"
@@ -2237,7 +2237,7 @@ object Operations {
             is JSProxyObject -> return typeofOperator(value.target)
             is JSObject -> "object"
             else -> unreachable()
-        }.toValue()
+        }
     }
 
     @JvmStatic

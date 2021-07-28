@@ -39,6 +39,8 @@ object IntlAOs {
 
     val numberFormatAvailableLocales = NumberFormat.getAvailableULocales().map(ULocale::toLanguageTag).toSet()
     val pluralRulesAvailableLocales = PluralRules.getAvailableULocales().map(ULocale::toLanguageTag).toSet()
+    // TODO: ListFormatter doesn't have a getAvailableULocales method, what should I use instead
+    val listFormatAvailableLocales = ULocale.getAvailableLocales().map(ULocale::toLanguageTag).toSet()
 
     @ECMAImpl("6.2.2")
     fun isStructurallyValidLanguageTag(locale: String): Boolean {
@@ -279,6 +281,15 @@ object IntlAOs {
         } else lookupSupportedLocales(availableLocales, requestedLocales)
 
         return Operations.createArrayFromList(realm, supportedLocales.map(String::toValue))
+    }
+
+    @ECMAImpl("9.2.11")
+    fun getOptionsObject(realm: Realm, options: JSValue): JSObject {
+        if (options == JSUndefined)
+            return JSObject.create(realm)
+        if (options is JSObject)
+            return options
+        Errors.Intl.OptionsNotObject.throwTypeError(realm)
     }
 
     @ECMAImpl("9.2.12")
