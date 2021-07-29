@@ -16,9 +16,6 @@ repositories {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-    implementation ("org.jetbrains.kotlin:kotlin-reflect") {
-        exclude module: "kotlin-stdlib"
-    }
     implementation 'com.github.ReevaJS:mfbt:78080dba4e'
     implementation 'org.ow2.asm:asm:8.0.1'
     implementation 'org.ow2.asm:asm-tree:8.0.1'
