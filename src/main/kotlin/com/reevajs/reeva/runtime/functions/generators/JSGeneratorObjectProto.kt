@@ -2,9 +2,11 @@ package com.reevajs.reeva.runtime.functions.generators
 
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.interpreter.Interpreter
-import com.reevajs.reeva.runtime.JSArguments
+import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.Errors
@@ -14,28 +16,15 @@ class JSGeneratorObjectProto(realm: Realm) : JSObject(realm, realm.iteratorProto
     override fun init() {
         super.init()
 
-        defineNativeFunction("next", 1, ::next)
-        defineNativeFunction("return", 1, ::`return`)
-        defineNativeFunction("throw", 1, ::`throw`)
         defineOwnProperty(Realm.`@@toStringTag`, "Generator".toValue(), Descriptor.CONFIGURABLE)
-    }
-
-    private fun next(realm: Realm, arguments: JSArguments): JSValue {
-        val generator = thisGeneratorObject(realm, arguments.thisValue, "next")
-        return generator.next(realm, Interpreter.SuspendedEntryMode.Next, arguments.argument(0))
-    }
-
-    private fun `return`(realm: Realm, arguments: JSArguments): JSValue {
-        val generator = thisGeneratorObject(realm, arguments.thisValue, "return")
-        return generator.next(realm, Interpreter.SuspendedEntryMode.Return, arguments.argument(0))
-    }
-
-    private fun `throw`(realm: Realm, arguments: JSArguments): JSValue {
-        val generator = thisGeneratorObject(realm, arguments.thisValue, "throw")
-        return generator.next(realm, Interpreter.SuspendedEntryMode.Throw, arguments.argument(0))
+        defineBuiltin("next", 1, Builtin.GeneratorObjectProtoNext)
+        defineBuiltin("return", 1, Builtin.GeneratorObjectProtoReturn)
+        defineBuiltin("throw", 1, Builtin.GeneratorObjectProtoThrow)
     }
 
     companion object {
+        fun create(realm: Realm) = JSGeneratorObjectProto(realm).initialize()
+
         private fun thisGeneratorObject(realm: Realm, value: JSValue, method: String): JSGeneratorObject {
             val obj = Operations.toObject(realm, value)
             if (obj !is JSGeneratorObject)
@@ -43,6 +32,25 @@ class JSGeneratorObjectProto(realm: Realm) : JSObject(realm, realm.iteratorProto
             return obj
         }
 
-        fun create(realm: Realm) = JSGeneratorObjectProto(realm).initialize()
+        @ECMAImpl("27.5.1.2")
+        @JvmStatic
+        fun next(realm: Realm, arguments: JSArguments): JSValue {
+            val generator = thisGeneratorObject(realm, arguments.thisValue, "next")
+            return generator.next(realm, Interpreter.SuspendedEntryMode.Next, arguments.argument(0))
+        }
+
+        @ECMAImpl("27.5.1.3")
+        @JvmStatic
+        fun `return`(realm: Realm, arguments: JSArguments): JSValue {
+            val generator = thisGeneratorObject(realm, arguments.thisValue, "return")
+            return generator.next(realm, Interpreter.SuspendedEntryMode.Return, arguments.argument(0))
+        }
+
+        @ECMAImpl("27.5.1.4")
+        @JvmStatic
+        fun `throw`(realm: Realm, arguments: JSArguments): JSValue {
+            val generator = thisGeneratorObject(realm, arguments.thisValue, "throw")
+            return generator.next(realm, Interpreter.SuspendedEntryMode.Throw, arguments.argument(0))
+        }
     }
 }

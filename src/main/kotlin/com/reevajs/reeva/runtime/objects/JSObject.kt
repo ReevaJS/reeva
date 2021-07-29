@@ -4,6 +4,7 @@ import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.builtins.Builtin
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.index.IndexedProperties
 import com.reevajs.reeva.runtime.primitives.*
@@ -325,33 +326,31 @@ open class JSObject protected constructor(
         }.map { PropertyKey.from(it.name) }
     }
 
-    fun defineNativeAccessor(
+    internal fun defineBuiltinAccessor(
         key: String,
         attributes: Int,
-        getter: NativeGetterSignature? = null,
-        setter: NativeSetterSignature? = null,
+        getter: Builtin? = null,
+        setter: Builtin? = null,
     ) {
-        defineNativeAccessor(key.key(), attributes, getter, setter)
+        defineBuiltinAccessor(key.key(), attributes, getter, setter)
     }
 
-    fun defineNativeAccessor(
+    internal fun defineBuiltinAccessor(
         key: PropertyKey,
         attributes: Int,
-        getter: NativeGetterSignature? = null,
-        setter: NativeSetterSignature? = null,
+        getter: Builtin? = null,
+        setter: Builtin? = null,
         name: String? = null
     ) {
-        val getterFunc = getter?.let { f ->
-            JSNativeFunction.fromLambda(realm, "get ${name ?: key}", 0) { r, args -> f(r, args.thisValue) }
-        }
-        val setterFunc = setter?.let { f ->
-            JSNativeFunction.fromLambda(realm, "set ${name ?: key}", 0) { r, args ->
-                if (args.size != 1)
-                    TODO()
-                f(r, args.thisValue, args.argument(0))
-                JSUndefined
-            }
-        }
+        expect(getter != null || setter != null)
+
+        val getterFunc = if (getter != null) {
+            JSNativeFunction.forBuiltin(realm, name ?: key.toString(), 0, getter)
+        } else null
+
+        val setterFunc = if (setter != null) {
+            JSNativeFunction.forBuiltin(realm, name ?: key.toString(), 1, setter)
+        } else null
 
         val value = JSAccessor(getterFunc, setterFunc)
         addProperty(key, Descriptor(value, attributes))
@@ -366,29 +365,41 @@ open class JSObject protected constructor(
         addProperty(key, Descriptor(value, attributes))
     }
 
-    fun defineNativeFunction(
-        key: String,
+    internal fun defineBuiltin(
+        name: String,
         length: Int,
-        function: NativeFunctionSignature
+        builtin: Builtin,
+        attributes: Int = attrs { +conf -enum +writ },
     ) {
-        defineNativeFunction(key.key(), length, attrs { +conf -enum +writ }, key, function)
+        defineBuiltin(name.key(), length, builtin, attributes, name)
+    }
+
+    internal fun defineBuiltin(
+        key: PropertyKey,
+        length: Int,
+        builtin: Builtin,
+        attributes: Int = attrs { +conf -enum +writ },
+        name: String = if (key.isString) key.asString else "[${key.asSymbol.descriptiveString()}]",
+    ) {
+        val obj = JSNativeFunction.forBuiltin(realm, name, length, builtin)
+        addProperty(key, Descriptor(obj, attributes))
     }
 
     fun defineNativeFunction(
-        key: String,
+        name: String,
         length: Int,
+        function: NativeFunctionSignature,
         attributes: Int = attrs { +conf -enum +writ },
-        function: NativeFunctionSignature
     ) {
-        defineNativeFunction(key.key(), length, attributes, key, function)
+        defineNativeFunction(name.key(), length, function, attributes, name)
     }
 
     fun defineNativeFunction(
         key: PropertyKey,
         length: Int,
+        function: NativeFunctionSignature,
         attributes: Int = attrs { +conf -enum +writ },
         name: String = if (key.isString) key.asString else "[${key.asSymbol.descriptiveString()}]",
-        function: NativeFunctionSignature
     ) {
         val obj = JSNativeFunction.fromLambda(realm, name, length, function)
         addProperty(key, Descriptor(obj, attributes))

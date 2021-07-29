@@ -2,8 +2,12 @@ package com.reevajs.reeva.runtime.memory
 
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
+import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.attrs
@@ -14,13 +18,13 @@ class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(rea
     override fun init() {
         super.init()
 
-        defineNativeAccessor(
+        defineBuiltinAccessor(
             Realm.`@@species`.key(),
-            attrs { +conf - enum },
-            ::`get@@species`,
+            attrs { +conf -enum },
+            Builtin.ArrayBufferCtorGetSymbolSpecies,
             name = "[Symbol.species]"
         )
-        defineNativeFunction("isView", 1, ::isView)
+        defineBuiltin("isView", 1, Builtin.ArrayBufferCtorIsView)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -35,15 +39,19 @@ class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(rea
         )
     }
 
-    fun isView(realm: Realm, arguments: JSArguments): JSValue {
-        return arguments.argument(0).let { it is JSObject && it.hasSlot(SlotName.ViewedArrayBuffer) }.toValue()
-    }
-
-    fun `get@@species`(realm: Realm, thisValue: JSValue): JSValue {
-        return thisValue
-    }
-
     companion object {
         fun create(realm: Realm) = JSArrayBufferCtor(realm).initialize()
+
+        @ECMAImpl("25.1.4.1")
+        @JvmStatic
+        fun isView(realm: Realm, arguments: JSArguments): JSValue {
+            return arguments.argument(0).let { it is JSObject && it.hasSlot(SlotName.ViewedArrayBuffer) }.toValue()
+        }
+
+        @ECMAImpl("25.1.4.3")
+        @JvmStatic
+        fun `get@@species`(realm: Realm, thisValue: JSValue): JSValue {
+            return thisValue
+        }
     }
 }

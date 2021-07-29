@@ -1,9 +1,10 @@
 package com.reevajs.reeva.jvmcompat
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.JSArguments
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.builtins.Builtin
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -19,7 +20,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
         super.init()
 
         defineOwnProperty("prototype", clazzProto, Descriptor.HAS_BASIC)
-        defineNativeFunction("toString", 0, ::toString)
+        defineBuiltin("toString", 0, Builtin.ClassObjectToString)
     }
 
     override fun evaluate(_arguments: JSArguments): JSValue {
@@ -52,10 +53,6 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
             clazzProto,
             targetCtor.newInstance(*mappedArguments)
         )
-    }
-
-    private fun toString(realm: Realm, arguments: JSArguments): JSValue {
-        return "Class(${clazz.name})".toValue()
     }
 
     private fun makeClassProto(clazz: Class<*>): JSObject {
@@ -150,13 +147,15 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
                 JVMValueMapper.jvmToJS(realm, result)
             }
 
-            val receiver = if (isStatic) this else obj
-            receiver.defineNativeFunction(
+            val function = fromLambda(
+                realm,
                 name,
                 availableMethods.minOf { it.parameterCount },
-                Descriptor.DEFAULT_ATTRIBUTES,
                 nativeMethod
             )
+
+            val receiver = if (isStatic) this else obj
+            receiver.addProperty(name.key(), Descriptor(function, Descriptor.DEFAULT_ATTRIBUTES))
         }
 
         clazz.declaredClasses.forEach { innerClazz ->
@@ -170,5 +169,12 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
         private val classProtoCache = mutableMapOf<Class<*>, JSObject>()
 
         fun create(realm: Realm, clazz: Class<*>) = JSClassObject(realm, clazz).initialize()
+
+        @JvmStatic
+        fun toString(realm: Realm, arguments: JSArguments): JSValue {
+            val thisValue = arguments.thisValue
+            expect(thisValue is JSClassObject)
+            return "Class(${thisValue.clazz.name})".toValue()
+        }
     }
 }

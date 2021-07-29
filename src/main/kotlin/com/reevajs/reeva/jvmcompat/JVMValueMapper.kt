@@ -4,8 +4,8 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
-import com.reevajs.reeva.runtime.builtins.JSMapObject
-import com.reevajs.reeva.runtime.builtins.JSSetObject
+import com.reevajs.reeva.runtime.collections.JSMapObject
+import com.reevajs.reeva.runtime.collections.JSSetObject
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.Errors

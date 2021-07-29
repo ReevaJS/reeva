@@ -4,7 +4,6 @@ import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.*
 
-
 class Inspection(val contents: String, val children: List<Inspection> = emptyList()) {
     private fun spacing(indent: Int) = "  ".repeat(indent)
 

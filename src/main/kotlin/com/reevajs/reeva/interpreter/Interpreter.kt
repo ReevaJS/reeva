@@ -13,7 +13,8 @@ import com.reevajs.reeva.interpreter.transformer.opcodes.*
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
-import com.reevajs.reeva.runtime.builtins.JSUnmappedArgumentsObject
+import com.reevajs.reeva.runtime.collections.JSArguments
+import com.reevajs.reeva.runtime.collections.JSUnmappedArgumentsObject
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObject
@@ -22,6 +23,7 @@ import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.JSObject.Companion.initialize
 import com.reevajs.reeva.runtime.objects.PropertyKey
+import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.*
 

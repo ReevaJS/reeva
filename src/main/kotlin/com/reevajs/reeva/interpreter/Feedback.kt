@@ -1,7 +1,7 @@
 package com.reevajs.reeva.interpreter
 
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.builtins.JSProxyObject
+import com.reevajs.reeva.runtime.other.JSProxyObject
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.*

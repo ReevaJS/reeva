@@ -4,6 +4,8 @@ import com.reevajs.reeva.ast.statements.StatementList
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSNumber
@@ -67,101 +69,21 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("NaN", JSNumber.NaN, 0)
         defineOwnProperty("globalThis", this, Descriptor.WRITABLE or Descriptor.CONFIGURABLE)
         defineOwnProperty("undefined", JSUndefined, 0)
-        defineNativeFunction("id", 1, ::id)
-        defineNativeFunction("eval", 1, ::eval)
-        defineNativeFunction("parseInt", 1, ::parseInt)
 
-        defineNativeFunction("jvm", 1, ::jvm)
-        defineNativeFunction("inspect", 1, ::inspect)
+        defineBuiltin("id", 1, Builtin.GlobalId)
+        defineBuiltin("eval", 1, Builtin.GlobalEval)
+        defineBuiltin("parseInt", 1, Builtin.GlobalParseInt)
+        defineBuiltin("jvm", 1, Builtin.GlobalJvm)
+        defineBuiltin("inspect", 1, Builtin.GlobalInspect)
 
         // Debug method
         // TODO
 //        defineNativeFunction("isStrict".key(), 0, 0) { Operations.isStrict().toValue() }
     }
 
-    private fun id(realm: Realm, arguments: JSArguments): JSValue {
-        val o = arguments.argument(0)
-        return "${o::class.java.simpleName}@${Integer.toHexString(o.hashCode())}".toValue()
-    }
-
-    private fun eval(realm: Realm, arguments: JSArguments): JSValue {
-        return performEval(realm, arguments.argument(0), realm, strictCaller = false, direct = false)
-    }
-
-    private fun parseInt(realm: Realm, arguments: JSArguments): JSValue {
-        var inputString = Operations.trimString(realm, Operations.toString(realm, arguments.argument(0)), Operations.TrimType.Start)
-        val sign = when {
-            inputString.startsWith("-") -> {
-                inputString = inputString.substring(1)
-                -1
-            }
-            inputString.startsWith("+") -> {
-                inputString = inputString.substring(1)
-                1
-            }
-            else -> 1
-        }
-
-        var stripPrefix = true
-        var radix = Operations.toInt32(realm, arguments.argument(1)).asInt.let {
-            if (it != 0) {
-                if (it !in 2..36)
-                    return JSNumber.NaN
-                if (it != 16)
-                    stripPrefix = false
-                it
-            } else 10
-        }
-
-        if (stripPrefix && inputString.lowercase().startsWith("0x")) {
-            inputString = inputString.substring(2)
-            radix = 16
-        }
-
-        val end = inputString.indexOfFirst { !it.isRadixDigit(radix) }.let { if (it == -1) inputString.length else it }
-        val content = inputString.substring(0, end)
-        if (content.isEmpty())
-            return JSNumber.NaN
-        val numericValue = content.toLongOrNull(radix) ?: return JSNumber.NaN
-        return JSNumber(numericValue * sign)
-    }
-
-    private fun jvm(realm: Realm, arguments: JSArguments): JSValue {
-        // TODO
-        return JSUndefined
-
-//        if (arguments.isEmpty())
-//            Errors.JVMCompat.JVMFuncNoArgs.throwTypeError(realm)
-//
-//        if (arguments.any { it !is JSClassObject })
-//            Errors.JVMCompat.JVMFuncBadArgType.throwTypeError(realm)
-//
-//        val classObjects = arguments.map { (it as JSClassObject).clazz }
-//        if (classObjects.count { it.isInterface } > 1)
-//            Errors.JVMCompat.JVMFuncMultipleBaseClasses.throwTypeError(realm)
-//
-//        classObjects.firstOrNull {
-//            Modifier.isFinal(it.modifiers)
-//        }?.let {
-//            Errors.JVMCompat.JVMFuncFinalClass(it.name).throwTypeError(realm)
-//        }
-//
-//        val baseClass = classObjects.firstOrNull { !it.isInterface }
-//        val interfaces = classObjects.filter { it.isInterface }
-//
-//        return JSClassObject.create(
-//            realm,
-//            ProxyClassCompiler().makeProxyClass(baseClass, interfaces)
-//        )
-    }
-
-    private fun inspect(realm: Realm, arguments: JSArguments): JSValue {
-        val value = arguments.argument(0)
-        println(inspect(value, simple = false).stringify())
-        return JSUndefined
-    }
-
     companion object {
+        fun create(realm: Realm) = JSGlobalObject(realm).initialize()
+
         @ECMAImpl("18.2.1.1")
         fun performEval(realm: Realm, argument: JSValue, callerRealm: Realm, strictCaller: Boolean, direct: Boolean): JSValue {
             // TODO
@@ -335,6 +257,91 @@ open class JSGlobalObject protected constructor(
 //            }
         }
 
-        fun create(realm: Realm) = JSGlobalObject(realm).initialize()
+        @JvmStatic
+        fun id(realm: Realm, arguments: JSArguments): JSValue {
+            val o = arguments.argument(0)
+            return "${o::class.java.simpleName}@${Integer.toHexString(o.hashCode())}".toValue()
+        }
+
+        @JvmStatic
+        fun eval(realm: Realm, arguments: JSArguments): JSValue {
+            return performEval(realm, arguments.argument(0), realm, strictCaller = false, direct = false)
+        }
+
+        @JvmStatic
+        fun parseInt(realm: Realm, arguments: JSArguments): JSValue {
+            var inputString = Operations.trimString(realm, Operations.toString(realm, arguments.argument(0)), Operations.TrimType.Start)
+            val sign = when {
+                inputString.startsWith("-") -> {
+                    inputString = inputString.substring(1)
+                    -1
+                }
+                inputString.startsWith("+") -> {
+                    inputString = inputString.substring(1)
+                    1
+                }
+                else -> 1
+            }
+
+            var stripPrefix = true
+            var radix = Operations.toInt32(realm, arguments.argument(1)).asInt.let {
+                if (it != 0) {
+                    if (it !in 2..36)
+                        return JSNumber.NaN
+                    if (it != 16)
+                        stripPrefix = false
+                    it
+                } else 10
+            }
+
+            if (stripPrefix && inputString.lowercase().startsWith("0x")) {
+                inputString = inputString.substring(2)
+                radix = 16
+            }
+
+            val end = inputString.indexOfFirst { !it.isRadixDigit(radix) }.let { if (it == -1) inputString.length else it }
+            val content = inputString.substring(0, end)
+            if (content.isEmpty())
+                return JSNumber.NaN
+            val numericValue = content.toLongOrNull(radix) ?: return JSNumber.NaN
+            return JSNumber(numericValue * sign)
+        }
+
+        @JvmStatic
+        fun jvm(realm: Realm, arguments: JSArguments): JSValue {
+            // TODO
+            return JSUndefined
+
+//        if (arguments.isEmpty())
+//            Errors.JVMCompat.JVMFuncNoArgs.throwTypeError(realm)
+//
+//        if (arguments.any { it !is JSClassObject })
+//            Errors.JVMCompat.JVMFuncBadArgType.throwTypeError(realm)
+//
+//        val classObjects = arguments.map { (it as JSClassObject).clazz }
+//        if (classObjects.count { it.isInterface } > 1)
+//            Errors.JVMCompat.JVMFuncMultipleBaseClasses.throwTypeError(realm)
+//
+//        classObjects.firstOrNull {
+//            Modifier.isFinal(it.modifiers)
+//        }?.let {
+//            Errors.JVMCompat.JVMFuncFinalClass(it.name).throwTypeError(realm)
+//        }
+//
+//        val baseClass = classObjects.firstOrNull { !it.isInterface }
+//        val interfaces = classObjects.filter { it.isInterface }
+//
+//        return JSClassObject.create(
+//            realm,
+//            ProxyClassCompiler().makeProxyClass(baseClass, interfaces)
+//        )
+        }
+
+        @JvmStatic
+        fun inspect(realm: Realm, arguments: JSArguments): JSValue {
+            val value = arguments.argument(0)
+            println(inspect(value, simple = false).stringify())
+            return JSUndefined
+        }
     }
 }

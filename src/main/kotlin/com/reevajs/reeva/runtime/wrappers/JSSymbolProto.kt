@@ -1,7 +1,8 @@
 package com.reevajs.reeva.runtime.wrappers
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.JSArguments
+import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -19,9 +20,9 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         defineOwnProperty("constructor", realm.symbolCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineNativeProperty("description", attrs { +conf -enum }, ::getDescription, null)
         defineNativeProperty(Realm.`@@toStringTag`.key(), attrs { +conf -enum -writ }, ::`get@@toStringTag`, null)
-        defineNativeFunction("toString", 0, ::toString)
-        defineNativeFunction("toValue", 0, ::toValue)
-        defineNativeFunction(Realm.`@@toPrimitive`.key(), 0, function = ::`@@toPrimitive`)
+        defineBuiltin("toString", 0, Builtin.SymbolProtoToString)
+        defineBuiltin("toValue", 0, Builtin.SymbolProtoToValue)
+        defineBuiltin(Realm.`@@toPrimitive`.key(), 0, Builtin.SymbolProtoSymbolToPrimitive)
     }
 
     fun getDescription(realm: Realm, thisValue: JSValue): JSValue {
@@ -29,18 +30,6 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
     }
 
     fun `get@@toStringTag`(realm: Realm, thisValue: JSValue) = "Symbol".toValue()
-
-    fun toString(realm: Realm, arguments: JSArguments): JSValue {
-        return thisSymbolValue(realm, arguments.thisValue, "toString").descriptiveString().toValue()
-    }
-
-    fun toValue(realm: Realm, arguments: JSArguments): JSValue {
-        return thisSymbolValue(realm, arguments.thisValue, "toValue")
-    }
-
-    fun `@@toPrimitive`(realm: Realm, arguments: JSArguments): JSValue {
-        return thisSymbolValue(realm, arguments.thisValue, "@@toPrimitive")
-    }
 
     companion object {
         fun create(realm: Realm) = JSSymbolProto(realm).initialize()
@@ -52,6 +41,24 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             if (value is JSSymbolObject)
                 return value.symbol
             Errors.IncompatibleMethodCall("Symbol.prototype.$methodName").throwTypeError(realm)
+        }
+
+        @ECMAImpl("20.4.3.3")
+        @JvmStatic
+        fun toString(realm: Realm, arguments: JSArguments): JSValue {
+            return thisSymbolValue(realm, arguments.thisValue, "toString").descriptiveString().toValue()
+        }
+
+        @ECMAImpl("20.4.3.4")
+        @JvmStatic
+        fun toValue(realm: Realm, arguments: JSArguments): JSValue {
+            return thisSymbolValue(realm, arguments.thisValue, "toValue")
+        }
+
+        @ECMAImpl("20.4.3.5")
+        @JvmStatic
+        fun `@@toPrimitive`(realm: Realm, arguments: JSArguments): JSValue {
+            return thisSymbolValue(realm, arguments.thisValue, "@@toPrimitive")
         }
     }
 }

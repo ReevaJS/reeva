@@ -1,7 +1,8 @@
 package com.reevajs.reeva.runtime.objects
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.JSArguments
+import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -19,26 +20,26 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun init() {
         super.init()
 
-        defineNativeFunction("assign", 2, ::assign)
-        defineNativeFunction("create", 2, ::create)
-        defineNativeFunction("defineProperties", 2, ::defineProperties)
-        defineNativeFunction("defineProperty", 3, ::defineProperty)
-        defineNativeFunction("entries", 1, ::entries)
-        defineNativeFunction("freeze", 1, ::freeze)
-        defineNativeFunction("fromEntries", 1, ::fromEntries)
-        defineNativeFunction("getOwnPropertyDescriptor", 2, ::getOwnPropertyDescriptor)
-        defineNativeFunction("getOwnPropertyDescriptors", 1, ::getOwnPropertyDescriptors)
-        defineNativeFunction("getOwnPropertyNames", 1, ::getOwnPropertyNames)
-        defineNativeFunction("getOwnPropertySymbols", 1, ::getOwnPropertySymbols)
-        defineNativeFunction("getPrototypeOf", 1, ::getPrototypeOf)
-        defineNativeFunction("is", 2, ::`is`)
-        defineNativeFunction("isExtensible", 1, ::isExtensible)
-        defineNativeFunction("isFrozen", 1, ::isFrozen)
-        defineNativeFunction("isSealed", 1, ::isSealed)
-        defineNativeFunction("preventExtensions", 1, ::preventExtensions)
-        defineNativeFunction("seal", 1, ::seal)
-        defineNativeFunction("setPrototypeOf", 2, ::setPrototypeOf)
-        defineNativeFunction("values", 1, ::values)
+        defineBuiltin("assign", 2, Builtin.ObjectCtorAssign)
+        defineBuiltin("create", 2, Builtin.ObjectCtorCreate)
+        defineBuiltin("defineProperties", 2, Builtin.ObjectCtorDefineProperties)
+        defineBuiltin("defineProperty", 3, Builtin.ObjectCtorDefineProperty)
+        defineBuiltin("entries", 1, Builtin.ObjectCtorEntries)
+        defineBuiltin("freeze", 1, Builtin.ObjectCtorFreeze)
+        defineBuiltin("fromEntries", 1, Builtin.ObjectCtorFromEntries)
+        defineBuiltin("getOwnPropertyDescriptor", 2, Builtin.ObjectCtorGetOwnPropertyDescriptor)
+        defineBuiltin("getOwnPropertyDescriptors", 1, Builtin.ObjectCtorGetOwnPropertyDescriptors)
+        defineBuiltin("getOwnPropertyNames", 1, Builtin.ObjectCtorGetOwnPropertyNames)
+        defineBuiltin("getOwnPropertySymbols", 1, Builtin.ObjectCtorGetOwnPropertySymbols)
+        defineBuiltin("getPrototypeOf", 1, Builtin.ObjectCtorGetPrototypeOf)
+        defineBuiltin("is", 2, Builtin.ObjectCtorIs)
+        defineBuiltin("isExtensible", 1, Builtin.ObjectCtorIsExtensible)
+        defineBuiltin("isFrozen", 1, Builtin.ObjectCtorIsFrozen)
+        defineBuiltin("isSealed", 1, Builtin.ObjectCtorIsSealed)
+        defineBuiltin("preventExtensions", 1, Builtin.ObjectCtorPreventExtensions)
+        defineBuiltin("seal", 1, Builtin.ObjectCtorSeal)
+        defineBuiltin("setPrototypeOf", 2, Builtin.ObjectCtorSetPrototypeOf)
+        defineBuiltin("values", 1, Builtin.ObjectCtorValues)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -52,217 +53,279 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         return Operations.toObject(realm, value)
     }
 
-    fun assign(realm: Realm, arguments: JSArguments): JSValue {
-        val target = Operations.toObject(realm, arguments.argument(0))
-        if (arguments.size == 1)
-            return target
-        arguments.subList(1, arguments.size).forEach {
-            if (it == JSUndefined || it == JSNull)
-                return@forEach
-            val from = Operations.toObject(realm, it)
-            from.ownPropertyKeys().forEach { key ->
-                val desc = from.getOwnPropertyDescriptor(key)
-                if (desc != null && desc.isEnumerable) {
-                    val value = from.get(key)
-                    if (!target.set(key, value))
-                        Errors.Object.AssignFailedSet(key).throwTypeError(realm)
-                }
-            }
-        }
-
-        return target
-    }
-
-    fun create(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = arguments.argument(0)
-        if (obj !is JSObject && obj != JSNull)
-            Errors.Object.CreateBadArgType.throwTypeError(realm)
-        val newObj = create(realm, obj)
-        val properties = arguments.argument(1)
-        if (properties != JSUndefined)
-            objectDefineProperties(realm, newObj, properties)
-        return newObj
-    }
-
-    fun defineProperties(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = arguments.argument(0)
-        if (obj !is JSObject)
-            Errors.Object.DefinePropertiesBadArgType.throwTypeError(realm)
-        return objectDefineProperties(realm, obj, arguments.argument(1))
-    }
-
-    fun defineProperty(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = arguments.argument(0)
-        if (obj !is JSObject)
-            Errors.Object.DefinePropertyBadArgType.throwTypeError(realm)
-        val key = Operations.toPropertyKey(realm, arguments.argument(1))
-        val desc = Descriptor.fromObject(realm, arguments.argument(2))
-        Operations.definePropertyOrThrow(realm, obj, key.asValue, desc)
-        return obj
-    }
-
-    fun entries(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(realm, arguments.argument(0))
-        val names = Operations.enumerableOwnPropertyNames(realm, obj, PropertyKind.KeyValue)
-        return Operations.createArrayFromList(realm, names)
-    }
-
-    fun freeze(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = arguments.argument(0)
-        if (obj !is JSObject)
-            return obj
-        if (!Operations.setIntegrityLevel(realm, obj, Operations.IntegrityLevel.Frozen)) {
-            // TODO: spidermonkey throws this error in the Proxy preventExtensions handler
-            Errors.TODO("Object.freeze").throwTypeError(realm)
-        }
-        return obj
-    }
-
-    fun fromEntries(realm: Realm, arguments: JSArguments): JSValue {
-        val iterable = arguments.argument(0)
-        Operations.requireObjectCoercible(realm, iterable)
-        val obj = JSObject.create(realm)
-        val adder = fromLambda(realm, "", 0) { r, args ->
-            val key = args.argument(0)
-            val value = args.argument(1)
-            ecmaAssert(args.thisValue is JSObject)
-            Operations.createDataPropertyOrThrow(r, args.thisValue, key, value)
-            return@fromLambda JSUndefined
-        }
-        return Operations.addEntriesFromIterable(realm, obj, iterable, adder)
-    }
-
-    fun getOwnPropertyDescriptor(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(realm, arguments.argument(0))
-        val key = Operations.toPropertyKey(realm, arguments.argument(1))
-        val desc = obj.getOwnPropertyDescriptor(key) ?: return JSUndefined
-        return desc.toObject(realm, obj)
-    }
-
-    fun getOwnPropertyDescriptors(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(realm, arguments.argument(0))
-        val descriptors = JSObject.create(realm)
-        obj.ownPropertyKeys().forEach { key ->
-            val desc = obj.getOwnPropertyDescriptor(key)!!
-            val descObj = desc.toObject(realm, obj)
-            Operations.createDataPropertyOrThrow(realm, descriptors, key, descObj)
-        }
-        return descriptors
-    }
-
-    fun getOwnPropertyNames(realm: Realm, arguments: JSArguments): JSValue {
-        return getOwnPropertyKeys(realm, arguments.argument(0), false)
-    }
-
-    fun getOwnPropertySymbols(realm: Realm, arguments: JSArguments): JSValue {
-        return getOwnPropertyKeys(realm, arguments.argument(0), true)
-    }
-
-    fun getPrototypeOf(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(realm, arguments.argument(0))
-        return obj.getPrototype()
-    }
-
-    fun `is`(realm: Realm, arguments: JSArguments): JSValue {
-        return arguments.argument(0).sameValue(arguments.argument(1)).toValue()
-    }
-
-    fun isExtensible(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = arguments.argument(0)
-        if (obj !is JSObject)
-            return JSFalse
-        return obj.isExtensible().toValue()
-    }
-
-    fun isFrozen(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = arguments.argument(0)
-        if (obj !is JSObject)
-            return JSTrue
-        return obj.isFrozen.toValue()
-    }
-
-    fun isSealed(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = arguments.argument(0)
-        if (obj !is JSObject)
-            return JSTrue
-        return obj.isSealed.toValue()
-    }
-
-    fun keys(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(realm, arguments.argument(0))
-        val nameList = Operations.enumerableOwnPropertyNames(realm, obj, PropertyKind.Key)
-        return Operations.createArrayFromList(realm, nameList)
-    }
-
-    fun preventExtensions(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = arguments.argument(0)
-        if (obj !is JSObject)
-            return obj
-        if (!obj.preventExtensions()) {
-            // TODO: spidermonkey throws this error in the Proxy preventExtensions handler
-            Errors.TODO("Object.preventExtensions").throwTypeError(realm)
-        }
-        return obj
-    }
-
-    fun seal(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = arguments.argument(0)
-        if (obj !is JSObject)
-            return obj
-        if (!Operations.setIntegrityLevel(realm, obj, Operations.IntegrityLevel.Sealed)) {
-            // TODO: spidermonkey throws this error in the Proxy preventExtensions handler
-            Errors.TODO("Object.seal").throwTypeError(realm)
-        }
-        return obj
-    }
-
-    fun setPrototypeOf(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = arguments.argument(0)
-        Operations.requireObjectCoercible(realm, obj)
-        val proto = arguments.argument(1)
-        if (proto !is JSObject && proto != JSNull)
-            Errors.Object.SetPrototypeOfBadArgType.throwTypeError(realm)
-        if (obj !is JSObject)
-            return obj
-        if (!obj.setPrototype(proto))
-            Errors.TODO("Object.setPrototypeOf").throwTypeError(realm)
-        return obj
-    }
-
-    fun values(realm: Realm, arguments: JSArguments): JSValue {
-        val obj = Operations.toObject(realm, arguments.argument(0))
-        val nameList = Operations.enumerableOwnPropertyNames(realm, obj, PropertyKind.Value)
-        return Operations.createArrayFromList(realm, nameList)
-    }
-
-    fun getOwnPropertyKeys(realm: Realm, target: JSValue, isSymbols: Boolean): JSValue {
-        val obj = Operations.toObject(realm, target)
-        val keyList = mutableListOf<JSValue>()
-        obj.ownPropertyKeys().forEach { key ->
-            if (!key.isSymbol xor isSymbols)
-                keyList.add(key.asValue)
-        }
-        return Operations.createArrayFromList(realm, keyList)
-    }
-
-    @ECMAImpl("19.1.2.3.1")
-    private fun objectDefineProperties(realm: Realm, target: JSObject, properties: JSValue): JSObject {
-        val props = Operations.toObject(realm, properties)
-        val descriptors = mutableListOf<Pair<PropertyKey, Descriptor>>()
-        props.ownPropertyKeys().forEach { key ->
-            val propDesc = props.getOwnPropertyDescriptor(key)!!
-            if (propDesc.isEnumerable) {
-                val descObj = props.get(key)
-                descriptors.add(key to Descriptor.fromObject(realm, descObj))
-            }
-        }
-        descriptors.forEach { (key, descriptor) ->
-            Operations.definePropertyOrThrow(realm, target, key.asValue, descriptor)
-        }
-        return target
-    }
-
     companion object {
         fun create(realm: Realm) = JSObjectCtor(realm).initialize()
+
+        @ECMAImpl("20.1.2.1")
+        @JvmStatic
+        fun assign(realm: Realm, arguments: JSArguments): JSValue {
+            val target = Operations.toObject(realm, arguments.argument(0))
+            if (arguments.size == 1)
+                return target
+            arguments.subList(1, arguments.size).forEach {
+                if (it == JSUndefined || it == JSNull)
+                    return@forEach
+                val from = Operations.toObject(realm, it)
+                from.ownPropertyKeys().forEach { key ->
+                    val desc = from.getOwnPropertyDescriptor(key)
+                    if (desc != null && desc.isEnumerable) {
+                        val value = from.get(key)
+                        if (!target.set(key, value))
+                            Errors.Object.AssignFailedSet(key).throwTypeError(realm)
+                    }
+                }
+            }
+
+            return target
+        }
+
+
+        @ECMAImpl("20.1.2.2")
+        @JvmStatic
+        fun create(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = arguments.argument(0)
+            if (obj !is JSObject && obj != JSNull)
+                Errors.Object.CreateBadArgType.throwTypeError(realm)
+            val newObj = create(realm, obj)
+            val properties = arguments.argument(1)
+            if (properties != JSUndefined)
+                objectDefineProperties(realm, newObj, properties)
+            return newObj
+        }
+
+
+        @ECMAImpl("20.1.2.3")
+        @JvmStatic
+        fun defineProperties(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = arguments.argument(0)
+            if (obj !is JSObject)
+                Errors.Object.DefinePropertiesBadArgType.throwTypeError(realm)
+            return objectDefineProperties(realm, obj, arguments.argument(1))
+        }
+
+
+        @ECMAImpl("20.1.2.4")
+        @JvmStatic
+        fun defineProperty(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = arguments.argument(0)
+            if (obj !is JSObject)
+                Errors.Object.DefinePropertyBadArgType.throwTypeError(realm)
+            val key = Operations.toPropertyKey(realm, arguments.argument(1))
+            val desc = Descriptor.fromObject(realm, arguments.argument(2))
+            Operations.definePropertyOrThrow(realm, obj, key.asValue, desc)
+            return obj
+        }
+
+
+        @ECMAImpl("20.1.2.5")
+        @JvmStatic
+        fun entries(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = Operations.toObject(realm, arguments.argument(0))
+            val names = Operations.enumerableOwnPropertyNames(realm, obj, PropertyKind.KeyValue)
+            return Operations.createArrayFromList(realm, names)
+        }
+
+
+        @ECMAImpl("20.1.2.6")
+        @JvmStatic
+        fun freeze(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = arguments.argument(0)
+            if (obj !is JSObject)
+                return obj
+            if (!Operations.setIntegrityLevel(realm, obj, Operations.IntegrityLevel.Frozen)) {
+                // TODO: spidermonkey throws this error in the Proxy preventExtensions handler
+                Errors.TODO("Object.freeze").throwTypeError(realm)
+            }
+            return obj
+        }
+
+
+        @ECMAImpl("20.1.2.7")
+        @JvmStatic
+        fun fromEntries(realm: Realm, arguments: JSArguments): JSValue {
+            val iterable = arguments.argument(0)
+            Operations.requireObjectCoercible(realm, iterable)
+            val obj = JSObject.create(realm)
+            val adder = fromLambda(realm, "", 0) { r, args ->
+                val key = args.argument(0)
+                val value = args.argument(1)
+                ecmaAssert(args.thisValue is JSObject)
+                Operations.createDataPropertyOrThrow(r, args.thisValue, key, value)
+                return@fromLambda JSUndefined
+            }
+            return Operations.addEntriesFromIterable(realm, obj, iterable, adder)
+        }
+
+
+        @ECMAImpl("20.1.2.8")
+        @JvmStatic
+        fun getOwnPropertyDescriptor(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = Operations.toObject(realm, arguments.argument(0))
+            val key = Operations.toPropertyKey(realm, arguments.argument(1))
+            val desc = obj.getOwnPropertyDescriptor(key) ?: return JSUndefined
+            return desc.toObject(realm, obj)
+        }
+
+
+        @ECMAImpl("20.1.2.9")
+        @JvmStatic
+        fun getOwnPropertyDescriptors(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = Operations.toObject(realm, arguments.argument(0))
+            val descriptors = JSObject.create(realm)
+            obj.ownPropertyKeys().forEach { key ->
+                val desc = obj.getOwnPropertyDescriptor(key)!!
+                val descObj = desc.toObject(realm, obj)
+                Operations.createDataPropertyOrThrow(realm, descriptors, key, descObj)
+            }
+            return descriptors
+        }
+
+
+        @ECMAImpl("20.1.2.10")
+        @JvmStatic
+        fun getOwnPropertyNames(realm: Realm, arguments: JSArguments): JSValue {
+            return getOwnPropertyKeys(realm, arguments.argument(0), false)
+        }
+
+
+        @ECMAImpl("20.1.2.11")
+        @JvmStatic
+        fun getOwnPropertySymbols(realm: Realm, arguments: JSArguments): JSValue {
+            return getOwnPropertyKeys(realm, arguments.argument(0), true)
+        }
+
+
+        @ECMAImpl("20.1.2.12")
+        @JvmStatic
+        fun getPrototypeOf(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = Operations.toObject(realm, arguments.argument(0))
+            return obj.getPrototype()
+        }
+
+
+        @ECMAImpl("20.1.2.13")
+        @JvmStatic
+        fun `is`(realm: Realm, arguments: JSArguments): JSValue {
+            return arguments.argument(0).sameValue(arguments.argument(1)).toValue()
+        }
+
+
+        @ECMAImpl("20.1.2.14")
+        @JvmStatic
+        fun isExtensible(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = arguments.argument(0)
+            if (obj !is JSObject)
+                return JSFalse
+            return obj.isExtensible().toValue()
+        }
+
+
+        @ECMAImpl("20.1.2.15")
+        @JvmStatic
+        fun isFrozen(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = arguments.argument(0)
+            if (obj !is JSObject)
+                return JSTrue
+            return obj.isFrozen.toValue()
+        }
+
+
+        @ECMAImpl("20.1.2.16")
+        @JvmStatic
+        fun isSealed(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = arguments.argument(0)
+            if (obj !is JSObject)
+                return JSTrue
+            return obj.isSealed.toValue()
+        }
+
+
+        @ECMAImpl("20.1.2.17")
+        @JvmStatic
+        fun keys(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = Operations.toObject(realm, arguments.argument(0))
+            val nameList = Operations.enumerableOwnPropertyNames(realm, obj, PropertyKind.Key)
+            return Operations.createArrayFromList(realm, nameList)
+        }
+
+
+        @ECMAImpl("20.1.2.18")
+        @JvmStatic
+        fun preventExtensions(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = arguments.argument(0)
+            if (obj !is JSObject)
+                return obj
+            if (!obj.preventExtensions()) {
+                // TODO: spidermonkey throws this error in the Proxy preventExtensions handler
+                Errors.TODO("Object.preventExtensions").throwTypeError(realm)
+            }
+            return obj
+        }
+
+
+        @ECMAImpl("20.1.2.20")
+        @JvmStatic
+        fun seal(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = arguments.argument(0)
+            if (obj !is JSObject)
+                return obj
+            if (!Operations.setIntegrityLevel(realm, obj, Operations.IntegrityLevel.Sealed)) {
+                // TODO: spidermonkey throws this error in the Proxy preventExtensions handler
+                Errors.TODO("Object.seal").throwTypeError(realm)
+            }
+            return obj
+        }
+
+
+        @ECMAImpl("20.1.2.21")
+        @JvmStatic
+        fun setPrototypeOf(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = arguments.argument(0)
+            Operations.requireObjectCoercible(realm, obj)
+            val proto = arguments.argument(1)
+            if (proto !is JSObject && proto != JSNull)
+                Errors.Object.SetPrototypeOfBadArgType.throwTypeError(realm)
+            if (obj !is JSObject)
+                return obj
+            if (!obj.setPrototype(proto))
+                Errors.TODO("Object.setPrototypeOf").throwTypeError(realm)
+            return obj
+        }
+
+
+        @ECMAImpl("20.1.2.22")
+        @JvmStatic
+        fun values(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = Operations.toObject(realm, arguments.argument(0))
+            val nameList = Operations.enumerableOwnPropertyNames(realm, obj, PropertyKind.Value)
+            return Operations.createArrayFromList(realm, nameList)
+        }
+
+        private fun getOwnPropertyKeys(realm: Realm, target: JSValue, isSymbols: Boolean): JSValue {
+            val obj = Operations.toObject(realm, target)
+            val keyList = mutableListOf<JSValue>()
+            obj.ownPropertyKeys().forEach { key ->
+                if (!key.isSymbol xor isSymbols)
+                    keyList.add(key.asValue)
+            }
+            return Operations.createArrayFromList(realm, keyList)
+        }
+
+        @ECMAImpl("19.1.2.3.1")
+        private fun objectDefineProperties(realm: Realm, target: JSObject, properties: JSValue): JSObject {
+            val props = Operations.toObject(realm, properties)
+            val descriptors = mutableListOf<Pair<PropertyKey, Descriptor>>()
+            props.ownPropertyKeys().forEach { key ->
+                val propDesc = props.getOwnPropertyDescriptor(key)!!
+                if (propDesc.isEnumerable) {
+                    val descObj = props.get(key)
+                    descriptors.add(key to Descriptor.fromObject(realm, descObj))
+                }
+            }
+            descriptors.forEach { (key, descriptor) ->
+                Operations.definePropertyOrThrow(realm, target, key.asValue, descriptor)
+            }
+            return target
+        }
     }
 }

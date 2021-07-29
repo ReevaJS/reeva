@@ -1,7 +1,7 @@
 package com.reevajs.reeva.utils
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.JSArguments
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 
 typealias NativeGetterSignature = (realm: Realm, thisValue: JSValue) -> JSValue

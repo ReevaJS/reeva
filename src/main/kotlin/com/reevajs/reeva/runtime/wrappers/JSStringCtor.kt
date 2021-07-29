@@ -1,9 +1,11 @@
 package com.reevajs.reeva.runtime.wrappers
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.JSArguments
+import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.primitives.JSSymbol
 import com.reevajs.reeva.runtime.primitives.JSUndefined
@@ -14,8 +16,8 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun init() {
         super.init()
 
-        defineNativeFunction("fromCharCode", 1, ::fromCharCode)
-        defineNativeFunction("fromCodePoint", 1, ::fromCodePoint)
+        defineBuiltin("fromCharCode", 1, Builtin.StringCtorFromCharCode)
+        defineBuiltin("fromCodePoint", 1, Builtin.StringCtorFromCodePoint)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -38,29 +40,33 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         }
     }
 
-    fun fromCharCode(realm: Realm, arguments: JSArguments): JSValue {
-        return buildString {
-            arguments.forEach {
-                appendCodePoint(Operations.toUint16(realm, it).asInt)
-            }
-        }.toValue()
-    }
-
-    fun fromCodePoint(realm: Realm, arguments: JSArguments): JSValue {
-        return buildString {
-            arguments.forEach {
-                val nextCP = Operations.toNumber(realm, it)
-                if (!Operations.isIntegralNumber(nextCP))
-                    Errors.Strings.InvalidCodepoint(Operations.toPrintableString(nextCP)).throwRangeError(realm)
-                val value = nextCP.asInt
-                if (value < 0 || value > 0x10ffff)
-                    Errors.Strings.InvalidCodepoint(value.toString()).throwRangeError(realm)
-                appendCodePoint(value)
-            }
-        }.toValue()
-    }
-
     companion object {
         fun create(realm: Realm) = JSStringCtor(realm).initialize()
+
+        @ECMAImpl("22.1.2.1")
+        @JvmStatic
+        fun fromCharCode(realm: Realm, arguments: JSArguments): JSValue {
+            return buildString {
+                arguments.forEach {
+                    appendCodePoint(Operations.toUint16(realm, it).asInt)
+                }
+            }.toValue()
+        }
+
+        @ECMAImpl("22.1.2.2")
+        @JvmStatic
+        fun fromCodePoint(realm: Realm, arguments: JSArguments): JSValue {
+            return buildString {
+                arguments.forEach {
+                    val nextCP = Operations.toNumber(realm, it)
+                    if (!Operations.isIntegralNumber(nextCP))
+                        Errors.Strings.InvalidCodepoint(Operations.toPrintableString(nextCP)).throwRangeError(realm)
+                    val value = nextCP.asInt
+                    if (value < 0 || value > 0x10ffff)
+                        Errors.Strings.InvalidCodepoint(value.toString()).throwRangeError(realm)
+                    appendCodePoint(value)
+                }
+            }.toValue()
+        }
     }
 }

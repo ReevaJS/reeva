@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.iterators
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.JSMapObject
+import com.reevajs.reeva.runtime.collections.JSMapObject
 import com.reevajs.reeva.runtime.objects.JSObject
 
 class JSMapIterator private constructor(

@@ -2,14 +2,20 @@ package com.reevajs.reeva.test262
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.JSArguments
+import com.reevajs.reeva.jvmcompat.JSClassObject
+import com.reevajs.reeva.jvmcompat.JSPackageProto
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSGlobalObject
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.global.JSConsoleProto
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Error
+import java.lang.invoke.MethodHandle
+import java.lang.invoke.MethodHandles
 
 class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(realm) {
     override fun init() {
@@ -24,23 +30,9 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
 
             defineOwnProperty("global", this@Test262GlobalObject, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
             defineOwnProperty("agent", JS262AgentObject.create(realm), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-            defineNativeFunction("createRealm", 0, ::createRealm)
-            defineNativeFunction("detachArrayBuffer", 1, ::detachArrayBuffer)
-            defineNativeFunction("gc", 0, ::gc)
-        }
-
-        fun createRealm(realm: Realm, arguments: JSArguments): JSValue {
-            val newRealm = Reeva.makeRealm()
-            return newRealm.globalObject.get("$262")
-        }
-
-        fun detachArrayBuffer(realm: Realm, arguments: JSArguments): JSValue {
-            Operations.detachArrayBuffer(realm, arguments.argument(0))
-            return JSUndefined
-        }
-
-        fun gc(realm: Realm, arguments: JSArguments): JSValue {
-            Error("unable to force JVM garbage collection").throwTypeError(realm)
+            defineNativeFunction("createRealm", 0, Test262GlobalObject::createRealm)
+            defineNativeFunction("detachArrayBuffer", 1, Test262GlobalObject::detachArrayBuffer)
+            defineNativeFunction("gc", 0, Test262GlobalObject::gc)
         }
     }
 
@@ -73,5 +65,22 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
 
     companion object {
         fun create(realm: Realm) = Test262GlobalObject(realm).initialize()
+
+        @JvmStatic
+        fun createRealm(realm: Realm, arguments: JSArguments): JSValue {
+            val newRealm = Reeva.makeRealm()
+            return newRealm.globalObject.get("$262")
+        }
+
+        @JvmStatic
+        fun detachArrayBuffer(realm: Realm, arguments: JSArguments): JSValue {
+            Operations.detachArrayBuffer(realm, arguments.argument(0))
+            return JSUndefined
+        }
+
+        @JvmStatic
+        fun gc(realm: Realm, arguments: JSArguments): JSValue {
+            Error("unable to force JVM garbage collection").throwTypeError(realm)
+        }
     }
 }

@@ -1,9 +1,10 @@
 package com.reevajs.reeva.runtime.wrappers
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.JSArguments
+import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.SlotName
+import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -17,19 +18,8 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.booleanCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineNativeFunction("toString", 0, ::toString)
-        defineNativeFunction("valueOf", 0, ::valueOf)
-    }
-
-    @ECMAImpl("19.3.3.2")
-    fun toString(realm: Realm, arguments: JSArguments): JSValue {
-        val b = thisBooleanValue(realm, arguments.thisValue, "toString")
-        return if (b.boolean) "true".toValue() else "false".toValue()
-    }
-
-    @ECMAImpl("19.3.3.2")
-    fun valueOf(realm: Realm, arguments: JSArguments): JSValue {
-        return thisBooleanValue(realm, arguments.thisValue, "valueOf")
+        defineBuiltin("toString", 0, Builtin.BooleanProtoToString)
+        defineBuiltin("valueOf", 0, Builtin.BooleanProtoValueOf)
     }
 
     companion object {
@@ -42,6 +32,19 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
                 Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError(realm)
             return value.getSlotAs(SlotName.BooleanData) ?:
                 Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError(realm)
+        }
+
+        @ECMAImpl("19.3.3.2")
+        @JvmStatic
+        fun toString(realm: Realm, arguments: JSArguments): JSValue {
+            val b = thisBooleanValue(realm, arguments.thisValue, "toString")
+            return if (b.boolean) "true".toValue() else "false".toValue()
+        }
+
+        @ECMAImpl("19.3.3.2")
+        @JvmStatic
+        fun valueOf(realm: Realm, arguments: JSArguments): JSValue {
+            return thisBooleanValue(realm, arguments.thisValue, "valueOf")
         }
     }
 }
