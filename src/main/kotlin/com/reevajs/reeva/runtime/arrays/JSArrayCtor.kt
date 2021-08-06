@@ -7,6 +7,7 @@ import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.annotations.JSBuiltin
 import com.reevajs.reeva.runtime.errors.JSTypeErrorObject
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
@@ -19,16 +20,10 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     override fun init() {
         super.init()
 
-        defineBuiltinAccessor(
-            Realm.`@@species`.key(),
-            attrs { +conf - enum },
-            Builtin.ArrayCtorGetSymbolSpecies,
-            null,
-            "[Symbol.species]",
-        )
-        defineBuiltin("isArray", 1, Builtin.ArrayCtorIsArray)
-        defineBuiltin("from", 1, Builtin.ArrayCtorFrom)
-        defineBuiltin("of", 0, Builtin.ArrayCtorOf)
+        defineBuiltinGetter(Builtin.ArrayCtorGetSymbolSpecies)
+        defineBuiltin(Builtin.ArrayCtorIsArray)
+        defineBuiltin(Builtin.ArrayCtorFrom)
+        defineBuiltin(Builtin.ArrayCtorOf)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -78,6 +73,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         }
 
         @ECMAImpl("23.1.2.1")
+        @JSBuiltin("ArrayCtorFrom", 1)
         @JvmStatic
         fun from(realm: Realm, arguments: JSArguments): JSValue {
             val items = arguments.argument(0)
@@ -156,12 +152,14 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         }
 
         @ECMAImpl("23.1.2.2")
+        @JSBuiltin("ArrayCtorIsArray", 1)
         @JvmStatic
         fun isArray(realm: Realm, arguments: JSArguments): JSValue {
             return Operations.isArray(realm, arguments.argument(0)).toValue()
         }
 
         @ECMAImpl("23.1.2.3")
+        @JSBuiltin("ArrayCtorOf", 1)
         @JvmStatic
         fun of(realm: Realm, arguments: JSArguments): JSValue {
             val array = (if (Operations.isConstructor(arguments.thisValue)) {
@@ -176,6 +174,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         }
 
         @ECMAImpl("23.1.2.5")
+        @JSBuiltin("ArrayCtorGetSymbolSpecies")
         @JvmStatic
         fun `get@@species`(realm: Realm, thisValue: JSValue): JSValue {
             return thisValue

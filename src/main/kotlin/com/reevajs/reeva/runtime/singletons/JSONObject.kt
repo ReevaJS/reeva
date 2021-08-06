@@ -3,6 +3,7 @@ package com.reevajs.reeva.runtime.singletons
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.annotations.JSBuiltin
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.builtins.Builtin
 import com.reevajs.reeva.runtime.collections.JSArguments
@@ -20,9 +21,9 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     override fun init() {
         super.init()
 
-        defineBuiltinAccessor(Realm.`@@toStringTag`.key(), attrs { +conf -enum -writ }, Builtin.JSONGetSymbolToStringTag, null)
-        defineBuiltin("parse", 2, Builtin.JSONParse)
-        defineBuiltin("stringify", 3, Builtin.JSONStringify)
+        defineBuiltinGetter(Builtin.JSONGetSymbolToStringTag)
+        defineBuiltin(Builtin.JSONParse)
+        defineBuiltin(Builtin.JSONStringify)
     }
 
     private data class SerializeState(
@@ -36,12 +37,14 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         fun create(realm: Realm) = JSONObject(realm).initialize()
 
         @ECMAImpl("24.5.1")
+        @JSBuiltin("JSONParse", 2)
         @JvmStatic
         fun parse(realm: Realm, arguments: JSArguments): JSValue {
             TODO()
         }
 
         @ECMAImpl("24.5.2")
+        @JSBuiltin("JSONStringify", 3)
         @JvmStatic
         fun stringify(realm: Realm, arguments: JSArguments): JSValue {
             // TODO: ReplacerFunction
@@ -86,8 +89,9 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         }
 
         @ECMAImpl("25.5.3")
+        @JSBuiltin("JSONGetSymbolToStringTag")
         @JvmStatic
-        fun `get@@toStringTag`(realm: Realm, thisValue: JSValue): JSValue {
+        fun getToStringTag(realm: Realm, thisValue: JSValue): JSValue {
             return "JSON".toValue()
         }
 

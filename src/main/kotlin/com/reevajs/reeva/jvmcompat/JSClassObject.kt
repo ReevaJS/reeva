@@ -4,6 +4,7 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.annotations.JSBuiltin
 import com.reevajs.reeva.runtime.builtins.Builtin
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -20,7 +21,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
         super.init()
 
         defineOwnProperty("prototype", clazzProto, Descriptor.HAS_BASIC)
-        defineBuiltin("toString", 0, Builtin.ClassObjectToString)
+        defineBuiltin(Builtin.ClassObjectToString)
     }
 
     override fun evaluate(_arguments: JSArguments): JSValue {
@@ -170,6 +171,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
 
         fun create(realm: Realm, clazz: Class<*>) = JSClassObject(realm, clazz).initialize()
 
+        @JSBuiltin("ClassObjectToString", 0)
         @JvmStatic
         fun toString(realm: Realm, arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue

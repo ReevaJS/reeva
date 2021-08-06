@@ -9,6 +9,7 @@ import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.index.IndexedProperties
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.*
+import java.lang.invoke.MethodHandle
 import java.util.*
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
@@ -51,7 +52,13 @@ open class JSObject protected constructor(
             field = value
         }
 
-    open fun init() { }
+    open fun init() {
+        compilerInit()
+    }
+
+    // This function is intended to be overridden by the kotlin compiler plugin,
+    // and must not be manually overridden in this project
+    open fun compilerInit() { }
 
     fun inspect(): Inspection = buildInspection {
         contents("Type: Object")
@@ -326,34 +333,46 @@ open class JSObject protected constructor(
         }.map { PropertyKey.from(it.name) }
     }
 
-    internal fun defineBuiltinAccessor(
-        key: String,
-        attributes: Int,
-        getter: Builtin? = null,
-        setter: Builtin? = null,
-    ) {
-        defineBuiltinAccessor(key.key(), attributes, getter, setter)
+    internal fun defineBuiltinGetter(builtin: Builtin) {
+        defineBuiltinAccessor(builtin, null)
     }
 
-    internal fun defineBuiltinAccessor(
-        key: PropertyKey,
-        attributes: Int,
-        getter: Builtin? = null,
-        setter: Builtin? = null,
-        name: String? = null
+    internal fun defineBuiltinSetter(builtin: Builtin) {
+        defineBuiltinAccessor(null, builtin)
+    }
+
+    private fun defineBuiltinAccessor(
+        getter: Builtin?,
+        setter: Builtin?,
     ) {
         expect(getter != null || setter != null)
 
         val getterFunc = if (getter != null) {
-            JSNativeFunction.forBuiltin(realm, name ?: key.toString(), 0, getter)
+            JSNativeFunction.forBuiltin(realm, getter)
         } else null
 
         val setterFunc = if (setter != null) {
-            JSNativeFunction.forBuiltin(realm, name ?: key.toString(), 1, setter)
+            JSNativeFunction.forBuiltin(realm, setter)
         } else null
 
-        val value = JSAccessor(getterFunc, setterFunc)
-        addProperty(key, Descriptor(value, attributes))
+        val key = getter?.key ?: setter!!.key
+
+        val existingValue = internalGet(key)
+        if (existingValue == null) {
+            val value = JSAccessor(getterFunc, setterFunc)
+            addProperty(key, Descriptor(value, Descriptor.DEFAULT_ATTRIBUTES))
+            return
+        }
+
+        if (getterFunc != null) {
+            expect(existingValue.getter == null)
+            existingValue.getter = getterFunc
+        }
+
+        if (setterFunc != null) {
+            expect(existingValue.setter == null)
+            existingValue.setter = setterFunc
+        }
     }
 
     fun defineNativeProperty(key: String, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
@@ -365,24 +384,9 @@ open class JSObject protected constructor(
         addProperty(key, Descriptor(value, attributes))
     }
 
-    internal fun defineBuiltin(
-        name: String,
-        length: Int,
-        builtin: Builtin,
-        attributes: Int = attrs { +conf -enum +writ },
-    ) {
-        defineBuiltin(name.key(), length, builtin, attributes, name)
-    }
-
-    internal fun defineBuiltin(
-        key: PropertyKey,
-        length: Int,
-        builtin: Builtin,
-        attributes: Int = attrs { +conf -enum +writ },
-        name: String = if (key.isString) key.asString else "[${key.asSymbol.descriptiveString()}]",
-    ) {
-        val obj = JSNativeFunction.forBuiltin(realm, name, length, builtin)
-        addProperty(key, Descriptor(obj, attributes))
+    internal fun defineBuiltin(builtin: Builtin) {
+        val obj = JSNativeFunction.forBuiltin(realm, builtin)
+        addProperty(builtin.key, Descriptor(obj, Descriptor.DEFAULT_ATTRIBUTES))
     }
 
     fun defineNativeFunction(

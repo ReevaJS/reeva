@@ -46,40 +46,40 @@ abstract class JSNativeFunction protected constructor(
             }
         }.initialize()
 
-        internal fun forBuiltin(realm: Realm, name: String, length: Int, builtin: Builtin): JSFunction {
+        internal fun forBuiltin(realm: Realm, builtin: Builtin): JSFunction {
             return when (builtin.type) {
-                Builtin.Type.Normal -> forNormalBuiltin(realm, name, length, builtin.handle)
-                Builtin.Type.Getter -> forGetter(realm, name, length, builtin.handle)
-                Builtin.Type.Setter -> forSetter(realm, name, length, builtin.handle)
+                Builtin.Type.Normal -> forNormalBuiltin(realm, builtin)
+                Builtin.Type.Getter -> forGetter(realm, builtin)
+                Builtin.Type.Setter -> forSetter(realm, builtin)
             }
         }
 
-        private fun forNormalBuiltin(realm: Realm, name: String, length: Int, handle: MethodHandle): JSFunction {
-            return object : JSNativeFunction(realm, name, length, isConstructor = false) {
+        private fun forNormalBuiltin(realm: Realm, builtin: Builtin): JSFunction {
+            return object : JSNativeFunction(realm, builtin.name, builtin.length, isConstructor = false) {
                 override fun evaluate(arguments: JSArguments): JSValue {
                     if (arguments.newTarget != JSUndefined)
-                        Errors.NotACtor(name).throwTypeError(realm)
-                    return handle.invokeExact(realm, arguments) as JSValue
+                        Errors.NotACtor(builtin.key.toString()).throwTypeError(realm)
+                    return builtin.handle.invokeExact(realm, arguments) as JSValue
                 }
             }.initialize()
         }
 
-        private fun forGetter(realm: Realm, name: String, length: Int, handle: MethodHandle): JSFunction {
-            return object : JSNativeFunction(realm, "get $name", length, isConstructor = false) {
+        private fun forGetter(realm: Realm, builtin: Builtin): JSFunction {
+            return object : JSNativeFunction(realm, "get ${builtin.name}", builtin.length, isConstructor = false) {
                 override fun evaluate(arguments: JSArguments): JSValue {
                     if (arguments.newTarget != JSUndefined)
-                        Errors.NotACtor(name).throwTypeError(realm)
-                    return handle.invokeExact(realm, arguments.thisValue) as JSValue
+                        Errors.NotACtor(builtin.key.toString()).throwTypeError(realm)
+                    return builtin.handle.invokeExact(realm, arguments.thisValue) as JSValue
                 }
             }.initialize()
         }
 
-        private fun forSetter(realm: Realm, name: String, length: Int, handle: MethodHandle): JSFunction {
-            return object : JSNativeFunction(realm, "set $name", length, isConstructor = false) {
+        private fun forSetter(realm: Realm, builtin: Builtin): JSFunction {
+            return object : JSNativeFunction(realm, "set ${builtin.name}", builtin.length, isConstructor = false) {
                 override fun evaluate(arguments: JSArguments): JSValue {
                     if (arguments.newTarget != JSUndefined)
-                        Errors.NotACtor(name).throwTypeError(realm)
-                    handle.invokeExact(realm, arguments.thisValue, arguments.argument(0))
+                        Errors.NotACtor(builtin.key.toString()).throwTypeError(realm)
+                    builtin.handle.invokeExact(realm, arguments.thisValue, arguments.argument(0))
                     return JSUndefined
                 }
             }.initialize()

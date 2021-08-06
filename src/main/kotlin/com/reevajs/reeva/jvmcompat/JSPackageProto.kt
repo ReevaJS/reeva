@@ -3,6 +3,7 @@ package com.reevajs.reeva.jvmcompat
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.runtime.annotations.JSBuiltin
 import com.reevajs.reeva.runtime.builtins.Builtin
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.Errors
@@ -12,7 +13,7 @@ class JSPackageProto private constructor(realm: Realm) : JSObject(realm, realm.o
     override fun init() {
         super.init()
 
-        defineBuiltin("toString", 0, Builtin.PackageProtoToString)
+        defineBuiltin(Builtin.PackageProtoToString)
     }
 
     companion object {
@@ -24,6 +25,7 @@ class JSPackageProto private constructor(realm: Realm) : JSObject(realm, realm.o
             return thisValue
         }
 
+        @JSBuiltin("PackageProtoToString", 0)
         @JvmStatic
         fun toString(realm: Realm, arguments: JSArguments): JSValue {
             val packageName = thisPackageObject(realm, arguments.thisValue, "toString").packageName

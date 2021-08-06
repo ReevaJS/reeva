@@ -4,6 +4,7 @@ import com.reevajs.reeva.ast.statements.StatementList
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.annotations.JSBuiltin
 import com.reevajs.reeva.runtime.builtins.Builtin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -70,11 +71,11 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("globalThis", this, Descriptor.WRITABLE or Descriptor.CONFIGURABLE)
         defineOwnProperty("undefined", JSUndefined, 0)
 
-        defineBuiltin("id", 1, Builtin.GlobalId)
-        defineBuiltin("eval", 1, Builtin.GlobalEval)
-        defineBuiltin("parseInt", 1, Builtin.GlobalParseInt)
-        defineBuiltin("jvm", 1, Builtin.GlobalJvm)
-        defineBuiltin("inspect", 1, Builtin.GlobalInspect)
+        defineBuiltin(Builtin.GlobalId)
+        defineBuiltin(Builtin.GlobalEval)
+        defineBuiltin(Builtin.GlobalParseInt)
+        defineBuiltin(Builtin.GlobalJvm)
+        defineBuiltin(Builtin.GlobalInspect)
 
         // Debug method
         // TODO
@@ -257,17 +258,20 @@ open class JSGlobalObject protected constructor(
 //            }
         }
 
+        @JSBuiltin("GlobalId", 1)
         @JvmStatic
         fun id(realm: Realm, arguments: JSArguments): JSValue {
             val o = arguments.argument(0)
             return "${o::class.java.simpleName}@${Integer.toHexString(o.hashCode())}".toValue()
         }
 
+        @JSBuiltin("GlobalEval", 1)
         @JvmStatic
         fun eval(realm: Realm, arguments: JSArguments): JSValue {
             return performEval(realm, arguments.argument(0), realm, strictCaller = false, direct = false)
         }
 
+        @JSBuiltin("GlobalParseInt", 1)
         @JvmStatic
         fun parseInt(realm: Realm, arguments: JSArguments): JSValue {
             var inputString = Operations.trimString(realm, Operations.toString(realm, arguments.argument(0)), Operations.TrimType.Start)
@@ -307,6 +311,7 @@ open class JSGlobalObject protected constructor(
             return JSNumber(numericValue * sign)
         }
 
+        @JSBuiltin("GlobalJvm", 1)
         @JvmStatic
         fun jvm(realm: Realm, arguments: JSArguments): JSValue {
             // TODO
@@ -337,6 +342,7 @@ open class JSGlobalObject protected constructor(
 //        )
         }
 
+        @JSBuiltin("GlobalInspect", 1)
         @JvmStatic
         fun inspect(realm: Realm, arguments: JSArguments): JSValue {
             val value = arguments.argument(0)
