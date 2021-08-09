@@ -8,6 +8,7 @@ class JSIntlObject(realm: Realm) : JSObject(realm, realm.objectProto) {
         super.init()
 
         defineOwnProperty("Locale", realm.localeCtor)
+        defineOwnProperty("NumberFormat", realm.numberFormatCtor)
     }
 
     companion object {

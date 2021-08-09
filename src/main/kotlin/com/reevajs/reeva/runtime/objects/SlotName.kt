@@ -36,6 +36,9 @@ enum class SlotName {
 
     // Intl slots
     InitializedLocale, // JSUndefined
+    InitializedNumberFormat, // JSUndefined
     Locale, // String
     ULocale, // ULocale
+    NumberFormatter, // LocalizedNumberFormatter
+    BoundFormat, // JSFunction
 }

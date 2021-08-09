@@ -22,9 +22,7 @@ import com.reevajs.reeva.runtime.functions.generators.JSGeneratorFunctionProto
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObjectProto
 import com.reevajs.reeva.runtime.global.JSConsole
 import com.reevajs.reeva.runtime.global.JSConsoleProto
-import com.reevajs.reeva.runtime.intl.JSIntlObject
-import com.reevajs.reeva.runtime.intl.JSLocaleCtor
-import com.reevajs.reeva.runtime.intl.JSLocaleProto
+import com.reevajs.reeva.runtime.intl.*
 import com.reevajs.reeva.runtime.iterators.*
 import com.reevajs.reeva.runtime.memory.*
 import com.reevajs.reeva.runtime.objects.*
@@ -115,6 +113,7 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val uriErrorProto by lazy { JSURIErrorProto.create(this) }
 
     val localeProto by lazy { JSLocaleProto.create(this) }
+    val numberFormatProto by lazy { JSNumberFormatProto.create(this) }
 
     val objectCtor by lazy { JSObjectCtor.create(this) }
     val numberCtor by lazy { JSNumberCtor.create(this) }
@@ -156,6 +155,7 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val uriErrorCtor by lazy { JSURIErrorCtor.create(this) }
 
     val localeCtor by lazy { JSLocaleCtor.create(this) }
+    val numberFormatCtor by lazy { JSNumberFormatCtor.create(this) }
 
     val throwTypeError by lazy {
         JSNativeFunction.fromLambda(this, "", 0) { realm, _ ->
@@ -236,6 +236,7 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
         uriErrorCtor.defineOwnProperty("prototype", uriErrorProto, Descriptor.HAS_BASIC)
 
         localeCtor.defineOwnProperty("prototype", localeProto, Descriptor.HAS_BASIC)
+        numberFormatCtor.defineOwnProperty("prototype", numberFormatProto, Descriptor.HAS_BASIC)
 
         functionProto.defineOwnProperty("constructor", functionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
 

@@ -12,6 +12,8 @@ import com.reevajs.reeva.runtime.functions.JSFunctionProto
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObjectProto
 import com.reevajs.reeva.runtime.global.JSConsoleProto
 import com.reevajs.reeva.runtime.intl.JSLocaleProto
+import com.reevajs.reeva.runtime.intl.JSNumberFormatCtor
+import com.reevajs.reeva.runtime.intl.JSNumberFormatProto
 import com.reevajs.reeva.runtime.iterators.*
 import com.reevajs.reeva.runtime.memory.*
 import com.reevajs.reeva.runtime.objects.JSObjectCtor
@@ -249,6 +251,11 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     NumberProtoToPrecision(JSNumberProto::class.java, "toPrecision", "Number.prototype.toPrecision"),
     NumberProtoToString(JSNumberProto::class.java, "toString", "Number.prototype.toString"),
     NumberProtoValueOf(JSNumberProto::class.java, "valueOf", "Number.prototype.valueOf"),
+
+    NumberFormatCtorSupportedLocalesOf(JSNumberFormatCtor::class.java, "supportedLocalesOf", "NumberFormat.supportedLocalesOf"),
+    NumberFormatProtoGetFormat(JSNumberFormatProto::class.java, "format", "NumberFormat.prototype.format"),
+    NumberFormatProtoFormatToParts(JSNumberFormatProto::class.java, "formatToParts", "NumberFormat.prototype.formatToParts"),
+    NumberFormatProtoResolvedOptions(JSNumberFormatProto::class.java, "resolvedOptions", "NumberFormat.prototype.resolvedOptions"),
 
     ObjectCtorAssign(JSObjectCtor::class.java, "assign", "Object.assign"),
     ObjectCtorCreate(JSObjectCtor::class.java, "create", "Object.create"),

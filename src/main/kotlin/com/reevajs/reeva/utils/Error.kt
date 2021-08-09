@@ -177,6 +177,16 @@ object Errors {
             class InvalidLocaleRegion(region: String) : Error("invalid locale region: \"$region\"")
             object InvalidLocaleTagType : Error("expected first argument of Locale constructor to be object or non-empty string")
         }
+
+        object NumberFormat {
+            class InvalidNumberingSystem(numberingSystem: String) : Error("invalid numbering system: \"$numberingSystem\"")
+            class InvalidCurrency(currency: String) : Error("invalid currency: \"$currency\"")
+            class InvalidUnit(unit: String) : Error("invalid unit: \"$unit\"")
+            class MissingStyle(type: String) : Error("$type code is required for the $type style")
+            class NumberOptionRange(property: String, value: Int?, min: Int, max: Int)
+                : Error("expected number option $property to be between $min and $max, found ${value ?: "undefined"}")
+            class PropertyValueOutOfRange(property: String) : Error("value of property $property is out of range")
+        }
     }
 
     object JSON {
