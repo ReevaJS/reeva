@@ -3,17 +3,14 @@ package com.reevajs.reeva.runtime.other
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSNumber
-import com.reevajs.reeva.utils.Errors
-import com.reevajs.reeva.utils.expect
-import com.reevajs.reeva.utils.key
-import com.reevajs.reeva.utils.toValue
+import com.reevajs.reeva.utils.*
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
@@ -28,45 +25,45 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         super.init()
 
         defineOwnProperty("constructor", realm.dateCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineBuiltin("getDate", 0, Builtin.DateProtoGetDate)
-        defineBuiltin("getDay", 0, Builtin.DateProtoGetDay)
-        defineBuiltin("getFullYear", 0, Builtin.DateProtoGetFullYear)
-        defineBuiltin("getHours", 0, Builtin.DateProtoGetHours)
-        defineBuiltin("getMilliseconds", 0, Builtin.DateProtoGetMilliseconds)
-        defineBuiltin("getMinutes", 0, Builtin.DateProtoGetMinutes)
-        defineBuiltin("getMonth", 0, Builtin.DateProtoGetMonth)
-        defineBuiltin("getSeconds", 0, Builtin.DateProtoGetSeconds)
-        defineBuiltin("getTime", 0, Builtin.DateProtoGetTime)
-        defineBuiltin("getTimezoneOffset", 0, Builtin.DateProtoGetTimezoneOffset)
-        defineBuiltin("getUTCDate", 0, Builtin.DateProtoGetUTCDate)
-        defineBuiltin("getUTCFullYear", 0, Builtin.DateProtoGetUTCFullYear)
-        defineBuiltin("getUTCHours", 0, Builtin.DateProtoGetUTCHours)
-        defineBuiltin("getUTCMilliseconds", 0, Builtin.DateProtoGetUTCMilliseconds)
-        defineBuiltin("getUTCMinutes", 0, Builtin.DateProtoGetUTCMinutes)
-        defineBuiltin("getUTCMonth", 0, Builtin.DateProtoGetUTCMonth)
-        defineBuiltin("getUTCSeconds", 0, Builtin.DateProtoGetUTCSeconds)
-        defineBuiltin("setDate", 1, Builtin.DateProtoSetDate)
-        defineBuiltin("setFullYear", 3, Builtin.DateProtoSetFullYear)
-        defineBuiltin("setHours", 4, Builtin.DateProtoSetHours)
-        defineBuiltin("setMilliseconds", 1, Builtin.DateProtoSetMilliseconds)
-        defineBuiltin("setMonth", 2, Builtin.DateProtoSetMonth)
-        defineBuiltin("setSeconds", 2, Builtin.DateProtoSetSeconds)
-        defineBuiltin("setTime", 2, Builtin.DateProtoSetTime)
-        defineBuiltin("setUTCDate", 1, Builtin.DateProtoSetUTCDate)
-        defineBuiltin("setUTCFullYear", 3, Builtin.DateProtoSetUTCFullYear)
-        defineBuiltin("setUTCHours", 4, Builtin.DateProtoSetUTCHours)
-        defineBuiltin("setUTCMilliseconds", 1, Builtin.DateProtoSetUTCMilliseconds)
-        defineBuiltin("setUTCMinutes", 3, Builtin.DateProtoSetUTCMinutes)
-        defineBuiltin("setUTCMonth", 2, Builtin.DateProtoSetUTCMonth)
-        defineBuiltin("setUTCSeconds", 2, Builtin.DateProtoSetUTCSeconds)
-        defineBuiltin("toDateString", 0, Builtin.DateProtoToDateString)
-        defineBuiltin("toISOString", 0, Builtin.DateProtoToISOString)
-        defineBuiltin("toJSON", 1, Builtin.DateProtoToJSON)
-        defineBuiltin("toString", 0, Builtin.DateProtoToString)
-        defineBuiltin("toTimeString", 0, Builtin.DateProtoToTimeString)
-        defineBuiltin("toUTCString", 0, Builtin.DateProtoToUTCString)
-        defineBuiltin("valueOf", 0, Builtin.DateProtoValueOf)
-        defineBuiltin(Realm.`@@toPrimitive`.key(), 0, Builtin.DateProtoSymbolToPrimitive)
+        defineBuiltin("getDate", 0, ReevaBuiltin.DateProtoGetDate)
+        defineBuiltin("getDay", 0, ReevaBuiltin.DateProtoGetDay)
+        defineBuiltin("getFullYear", 0, ReevaBuiltin.DateProtoGetFullYear)
+        defineBuiltin("getHours", 0, ReevaBuiltin.DateProtoGetHours)
+        defineBuiltin("getMilliseconds", 0, ReevaBuiltin.DateProtoGetMilliseconds)
+        defineBuiltin("getMinutes", 0, ReevaBuiltin.DateProtoGetMinutes)
+        defineBuiltin("getMonth", 0, ReevaBuiltin.DateProtoGetMonth)
+        defineBuiltin("getSeconds", 0, ReevaBuiltin.DateProtoGetSeconds)
+        defineBuiltin("getTime", 0, ReevaBuiltin.DateProtoGetTime)
+        defineBuiltin("getTimezoneOffset", 0, ReevaBuiltin.DateProtoGetTimezoneOffset)
+        defineBuiltin("getUTCDate", 0, ReevaBuiltin.DateProtoGetUTCDate)
+        defineBuiltin("getUTCFullYear", 0, ReevaBuiltin.DateProtoGetUTCFullYear)
+        defineBuiltin("getUTCHours", 0, ReevaBuiltin.DateProtoGetUTCHours)
+        defineBuiltin("getUTCMilliseconds", 0, ReevaBuiltin.DateProtoGetUTCMilliseconds)
+        defineBuiltin("getUTCMinutes", 0, ReevaBuiltin.DateProtoGetUTCMinutes)
+        defineBuiltin("getUTCMonth", 0, ReevaBuiltin.DateProtoGetUTCMonth)
+        defineBuiltin("getUTCSeconds", 0, ReevaBuiltin.DateProtoGetUTCSeconds)
+        defineBuiltin("setDate", 1, ReevaBuiltin.DateProtoSetDate)
+        defineBuiltin("setFullYear", 3, ReevaBuiltin.DateProtoSetFullYear)
+        defineBuiltin("setHours", 4, ReevaBuiltin.DateProtoSetHours)
+        defineBuiltin("setMilliseconds", 1, ReevaBuiltin.DateProtoSetMilliseconds)
+        defineBuiltin("setMonth", 2, ReevaBuiltin.DateProtoSetMonth)
+        defineBuiltin("setSeconds", 2, ReevaBuiltin.DateProtoSetSeconds)
+        defineBuiltin("setTime", 2, ReevaBuiltin.DateProtoSetTime)
+        defineBuiltin("setUTCDate", 1, ReevaBuiltin.DateProtoSetUTCDate)
+        defineBuiltin("setUTCFullYear", 3, ReevaBuiltin.DateProtoSetUTCFullYear)
+        defineBuiltin("setUTCHours", 4, ReevaBuiltin.DateProtoSetUTCHours)
+        defineBuiltin("setUTCMilliseconds", 1, ReevaBuiltin.DateProtoSetUTCMilliseconds)
+        defineBuiltin("setUTCMinutes", 3, ReevaBuiltin.DateProtoSetUTCMinutes)
+        defineBuiltin("setUTCMonth", 2, ReevaBuiltin.DateProtoSetUTCMonth)
+        defineBuiltin("setUTCSeconds", 2, ReevaBuiltin.DateProtoSetUTCSeconds)
+        defineBuiltin("toDateString", 0, ReevaBuiltin.DateProtoToDateString)
+        defineBuiltin("toISOString", 0, ReevaBuiltin.DateProtoToISOString)
+        defineBuiltin("toJSON", 1, ReevaBuiltin.DateProtoToJSON)
+        defineBuiltin("toString", 0, ReevaBuiltin.DateProtoToString)
+        defineBuiltin("toTimeString", 0, ReevaBuiltin.DateProtoToTimeString)
+        defineBuiltin("toUTCString", 0, ReevaBuiltin.DateProtoToUTCString)
+        defineBuiltin("valueOf", 0, ReevaBuiltin.DateProtoValueOf)
+        defineBuiltin(Realm.`@@toPrimitive`, 0, ReevaBuiltin.DateProtoSymbolToPrimitive, attrs { +conf - enum })
     }
 
     companion object {

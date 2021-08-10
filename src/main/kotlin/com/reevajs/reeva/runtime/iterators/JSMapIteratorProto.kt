@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.iterators
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -18,7 +18,7 @@ class JSMapIteratorProto private constructor(realm: Realm) : JSObject(realm, rea
         super.init()
 
         defineOwnProperty(Realm.`@@toStringTag`, "Map Iterator".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("next", 0, Builtin.MapIteratorProtoNext)
+        defineBuiltin("next", 0, ReevaBuiltin.MapIteratorProtoNext)
     }
 
     companion object {

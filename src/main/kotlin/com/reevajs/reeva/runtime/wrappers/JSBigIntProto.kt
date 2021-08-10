@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.wrappers
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -19,8 +19,8 @@ class JSBigIntProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         defineOwnProperty("constructor", realm.bigIntCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty(Realm.`@@toStringTag`, "BigInt".toValue(), Descriptor.CONFIGURABLE or Descriptor.HAS_BASIC)
-        defineBuiltin("toString", 0, Builtin.BigIntProtoToString)
-        defineBuiltin("valueOf", 0, Builtin.BigIntProtoValueOf)
+        defineBuiltin("toString", 0, ReevaBuiltin.BigIntProtoToString)
+        defineBuiltin("valueOf", 0, ReevaBuiltin.BigIntProtoValueOf)
     }
 
     companion object {

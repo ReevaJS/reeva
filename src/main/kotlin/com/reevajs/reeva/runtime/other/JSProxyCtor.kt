@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.other
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -15,7 +15,7 @@ import com.reevajs.reeva.utils.key
 class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Proxy", 2) {
     override fun init() {
         super.init()
-        defineBuiltin("revocable", 2, Builtin.ProxyCtorRevocable)
+        defineBuiltin("revocable", 2, ReevaBuiltin.ProxyCtorRevocable)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

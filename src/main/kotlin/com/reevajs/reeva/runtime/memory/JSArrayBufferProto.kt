@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.memory
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -21,8 +21,8 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
 
         defineOwnProperty(Realm.`@@toStringTag`, "ArrayBuffer".toValue(), attrs { +conf })
         defineOwnProperty("constructor", realm.arrayBufferCtor, attrs { +conf -enum +writ })
-        defineBuiltinAccessor("byteLength", attrs { +conf -enum }, Builtin.ArrayBufferProtoGetByteLength)
-        defineBuiltin("slice", 2, Builtin.ArrayBufferProtoSlice)
+        defineBuiltinGetter("byteLength", ReevaBuiltin.ArrayBufferProtoGetByteLength, attrs { +conf - enum })
+        defineBuiltin("slice", 2, ReevaBuiltin.ArrayBufferProtoSlice)
     }
 
     companion object {
@@ -30,7 +30,8 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
 
         @ECMAImpl("25.1.5.1")
         @JvmStatic
-        fun getByteLength(realm: Realm, thisValue: JSValue): JSValue {
+        fun getByteLength(realm: Realm, arguments: JSArguments): JSValue {
+            val thisValue = arguments.thisValue
             if (!Operations.requireInternalSlot(thisValue, SlotName.ArrayBufferData))
                 Errors.IncompatibleMethodCall("ArrayBuffer.prototype.byteLength").throwTypeError(realm)
             if (Operations.isSharedArrayBuffer(thisValue))

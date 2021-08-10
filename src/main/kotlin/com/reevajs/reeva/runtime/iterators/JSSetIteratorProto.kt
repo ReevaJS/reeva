@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.iterators
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -18,7 +18,7 @@ class JSSetIteratorProto private constructor(realm: Realm) : JSObject(realm, rea
         super.init()
 
         defineOwnProperty(Realm.`@@toStringTag`, "Set Iterator".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("next", 0, Builtin.SetIteratorProtoNext)
+        defineBuiltin("next", 0, ReevaBuiltin.SetIteratorProtoNext)
     }
 
     companion object {

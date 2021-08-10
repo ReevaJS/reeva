@@ -3,7 +3,7 @@ package com.reevajs.reeva.jvmcompat
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
@@ -12,7 +12,7 @@ class JSPackageProto private constructor(realm: Realm) : JSObject(realm, realm.o
     override fun init() {
         super.init()
 
-        defineBuiltin("toString", 0, Builtin.PackageProtoToString)
+        defineBuiltin("toString", 0, ReevaBuiltin.PackageProtoToString)
     }
 
     companion object {

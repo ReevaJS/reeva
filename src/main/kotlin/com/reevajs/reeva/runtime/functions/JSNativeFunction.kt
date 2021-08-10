@@ -1,9 +1,10 @@
 package com.reevajs.reeva.runtime.functions
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.runtime.builtins.Builtin
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
@@ -46,41 +47,12 @@ abstract class JSNativeFunction protected constructor(
             }
         }.initialize()
 
-        internal fun forBuiltin(realm: Realm, name: String, length: Int, builtin: Builtin): JSFunction {
-            return when (builtin.type) {
-                Builtin.Type.Normal -> forNormalBuiltin(realm, name, length, builtin.handle)
-                Builtin.Type.Getter -> forGetter(realm, name, length, builtin.handle)
-                Builtin.Type.Setter -> forSetter(realm, name, length, builtin.handle)
-            }
-        }
-
-        private fun forNormalBuiltin(realm: Realm, name: String, length: Int, handle: MethodHandle): JSFunction {
+        fun forBuiltin(realm: Realm, name: String, length: Int, builtin: Builtin): JSFunction {
             return object : JSNativeFunction(realm, name, length, isConstructor = false) {
                 override fun evaluate(arguments: JSArguments): JSValue {
                     if (arguments.newTarget != JSUndefined)
                         Errors.NotACtor(name).throwTypeError(realm)
-                    return handle.invokeExact(realm, arguments) as JSValue
-                }
-            }.initialize()
-        }
-
-        private fun forGetter(realm: Realm, name: String, length: Int, handle: MethodHandle): JSFunction {
-            return object : JSNativeFunction(realm, "get $name", length, isConstructor = false) {
-                override fun evaluate(arguments: JSArguments): JSValue {
-                    if (arguments.newTarget != JSUndefined)
-                        Errors.NotACtor(name).throwTypeError(realm)
-                    return handle.invokeExact(realm, arguments.thisValue) as JSValue
-                }
-            }.initialize()
-        }
-
-        private fun forSetter(realm: Realm, name: String, length: Int, handle: MethodHandle): JSFunction {
-            return object : JSNativeFunction(realm, "set $name", length, isConstructor = false) {
-                override fun evaluate(arguments: JSArguments): JSValue {
-                    if (arguments.newTarget != JSUndefined)
-                        Errors.NotACtor(name).throwTypeError(realm)
-                    handle.invokeExact(realm, arguments.thisValue, arguments.argument(0))
-                    return JSUndefined
+                    return builtin.handle.invokeExact(realm, arguments) as JSValue
                 }
             }.initialize()
         }

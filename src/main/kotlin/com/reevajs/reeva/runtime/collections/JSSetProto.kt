@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.collections
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.iterators.JSSetIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -19,22 +19,23 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
     override fun init() {
         super.init()
 
-        defineBuiltinAccessor("size", attrs { +conf - enum }, Builtin.SetProtoGetSize, null)
+        defineBuiltinGetter("size", ReevaBuiltin.SetProtoGetSize, attrs { +conf -enum })
         defineOwnProperty(Realm.`@@toStringTag`, "Set".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("add", 1, Builtin.SetProtoAdd)
-        defineBuiltin("clear", 1, Builtin.SetProtoClear)
-        defineBuiltin("delete", 1, Builtin.SetProtoDelete)
-        defineBuiltin("entries", 1, Builtin.SetProtoEntries)
-        defineBuiltin("forEach", 1, Builtin.SetProtoForEach)
-        defineBuiltin("has", 1, Builtin.SetProtoHas)
-        defineBuiltin("values", 1, Builtin.SetProtoValues)
+        defineBuiltin("add", 1, ReevaBuiltin.SetProtoAdd)
+        defineBuiltin("clear", 1, ReevaBuiltin.SetProtoClear)
+        defineBuiltin("delete", 1, ReevaBuiltin.SetProtoDelete)
+        defineBuiltin("entries", 1, ReevaBuiltin.SetProtoEntries)
+        defineBuiltin("forEach", 1, ReevaBuiltin.SetProtoForEach)
+        defineBuiltin("has", 1, ReevaBuiltin.SetProtoHas)
+        defineBuiltin("values", 1, ReevaBuiltin.SetProtoValues)
 
         // "The initial value of the 'keys' property is the same function object as the initial value
         // of the 'values' property"
-        defineBuiltin("keys", 0, Builtin.SetProtoValues)
+        defineOwnProperty("keys", internalGet("values".key())!!.getRawValue())
+
         // "The initial value of the @@iterator property is the same function object as the initial value
         // of the 'values' property"
-        defineBuiltin(Realm.`@@iterator`.key(), 0, Builtin.SetProtoValues)
+        defineOwnProperty(Realm.`@@iterator`, internalGet("values".key())!!.getRawValue())
     }
 
     companion object {
@@ -126,8 +127,8 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         @ECMAImpl("24.2.3.9")
         @JvmStatic
-        fun getSize(realm: Realm, thisValue: JSValue): JSValue {
-            return thisSetObject(realm, thisValue, "getSize").set.size.toValue()
+        fun getSize(realm: Realm, arguments: JSArguments): JSValue {
+            return thisSetObject(realm, arguments.thisValue, "getSize").set.size.toValue()
         }
 
         @ECMAImpl("24.2.3.10")

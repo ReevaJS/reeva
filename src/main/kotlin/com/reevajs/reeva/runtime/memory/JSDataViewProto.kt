@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.memory
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -21,30 +21,30 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         defineOwnProperty("constructor", realm.dataViewCtor, attrs { +conf - enum + writ })
         defineOwnProperty(Realm.`@@toStringTag`, "DataView".toValue(), attrs { +conf - enum - writ })
 
-        defineBuiltinAccessor("buffer", attrs { +conf - enum }, Builtin.DataViewProtoGetBuffer)
-        defineBuiltinAccessor("byteLength", attrs { +conf - enum }, Builtin.DataViewProtoGetByteLength)
-        defineBuiltinAccessor("byteOffset", attrs { +conf - enum }, Builtin.DataViewProtoGetByteOffset)
+        defineBuiltinGetter("buffer", ReevaBuiltin.DataViewProtoGetBuffer, attrs { +conf -enum })
+        defineBuiltinGetter("byteLength", ReevaBuiltin.DataViewProtoGetByteLength, attrs { +conf -enum })
+        defineBuiltinGetter("byteOffset", ReevaBuiltin.DataViewProtoGetByteOffset, attrs { +conf -enum })
 
-        defineBuiltin("getBigInt64", 1, Builtin.DataViewProtoGetBigInt64)
-        defineBuiltin("getBigUint64", 1, Builtin.DataViewProtoGetBigUint64)
-        defineBuiltin("getFloat32", 1, Builtin.DataViewProtoGetFloat32)
-        defineBuiltin("getFloat64", 1, Builtin.DataViewProtoGetFloat64)
-        defineBuiltin("getInt8", 1, Builtin.DataViewProtoGetInt8)
-        defineBuiltin("getInt16", 1, Builtin.DataViewProtoGetInt16)
-        defineBuiltin("getInt32", 1, Builtin.DataViewProtoGetInt32)
-        defineBuiltin("getUint8", 1, Builtin.DataViewProtoGetUint8)
-        defineBuiltin("getUint16", 1, Builtin.DataViewProtoGetUint16)
-        defineBuiltin("getUint32", 1, Builtin.DataViewProtoGetUint32)
-        defineBuiltin("setBigInt64", 2, Builtin.DataViewProtoSetBigInt64)
-        defineBuiltin("setBigUint64", 2, Builtin.DataViewProtoSetBigUint64)
-        defineBuiltin("setFloat32", 2, Builtin.DataViewProtoSetFloat32)
-        defineBuiltin("setFloat64", 2, Builtin.DataViewProtoSetFloat64)
-        defineBuiltin("setInt8", 2, Builtin.DataViewProtoSetInt8)
-        defineBuiltin("setInt16", 2, Builtin.DataViewProtoSetInt16)
-        defineBuiltin("setInt32", 2, Builtin.DataViewProtoSetInt32)
-        defineBuiltin("setUint8", 2, Builtin.DataViewProtoSetUint8)
-        defineBuiltin("setUint16", 2, Builtin.DataViewProtoSetUint16)
-        defineBuiltin("setUint32", 2, Builtin.DataViewProtoSetUint32)
+        defineBuiltin("getBigInt64", 1, ReevaBuiltin.DataViewProtoGetBigInt64)
+        defineBuiltin("getBigUint64", 1, ReevaBuiltin.DataViewProtoGetBigUint64)
+        defineBuiltin("getFloat32", 1, ReevaBuiltin.DataViewProtoGetFloat32)
+        defineBuiltin("getFloat64", 1, ReevaBuiltin.DataViewProtoGetFloat64)
+        defineBuiltin("getInt8", 1, ReevaBuiltin.DataViewProtoGetInt8)
+        defineBuiltin("getInt16", 1, ReevaBuiltin.DataViewProtoGetInt16)
+        defineBuiltin("getInt32", 1, ReevaBuiltin.DataViewProtoGetInt32)
+        defineBuiltin("getUint8", 1, ReevaBuiltin.DataViewProtoGetUint8)
+        defineBuiltin("getUint16", 1, ReevaBuiltin.DataViewProtoGetUint16)
+        defineBuiltin("getUint32", 1, ReevaBuiltin.DataViewProtoGetUint32)
+        defineBuiltin("setBigInt64", 2, ReevaBuiltin.DataViewProtoSetBigInt64)
+        defineBuiltin("setBigUint64", 2, ReevaBuiltin.DataViewProtoSetBigUint64)
+        defineBuiltin("setFloat32", 2, ReevaBuiltin.DataViewProtoSetFloat32)
+        defineBuiltin("setFloat64", 2, ReevaBuiltin.DataViewProtoSetFloat64)
+        defineBuiltin("setInt8", 2, ReevaBuiltin.DataViewProtoSetInt8)
+        defineBuiltin("setInt16", 2, ReevaBuiltin.DataViewProtoSetInt16)
+        defineBuiltin("setInt32", 2, ReevaBuiltin.DataViewProtoSetInt32)
+        defineBuiltin("setUint8", 2, ReevaBuiltin.DataViewProtoSetUint8)
+        defineBuiltin("setUint16", 2, ReevaBuiltin.DataViewProtoSetUint16)
+        defineBuiltin("setUint32", 2, ReevaBuiltin.DataViewProtoSetUint32)
     }
 
     companion object {
@@ -52,7 +52,8 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.1")
         @JvmStatic
-        fun getBuffer(realm: Realm, thisValue: JSValue): JSValue {
+        fun getBuffer(realm: Realm, arguments: JSArguments): JSValue {
+            val thisValue = arguments.thisValue
             if (!Operations.requireInternalSlot(thisValue, SlotName.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.buffer").throwTypeError(realm)
             return thisValue.getSlotAs(SlotName.ViewedArrayBuffer)
@@ -60,7 +61,8 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.2")
         @JvmStatic
-        fun getByteLength(realm: Realm, thisValue: JSValue): JSValue {
+        fun getByteLength(realm: Realm, arguments: JSArguments): JSValue {
+            val thisValue = arguments.thisValue
             if (!Operations.requireInternalSlot(thisValue, SlotName.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError(realm)
             if (Operations.isDetachedBuffer(thisValue.getSlotAs(SlotName.ViewedArrayBuffer)))
@@ -70,7 +72,8 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.3")
         @JvmStatic
-        fun getByteOffset(realm: Realm, thisValue: JSValue): JSValue {
+        fun getByteOffset(realm: Realm, arguments: JSArguments): JSValue {
+            val thisValue = arguments.thisValue
             if (!Operations.requireInternalSlot(thisValue, SlotName.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError(realm)
             if (Operations.isDetachedBuffer(thisValue.getSlotAs(SlotName.ViewedArrayBuffer)))

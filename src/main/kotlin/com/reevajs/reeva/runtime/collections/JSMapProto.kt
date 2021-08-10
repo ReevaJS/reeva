@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.collections
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.iterators.JSMapIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -20,25 +20,21 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         super.init()
 
         defineOwnProperty(Realm.`@@toStringTag`, "Map".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltinAccessor("size", attrs { +conf - enum }, Builtin.MapProtoGetSize, null)
-        defineBuiltin("clear", 0, Builtin.MapProtoClear)
-        defineBuiltin("delete", 1, Builtin.MapProtoDelete)
-        defineBuiltin("entries", 0, Builtin.MapProtoEntries)
-        defineBuiltin("forEach", 1, Builtin.MapProtoForEach)
-        defineBuiltin("get", 1, Builtin.MapProtoGet)
-        defineBuiltin("has", 1, Builtin.MapProtoHas)
-        defineBuiltin("keys", 1, Builtin.MapProtoKeys)
-        defineBuiltin("set", 2, Builtin.MapProtoSet)
-        defineBuiltin("values", 2, Builtin.MapProtoValues)
+
+        defineBuiltinGetter("size", ReevaBuiltin.MapProtoGetSize, attrs { +conf - enum })
+        defineBuiltin("clear", 0, ReevaBuiltin.MapProtoClear)
+        defineBuiltin("delete", 1, ReevaBuiltin.MapProtoDelete)
+        defineBuiltin("entries", 0, ReevaBuiltin.MapProtoEntries)
+        defineBuiltin("forEach", 1, ReevaBuiltin.MapProtoForEach)
+        defineBuiltin("get", 1, ReevaBuiltin.MapProtoGet)
+        defineBuiltin("has", 1, ReevaBuiltin.MapProtoHas)
+        defineBuiltin("keys", 1, ReevaBuiltin.MapProtoKeys)
+        defineBuiltin("set", 2, ReevaBuiltin.MapProtoSet)
+        defineBuiltin("values", 2, ReevaBuiltin.MapProtoValues)
 
         // "The initial value of the @@iterator property is the same function object
         // as the initial value of the 'entries' property."
-        defineBuiltin(
-            Realm.`@@iterator`.key(),
-            0,
-            Builtin.MapProtoEntries,
-            Descriptor.CONFIGURABLE or Descriptor.WRITABLE
-        )
+        defineOwnProperty(Realm.`@@iterator`, internalGet("entries".key())!!.getRawValue(), attrs { +conf +writ })
     }
 
     companion object {
@@ -140,8 +136,8 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         @ECMAImpl("24.1.3.10")
         @JvmStatic
-        fun getSize(realm: Realm, thisValue: JSValue): JSValue {
-            return thisMapData(realm, thisValue, "size").map.size.toValue()
+        fun getSize(realm: Realm, arguments: JSArguments): JSValue {
+            return thisMapData(realm, arguments.thisValue, "size").map.size.toValue()
         }
 
         @ECMAImpl("24.1.3.11")

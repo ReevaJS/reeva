@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.wrappers
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -30,8 +30,8 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineOwnProperty("toStringTag", Realm.`@@toStringTag`, 0)
         defineOwnProperty("unscopables", Realm.`@@unscopables`, 0)
 
-        defineBuiltin("for", 1, Builtin.SymbolCtorFor)
-        defineBuiltin("keyFor", 1, Builtin.SymbolCtorKeyFor)
+        defineBuiltin("for", 1, ReevaBuiltin.SymbolCtorFor)
+        defineBuiltin("keyFor", 1, ReevaBuiltin.SymbolCtorKeyFor)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

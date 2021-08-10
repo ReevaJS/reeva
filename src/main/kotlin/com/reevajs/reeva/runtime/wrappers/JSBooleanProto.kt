@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.wrappers
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -18,8 +18,8 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.booleanCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineBuiltin("toString", 0, Builtin.BooleanProtoToString)
-        defineBuiltin("valueOf", 0, Builtin.BooleanProtoValueOf)
+        defineBuiltin("toString", 0, ReevaBuiltin.BooleanProtoToString)
+        defineBuiltin("valueOf", 0, ReevaBuiltin.BooleanProtoValueOf)
     }
 
     companion object {

@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.singletons
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -18,18 +18,18 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         super.init()
 
         defineOwnProperty(Realm.`@@toStringTag`, "Reflect".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("apply", 3, Builtin.ReflectApply)
-        defineBuiltin("construct", 2, Builtin.ReflectConstruct)
-        defineBuiltin("defineProperty", 3, Builtin.ReflectDefineProperty)
-        defineBuiltin("deleteProperty", 2, Builtin.ReflectDeleteProperty)
-        defineBuiltin("get", 2, Builtin.ReflectGet)
-        defineBuiltin("getOwnPropertyDescriptor", 2, Builtin.ReflectGetOwnPropertyDescriptor)
-        defineBuiltin("has", 2, Builtin.ReflectHas)
-        defineBuiltin("isExtensible", 1, Builtin.ReflectIsExtensible)
-        defineBuiltin("ownKeys", 1, Builtin.ReflectOwnKeys)
-        defineBuiltin("preventExtensions", 1, Builtin.ReflectPreventExtensions)
-        defineBuiltin("set", 2, Builtin.ReflectSet)
-        defineBuiltin("setPrototypeOf", 2, Builtin.ReflectSetPrototypeOf)
+        defineBuiltin("apply", 3, ReevaBuiltin.ReflectApply)
+        defineBuiltin("construct", 2, ReevaBuiltin.ReflectConstruct)
+        defineBuiltin("defineProperty", 3, ReevaBuiltin.ReflectDefineProperty)
+        defineBuiltin("deleteProperty", 2, ReevaBuiltin.ReflectDeleteProperty)
+        defineBuiltin("get", 2, ReevaBuiltin.ReflectGet)
+        defineBuiltin("getOwnPropertyDescriptor", 2, ReevaBuiltin.ReflectGetOwnPropertyDescriptor)
+        defineBuiltin("has", 2, ReevaBuiltin.ReflectHas)
+        defineBuiltin("isExtensible", 1, ReevaBuiltin.ReflectIsExtensible)
+        defineBuiltin("ownKeys", 1, ReevaBuiltin.ReflectOwnKeys)
+        defineBuiltin("preventExtensions", 1, ReevaBuiltin.ReflectPreventExtensions)
+        defineBuiltin("set", 2, ReevaBuiltin.ReflectSet)
+        defineBuiltin("setPrototypeOf", 2, ReevaBuiltin.ReflectSetPrototypeOf)
     }
 
     companion object {

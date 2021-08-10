@@ -4,7 +4,7 @@ import com.reevajs.reeva.ast.statements.StatementList
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -70,11 +70,11 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("globalThis", this, Descriptor.WRITABLE or Descriptor.CONFIGURABLE)
         defineOwnProperty("undefined", JSUndefined, 0)
 
-        defineBuiltin("id", 1, Builtin.GlobalId)
-        defineBuiltin("eval", 1, Builtin.GlobalEval)
-        defineBuiltin("parseInt", 1, Builtin.GlobalParseInt)
-        defineBuiltin("jvm", 1, Builtin.GlobalJvm)
-        defineBuiltin("inspect", 1, Builtin.GlobalInspect)
+        defineBuiltin("id", 1, ReevaBuiltin.GlobalId)
+        defineBuiltin("eval", 1, ReevaBuiltin.GlobalEval)
+        defineBuiltin("parseInt", 1, ReevaBuiltin.GlobalParseInt)
+        defineBuiltin("jvm", 1, ReevaBuiltin.GlobalJvm)
+        defineBuiltin("inspect", 1, ReevaBuiltin.GlobalInspect)
 
         // Debug method
         // TODO

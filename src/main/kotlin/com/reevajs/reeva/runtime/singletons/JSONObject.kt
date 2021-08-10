@@ -4,7 +4,7 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
@@ -20,9 +20,9 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     override fun init() {
         super.init()
 
-        defineBuiltinAccessor(Realm.`@@toStringTag`.key(), attrs { +conf -enum -writ }, Builtin.JSONGetSymbolToStringTag, null)
-        defineBuiltin("parse", 2, Builtin.JSONParse)
-        defineBuiltin("stringify", 3, Builtin.JSONStringify)
+        defineBuiltinGetter(Realm.`@@toStringTag`, ReevaBuiltin.JSONGetSymbolToStringTag, attrs { +conf -enum -writ })
+        defineBuiltin("parse", 2, ReevaBuiltin.JSONParse)
+        defineBuiltin("stringify", 3, ReevaBuiltin.JSONStringify)
     }
 
     private data class SerializeState(
@@ -87,7 +87,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         @ECMAImpl("25.5.3")
         @JvmStatic
-        fun `get@@toStringTag`(realm: Realm, thisValue: JSValue): JSValue {
+        fun `get@@toStringTag`(realm: Realm, arguments: JSArguments): JSValue {
             return "JSON".toValue()
         }
 

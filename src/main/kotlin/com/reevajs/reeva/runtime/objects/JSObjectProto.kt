@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.objects
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.primitives.*
@@ -16,22 +16,18 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         super.init()
 
         defineOwnProperty("constructor", realm.objectCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineBuiltinAccessor(
-            "__proto__",
-            attrs { +conf - enum },
-            Builtin.ObjectProtoGetProto,
-            Builtin.ObjectProtoSetProto
-        )
-        defineBuiltin("__defineGetter__", 2, Builtin.ObjectProtoDefineGetter)
-        defineBuiltin("__defineSetter__", 2, Builtin.ObjectProtoDefineSetter)
-        defineBuiltin("__lookupGetter__", 1, Builtin.ObjectProtoLookupGetter)
-        defineBuiltin("__lookupSetter__", 1, Builtin.ObjectProtoLookupSetter)
-        defineBuiltin("hasOwnProperty", 1, Builtin.ObjectProtoHasOwnProperty)
-        defineBuiltin("isPrototypeOf", 1, Builtin.ObjectProtoIsPrototypeOf)
-        defineBuiltin("propertyIsEnumerable", 1, Builtin.ObjectProtoPropertyIsEnumerable)
-        defineBuiltin("toLocaleString", 0, Builtin.ObjectProtoToLocaleString)
-        defineBuiltin("toString", 0, Builtin.ObjectProtoToString)
-        defineBuiltin("valueOf", 0, Builtin.ObjectProtoValueOf)
+        defineBuiltinGetter("__proto__", ReevaBuiltin.ObjectProtoGetProto, attrs { +conf -enum })
+        defineBuiltinSetter("__proto__", ReevaBuiltin.ObjectProtoSetProto, attrs { +conf -enum })
+        defineBuiltin("__defineGetter__", 2, ReevaBuiltin.ObjectProtoDefineGetter)
+        defineBuiltin("__defineSetter__", 2, ReevaBuiltin.ObjectProtoDefineSetter)
+        defineBuiltin("__lookupGetter__", 1, ReevaBuiltin.ObjectProtoLookupGetter)
+        defineBuiltin("__lookupSetter__", 1, ReevaBuiltin.ObjectProtoLookupSetter)
+        defineBuiltin("hasOwnProperty", 1, ReevaBuiltin.ObjectProtoHasOwnProperty)
+        defineBuiltin("isPrototypeOf", 1, ReevaBuiltin.ObjectProtoIsPrototypeOf)
+        defineBuiltin("propertyIsEnumerable", 1, ReevaBuiltin.ObjectProtoPropertyIsEnumerable)
+        defineBuiltin("toLocaleString", 0, ReevaBuiltin.ObjectProtoToLocaleString)
+        defineBuiltin("toString", 0, ReevaBuiltin.ObjectProtoToString)
+        defineBuiltin("valueOf", 0, ReevaBuiltin.ObjectProtoValueOf)
     }
 
     @ECMAImpl("10.4.7.1")
@@ -45,20 +41,23 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
 
         @ECMAImpl("B.2.2.1.1")
         @JvmStatic
-        fun getProto(realm: Realm, thisValue: JSValue): JSValue {
-            return Operations.toObject(realm, thisValue).getPrototype()
+        fun getProto(realm: Realm, arguments: JSArguments): JSValue {
+            return Operations.toObject(realm, arguments.thisValue).getPrototype()
         }
 
         @ECMAImpl("B.2.2.1.2")
         @JvmStatic
-        fun setProto(realm: Realm, thisValue: JSValue, proto: JSValue): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, thisValue)
+        fun setProto(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
+            val proto = arguments.argument(0)
+
             if (proto !is JSObject && proto != JSNull)
                 return JSUndefined
             if (obj !is JSObject)
                 return JSUndefined
             if (!obj.setPrototype(proto))
                 Errors.Object.ProtoValue.throwTypeError(realm)
+
             return JSUndefined
         }
 

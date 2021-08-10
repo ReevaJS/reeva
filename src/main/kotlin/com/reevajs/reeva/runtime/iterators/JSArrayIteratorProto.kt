@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.iterators
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -17,7 +17,7 @@ class JSArrayIteratorProto private constructor(realm: Realm) : JSObject(realm, r
         super.init()
 
         defineOwnProperty(Realm.`@@toStringTag`, "Array Iterator".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("next", 0, Builtin.ArrayIteratorProtoNext)
+        defineBuiltin("next", 0, ReevaBuiltin.ArrayIteratorProtoNext)
     }
 
     companion object {

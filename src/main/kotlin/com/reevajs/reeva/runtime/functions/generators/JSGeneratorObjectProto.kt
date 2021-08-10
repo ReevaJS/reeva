@@ -2,7 +2,7 @@ package com.reevajs.reeva.runtime.functions.generators
 
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.interpreter.Interpreter
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -17,9 +17,9 @@ class JSGeneratorObjectProto(realm: Realm) : JSObject(realm, realm.iteratorProto
         super.init()
 
         defineOwnProperty(Realm.`@@toStringTag`, "Generator".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("next", 1, Builtin.GeneratorObjectProtoNext)
-        defineBuiltin("return", 1, Builtin.GeneratorObjectProtoReturn)
-        defineBuiltin("throw", 1, Builtin.GeneratorObjectProtoThrow)
+        defineBuiltin("next", 1, ReevaBuiltin.GeneratorObjectProtoNext)
+        defineBuiltin("return", 1, ReevaBuiltin.GeneratorObjectProtoReturn)
+        defineBuiltin("throw", 1, ReevaBuiltin.GeneratorObjectProtoThrow)
     }
 
     companion object {

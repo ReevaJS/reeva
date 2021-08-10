@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.memory
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -18,13 +18,8 @@ class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(rea
     override fun init() {
         super.init()
 
-        defineBuiltinAccessor(
-            Realm.`@@species`.key(),
-            attrs { +conf -enum },
-            Builtin.ArrayBufferCtorGetSymbolSpecies,
-            name = "[Symbol.species]"
-        )
-        defineBuiltin("isView", 1, Builtin.ArrayBufferCtorIsView)
+        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.ArrayBufferCtorGetSymbolSpecies, attrs { +conf - enum })
+        defineBuiltin("isView", 1, ReevaBuiltin.ArrayBufferCtorIsView)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -50,8 +45,8 @@ class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(rea
 
         @ECMAImpl("25.1.4.3")
         @JvmStatic
-        fun `get@@species`(realm: Realm, thisValue: JSValue): JSValue {
-            return thisValue
+        fun `get@@species`(realm: Realm, arguments: JSArguments): JSValue {
+            return arguments.thisValue
         }
     }
 }

@@ -4,7 +4,7 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -20,7 +20,7 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
         super.init()
 
         defineOwnProperty("prototype", clazzProto, Descriptor.HAS_BASIC)
-        defineBuiltin("toString", 0, Builtin.ClassObjectToString)
+        defineBuiltin("toString", 0, ReevaBuiltin.ClassObjectToString)
     }
 
     override fun evaluate(_arguments: JSArguments): JSValue {

@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.regexp
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -17,7 +17,7 @@ class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun init() {
         super.init()
 
-        defineBuiltinAccessor(Realm.`@@species`.key(), attrs { +conf -enum }, Builtin.RegExpCtorGetSpecies, null)
+        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.RegExpCtorGetSpecies, attrs { +conf -enum })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -54,8 +54,8 @@ class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         @ECMAImpl("22.2.4.2")
         @JvmStatic
-        fun `get@@species`(realm: Realm, thisValue: JSValue): JSValue {
-            return thisValue
+        fun `get@@species`(realm: Realm, arguments: JSArguments): JSValue {
+            return arguments.thisValue
         }
     }
 }

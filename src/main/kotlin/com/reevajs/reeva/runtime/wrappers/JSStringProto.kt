@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.wrappers
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -20,30 +20,30 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.stringCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineBuiltin("at", 1, Builtin.StringProtoAt)
-        defineBuiltin("charAt", 1, Builtin.StringProtoCharAt)
-        defineBuiltin("charCodeAt", 1, Builtin.StringProtoCharCodeAt)
-        defineBuiltin("codePointAt", 1, Builtin.StringProtoCodePointAt)
-        defineBuiltin("concat", 1, Builtin.StringProtoConcat)
-        defineBuiltin("endsWith", 1, Builtin.StringProtoEndsWith)
-        defineBuiltin("includes", 1, Builtin.StringProtoIncludes)
-        defineBuiltin("indexOf", 1, Builtin.StringProtoIndexOf)
-        defineBuiltin("lastIndexOf", 1, Builtin.StringProtoLastIndexOf)
-        defineBuiltin("padEnd", 1, Builtin.StringProtoPadEnd)
-        defineBuiltin("padStart", 1, Builtin.StringProtoPadStart)
-        defineBuiltin("repeat", 1, Builtin.StringProtoRepeat)
-        defineBuiltin("replace", 1, Builtin.StringProtoReplace)
-        defineBuiltin("slice", 2, Builtin.StringProtoSlice)
-        defineBuiltin("split", 2, Builtin.StringProtoSplit)
-        defineBuiltin("startsWith", 1, Builtin.StringProtoStartsWith)
-        defineBuiltin("substring", 2, Builtin.StringProtoSubstring)
-        defineBuiltin("toLowerCase", 0, Builtin.StringProtoToLowerCase)
-        defineBuiltin("toString", 0, Builtin.StringProtoToString)
-        defineBuiltin("toUpperCase", 0, Builtin.StringProtoToUpperCase)
-        defineBuiltin("trim", 0, Builtin.StringProtoTrim)
-        defineBuiltin("trimEnd", 0, Builtin.StringProtoTrimEnd)
-        defineBuiltin("trimStart", 0, Builtin.StringProtoTrimStart)
-        defineBuiltin("valueOf", 0, Builtin.StringProtoValueOf)
+        defineBuiltin("at", 1, ReevaBuiltin.StringProtoAt)
+        defineBuiltin("charAt", 1, ReevaBuiltin.StringProtoCharAt)
+        defineBuiltin("charCodeAt", 1, ReevaBuiltin.StringProtoCharCodeAt)
+        defineBuiltin("codePointAt", 1, ReevaBuiltin.StringProtoCodePointAt)
+        defineBuiltin("concat", 1, ReevaBuiltin.StringProtoConcat)
+        defineBuiltin("endsWith", 1, ReevaBuiltin.StringProtoEndsWith)
+        defineBuiltin("includes", 1, ReevaBuiltin.StringProtoIncludes)
+        defineBuiltin("indexOf", 1, ReevaBuiltin.StringProtoIndexOf)
+        defineBuiltin("lastIndexOf", 1, ReevaBuiltin.StringProtoLastIndexOf)
+        defineBuiltin("padEnd", 1, ReevaBuiltin.StringProtoPadEnd)
+        defineBuiltin("padStart", 1, ReevaBuiltin.StringProtoPadStart)
+        defineBuiltin("repeat", 1, ReevaBuiltin.StringProtoRepeat)
+        defineBuiltin("replace", 1, ReevaBuiltin.StringProtoReplace)
+        defineBuiltin("slice", 2, ReevaBuiltin.StringProtoSlice)
+        defineBuiltin("split", 2, ReevaBuiltin.StringProtoSplit)
+        defineBuiltin("startsWith", 1, ReevaBuiltin.StringProtoStartsWith)
+        defineBuiltin("substring", 2, ReevaBuiltin.StringProtoSubstring)
+        defineBuiltin("toLowerCase", 0, ReevaBuiltin.StringProtoToLowerCase)
+        defineBuiltin("toString", 0, ReevaBuiltin.StringProtoToString)
+        defineBuiltin("toUpperCase", 0, ReevaBuiltin.StringProtoToUpperCase)
+        defineBuiltin("trim", 0, ReevaBuiltin.StringProtoTrim)
+        defineBuiltin("trimEnd", 0, ReevaBuiltin.StringProtoTrimEnd)
+        defineBuiltin("trimStart", 0, ReevaBuiltin.StringProtoTrimStart)
+        defineBuiltin("valueOf", 0, ReevaBuiltin.StringProtoValueOf)
     }
 
     companion object {

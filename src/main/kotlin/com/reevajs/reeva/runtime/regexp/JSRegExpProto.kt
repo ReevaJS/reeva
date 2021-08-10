@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.regexp
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -16,22 +16,22 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         super.init()
 
         val attrs = attrs { +conf - enum }
-        defineBuiltinAccessor("dotAll", attrs, Builtin.RegExpProtoGetDotAll, null)
-        defineBuiltinAccessor("flags", attrs, Builtin.RegExpProtoGetFlags, null)
-        defineBuiltinAccessor("global", attrs, Builtin.RegExpProtoGetGlobal, null)
-        defineBuiltinAccessor("ignoreCase", attrs, Builtin.RegExpProtoGetIgnoreCase, null)
-        defineBuiltinAccessor("multiline", attrs, Builtin.RegExpProtoGetMultiline, null)
-        defineBuiltinAccessor("source", attrs, Builtin.RegExpProtoGetSource, null)
-        defineBuiltinAccessor("sticky", attrs, Builtin.RegExpProtoGetSticky, null)
-        defineBuiltinAccessor("unicode", attrs, Builtin.RegExpProtoGetUnicode, null)
-        defineBuiltin(Realm.`@@match`.key(), 1, Builtin.RegExpProtoMatch)
-        defineBuiltin(Realm.`@@matchAll`.key(), 1, Builtin.RegExpProtoMatchAll)
-        defineBuiltin(Realm.`@@replace`.key(), 2, Builtin.RegExpProtoReplace)
-        defineBuiltin(Realm.`@@search`.key(), 1, Builtin.RegExpProtoSearch)
-        defineBuiltin(Realm.`@@split`.key(), 2, Builtin.RegExpProtoSplit)
-        defineBuiltin("exec", 1, Builtin.RegExpProtoExec)
-        defineBuiltin("test", 1, Builtin.RegExpProtoTest)
-        defineBuiltin("toString", 0, Builtin.RegExpProtoToString)
+        defineBuiltinGetter("dotAll", ReevaBuiltin.RegExpProtoGetDotAll, attributes = attrs)
+        defineBuiltinGetter("flags", ReevaBuiltin.RegExpProtoGetFlags, attributes = attrs)
+        defineBuiltinGetter("global", ReevaBuiltin.RegExpProtoGetGlobal, attributes = attrs)
+        defineBuiltinGetter("ignoreCase", ReevaBuiltin.RegExpProtoGetIgnoreCase, attributes = attrs)
+        defineBuiltinGetter("multiline", ReevaBuiltin.RegExpProtoGetMultiline, attributes = attrs)
+        defineBuiltinGetter("source", ReevaBuiltin.RegExpProtoGetSource, attributes = attrs)
+        defineBuiltinGetter("sticky", ReevaBuiltin.RegExpProtoGetSticky, attributes = attrs)
+        defineBuiltinGetter("unicode", ReevaBuiltin.RegExpProtoGetUnicode, attributes = attrs)
+        defineBuiltin(Realm.`@@match`, 1, ReevaBuiltin.RegExpProtoMatch)
+        defineBuiltin(Realm.`@@matchAll`, 1, ReevaBuiltin.RegExpProtoMatchAll)
+        defineBuiltin(Realm.`@@replace`, 2, ReevaBuiltin.RegExpProtoReplace)
+        defineBuiltin(Realm.`@@search`, 1, ReevaBuiltin.RegExpProtoSearch)
+        defineBuiltin(Realm.`@@split`, 2, ReevaBuiltin.RegExpProtoSplit)
+        defineBuiltin("exec", 1, ReevaBuiltin.RegExpProtoExec)
+        defineBuiltin("test", 1, ReevaBuiltin.RegExpProtoTest)
+        defineBuiltin("toString", 0, ReevaBuiltin.RegExpProtoToString)
     }
 
     companion object {
@@ -51,13 +51,14 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         @ECMAImpl("22.2.5.3")
         @JvmStatic
-        fun getDotAll(realm: Realm, thisValue: JSValue): JSValue {
-            return getFlagHelper(realm, thisValue, "dotAll", JSRegExpObject.Flag.DotAll)
+        fun getDotAll(realm: Realm, arguments: JSArguments): JSValue {
+            return getFlagHelper(realm, arguments.thisValue, "dotAll", JSRegExpObject.Flag.DotAll)
         }
 
         @ECMAImpl("22.2.5.4")
         @JvmStatic
-        fun getFlags(realm: Realm, thisValue: JSValue): JSValue {
+        fun getFlags(realm: Realm, arguments: JSArguments): JSValue {
+            val thisValue = arguments.thisValue
             if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
                 Errors.IncompatibleMethodCall("RegExp.prototype.flags").throwTypeError(realm)
             var result = ""
@@ -78,14 +79,14 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         @ECMAImpl("22.2.5.5")
         @JvmStatic
-        fun getGlobal(realm: Realm, thisValue: JSValue): JSValue {
-            return getFlagHelper(realm, thisValue, "global", JSRegExpObject.Flag.Global)
+        fun getGlobal(realm: Realm, arguments: JSArguments): JSValue {
+            return getFlagHelper(realm, arguments.thisValue, "global", JSRegExpObject.Flag.Global)
         }
 
         @ECMAImpl("22.2.5.6")
         @JvmStatic
-        fun getIgnoreCase(realm: Realm, thisValue: JSValue): JSValue {
-            return getFlagHelper(realm, thisValue, "ignoreCase", JSRegExpObject.Flag.IgnoreCase)
+        fun getIgnoreCase(realm: Realm, arguments: JSArguments): JSValue {
+            return getFlagHelper(realm, arguments.thisValue, "ignoreCase", JSRegExpObject.Flag.IgnoreCase)
         }
 
         @ECMAImpl("22.2.5.7")
@@ -142,7 +143,8 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         @ECMAImpl("22.2.5.9")
         @JvmStatic
-        fun getMultiline(realm: Realm, thisValue: JSValue): JSValue {
+        fun getMultiline(realm: Realm, arguments: JSArguments): JSValue {
+            val thisValue = arguments.thisValue
             return getFlagHelper(realm, thisValue, "multiline", JSRegExpObject.Flag.Multiline)
         }
 
@@ -179,7 +181,8 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         @ECMAImpl("22.2.5.12")
         @JvmStatic
-        fun getSource(realm: Realm, thisValue: JSValue): JSValue {
+        fun getSource(realm: Realm, arguments: JSArguments): JSValue {
+            val thisValue = arguments.thisValue
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype.source").throwTypeError(realm)
             if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher)) {
@@ -201,8 +204,8 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         @ECMAImpl("22.2.5.14")
         @JvmStatic
-        fun getSticky(realm: Realm, thisValue: JSValue): JSValue {
-            return getFlagHelper(realm, thisValue, "sticky", JSRegExpObject.Flag.Sticky)
+        fun getSticky(realm: Realm, arguments: JSArguments): JSValue {
+            return getFlagHelper(realm, arguments.thisValue, "sticky", JSRegExpObject.Flag.Sticky)
         }
 
         @ECMAImpl("22.2.5.15")
@@ -234,8 +237,8 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         @ECMAImpl("22.2.5.17")
         @JvmStatic
-        fun getUnicode(realm: Realm, thisValue: JSValue): JSValue {
-            return getFlagHelper(realm, thisValue, "unicode", JSRegExpObject.Flag.Unicode)
+        fun getUnicode(realm: Realm, arguments: JSArguments): JSValue {
+            return getFlagHelper(realm, arguments.thisValue, "unicode", JSRegExpObject.Flag.Unicode)
         }
 
         private fun getFlagHelper(realm: Realm, thisValue: JSValue, methodName: String, flag: JSRegExpObject.Flag): JSValue {

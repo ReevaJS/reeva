@@ -5,6 +5,7 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.index.IndexedProperties
 import com.reevajs.reeva.runtime.primitives.*
@@ -326,36 +327,6 @@ open class JSObject protected constructor(
         }.map { PropertyKey.from(it.name) }
     }
 
-    internal fun defineBuiltinAccessor(
-        key: String,
-        attributes: Int,
-        getter: Builtin? = null,
-        setter: Builtin? = null,
-    ) {
-        defineBuiltinAccessor(key.key(), attributes, getter, setter)
-    }
-
-    internal fun defineBuiltinAccessor(
-        key: PropertyKey,
-        attributes: Int,
-        getter: Builtin? = null,
-        setter: Builtin? = null,
-        name: String? = null
-    ) {
-        expect(getter != null || setter != null)
-
-        val getterFunc = if (getter != null) {
-            JSNativeFunction.forBuiltin(realm, name ?: key.toString(), 0, getter)
-        } else null
-
-        val setterFunc = if (setter != null) {
-            JSNativeFunction.forBuiltin(realm, name ?: key.toString(), 1, setter)
-        } else null
-
-        val value = JSAccessor(getterFunc, setterFunc)
-        addProperty(key, Descriptor(value, attributes))
-    }
-
     fun defineNativeProperty(key: String, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
         defineNativeProperty(key.key(), attributes, getter, setter)
     }
@@ -365,44 +336,104 @@ open class JSObject protected constructor(
         addProperty(key, Descriptor(value, attributes))
     }
 
-    internal fun defineBuiltin(
+    fun defineBuiltinGetter(
+        name: String,
+        builtin: Builtin,
+        attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
+    ) {
+        defineBuiltinAccessor(name.key(), name, attributes, builtin, isGetter = true)
+    }
+
+    fun defineBuiltinGetter(
+        name: JSSymbol,
+        builtin: Builtin,
+        attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
+    ) {
+        defineBuiltinAccessor(name.key(), "[get ${name.description}]", attributes, builtin, isGetter = true)
+    }
+
+    fun defineBuiltinSetter(
+        name: String,
+        builtin: Builtin,
+        attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
+    ) {
+        defineBuiltinAccessor(name.key(), name, attributes, builtin, isGetter = false)
+    }
+
+    fun defineBuiltinSetter(
+        name: JSSymbol,
+        builtin: Builtin,
+        attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
+    ) {
+        defineBuiltinAccessor(name.key(), "[set ${name.description}]", attributes, builtin, isGetter = false)
+    }
+
+    private fun defineBuiltinAccessor(
+        key: PropertyKey,
+        jsName: String,
+        attributes: Int,
+        builtin: Builtin,
+        isGetter: Boolean,
+    ) {
+        val length = if (isGetter) 0 else 1
+        val function = JSNativeFunction.forBuiltin(realm, jsName, length, builtin)
+
+        val existingProperty = internalGet(key)
+        if (existingProperty != null) {
+            val value = existingProperty.getRawValue()
+            expect(value is JSAccessor) {
+                "Cannot define accessor for property $key which is already defined and is not an accessor"
+            }
+
+            if (isGetter) {
+                expect(value.getter == null) {
+                    "Cannot redefine getter for property $key which already has a getter defined"
+                }
+                value.getter = function
+            } else {
+                expect(value.setter == null) {
+                    "Cannot redefine setter for property $key which already has a setter defined"
+                }
+                value.setter = function
+            }
+
+            return
+        }
+
+        val accessor = if (isGetter) {
+            JSAccessor(function, null)
+        } else JSAccessor(null, function)
+
+        addProperty(key, Descriptor(accessor, attributes))
+    }
+
+    fun defineBuiltin(
         name: String,
         length: Int,
         builtin: Builtin,
         attributes: Int = attrs { +conf -enum +writ },
     ) {
-        defineBuiltin(name.key(), length, builtin, attributes, name)
+        defineBuiltin(name.key(), name, length, builtin, attributes)
     }
 
-    internal fun defineBuiltin(
-        key: PropertyKey,
+    fun defineBuiltin(
+        name: JSSymbol,
         length: Int,
         builtin: Builtin,
         attributes: Int = attrs { +conf -enum +writ },
-        name: String = if (key.isString) key.asString else "[${key.asSymbol.descriptiveString()}]",
     ) {
-        val obj = JSNativeFunction.forBuiltin(realm, name, length, builtin)
-        addProperty(key, Descriptor(obj, attributes))
+        defineBuiltin(name.key(), "[${name.description}]", length, builtin, attributes)
     }
 
-    fun defineNativeFunction(
-        name: String,
-        length: Int,
-        function: NativeFunctionSignature,
-        attributes: Int = attrs { +conf -enum +writ },
-    ) {
-        defineNativeFunction(name.key(), length, function, attributes, name)
-    }
-
-    fun defineNativeFunction(
+    private fun defineBuiltin(
         key: PropertyKey,
+        jsName: String,
         length: Int,
-        function: NativeFunctionSignature,
+        builtin: Builtin,
         attributes: Int = attrs { +conf -enum +writ },
-        name: String = if (key.isString) key.asString else "[${key.asSymbol.descriptiveString()}]",
     ) {
-        val obj = JSNativeFunction.fromLambda(realm, name, length, function)
-        addProperty(key, Descriptor(obj, attributes))
+        val function = JSNativeFunction.forBuiltin(realm, jsName, length, builtin)
+        addProperty(key, Descriptor(function, attributes))
     }
 
     fun addSlot(name: SlotName, value: JSValue = JSUndefined) {

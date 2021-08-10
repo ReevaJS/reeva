@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.iterators
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -12,7 +12,7 @@ class JSIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.
     override fun init() {
         super.init()
 
-        defineBuiltin(Realm.`@@iterator`.key(), 0, Builtin.IteratorProtoSymbolIterator)
+        defineBuiltin(Realm.`@@iterator`, 0, ReevaBuiltin.IteratorProtoSymbolIterator)
     }
 
     companion object {

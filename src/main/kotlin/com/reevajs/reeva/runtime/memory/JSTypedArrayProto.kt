@@ -4,7 +4,7 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayProto
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -17,37 +17,33 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
     override fun init() {
         super.init()
 
-        defineBuiltinAccessor(
-            Realm.`@@toStringTag`.key(),
-            attrs { +conf - enum },
-            Builtin.TypedArrayProtoGetSymbolToStringTag
-        )
-        defineBuiltinAccessor("buffer", attrs { +conf - enum }, Builtin.TypedArrayProtoGetBuffer)
-        defineBuiltinAccessor("byteLength", attrs { +conf - enum }, Builtin.TypedArrayProtoGetByteLength)
-        defineBuiltinAccessor("byteOffset", attrs { +conf - enum }, Builtin.TypedArrayProtoGetByteOffset)
-        defineBuiltinAccessor("length", attrs { +conf - enum }, Builtin.TypedArrayProtoGetLength)
+        defineBuiltinGetter(Realm.`@@toStringTag`, ReevaBuiltin.TypedArrayProtoGetSymbolToStringTag, attrs { +conf - enum })
+        defineBuiltinGetter("buffer", ReevaBuiltin.TypedArrayProtoGetBuffer, attrs { +conf -enum })
+        defineBuiltinGetter("byteLength", ReevaBuiltin.TypedArrayProtoGetByteLength, attrs { +conf -enum })
+        defineBuiltinGetter("byteOffset", ReevaBuiltin.TypedArrayProtoGetByteOffset, attrs { +conf -enum })
+        defineBuiltinGetter("length", ReevaBuiltin.TypedArrayProtoGetLength, attrs { +conf -enum })
 
-        defineBuiltin("at", 1, Builtin.TypedArrayProtoAt)
-        defineBuiltin("copyWithin", 2, Builtin.TypedArrayProtoCopyWithin)
-        defineBuiltin("entries", 0, Builtin.TypedArrayProtoEntries)
-        defineBuiltin("every", 1, Builtin.TypedArrayProtoEvery)
-        defineBuiltin("fill", 1, Builtin.TypedArrayProtoFill)
-        defineBuiltin("filter", 1, Builtin.TypedArrayProtoFilter)
-        defineBuiltin("find", 1, Builtin.TypedArrayProtoFind)
-        defineBuiltin("findIndex", 1, Builtin.TypedArrayProtoFindIndex)
-        defineBuiltin("forEach", 1, Builtin.TypedArrayProtoForEach)
-        defineBuiltin("includes", 1, Builtin.TypedArrayProtoIncludes)
-        defineBuiltin("indexOf", 1, Builtin.TypedArrayProtoIndexOf)
-        defineBuiltin("join", 1, Builtin.TypedArrayProtoJoin)
+        defineBuiltin("at", 1, ReevaBuiltin.TypedArrayProtoAt)
+        defineBuiltin("copyWithin", 2, ReevaBuiltin.TypedArrayProtoCopyWithin)
+        defineBuiltin("entries", 0, ReevaBuiltin.TypedArrayProtoEntries)
+        defineBuiltin("every", 1, ReevaBuiltin.TypedArrayProtoEvery)
+        defineBuiltin("fill", 1, ReevaBuiltin.TypedArrayProtoFill)
+        defineBuiltin("filter", 1, ReevaBuiltin.TypedArrayProtoFilter)
+        defineBuiltin("find", 1, ReevaBuiltin.TypedArrayProtoFind)
+        defineBuiltin("findIndex", 1, ReevaBuiltin.TypedArrayProtoFindIndex)
+        defineBuiltin("forEach", 1, ReevaBuiltin.TypedArrayProtoForEach)
+        defineBuiltin("includes", 1, ReevaBuiltin.TypedArrayProtoIncludes)
+        defineBuiltin("indexOf", 1, ReevaBuiltin.TypedArrayProtoIndexOf)
+        defineBuiltin("join", 1, ReevaBuiltin.TypedArrayProtoJoin)
 //        defineBuiltin("keys", 0, Builtin.TypedArrayProtoKeys)
-        defineBuiltin("lastIndexOf", 1, Builtin.TypedArrayProtoLastIndexOf)
+        defineBuiltin("lastIndexOf", 1, ReevaBuiltin.TypedArrayProtoLastIndexOf)
 //        defineBuiltin("map", 1, Builtin.TypedArrayProtoMap)
-        defineBuiltin("reduce", 1, Builtin.TypedArrayProtoReduce)
-        defineBuiltin("reduceRight", 1, Builtin.TypedArrayProtoReduceRight)
-        defineBuiltin("reverse", 0, Builtin.TypedArrayProtoReverse)
+        defineBuiltin("reduce", 1, ReevaBuiltin.TypedArrayProtoReduce)
+        defineBuiltin("reduceRight", 1, ReevaBuiltin.TypedArrayProtoReduceRight)
+        defineBuiltin("reverse", 0, ReevaBuiltin.TypedArrayProtoReverse)
 //        defineBuiltin("set", 1, Builtin.TypedArrayProtoSet)
 //        defineBuiltin("slice", 2, Builtin.TypedArrayProtoSlice)
-        defineBuiltin("some", 1, Builtin.TypedArrayProtoSome)
+        defineBuiltin("some", 1, ReevaBuiltin.TypedArrayProtoSome)
 //        defineBuiltin("sort", 1, Builtin.TypedArrayProtoSort)
 //        defineBuiltin("subarray", 2, Builtin.TypedArrayProtoSubarray)
 //        defineBuiltin("toString", 0, Builtin.TypedArrayProtoToString)
@@ -56,7 +52,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
     companion object {
         // For use with the generic array methods
-        private val lengthProducer = { realm: Realm, obj: JSObject -> getLength(realm, obj).asLong }
+        private val lengthProducer = { realm: Realm, obj: JSObject -> getLength(realm, JSArguments(emptyList(), obj)).asLong }
         private val indicesProducer = { realm: Realm ->
             { obj: JSObject ->
                 sequence {
@@ -69,7 +65,8 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
         @ECMAImpl("23.2.3.")
         @JvmStatic
-        fun `get@@toStringTag`(realm: Realm, thisValue: JSValue): JSValue {
+        fun `get@@toStringTag`(realm: Realm, arguments: JSArguments): JSValue {
+            val thisValue = arguments.thisValue
             if (thisValue !is JSObject)
                 return JSUndefined
             val kind = thisValue.getSlotAs<Operations.TypedArrayKind?>(SlotName.TypedArrayKind) ?: return JSUndefined
@@ -78,36 +75,37 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
         @ECMAImpl("23.2.3.1")
         @JvmStatic
-        fun getBuffer(realm: Realm, thisValue: JSValue): JSValue {
+        fun getBuffer(realm: Realm, arguments: JSArguments): JSValue {
+            val thisValue = arguments.thisValue
             ecmaAssert(thisValue is JSObject && thisValue.hasSlot(SlotName.ViewedArrayBuffer))
             return thisValue.getSlotAs(SlotName.ViewedArrayBuffer)
         }
 
         @ECMAImpl("23.2.3.2")
         @JvmStatic
-        fun getByteLength(realm: Realm, thisValue: JSValue): JSValue {
-            val buffer = getBuffer(realm, thisValue)
+        fun getByteLength(realm: Realm, arguments: JSArguments): JSValue {
+            val buffer = getBuffer(realm, arguments)
             if (Operations.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
-            return (thisValue as JSObject).getSlotAs<Int>(SlotName.ByteLength).toValue()
+            return (arguments.thisValue as JSObject).getSlotAs<Int>(SlotName.ByteLength).toValue()
         }
 
         @ECMAImpl("23.2.3.3")
         @JvmStatic
-        fun getByteOffset(realm: Realm, thisValue: JSValue): JSValue {
-            val buffer = getBuffer(realm, thisValue)
+        fun getByteOffset(realm: Realm, arguments: JSArguments): JSValue {
+            val buffer = getBuffer(realm, arguments)
             if (Operations.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
-            return (thisValue as JSObject).getSlotAs<Int>(SlotName.ByteOffset).toValue()
+            return (arguments.thisValue as JSObject).getSlotAs<Int>(SlotName.ByteOffset).toValue()
         }
 
         @ECMAImpl("23.2.3.18")
         @JvmStatic
-        fun getLength(realm: Realm, thisValue: JSValue): JSValue {
-            val buffer = getBuffer(realm, thisValue)
+        fun getLength(realm: Realm, arguments: JSArguments): JSValue {
+            val buffer = getBuffer(realm, arguments)
             if (Operations.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
-            return (thisValue as JSObject).getSlotAs<Int>(SlotName.ArrayLength).toValue()
+            return (arguments.thisValue as JSObject).getSlotAs<Int>(SlotName.ArrayLength).toValue()
         }
 
         @JvmStatic

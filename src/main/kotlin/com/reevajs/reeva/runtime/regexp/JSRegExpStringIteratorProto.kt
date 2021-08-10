@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.regexp
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -24,7 +24,7 @@ class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(r
             "RegExp String Iterator".toValue(),
             Descriptor.CONFIGURABLE or Descriptor.HAS_BASIC
         )
-        defineBuiltin("next", 0, Builtin.RegExpStringIteratorProtoNext)
+        defineBuiltin("next", 0, ReevaBuiltin.RegExpStringIteratorProtoNext)
     }
 
     companion object {

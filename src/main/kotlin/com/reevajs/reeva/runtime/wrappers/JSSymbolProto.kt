@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.wrappers
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -20,9 +20,9 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         defineOwnProperty("constructor", realm.symbolCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineNativeProperty("description", attrs { +conf -enum }, ::getDescription, null)
         defineNativeProperty(Realm.`@@toStringTag`.key(), attrs { +conf -enum -writ }, ::`get@@toStringTag`, null)
-        defineBuiltin("toString", 0, Builtin.SymbolProtoToString)
-        defineBuiltin("toValue", 0, Builtin.SymbolProtoToValue)
-        defineBuiltin(Realm.`@@toPrimitive`.key(), 0, Builtin.SymbolProtoSymbolToPrimitive)
+        defineBuiltin("toString", 0, ReevaBuiltin.SymbolProtoToString)
+        defineBuiltin("toValue", 0, ReevaBuiltin.SymbolProtoToValue)
+        defineBuiltin(Realm.`@@toPrimitive`, 0, ReevaBuiltin.SymbolProtoSymbolToPrimitive)
     }
 
     fun getDescription(realm: Realm, thisValue: JSValue): JSValue {

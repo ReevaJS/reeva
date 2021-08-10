@@ -2,7 +2,7 @@ package com.reevajs.reeva.runtime.arrays
 
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.ThrowException
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -19,16 +19,11 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     override fun init() {
         super.init()
 
-        defineBuiltinAccessor(
-            Realm.`@@species`.key(),
-            attrs { +conf - enum },
-            Builtin.ArrayCtorGetSymbolSpecies,
-            null,
-            "[Symbol.species]",
-        )
-        defineBuiltin("isArray", 1, Builtin.ArrayCtorIsArray)
-        defineBuiltin("from", 1, Builtin.ArrayCtorFrom)
-        defineBuiltin("of", 0, Builtin.ArrayCtorOf)
+        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.ArrayCtorGetSymbolSpecies, attrs { +conf - enum })
+
+        defineBuiltin("isArray", 1, ReevaBuiltin.ArrayCtorIsArray)
+        defineBuiltin("from", 1, ReevaBuiltin.ArrayCtorFrom)
+        defineBuiltin("of", 0, ReevaBuiltin.ArrayCtorOf)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -177,8 +172,8 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
 
         @ECMAImpl("23.1.2.5")
         @JvmStatic
-        fun `get@@species`(realm: Realm, thisValue: JSValue): JSValue {
-            return thisValue
+        fun `get@@species`(realm: Realm, arguments: JSArguments): JSValue {
+            return arguments.thisValue
         }
     }
 }

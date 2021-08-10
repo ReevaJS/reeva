@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.wrappers
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -23,12 +23,12 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineOwnProperty("NaN", Double.NaN.toValue(), 0)
         defineOwnProperty("NEGATIVE_INFINITY", Double.NEGATIVE_INFINITY.toValue(), 0)
         defineOwnProperty("POSITIVE_INFINITY", Double.POSITIVE_INFINITY.toValue(), 0)
-        defineBuiltin("isFinite", 1, Builtin.NumberCtorIsFinite)
-        defineBuiltin("isInteger", 1, Builtin.NumberCtorIsInteger)
-        defineBuiltin("isNaN", 1, Builtin.NumberCtorIsNaN)
-        defineBuiltin("isSafeInteger", 1, Builtin.NumberCtorIsSafeInteger)
-        defineBuiltin("parseFloat", 1, Builtin.NumberCtorParseFloat)
-        defineBuiltin("parseInt", 1, Builtin.NumberCtorParseInt)
+        defineBuiltin("isFinite", 1, ReevaBuiltin.NumberCtorIsFinite)
+        defineBuiltin("isInteger", 1, ReevaBuiltin.NumberCtorIsInteger)
+        defineBuiltin("isNaN", 1, ReevaBuiltin.NumberCtorIsNaN)
+        defineBuiltin("isSafeInteger", 1, ReevaBuiltin.NumberCtorIsSafeInteger)
+        defineBuiltin("parseFloat", 1, ReevaBuiltin.NumberCtorParseFloat)
+        defineBuiltin("parseInt", 1, ReevaBuiltin.NumberCtorParseInt)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

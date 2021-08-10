@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.memory
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -22,8 +22,8 @@ open class JSGenericTypedArrayCtor protected constructor(
         super.init()
 
         defineOwnProperty("BYTES_PER_ELEMENT", kind.size.toValue(), 0)
-        defineBuiltin("from", 1, Builtin.TypedArrayCtorFrom)
-        defineBuiltin("of", 0, Builtin.TypedArrayCtorOf)
+        defineBuiltin("from", 1, ReevaBuiltin.TypedArrayCtorFrom)
+        defineBuiltin("of", 0, ReevaBuiltin.TypedArrayCtorOf)
     }
 
     @ECMAImpl("22.2.5.1")

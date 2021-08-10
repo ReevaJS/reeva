@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.collections
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSNull
@@ -15,7 +15,8 @@ import com.reevajs.reeva.utils.key
 class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map", 0) {
     override fun init() {
         super.init()
-        defineBuiltinAccessor(Realm.`@@species`.key(), attrs { +conf -enum }, Builtin.MapCtorGetSymbolSpecies, null)
+
+        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.MapCtorGetSymbolSpecies, attrs { +conf - enum })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -37,8 +38,8 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
 
         @ECMAImpl("24.1.2.2")
         @JvmStatic
-        fun `get@@species`(realm: Realm, thisValue: JSValue): JSValue {
-            return thisValue
+        fun `get@@species`(realm: Realm, arguments: JSArguments): JSValue {
+            return arguments.thisValue
         }
     }
 }

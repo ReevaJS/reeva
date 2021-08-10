@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.errors
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -23,7 +23,7 @@ open class JSErrorProto protected constructor(
 
         defineOwnProperty("constructor", errorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty("name", name.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineBuiltin("toString", 0, Builtin.ErrorProtoToString)
+        defineBuiltin("toString", 0, ReevaBuiltin.ErrorProtoToString)
     }
 
     companion object {
