@@ -2,6 +2,7 @@ package com.reevajs.reeva.test262
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.core.lifecycle.ExecutionResult
 import com.reevajs.reeva.runtime.toPrintableString
 import com.reevajs.reeva.utils.unreachable
@@ -30,8 +31,9 @@ fun main() {
 
     agent.printIR = true
 
-    val script = File("./demo/index.js").readText()
-    val result = agent.run(script, realm)
+    val file = File("./demo/index.js")
+    val script = file.readText()
+    val result = agent.run(Executable(file, script), realm)
     agent.microtaskQueue.blockUntilEmpty()
     Reeva.teardown()
 
