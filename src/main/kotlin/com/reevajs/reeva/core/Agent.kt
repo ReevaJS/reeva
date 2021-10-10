@@ -5,6 +5,7 @@ import com.reevajs.reeva.ast.ScriptNode
 import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.core.lifecycle.ExecutionResult
 import com.reevajs.reeva.interpreter.Interpreter
+import com.reevajs.reeva.interpreter.transformer.IRPrinter
 import com.reevajs.reeva.interpreter.transformer.Transformer
 import com.reevajs.reeva.interpreter.transformer.TransformerResult
 import com.reevajs.reeva.parsing.Parser
@@ -12,6 +13,7 @@ import com.reevajs.reeva.parsing.ParsingResult
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.primitives.JSTrue
 import com.reevajs.reeva.utils.expect
+import java.io.File
 import java.nio.ByteOrder
 
 class Agent {
@@ -58,6 +60,10 @@ class Agent {
         return run(Executable(null, source), realm)
     }
 
+    fun run(file: File, realm: Realm): ExecutionResult {
+        return run(Executable(file, file.readText()), realm)
+    }
+
     fun run(executable: Executable, realm: Realm): ExecutionResult {
         when (val result = parse(executable)) {
             is ParsingResult.InternalError -> return ExecutionResult.InternalError(executable, result.cause)
@@ -77,8 +83,7 @@ class Agent {
         }
 
         if (printIR) {
-            // TODO
-            // IrPrinter(executable.ir!!).print()
+            IRPrinter(executable).print()
             println("\n")
         }
 
