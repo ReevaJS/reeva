@@ -30,12 +30,15 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
             globalDeclarationInstantiation(script.scope as HoistingScope) {
                 visit(script.statements)
-                +Return
+                if (!builder.isDone) {
+                    +PushUndefined
+                    +Return
+                }
             }
 
             TransformerResult.Success(FunctionInfo(
                 executable.name,
-                builder.getOpcodes(),
+                builder.finalizeOpcodes(),
                 builder.getLocals(),
                 builder.argCount,
                 script.scope.isStrict,
@@ -205,7 +208,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
         return FunctionInfo(
             name,
-            builder.getOpcodes(),
+            builder.finalizeOpcodes(),
             builder.getLocals(),
             argCount,
             isStrict = true,
@@ -259,7 +262,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
         return FunctionInfo(
             name,
-            builder.getOpcodes(),
+            builder.finalizeOpcodes(),
             builder.getLocals(),
             builder.argCount,
             isStrict,
@@ -435,6 +438,11 @@ class Transformer(val executable: Executable) : ASTVisitor {
                 +StoreEnvSlot(source.index, distance)
             }
         }
+    }
+
+    override fun visitExpressionStatement(node: ExpressionStatementNode) {
+        visitExpression(node.node)
+        +Pop
     }
 
     override fun visitIfStatement(node: IfStatementNode) {

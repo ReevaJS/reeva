@@ -6,6 +6,7 @@ import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.core.lifecycle.ExecutionResult
 import com.reevajs.reeva.interpreter.Interpreter
 import com.reevajs.reeva.interpreter.transformer.IRPrinter
+import com.reevajs.reeva.interpreter.transformer.IRValidator
 import com.reevajs.reeva.interpreter.transformer.Transformer
 import com.reevajs.reeva.interpreter.transformer.TransformerResult
 import com.reevajs.reeva.parsing.Parser
@@ -86,6 +87,8 @@ class Agent {
             IRPrinter(executable).print()
             println("\n")
         }
+
+        IRValidator(executable.ir!!.opcodes).validate()
 
         // TODO
         return ExecutionResult.Success(executable, JSTrue)

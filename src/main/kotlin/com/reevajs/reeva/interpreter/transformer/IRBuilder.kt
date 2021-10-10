@@ -8,13 +8,21 @@ class IRBuilder(
     private val opcodes = mutableListOf<Opcode>()
     private val locals = mutableListOf<LocalKind>()
 
+    val isDone: Boolean
+        get() = opcodes.lastOrNull() === Return
+
     init {
         repeat(additionalReservedLocals) {
             locals.add(LocalKind.Value)
         }
     }
 
-    fun getOpcodes(): List<Opcode> = opcodes
+    fun finalizeOpcodes(): List<Opcode> {
+        // TODO: Figure out how to do this here but also print
+        //       the opcodes for debugging purposes
+        // IRValidator(opcodes).validate()
+        return opcodes
+    }
 
     fun getLocals(): List<LocalKind> = locals
 
@@ -28,7 +36,7 @@ class IRBuilder(
         val jump = jumpBuilder(-1)
         addOpcode(jump)
         block()
-        jump.to = opcodeCount() - 1
+        jump.to = opcodeCount()
     }
 
     fun ifElseHelper(jumpBuilder: (to: Int) -> JumpInstr, firstBlock: () -> Unit, secondBlock: () -> Unit) {
@@ -38,9 +46,9 @@ class IRBuilder(
 
         val secondJump = Jump(-1)
         addOpcode(secondJump)
-        firstJump.to = opcodeCount() - 1
+        firstJump.to = opcodeCount()
         secondBlock()
-        secondJump.to = opcodeCount() - 1
+        secondJump.to = opcodeCount()
     }
 
     fun newLocalSlot(kind: LocalKind): Int {
