@@ -2,6 +2,7 @@ package com.reevajs.reeva.parsing
 
 import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.interpreter.Interpreter
+import com.reevajs.reeva.interpreter.transformer.Transformer
 
 open class Scope(val outer: Scope? = null) {
     val outerHoistingScope = outerScopeOfType<HoistingScope>()
@@ -18,6 +19,7 @@ open class Scope(val outer: Scope? = null) {
     protected open var nextInlineableLocal: Int
         get() = outer!!.nextInlineableLocal
         set(value) { outer!!.nextInlineableLocal = value }
+
     protected open var nextSlot: Int
         get() = outer!!.nextSlot
         set(value) { outer!!.nextSlot = value }
@@ -121,6 +123,7 @@ open class HoistingScope(outer: Scope? = null, val isLexical: Boolean = false) :
     override var isStrict = false
     var isDerivedClassConstructor = false
 
+    override var nextInlineableLocal = Transformer.RESERVED_LOCALS
     override var nextSlot = 0
 
     // Variables that are only "effectively" declared in this scope, such
@@ -194,7 +197,7 @@ open class HoistingScope(outer: Scope? = null, val isLexical: Boolean = false) :
         val parameters = variableSources.filter { it.mode == VariableMode.Parameter }
         val locals = variableSources.filter { it.mode != VariableMode.Parameter }
 
-        nextInlineableLocal = parameters.size
+        nextInlineableLocal = Transformer.RESERVED_LOCALS + parameters.size
 
         when (receiverVariable?.isInlineable) {
             true -> receiverVariable!!.index = 0
@@ -203,7 +206,9 @@ open class HoistingScope(outer: Scope? = null, val isLexical: Boolean = false) :
         }
 
         parameters.forEachIndexed { index, source ->
-            source.index = if (source.isInlineable) index else nextSlot++
+            source.index = if (source.isInlineable) {
+                Transformer.RESERVED_LOCALS + index
+            } else nextSlot++
         }
 
         locals.forEach {
