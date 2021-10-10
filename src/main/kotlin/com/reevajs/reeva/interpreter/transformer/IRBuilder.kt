@@ -1,37 +1,50 @@
 package com.reevajs.reeva.interpreter.transformer
 
-class IRBuilder private constructor(
-    private val opcodes: MutableList<Opcode>,
-) : MutableList<Opcode> by opcodes {
+class IRBuilder(
+    val argCount: Int,
+    additionalReservedLocals: Int,
+    val isDerivedClassConstructor: Boolean = false,
+) {
+    private val opcodes = mutableListOf<Opcode>()
     private val locals = mutableListOf<LocalKind>()
 
-    constructor() : this(mutableListOf())
+    init {
+        repeat(additionalReservedLocals) {
+            locals.add(LocalKind.Value)
+        }
+    }
+
+    fun getOpcodes(): List<Opcode> = opcodes
+
+    fun getLocals(): List<LocalKind> = locals
+
+    fun addOpcode(opcode: Opcode) {
+        opcodes.add(opcode)
+    }
+
+    fun opcodeCount(): Int = opcodes.size
 
     fun ifHelper(jumpBuilder: (to: Int) -> JumpInstr, block: () -> Unit) {
         val jump = jumpBuilder(-1)
-        add(jump)
+        addOpcode(jump)
         block()
-        jump.to = lastIndex
+        jump.to = opcodeCount() - 1
     }
 
     fun ifElseHelper(jumpBuilder: (to: Int) -> JumpInstr, firstBlock: () -> Unit, secondBlock: () -> Unit) {
         val firstJump = jumpBuilder(-1)
-        add(firstJump)
+        addOpcode(firstJump)
         firstBlock()
 
         val secondJump = Jump(-1)
-        add(secondJump)
-        firstJump.to = lastIndex
+        addOpcode(secondJump)
+        firstJump.to = opcodeCount() - 1
         secondBlock()
-        secondJump.to = lastIndex
+        secondJump.to = opcodeCount() - 1
     }
 
     fun newLocalSlot(kind: LocalKind): Int {
         locals.add(kind)
         return locals.lastIndex
-    }
-
-    fun build(): IRPackage {
-        return IRPackage(opcodes, locals)
     }
 }

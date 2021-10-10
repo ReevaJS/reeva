@@ -19,15 +19,15 @@ object Swap : Opcode(1)
 
 // Locals
 
-class IntStore(val slot: Int) : Opcode(-1)
+class LoadInt(val slot: Int) : Opcode(1)
 
-class IntLoad(val slot: Int) : Opcode(1)
+class StoreInt(val slot: Int) : Opcode(-1)
 
-class IntInc(val slot: Int) : Opcode(0)
+class IncInt(val slot: Int) : Opcode(0)
 
-class ValueStore(val slot: Int) : Opcode(-1)
+class LoadValue(val slot: Int) : Opcode(1)
 
-class ValueLoad(val slot: Int) : Opcode(1)
+class StoreValue(val slot: Int) : Opcode(-1)
 
 // Operations
 
@@ -56,14 +56,23 @@ object ShiftRight : Opcode(-1)
 object ShiftRightUnsigned : Opcode(-1)
 
 object TestEqualStrict : Opcode(-1)
+
 object TestNotEqualStrict : Opcode(-1)
+
 object TestEqual : Opcode(-1)
+
 object TestNotEqual : Opcode(-1)
+
 object TestLessThan : Opcode(-1)
+
 object TestLessThanOrEqual : Opcode(-1)
+
 object TestGreaterThan : Opcode(-1)
+
 object TestGreaterThanOrEqual : Opcode(-1)
+
 object TestInstanceOf : Opcode(-1)
+
 object TestIn : Opcode(-1)
 
 object TypeOf : Opcode(0)
@@ -88,7 +97,8 @@ object Dec : Opcode(0)
 
 object GetKeyedProperty : Opcode(-1)
 
-class GetNamedProperty(val name: String) : Opcode(0)
+// name: String | Symbol
+class GetNamedProperty(val name: Any) : Opcode(0)
 
 object CreateObject : Opcode(1)
 
@@ -120,6 +130,26 @@ class Construct(val argCount : Int) : Opcode(-1 - argCount)
 
 object ConstructArray : Opcode(-2)
 
+// Env
+
+class DeclareGlobals(val vars: List<String>, val lexs: List<String>, val consts: List<String>) : Opcode(0)
+
+class PushDeclarativeEnvRecord(val slotCount: Int) : Opcode(0)
+
+object PopEnvRecord : Opcode(0)
+
+class LoadGlobal(val name: String) : Opcode(1)
+
+class StoreGlobal(val name: String) : Opcode(-1)
+
+class LoadCurrentEnvSlot(val slot: Int) : Opcode(-1)
+
+class StoreCurrentEnvSlot(val slot: Int) : Opcode(-1)
+
+class LoadEnvSlot(val slot: Int, val distance: Int) : Opcode(-1)
+
+class StoreEnvSlot(val slot: Int, val distance: Int) : Opcode(-1)
+
 // Jumps
 
 sealed class JumpInstr(var to: Int) : Opcode(-1)
@@ -134,4 +164,34 @@ class JumpIfToBooleanTrue(to: Int) : JumpInstr(to)
 
 class JumpIfToBooleanFalse(to: Int) : JumpInstr(to)
 
+class JumpIfNotUndefined(to: Int) : JumpInstr(to)
+
 class JumpIfNotNullish(to: Int) : JumpInstr(to)
+
+// Misc
+
+class CreateClosure(val ir: FunctionInfo) : Opcode(1)
+
+class CreateClassConstructor(val ir: FunctionInfo) : Opcode(1)
+
+class CreateGeneratorClosure(val ir: FunctionInfo) : Opcode(1)
+
+class CreateAsyncClosure(val ir: FunctionInfo) : Opcode(1)
+
+class CreateAsyncGeneratorClosure(val ir: FunctionInfo) : Opcode(1)
+
+object CreateRestParam : Opcode(1)
+
+object GetSuperConstructor : Opcode(1)
+
+object CreateUnmappedArgumentsObject : Opcode(0)
+
+object CreateMappedArgumentsObject : Opcode(0)
+
+class ThrowConstantError(val message: String) : Opcode(0)
+
+object ThrowSuperNotInitializedIfEmpty : Opcode(0)
+
+object PushClosure : Opcode(1)
+
+object Return : Opcode(-1)

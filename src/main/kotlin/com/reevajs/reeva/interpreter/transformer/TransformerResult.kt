@@ -1,7 +1,7 @@
 package com.reevajs.reeva.interpreter.transformer
 
 sealed class TransformerResult {
-    class Success(val ir: IRPackage) : TransformerResult()
+    class Success(val ir: FunctionInfo) : TransformerResult()
 
     class UnsupportedError(val message: String) : TransformerResult()
 

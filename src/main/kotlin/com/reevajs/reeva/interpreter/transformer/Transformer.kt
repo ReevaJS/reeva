@@ -1,30 +1,439 @@
 package com.reevajs.reeva.interpreter.transformer
 
-import com.reevajs.reeva.ast.ASTVisitor
-import com.reevajs.reeva.ast.ArgumentList
-import com.reevajs.reeva.ast.IdentifierNode
-import com.reevajs.reeva.ast.IdentifierReferenceNode
+import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.BooleanLiteralNode
 import com.reevajs.reeva.ast.literals.NumericLiteralNode
 import com.reevajs.reeva.ast.literals.StringLiteralNode
+import com.reevajs.reeva.ast.statements.BlockNode
 import com.reevajs.reeva.ast.statements.IfStatementNode
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.lifecycle.Executable
+import com.reevajs.reeva.parsing.HoistingScope
+import com.reevajs.reeva.parsing.Scope
+import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.unreachable
 
 class Transformer(val executable: Executable) : ASTVisitor {
-    private val builder = IRBuilder()
+    private lateinit var builder: IRBuilder
+    private var currentScope: Scope? = null
 
     fun transform(): TransformerResult {
         expect(executable.script != null)
+        expect(!::builder.isInitialized, "Cannot reuse a Transformer")
 
         return try {
-            unsupported("TODO")
-        } catch (e: NotImplementedError) {
-            TransformerResult.UnsupportedError(e.message!!)
+            val script = executable.script!!
+            builder = IRBuilder(RESERVED_LOCALS, script.scope.inlineableLocalCount)
+
+            globalDeclarationInstantiation(script.scope as HoistingScope) {
+                visit(script.statements)
+                +Return
+            }
+
+            TransformerResult.Success(FunctionInfo(
+                executable.name,
+                builder.getOpcodes(),
+                builder.getLocals(),
+                builder.argCount,
+                script.scope.isStrict,
+                isTopLevel = true,
+            ))
         } catch (e: Throwable) {
             TransformerResult.InternalError(e)
+        }
+    }
+
+    private fun enterScope(scope: Scope) {
+        currentScope = scope
+
+        if (scope.requiresEnv())
+            +PushDeclarativeEnvRecord(scope.slotCount)
+    }
+
+    private fun exitScope(scope: Scope) {
+        currentScope = scope.outer
+
+        if (scope.requiresEnv())
+            +PopEnvRecord
+    }
+
+    private fun globalDeclarationInstantiation(scope: HoistingScope, block: () -> Unit) {
+        enterScope(scope)
+
+        val variables = scope.variableSources
+
+        val varVariables = variables.filter { it.type == VariableType.Var }
+        val lexVariables = variables.filter { it.type != VariableType.Var }
+
+        val varNames = varVariables.map { it.name() }
+        val lexNames = lexVariables.map { it.name() }
+
+        val functionNames = mutableListOf<String>()
+        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
+
+        for (decl in varVariables.asReversed()) {
+            if (decl !is FunctionDeclarationNode)
+                continue
+
+            val name = decl.name()
+            if (name in functionNames)
+                continue
+
+            functionNames.add(0, name)
+
+            // We only care about top-level functions. Functions in nested block
+            // scopes get initialized in BlockDeclarationInstantiation
+            if (decl !in scope.hoistedVariables)
+                functionsToInitialize.add(0, decl)
+        }
+
+        val declaredVarNames = mutableListOf<String>()
+
+        for (decl in varVariables) {
+            if (decl is FunctionDeclarationNode)
+                continue
+
+            val name = decl.name()
+            if (name in functionNames || name in declaredVarNames)
+                continue
+
+            declaredVarNames.add(name)
+        }
+
+        if (declaredVarNames.isNotEmpty() || lexNames.isNotEmpty() || functionNames.isNotEmpty())
+            +DeclareGlobals(declaredVarNames, lexNames, functionNames)
+
+        for (func in functionsToInitialize) {
+            visitFunctionHelper(
+                func.identifier.name,
+                func.parameters,
+                func.body,
+                func.functionScope,
+                func.body.scope,
+                func.body.scope.isStrict,
+                func.kind,
+            )
+
+            storeToSource(func)
+        }
+
+        block()
+
+        exitScope(scope)
+    }
+
+    private fun visitFunctionHelper(
+        name: String,
+        parameters: ParameterList,
+        body: ASTNode,
+        functionScope: Scope,
+        bodyScope: Scope,
+        isStrict: Boolean,
+        kind: Operations.FunctionKind,
+        classConstructorKind: JSFunction.ConstructorKind? = null,
+    ): FunctionInfo {
+        val prevBuilder = builder
+        builder = IRBuilder(
+            parameters.size + RESERVED_LOCALS,
+            functionScope.inlineableLocalCount,
+            classConstructorKind == JSFunction.ConstructorKind.Derived,
+        )
+
+        val functionPackage = makeFunctionInfo(
+            name,
+            parameters,
+            body,
+            functionScope,
+            bodyScope,
+            isStrict,
+            isAsync = kind.isAsync,
+            classConstructorKind,
+        )
+
+        builder = prevBuilder
+        val closureOp = when {
+            classConstructorKind != null -> ::CreateClassConstructor
+            kind.isGenerator && kind.isAsync -> ::CreateAsyncGeneratorClosure
+            kind.isGenerator -> ::CreateGeneratorClosure
+            kind.isAsync -> ::CreateAsyncClosure
+            else -> ::CreateClosure
+        }
+        +closureOp(functionPackage)
+        return functionPackage
+    }
+
+    private fun callClassInstanceFieldInitializer() {
+        +PushClosure
+        +GetNamedProperty(Realm.`@@classInstanceFields`)
+        +LoadValue(RECEIVER_LOCAL)
+        +Call(0)
+    }
+
+    private fun makeImplicitClassConstructor(
+        name: String,
+        constructorKind: JSFunction.ConstructorKind,
+        hasInstanceFields: Boolean,
+    ): FunctionInfo {
+        // One for the receiver/new.target
+        var argCount = RESERVED_LOCALS
+        if (constructorKind == JSFunction.ConstructorKind.Derived) {
+            // ...and one for the rest param, if necessary
+            argCount++
+        }
+
+        val prevBuilder = builder
+        builder = IRBuilder(argCount, 0, constructorKind == JSFunction.ConstructorKind.Derived)
+
+        if (constructorKind == JSFunction.ConstructorKind.Base) {
+            if (hasInstanceFields)
+                callClassInstanceFieldInitializer()
+            +PushUndefined
+            +Return
+        } else {
+            // Initializer the super constructor
+            +GetSuperConstructor
+            +LoadValue(NEW_TARGET_LOCAL)
+            +CreateRestParam
+            +ConstructArray
+            if (hasInstanceFields)
+                callClassInstanceFieldInitializer()
+            +Return
+        }
+
+        return FunctionInfo(
+            name,
+            builder.getOpcodes(),
+            builder.getLocals(),
+            argCount,
+            isStrict = true,
+            isTopLevel = false,
+        ).also {
+            builder = prevBuilder
+        }
+    }
+
+    private fun makeFunctionInfo(
+        name: String,
+        parameters: ParameterList,
+        body: ASTNode,
+        functionScope: Scope,
+        bodyScope: Scope,
+        isStrict: Boolean,
+        isAsync: Boolean,
+        classConstructorKind: JSFunction.ConstructorKind?,
+        hasClassFields: Boolean = false,
+    ): FunctionInfo {
+        functionDeclarationInstantiation(
+            parameters,
+            functionScope,
+            bodyScope,
+            isStrict
+        ) {
+            if (hasClassFields && classConstructorKind == JSFunction.ConstructorKind.Base) {
+                // We can't load fields here if we are in a derived constructor as super() hasn't
+                // been called
+                callClassInstanceFieldInitializer()
+            }
+
+            // body's scope is the same as the function's scope (the scope we receive
+            // as a parameter). We don't want to re-enter the same scope, so we explicitly
+            // call visitASTListNode instead, which skips the {enter,exit}Scope calls.
+            if (body is BlockNode) {
+                visitASTListNode(body.statements)
+            } else visit(body)
+
+            if (classConstructorKind == JSFunction.ConstructorKind.Derived) {
+                expect(body is BlockNode)
+                // TODO: Check to see if this is redundant
+                +LoadValue(RECEIVER_LOCAL)
+                +ThrowSuperNotInitializedIfEmpty
+            } else if (body is BlockNode) {
+                +PushUndefined
+            }
+
+            +Return
+        }
+
+        return FunctionInfo(
+            name,
+            builder.getOpcodes(),
+            builder.getLocals(),
+            builder.argCount,
+            isStrict,
+            isTopLevel = false,
+        )
+    }
+
+    private fun functionDeclarationInstantiation(
+        parameters: ParameterList,
+        functionScope: Scope,
+        bodyScope: Scope,
+        isStrict: Boolean,
+        evaluationBlock: () -> Unit,
+    ) {
+        expect(functionScope is HoistingScope)
+        expect(bodyScope is HoistingScope)
+
+        val variables = bodyScope.variableSources
+        val varVariables = variables.filter { it.type == VariableType.Var }
+        val functionNames = mutableListOf<String>()
+        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
+
+        for (decl in varVariables.asReversed()) {
+            if (decl !is FunctionDeclarationNode)
+                continue
+
+            val name = decl.name()
+            if (name in functionNames)
+                continue
+
+            functionNames.add(0, name)
+
+            // We only care about top-level functions. Functions in nested block
+            // scopes get initialized in BlockDeclarationInstantiation
+            if (decl !in bodyScope.hoistedVariables)
+                functionsToInitialize.add(0, decl)
+        }
+
+        when (functionScope.argumentsMode) {
+            HoistingScope.ArgumentsMode.None -> {
+            }
+            HoistingScope.ArgumentsMode.Unmapped -> {
+                +CreateUnmappedArgumentsObject
+                storeToSource(functionScope.argumentsSource)
+            }
+            HoistingScope.ArgumentsMode.Mapped -> {
+                +CreateMappedArgumentsObject
+                storeToSource(functionScope.argumentsSource)
+            }
+        }
+
+        enterScope(functionScope)
+
+        if (parameters.containsDuplicates())
+            TODO("Handle duplicate parameter names")
+
+        val receiver = functionScope.receiverVariable
+
+        if (receiver != null && !receiver.isInlineable) {
+            +LoadValue(RECEIVER_LOCAL)
+            storeToSource(receiver)
+        }
+
+        parameters.forEachIndexed { index, param ->
+            val register = RESERVED_LOCALS + index
+
+            when (param) {
+                is SimpleParameter -> {
+                    if (param.initializer != null) {
+                        +LoadValue(register)
+                        builder.ifHelper(::JumpIfNotUndefined) {
+                            visit(param.initializer)
+                            storeToSource(param)
+                        }
+                    } else if (!param.isInlineable) {
+                        +LoadValue(register)
+                        storeToSource(param)
+                    }
+                }
+                is BindingParameter -> {
+                    if (param.initializer != null) {
+                        +LoadValue(register)
+                        builder.ifHelper(::JumpIfNotUndefined) {
+                            visit(param.initializer)
+                            +StoreValue(register)
+                        }
+                    }
+                    TODO()
+                    // assign(param.pattern, register)
+                }
+                is RestParameter -> {
+                    TODO()
+                    // +CreateRestParam
+                    // assign(param.declaration.node)
+                }
+            }
+        }
+
+        for (func in functionsToInitialize) {
+            visitFunctionHelper(
+                func.identifier.name,
+                func.parameters,
+                func.body,
+                func.functionScope,
+                func.body.scope,
+                isStrict,
+                func.kind,
+            )
+
+            storeToSource(func)
+        }
+
+        if (bodyScope != functionScope)
+            enterScope(bodyScope)
+
+        evaluationBlock()
+
+        if (bodyScope != functionScope)
+            exitScope(bodyScope)
+
+        exitScope(functionScope)
+    }
+
+    private fun loadFromSource(source: VariableSourceNode) {
+        if (source.mode == VariableMode.Global) {
+            if (source.name() == "undefined") {
+                +PushUndefined
+            } else {
+                expect(source.type == VariableType.Var)
+                +LoadGlobal(source.name())
+            }
+
+            return
+        }
+
+        expect(source.index != -1)
+
+        if (source.isInlineable) {
+            +LoadValue(source.index)
+        } else {
+            val distance = currentScope!!.envDistanceFrom(source.scope)
+            if (distance == 0) {
+                +LoadCurrentEnvSlot(source.index)
+            } else {
+                +LoadEnvSlot(source.index, distance)
+            }
+        }
+    }
+
+    private fun storeToSource(source: VariableSourceNode) {
+        if (source.mode == VariableMode.Global) {
+            if (source.name() == "undefined") {
+                if (source.scope.isStrict) {
+                    +ThrowConstantError("cannot assign to constant variable \"undefined\"")
+                } else return
+            } else {
+                expect(source.type == VariableType.Var)
+                +StoreGlobal(source.name())
+            }
+
+            return
+        }
+
+        expect(source.index != -1)
+
+        if (source.isInlineable) {
+            +StoreValue(source.index)
+        } else {
+            val distance = currentScope!!.envDistanceFrom(source.scope)
+            if (distance == 0) {
+                +StoreCurrentEnvSlot(source.index)
+            } else {
+                +StoreEnvSlot(source.index, distance)
+            }
         }
     }
 
@@ -267,6 +676,12 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     private operator fun Opcode.unaryPlus() {
-        builder.add(this)
+        builder.addOpcode(this)
+    }
+
+    companion object {
+        const val RECEIVER_LOCAL = 0
+        const val NEW_TARGET_LOCAL = 0 // Does this need to be its own local?
+        const val RESERVED_LOCALS = 1
     }
 }
