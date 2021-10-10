@@ -9,7 +9,7 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.ThrowException
 import com.reevajs.reeva.interpreter.Interpreter
 import com.reevajs.reeva.interpreter.transformer.Transformer
-import com.reevajs.reeva.interpreter.transformer.opcodes.IrPrinter
+import com.reevajs.reeva.interpreter.transformer.IRPrinter
 import com.reevajs.reeva.jvmcompat.JSClassInstanceObject
 import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.mfbt.Dtoa
@@ -2293,95 +2293,99 @@ object Operations {
         kind: FunctionKind,
         args: JSArguments
     ): JSValue {
-        val agent = Reeva.activeAgent
+        // TODO: Ideally most of this code would be done through an Agent to
+        //       avoid code duplication
+        unreachable()
 
-        // TODO: Figure out the caller vs callee realm separation
-        agent.hostHooks.ensureCanCompileStrings(realm, realm)
-
-        val newTarget = if (newTarget_ == JSUndefined) constructor else newTarget_ as JSObject
-
-        val fallbackProto = when (kind) {
-            FunctionKind.Normal -> newTarget.realm.functionProto
-            FunctionKind.Generator -> newTarget.realm.generatorFunctionProto
-            else -> TODO()
-        }
-
-        val bodyArgString = if (args.isEmpty()) "" else args.last().toJSString(realm).string
-
-        val argString = if (args.size <= 1) "" else buildString {
-            for ((index, arg) in args.dropLast(1).withIndex()) {
-                val string = arg.toJSString(realm).string
-                if (index != 0)
-                    append(',')
-                append(string)
-            }
-        }
-
-        val bodyString = "\n$bodyArgString\n"
-        val prefix = kind.prefix
-        val sourceString = "$prefix anonymous($argString\n) {$bodyString}"
-
-        // TODO: 20.2.1.1.1 step 24:
-        // NOTE: The parameters and body are parsed separately to ensure that each is valid alone. For
-        // example, new Function("/*", "*/ ) {") is not legal.
-        val parser = Parser(sourceString)
-
-        // TODO: Get access to the Agent for printAST/printIR
-
-        val functionNode = when (val result = parser.parseFunction(kind)) {
-            is ParsingResult.InternalError -> throw result.cause
-            is ParsingResult.ParseError -> {
-                val exception = JSSyntaxErrorObject.create(realm, result.reason)
-                throw ThrowException(exception)
-            }
-            is ParsingResult.Success -> result.node as FunctionDeclarationNode
-        }
-
-        if (agent.printAST) {
-            functionNode.debugPrint()
-            println("\n")
-        }
-
-        val proto = getPrototypeFromConstructor(constructor, fallbackProto)
-
-        val ir = Transformer().transform(functionNode)
-
-        if (agent.printIR) {
-            IrPrinter(ir).print()
-            println("\n")
-        }
-
-        IrPrinter(ir).print()
-        println("\n")
-
-        // TODO: This globalEnv access will throw an exception if this is access
-        // after the entire script has stopped running (for example, if a function
-        // containing a new Function call is executed on the JVM side). This will
-        // somehow have to climb up the EnvRecord stack of the calling function.
-        val function = Interpreter.wrap(ir, realm, realm.globalEnv, kind)
-        function.setPrototype(proto)
-        definePropertyOrThrow(
-            realm,
-            function,
-            "length".key(),
-            Descriptor(functionNode.parameters.size.toValue(), Descriptor.CONFIGURABLE)
-        )
-
-        setFunctionName(realm, function, "anonymous".key())
-
-        when (kind) {
-            FunctionKind.Normal -> {
-                // TODO:
-                // makeConstructor(function)
-            }
-            FunctionKind.Generator -> {
-                val prototype = JSObject.create(realm, realm.generatorFunctionProto)
-                definePropertyOrThrow(realm, function, "prototype".key(), Descriptor(prototype, Descriptor.WRITABLE))
-            }
-            else -> TODO()
-        }
-
-        return function
+        // val agent = Reeva.activeAgent
+        //
+        // // TODO: Figure out the caller vs callee realm separation
+        // agent.hostHooks.ensureCanCompileStrings(realm, realm)
+        //
+        // val newTarget = if (newTarget_ == JSUndefined) constructor else newTarget_ as JSObject
+        //
+        // val fallbackProto = when (kind) {
+        //     FunctionKind.Normal -> newTarget.realm.functionProto
+        //     FunctionKind.Generator -> newTarget.realm.generatorFunctionProto
+        //     else -> TODO()
+        // }
+        //
+        // val bodyArgString = if (args.isEmpty()) "" else args.last().toJSString(realm).string
+        //
+        // val argString = if (args.size <= 1) "" else buildString {
+        //     for ((index, arg) in args.dropLast(1).withIndex()) {
+        //         val string = arg.toJSString(realm).string
+        //         if (index != 0)
+        //             append(',')
+        //         append(string)
+        //     }
+        // }
+        //
+        // val bodyString = "\n$bodyArgString\n"
+        // val prefix = kind.prefix
+        // val sourceString = "$prefix anonymous($argString\n) {$bodyString}"
+        //
+        // // TODO: 20.2.1.1.1 step 24:
+        // // NOTE: The parameters and body are parsed separately to ensure that each is valid alone. For
+        // // example, new Function("/*", "*/ ) {") is not legal.
+        // val parser = Parser(sourceString)
+        //
+        // // TODO: Get access to the Agent for printAST/printIR
+        //
+        // val functionNode = when (val result = parser.parseFunction(kind)) {
+        //     is ParsingResult.InternalError -> throw result.cause
+        //     is ParsingResult.ParseError -> {
+        //         val exception = JSSyntaxErrorObject.create(realm, result.reason)
+        //         throw ThrowException(exception)
+        //     }
+        //     is ParsingResult.Success -> result.node as FunctionDeclarationNode
+        // }
+        //
+        // if (agent.printAST) {
+        //     functionNode.debugPrint()
+        //     println("\n")
+        // }
+        //
+        // val proto = getPrototypeFromConstructor(constructor, fallbackProto)
+        //
+        // val ir = Transformer().transform(functionNode)
+        //
+        // if (agent.printIR) {
+        //     IRPrinter(ir).print()
+        //     println("\n")
+        // }
+        //
+        // IRPrinter(ir).print()
+        // println("\n")
+        //
+        // // TODO: This globalEnv access will throw an exception if this is access
+        // // after the entire script has stopped running (for example, if a function
+        // // containing a new Function call is executed on the JVM side). This will
+        // // somehow have to climb up the EnvRecord stack of the calling function.
+        // val function = Interpreter.wrap(ir, realm, realm.globalEnv, kind)
+        // function.setPrototype(proto)
+        // definePropertyOrThrow(
+        //     realm,
+        //     function,
+        //     "length".key(),
+        //     Descriptor(functionNode.parameters.size.toValue(), Descriptor.CONFIGURABLE)
+        // )
+        //
+        // setFunctionName(realm, function, "anonymous".key())
+        //
+        // when (kind) {
+        //     FunctionKind.Normal -> {
+        //         // TODO:
+        //         // makeConstructor(function)
+        //     }
+        //     FunctionKind.Generator -> {
+        //         val prototype = JSObject.create(realm, realm.generatorFunctionProto)
+        //         definePropertyOrThrow(realm, function, "prototype".key(), Descriptor(prototype, Descriptor.WRITABLE))
+        //     }
+        //     else -> TODO()
+        // }
+        //
+        // return function
     }
 
     @JvmStatic

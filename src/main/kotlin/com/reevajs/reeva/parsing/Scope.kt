@@ -15,14 +15,14 @@ open class Scope(val outer: Scope? = null) {
     open val isStrict: Boolean
         get() = outerHoistingScope.isStrict
 
-    protected open var nextInlineableRegister: Int
-        get() = outer!!.nextInlineableRegister
-        set(value) { outer!!.nextInlineableRegister = value }
+    protected open var nextInlineableLocal: Int
+        get() = outer!!.nextInlineableLocal
+        set(value) { outer!!.nextInlineableLocal = value }
     protected open var nextSlot: Int
         get() = outer!!.nextSlot
         set(value) { outer!!.nextSlot = value }
 
-    val inlineableRegisterCount: Int get() = nextInlineableRegister
+    val inlineableLocalCount: Int get() = nextInlineableLocal
     val slotCount: Int get() = nextSlot
 
     init {
@@ -75,15 +75,15 @@ open class Scope(val outer: Scope? = null) {
     }
 
     open fun finish() {
-        allocateSlots()
+        allocateLocals()
         pendingVariableReferences.clear()
         childScopes.forEach { it.finish() }
     }
 
-    protected open fun allocateSlots() {
+    protected open fun allocateLocals() {
         variableSources.forEach {
-            it.slot = if (it.isInlineable) {
-                nextInlineableRegister++
+            it.index = if (it.isInlineable) {
+                nextInlineableLocal++
             } else nextSlot++
         }
     }
@@ -121,7 +121,6 @@ open class HoistingScope(outer: Scope? = null, val isLexical: Boolean = false) :
     override var isStrict = false
     var isDerivedClassConstructor = false
 
-    override var nextInlineableRegister = Interpreter.RESERVED_REGISTERS
     override var nextSlot = 0
 
     // Variables that are only "effectively" declared in this scope, such
@@ -191,27 +190,25 @@ open class HoistingScope(outer: Scope? = null, val isLexical: Boolean = false) :
         return scope.childScopes.filter { it !is HoistingScope }.any(::needsArgumentsObject)
     }
 
-    override fun allocateSlots() {
+    override fun allocateLocals() {
         val parameters = variableSources.filter { it.mode == VariableMode.Parameter }
         val locals = variableSources.filter { it.mode != VariableMode.Parameter }
 
-        nextInlineableRegister = Interpreter.RESERVED_REGISTERS + parameters.size
+        nextInlineableLocal = parameters.size
 
         when (receiverVariable?.isInlineable) {
-            true -> receiverVariable!!.slot = 0
-            false -> receiverVariable!!.slot = nextSlot++
+            true -> receiverVariable!!.index = 0
+            false -> receiverVariable!!.index = nextSlot++
             else -> {}
         }
 
         parameters.forEachIndexed { index, source ->
-            source.slot = if (source.isInlineable) {
-                Interpreter.RESERVED_REGISTERS + index
-            } else nextSlot++
+            source.index = if (source.isInlineable) index else nextSlot++
         }
 
         locals.forEach {
-            it.slot = if (it.isInlineable) {
-                nextInlineableRegister++
+            it.index = if (it.isInlineable) {
+                nextInlineableLocal++
             } else nextSlot++
         }
     }

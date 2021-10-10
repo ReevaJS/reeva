@@ -46,8 +46,14 @@ abstract class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWith
 abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
     open var hoistedScope: Scope by ::scope
 
-    var slot: Int = -1
     var isInlineable = true
+
+    /**
+     * Refers to the variable's slot in the EnvRecord if
+     * isInlineable == false, otherwise refers to the variable's
+     * local index
+     */
+    var index: Int = -1
 
     lateinit var type: VariableType
     lateinit var mode: VariableMode
