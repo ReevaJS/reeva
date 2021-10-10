@@ -1,6 +1,10 @@
 package com.reevajs.reeva.interpreter.transformer
 
-sealed class Opcode(val stackHeightModifier: Int)
+sealed class Opcode(val stackHeightModifier: Int) {
+    override fun toString(): String {
+        return this::class.simpleName!!
+    }
+}
 
 // Stack manipulation
 
