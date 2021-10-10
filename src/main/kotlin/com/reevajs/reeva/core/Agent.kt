@@ -2,13 +2,16 @@ package com.reevajs.reeva.core
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.ScriptNode
-import com.reevajs.reeva.interpreter.ExecutionResult
+import com.reevajs.reeva.core.lifecycle.Executable
+import com.reevajs.reeva.core.lifecycle.ExecutionResult
 import com.reevajs.reeva.interpreter.Interpreter
 import com.reevajs.reeva.interpreter.transformer.Transformer
-import com.reevajs.reeva.interpreter.transformer.opcodes.IrPrinter
+import com.reevajs.reeva.interpreter.transformer.TransformerResult
 import com.reevajs.reeva.parsing.Parser
 import com.reevajs.reeva.parsing.ParsingResult
 import com.reevajs.reeva.runtime.functions.JSFunction
+import com.reevajs.reeva.runtime.primitives.JSTrue
+import com.reevajs.reeva.utils.expect
 import java.nio.ByteOrder
 
 class Agent {
@@ -35,41 +38,60 @@ class Agent {
         Reeva.allAgents.add(this)
     }
 
-    fun run(script: String, realm: Realm): ExecutionResult {
-        val ast = when (val astResult = Parser(script).parseScript()) {
-            is ParsingResult.InternalError -> return ExecutionResult.InternalError(astResult.cause)
-            is ParsingResult.ParseError -> return ExecutionResult.ParseError(
-                astResult.reason,
-                astResult.start,
-                astResult.end
-            )
-            is ParsingResult.Success -> astResult.node as ScriptNode
+    fun parse(executable: Executable): ParsingResult {
+        val result = Parser(executable).parseScript()
+        if (result is ParsingResult.Success) {
+            expect(result.node is ScriptNode)
+            executable.script = result.node
+        }
+        return result
+    }
+
+    fun transform(executable: Executable): TransformerResult {
+        val result = Transformer(executable).transform()
+        if (result is TransformerResult.Success)
+            executable.ir = result.ir
+        return result
+    }
+
+    fun run(source: String, realm: Realm): ExecutionResult {
+        return run(Executable(null, source), realm)
+    }
+
+    fun run(executable: Executable, realm: Realm): ExecutionResult {
+        when (val result = parse(executable)) {
+            is ParsingResult.InternalError -> return ExecutionResult.InternalError(executable, result.cause)
+            is ParsingResult.ParseError ->
+                return ExecutionResult.ParseError(executable, result.reason, result.start, result.end)
         }
 
         if (printAST) {
-            ast.debugPrint()
+            executable.script!!.debugPrint()
             println("\n")
         }
 
-        val ir = try {
-            Transformer().transform(ast)
-        } catch (e: Throwable) {
-            return ExecutionResult.InternalError(e)
+        when (val result = transform(executable)) {
+            is TransformerResult.InternalError -> return ExecutionResult.InternalError(executable, result.cause)
+            is TransformerResult.UnsupportedError ->
+                return ExecutionResult.InternalError(executable, NotImplementedError(result.message))
         }
 
         if (printIR) {
-            IrPrinter(ir).print()
+            // TODO
+            // IrPrinter(executable.ir!!).print()
             println("\n")
         }
 
-        return try {
-            val function = Interpreter.wrap(ir, realm, realm.globalEnv)
-            ExecutionResult.Success(function.call(realm.globalObject, emptyList()))
-        } catch (e: ThrowException) {
-            ExecutionResult.RuntimeError(realm, e.value)
-        } catch (e: Throwable) {
-            ExecutionResult.InternalError(e)
-        }
+        // TODO
+        return ExecutionResult.Success(executable, JSTrue)
+        // return try {
+        //     val function = Interpreter.wrap(ir, realm, realm.globalEnv)
+        //     ExecutionResult.Success(function.call(realm.globalObject, emptyList()))
+        // } catch (e: ThrowException) {
+        //     ExecutionResult.RuntimeError(realm, e.value)
+        // } catch (e: Throwable) {
+        //     ExecutionResult.InternalError(e)
+        // }
     }
 
     internal fun <T> inCallScope(function: JSFunction, block: () -> T): T {

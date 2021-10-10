@@ -4,6 +4,7 @@ import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
+import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.parsing.lexer.Lexer
 import com.reevajs.reeva.parsing.lexer.Token
 import com.reevajs.reeva.parsing.lexer.TokenLocation
@@ -15,7 +16,10 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
 @OptIn(ExperimentalContracts::class)
-class Parser(val source: String) {
+class Parser(val executable: Executable) {
+    private val source: String
+        get() = executable.source
+
     private var inDefaultContext = false
     private var inFunctionContext = false
     private var inYieldContext = false
@@ -48,7 +52,7 @@ class Parser(val source: String) {
     private var isStrict = false
 
     private fun initLexer() {
-        tokens.addAll(Lexer(source).getTokens())
+        tokens.addAll(Lexer(executable.source).getTokens())
     }
 
     fun parseScript(): ParsingResult {
@@ -58,10 +62,13 @@ class Parser(val source: String) {
                 // The script is empty
                 ScriptNode(StatementList(), false)
             } else parseScriptImpl()
+
             if (!isDone)
                 reporter.at(token).unexpectedToken(tokenType)
+
             ScopeResolver().resolve(script)
             EarlyErrorDetector(reporter).visit(script)
+
             ParsingResult.Success(script)
         } catch (e: ParsingException) {
             ParsingResult.ParseError(e.message!!, e.start, e.end)
