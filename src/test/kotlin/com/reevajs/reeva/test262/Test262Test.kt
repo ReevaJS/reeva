@@ -3,7 +3,7 @@ package com.reevajs.reeva.test262
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.interpreter.ExecutionResult
+import com.reevajs.reeva.core.lifecycle.ExecutionResult
 import com.reevajs.reeva.runtime.Operations
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assumptions
@@ -134,7 +134,7 @@ class Test262Test(
                 }
 
                 val expectedClass = "JS${metadata.negative!!.type}Object"
-                val actualClass = (testResult as ExecutionResult.RuntimeError).cause::class.simpleName
+                val actualClass = (testResult as ExecutionResult.RuntimeError).value::class.simpleName
 
                 Assertions.assertTrue(actualClass == expectedClass) {
                     "Expected $expectedClass to be thrown, but found $actualClass"
