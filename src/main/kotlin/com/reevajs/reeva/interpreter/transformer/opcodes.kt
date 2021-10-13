@@ -19,19 +19,21 @@ object Pop : Opcode(-1)
 
 object Dup : Opcode(1)
 
-object Swap : Opcode(1)
+object DupX1 : Opcode(1)
+
+object Swap : Opcode(0)
 
 // Locals
 
-class LoadInt(val slot: Int) : Opcode(1)
+class LoadInt(val local: Local) : Opcode(1)
 
-class StoreInt(val slot: Int) : Opcode(-1)
+class StoreInt(val local: Local) : Opcode(-1)
 
-class IncInt(val slot: Int) : Opcode(0)
+class IncInt(val local: Local) : Opcode(0)
 
-class LoadValue(val slot: Int) : Opcode(1)
+class LoadValue(val local: Local) : Opcode(1)
 
-class StoreValue(val slot: Int) : Opcode(-1)
+class StoreValue(val local: Local) : Opcode(-1)
 
 // Operations
 
@@ -99,10 +101,15 @@ object Dec : Opcode(0)
 
 // Objects
 
-object GetKeyedProperty : Opcode(-1)
+object LoadKeyedProperty : Opcode(-1)
+
+object StoreKeyedProperty : Opcode(-2)
 
 // name: String | Symbol
-class GetNamedProperty(val name: Any) : Opcode(0)
+class LoadNamedProperty(val name: Any) : Opcode(0)
+
+// name: String | Symbol
+class StoreNamedProperty(val name: Any) : Opcode(-1)
 
 object CreateObject : Opcode(1)
 
@@ -136,7 +143,7 @@ object ConstructArray : Opcode(-2)
 
 // Env
 
-class DeclareGlobals(val vars: List<String>, val lexs: List<String>, val consts: List<String>) : Opcode(0)
+class DeclareGlobals(val vars: List<String>, val lexs: List<String>, val funcs: List<String>) : Opcode(0)
 
 class PushDeclarativeEnvRecord(val slotCount: Int) : Opcode(0)
 
@@ -168,11 +175,17 @@ class JumpIfToBooleanTrue(to: Int) : JumpInstr(to)
 
 class JumpIfToBooleanFalse(to: Int) : JumpInstr(to)
 
+class JumpIfUndefined(to: Int) : JumpInstr(to)
+
 class JumpIfNotUndefined(to: Int) : JumpInstr(to)
 
 class JumpIfNotNullish(to: Int) : JumpInstr(to)
 
+class JumpIfNotEmpty(to: Int) : JumpInstr(to)
+
 // Misc
+
+object ForInEnumerate : Opcode(0)
 
 class CreateClosure(val ir: FunctionInfo) : Opcode(1)
 

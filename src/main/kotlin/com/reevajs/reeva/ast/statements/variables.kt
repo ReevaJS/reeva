@@ -2,14 +2,18 @@ package com.reevajs.reeva.ast.statements
 
 import com.reevajs.reeva.ast.*
 
+interface DeclarationNode {
+    val declarations: List<Declaration>
+}
+
 class LexicalDeclarationNode(
     val isConst: Boolean,
-    val declarations: List<Declaration>,
-) : ASTNodeBase(declarations), StatementNode
+    override val declarations: List<Declaration>,
+) : ASTNodeBase(declarations), DeclarationNode, StatementNode
 
 class VariableDeclarationNode(
-    val declarations: List<Declaration>,
-) : ASTNodeBase(declarations), StatementNode
+    override val declarations: List<Declaration>,
+) : ASTNodeBase(declarations), DeclarationNode, StatementNode
 
 sealed interface Declaration : ASTNode {
     val initializer: ExpressionNode?

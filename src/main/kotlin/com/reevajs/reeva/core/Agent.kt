@@ -4,7 +4,6 @@ import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.ScriptNode
 import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.core.lifecycle.ExecutionResult
-import com.reevajs.reeva.interpreter.Interpreter
 import com.reevajs.reeva.interpreter.transformer.IRPrinter
 import com.reevajs.reeva.interpreter.transformer.IRValidator
 import com.reevajs.reeva.interpreter.transformer.Transformer

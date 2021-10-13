@@ -5,8 +5,7 @@ import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.BooleanLiteralNode
 import com.reevajs.reeva.ast.literals.NumericLiteralNode
 import com.reevajs.reeva.ast.literals.StringLiteralNode
-import com.reevajs.reeva.ast.statements.BlockNode
-import com.reevajs.reeva.ast.statements.IfStatementNode
+import com.reevajs.reeva.ast.statements.*
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.parsing.HoistingScope
@@ -19,6 +18,11 @@ import com.reevajs.reeva.utils.unreachable
 class Transformer(val executable: Executable) : ASTVisitor {
     private lateinit var builder: IRBuilder
     private var currentScope: Scope? = null
+
+    data class LabelledSection(val labels: Set<String>, val start: Int)
+
+    private val breakableScopes = mutableListOf<LabelledSection>()
+    private val continuableScopes = mutableListOf<LabelledSection>()
 
     fun transform(): TransformerResult {
         expect(executable.script != null)
@@ -43,6 +47,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
                 builder.argCount,
                 script.scope.isStrict,
                 isTopLevel = true,
+                builder.getChildFunctions(),
             ))
         } catch (e: Throwable) {
             TransformerResult.InternalError(e)
@@ -110,7 +115,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
             +DeclareGlobals(declaredVarNames, lexNames, functionNames)
 
         for (func in functionsToInitialize) {
-            visitFunctionHelper(
+            builder.addChildFunction(visitFunctionHelper(
                 func.identifier.name,
                 func.parameters,
                 func.body,
@@ -118,14 +123,15 @@ class Transformer(val executable: Executable) : ASTVisitor {
                 func.body.scope,
                 func.body.scope.isStrict,
                 func.kind,
-            )
+            ))
 
             storeToSource(func)
         }
 
         block()
 
-        exitScope(scope)
+        if (!builder.isDone)
+            exitScope(scope)
     }
 
     private fun visitFunctionHelper(
@@ -168,9 +174,50 @@ class Transformer(val executable: Executable) : ASTVisitor {
         return functionPackage
     }
 
+    override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
+        // nop
+    }
+
+    override fun visitBlock(node: BlockNode) {
+        visitBlock(node, pushScope = true)
+    }
+
+    private fun visitBlock(node: BlockNode, pushScope: Boolean) {
+        if (pushScope)
+            enterScope(node.scope)
+
+        try {
+            if (node.labels.isNotEmpty())
+                enterBreakableScope(node.labels)
+
+            // BlockScopeInstantiation
+            node.scope.variableSources.filterIsInstance<FunctionDeclarationNode>().forEach {
+                builder.addChildFunction(visitFunctionHelper(
+                    it.name(),
+                    it.parameters,
+                    it.body,
+                    it.functionScope,
+                    it.body.scope,
+                    it.body.scope.isStrict,
+                    it.kind,
+                ))
+
+                storeToSource(it)
+            }
+
+            visitASTListNode(node.statements)
+
+            if (node.labels.isNotEmpty())
+                exitBreakableScope()
+        } finally {
+            if (pushScope)
+                exitScope(node.scope)
+        }
+    }
+
     private fun callClassInstanceFieldInitializer() {
         +PushClosure
-        +GetNamedProperty(Realm.`@@classInstanceFields`)
+        +LoadNamedProperty(Realm.`@@classInstanceFields`)
         +LoadValue(RECEIVER_LOCAL)
         +Call(0)
     }
@@ -213,6 +260,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
             argCount,
             isStrict = true,
             isTopLevel = false,
+            builder.getChildFunctions()
         ).also {
             builder = prevBuilder
         }
@@ -248,16 +296,18 @@ class Transformer(val executable: Executable) : ASTVisitor {
                 visitASTListNode(body.statements)
             } else visit(body)
 
-            if (classConstructorKind == JSFunction.ConstructorKind.Derived) {
-                expect(body is BlockNode)
-                // TODO: Check to see if this is redundant
-                +LoadValue(RECEIVER_LOCAL)
-                +ThrowSuperNotInitializedIfEmpty
-            } else if (body is BlockNode) {
-                +PushUndefined
-            }
+            if (!builder.isDone) {
+                if (classConstructorKind == JSFunction.ConstructorKind.Derived) {
+                    expect(body is BlockNode)
+                    // TODO: Check to see if this is redundant
+                    +LoadValue(RECEIVER_LOCAL)
+                    +ThrowSuperNotInitializedIfEmpty
+                } else if (body is BlockNode) {
+                    +PushUndefined
+                }
 
-            +Return
+                +Return
+            }
         }
 
         return FunctionInfo(
@@ -267,6 +317,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
             builder.argCount,
             isStrict,
             isTopLevel = false,
+            builder.getChildFunctions(),
         )
     }
 
@@ -327,27 +378,27 @@ class Transformer(val executable: Executable) : ASTVisitor {
         }
 
         parameters.forEachIndexed { index, param ->
-            val register = RESERVED_LOCALS + index
+            val local = Local(RESERVED_LOCALS + index)
 
             when (param) {
                 is SimpleParameter -> {
                     if (param.initializer != null) {
-                        +LoadValue(register)
+                        +LoadValue(local)
                         builder.ifHelper(::JumpIfNotUndefined) {
                             visit(param.initializer)
                             storeToSource(param)
                         }
                     } else if (!param.isInlineable) {
-                        +LoadValue(register)
+                        +LoadValue(local)
                         storeToSource(param)
                     }
                 }
                 is BindingParameter -> {
                     if (param.initializer != null) {
-                        +LoadValue(register)
+                        +LoadValue(local)
                         builder.ifHelper(::JumpIfNotUndefined) {
                             visit(param.initializer)
-                            +StoreValue(register)
+                            +StoreValue(local)
                         }
                     }
                     TODO()
@@ -362,7 +413,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         }
 
         for (func in functionsToInitialize) {
-            visitFunctionHelper(
+            builder.addChildFunction(visitFunctionHelper(
                 func.identifier.name,
                 func.parameters,
                 func.body,
@@ -370,7 +421,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
                 func.body.scope,
                 isStrict,
                 func.kind,
-            )
+            ))
 
             storeToSource(func)
         }
@@ -380,10 +431,11 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
         evaluationBlock()
 
-        if (bodyScope != functionScope)
-            exitScope(bodyScope)
-
-        exitScope(functionScope)
+        if (builder.isDone) {
+            if (bodyScope != functionScope)
+                exitScope(bodyScope)
+            exitScope(functionScope)
+        }
     }
 
     private fun loadFromSource(source: VariableSourceNode) {
@@ -401,7 +453,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         expect(source.index != -1)
 
         if (source.isInlineable) {
-            +LoadValue(source.index)
+            +LoadValue(Local(source.index))
         } else {
             val distance = currentScope!!.envDistanceFrom(source.scope)
             if (distance == 0) {
@@ -429,7 +481,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         expect(source.index != -1)
 
         if (source.isInlineable) {
-            +StoreValue(source.index)
+            +StoreValue(Local(source.index))
         } else {
             val distance = currentScope!!.envDistanceFrom(source.scope)
             if (distance == 0) {
@@ -458,6 +510,205 @@ class Transformer(val executable: Executable) : ASTVisitor {
                 { visit(node.falseBlock) },
             )
         }
+    }
+
+    override fun visitWhileStatement(node: WhileStatementNode) {
+        val head = builder.opcodeCount()
+        val jumpToEnd = Jump(-1)
+
+        visitExpression(node.condition)
+        builder.ifElseHelper(
+            ::JumpIfToBooleanFalse,
+            {
+                enterBreakableScope(node.labels)
+                enterContinuableScope(node.labels)
+                visitStatement(node.body)
+                exitContinuableScope()
+                exitBreakableScope()
+
+                +Jump(head)
+            },
+            {
+                +jumpToEnd
+            },
+        )
+
+        jumpToEnd.to = builder.opcodeCount()
+    }
+
+    override fun visitDoWhileStatement(node: DoWhileStatementNode) {
+        val head = builder.opcodeCount()
+
+        enterBreakableScope(node.labels)
+        enterContinuableScope(node.labels)
+        visitStatement(node.body)
+        exitContinuableScope()
+        exitBreakableScope()
+
+        visitExpression(node.condition)
+        builder.ifHelper(::JumpIfToBooleanFalse) {
+            +Jump(head)
+        }
+    }
+
+    override fun visitForStatement(node: ForStatementNode) {
+        val jumpToEnd = JumpIfToBooleanFalse(-1)
+
+        node.initializerScope?.also(::enterScope)
+        node.initializer?.also(::visit)
+
+        val head = builder.opcodeCount()
+        node.condition?.also {
+            visitExpression(it)
+            +jumpToEnd
+        }
+
+        enterBreakableScope(node.labels)
+        enterContinuableScope(node.labels)
+        visitStatement(node.body)
+        exitContinuableScope()
+        exitBreakableScope()
+
+        node.incrementer?.also(::visitExpression)
+        +Jump(head)
+
+        jumpToEnd.to = builder.opcodeCount()
+
+        node.initializerScope?.also(::exitScope)
+    }
+
+    override fun visitSwitchStatement(node: SwitchStatementNode) {
+        /**
+         * switch (x) {
+         *     case 0:
+         *     case 1:
+         *     case 2:
+         *         <block>
+         * }
+         *
+         * ...gets transformed into...
+         *
+         *     <x>
+         *     Dup
+         *     <0>
+         *     TestEqualStrict
+         *     JumpIfToBooleanTrue BLOCK    <- True op for cascading case
+         *     Dup
+         *     <1>
+         *     TestEqualStrict
+         *     JumpIfToBooleanTrue BLOCK    <- True op for cascading case
+         *     Dup
+         *     <2>
+         *     TestEqualStrict
+         *     JumpIfToBooleanFalse END     <- False op for non-cascading case
+         * CODE:
+         *     <block>
+         * END:
+         */
+
+        visitExpression(node.target)
+
+        var defaultClause: SwitchClause? = null
+        val fallThroughJumps = mutableListOf<JumpInstr>()
+
+        val endJumps = mutableListOf<Jump>()
+
+        for (clause in node.clauses) {
+            if (clause.target == null) {
+                defaultClause = clause
+                continue
+            }
+
+            +Dup
+            visitExpression(clause.target)
+            +TestEqualStrict
+
+            if (clause.body == null) {
+                fallThroughJumps.add(+JumpIfToBooleanTrue(-1))
+            } else {
+                val jumpAfterBody = +JumpIfToBooleanFalse(-1)
+
+                if (fallThroughJumps.isNotEmpty()) {
+                    for (jump in fallThroughJumps)
+                        jump.to = builder.opcodeCount()
+                    fallThroughJumps.clear()
+                }
+
+                enterBreakableScope(clause.labels)
+                visit(clause.body)
+                exitBreakableScope()
+
+                endJumps.add(+Jump(-1))
+                jumpAfterBody.to = builder.opcodeCount()
+            }
+        }
+
+        defaultClause?.body?.also(::visit)
+
+        endJumps.forEach {
+            it.to = builder.opcodeCount()
+        }
+    }
+
+    override fun visitForIn(node: ForInNode) {
+        visitExpression(node.expression)
+        +Dup
+        builder.ifHelper(::JumpIfNotUndefined) {
+            +ForInEnumerate
+            iterateForEach(node)
+        }
+    }
+
+    override fun visitForOf(node: ForOfNode) {
+        visitExpression(node.expression)
+        +GetIterator
+        iterateForEach(node)
+    }
+
+    private fun iterateForEach(node: ForEachNode) {
+        val iteratorLocal = builder.newLocalSlot(LocalKind.Value)
+        +StoreValue(iteratorLocal)
+
+        iterateValues(node.labels, iteratorLocal) {
+            node.initializerScope?.also(::enterScope)
+            when (val decl = node.decl) {
+                is DeclarationNode -> assign(decl.declarations[0])
+                else -> assign(decl)
+            }
+            visit(node.body)
+            node.initializerScope?.also(::exitScope)
+        }
+    }
+
+    private fun iterateValues(
+        labels: Set<String>,
+        iteratorLocal: Local,
+        action: () -> Unit,
+    ) {
+        val head = builder.opcodeCount()
+
+        +LoadValue(iteratorLocal)
+        +IteratorNext
+        +Dup
+        // result result
+        +IteratorResultDone
+        // result isDone
+        builder.ifHelper(::JumpIfTrue) {
+            // result
+            +IteratorResultValue
+
+            enterBreakableScope(labels)
+            enterContinuableScope(labels)
+            action()
+            exitContinuableScope()
+            exitBreakableScope()
+
+            +Jump(head)
+        }
+    }
+
+    override fun visitBreakStatement(node: BreakStatementNode) {
+        super.visitBreakStatement(node)
     }
 
     override fun visitCommaExpression(node: CommaExpressionNode) {
@@ -561,13 +812,149 @@ class Transformer(val executable: Executable) : ASTVisitor {
     override fun visitUpdateExpression(node: UpdateExpressionNode) {
         val op = if (node.isIncrement) Inc else Dec
 
+        fun execute(duplicator: Opcode) {
+            if (node.isPostfix) {
+                +duplicator
+                +op
+            } else {
+                +op
+                +duplicator
+            }
+        }
+
         when (val target = node.target) {
             is IdentifierReferenceNode -> {
                 visitExpression(target)
                 +ToNumber
+                execute(Dup)
+                storeToSource(target.source)
+            }
+            is MemberExpressionNode -> {
+                visitExpression(target.lhs)
+                +Dup
 
+                when (target.type) {
+                    MemberExpressionNode.Type.Computed -> {
+                        visitExpression(target.rhs)
+                        +LoadKeyedProperty
+                        +ToNumeric
+                        execute(DupX1)
+                        +StoreKeyedProperty
+                    }
+                    MemberExpressionNode.Type.NonComputed -> {
+                        val name = (target.rhs as IdentifierNode).name
+                        +LoadNamedProperty(name)
+                        execute(DupX1)
+                        +StoreNamedProperty(name)
+                    }
+                    MemberExpressionNode.Type.Tagged -> TODO()
+                }
+            }
+            else -> TODO()
+        }
+    }
+
+    override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
+        node.declarations.forEach(::visitDeclaration)
+    }
+
+    override fun visitVariableDeclaration(node: VariableDeclarationNode) {
+        node.declarations.forEach(::visitDeclaration)
+    }
+
+    private fun visitDeclaration(declaration: Declaration) {
+        if (declaration.initializer != null) {
+            visitExpression(declaration.initializer!!)
+        } else {
+            +PushUndefined
+        }
+
+
+        when (declaration) {
+            is NamedDeclaration -> assign(declaration)
+            is DestructuringDeclaration -> assign(declaration.pattern)
+        }
+    }
+
+    private fun assign(node: ASTNode, bindingPatternLocal: Local? = null) {
+        when (node) {
+            is VariableSourceNode -> storeToSource(node)
+            is BindingPatternNode -> {
+                val valueLocal = bindingPatternLocal ?: builder.newLocalSlot(LocalKind.Value)
+                if (bindingPatternLocal == null)
+                    +StoreValue(valueLocal)
+                assignToBindingPattern(node, valueLocal)
+            }
+            is DestructuringDeclaration -> assign(node.pattern)
+            is IdentifierReferenceNode -> storeToSource(node.source)
+            else -> TODO()
+        }
+    }
+
+    private fun assignToBindingPattern(node: BindingPatternNode, valueLocal: Local) {
+        when (node.kind) {
+            BindingKind.Object -> assignToObjectBindingPattern(node, valueLocal)
+            BindingKind.Array -> assignToArrayBindingPattern(node, valueLocal)
+        }
+    }
+
+    private fun assignToObjectBindingPattern(node: BindingPatternNode, valueLocal: Local) {
+        TODO()
+    }
+
+    private fun assignToArrayBindingPattern(node: BindingPatternNode, valueLocal: Local) {
+        TODO()
+    }
+
+    override fun visitAssignmentExpression(node: AssignmentExpressionNode) {
+        val lhs = node.lhs
+        val rhs = node.rhs
+
+        expect(node.op == null || node.op.isAssignable)
+
+        fun pushRhs() {
+            if (node.op != null) {
+                // First figure out the new value
+                visitBinaryExpression(BinaryExpressionNode(lhs, rhs, node.op))
+            } else {
+                visitExpression(rhs)
             }
         }
+
+        when (lhs) {
+            is IdentifierReferenceNode -> {
+                if (checkForConstReassignment(lhs))
+                    return
+
+                pushRhs()
+                storeToSource(lhs.source)
+            }
+            is MemberExpressionNode -> {
+                expect(!lhs.isOptional)
+                visitExpression(lhs.lhs)
+
+                when (lhs.type) {
+                    MemberExpressionNode.Type.Computed -> {
+                        visitExpression(lhs.rhs)
+                        pushRhs()
+                        +StoreKeyedProperty
+                    }
+                    MemberExpressionNode.Type.NonComputed -> {
+                        pushRhs()
+                        +StoreNamedProperty((lhs.rhs as IdentifierNode).name)
+                    }
+                    MemberExpressionNode.Type.Tagged -> TODO()
+                }
+            }
+            else -> TODO()
+        }
+    }
+
+    private fun checkForConstReassignment(node: VariableRefNode): Boolean {
+        return if (node.source.type == VariableType.Const) {
+            +ThrowConstantError("cannot reassign constant variable \"${node.source.name()}\"")
+            true
+        } else false
     }
 
     override fun visitMemberExpression(node: MemberExpressionNode) {
@@ -589,16 +976,41 @@ class Transformer(val executable: Executable) : ASTVisitor {
         when (node.type) {
             MemberExpressionNode.Type.Computed -> {
                 visitExpression(node.rhs)
-                +GetKeyedProperty
+                +LoadKeyedProperty
             }
             MemberExpressionNode.Type.NonComputed -> {
-                +GetNamedProperty((node.rhs as IdentifierNode).name)
+                +LoadNamedProperty((node.rhs as IdentifierNode).name)
             }
             MemberExpressionNode.Type.Tagged -> TODO()
         }
 
         if (pushReceiver)
             +Swap
+    }
+
+    override fun visitReturnStatement(node: ReturnStatementNode) {
+        if (node.expression == null) {
+            +PushUndefined
+        } else {
+            visitExpression(node.expression)
+        }
+
+        +Return
+    }
+
+    override fun visitIdentifierReference(node: IdentifierReferenceNode) {
+        loadFromSource(node.source)
+        if (node.source.isInlineable)
+            return
+
+        if (node.source.mode == VariableMode.Global || node.source.type == VariableType.Var)
+            return
+
+        // We need to check if the variable has been initialized
+        +Dup
+        builder.ifHelper(::JumpIfNotEmpty) {
+            +ThrowConstantError("cannot access lexical variable \"${node.identifierName}\" before initialization")
+        }
     }
 
     enum class ArgumentsMode {
@@ -683,13 +1095,29 @@ class Transformer(val executable: Executable) : ASTVisitor {
         throw NotImplementedError(message)
     }
 
-    private operator fun Opcode.unaryPlus() {
+    private fun enterBreakableScope(labels: Set<String>) {
+        breakableScopes.add(LabelledSection(labels, builder.opcodeCount()))
+    }
+
+    private fun exitBreakableScope() {
+        breakableScopes.removeLast()
+    }
+
+    private fun enterContinuableScope(labels: Set<String>) {
+        continuableScopes.add(LabelledSection(labels, builder.opcodeCount()))
+    }
+
+    private fun exitContinuableScope() {
+        continuableScopes.removeLast()
+    }
+
+    private operator fun <T : Opcode> T.unaryPlus() = apply {
         builder.addOpcode(this)
     }
 
     companion object {
-        const val RECEIVER_LOCAL = 0
-        const val NEW_TARGET_LOCAL = 0 // Does this need to be its own local?
+        val RECEIVER_LOCAL = Local(0)
+        val NEW_TARGET_LOCAL = Local(0) // Does this need to be its own local?
         const val RESERVED_LOCALS = 1
     }
 }
