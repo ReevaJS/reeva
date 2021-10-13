@@ -3,9 +3,7 @@ package com.reevajs.reeva.interpreter.transformer
 import com.reevajs.reeva.core.lifecycle.Executable
 
 class IRPrinter(private val executable: Executable) {
-    private val info = executable.ir!!
-
-    fun print() {
+    private fun printInfo(info: FunctionInfo) {
         val header = buildString {
             append("=== ")
             if (executable.file != null) {
@@ -16,7 +14,7 @@ class IRPrinter(private val executable: Executable) {
             if (info.isTopLevel) {
                 append("<top-level script>")
             } else {
-                append(executable.name)
+                append(info.name)
             }
 
             append(" ===")
@@ -63,13 +61,13 @@ class IRPrinter(private val executable: Executable) {
                     println()
                 }
                 is LoadNamedProperty -> println(" \"${opcode.name}\"")
-                is IncInt -> println(" [${opcode.slot}]")
+                is IncInt -> println(" [${opcode.local}]")
                 is JumpInstr -> println(" @${opcode.to}")
                 is LoadCurrentEnvSlot -> println(" #${opcode.slot}")
                 is LoadEnvSlot -> println(" (${opcode.slot}) #${opcode.distance}")
                 is LoadGlobal -> println(" \"${opcode.name}\"")
-                is LoadInt -> println(" #${opcode.slot}")
-                is LoadValue -> println(" #${opcode.slot}")
+                is LoadInt -> println(" #${opcode.local}")
+                is LoadValue -> println(" #${opcode.local}")
                 is PushConstant -> {
                     if (opcode.literal is String) {
                         println(" \"${opcode.literal}\"")
@@ -79,11 +77,20 @@ class IRPrinter(private val executable: Executable) {
                 is StoreCurrentEnvSlot -> println(" #${opcode.slot}")
                 is StoreEnvSlot -> println(" #${opcode.slot} #${opcode.distance}")
                 is StoreGlobal -> println(" \"${opcode.name}\"")
-                is StoreInt -> println(" #${opcode.slot}")
-                is StoreValue -> println(" #${opcode.slot}")
+                is StoreInt -> println(" #${opcode.local}")
+                is StoreValue -> println(" #${opcode.local}")
                 is ThrowConstantError -> println(" \"${opcode.message}\"")
                 else -> println()
             }
         }
+
+        for (nestedFunction in info.nestedFunctions) {
+            println("\n")
+            printInfo(nestedFunction)
+        }
+    }
+
+    fun print() {
+        printInfo(executable.ir!!)
     }
 }
