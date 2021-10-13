@@ -1117,7 +1117,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
     companion object {
         val RECEIVER_LOCAL = Local(0)
-        val NEW_TARGET_LOCAL = Local(0) // Does this need to be its own local?
-        const val RESERVED_LOCALS = 1
+        val NEW_TARGET_LOCAL = Local(1)
+        const val RESERVED_LOCALS = 2
     }
 }
