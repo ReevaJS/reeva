@@ -8,6 +8,7 @@ import com.reevajs.reeva.ast.literals.StringLiteralNode
 import com.reevajs.reeva.ast.statements.*
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.lifecycle.Executable
+import com.reevajs.reeva.interpreter.transformer.opcodes.*
 import com.reevajs.reeva.parsing.HoistingScope
 import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.runtime.Operations
@@ -832,13 +833,21 @@ class Transformer(val executable: Executable) : ASTVisitor {
             is MemberExpressionNode -> {
                 visitExpression(target.lhs)
                 +Dup
+                // lhs lhs
 
                 when (target.type) {
                     MemberExpressionNode.Type.Computed -> {
                         visitExpression(target.rhs)
+                        // lhs lhs rhs
                         +LoadKeyedProperty
+                        // lhs value
                         +ToNumeric
+                        // lhs value
                         execute(DupX1)
+                        // value lhs value
+                        visitExpression(target.rhs)
+                        +Swap
+                        // value lhs key value
                         +StoreKeyedProperty
                     }
                     MemberExpressionNode.Type.NonComputed -> {
