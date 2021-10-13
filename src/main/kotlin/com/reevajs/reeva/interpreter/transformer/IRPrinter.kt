@@ -1,6 +1,7 @@
 package com.reevajs.reeva.interpreter.transformer
 
 import com.reevajs.reeva.core.lifecycle.Executable
+import com.reevajs.reeva.interpreter.transformer.opcodes.*
 
 class IRPrinter(private val executable: Executable) {
     private fun printInfo(info: FunctionInfo) {

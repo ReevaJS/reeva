@@ -1,5 +1,9 @@
 package com.reevajs.reeva.interpreter.transformer
 
+import com.reevajs.reeva.interpreter.transformer.opcodes.JumpInstr
+import com.reevajs.reeva.interpreter.transformer.opcodes.Opcode
+import com.reevajs.reeva.interpreter.transformer.opcodes.Return
+
 class IRValidator(val opcodes: List<Opcode>) {
     private var stackHeight = 0
 

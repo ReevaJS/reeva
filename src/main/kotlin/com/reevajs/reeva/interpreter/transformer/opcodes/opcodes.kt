@@ -1,4 +1,7 @@
-package com.reevajs.reeva.interpreter.transformer
+package com.reevajs.reeva.interpreter.transformer.opcodes
+
+import com.reevajs.reeva.interpreter.transformer.FunctionInfo
+import com.reevajs.reeva.interpreter.transformer.Local
 
 sealed class Opcode(val stackHeightModifier: Int) {
     override fun toString(): String {
@@ -91,8 +94,6 @@ object Negate : Opcode(0)
 
 object BitwiseNot : Opcode(0)
 
-object LogicalNot : Opcode(0)
-
 object ToBooleanLogicalNot : Opcode(0)
 
 object Inc : Opcode(0)
@@ -115,7 +116,7 @@ object CreateObject : Opcode(1)
 
 object CreateArray : Opcode(1)
 
-object StoreArray : Opcode(-2)
+class StoreArray(val index: Local) : Opcode(-2)
 
 object DeletePropertyStrict : Opcode(-2)
 

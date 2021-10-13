@@ -1,5 +1,10 @@
 package com.reevajs.reeva.interpreter.transformer
 
+import com.reevajs.reeva.interpreter.transformer.opcodes.Jump
+import com.reevajs.reeva.interpreter.transformer.opcodes.JumpInstr
+import com.reevajs.reeva.interpreter.transformer.opcodes.Opcode
+import com.reevajs.reeva.interpreter.transformer.opcodes.Return
+
 @JvmInline
 value class Local(val value: Int) {
     override fun toString() = value.toString()
