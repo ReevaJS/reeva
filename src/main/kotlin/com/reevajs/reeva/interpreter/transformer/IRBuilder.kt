@@ -1,5 +1,10 @@
 package com.reevajs.reeva.interpreter.transformer
 
+@JvmInline
+value class Local(val value: Int) {
+    override fun toString() = value.toString()
+}
+
 class IRBuilder(
     val argCount: Int,
     additionalReservedLocals: Int,
@@ -7,6 +12,7 @@ class IRBuilder(
 ) {
     private val opcodes = mutableListOf<Opcode>()
     private val locals = mutableListOf<LocalKind>()
+    private val childFunctions = mutableListOf<FunctionInfo>()
 
     val isDone: Boolean
         get() = opcodes.lastOrNull() === Return
@@ -16,6 +22,12 @@ class IRBuilder(
             locals.add(LocalKind.Value)
         }
     }
+
+    fun addChildFunction(function: FunctionInfo) {
+        childFunctions.add(function)
+    }
+
+    fun getChildFunctions(): List<FunctionInfo> = childFunctions
 
     fun finalizeOpcodes(): List<Opcode> {
         // TODO: Figure out how to do this here but also print
@@ -51,8 +63,8 @@ class IRBuilder(
         secondJump.to = opcodeCount()
     }
 
-    fun newLocalSlot(kind: LocalKind): Int {
+    fun newLocalSlot(kind: LocalKind): Local {
         locals.add(kind)
-        return locals.lastIndex
+        return Local(locals.lastIndex)
     }
 }
