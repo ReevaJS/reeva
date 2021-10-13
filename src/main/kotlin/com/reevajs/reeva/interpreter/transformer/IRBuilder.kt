@@ -18,6 +18,10 @@ class IRBuilder(
         get() = opcodes.lastOrNull() === Return
 
     init {
+        // Receiver + new.target
+        locals.add(LocalKind.Value)
+        locals.add(LocalKind.Value)
+
         repeat(additionalReservedLocals) {
             locals.add(LocalKind.Value)
         }
