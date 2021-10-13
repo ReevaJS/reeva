@@ -4,6 +4,7 @@ import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.ScriptNode
 import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.core.lifecycle.ExecutionResult
+import com.reevajs.reeva.interpreter.Interpreter
 import com.reevajs.reeva.interpreter.transformer.IRPrinter
 import com.reevajs.reeva.interpreter.transformer.IRValidator
 import com.reevajs.reeva.interpreter.transformer.Transformer
@@ -51,8 +52,11 @@ class Agent {
 
     fun transform(executable: Executable): TransformerResult {
         val result = Transformer(executable).transform()
-        if (result is TransformerResult.Success)
+        if (result is TransformerResult.Success) {
             executable.ir = result.ir
+            // Let the script get garbage collected
+            executable.script = null
+        }
         return result
     }
 
@@ -89,16 +93,14 @@ class Agent {
 
         IRValidator(executable.ir!!.opcodes).validate()
 
-        // TODO
-        return ExecutionResult.Success(executable, JSTrue)
-        // return try {
-        //     val function = Interpreter.wrap(ir, realm, realm.globalEnv)
-        //     ExecutionResult.Success(function.call(realm.globalObject, emptyList()))
-        // } catch (e: ThrowException) {
-        //     ExecutionResult.RuntimeError(realm, e.value)
-        // } catch (e: Throwable) {
-        //     ExecutionResult.InternalError(e)
-        // }
+        return try {
+            val function = Interpreter.wrap(realm, executable, realm.globalEnv)
+            ExecutionResult.Success(executable, function.call(realm.globalObject, emptyList()))
+        } catch (e: ThrowException) {
+            ExecutionResult.RuntimeError(executable, e.value)
+        } catch (e: Throwable) {
+            ExecutionResult.InternalError(executable, e)
+        }
     }
 
     internal fun <T> inCallScope(function: JSFunction, block: () -> T): T {

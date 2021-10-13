@@ -13,4 +13,8 @@ data class Executable(
     var script: ScriptNode? = null
 
     var ir: FunctionInfo? = null
+
+    fun forInfo(info: FunctionInfo) = Executable(file, source, name).also {
+        it.ir = info
+    }
 }
