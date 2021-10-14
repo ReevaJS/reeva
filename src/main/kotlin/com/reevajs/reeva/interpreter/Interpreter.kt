@@ -585,6 +585,18 @@ class Interpreter(
         TODO("Not yet implemented")
     }
 
+    override fun visitToString() {
+        TODO("Not yet implemented")
+    }
+
+    override fun visitCreateRegExpObject(opcode: CreateRegExpObject) {
+        TODO("Not yet implemented")
+    }
+
+    override fun visitCreateTemplateLiteral(opcode: CreateTemplateLiteral) {
+        TODO("Not yet implemented")
+    }
+
     override fun visitPushClosure() {
         push(Reeva.activeAgent.callStack.last())
     }

@@ -1123,6 +1123,140 @@ class Transformer(val executable: Executable) : ASTVisitor {
         +PushConstant(node.value)
     }
 
+    override fun visitForAwaitOf(node: ForAwaitOfNode) {
+        TODO()
+    }
+
+    override fun visitThrowStatement(node: ThrowStatementNode) {
+        TODO()
+    }
+
+    override fun visitTryStatement(node: TryStatementNode) {
+        TODO()
+    }
+
+    override fun visitNamedDeclaration(declaration: NamedDeclaration) {
+        TODO()
+    }
+
+    override fun visitDebuggerStatement() {
+        TODO()
+    }
+
+    override fun visitImportDeclaration(node: ImportDeclarationNode) {
+        TODO()
+    }
+
+    override fun visitExport(node: ExportNode) {
+        TODO()
+    }
+
+    override fun visitArgument(node: ArgumentNode) {
+        if (node.isSpread)
+            TODO()
+        visitExpression(node.expression)
+    }
+
+    override fun visitPropertyName(node: PropertyName) {
+        if (node.type == PropertyName.Type.Identifier) {
+            +PushConstant((node.expression as IdentifierNode).name)
+        } else visitExpression(node.expression)
+    }
+
+    override fun visitFunctionExpression(node: FunctionExpressionNode) {
+        builder.addChildFunction(visitFunctionHelper(
+            node.identifier?.name ?: "<anonymous>",
+            node.parameters,
+            node.body,
+            node.functionScope,
+            node.body.scope,
+            node.functionScope.isStrict,
+            node.kind,
+        ))
+    }
+
+    override fun visitArrowFunction(node: ArrowFunctionNode) {
+        builder.addChildFunction(visitFunctionHelper(
+            "<anonymous>",
+            node.parameters,
+            node.body,
+            node.functionScope,
+            if (node.body is BlockNode) node.body.scope else node.functionScope,
+            node.functionScope.isStrict,
+            node.kind,
+        ))
+    }
+
+    override fun visitClassDeclaration(node: ClassDeclarationNode) {
+        expect(node.identifier != null)
+        visitClassImpl(node.identifier.name, node.classNode)
+        storeToSource(node)
+    }
+
+    override fun visitClassExpression(node: ClassExpressionNode) {
+        visitClassImpl(node.identifier?.name, node.classNode)
+    }
+
+    private fun visitClassImpl(name: String?, node: ClassNode) {
+        TODO()
+    }
+
+    override fun visitAwaitExpression(node: AwaitExpressionNode) {
+        TODO()
+    }
+
+    override fun visitConditionalExpression(node: ConditionalExpressionNode) {
+        visitExpression(node.predicate)
+        builder.ifElseHelper(
+            ::JumpIfToBooleanFalse,
+            {
+                visitExpression(node.ifTrue)
+            },
+            {
+                visitExpression(node.ifFalse)
+            },
+        )
+    }
+
+    override fun visitSuperPropertyExpression(node: SuperPropertyExpressionNode) {
+        +LoadValue(RECEIVER_LOCAL)
+        +ThrowSuperNotInitializedIfEmpty
+
+        +GetSuperBase
+        if (node.isComputed) {
+            visitExpression(node.target)
+            +LoadKeyedProperty
+        } else {
+            +LoadNamedProperty((node.target as IdentifierNode).name)
+        }
+    }
+
+    override fun visitSuperCallExpression(node: SuperCallExpressionNode) {
+        +GetSuperConstructor
+        +Dup
+        +ThrowSuperNotInitializedIfEmpty
+
+        +LoadValue(NEW_TARGET_LOCAL)
+
+        if (pushArguments(node.arguments) == ArgumentsMode.Normal) {
+            +Construct(node.arguments.size)
+        } else {
+            +ConstructArray
+        }
+    }
+
+    override fun visitImportCallExpression(node: ImportCallExpressionNode) {
+        TODO()
+    }
+
+    override fun visitYieldExpression(node: YieldExpressionNode) {
+        TODO()
+    }
+
+    override fun visitImportMetaExpression() {
+        TODO()
+    }
+
     override fun visitParenthesizedExpression(node: ParenthesizedExpressionNode) {
         visitExpression(node.expression)
     }
