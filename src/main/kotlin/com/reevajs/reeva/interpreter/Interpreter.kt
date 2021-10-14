@@ -17,8 +17,8 @@ import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.iterators.JSObjectPropertyIterator
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.JSObject.Companion.initialize
-import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.primitives.*
+import com.reevajs.reeva.runtime.regexp.JSRegExpObject
 import com.reevajs.reeva.utils.*
 
 class Interpreter(
@@ -586,15 +586,22 @@ class Interpreter(
     }
 
     override fun visitToString() {
-        TODO("Not yet implemented")
+        push(Operations.toString(realm, popValue()))
     }
 
     override fun visitCreateRegExpObject(opcode: CreateRegExpObject) {
-        TODO("Not yet implemented")
+        push(JSRegExpObject.create(realm, opcode.source, opcode.flags))
     }
 
     override fun visitCreateTemplateLiteral(opcode: CreateTemplateLiteral) {
-        TODO("Not yet implemented")
+        val args = (0..opcode.numberOfParts).map { popValue() }.asReversed()
+        val string = buildString {
+            for (arg in args) {
+                expect(arg is JSString)
+                append(arg.string)
+            }
+        }
+        push(JSString(string))
     }
 
     override fun visitPushClosure() {
