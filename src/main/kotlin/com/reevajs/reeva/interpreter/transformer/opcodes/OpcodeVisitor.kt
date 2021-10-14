@@ -40,6 +40,7 @@ interface OpcodeVisitor {
             TypeOf -> visitTypeOf()
             ToNumber -> visitToNumber()
             ToNumeric -> visitToNumeric()
+            ToString -> visitToString()
             Negate -> visitNegate()
             BitwiseNot -> visitBitwiseNot()
             ToBooleanLogicalNot -> visitToBooleanLogicalNot()
@@ -80,6 +81,8 @@ interface OpcodeVisitor {
             is JumpIfNotUndefined -> visitJumpIfNotUndefined(opcode)
             is JumpIfNotNullish -> visitJumpIfNotNullish(opcode)
             is JumpIfNotEmpty -> visitJumpIfNotEmpty(opcode)
+            is CreateRegExpObject -> visitCreateRegExpObject(opcode)
+            is CreateTemplateLiteral -> visitCreateTemplateLiteral(opcode)
             ForInEnumerate -> visitForInEnumerate()
             is CreateClosure -> visitCreateClosure(opcode)
             is CreateClassConstructor -> visitCreateClassConstructor(opcode)
@@ -171,6 +174,8 @@ interface OpcodeVisitor {
 
     fun visitToNumeric()
 
+    fun visitToString()
+
     fun visitNegate()
 
     fun visitBitwiseNot()
@@ -250,6 +255,10 @@ interface OpcodeVisitor {
     fun visitJumpIfNotNullish(opcode: JumpIfNotNullish)
 
     fun visitJumpIfNotEmpty(opcode: JumpIfNotEmpty)
+
+    fun visitCreateRegExpObject(opcode: CreateRegExpObject)
+
+    fun visitCreateTemplateLiteral(opcode: CreateTemplateLiteral)
 
     fun visitForInEnumerate()
 
