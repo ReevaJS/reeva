@@ -20,7 +20,11 @@ class Transformer(val executable: Executable) : ASTVisitor {
     private lateinit var builder: IRBuilder
     private var currentScope: Scope? = null
 
-    data class LabelledSection(val labels: Set<String>, val start: Int)
+    data class LabelledSection(
+        val labels: Set<String>,
+        val pendingBreakJumps: MutableList<JumpInstr> = mutableListOf(),
+        val pendingContinueJumps: MutableList<JumpInstr> = mutableListOf(),
+    )
 
     private val breakableScopes = mutableListOf<LabelledSection>()
     private val continuableScopes = mutableListOf<LabelledSection>()
@@ -209,7 +213,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
             visitASTListNode(node.statements)
 
             if (node.labels.isNotEmpty())
-                exitBreakableScope()
+                exitBreakableScope().forEach { it.to = builder.opcodeCount() }
         } finally {
             if (pushScope)
                 exitScope(node.scope)
@@ -524,10 +528,9 @@ class Transformer(val executable: Executable) : ASTVisitor {
                 enterBreakableScope(node.labels)
                 enterContinuableScope(node.labels)
                 visitStatement(node.body)
-                exitContinuableScope()
-                exitBreakableScope()
-
                 +Jump(head)
+                exitContinuableScope().forEach { it.to = head }
+                exitBreakableScope().forEach { it.to = builder.opcodeCount() }
             },
             {
                 +jumpToEnd
@@ -543,13 +546,14 @@ class Transformer(val executable: Executable) : ASTVisitor {
         enterBreakableScope(node.labels)
         enterContinuableScope(node.labels)
         visitStatement(node.body)
-        exitContinuableScope()
-        exitBreakableScope()
 
         visitExpression(node.condition)
         builder.ifHelper(::JumpIfToBooleanFalse) {
             +Jump(head)
         }
+
+        exitContinuableScope().forEach { it.to = head }
+        exitBreakableScope().forEach { it.to = builder.opcodeCount() }
     }
 
     override fun visitForStatement(node: ForStatementNode) {
@@ -558,6 +562,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         node.initializerScope?.also(::enterScope)
         node.initializer?.also(::visit)
 
+        enterContinuableScope(node.labels)
         val head = builder.opcodeCount()
         node.condition?.also {
             visitExpression(it)
@@ -565,15 +570,16 @@ class Transformer(val executable: Executable) : ASTVisitor {
         }
 
         enterBreakableScope(node.labels)
-        enterContinuableScope(node.labels)
         visitStatement(node.body)
-        exitContinuableScope()
-        exitBreakableScope()
 
+        val incrementer = builder.opcodeCount()
         node.incrementer?.also(::visitExpression)
+        +Pop
         +Jump(head)
 
         jumpToEnd.to = builder.opcodeCount()
+        exitContinuableScope().forEach { it.to = incrementer }
+        exitBreakableScope().forEach { it.to = builder.opcodeCount() }
 
         node.initializerScope?.also(::exitScope)
     }
@@ -612,7 +618,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         var defaultClause: SwitchClause? = null
         val fallThroughJumps = mutableListOf<JumpInstr>()
 
-        val endJumps = mutableListOf<Jump>()
+        val endJumps = mutableListOf<JumpInstr>()
 
         for (clause in node.clauses) {
             if (clause.target == null) {
@@ -637,7 +643,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
                 enterBreakableScope(clause.labels)
                 visit(clause.body)
-                exitBreakableScope()
+                endJumps.addAll(exitBreakableScope())
 
                 endJumps.add(+Jump(-1))
                 jumpAfterBody.to = builder.opcodeCount()
@@ -701,15 +707,32 @@ class Transformer(val executable: Executable) : ASTVisitor {
             enterBreakableScope(labels)
             enterContinuableScope(labels)
             action()
-            exitContinuableScope()
-            exitBreakableScope()
-
             +Jump(head)
+            exitContinuableScope().forEach { it.to = head }
+            exitBreakableScope().forEach { it.to = builder.opcodeCount() }
         }
     }
 
     override fun visitBreakStatement(node: BreakStatementNode) {
-        super.visitBreakStatement(node)
+        val jump = +Jump(-1)
+
+        // Guaranteed to succeed as the Parser catches invalid labels
+        val breakableScope = if (node.label != null) {
+            breakableScopes.asReversed().first { node.label in it.labels }
+        } else breakableScopes.last()
+
+        breakableScope.pendingBreakJumps.add(jump)
+    }
+
+    override fun visitContinueStatement(node: ContinueStatementNode) {
+        // Guaranteed to succeed as Parser catched invalid labels
+        val jump = +Jump(-1)
+
+        val continuableScope = if (node.label != null) {
+            continuableScopes.asReversed().first { node.label in it.labels }
+        } else continuableScopes.last()
+
+        continuableScope.pendingContinueJumps.add(jump)
     }
 
     override fun visitCommaExpression(node: CommaExpressionNode) {
@@ -1105,20 +1128,16 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     private fun enterBreakableScope(labels: Set<String>) {
-        breakableScopes.add(LabelledSection(labels, builder.opcodeCount()))
+        breakableScopes.add(LabelledSection(labels))
     }
 
-    private fun exitBreakableScope() {
-        breakableScopes.removeLast()
-    }
+    private fun exitBreakableScope() = breakableScopes.removeLast().pendingBreakJumps
 
     private fun enterContinuableScope(labels: Set<String>) {
-        continuableScopes.add(LabelledSection(labels, builder.opcodeCount()))
+        continuableScopes.add(LabelledSection(labels))
     }
 
-    private fun exitContinuableScope() {
-        continuableScopes.removeLast()
-    }
+    private fun exitContinuableScope() = continuableScopes.removeLast().pendingContinueJumps
 
     private operator fun <T : Opcode> T.unaryPlus() = apply {
         builder.addOpcode(this)
