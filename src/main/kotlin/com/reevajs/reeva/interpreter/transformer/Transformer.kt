@@ -2,9 +2,7 @@ package com.reevajs.reeva.interpreter.transformer
 
 import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.expressions.*
-import com.reevajs.reeva.ast.literals.BooleanLiteralNode
-import com.reevajs.reeva.ast.literals.NumericLiteralNode
-import com.reevajs.reeva.ast.literals.StringLiteralNode
+import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.lifecycle.Executable
@@ -13,8 +11,10 @@ import com.reevajs.reeva.parsing.HoistingScope
 import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.functions.JSFunction
+import com.reevajs.reeva.runtime.regexp.JSRegExpObject
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.unreachable
+import java.math.BigInteger
 
 class Transformer(val executable: Executable) : ASTVisitor {
     private lateinit var builder: IRBuilder
@@ -1121,6 +1121,126 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
     override fun visitNumericLiteral(node: NumericLiteralNode) {
         +PushConstant(node.value)
+    }
+
+    override fun visitParenthesizedExpression(node: ParenthesizedExpressionNode) {
+        visitExpression(node.expression)
+    }
+
+    override fun visitTemplateLiteral(node: TemplateLiteralNode) {
+        for (part in node.parts) {
+            if (part is StringLiteralNode) {
+                +PushConstant(part.value)
+            } else {
+                visitExpression(part)
+                +ToString
+            }
+        }
+
+        +CreateTemplateLiteral(node.parts.size)
+    }
+
+    override fun visitRegExpLiteral(node: RegExpLiteralNode) {
+        +CreateRegExpObject(node.source, node.flags)
+    }
+
+    override fun visitNewTargetExpression(node: NewTargetNode) {
+        +LoadValue(NEW_TARGET_LOCAL)
+    }
+
+    override fun visitArrayLiteral(node: ArrayLiteralNode) {
+        +CreateArray
+        for ((index, element) in node.elements.withIndex()) {
+            when (element.type) {
+                ArrayElementNode.Type.Elision -> continue
+                ArrayElementNode.Type.Spread -> TODO()
+                ArrayElementNode.Type.Normal -> {
+                    +Dup
+                    visitExpression(element.expression!!)
+                    +StoreArrayIndexed(index)
+                }
+            }
+        }
+    }
+
+    override fun visitObjectLiteral(node: ObjectLiteralNode) {
+        +CreateObject
+
+        for (property in node.list) {
+            when (property) {
+                is KeyValueProperty -> {
+                    storeObjectProperty(property.key) {
+                        visitExpression(property.value)
+                    }
+                }
+                is ShorthandProperty -> {
+                    visitExpression(property.key)
+                    +StoreNamedProperty(property.key.identifierName)
+                }
+                is MethodProperty -> {
+                    val method = property.method
+
+                    fun makeFunction() {
+                        // TODO: This probably isn't correct
+                        val functionNode = FunctionExpressionNode(
+                            null,
+                            method.parameters,
+                            method.body,
+                            method.kind.toFunctionKind(),
+                        )
+
+                        functionNode.functionScope = method.functionScope
+                        functionNode.scope = method.scope
+                        visitFunctionExpression(functionNode)
+                    }
+
+                    when (method.kind) {
+                        MethodDefinitionNode.Kind.Normal, MethodDefinitionNode.Kind.Generator -> storeObjectProperty(
+                            method.propName,
+                            ::makeFunction,
+                        )
+                        MethodDefinitionNode.Kind.Getter, MethodDefinitionNode.Kind.Setter -> {
+                            visitPropertyName(method.propName)
+                            makeFunction()
+                            if (method.kind == MethodDefinitionNode.Kind.Getter) {
+                                +DefineGetterProperty
+                            } else +DefineSetterProperty
+                        }
+                        else -> TODO()
+                    }
+                }
+                is SpreadProperty -> TODO()
+            }
+        }
+    }
+
+    // Consumes object from the stack
+    private fun storeObjectProperty(property: PropertyName, valueProducer: () -> Unit) {
+        when (property.type) {
+            PropertyName.Type.Identifier -> {
+                valueProducer()
+                val name = (property.expression as IdentifierNode).name
+                +StoreNamedProperty(name)
+                return
+            }
+            PropertyName.Type.String -> visitExpression(property.expression)
+            PropertyName.Type.Number -> visitExpression(property.expression)
+            PropertyName.Type.Computed -> {
+                visitExpression(property.expression)
+                +ToString
+            }
+        }
+
+        valueProducer()
+        +StoreKeyedProperty
+    }
+
+    override fun visitBigIntLiteral(node: BigIntLiteralNode) {
+        +PushBigInt(BigInteger(node.value, node.type.radix))
+    }
+
+    override fun visitThisLiteral(node: ThisLiteralNode) {
+        +LoadValue(RECEIVER_LOCAL)
     }
 
     private fun unsupported(message: String): Nothing {
