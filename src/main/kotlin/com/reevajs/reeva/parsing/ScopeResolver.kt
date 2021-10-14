@@ -6,11 +6,13 @@ import com.reevajs.reeva.ast.expressions.UnaryExpressionNode
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.ast.literals.ThisLiteralNode
 import com.reevajs.reeva.ast.statements.*
+import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.unreachable
 
 class ScopeResolver : ASTVisitor {
     private lateinit var scope: Scope
+    private var allowVarInlining = true
 
     fun resolve(script: ScriptNode) {
         val globalScope = GlobalScope()
@@ -41,7 +43,7 @@ class ScopeResolver : ASTVisitor {
 
     private fun visitBlock(node: BlockNode, pushScope: Boolean) {
         if (pushScope)
-            scope = Scope(scope)
+            scope = Scope(scope, allowVarInlining)
 
         node.scope = scope
         visit(node.statements)
@@ -188,23 +190,23 @@ class ScopeResolver : ASTVisitor {
         declaredScope.addVariableSource(node)
         hoistedScope.addHoistedVariable(node)
 
-        node.functionScope = visitFunctionHelper(node.parameters, node.body, isLexical = false)
+        node.functionScope = visitFunctionHelper(node.parameters, node.body, node.kind, isLexical = false)
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
         node.scope = scope
-        node.functionScope = visitFunctionHelper(node.parameters, node.body, isLexical = false)
+        node.functionScope = visitFunctionHelper(node.parameters, node.body, node.kind, isLexical = false)
     }
 
     override fun visitArrowFunction(node: ArrowFunctionNode) {
         node.scope = scope
-        node.functionScope = visitFunctionHelper(node.parameters, node.body, isLexical = true)
+        node.functionScope = visitFunctionHelper(node.parameters, node.body, node.kind, isLexical = true)
     }
 
     override fun visitMethodDefinition(node: MethodDefinitionNode) {
         node.scope = scope
         visit(node.propName)
-        node.functionScope = visitFunctionHelper(node.parameters, node.body, isLexical = false)
+        node.functionScope = visitFunctionHelper(node.parameters, node.body, node.kind.toFunctionKind(), isLexical = false)
     }
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {
@@ -245,8 +247,15 @@ class ScopeResolver : ASTVisitor {
         scope = scope.outer!!
     }
 
-    private fun visitFunctionHelper(parameters: ParameterList, body: ASTNode, isLexical: Boolean): Scope {
-        val functionScope = HoistingScope(scope, isLexical)
+    private fun visitFunctionHelper(
+        parameters: ParameterList,
+        body: ASTNode,
+        kind: Operations.FunctionKind,
+        isLexical: Boolean,
+    ): Scope {
+        val prevAllowVarInlining = allowVarInlining
+        allowVarInlining = kind == Operations.FunctionKind.Normal
+        val functionScope = HoistingScope(scope, isLexical, allowVarInlining)
         scope = functionScope
 
         if (body is BlockNode && body.hasUseStrict)
@@ -280,7 +289,7 @@ class ScopeResolver : ASTVisitor {
         val bodyScope = if (body is BlockNode && !parameters.isSimple()) {
             // The body scope shouldn't be a target for the receiver or new.target
             // sources
-            HoistingScope(scope, isLexical = true).also {
+            HoistingScope(scope, isLexical = true, allowVarInlining).also {
                 scope = it
             }
         } else functionScope
@@ -310,6 +319,8 @@ class ScopeResolver : ASTVisitor {
             else -> HoistingScope.ArgumentsMode.Mapped
         }
 
+        allowVarInlining = prevAllowVarInlining
+
         return functionScope
     }
 
@@ -338,7 +349,7 @@ class ScopeResolver : ASTVisitor {
         if (catchNode != null) {
             val parameter = catchNode.parameter
             if (parameter != null) {
-                scope = Scope(scope)
+                scope = Scope(scope, allowVarInlining)
                 visitBindingDeclarationOrPattern(parameter.declaration, VariableMode.Declared, VariableType.Let)
                 visitBlock(catchNode.block, pushScope = false)
                 scope = scope.outer!!
@@ -356,7 +367,7 @@ class ScopeResolver : ASTVisitor {
         val needInitScope = initializer is VariableDeclarationNode || initializer is LexicalDeclarationNode
 
         if (needInitScope) {
-            scope = Scope(scope)
+            scope = Scope(scope, allowVarInlining)
             node.initializerScope = scope
         }
 
@@ -395,7 +406,7 @@ class ScopeResolver : ASTVisitor {
 
         val needsDeclScope = decl is VariableDeclarationNode || decl is LexicalDeclarationNode || body is BlockNode
         if (needsDeclScope) {
-            scope = Scope(scope)
+            scope = Scope(scope, allowVarInlining)
             node.initializerScope = scope
         }
 
