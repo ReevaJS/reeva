@@ -2,6 +2,7 @@ package com.reevajs.reeva.interpreter.transformer.opcodes
 
 import com.reevajs.reeva.interpreter.transformer.FunctionInfo
 import com.reevajs.reeva.interpreter.transformer.Local
+import java.math.BigInteger
 
 sealed class Opcode(val stackHeightModifier: Int) {
     override fun toString(): String {
@@ -17,6 +18,8 @@ object PushUndefined : Opcode(1)
 
 // literal can be: String, Int, Double, Boolean
 class PushConstant(val literal: Any) : Opcode(1)
+
+class PushBigInt(val bigint: BigInteger) : Opcode(1)
 
 object Pop : Opcode(-1)
 
@@ -90,6 +93,8 @@ object ToNumber : Opcode(0)
 
 object ToNumeric : Opcode(0)
 
+object ToString : Opcode(0)
+
 object Negate : Opcode(0)
 
 object BitwiseNot : Opcode(0)
@@ -117,6 +122,8 @@ object CreateObject : Opcode(1)
 object CreateArray : Opcode(1)
 
 class StoreArray(val index: Local) : Opcode(-2)
+
+class StoreArrayIndexed(val index: Int) : Opcode(-1)
 
 object DeletePropertyStrict : Opcode(-2)
 
@@ -185,6 +192,16 @@ class JumpIfNotNullish(to: Int) : JumpInstr(to)
 class JumpIfNotEmpty(to: Int) : JumpInstr(to)
 
 // Misc
+
+// stack: object property method
+object DefineGetterProperty : Opcode(-3)
+
+// stack: object property method
+object DefineSetterProperty : Opcode(-3)
+
+class CreateRegExpObject(val source: String, val flags: String) : Opcode(-1)
+
+class CreateTemplateLiteral(val numberOfParts: Int) : Opcode(-numberOfParts + 1)
 
 object ForInEnumerate : Opcode(0)
 
