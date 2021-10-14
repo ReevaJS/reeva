@@ -164,9 +164,9 @@ class StoreEnvSlot(val slot: Int, val distance: Int) : Opcode(-1)
 
 // Jumps
 
-sealed class JumpInstr(var to: Int) : Opcode(-1)
+sealed class JumpInstr(var to: Int, stackHeightModifier: Int = -1) : Opcode(stackHeightModifier)
 
-class Jump(to: Int) : JumpInstr(to)
+class Jump(to: Int) : JumpInstr(to, 0)
 
 class JumpIfTrue(to: Int) : JumpInstr(to)
 
