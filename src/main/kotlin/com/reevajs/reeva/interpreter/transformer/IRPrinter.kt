@@ -39,7 +39,7 @@ class IRPrinter(private val executable: Executable) {
                 is Construct -> println(" ${opcode.argCount}")
                 is CreateAsyncClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
                 is CreateAsyncGeneratorClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
-                is CreateClassConstructor -> println(" <FunctionInfo ${opcode.ir.name}>")
+                is CreateClassConstructor -> println(" <FunctionInfo ${opcode.info.name}>")
                 is CreateClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
                 is CreateGeneratorClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
                 is DeclareGlobals -> {

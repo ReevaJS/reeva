@@ -12,6 +12,8 @@ sealed class Opcode(val stackHeightModifier: Int) {
 
 // Stack manipulation
 
+object PushEmpty : Opcode(1)
+
 object PushNull : Opcode(1)
 
 object PushUndefined : Opcode(1)
@@ -207,7 +209,7 @@ object ForInEnumerate : Opcode(0)
 
 class CreateClosure(val ir: FunctionInfo) : Opcode(1)
 
-class CreateClassConstructor(val ir: FunctionInfo) : Opcode(1)
+class CreateClassConstructor(val info: FunctionInfo) : Opcode(1)
 
 class CreateGeneratorClosure(val ir: FunctionInfo) : Opcode(1)
 
@@ -219,13 +221,15 @@ object CreateRestParam : Opcode(1)
 
 object GetSuperConstructor : Opcode(1)
 
+object GetSuperBase : Opcode(1)
+
 object CreateUnmappedArgumentsObject : Opcode(0)
 
 object CreateMappedArgumentsObject : Opcode(0)
 
 class ThrowConstantError(val message: String) : Opcode(0)
 
-object ThrowSuperNotInitializedIfEmpty : Opcode(0)
+object ThrowSuperNotInitializedIfEmpty : Opcode(1)
 
 object PushClosure : Opcode(1)
 
