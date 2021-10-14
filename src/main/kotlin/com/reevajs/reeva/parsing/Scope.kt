@@ -4,7 +4,7 @@ import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.interpreter.Interpreter
 import com.reevajs.reeva.interpreter.transformer.Transformer
 
-open class Scope(val outer: Scope? = null) {
+open class Scope(val outer: Scope? = null, val allowVarInlining: Boolean = true) {
     val outerHoistingScope = outerScopeOfType<HoistingScope>()
     val outerGlobalScope = outerScopeOfType<GlobalScope>()
 
@@ -39,6 +39,9 @@ open class Scope(val outer: Scope? = null) {
         variableSources.add(source)
 
         connectPendingReferences(source)
+
+        if (!allowVarInlining)
+            source.isInlineable = false
     }
 
     fun addVariableReference(reference: VariableRefNode) {
@@ -119,7 +122,11 @@ open class Scope(val outer: Scope? = null) {
     }
 }
 
-open class HoistingScope(outer: Scope? = null, val isLexical: Boolean = false) : Scope(outer) {
+open class HoistingScope(
+    outer: Scope? = null,
+    val isLexical: Boolean = false,
+    allowVarInlining: Boolean = true,
+) : Scope(outer, allowVarInlining) {
     override var isStrict = false
     var isDerivedClassConstructor = false
 
@@ -225,6 +232,4 @@ open class HoistingScope(outer: Scope? = null, val isLexical: Boolean = false) :
     }
 }
 
-class GlobalScope : HoistingScope(null) {
-
-}
+class GlobalScope : HoistingScope(null, true)
