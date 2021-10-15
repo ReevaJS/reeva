@@ -512,20 +512,14 @@ class Transformer(val executable: Executable) : ASTVisitor {
         val jumpToEnd = Jump(-1)
 
         visitExpression(node.condition)
-        builder.ifElseHelper(
-            ::JumpIfToBooleanFalse,
-            {
-                enterBreakableScope(node.labels)
-                enterContinuableScope(node.labels)
-                visitStatement(node.body)
-                +Jump(head)
-                exitContinuableScope().forEach { it.to = head }
-                exitBreakableScope().forEach { it.to = builder.opcodeCount() }
-            },
-            {
-                +jumpToEnd
-            },
-        )
+        builder.ifHelper(::JumpIfToBooleanFalse) {
+            enterBreakableScope(node.labels)
+            enterContinuableScope(node.labels)
+            visitStatement(node.body)
+            +Jump(head)
+            exitContinuableScope().forEach { it.to = head }
+            exitBreakableScope().forEach { it.to = builder.opcodeCount() }
+        }
 
         jumpToEnd.to = builder.opcodeCount()
     }
@@ -648,9 +642,12 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     override fun visitForIn(node: ForInNode) {
+        val local = builder.newLocalSlot(LocalKind.Value)
         visitExpression(node.expression)
         +Dup
-        builder.ifHelper(::JumpIfNotUndefined) {
+        +StoreValue(local)
+        builder.ifHelper(::JumpIfUndefined) {
+            +LoadValue(local)
             +ForInEnumerate
             iterateForEach(node)
         }
@@ -683,15 +680,16 @@ class Transformer(val executable: Executable) : ASTVisitor {
         action: () -> Unit,
     ) {
         val head = builder.opcodeCount()
+        val resultLocal = builder.newLocalSlot(LocalKind.Value)
 
         +LoadValue(iteratorLocal)
         +IteratorNext
         +Dup
-        // result result
+        +StoreValue(resultLocal)
         +IteratorResultDone
-        // result isDone
+
         builder.ifHelper(::JumpIfTrue) {
-            // result
+            +LoadValue(resultLocal)
             +IteratorResultValue
 
             enterBreakableScope(labels)
