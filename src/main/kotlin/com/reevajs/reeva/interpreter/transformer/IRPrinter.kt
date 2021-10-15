@@ -75,6 +75,7 @@ class IRPrinter(private val executable: Executable) {
                     } else println(" ${opcode.literal}")
                 }
                 is PushDeclarativeEnvRecord -> println(" #${opcode.slotCount}")
+                is StoreNamedProperty -> println(" \"${opcode.name}\"")
                 is StoreCurrentEnvSlot -> println(" #${opcode.slot}")
                 is StoreEnvSlot -> println(" #${opcode.slot} #${opcode.distance}")
                 is StoreGlobal -> println(" \"${opcode.name}\"")

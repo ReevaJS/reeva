@@ -113,13 +113,13 @@ object Dec : Opcode(0)
 
 object LoadKeyedProperty : Opcode(-1)
 
-object StoreKeyedProperty : Opcode(-2)
+object StoreKeyedProperty : Opcode(-3)
 
 // name: String | Symbol
 class LoadNamedProperty(val name: Any) : Opcode(0)
 
 // name: String | Symbol
-class StoreNamedProperty(val name: Any) : Opcode(-1)
+class StoreNamedProperty(val name: Any) : Opcode(-2)
 
 object CreateObject : Opcode(1)
 
@@ -127,7 +127,7 @@ object CreateArray : Opcode(1)
 
 class StoreArray(val index: Local) : Opcode(-2)
 
-class StoreArrayIndexed(val index: Int) : Opcode(-1)
+class StoreArrayIndexed(val index: Int) : Opcode(-2)
 
 object DeletePropertyStrict : Opcode(-2)
 
