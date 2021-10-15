@@ -22,12 +22,12 @@ class IRPrinter(private val executable: Executable) {
         }
 
         println(header)
-        println("Parameter count: ${info.argCount}")
-        println("Local count: ${info.localSlots.size}")
-        println("Opcode count: ${info.opcodes.size}")
+        println("Parameter count: ${info.ir.argCount}")
+        println("Local count: ${info.ir.locals.size}")
+        println("Opcode count: ${info.ir.opcodes.size}")
 
         println("Opcodes:")
-        for ((index, opcode) in info.opcodes.withIndex()) {
+        for ((index, opcode) in info.ir.opcodes.withIndex()) {
             print("  ")
             print("%3d".format(index))
             print(".  ")
@@ -85,13 +85,20 @@ class IRPrinter(private val executable: Executable) {
             }
         }
 
-        for (nestedFunction in info.nestedFunctions) {
+        if (info.ir.handlers.isNotEmpty()) {
+            println("\nHandlers:")
+
+            for (handler in info.ir.handlers)
+                println("    ${handler.start}-${handler.end}: ${handler.handler}")
+        }
+
+        for (nestedFunction in info.ir.nestedFunctions) {
             println("\n")
             printInfo(nestedFunction)
         }
     }
 
     fun print() {
-        printInfo(executable.ir!!)
+        printInfo(executable.functionInfo!!)
     }
 }
