@@ -531,11 +531,11 @@ class Transformer(val executable: Executable) : ASTVisitor {
                 visit(node.trueBlock)
             }
         } else {
-            builder.ifElseHelper(
-                ::JumpIfToBooleanFalse,
-                { visit(node.trueBlock) },
-                { visit(node.falseBlock) },
-            )
+            builder.ifElseHelper(::JumpIfToBooleanFalse, {
+                visit(node.trueBlock)
+            }, {
+                visit(node.falseBlock)
+            })
         }
     }
 
@@ -563,12 +563,11 @@ class Transformer(val executable: Executable) : ASTVisitor {
         enterContinuableScope(node.labels)
         visitStatement(node.body)
 
+        val beforeCheck = builder.opcodeCount()
         visitExpression(node.condition)
-        builder.ifHelper(::JumpIfToBooleanFalse) {
-            +Jump(head)
-        }
+        +JumpIfToBooleanTrue(head)
 
-        exitContinuableScope().forEach { it.to = head }
+        exitContinuableScope().forEach { it.to = beforeCheck }
         exitBreakableScope().forEach { it.to = builder.opcodeCount() }
     }
 
