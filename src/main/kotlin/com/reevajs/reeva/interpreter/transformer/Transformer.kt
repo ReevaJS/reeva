@@ -947,6 +947,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
                     return
 
                 pushRhs()
+                +Dup
                 storeToSource(lhs.source)
             }
             is MemberExpressionNode -> {
@@ -957,10 +958,14 @@ class Transformer(val executable: Executable) : ASTVisitor {
                     MemberExpressionNode.Type.Computed -> {
                         visitExpression(lhs.rhs)
                         pushRhs()
+                        // lhs rhs value
+                        +DupX2
+                        // value lhs rhs value
                         +StoreKeyedProperty
                     }
                     MemberExpressionNode.Type.NonComputed -> {
                         pushRhs()
+                        +DupX1
                         +StoreNamedProperty((lhs.rhs as IdentifierNode).name)
                     }
                     MemberExpressionNode.Type.Tagged -> TODO()

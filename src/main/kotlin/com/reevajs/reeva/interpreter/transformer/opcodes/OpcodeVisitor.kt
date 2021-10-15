@@ -9,6 +9,7 @@ interface OpcodeVisitor {
             Pop -> visitPop()
             Dup -> visitDup()
             DupX1 -> visitDupX1()
+            DupX2 -> visitDupX2()
             Swap -> visitSwap()
             is LoadInt -> visitLoadInt(opcode)
             is StoreInt -> visitStoreInt(opcode)
@@ -112,6 +113,8 @@ interface OpcodeVisitor {
     fun visitDup()
 
     fun visitDupX1()
+
+    fun visitDupX2()
 
     fun visitSwap()
 
