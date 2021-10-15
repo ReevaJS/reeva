@@ -1128,7 +1128,8 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     override fun visitThrowStatement(node: ThrowStatementNode) {
-        TODO()
+        visitExpression(node.expr)
+        +Throw
     }
 
     override fun visitTryStatement(node: TryStatementNode) {
