@@ -29,6 +29,8 @@ object Dup : Opcode(1)
 
 object DupX1 : Opcode(1)
 
+object DupX2 : Opcode(1)
+
 object Swap : Opcode(0)
 
 // Locals
