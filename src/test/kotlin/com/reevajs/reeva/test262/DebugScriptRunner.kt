@@ -48,7 +48,7 @@ fun printError(result: ExecutionResult, script: String) {
     when (result) {
         is ExecutionResult.InternalError -> result.cause.printStackTrace()
         is ExecutionResult.RuntimeError ->
-            print("\u001b[2;37mRuntimeError: ${result.value.toPrintableString()}\u001b[0m")
+            print("\u001b[31mRuntimeError: ${result.value.toPrintableString()}\u001b[0m")
         is ExecutionResult.ParseError -> {
             val reason = result.reason
             val start = result.start
