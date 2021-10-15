@@ -54,6 +54,7 @@ interface OpcodeVisitor {
             CreateObject -> visitCreateObject()
             CreateArray -> visitCreateArray()
             is StoreArray -> visitStoreArray(opcode)
+            is StoreArrayIndexed -> visitStoreArrayIndexed(opcode)
             DeletePropertyStrict -> visitDeletePropertyStrict()
             DeletePropertySloppy -> visitDeletePropertySloppy()
             GetIterator -> visitGetIterator()
@@ -203,6 +204,8 @@ interface OpcodeVisitor {
     fun visitCreateArray()
 
     fun visitStoreArray(opcode: StoreArray)
+
+    fun visitStoreArrayIndexed(opcode: StoreArrayIndexed)
 
     fun visitDeletePropertyStrict()
 
