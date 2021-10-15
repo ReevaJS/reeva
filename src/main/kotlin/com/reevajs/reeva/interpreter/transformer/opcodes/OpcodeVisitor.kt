@@ -96,6 +96,7 @@ interface OpcodeVisitor {
             is ThrowConstantError -> visitThrowConstantError(opcode)
             ThrowSuperNotInitializedIfEmpty -> visitThrowSuperNotInitializedIfEmpty()
             PushClosure -> visitPushClosure()
+            Throw -> visitThrow()
             Return -> visitReturn()
         }
     }
@@ -285,6 +286,8 @@ interface OpcodeVisitor {
     fun visitThrowSuperNotInitializedIfEmpty()
 
     fun visitPushClosure()
+
+    fun visitThrow()
 
     fun visitReturn()
 }
