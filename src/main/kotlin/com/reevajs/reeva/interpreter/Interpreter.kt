@@ -517,12 +517,12 @@ class Interpreter(
     }
 
     override fun visitJumpIfTrue(opcode: JumpIfTrue) {
-        if (popValue() == JSTrue)
+        if (pop() == true)
             ip = opcode.to
     }
 
     override fun visitJumpIfFalse(opcode: JumpIfFalse) {
-        if (popValue() == JSFalse)
+        if (pop() == false)
             ip = opcode.to
     }
 
