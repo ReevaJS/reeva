@@ -350,6 +350,12 @@ class Interpreter(
         locals[opcode.index.value] = locals[opcode.index.value] as Int + 1
     }
 
+    override fun visitStoreArrayIndexed(opcode: StoreArrayIndexed) {
+        val value = popValue()
+        val array = popValue() as JSObject
+        array.indexedProperties.set(array, opcode.index, value)
+    }
+
     override fun visitDeletePropertyStrict() {
         val property = popValue()
         val target = popValue()
