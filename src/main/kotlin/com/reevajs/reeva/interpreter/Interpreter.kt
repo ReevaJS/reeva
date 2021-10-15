@@ -105,6 +105,13 @@ class Interpreter(
         stack.add(stack.size - 2, stack.last())
     }
 
+    override fun visitDupX2() {
+        expect(stack.size >= 3)
+
+        // Inserting into a deque isn't great, but this is a very rare opcode
+        stack.add(stack.size - 3, stack.last())
+    }
+
     override fun visitSwap() {
         val temp = stack.last()
         stack[stack.lastIndex] = stack[stack.lastIndex - 1]
