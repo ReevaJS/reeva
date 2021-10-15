@@ -1321,6 +1321,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         +CreateObject
 
         for (property in node.list) {
+            +Dup
             when (property) {
                 is KeyValueProperty -> {
                     storeObjectProperty(property.key) {
