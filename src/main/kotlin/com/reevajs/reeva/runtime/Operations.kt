@@ -26,6 +26,8 @@ import com.reevajs.reeva.runtime.promises.JSResolveFunction
 import com.reevajs.reeva.runtime.regexp.JSRegExpObject
 import com.reevajs.reeva.runtime.regexp.JSRegExpProto
 import com.reevajs.reeva.runtime.collections.JSArguments
+import com.reevajs.reeva.runtime.errors.JSErrorObject
+import com.reevajs.reeva.runtime.errors.JSErrorProto
 import com.reevajs.reeva.runtime.errors.JSSyntaxErrorObject
 import com.reevajs.reeva.runtime.functions.JSBoundFunction
 import com.reevajs.reeva.runtime.functions.JSFunction
@@ -42,6 +44,7 @@ import com.reevajs.reeva.runtime.wrappers.*
 import com.reevajs.reeva.utils.*
 import org.joni.Matcher
 import org.joni.Option
+import java.io.StringWriter
 import java.math.BigInteger
 import java.nio.ByteBuffer
 import java.time.*
@@ -893,6 +896,10 @@ object Operations {
             is JSBigInt -> value.number.toString(10) + "n"
             is JSString -> "\"${value.string}\""
             is JSSymbol -> value.descriptiveString()
+            is JSErrorObject -> {
+                val name = (value.getPrototype() as JSErrorProto).name
+                "$name: ${value.message}"
+            }
             is JSObject -> "[object <${value::class.java.simpleName}>]"
             is JSAccessor -> "<accessor>"
             is JSNativeProperty -> "<native-property>"
