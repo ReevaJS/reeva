@@ -12,7 +12,6 @@ import com.reevajs.reeva.interpreter.transformer.TransformerResult
 import com.reevajs.reeva.parsing.Parser
 import com.reevajs.reeva.parsing.ParsingResult
 import com.reevajs.reeva.runtime.functions.JSFunction
-import com.reevajs.reeva.runtime.primitives.JSTrue
 import com.reevajs.reeva.utils.expect
 import java.io.File
 import java.nio.ByteOrder
@@ -53,7 +52,7 @@ class Agent {
     fun transform(executable: Executable): TransformerResult {
         val result = Transformer(executable).transform()
         if (result is TransformerResult.Success) {
-            executable.ir = result.ir
+            executable.functionInfo = result.ir
             // Let the script get garbage collected
             executable.script = null
         }
@@ -91,7 +90,7 @@ class Agent {
             println("\n")
         }
 
-        IRValidator(executable.ir!!.opcodes).validate()
+        IRValidator(executable.functionInfo!!.ir).validate()
 
         return try {
             val function = Interpreter.wrap(realm, executable, realm.globalEnv)

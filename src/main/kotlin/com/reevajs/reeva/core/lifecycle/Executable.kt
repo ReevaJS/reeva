@@ -12,9 +12,9 @@ data class Executable(
     // TODO: Modules
     var script: ScriptNode? = null
 
-    var ir: FunctionInfo? = null
+    var functionInfo: FunctionInfo? = null
 
     fun forInfo(info: FunctionInfo) = Executable(file, source, name).also {
-        it.ir = info
+        it.functionInfo = info
     }
 }
