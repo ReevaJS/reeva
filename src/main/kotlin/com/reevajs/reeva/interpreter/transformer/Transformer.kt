@@ -788,21 +788,27 @@ class Transformer(val executable: Executable) : ASTVisitor {
             BinaryOperator.In -> TestIn
             BinaryOperator.And -> {
                 visit(node.lhs)
-                builder.ifHelper(::JumpIfToBooleanTrue) {
+                +Dup
+                builder.ifHelper(::JumpIfToBooleanFalse) {
+                    +Pop
                     visit(node.rhs)
                 }
                 return
             }
             BinaryOperator.Or -> {
                 visit(node.lhs)
-                builder.ifHelper(::JumpIfToBooleanFalse) {
+                +Dup
+                builder.ifHelper(::JumpIfToBooleanTrue) {
+                    +Pop
                     visit(node.rhs)
                 }
                 return
             }
             BinaryOperator.Coalesce -> {
                 visit(node.lhs)
+                +Dup
                 builder.ifHelper(::JumpIfNotNullish) {
+                    +Pop
                     visit(node.rhs)
                 }
                 return
