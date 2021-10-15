@@ -34,7 +34,12 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
         return try {
             val script = executable.script!!
-            builder = IRBuilder(RESERVED_LOCALS, script.scope.inlineableLocalCount)
+            builder = IRBuilder(
+                RESERVED_LOCALS,
+                script.scope.inlineableLocalCount,
+                isDerivedClassConstructor = false,
+                isGenerator = false,
+            )
 
             globalDeclarationInstantiation(script.scope as HoistingScope) {
                 visit(script.statements)
@@ -150,7 +155,22 @@ class Transformer(val executable: Executable) : ASTVisitor {
             parameters.size + RESERVED_LOCALS,
             functionScope.inlineableLocalCount,
             classConstructorKind == JSFunction.ConstructorKind.Derived,
+            isGenerator = kind.isGenerator,
         )
+
+        if (kind.isGenerator) {
+            +GetGeneratorPhase
+            builder.initializeJumpTable()
+
+            // Always add the exhausted case
+            // TODO: Determine if a generator will never be exhausted?
+            builder.addJumpTableTarget(-1, builder.opcodeCount())
+            +PushUndefined
+            +Return
+
+            // Add the default case
+            builder.addJumpTableTarget(0, builder.opcodeCount())
+        }
 
         val functionPackage = makeFunctionInfo(
             name,
@@ -236,7 +256,12 @@ class Transformer(val executable: Executable) : ASTVisitor {
         }
 
         val prevBuilder = builder
-        builder = IRBuilder(argCount, 0, constructorKind == JSFunction.ConstructorKind.Derived)
+        builder = IRBuilder(
+            argCount,
+            0,
+            constructorKind == JSFunction.ConstructorKind.Derived,
+            isGenerator = false,
+        )
 
         if (constructorKind == JSFunction.ConstructorKind.Base) {
             if (hasInstanceFields)
@@ -1020,6 +1045,13 @@ class Transformer(val executable: Executable) : ASTVisitor {
             visitExpression(node.expression)
         }
 
+        if (builder.isGenerator) {
+            // Set the generator to it's exhausted state
+            // NOTE: this must come after the visitExpression call above, as
+            //       the expression could have a yield statement inside of it
+            +SetGeneratorPhase(-1)
+        }
+
         +Return
     }
 
@@ -1270,7 +1302,16 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     override fun visitYieldExpression(node: YieldExpressionNode) {
-        TODO()
+        +SetGeneratorPhase(builder.incrementAndGetGeneratorPhase())
+        if (node.expression == null) {
+            +PushUndefined
+        } else {
+            visitExpression(node.expression)
+        }
+
+        +SetGeneratorYieldedValue
+        +PushUndefined
+        +Return
     }
 
     override fun visitImportMetaExpression() {

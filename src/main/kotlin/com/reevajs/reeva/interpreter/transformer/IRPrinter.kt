@@ -63,6 +63,12 @@ class IRPrinter(private val executable: Executable) {
                 }
                 is LoadNamedProperty -> println(" \"${opcode.name}\"")
                 is IncInt -> println(" [${opcode.local}]")
+                is JumpTable -> {
+                    val entries = opcode.table.entries.joinToString(separator = ", ") { (phase, target) ->
+                        "$phase: @$target"
+                    }
+                    println(" { $entries }")
+                }
                 is JumpInstr -> println(" @${opcode.to}")
                 is LoadCurrentEnvSlot -> println(" #${opcode.slot}")
                 is LoadEnvSlot -> println(" (${opcode.slot}) #${opcode.distance}")
@@ -75,6 +81,7 @@ class IRPrinter(private val executable: Executable) {
                     } else println(" ${opcode.literal}")
                 }
                 is PushDeclarativeEnvRecord -> println(" #${opcode.slotCount}")
+                is SetGeneratorPhase -> println(" #${opcode.phase}")
                 is StoreNamedProperty -> println(" \"${opcode.name}\"")
                 is StoreCurrentEnvSlot -> println(" #${opcode.slot}")
                 is StoreEnvSlot -> println(" #${opcode.slot} #${opcode.distance}")

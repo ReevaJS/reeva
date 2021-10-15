@@ -1,9 +1,7 @@
 package com.reevajs.reeva.interpreter.transformer
 
-import com.reevajs.reeva.interpreter.transformer.opcodes.Jump
-import com.reevajs.reeva.interpreter.transformer.opcodes.JumpInstr
-import com.reevajs.reeva.interpreter.transformer.opcodes.Opcode
-import com.reevajs.reeva.interpreter.transformer.opcodes.Return
+import com.reevajs.reeva.interpreter.transformer.opcodes.*
+import com.reevajs.reeva.utils.expect
 
 @JvmInline
 value class Local(val value: Int) {
@@ -30,12 +28,16 @@ data class IR(
 class IRBuilder(
     val argCount: Int,
     additionalReservedLocals: Int,
-    val isDerivedClassConstructor: Boolean = false,
+    val isDerivedClassConstructor: Boolean,
+    val isGenerator: Boolean,
 ) {
     private val opcodes = mutableListOf<Opcode>()
     private val locals = mutableListOf<LocalKind>()
     private val nestedFunctions = mutableListOf<FunctionInfo>()
     private val handlers = mutableListOf<Handler>()
+
+    private val generatorJumpTable = mutableMapOf<Int, Int>()
+    private var generatorPhase = 0
 
     val isDone: Boolean
         get() = opcodes.lastOrNull() === Return
@@ -57,6 +59,17 @@ class IRBuilder(
     fun addNestedFunction(function: FunctionInfo) {
         nestedFunctions.add(function)
     }
+
+    fun initializeJumpTable() {
+        opcodes.add(JumpTable(generatorJumpTable))
+    }
+
+    fun addJumpTableTarget(phase: Int, target: Int) {
+        expect(generatorJumpTable[phase] == null)
+        generatorJumpTable[phase] = target
+    }
+
+    fun incrementAndGetGeneratorPhase() = ++generatorPhase
 
     private fun finalizeOpcodes(): List<Opcode> {
         // TODO: Figure out how to do this here but also print
