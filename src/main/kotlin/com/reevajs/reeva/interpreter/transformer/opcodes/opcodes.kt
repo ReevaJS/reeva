@@ -195,6 +195,18 @@ class JumpIfNotNullish(to: Int) : JumpInstr(to)
 
 class JumpIfNotEmpty(to: Int) : JumpInstr(to)
 
+class JumpTable(val table: Map<Int, Int>) : JumpInstr(-1)
+
+// Generators
+
+object GetGeneratorPhase : Opcode(1)
+
+class SetGeneratorPhase(val phase: Int) : Opcode(0)
+
+object SetGeneratorYieldedValue : Opcode(-1)
+
+object GetGeneratorYieldedValue : Opcode(1)
+
 // Misc
 
 // stack: object property method
