@@ -10,6 +10,23 @@ value class Local(val value: Int) {
     override fun toString() = value.toString()
 }
 
+data class Handler(
+    val start: Int,
+    val end: Int,
+    val handler: Int,
+)
+
+data class IR(
+    val argCount: Int,
+    val opcodes: List<Opcode>,
+    val locals: List<LocalKind>,
+    val handlers: List<Handler>,
+
+    // Just so we can print them with the top-level script, not actually
+    // necessary for function.
+    val nestedFunctions: List<FunctionInfo>,
+)
+
 class IRBuilder(
     val argCount: Int,
     additionalReservedLocals: Int,
@@ -17,7 +34,8 @@ class IRBuilder(
 ) {
     private val opcodes = mutableListOf<Opcode>()
     private val locals = mutableListOf<LocalKind>()
-    private val childFunctions = mutableListOf<FunctionInfo>()
+    private val nestedFunctions = mutableListOf<FunctionInfo>()
+    private val handlers = mutableListOf<Handler>()
 
     val isDone: Boolean
         get() = opcodes.lastOrNull() === Return
@@ -32,20 +50,20 @@ class IRBuilder(
         }
     }
 
-    fun addChildFunction(function: FunctionInfo) {
-        childFunctions.add(function)
+    fun addHandler(start: Int, end: Int, handler: Int) {
+        handlers.add(Handler(start, end, handler))
     }
 
-    fun getChildFunctions(): List<FunctionInfo> = childFunctions
+    fun addNestedFunction(function: FunctionInfo) {
+        nestedFunctions.add(function)
+    }
 
-    fun finalizeOpcodes(): List<Opcode> {
+    private fun finalizeOpcodes(): List<Opcode> {
         // TODO: Figure out how to do this here but also print
         //       the opcodes for debugging purposes
         // IRValidator(opcodes).validate()
         return opcodes
     }
-
-    fun getLocals(): List<LocalKind> = locals
 
     fun addOpcode(opcode: Opcode) {
         opcodes.add(opcode)
@@ -76,4 +94,12 @@ class IRBuilder(
         locals.add(kind)
         return Local(locals.lastIndex)
     }
+
+    fun build() = IR(
+        argCount,
+        finalizeOpcodes(),
+        locals,
+        handlers,
+        nestedFunctions,
+    )
 }

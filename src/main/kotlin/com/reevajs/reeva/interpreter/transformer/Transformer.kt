@@ -11,7 +11,6 @@ import com.reevajs.reeva.parsing.HoistingScope
 import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.functions.JSFunction
-import com.reevajs.reeva.runtime.regexp.JSRegExpObject
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.unreachable
 import java.math.BigInteger
@@ -47,12 +46,9 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
             TransformerResult.Success(FunctionInfo(
                 executable.name,
-                builder.finalizeOpcodes(),
-                builder.getLocals(),
-                builder.argCount,
+                builder.build(),
                 script.scope.isStrict,
                 isTopLevel = true,
-                builder.getChildFunctions(),
             ))
         } catch (e: Throwable) {
             TransformerResult.InternalError(e)
@@ -120,7 +116,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
             +DeclareGlobals(declaredVarNames, lexNames, functionNames)
 
         for (func in functionsToInitialize) {
-            builder.addChildFunction(visitFunctionHelper(
+            builder.addNestedFunction(visitFunctionHelper(
                 func.identifier.name,
                 func.parameters,
                 func.body,
@@ -197,7 +193,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
             // BlockScopeInstantiation
             node.scope.variableSources.filterIsInstance<FunctionDeclarationNode>().forEach {
-                builder.addChildFunction(visitFunctionHelper(
+                builder.addNestedFunction(visitFunctionHelper(
                     it.name(),
                     it.parameters,
                     it.body,
@@ -260,12 +256,9 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
         return FunctionInfo(
             name,
-            builder.finalizeOpcodes(),
-            builder.getLocals(),
-            argCount,
+            builder.build(),
             isStrict = true,
             isTopLevel = false,
-            builder.getChildFunctions()
         ).also {
             builder = prevBuilder
         }
@@ -317,12 +310,9 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
         return FunctionInfo(
             name,
-            builder.finalizeOpcodes(),
-            builder.getLocals(),
-            builder.argCount,
+            builder.build(),
             isStrict,
             isTopLevel = false,
-            builder.getChildFunctions(),
         )
     }
 
@@ -418,7 +408,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         }
 
         for (func in functionsToInitialize) {
-            builder.addChildFunction(visitFunctionHelper(
+            builder.addNestedFunction(visitFunctionHelper(
                 func.identifier.name,
                 func.parameters,
                 func.body,
@@ -1133,7 +1123,33 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     override fun visitTryStatement(node: TryStatementNode) {
-        TODO()
+        if (node.finallyBlock != null)
+            unsupported("Try-statement finally blocks")
+
+        expect(node.catchNode != null)
+
+        val start = builder.opcodeCount()
+        visit(node.tryBlock)
+
+        val catchStart = builder.opcodeCount()
+        val catchBlock = node.catchNode
+
+        // We need to push the scope before we assign the catch parameter
+        enterScope(catchBlock.block.scope)
+
+        // Handle the exception, which has been inserted onto the stack
+        if (catchBlock.parameter == null) {
+            +Pop
+        } else {
+            assign(catchBlock.parameter.declaration.node)
+        }
+
+        // Avoid pushing the scope twice
+        visitBlock(catchBlock.block, pushScope = false)
+
+        exitScope(catchBlock.block.scope)
+
+        builder.addHandler(start, catchStart - 1, catchStart)
     }
 
     override fun visitNamedDeclaration(declaration: NamedDeclaration) {
@@ -1165,7 +1181,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
-        builder.addChildFunction(visitFunctionHelper(
+        builder.addNestedFunction(visitFunctionHelper(
             node.identifier?.name ?: "<anonymous>",
             node.parameters,
             node.body,
@@ -1177,7 +1193,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     override fun visitArrowFunction(node: ArrowFunctionNode) {
-        builder.addChildFunction(visitFunctionHelper(
+        builder.addNestedFunction(visitFunctionHelper(
             "<anonymous>",
             node.parameters,
             node.body,

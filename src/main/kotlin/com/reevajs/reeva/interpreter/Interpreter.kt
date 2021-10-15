@@ -28,10 +28,10 @@ class Interpreter(
     initialEnvRecord: EnvRecord,
 ) : OpcodeVisitor {
     private val info: FunctionInfo
-        get() = executable.ir!!
+        get() = executable.functionInfo!!
 
     private val stack = ArrayDeque<Any>()
-    private val locals = Array<Any?>(info.localSlots.size) { null }
+    private val locals = Array<Any?>(info.ir.locals.size) { null }
 
     private var lexicalEnv = initialEnvRecord
     private var ip = 0
@@ -42,15 +42,28 @@ class Interpreter(
             locals[index] = arg
         }
 
-        try {
-            while (!isDone) {
-                visit(info.opcodes[ip++])
+        while (!isDone) {
+            try {
+                visit(info.ir.opcodes[ip++])
+            } catch (e: ThrowException) {
+                // TODO: Can we optimize this lookup?
+                var handled = false
+
+                for (handler in info.ir.handlers) {
+                    if (ip - 1 in handler.start..handler.end) {
+                        ip = handler.handler
+                        push(e.value)
+                        handled = true
+                        break
+                    }
+                }
+
+                if (!handled)
+                    return ExecutionResult.RuntimeError(executable, e.value)
+            } catch (e: Throwable) {
+                println("Exception in FunctionInfo ${info.name}, opcode ${ip - 1}")
+                throw e
             }
-        } catch (e: ThrowException) {
-            return ExecutionResult.RuntimeError(executable, e.value)
-        } catch (e: Throwable) {
-            println("Exception in FunctionInfo ${info.name}, opcode ${ip - 1}")
-            throw e
         }
 
         expect(stack.size == 1)
@@ -99,27 +112,27 @@ class Interpreter(
     }
 
     override fun visitLoadInt(opcode: LoadInt) {
-        expect(info.localSlots[opcode.local.value] == LocalKind.Int)
+        expect(info.ir.locals[opcode.local.value] == LocalKind.Int)
         push(locals[opcode.local.value]!!)
     }
 
     override fun visitStoreInt(opcode: StoreInt) {
-        expect(info.localSlots[opcode.local.value] == LocalKind.Int)
+        expect(info.ir.locals[opcode.local.value] == LocalKind.Int)
         locals[opcode.local.value] = pop()
     }
 
     override fun visitIncInt(opcode: IncInt) {
-        expect(info.localSlots[opcode.local.value] == LocalKind.Int)
+        expect(info.ir.locals[opcode.local.value] == LocalKind.Int)
         locals[opcode.local.value] = (locals[opcode.local.value] as Int) + 1
     }
 
     override fun visitLoadValue(opcode: LoadValue) {
-        expect(info.localSlots[opcode.local.value] == LocalKind.Value)
+        expect(info.ir.locals[opcode.local.value] == LocalKind.Value)
         push(locals[opcode.local.value]!!)
     }
 
     override fun visitStoreValue(opcode: StoreValue) {
-        expect(info.localSlots[opcode.local.value] == LocalKind.Value)
+        expect(info.ir.locals[opcode.local.value] == LocalKind.Value)
         locals[opcode.local.value] = pop()
     }
 
@@ -631,7 +644,7 @@ class Interpreter(
         val executable: Executable,
         val outerEnvRecord: EnvRecord,
         prototype: JSValue = realm.functionProto,
-    ) : JSFunction(realm, executable.ir!!.isStrict, prototype)
+    ) : JSFunction(realm, executable.functionInfo!!.isStrict, prototype)
 
     class NormalIRFunction(
         realm: Realm,
