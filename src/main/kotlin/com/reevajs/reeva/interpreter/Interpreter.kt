@@ -585,6 +585,10 @@ class Interpreter(
         TODO("Not yet implemented")
     }
 
+    override fun visitThrow() {
+        throw ThrowException(popValue())
+    }
+
     override fun visitToString() {
         push(Operations.toString(realm, popValue()))
     }

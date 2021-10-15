@@ -201,6 +201,8 @@ object DefineGetterProperty : Opcode(-3)
 // stack: object property method
 object DefineSetterProperty : Opcode(-3)
 
+object Throw : Opcode(-1)
+
 class CreateRegExpObject(val source: String, val flags: String) : Opcode(-1)
 
 class CreateTemplateLiteral(val numberOfParts: Int) : Opcode(-numberOfParts + 1)
