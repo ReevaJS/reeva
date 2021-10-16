@@ -23,12 +23,6 @@ object Reeva {
         internal set
 
     @JvmStatic
-    fun teardown() {
-        running = false
-        threadPool.shutdownNow()
-    }
-
-    @JvmStatic
     fun makeRealm() = activeAgent.hostHooks.initializeHostDefinedRealm()
 
     @JvmStatic
@@ -40,5 +34,11 @@ object Reeva {
     fun setup() {
         Realm.setupSymbols()
         running = true
+    }
+
+    @JvmStatic
+    fun teardown() {
+        running = false
+        threadPool.shutdownNow()
     }
 }
