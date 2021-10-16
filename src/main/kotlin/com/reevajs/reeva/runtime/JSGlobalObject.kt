@@ -70,6 +70,7 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("globalThis", this, Descriptor.WRITABLE or Descriptor.CONFIGURABLE)
         defineOwnProperty("undefined", JSUndefined, 0)
 
+        defineBuiltin("isNaN", 1, ReevaBuiltin.GlobalIsNaN)
         defineBuiltin("id", 1, ReevaBuiltin.GlobalId)
         defineBuiltin("eval", 1, ReevaBuiltin.GlobalEval)
         defineBuiltin("parseInt", 1, ReevaBuiltin.GlobalParseInt)
@@ -83,6 +84,13 @@ open class JSGlobalObject protected constructor(
 
     companion object {
         fun create(realm: Realm) = JSGlobalObject(realm).initialize()
+
+        @JvmStatic
+        @ECMAImpl("19.2.3")
+        fun isNaN(realm: Realm, arguments: JSArguments): JSValue {
+            val num = arguments.argument(0).toNumber(realm)
+            return (num == JSNumber.NaN).toValue()
+        }
 
         @ECMAImpl("18.2.1.1")
         fun performEval(realm: Realm, argument: JSValue, callerRealm: Realm, strictCaller: Boolean, direct: Boolean): JSValue {
