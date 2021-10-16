@@ -728,6 +728,8 @@ class Transformer(val executable: Executable) : ASTVisitor {
             exitContinuableScope().forEach { it.to = head }
             exitBreakableScope().forEach { it.to = builder.opcodeCount() }
         }
+
+        +Pop
     }
 
     override fun visitBreakStatement(node: BreakStatementNode) {
@@ -1019,12 +1021,98 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     private fun assignToArrayBindingPattern(node: BindingPatternNode, valueLocal: Local) {
-        TODO()
+        val isExhaustedLocal = builder.newLocalSlot(LocalKind.Boolean)
+
+        +LoadValue(valueLocal)
+        +GetIterator
+        // iter
+
+        var first = true
+        val endJumps = mutableListOf<JumpInstr>()
+
+        for (element in node.bindingElements) {
+            // iter
+            if (element is BindingRestElement) {
+                val iterLocal = builder.newLocalSlot(LocalKind.Value)
+                +StoreValue(iterLocal)
+
+                if (first) {
+                    // The iterator hasn't been called, so we can skip the exhaustion check
+                    println(builder.opcodeCount())
+                    iteratorToArray(iterLocal)
+                    println(builder.opcodeCount())
+                } else {
+                    +LoadBoolean(isExhaustedLocal)
+                    builder.ifElseHelper(::JumpIfTrue, {
+                        iteratorToArray(iterLocal)
+                    }, {
+                        +CreateArray
+                    })
+                }
+
+                assign(element.declaration.node)
+                return
+            }
+
+            // iter
+
+            // If this is the first iteration, we haven't called the iterator yet. We have
+            // to call it at least once
+            if (first) {
+                // iter
+                +Dup
+                +IteratorNext
+                // iter result
+
+                if (node.bindingElements.size > 1) {
+                    // If we only have one element, we don't need to store whether the iterator
+                    // is exhausted
+                    +Dup
+                    +IteratorResultDone
+                    // iter result isDone
+
+                    // We don't need another if-else here on the isDone status, since if the
+                    // iterator _is_ done, the result will just be undefined anyways
+                    +StoreBoolean(isExhaustedLocal)
+                }
+
+                +IteratorResultValue
+            } else {
+                +LoadBoolean(isExhaustedLocal)
+                builder.ifElseHelper(::JumpIfTrue, {
+                    // iter
+                    +Dup
+                    +IteratorNext
+                    // iter result
+                    +Dup
+                    +IteratorResultDone
+                    // iter result isDone
+
+                    // We don't need another if-else here on the isDone status, since if the
+                    // iterator _is_ done, the result will just be undefined anyways
+                    +StoreBoolean(isExhaustedLocal)
+
+                    +IteratorResultValue
+                }, {
+                    // iter
+                    +PushUndefined
+                })
+            }
+
+            if (element is SimpleBindingElement)
+                assign(element.alias.node)
+
+            first = false
+        }
+
+        endJumps.forEach { it.to = builder.opcodeCount() }
+        // iter
+        +Pop
     }
 
     private fun iteratorToArray(iteratorLocal: Local, arrayLocal: Local = builder.newLocalSlot(LocalKind.Value)) {
         val indexLocal = builder.newLocalSlot(LocalKind.Int)
-        +PushConstant(1.0)
+        +PushJVMInt(0)
         +StoreInt(indexLocal)
 
         +CreateArray
@@ -1033,6 +1121,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
         iterateValues(setOf(), iteratorLocal) {
             +LoadValue(arrayLocal)
+            +Swap
             +StoreArray(indexLocal)
         }
 

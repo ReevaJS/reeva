@@ -422,6 +422,18 @@ class Interpreter(
         push(Operations.iteratorValue(popValue()))
     }
 
+    override fun visitPushJVMFalse() {
+        push(false)
+    }
+
+    override fun visitPushJVMTrue() {
+        push(true)
+    }
+
+    override fun visitPushJVMInt(opcode: PushJVMInt) {
+        push(opcode.int)
+    }
+
     override fun visitCall(opcode: Call) {
         val args = mutableListOf<JSValue>()
 

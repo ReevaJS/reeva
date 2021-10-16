@@ -18,6 +18,12 @@ object PushNull : Opcode(1)
 
 object PushUndefined : Opcode(1)
 
+object PushJVMFalse : Opcode(1)
+
+object PushJVMTrue : Opcode(1)
+
+class PushJVMInt(val int: Int) : Opcode(1)
+
 // literal can be: String, Int, Double, Boolean
 class PushConstant(val literal: Any) : Opcode(1)
 
