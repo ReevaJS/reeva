@@ -126,11 +126,13 @@ open class HoistingScope(
     outer: Scope? = null,
     val isLexical: Boolean = false,
     allowVarInlining: Boolean = true,
+    isGenerator: Boolean = false,
 ) : Scope(outer, allowVarInlining) {
     override var isStrict = false
     var isDerivedClassConstructor = false
+    private val reservedLocals = Transformer.getReservedLocalsCount(isGenerator)
 
-    override var nextInlineableLocal = Transformer.RESERVED_LOCALS
+    override var nextInlineableLocal = reservedLocals
     override var nextSlot = 0
 
     // Variables that are only "effectively" declared in this scope, such
@@ -204,7 +206,7 @@ open class HoistingScope(
         val parameters = variableSources.filter { it.mode == VariableMode.Parameter }
         val locals = variableSources.filter { it.mode != VariableMode.Parameter }
 
-        nextInlineableLocal = Transformer.RESERVED_LOCALS + parameters.size
+        nextInlineableLocal = reservedLocals + parameters.size
 
         when (receiverVariable?.isInlineable) {
             true -> receiverVariable!!.index = 0
@@ -214,7 +216,7 @@ open class HoistingScope(
 
         parameters.forEachIndexed { index, source ->
             source.index = if (source.isInlineable) {
-                Transformer.RESERVED_LOCALS + index
+                reservedLocals + index
             } else nextSlot++
         }
 

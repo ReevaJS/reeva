@@ -35,25 +35,22 @@ class JSGeneratorObjectProto(realm: Realm) : JSObject(realm, realm.iteratorProto
         @ECMAImpl("27.5.1.2")
         @JvmStatic
         fun next(realm: Realm, arguments: JSArguments): JSValue {
-            TODO("Generators")
-            // val generator = thisGeneratorObject(realm, arguments.thisValue, "next")
-            // return generator.next(realm, Interpreter.SuspendedEntryMode.Next, arguments.argument(0))
+            val generator = thisGeneratorObject(realm, arguments.thisValue, "next")
+            return generator.next(realm, arguments.argument(0))
         }
 
         @ECMAImpl("27.5.1.3")
         @JvmStatic
         fun `return`(realm: Realm, arguments: JSArguments): JSValue {
-            TODO("Generators")
-            // val generator = thisGeneratorObject(realm, arguments.thisValue, "return")
-            // return generator.next(realm, Interpreter.SuspendedEntryMode.Return, arguments.argument(0))
+            val generator = thisGeneratorObject(realm, arguments.thisValue, "return")
+            return generator.`return`(realm, arguments.argument(0))
         }
 
         @ECMAImpl("27.5.1.4")
         @JvmStatic
         fun `throw`(realm: Realm, arguments: JSArguments): JSValue {
-            TODO("Generators")
-            // val generator = thisGeneratorObject(realm, arguments.thisValue, "throw")
-            // return generator.next(realm, Interpreter.SuspendedEntryMode.Throw, arguments.argument(0))
+            val generator = thisGeneratorObject(realm, arguments.thisValue, "throw")
+            return generator.`throw`(realm, arguments.argument(0))
         }
     }
 }

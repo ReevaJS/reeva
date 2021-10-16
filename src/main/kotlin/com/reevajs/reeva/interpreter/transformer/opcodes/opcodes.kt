@@ -203,9 +203,7 @@ object GetGeneratorPhase : Opcode(1)
 
 class SetGeneratorPhase(val phase: Int) : Opcode(0)
 
-object SetGeneratorYieldedValue : Opcode(-1)
-
-object GetGeneratorYieldedValue : Opcode(1)
+object GetGeneratorSentValue : Opcode(1)
 
 // Misc
 
