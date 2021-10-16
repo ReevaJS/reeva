@@ -1131,6 +1131,8 @@ class Parser(val executable: Executable) {
     private fun parseBindingIdentifier(): IdentifierNode {
         var string: String
         val node = nps {
+            if (!matchIdentifierName())
+                reporter.at(token).expected("identifier")
             string = parseIdentifierString()
             IdentifierNode(string)
         }
