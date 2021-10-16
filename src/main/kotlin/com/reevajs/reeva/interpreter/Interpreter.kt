@@ -75,6 +75,31 @@ class Interpreter(
         return ExecutionResult.Success(executable, stack[0] as JSValue)
     }
 
+    override fun visitCopyObjectExcludingProperties(opcode: CopyObjectExcludingProperties) {
+        val obj = popValue() as JSObject
+        val excludedProperties = locals[opcode.propertiesLocal.value] as JSArrayObject
+        val excludedNames = (0 until excludedProperties.indexedProperties.arrayLikeSize).map {
+            excludedProperties.indexedProperties.get(excludedProperties, it.toInt()).toPropertyKey(realm)
+        }.toSet()
+
+        val newObj = JSObject.create(realm)
+
+        for (name in obj.ownPropertyKeys()) {
+            if (name !in excludedNames)
+                newObj.set(name, obj.get(name))
+        }
+
+        push(newObj)
+    }
+
+    override fun visitLoadBoolean(opcode: LoadBoolean) {
+        push(locals[opcode.local.value] as Boolean)
+    }
+
+    override fun visitStoreBoolean(opcode: StoreBoolean) {
+        locals[opcode.local.value] = pop() as Boolean
+    }
+
     override fun visitPushNull() {
         push(JSNull)
     }

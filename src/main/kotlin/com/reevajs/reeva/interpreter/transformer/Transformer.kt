@@ -428,13 +428,11 @@ class Transformer(val executable: Executable) : ASTVisitor {
                             +StoreValue(local)
                         }
                     }
-                    TODO()
-                    // assign(param.pattern, register)
+                    assign(param.pattern, local)
                 }
                 is RestParameter -> {
-                    TODO()
-                    // +CreateRestParam
-                    // assign(param.declaration.node)
+                    +CreateRestParam
+                    assign(param.declaration.node)
                 }
             }
         }
@@ -956,12 +954,91 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     private fun assignToObjectBindingPattern(node: BindingPatternNode, valueLocal: Local) {
-        TODO()
+        val properties = node.bindingProperties
+        val hasRest = properties.lastOrNull() is BindingRestProperty
+        val excludedPropertiesLocal = if (hasRest) builder.newLocalSlot(LocalKind.Value) else null
+
+        if (hasRest) {
+            +CreateArray
+            +StoreValue(excludedPropertiesLocal!!)
+        }
+
+        for ((index, property) in properties.withIndex()) {
+            val alias = when (property) {
+                is BindingRestProperty -> {
+                    +LoadValue(valueLocal)
+                    +CopyObjectExcludingProperties(excludedPropertiesLocal!!)
+                    storeToSource(property.declaration)
+                    return
+                }
+                is SimpleBindingProperty -> {
+                    val name = property.declaration.identifier.name
+                    +LoadValue(valueLocal)
+                    +LoadNamedProperty(name)
+
+                    if (property.initializer != null) {
+                        builder.ifHelper(::JumpIfNotUndefined) {
+                            visitExpression(property.initializer)
+                        }
+                    }
+
+                    if (hasRest) {
+                        +LoadValue(excludedPropertiesLocal!!)
+                        +PushConstant(name)
+                        +StoreArrayIndexed(index)
+                    }
+
+                    property.alias ?: BindingDeclarationOrPattern(property.declaration)
+                }
+                is ComputedBindingProperty -> {
+                    expect(property.name.type != PropertyName.Type.Identifier)
+
+                    +LoadValue(valueLocal)
+                    visitExpression(property.name.expression)
+                    +LoadKeyedProperty
+
+                    if (hasRest) {
+                        +Dup
+                        +LoadValue(excludedPropertiesLocal!!)
+                        +Swap
+                        +StoreArrayIndexed(index)
+                    }
+
+                    if (property.initializer != null) {
+                        builder.ifHelper(::JumpIfNotUndefined) {
+                            visitExpression(property.initializer)
+                        }
+                    }
+
+                    property.alias
+                }
+            }
+
+            assign(alias.node)
+        }
     }
 
     private fun assignToArrayBindingPattern(node: BindingPatternNode, valueLocal: Local) {
         TODO()
     }
+
+    private fun iteratorToArray(iteratorLocal: Local, arrayLocal: Local = builder.newLocalSlot(LocalKind.Value)) {
+        val indexLocal = builder.newLocalSlot(LocalKind.Int)
+        +PushConstant(1.0)
+        +StoreInt(indexLocal)
+
+        +CreateArray
+        +StoreValue(arrayLocal)
+        +LoadValue(iteratorLocal)
+
+        iterateValues(setOf(), iteratorLocal) {
+            +LoadValue(arrayLocal)
+            +StoreArray(indexLocal)
+        }
+
+        +LoadValue(arrayLocal)
+    }
+
 
     override fun visitAssignmentExpression(node: AssignmentExpressionNode) {
         val lhs = node.lhs
