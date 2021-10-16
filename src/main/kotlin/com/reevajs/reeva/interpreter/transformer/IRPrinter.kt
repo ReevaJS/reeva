@@ -89,6 +89,8 @@ class IRPrinter(private val executable: Executable) {
                 is StoreInt -> println(" #${opcode.local}")
                 is StoreValue -> println(" #${opcode.local}")
                 is ThrowConstantError -> println(" \"${opcode.message}\"")
+                is StoreArrayIndexed -> println(" #${opcode.index}")
+                is CopyObjectExcludingProperties -> println(" #${opcode.propertiesLocal}")
                 else -> println()
             }
         }

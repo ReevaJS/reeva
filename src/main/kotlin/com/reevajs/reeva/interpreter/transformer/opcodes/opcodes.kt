@@ -41,6 +41,10 @@ class StoreInt(val local: Local) : Opcode(-1)
 
 class IncInt(val local: Local) : Opcode(0)
 
+class LoadBoolean(val local: Local) : Opcode(1)
+
+class StoreBoolean(val local: Local) : Opcode(-1)
+
 class LoadValue(val local: Local) : Opcode(1)
 
 class StoreValue(val local: Local) : Opcode(-1)
@@ -206,6 +210,8 @@ class SetGeneratorPhase(val phase: Int) : Opcode(0)
 object GetGeneratorSentValue : Opcode(1)
 
 // Misc
+
+class CopyObjectExcludingProperties(val propertiesLocal: Local) : Opcode(0)
 
 // stack: object property method
 object DefineGetterProperty : Opcode(-3)
