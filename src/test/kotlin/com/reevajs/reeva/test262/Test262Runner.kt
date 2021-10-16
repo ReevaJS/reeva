@@ -10,6 +10,7 @@ import com.reevajs.reeva.core.HostHooks
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.expect
+import kotlinx.serialization.ExperimentalSerializationApi
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.DynamicTest
@@ -63,11 +64,12 @@ class Test262Runner {
         val testDirectory = File(test262Directory, "test")
         val testDirectoryStr = testDirectory.absolutePath
         val harnessDirectory = File(test262Directory, "harness")
-        // val target: File? = File(testDirectory, "language/expressions/class")
+        // val target: File? = File(testDirectory, "language/expressions/addition")
         val target: File? = null
         lateinit var pretestScript: String
 
         val testResults = mutableListOf<TestResult>()
+        private val json = Json { prettyPrint = true }
 
         @BeforeAll
         @JvmStatic
@@ -99,7 +101,7 @@ class Test262Runner {
             val results = testResults.sortedBy { it.name }
 
             File("./demo/test_results/${LocalDateTime.now()}.json").writeText(
-                Json { prettyPrint = true }.encodeToString(results)
+                json.encodeToString(results)
             )
 
             Reeva.teardown()
