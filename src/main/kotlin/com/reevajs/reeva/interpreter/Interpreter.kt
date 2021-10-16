@@ -33,7 +33,8 @@ class Interpreter(
     private val stack = ArrayDeque<Any>()
     private val locals = Array<Any?>(info.ir.locals.size) { null }
 
-    private var lexicalEnv = initialEnvRecord
+    var activeEnvRecord = initialEnvRecord
+        private set
     private var ip = 0
     private var isDone = false
 
@@ -475,11 +476,11 @@ class Interpreter(
     }
 
     override fun visitPushDeclarativeEnvRecord(opcode: PushDeclarativeEnvRecord) {
-        lexicalEnv = DeclarativeEnvRecord(lexicalEnv, opcode.slotCount)
+        activeEnvRecord = DeclarativeEnvRecord(activeEnvRecord, opcode.slotCount)
     }
 
     override fun visitPopEnvRecord() {
-        lexicalEnv = lexicalEnv.outer!!
+        activeEnvRecord = activeEnvRecord.outer!!
     }
 
     override fun visitLoadGlobal(opcode: LoadGlobal) {
@@ -493,21 +494,21 @@ class Interpreter(
     }
 
     override fun visitLoadCurrentEnvSlot(opcode: LoadCurrentEnvSlot) {
-        push(lexicalEnv.getBinding(opcode.slot))
+        push(activeEnvRecord.getBinding(opcode.slot))
     }
 
     override fun visitStoreCurrentEnvSlot(opcode: StoreCurrentEnvSlot) {
-        lexicalEnv.setBinding(opcode.slot, popValue())
+        activeEnvRecord.setBinding(opcode.slot, popValue())
     }
 
     override fun visitLoadEnvSlot(opcode: LoadEnvSlot) {
-        var env = lexicalEnv
+        var env = activeEnvRecord
         repeat(opcode.distance) { env = env.outer!! }
         push(env.getBinding(opcode.slot))
     }
 
     override fun visitStoreEnvSlot(opcode: StoreEnvSlot) {
-        var env = lexicalEnv
+        var env = activeEnvRecord
         repeat(opcode.distance) { env = env.outer!! }
         env.setBinding(opcode.slot, popValue())
     }
@@ -565,7 +566,7 @@ class Interpreter(
     }
 
     override fun visitCreateClosure(opcode: CreateClosure) {
-        val function = NormalIRFunction(realm, executable.forInfo(opcode.ir), lexicalEnv).initialize()
+        val function = NormalIRFunction(realm, executable.forInfo(opcode.ir), activeEnvRecord).initialize()
         Operations.setFunctionName(realm, function, opcode.ir.name.key())
         Operations.makeConstructor(realm, function)
         push(function)
