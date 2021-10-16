@@ -8,6 +8,7 @@ import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.core.lifecycle.ExecutionResult
 import com.reevajs.reeva.interpreter.transformer.FunctionInfo
+import com.reevajs.reeva.interpreter.transformer.Handler
 import com.reevajs.reeva.interpreter.transformer.LocalKind
 import com.reevajs.reeva.interpreter.transformer.Transformer
 import com.reevajs.reeva.interpreter.transformer.opcodes.*
@@ -41,6 +42,18 @@ class Interpreter(
     private var ip = 0
     private var isDone = false
 
+    // For fast handler lookup in main loop
+    private val handlerStarts = mutableMapOf<Int, Handler>()
+    private val handlerEnds = mutableMapOf<Int, Handler>()
+    private val savedStackHeights = ArrayDeque<Int>()
+
+    init {
+        for (handler in info.ir.handlers) {
+            handlerStarts[handler.start] = handler
+            handlerEnds[handler.end] = handler
+        }
+    }
+
     fun interpret(): ExecutionResult {
         for ((index, arg) in arguments.withIndex()) {
             locals[index] = arg
@@ -48,6 +61,15 @@ class Interpreter(
 
         while (!isDone) {
             try {
+                val startHandler = handlerStarts[ip]
+                if (startHandler != null) {
+                    savedStackHeights.add(stack.size)
+                } else {
+                    val endHandler = handlerEnds[ip]
+                    if (endHandler != null)
+                        savedStackHeights.removeLast()
+                }
+
                 visit(info.ir.opcodes[ip++])
             } catch (e: ThrowException) {
                 // TODO: Can we optimize this lookup?
@@ -55,6 +77,12 @@ class Interpreter(
 
                 for (handler in info.ir.handlers) {
                     if (ip - 1 in handler.start..handler.end) {
+                        val stackDiff = stack.size - savedStackHeights.removeLast()
+                        expect(stackDiff >= 0)
+                        repeat(stackDiff) {
+                            stack.removeLast()
+                        }
+
                         ip = handler.handler
                         push(e.value)
                         handled = true
