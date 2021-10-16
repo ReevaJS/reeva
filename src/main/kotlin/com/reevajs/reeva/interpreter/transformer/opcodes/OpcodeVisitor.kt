@@ -109,6 +109,9 @@ interface OpcodeVisitor {
             PushEmpty -> visitPushEmpty()
             is SetGeneratorPhase -> visitSetGeneratorPhase(opcode)
             GetGeneratorSentValue -> visitGeneratorSentValue()
+            is CopyObjectExcludingProperties -> visitCopyObjectExcludingProperties(opcode)
+            is LoadBoolean -> visitLoadBoolean(opcode)
+            is StoreBoolean -> visitStoreBoolean(opcode)
         }
     }
 
@@ -323,4 +326,10 @@ interface OpcodeVisitor {
     fun visitSetGeneratorPhase(opcode: SetGeneratorPhase)
 
     fun visitGeneratorSentValue()
+
+    fun visitCopyObjectExcludingProperties(opcode: CopyObjectExcludingProperties)
+
+    fun visitLoadBoolean(opcode: LoadBoolean)
+
+    fun visitStoreBoolean(opcode: StoreBoolean)
 }

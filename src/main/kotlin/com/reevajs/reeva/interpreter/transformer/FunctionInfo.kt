@@ -12,4 +12,5 @@ data class FunctionInfo(
 enum class LocalKind {
     Int,
     Value,
+    Boolean,
 }
