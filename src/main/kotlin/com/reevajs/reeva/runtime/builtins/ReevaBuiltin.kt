@@ -391,6 +391,7 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String) : Builtin {
 
     ClassObjectToString(JSClassObject::class.java, "toString"),
     ConsoleProtoLog(JSConsoleProto::class.java, "log"),
+    GlobalIsNaN(JSGlobalObject::class.java, "isNaN"),
     GlobalId(JSGlobalObject::class.java, "id"),
     GlobalJvm(JSGlobalObject::class.java, "jvm"),
     GlobalInspect(JSGlobalObject::class.java, "inspect"),
