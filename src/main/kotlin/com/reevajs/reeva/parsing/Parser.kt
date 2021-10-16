@@ -1456,7 +1456,7 @@ class Parser(val executable: Executable) {
                 parseIdentifierReference()
             }
             TokenType.NumericLiteral -> parseNumericLiteral()
-            TokenType.BigIntLiteral -> TODO()
+            TokenType.BigIntLiteral -> parseBigIntLiteral()
             TokenType.True -> {
                 consume()
                 TrueNode()
@@ -1855,6 +1855,37 @@ class Parser(val executable: Executable) {
         }
 
         NumericLiteralNode(numericToken.doubleValue())
+    }
+
+    private fun parseBigIntLiteral(): BigIntLiteralNode = nps {
+        val numericToken = token
+        var value = token.literals
+        consume(TokenType.BigIntLiteral)
+
+        if (value.length >= 2 && value[0] == '0' && value[1].isDigit() && isStrict)
+            reporter.strictImplicitOctal()
+
+        if (matchIdentifier()) {
+            val nextToken = peek()
+            if (nextToken != null && !nextToken.afterNewline && numericToken.end.column == nextToken.start.column - 1)
+                reporter.identifierAfterNumericLiteral()
+        }
+
+        val mode = if (value.length >= 2 && value[0] == '0') {
+            when (value[1].lowercaseChar()) {
+                'o' -> BigIntLiteralNode.Type.Octal
+                'b' -> BigIntLiteralNode.Type.Binary
+                'x' -> BigIntLiteralNode.Type.Hex
+                else -> BigIntLiteralNode.Type.Normal
+            }.also {
+                if (it != BigIntLiteralNode.Type.Normal) {
+                    // Drop the first two prefix chars
+                    value = value.drop(2)
+                }
+            }
+        } else BigIntLiteralNode.Type.Normal
+
+        BigIntLiteralNode(value.dropLast(1), mode)
     }
 
     private fun tryParseArrowFunction(): ArrowFunctionNode? = nps {

@@ -752,7 +752,7 @@ class Interpreter(
     }
 
     override fun visitPushBigInt(opcode: PushBigInt) {
-        TODO("Not yet implemented")
+        push(JSBigInt(opcode.bigint))
     }
 
     override fun visitPushEmpty() {
