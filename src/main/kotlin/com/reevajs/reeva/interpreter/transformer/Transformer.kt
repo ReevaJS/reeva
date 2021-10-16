@@ -1341,6 +1341,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
         val start = builder.opcodeCount()
         visit(node.tryBlock)
+        val skipCatchJump = +Jump(-1)
 
         val catchStart = builder.opcodeCount()
         val catchBlock = node.catchNode
@@ -1357,8 +1358,9 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
         // Avoid pushing the scope twice
         visitBlock(catchBlock.block, pushScope = false)
-
         exitScope(catchBlock.block.scope)
+
+        skipCatchJump.to = builder.opcodeCount()
 
         builder.addHandler(start, catchStart - 1, catchStart)
     }
