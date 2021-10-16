@@ -116,6 +116,9 @@ class Test262Test(
             "'use strict'; $script"
         } else script
 
+        if ("buildString(" in theScript)
+            TODO("For some reason this function infinitely loops")
+
         val testResult = agent.run(theScript, realm)
 
         if (shouldErrorDuringParse || shouldErrorDuringRuntime) {
