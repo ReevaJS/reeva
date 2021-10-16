@@ -4,7 +4,10 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 
-class JSEvalErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.evalErrorProto) {
+class JSEvalErrorObject private constructor(
+    realm: Realm,
+    message: String? = null,
+) : JSErrorObject(realm, message, realm.evalErrorProto) {
     companion object {
         @JvmStatic
         fun create(realm: Realm, message: String? = null) = JSEvalErrorObject(realm, message).initialize()

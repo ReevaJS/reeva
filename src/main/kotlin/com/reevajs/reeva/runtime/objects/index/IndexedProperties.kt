@@ -40,9 +40,11 @@ class IndexedProperties private constructor(
     }
 
     fun setDescriptor(index: Int, descriptor: Descriptor) {
-        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD ||
-            descriptor.attributes != Descriptor.DEFAULT_ATTRIBUTES ||
-            descriptor.hasGetterFunction || descriptor.hasSetterFunction)
+        if (storage is SimpleIndexedStorage && (
+            index >= SPARSE_ARRAY_THRESHOLD ||
+                descriptor.attributes != Descriptor.DEFAULT_ATTRIBUTES ||
+                descriptor.hasGetterFunction || descriptor.hasSetterFunction
+            )
         ) {
             switchToGenericStorage()
         }
@@ -57,8 +59,13 @@ class IndexedProperties private constructor(
     }
 
     fun set(thisValue: JSValue, index: Int, descriptor: Descriptor) {
-        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD || descriptor.attributes != Descriptor.DEFAULT_ATTRIBUTES))
+        if (storage is SimpleIndexedStorage && (
+            index >= SPARSE_ARRAY_THRESHOLD ||
+                descriptor.attributes != Descriptor.DEFAULT_ATTRIBUTES
+            )
+        ) {
             switchToGenericStorage()
+        }
 
         if (storage is SimpleIndexedStorage) {
             storage.set(index, descriptor)
@@ -110,8 +117,13 @@ class IndexedProperties private constructor(
     }
 
     fun insert(index: Int, descriptor: Descriptor) {
-        if (storage is SimpleIndexedStorage && (index >= SPARSE_ARRAY_THRESHOLD || descriptor.attributes != Descriptor.DEFAULT_ATTRIBUTES))
+        if (storage is SimpleIndexedStorage && (
+            index >= SPARSE_ARRAY_THRESHOLD ||
+                descriptor.attributes != Descriptor.DEFAULT_ATTRIBUTES
+            )
+        ) {
             switchToGenericStorage()
+        }
         storage.insert(index, descriptor)
     }
 
@@ -189,7 +201,8 @@ class IndexedProperties private constructor(
         }
     }
 
-    fun iterator(startingIndex: Int = 0, skipEmpty: Boolean = true) = IndexedPropertyIterator(this, startingIndex, skipEmpty)
+    fun iterator(startingIndex: Int = 0, skipEmpty: Boolean = true) =
+        IndexedPropertyIterator(this, startingIndex, skipEmpty)
 
     private fun switchToGenericStorage() {
         storage = GenericIndexedStorage(storage as SimpleIndexedStorage)

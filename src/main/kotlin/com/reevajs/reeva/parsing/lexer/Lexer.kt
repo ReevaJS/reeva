@@ -83,7 +83,9 @@ class Lexer(private val source: String) {
                         TokenType.TemplateLiteralEnd
                     }
                 }
-            } else if (inTemplate && templateStates.last().let { it.inExpr && it.openBracketCount == 0 } && char == '}') {
+            } else if (inTemplate && templateStates.last().let { it.inExpr && it.openBracketCount == 0 } &&
+                char == '}'
+            ) {
                 consume()
                 tokenType = TokenType.TemplateLiteralExprEnd
                 templateStates.last().inExpr = false
@@ -214,8 +216,10 @@ class Lexer(private val source: String) {
                         break
                     }
 
-                    if (has(2) && (match(escapedSlash) || match(escapedOpenBracket) ||
-                            match(escapedBackslash) || (regexIsInCharClass && match(escapedCloseBracket)))
+                    if (has(2) && (
+                        match(escapedSlash) || match(escapedOpenBracket) ||
+                            match(escapedBackslash) || (regexIsInCharClass && match(escapedCloseBracket))
+                        )
                     ) {
                         consume()
                     }
@@ -272,7 +276,8 @@ class Lexer(private val source: String) {
         }
     }
 
-    private fun isIdentStart() = char.isIdStart() || char == '_' || char == '$' || (has(2) && match(charArrayOf('\\', 'u')))
+    private fun isIdentStart() = char.isIdStart() || char == '_' || char == '$' ||
+        (has(2) && match(charArrayOf('\\', 'u')))
 
     private fun consumeIdentChar() {
         if (has(2) && match(charArrayOf('\\', 'u'))) {
@@ -498,7 +503,7 @@ class Lexer(private val source: String) {
 
     private fun isCommentStart() =
         (has(2) && match(charArrayOf('/', '/'))) ||
-        (has(4) && match(charArrayOf('<', '!', '-', '-')))
+            (has(4) && match(charArrayOf('<', '!', '-', '-')))
 
     private fun isNumberLiteralStart() =
         char.isDigit() || (has(1) && char == '.' && peek(1).isDigit())

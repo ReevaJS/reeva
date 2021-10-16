@@ -1,10 +1,10 @@
 package com.reevajs.reeva.jvmcompat
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -141,7 +141,11 @@ class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSN
                     Errors.JVMClass.AmbiguousMethods(className, arguments.map { Operations.toString(realm, it).string })
 
                 val targetMethod = matchingMethods[0]
-                val mappedArguments = JVMValueMapper.coerceArgumentsToSignature(realm, targetMethod, arguments).toTypedArray()
+                val mappedArguments = JVMValueMapper.coerceArgumentsToSignature(
+                    realm,
+                    targetMethod,
+                    arguments,
+                ).toTypedArray()
 
                 val result = targetMethod.invoke(instance, *mappedArguments)
                 JVMValueMapper.jvmToJS(realm, result)

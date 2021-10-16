@@ -4,7 +4,10 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 
-class JSSyntaxErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.syntaxErrorProto) {
+class JSSyntaxErrorObject private constructor(
+    realm: Realm,
+    message: String? = null,
+) : JSErrorObject(realm, message, realm.syntaxErrorProto) {
     companion object {
         @JvmStatic
         fun create(realm: Realm, message: String? = null) = JSSyntaxErrorObject(realm, message).initialize()

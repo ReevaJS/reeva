@@ -1,7 +1,6 @@
 package com.reevajs.reeva.parsing
 
 import com.reevajs.reeva.ast.ASTNode
-import com.reevajs.reeva.ast.ScriptNode
 import com.reevajs.reeva.parsing.lexer.TokenLocation
 
 sealed class ParsingResult {

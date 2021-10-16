@@ -1,16 +1,14 @@
 package com.reevajs.reeva.runtime.functions
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
-import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.NativeFunctionSignature
 import com.reevajs.reeva.utils.toValue
-import java.lang.invoke.MethodHandle
 import java.lang.reflect.InvocationTargetException
 
 abstract class JSNativeFunction protected constructor(

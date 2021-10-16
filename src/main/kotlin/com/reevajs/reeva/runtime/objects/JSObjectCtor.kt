@@ -1,11 +1,11 @@
 package com.reevajs.reeva.runtime.objects
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
-import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.primitives.JSFalse
 import com.reevajs.reeva.runtime.primitives.JSNull
@@ -79,7 +79,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             return target
         }
 
-
         @ECMAImpl("20.1.2.2")
         @JvmStatic
         fun create(realm: Realm, arguments: JSArguments): JSValue {
@@ -93,7 +92,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             return newObj
         }
 
-
         @ECMAImpl("20.1.2.3")
         @JvmStatic
         fun defineProperties(realm: Realm, arguments: JSArguments): JSValue {
@@ -102,7 +100,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
                 Errors.Object.DefinePropertiesBadArgType.throwTypeError(realm)
             return objectDefineProperties(realm, obj, arguments.argument(1))
         }
-
 
         @ECMAImpl("20.1.2.4")
         @JvmStatic
@@ -116,7 +113,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             return obj
         }
 
-
         @ECMAImpl("20.1.2.5")
         @JvmStatic
         fun entries(realm: Realm, arguments: JSArguments): JSValue {
@@ -124,7 +120,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             val names = Operations.enumerableOwnPropertyNames(realm, obj, PropertyKind.KeyValue)
             return Operations.createArrayFromList(realm, names)
         }
-
 
         @ECMAImpl("20.1.2.6")
         @JvmStatic
@@ -138,7 +133,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             }
             return obj
         }
-
 
         @ECMAImpl("20.1.2.7")
         @JvmStatic
@@ -156,7 +150,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             return Operations.addEntriesFromIterable(realm, obj, iterable, adder)
         }
 
-
         @ECMAImpl("20.1.2.8")
         @JvmStatic
         fun getOwnPropertyDescriptor(realm: Realm, arguments: JSArguments): JSValue {
@@ -165,7 +158,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             val desc = obj.getOwnPropertyDescriptor(key) ?: return JSUndefined
             return desc.toObject(realm, obj)
         }
-
 
         @ECMAImpl("20.1.2.9")
         @JvmStatic
@@ -180,20 +172,17 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             return descriptors
         }
 
-
         @ECMAImpl("20.1.2.10")
         @JvmStatic
         fun getOwnPropertyNames(realm: Realm, arguments: JSArguments): JSValue {
             return getOwnPropertyKeys(realm, arguments.argument(0), false)
         }
 
-
         @ECMAImpl("20.1.2.11")
         @JvmStatic
         fun getOwnPropertySymbols(realm: Realm, arguments: JSArguments): JSValue {
             return getOwnPropertyKeys(realm, arguments.argument(0), true)
         }
-
 
         @ECMAImpl("20.1.2.12")
         @JvmStatic
@@ -202,13 +191,11 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             return obj.getPrototype()
         }
 
-
         @ECMAImpl("20.1.2.13")
         @JvmStatic
         fun `is`(realm: Realm, arguments: JSArguments): JSValue {
             return arguments.argument(0).sameValue(arguments.argument(1)).toValue()
         }
-
 
         @ECMAImpl("20.1.2.14")
         @JvmStatic
@@ -219,7 +206,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             return obj.isExtensible().toValue()
         }
 
-
         @ECMAImpl("20.1.2.15")
         @JvmStatic
         fun isFrozen(realm: Realm, arguments: JSArguments): JSValue {
@@ -228,7 +214,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
                 return JSTrue
             return obj.isFrozen.toValue()
         }
-
 
         @ECMAImpl("20.1.2.16")
         @JvmStatic
@@ -239,7 +224,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             return obj.isSealed.toValue()
         }
 
-
         @ECMAImpl("20.1.2.17")
         @JvmStatic
         fun keys(realm: Realm, arguments: JSArguments): JSValue {
@@ -247,7 +231,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             val nameList = Operations.enumerableOwnPropertyNames(realm, obj, PropertyKind.Key)
             return Operations.createArrayFromList(realm, nameList)
         }
-
 
         @ECMAImpl("20.1.2.18")
         @JvmStatic
@@ -262,7 +245,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             return obj
         }
 
-
         @ECMAImpl("20.1.2.20")
         @JvmStatic
         fun seal(realm: Realm, arguments: JSArguments): JSValue {
@@ -275,7 +257,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             }
             return obj
         }
-
 
         @ECMAImpl("20.1.2.21")
         @JvmStatic
@@ -291,7 +272,6 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
                 Errors.TODO("Object.setPrototypeOf").throwTypeError(realm)
             return obj
         }
-
 
         @ECMAImpl("20.1.2.22")
         @JvmStatic

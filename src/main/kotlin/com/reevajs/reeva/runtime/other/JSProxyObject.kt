@@ -1,15 +1,15 @@
 package com.reevajs.reeva.runtime.other
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
-import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
+import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
@@ -158,8 +158,11 @@ class JSProxyObject private constructor(
                 Errors.Proxy.DefineOwnProperty.IncompatibleDesc(property).throwTypeError(realm)
             if (settingConfigFalse && targetDesc.isConfigurable)
                 Errors.Proxy.DefineOwnProperty.ChangeConf(property).throwTypeError(realm)
-            if (targetDesc.isDataDescriptor && !targetDesc.isConfigurable && targetDesc.isWritable && descriptor.hasWritable && !descriptor.isWritable)
+            if (targetDesc.isDataDescriptor && !targetDesc.isConfigurable && targetDesc.isWritable &&
+                descriptor.hasWritable && !descriptor.isWritable
+            ) {
                 Errors.Proxy.DefineOwnProperty.ChangeWritable(property).throwTypeError(realm)
+            }
         }
         return true
     }
@@ -189,8 +192,11 @@ class JSProxyObject private constructor(
         val trapResult = Operations.call(realm, trap, handler, listOf(target, property.asValue, receiver))
         val targetDesc = target.getOwnPropertyDescriptor(property)
         if (targetDesc != null && !targetDesc.isConfigurable) {
-            if (targetDesc.isDataDescriptor && !targetDesc.isWritable && !trapResult.sameValue(targetDesc.getRawValue()))
+            if (targetDesc.isDataDescriptor && !targetDesc.isWritable &&
+                !trapResult.sameValue(targetDesc.getRawValue())
+            ) {
                 Errors.Proxy.Get.DifferentValue(property).throwTypeError(realm)
+            }
             if (targetDesc.isAccessorDescriptor && !targetDesc.hasGetterFunction && trapResult != JSUndefined)
                 Errors.Proxy.Get.NonConfAccessor(property).throwTypeError(realm)
         }

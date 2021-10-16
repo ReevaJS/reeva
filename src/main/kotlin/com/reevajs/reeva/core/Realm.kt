@@ -8,11 +8,6 @@ import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayCtor
 import com.reevajs.reeva.runtime.arrays.JSArrayProto
-import com.reevajs.reeva.runtime.promises.JSPromiseCtor
-import com.reevajs.reeva.runtime.promises.JSPromiseProto
-import com.reevajs.reeva.runtime.regexp.JSRegExpCtor
-import com.reevajs.reeva.runtime.regexp.JSRegExpProto
-import com.reevajs.reeva.runtime.regexp.JSRegExpStringIteratorProto
 import com.reevajs.reeva.runtime.collections.JSMapCtor
 import com.reevajs.reeva.runtime.collections.JSMapProto
 import com.reevajs.reeva.runtime.collections.JSSetCtor
@@ -33,6 +28,11 @@ import com.reevajs.reeva.runtime.other.JSDateCtor
 import com.reevajs.reeva.runtime.other.JSDateProto
 import com.reevajs.reeva.runtime.other.JSProxyCtor
 import com.reevajs.reeva.runtime.primitives.JSSymbol
+import com.reevajs.reeva.runtime.promises.JSPromiseCtor
+import com.reevajs.reeva.runtime.promises.JSPromiseProto
+import com.reevajs.reeva.runtime.regexp.JSRegExpCtor
+import com.reevajs.reeva.runtime.regexp.JSRegExpProto
+import com.reevajs.reeva.runtime.regexp.JSRegExpStringIteratorProto
 import com.reevajs.reeva.runtime.singletons.JSMathObject
 import com.reevajs.reeva.runtime.singletons.JSONObject
 import com.reevajs.reeva.runtime.singletons.JSReflectObject
@@ -246,7 +246,6 @@ class Realm {
 
             `@@asyncIterator` = JSSymbol("Symbol.asyncIterator").also { wellknownSymbols["@@asyncIterator"] = it }
             `@@hasInstance` = JSSymbol("Symbol.hasInstance").also { wellknownSymbols["@@hasInstance"] = it }
-            `@@isConcatSpreadable` = JSSymbol("Symbol.isConcatSpreadable").also { wellknownSymbols["@@isConcatSpreadable"] = it }
             `@@iterator` = JSSymbol("Symbol.iterator").also { wellknownSymbols["@@iterator"] = it }
             `@@match` = JSSymbol("Symbol.match").also { wellknownSymbols["@@match"] = it }
             `@@matchAll` = JSSymbol("Symbol.matchAll").also { wellknownSymbols["@@matchAll"] = it }
@@ -257,6 +256,9 @@ class Realm {
             `@@toPrimitive` = JSSymbol("Symbol.toPrimitive").also { wellknownSymbols["@@toPrimitive"] = it }
             `@@toStringTag` = JSSymbol("Symbol.toStringTag").also { wellknownSymbols["@@toStringTag"] = it }
             `@@unscopables` = JSSymbol("Symbol.unscopables").also { wellknownSymbols["@@unscopables"] = it }
+            `@@isConcatSpreadable` = JSSymbol("Symbol.isConcatSpreadable").also {
+                wellknownSymbols["@@isConcatSpreadable"] = it
+            }
 
             `@@classInstanceFields` = JSSymbol("Symbol.classInstanceFields")
         }

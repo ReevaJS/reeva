@@ -55,7 +55,8 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
                                         realm,
                                         prim
                                     ).asLong
-                                ), Operations.defaultZone
+                                ),
+                                Operations.defaultZone
                             )
                         )
                     }
@@ -188,7 +189,6 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
             val zdt = ZonedDateTime.of(date, ZoneOffset.UTC)
             if (Operations.timeClip(zdt) == null)
                 return JSNumber.NaN
-
 
             return zdt.toInstant().toEpochMilli().toValue()
         }

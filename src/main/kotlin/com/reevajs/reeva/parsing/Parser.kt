@@ -1807,10 +1807,12 @@ class Parser(val executable: Executable) {
 
         while (!match(TokenType.CloseBracket)) {
             while (match(TokenType.Comma)) {
-                elements.add(nps {
-                    consume()
-                    ArrayElementNode(null, ArrayElementNode.Type.Elision)
-                })
+                elements.add(
+                    nps {
+                        consume()
+                        ArrayElementNode(null, ArrayElementNode.Type.Elision)
+                    }
+                )
             }
 
             nps {
@@ -1825,7 +1827,8 @@ class Parser(val executable: Executable) {
                 val expression = parseExpression(2)
 
                 ArrayElementNode(
-                    expression, if (isSpread) {
+                    expression,
+                    if (isSpread) {
                         ArrayElementNode.Type.Spread
                     } else ArrayElementNode.Type.Normal
                 )

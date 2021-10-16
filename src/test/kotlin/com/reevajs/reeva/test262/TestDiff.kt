@@ -20,7 +20,9 @@ fun main() {
     for (test in oldContents) {
         val newTest = newMap[test.name]!!
 
-        if (test.status == Test262Runner.TestResult.Status.Passed && newTest.status != Test262Runner.TestResult.Status.Passed) {
+        if (test.status == Test262Runner.TestResult.Status.Passed &&
+            newTest.status != Test262Runner.TestResult.Status.Passed
+        ) {
             val file = File(Test262Runner.testDirectory, test.name)
             println(file.absolutePath)
         }

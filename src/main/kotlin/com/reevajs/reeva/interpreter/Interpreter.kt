@@ -472,24 +472,28 @@ class Interpreter(
         val receiver = popValue()
         val target = popValue()
 
-        push(Operations.call(
-            realm,
-            target,
-            receiver,
-            args.asReversed(),
-        ))
+        push(
+            Operations.call(
+                realm,
+                target,
+                receiver,
+                args.asReversed(),
+            )
+        )
     }
 
     override fun visitCallArray() {
         val argsArray = popValue() as JSObject
         val receiver = popValue()
         val target = popValue()
-        push(Operations.call(
-            realm,
-            target,
-            receiver,
-            (0 until argsArray.indexedProperties.arrayLikeSize).map(argsArray::get),
-        ))
+        push(
+            Operations.call(
+                realm,
+                target,
+                receiver,
+                (0 until argsArray.indexedProperties.arrayLikeSize).map(argsArray::get),
+            )
+        )
     }
 
     override fun visitConstruct(opcode: Construct) {
@@ -502,22 +506,26 @@ class Interpreter(
         val newTarget = popValue()
         val target = popValue()
 
-        push(Operations.construct(
-            target,
-            args.asReversed(),
-            newTarget,
-        ))
+        push(
+            Operations.construct(
+                target,
+                args.asReversed(),
+                newTarget,
+            )
+        )
     }
 
     override fun visitConstructArray() {
         val argsArray = popValue() as JSObject
         val newTarget = popValue()
         val target = popValue()
-        push(Operations.construct(
-            target,
-            (0 until argsArray.indexedProperties.arrayLikeSize).map(argsArray::get),
-            newTarget,
-        ))
+        push(
+            Operations.construct(
+                target,
+                (0 until argsArray.indexedProperties.arrayLikeSize).map(argsArray::get),
+                newTarget,
+            )
+        )
     }
 
     override fun visitDeclareGlobals(opcode: DeclareGlobals) {

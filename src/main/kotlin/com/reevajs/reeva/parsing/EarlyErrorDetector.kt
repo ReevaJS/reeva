@@ -71,15 +71,20 @@ class EarlyErrorDetector(private val reporter: ErrorReporter) : ASTVisitor {
                     // Also, the situation described above only occurs if the code is in strict mode. However,
                     // if either of the functions are not plain functions (generator, async, etc), then it is
                     // always an error regardless of strictness.
-                    if (name in funcNames && it.scope == funcNames[name]!!.scope && it.scope != it.scope.outerHoistingScope) {
+                    if (name in funcNames && it.scope == funcNames[name]!!.scope &&
+                        it.scope != it.scope.outerHoistingScope
+                    ) {
                         if (it.scope.isStrict) {
                             reporter.at(it).duplicateDeclaration(name, "function")
                         } else {
                             val thisFunc = it as FunctionDeclarationNode
                             val otherFunc = funcNames[name]!! as FunctionDeclarationNode
 
-                            if (thisFunc.kind != Operations.FunctionKind.Normal || otherFunc.kind != Operations.FunctionKind.Normal)
+                            if (thisFunc.kind != Operations.FunctionKind.Normal ||
+                                otherFunc.kind != Operations.FunctionKind.Normal
+                            ) {
                                 reporter.at(it).duplicateDeclaration(name, "function")
+                            }
                         }
                     }
 

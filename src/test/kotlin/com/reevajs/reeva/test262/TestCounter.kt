@@ -1,8 +1,8 @@
 package com.reevajs.reeva.test262
 
+import com.reevajs.reeva.utils.expect
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import com.reevajs.reeva.utils.expect
 import java.io.File
 
 const val FILE_NAME = "new.json"

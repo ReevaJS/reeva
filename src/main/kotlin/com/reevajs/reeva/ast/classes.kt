@@ -18,7 +18,7 @@ class ClassExpressionNode(
 class ClassNode(
     val heritage: ExpressionNode?,
     val body: List<ClassElementNode>
-) : NodeWithScope(listOfNotNull( heritage) + body)
+) : NodeWithScope(listOfNotNull(heritage) + body)
 
 sealed class ClassElementNode(
     children: List<ASTNode>,

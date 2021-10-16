@@ -12,7 +12,6 @@ import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.attrs
-import com.reevajs.reeva.utils.key
 
 class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set", 0) {
     override fun init() {
@@ -24,7 +23,12 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
         if (arguments.newTarget == JSUndefined)
             Errors.CtorCallWithoutNew("Set").throwTypeError(realm)
 
-        val set = Operations.ordinaryCreateFromConstructor(realm, arguments.newTarget, realm.setProto, listOf(SlotName.SetData))
+        val set = Operations.ordinaryCreateFromConstructor(
+            realm,
+            arguments.newTarget,
+            realm.setProto,
+            listOf(SlotName.SetData),
+        )
         set.setSlot(SlotName.SetData, JSSetObject.SetData())
         val iterator = arguments.argument(0)
         if (iterator == JSUndefined || iterator == JSNull)

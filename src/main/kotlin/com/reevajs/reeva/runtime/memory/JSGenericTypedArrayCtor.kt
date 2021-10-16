@@ -104,8 +104,22 @@ open class JSGenericTypedArrayCtor protected constructor(
             var count = elementLength
 
             while (count > 0) {
-                val value = Operations.getValueFromBuffer(srcData, srcByteIndex, srcKind, true, Operations.TypedArrayOrder.Unordered)
-                Operations.setValueInBuffer(realm, buffer, targetByteIndex, ctorKind, value, true, Operations.TypedArrayOrder.Unordered)
+                val value = Operations.getValueFromBuffer(
+                    srcData,
+                    srcByteIndex,
+                    srcKind,
+                    true,
+                    Operations.TypedArrayOrder.Unordered,
+                )
+                Operations.setValueInBuffer(
+                    realm,
+                    buffer,
+                    targetByteIndex,
+                    ctorKind,
+                    value,
+                    true,
+                    Operations.TypedArrayOrder.Unordered,
+                )
                 srcByteIndex += srcKind.size
                 targetByteIndex -= ctorKind.size
                 count--
@@ -119,7 +133,12 @@ open class JSGenericTypedArrayCtor protected constructor(
     }
 
     @ECMAImpl("22.2.5.1.3")
-    private fun initializeTypedArrayFromArrayBuffer(obj: JSValue, buffer: JSValue, byteOffset: JSValue, length: JSValue) {
+    private fun initializeTypedArrayFromArrayBuffer(
+        obj: JSValue,
+        buffer: JSValue,
+        byteOffset: JSValue,
+        length: JSValue,
+    ) {
         ecmaAssert(obj is JSObject && obj.hasSlot(SlotName.TypedArrayKind))
         ecmaAssert(buffer is JSObject && buffer.hasSlot(SlotName.ArrayBufferData))
 
@@ -137,13 +156,17 @@ open class JSGenericTypedArrayCtor protected constructor(
             if (bufferByteLength % elementSize != 0)
                 Errors.TypedArrays.InvalidBufferLength(bufferByteLength, ctorKind).throwRangeError(realm)
             (bufferByteLength - offset).also {
-                if (it < 0)
-                    Errors.TypedArrays.InvalidOffsetAndBufferSize(offset, bufferByteLength, ctorKind).throwRangeError(realm)
+                if (it < 0) {
+                    Errors.TypedArrays.InvalidOffsetAndBufferSize(offset, bufferByteLength, ctorKind)
+                        .throwRangeError(realm)
+                }
             }
         } else {
             (length.toIndex(realm) * elementSize).also {
-                if (offset + it > bufferByteLength)
-                    Errors.TypedArrays.InvalidOffsetAndLength(offset, it, bufferByteLength, ctorKind).throwRangeError(realm)
+                if (offset + it > bufferByteLength) {
+                    Errors.TypedArrays.InvalidOffsetAndLength(offset, it, bufferByteLength, ctorKind)
+                        .throwRangeError(realm)
+                }
             }
         }
 

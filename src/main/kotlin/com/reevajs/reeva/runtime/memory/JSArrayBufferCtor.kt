@@ -11,7 +11,6 @@ import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.attrs
-import com.reevajs.reeva.utils.key
 import com.reevajs.reeva.utils.toValue
 
 class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ArrayBuffer", 1) {

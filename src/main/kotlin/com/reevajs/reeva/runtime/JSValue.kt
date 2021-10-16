@@ -197,7 +197,6 @@ val JSValue.isIntegralNumber: Boolean get() = Operations.isIntegralNumber(this)
 val JSValue.isPropertyKey: Boolean get() = Operations.isPropertyKey(this)
 val JSValue.isRegExp: Boolean get() = Operations.isRegExp(this)
 
-fun JSValue.toPrimitive(realm: Realm, hint: Operations.ToPrimitiveHint? = null) = Operations.toPrimitive(realm, this, hint)
 fun JSValue.toBoolean() = Operations.toBoolean(this)
 fun JSValue.toNumeric(realm: Realm) = Operations.toNumeric(realm, this)
 fun JSValue.toNumber(realm: Realm) = Operations.toNumber(realm, this)
@@ -214,6 +213,5 @@ fun JSValue.toLength(realm: Realm) = Operations.toLength(realm, this)
 fun JSValue.toIndex(realm: Realm) = Operations.toIndex(realm, this)
 fun JSValue.requireObjectCoercible(realm: Realm) = Operations.requireObjectCoercible(realm, this)
 fun JSValue.lengthOfArrayLike(realm: Realm) = Operations.lengthOfArrayLike(realm, this)
-
-
-
+fun JSValue.toPrimitive(realm: Realm, hint: Operations.ToPrimitiveHint? = null) =
+    Operations.toPrimitive(realm, this, hint)

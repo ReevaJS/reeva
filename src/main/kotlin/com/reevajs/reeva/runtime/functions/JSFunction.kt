@@ -2,9 +2,9 @@ package com.reevajs.reeva.runtime.functions
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.runtime.primitives.JSUndefined

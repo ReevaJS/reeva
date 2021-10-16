@@ -1,7 +1,6 @@
 package com.reevajs.reeva.parsing
 
 import com.reevajs.reeva.ast.*
-import com.reevajs.reeva.interpreter.Interpreter
 import com.reevajs.reeva.interpreter.transformer.Transformer
 
 open class Scope(val outer: Scope? = null, val allowVarInlining: Boolean = true) {

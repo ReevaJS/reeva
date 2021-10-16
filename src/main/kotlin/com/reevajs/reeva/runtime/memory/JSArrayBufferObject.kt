@@ -2,8 +2,8 @@ package com.reevajs.reeva.runtime.memory
 
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 
 class JSArrayBufferObject private constructor(realm: Realm) : JSObject(realm, realm.arrayBufferProto) {

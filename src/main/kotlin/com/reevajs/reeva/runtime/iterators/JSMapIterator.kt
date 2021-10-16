@@ -17,6 +17,7 @@ class JSMapIterator private constructor(
     }
 
     companion object {
-        fun create(realm: Realm, data: JSMapObject.MapData, kind: PropertyKind) = JSMapIterator(realm, data, kind).initialize()
+        fun create(realm: Realm, data: JSMapObject.MapData, kind: PropertyKind) =
+            JSMapIterator(realm, data, kind).initialize()
     }
 }

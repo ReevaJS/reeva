@@ -37,9 +37,9 @@ class PropertyName(
 
     enum class Type {
         Identifier, // expression is IdentifierNode
-        String,     // expression is StringLiteralNode
-        Number,     // expresion is NumericLiteralNode
-        Computed,   // expression is any ExpressionNode
+        String, // expression is StringLiteralNode
+        Number, // expresion is NumericLiteralNode
+        Computed, // expression is any ExpressionNode
     }
 }
 

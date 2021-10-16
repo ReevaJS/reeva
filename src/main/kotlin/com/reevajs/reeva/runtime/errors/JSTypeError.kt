@@ -4,7 +4,10 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 
-class JSTypeErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.typeErrorProto) {
+class JSTypeErrorObject private constructor(
+    realm: Realm,
+    message: String? = null,
+) : JSErrorObject(realm, message, realm.typeErrorProto) {
     companion object {
         @JvmStatic
         @JvmOverloads

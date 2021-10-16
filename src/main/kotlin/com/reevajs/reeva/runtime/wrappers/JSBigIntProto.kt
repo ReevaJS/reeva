@@ -31,8 +31,8 @@ class JSBigIntProto private constructor(realm: Realm) : JSObject(realm, realm.ob
                 return thisValue
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError(realm)
-            return thisValue.getSlotAs(SlotName.BigIntData) ?:
-                Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError(realm)
+            return thisValue.getSlotAs(SlotName.BigIntData)
+                ?: Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError(realm)
         }
 
         @ECMAImpl("21.2.3.3")

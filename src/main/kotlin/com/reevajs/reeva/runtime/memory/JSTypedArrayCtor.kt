@@ -38,7 +38,11 @@ class JSTypedArrayCtor private constructor(realm: Realm) : JSNativeFunction(real
             val usingIterator = Operations.getMethod(realm, source, Realm.`@@iterator`)
             if (usingIterator != JSUndefined) {
                 val values = Operations.iterableToList(realm, source, usingIterator)
-                val targetObj = Operations.typedArrayCreate(realm, thisValue, JSArguments(listOf(values.size.toValue())))
+                val targetObj = Operations.typedArrayCreate(
+                    realm,
+                    thisValue,
+                    JSArguments(listOf(values.size.toValue())),
+                )
                 values.forEachIndexed { index, value ->
                     val mappedValue = if (mapping) {
                         Operations.call(realm, mapfn, thisArg, listOf(value, index.toValue()))
@@ -68,7 +72,11 @@ class JSTypedArrayCtor private constructor(realm: Realm) : JSNativeFunction(real
             if (!arguments.thisValue.isConstructor)
                 Errors.IncompatibleMethodCall("%TypedArray%.of").throwTypeError(realm)
 
-            val newObj = Operations.typedArrayCreate(realm, arguments.thisValue, JSArguments(listOf(arguments.size.toValue())))
+            val newObj = Operations.typedArrayCreate(
+                realm,
+                arguments.thisValue,
+                JSArguments(listOf(arguments.size.toValue())),
+            )
             arguments.forEachIndexed { index, value ->
                 Operations.set(realm, newObj, index.key(), value, true)
             }

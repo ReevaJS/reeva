@@ -10,7 +10,6 @@ import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.attrs
-import com.reevajs.reeva.utils.key
 
 class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map", 0) {
     override fun init() {
@@ -23,7 +22,12 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
         if (arguments.newTarget == JSUndefined)
             Errors.CtorCallWithoutNew("Map").throwTypeError(realm)
 
-        val map = Operations.ordinaryCreateFromConstructor(realm, arguments.newTarget, realm.mapProto, listOf(SlotName.MapData))
+        val map = Operations.ordinaryCreateFromConstructor(
+            realm,
+            arguments.newTarget,
+            realm.mapProto,
+            listOf(SlotName.MapData),
+        )
         map.setSlot(SlotName.MapData, JSMapObject.MapData())
         val iterable = arguments.argument(0)
         if (iterable == JSUndefined || iterable == JSNull)

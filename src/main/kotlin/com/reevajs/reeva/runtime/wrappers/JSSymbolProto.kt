@@ -1,10 +1,10 @@
 package com.reevajs.reeva.runtime.wrappers
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
-import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSSymbol
@@ -18,8 +18,8 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
     override fun init() {
         super.init()
         defineOwnProperty("constructor", realm.symbolCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineNativeProperty("description", attrs { +conf -enum }, ::getDescription, null)
-        defineNativeProperty(Realm.`@@toStringTag`.key(), attrs { +conf -enum -writ }, ::`get@@toStringTag`, null)
+        defineNativeProperty("description", attrs { +conf - enum }, ::getDescription, null)
+        defineNativeProperty(Realm.`@@toStringTag`.key(), attrs { +conf - enum - writ }, ::`get@@toStringTag`, null)
         defineBuiltin("toString", 0, ReevaBuiltin.SymbolProtoToString)
         defineBuiltin("toValue", 0, ReevaBuiltin.SymbolProtoToValue)
         defineBuiltin(Realm.`@@toPrimitive`, 0, ReevaBuiltin.SymbolProtoSymbolToPrimitive)
