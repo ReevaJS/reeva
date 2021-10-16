@@ -728,8 +728,6 @@ class Transformer(val executable: Executable) : ASTVisitor {
             exitContinuableScope().forEach { it.to = head }
             exitBreakableScope().forEach { it.to = builder.opcodeCount() }
         }
-
-        +Pop
     }
 
     override fun visitBreakStatement(node: BreakStatementNode) {
