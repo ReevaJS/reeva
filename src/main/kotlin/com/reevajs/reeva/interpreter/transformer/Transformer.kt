@@ -1594,20 +1594,12 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
     // Consumes object from the stack
     private fun storeObjectProperty(property: PropertyName, valueProducer: () -> Unit) {
-        when (property.type) {
-            PropertyName.Type.Identifier -> {
-                valueProducer()
-                val name = (property.expression as IdentifierNode).name
-                +StoreNamedProperty(name)
-                return
-            }
-            PropertyName.Type.String -> visitExpression(property.expression)
-            PropertyName.Type.Number -> visitExpression(property.expression)
-            PropertyName.Type.Computed -> {
-                visitExpression(property.expression)
-                +ToString
-            }
-        }
+        if (property.type == PropertyName.Type.Identifier) {
+            valueProducer()
+            val name = (property.expression as IdentifierNode).name
+            +StoreNamedProperty(name)
+            return
+        } else visitExpression(property.expression)
 
         valueProducer()
         +StoreKeyedProperty
