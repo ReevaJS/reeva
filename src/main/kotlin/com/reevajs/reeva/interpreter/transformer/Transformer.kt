@@ -35,7 +35,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         return try {
             val script = executable.script!!
             builder = IRBuilder(
-                RESERVED_LOCALS,
+                getReservedLocalsCount(isGenerator = false),
                 script.scope.inlineableLocalCount,
                 isDerivedClassConstructor = false,
                 isGenerator = false,
@@ -152,7 +152,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
     ): FunctionInfo {
         val prevBuilder = builder
         builder = IRBuilder(
-            parameters.size + RESERVED_LOCALS,
+            parameters.size + getReservedLocalsCount(isGenerator = kind.isGenerator),
             functionScope.inlineableLocalCount,
             classConstructorKind == JSFunction.ConstructorKind.Derived,
             isGenerator = kind.isGenerator,
@@ -179,7 +179,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
             functionScope,
             bodyScope,
             isStrict,
-            isAsync = kind.isAsync,
+            kind,
             classConstructorKind,
         )
 
@@ -249,7 +249,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         hasInstanceFields: Boolean,
     ): FunctionInfo {
         // One for the receiver/new.target
-        var argCount = RESERVED_LOCALS
+        var argCount = getReservedLocalsCount(isGenerator = false)
         if (constructorKind == JSFunction.ConstructorKind.Derived) {
             // ...and one for the rest param, if necessary
             argCount++
@@ -296,7 +296,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         functionScope: Scope,
         bodyScope: Scope,
         isStrict: Boolean,
-        isAsync: Boolean,
+        kind: Operations.FunctionKind,
         classConstructorKind: JSFunction.ConstructorKind?,
         hasClassFields: Boolean = false,
     ): FunctionInfo {
@@ -304,7 +304,8 @@ class Transformer(val executable: Executable) : ASTVisitor {
             parameters,
             functionScope,
             bodyScope,
-            isStrict
+            isStrict,
+            isGenerator = kind.isGenerator,
         ) {
             if (hasClassFields && classConstructorKind == JSFunction.ConstructorKind.Base) {
                 // We can't load fields here if we are in a derived constructor as super() hasn't
@@ -320,6 +321,9 @@ class Transformer(val executable: Executable) : ASTVisitor {
             } else visit(body)
 
             if (!builder.isDone) {
+                if (kind.isGenerator)
+                    +SetGeneratorPhase(-1)
+
                 if (classConstructorKind == JSFunction.ConstructorKind.Derived) {
                     expect(body is BlockNode)
                     // TODO: Check to see if this is redundant
@@ -346,6 +350,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         functionScope: Scope,
         bodyScope: Scope,
         isStrict: Boolean,
+        isGenerator: Boolean,
         evaluationBlock: () -> Unit,
     ) {
         expect(functionScope is HoistingScope)
@@ -397,8 +402,10 @@ class Transformer(val executable: Executable) : ASTVisitor {
             storeToSource(receiver)
         }
 
+        val reservedLocals = getReservedLocalsCount(isGenerator)
+
         parameters.forEachIndexed { index, param ->
-            val local = Local(RESERVED_LOCALS + index)
+            val local = Local(reservedLocals + index)
 
             when (param) {
                 is SimpleParameter -> {
@@ -1302,16 +1309,20 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     override fun visitYieldExpression(node: YieldExpressionNode) {
-        +SetGeneratorPhase(builder.incrementAndGetGeneratorPhase())
+        val phase = builder.incrementAndGetGeneratorPhase()
+        +SetGeneratorPhase(phase)
         if (node.expression == null) {
             +PushUndefined
         } else {
             visitExpression(node.expression)
         }
 
-        +SetGeneratorYieldedValue
-        +PushUndefined
         +Return
+
+        builder.addJumpTableTarget(phase, builder.opcodeCount())
+
+        // Load the received value onto the stack
+        +GetGeneratorSentValue
     }
 
     override fun visitImportMetaExpression() {
@@ -1462,6 +1473,10 @@ class Transformer(val executable: Executable) : ASTVisitor {
     companion object {
         val RECEIVER_LOCAL = Local(0)
         val NEW_TARGET_LOCAL = Local(1)
-        const val RESERVED_LOCALS = 2
+        val GENERATOR_STATE_LOCAL = Local(2)
+
+        fun getReservedLocalsCount(isGenerator: Boolean): Int {
+            return if (isGenerator) 3 else 2
+        }
     }
 }

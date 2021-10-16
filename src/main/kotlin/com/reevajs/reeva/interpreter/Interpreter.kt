@@ -9,12 +9,15 @@ import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.core.lifecycle.ExecutionResult
 import com.reevajs.reeva.interpreter.transformer.FunctionInfo
 import com.reevajs.reeva.interpreter.transformer.LocalKind
+import com.reevajs.reeva.interpreter.transformer.Transformer
 import com.reevajs.reeva.interpreter.transformer.opcodes.*
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSFunction
+import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObject
 import com.reevajs.reeva.runtime.iterators.JSObjectPropertyIterator
+import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.JSObject.Companion.initialize
 import com.reevajs.reeva.runtime.primitives.*
@@ -577,7 +580,9 @@ class Interpreter(
     }
 
     override fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure) {
-        TODO("Not yet implemented")
+        val function = GeneratorIRFunction(realm, executable.forInfo(opcode.ir), activeEnvRecord).initialize()
+        Operations.setFunctionName(realm, function, opcode.ir.name.key())
+        push(function)
     }
 
     override fun visitCreateAsyncClosure(opcode: CreateAsyncClosure) {
@@ -643,6 +648,62 @@ class Interpreter(
         isDone = true
     }
 
+    override fun visitDefineGetterProperty() {
+        val method = popValue() as JSFunction
+        val key = popValue()
+        val obj = popValue() as JSObject
+        defineAccessor(obj, key, method, isGetter = true)
+    }
+
+    override fun visitDefineSetterProperty() {
+        val method = popValue() as JSFunction
+        val key = popValue()
+        val obj = popValue() as JSObject
+        defineAccessor(obj, key, method, isGetter = false)
+    }
+
+    private fun defineAccessor(obj: JSObject, property: JSValue, method: JSFunction, isGetter: Boolean) {
+        val key = property.toPropertyKey(realm)
+        Operations.setFunctionName(realm, method, key, if (isGetter) "get" else "set")
+        val accessor = if (isGetter) JSAccessor(method, null) else JSAccessor(null, method)
+        val descriptor = Descriptor(accessor, Descriptor.CONFIGURABLE or Descriptor.ENUMERABLE)
+        Operations.definePropertyOrThrow(realm, obj, key, descriptor)
+    }
+
+    override fun visitGetGeneratorPhase() {
+        val state = locals[Transformer.GENERATOR_STATE_LOCAL.value] as GeneratorState
+        push(state.phase)
+    }
+
+    override fun visitGetSuperBase() {
+        TODO("Not yet implemented")
+    }
+
+    override fun visitJumpTable(opcode: JumpTable) {
+        val target = popInt()
+        val result = opcode.table[target]
+        expect(result != null)
+        ip = result
+    }
+
+    override fun visitPushBigInt(opcode: PushBigInt) {
+        TODO("Not yet implemented")
+    }
+
+    override fun visitPushEmpty() {
+        push(JSEmpty)
+    }
+
+    override fun visitSetGeneratorPhase(opcode: SetGeneratorPhase) {
+        val state = locals[Transformer.GENERATOR_STATE_LOCAL.value] as GeneratorState
+        state.phase = opcode.phase
+    }
+
+    override fun visitGeneratorSentValue() {
+        val state = locals[Transformer.GENERATOR_STATE_LOCAL.value] as GeneratorState
+        push(state.sentValue)
+    }
+
     private fun pop(): Any = stack.removeLast()
 
     private fun popInt(): Int = pop() as Int
@@ -675,6 +736,42 @@ class Interpreter(
             }
         }
     }
+
+    class GeneratorIRFunction(
+        realm: Realm,
+        executable: Executable,
+        outerEnvRecord: EnvRecord,
+    ) : IRFunction(realm, executable, outerEnvRecord) {
+        lateinit var generatorObject: JSGeneratorObject
+
+        override fun init() {
+            super.init()
+            defineOwnProperty("prototype", realm.functionProto)
+        }
+
+        override fun evaluate(arguments: JSArguments): JSValue {
+            if (!::generatorObject.isInitialized) {
+                generatorObject = JSGeneratorObject.create(
+                    realm,
+                    arguments.thisValue,
+                    arguments,
+                    executable,
+                    GeneratorState(),
+                    outerEnvRecord,
+                )
+            }
+
+            return generatorObject
+        }
+    }
+
+    data class GeneratorState(
+        var phase: Int = 0,
+        var yieldedValue: JSValue = JSEmpty,
+        var sentValue: JSValue = JSEmpty,
+        var shouldThrow: Boolean = false,
+        var shouldReturn: Boolean = false,
+    ) : JSValue() // Extends from JSValue so it can be passed as an argument
 
     companion object {
         fun wrap(

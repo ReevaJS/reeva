@@ -100,6 +100,15 @@ interface OpcodeVisitor {
             PushClosure -> visitPushClosure()
             Throw -> visitThrow()
             Return -> visitReturn()
+            DefineGetterProperty -> visitDefineGetterProperty()
+            DefineSetterProperty -> visitDefineSetterProperty()
+            GetGeneratorPhase -> visitGetGeneratorPhase()
+            GetSuperBase -> visitGetSuperBase()
+            is JumpTable -> visitJumpTable(opcode)
+            is PushBigInt -> visitPushBigInt(opcode)
+            PushEmpty -> visitPushEmpty()
+            is SetGeneratorPhase -> visitSetGeneratorPhase(opcode)
+            GetGeneratorSentValue -> visitGeneratorSentValue()
         }
     }
 
@@ -296,4 +305,22 @@ interface OpcodeVisitor {
     fun visitThrow()
 
     fun visitReturn()
+
+    fun visitDefineGetterProperty()
+
+    fun visitDefineSetterProperty()
+
+    fun visitGetGeneratorPhase()
+
+    fun visitGetSuperBase()
+
+    fun visitJumpTable(opcode: JumpTable)
+
+    fun visitPushBigInt(opcode: PushBigInt)
+
+    fun visitPushEmpty()
+
+    fun visitSetGeneratorPhase(opcode: SetGeneratorPhase)
+
+    fun visitGeneratorSentValue()
 }
