@@ -65,13 +65,15 @@ fun inspect(value: JSValue, simple: Boolean): Inspection {
             contents("Type: String (\"${value.string}\")")
         }
         is JSAccessor -> buildInspection {
-            contents(buildString {
-                append("Type: Accessor")
-                if (value.getter != null)
-                    append(" (Getter)")
-                if (value.setter != null)
-                    append(" (Setter")
-            })
+            contents(
+                buildString {
+                    append("Type: Accessor")
+                    if (value.getter != null)
+                        append(" (Getter)")
+                    if (value.setter != null)
+                        append(" (Setter")
+                }
+            )
         }
         is JSNativeProperty -> buildInspection { contents("Type: NativeProperty") }
         is JSBigInt -> buildInspection {

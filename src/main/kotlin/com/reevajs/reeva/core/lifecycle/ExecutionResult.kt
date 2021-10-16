@@ -3,7 +3,6 @@ package com.reevajs.reeva.core.lifecycle
 import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.toPrintableString
-import java.io.PrintStream
 import java.io.PrintWriter
 import java.io.StringWriter
 
@@ -35,4 +34,3 @@ sealed class ExecutionResult(val executable: Executable) {
         }
     }
 }
-

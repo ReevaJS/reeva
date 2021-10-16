@@ -16,11 +16,14 @@ abstract class Reporter {
         } else error("expected $expected")
     }
 
-    fun arrowFunctionNewLine(): Nothing = error("arrow function cannot be separated from it's arrow by a line terminator")
+    fun arrowFunctionNewLine(): Nothing =
+        error("arrow function cannot be separated from it's arrow by a line terminator")
     fun breakOutsideOfLoopOrSwitch(): Nothing = error("break statement must be inside of a loop or switch statement")
-    fun classAsyncAccessor(isGetter: Boolean): Nothing = error("class ${if (isGetter) "getter" else "setter"} cannot be async")
+    fun classAsyncAccessor(isGetter: Boolean): Nothing =
+        error("class ${if (isGetter) "getter" else "setter"} cannot be async")
     fun classDeclarationNoName(): Nothing = error("class declaration must have an identifier")
-    fun classGeneratorAccessor(isGetter: Boolean): Nothing = error("class ${if (isGetter) "getter" else "setter"} cannot be a generator")
+    fun classGeneratorAccessor(isGetter: Boolean): Nothing =
+        error("class ${if (isGetter) "getter" else "setter"} cannot be a generator")
     fun classGeneratorField(): Nothing = error("class declaration field cannot be a generator")
     fun constMissingInitializer(): Nothing = error("const variable declaration must have an initializer")
     fun continueOutsideOfLoop(): Nothing = error("continue statement must be inside of a loop")
@@ -28,18 +31,23 @@ abstract class Reporter {
     fun duplicateDeclaration(name: String, type: String): Nothing = error("duplicate $type declaration of \"$name\"")
     fun emptyParenthesizedExpression(): Nothing = error("parenthesized expression cannot be empty")
     fun emptyTemplateLiteralExpr(): Nothing = error("empty template literal expression")
-    fun forEachMultipleDeclarations(): Nothing = error("for-in/of statement cannot contain multiple variable declarations")
-    fun functionInExpressionContext(): Nothing = error("function declarations are not allowed in single-statement contexts")
+    fun forEachMultipleDeclarations(): Nothing =
+        error("for-in/of statement cannot contain multiple variable declarations")
+    fun functionInExpressionContext(): Nothing =
+        error("function declarations are not allowed in single-statement contexts")
     fun functionStatementNoName(): Nothing = error("function statement requires a name")
     fun identifierAfterNumericLiteral(): Nothing = error("numeric literal cannot be directly followed by an identifier")
-    fun identifierStrictReservedWord(identifier: String): Nothing = error("\"$identifier\" is a reserved word in strict-mode code and cannot be an identifier")
-    fun identifierReservedWord(identifier: String): Nothing = error("\"$identifier\" is a reserved word and cannot be an identifier")
+    fun identifierStrictReservedWord(identifier: String): Nothing =
+        error("\"$identifier\" is a reserved word in strict-mode code and cannot be an identifier")
+    fun identifierReservedWord(identifier: String): Nothing =
+        error("\"$identifier\" is a reserved word and cannot be an identifier")
     fun invalidBreakTarget(target: String): Nothing = error("invalid break target \"$target\"")
     fun invalidContinueTarget(target: String): Nothing = error("invalid continue target \"$target\"")
     fun invalidNewMetaProperty(): Nothing = error("new.target is the only valid \"new\" meta-property")
     fun invalidLhsInAssignment(): Nothing = error("invalid left-hand-side in assignment expression")
     fun invalidShorthandProperty(): Nothing = error("object shorthand property must be an identifier name")
-    fun invalidUseStrict(): Nothing = error("invalid \"use strict\" directive in function with non-simple parameter list")
+    fun invalidUseStrict(): Nothing =
+        error("invalid \"use strict\" directive in function with non-simple parameter list")
     fun missingBindingElement(): Nothing = error("missing binding element")
     fun newTargetOutsideOfFunction(): Nothing = error("new.target is only valid inside of functions")
     fun paramAfterRest(): Nothing = error("function rest parameter must be the last parameter")
@@ -47,19 +55,25 @@ abstract class Reporter {
     fun strictAssignToArguments(): Nothing = error("cannot assign to \"arguments\" in strict-mode code")
     fun strictAssignToEval(): Nothing = error("cannot assign to \"eval\" in strict-mode code")
     fun strictImplicitOctal(): Nothing = error("implicit octal literals are not allowed in strict-mode code")
-    fun stringBigUnicodeCodepointEscape(): Nothing = error("unicode codepoint escape sequence exceeds the maximum range (0x10ffff)")
+    fun stringBigUnicodeCodepointEscape(): Nothing =
+        error("unicode codepoint escape sequence exceeds the maximum range (0x10ffff)")
     fun stringEmptyUnicodeEscape(): Nothing = error("invalid empty unicode escape sequence")
     fun stringInvalidHexEscape(): Nothing = error("invalid hex escape sequence in string literal")
     fun stringInvalidOctalEscape(): Nothing = error("invalid octal escape sequence in string literal")
-    fun stringInvalidUnicodeNumericSeparator(): Nothing = error("numeric separators are not allowed in unicode escape sequences")
+    fun stringInvalidUnicodeNumericSeparator(): Nothing =
+        error("numeric separators are not allowed in unicode escape sequences")
     fun stringUnescapedLineBreak(): Nothing = error("invalid unescaped line break in string literal")
-    fun stringUnicodeCodepointMissingBrace(): Nothing = error("unicode codepoint escape sequence missing closing curly brace")
-    fun stringUnicodeMissingDigits(): Nothing = error("unicode escape sequence without curly braces must contain four digits")
-    fun throwStatementNewLine(): Nothing = error("throw keyword cannot be separated from it's expression by a line terminator")
+    fun stringUnicodeCodepointMissingBrace(): Nothing =
+        error("unicode codepoint escape sequence missing closing curly brace")
+    fun stringUnicodeMissingDigits(): Nothing =
+        error("unicode escape sequence without curly braces must contain four digits")
+    fun throwStatementNewLine(): Nothing =
+        error("throw keyword cannot be separated from it's expression by a line terminator")
     fun unexpectedToken(token: TokenType): Nothing = error("unexpected token \"$token\"")
     fun unterminatedTemplateLiteral(): Nothing = error("unterminated template literal")
     fun unterminatedTemplateLiteralExpr(): Nothing = error("unterminated template literal expression")
-    fun variableRedeclaration(name: String, oldType: String, newType: String): Nothing = error("cannot redeclare $oldType declaration \"$name\" as a $newType declaration")
+    fun variableRedeclaration(name: String, oldType: String, newType: String): Nothing =
+        error("cannot redeclare $oldType declaration \"$name\" as a $newType declaration")
 
     fun error(message: String): Nothing {
         throw Parser.ParsingException(message, start, end)

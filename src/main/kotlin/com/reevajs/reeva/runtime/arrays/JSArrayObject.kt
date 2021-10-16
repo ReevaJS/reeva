@@ -12,11 +12,14 @@ import com.reevajs.reeva.runtime.primitives.JSString
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.*
 
-open class JSArrayObject protected constructor(realm: Realm, proto: JSValue = realm.arrayProto) : JSObject(realm, proto) {
+open class JSArrayObject protected constructor(
+    realm: Realm,
+    proto: JSValue = realm.arrayProto,
+) : JSObject(realm, proto) {
     override fun init() {
         super.init()
 
-        defineNativeProperty("length", attrs { -conf -enum +writ }, ::getLength, ::setLength)
+        defineNativeProperty("length", attrs { -conf - enum + writ }, ::getLength, ::setLength)
     }
 
     fun getLength(realm: Realm, thisValue: JSValue): JSValue {

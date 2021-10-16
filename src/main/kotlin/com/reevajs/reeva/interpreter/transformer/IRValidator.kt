@@ -1,7 +1,6 @@
 package com.reevajs.reeva.interpreter.transformer
 
 import com.reevajs.reeva.interpreter.transformer.opcodes.JumpInstr
-import com.reevajs.reeva.interpreter.transformer.opcodes.Opcode
 import com.reevajs.reeva.interpreter.transformer.opcodes.Return
 import com.reevajs.reeva.utils.expect
 
@@ -34,7 +33,7 @@ class IRValidator(val ir: IR) {
                 val existingHeight = postStackHeights[index]
                 expect(existingHeight == null || existingHeight == stackHeight) {
                     // TODO: Include jump location
-                    "Expected stack height of $existingHeight at opcode ${index}, but found " +
+                    "Expected stack height of $existingHeight at opcode $index, but found " +
                         "a height of $stackHeight from a previously encountered jump"
                 }
             }

@@ -7,7 +7,10 @@ import com.reevajs.reeva.ast.NodeWithScope
 
 // This is a NodeWithScope because the delete operator needs to know whether or not
 // it is in strict-mode code
-class UnaryExpressionNode(val expression: ExpressionNode, val op: UnaryOperator) : NodeWithScope(listOf(expression)), ExpressionNode {
+class UnaryExpressionNode(
+    val expression: ExpressionNode,
+    val op: UnaryOperator,
+) : NodeWithScope(listOf(expression)), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -28,7 +31,11 @@ enum class UnaryOperator {
     Not
 }
 
-class UpdateExpressionNode(val target: ExpressionNode, val isIncrement: Boolean, val isPostfix: Boolean) : ASTNodeBase(listOf(target)), ExpressionNode {
+class UpdateExpressionNode(
+    val target: ExpressionNode,
+    val isIncrement: Boolean,
+    val isPostfix: Boolean,
+) : ASTNodeBase(listOf(target)), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()

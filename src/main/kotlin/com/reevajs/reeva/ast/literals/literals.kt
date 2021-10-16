@@ -5,7 +5,7 @@ import com.reevajs.reeva.ast.ASTNodeBase
 import com.reevajs.reeva.ast.ExpressionNode
 import com.reevajs.reeva.ast.VariableRefNode
 
-sealed class BooleanLiteralNode (val value: Boolean) : ASTNodeBase(), ExpressionNode {
+sealed class BooleanLiteralNode(val value: Boolean) : ASTNodeBase(), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -15,9 +15,9 @@ sealed class BooleanLiteralNode (val value: Boolean) : ASTNodeBase(), Expression
     }
 }
 
-class TrueNode : BooleanLiteralNode (true)
+class TrueNode : BooleanLiteralNode(true)
 
-class FalseNode : BooleanLiteralNode (false)
+class FalseNode : BooleanLiteralNode(false)
 
 class StringLiteralNode(val value: String) : ASTNodeBase(), ExpressionNode {
     override fun dump(indent: Int) = buildString {

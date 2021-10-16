@@ -1,23 +1,22 @@
 package com.reevajs.reeva.runtime.regexp
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
-import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.attrs
-import com.reevajs.reeva.utils.key
 import com.reevajs.reeva.utils.toValue
 
 class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "RegExp", 2) {
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.RegExpCtorGetSpecies, attrs { +conf -enum })
+        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.RegExpCtorGetSpecies, attrs { +conf - enum })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -38,7 +37,9 @@ class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         } else currentNewTarget
 
         val (patternSource, flagSource) = when {
-            pattern is JSRegExpObject -> pattern.originalSource.toValue() to flags.ifUndefined { pattern.originalFlags.toValue() }
+            pattern is JSRegExpObject -> pattern.originalSource.toValue() to flags.ifUndefined {
+                pattern.originalFlags.toValue()
+            }
             patternIsRegExp -> (pattern as JSObject).let {
                 it.get("source") to flags.ifUndefined { it.get("flags") }
             }

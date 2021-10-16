@@ -423,13 +423,17 @@ fun Char.isOtherIdContinue() = isOtherIdContinueCache.getOrPut(this) {
 
 val isIdStartCache = mutableMapOf<Char, Boolean>()
 fun Char.isIdStart() = isIdStartCache.getOrPut(this) {
-    (isUppercaseLetter() || isLowercaseLetter() || isTitlecaseLetter() || isModifierLetter() ||
-        isOtherLetter() || isLetterNumber() || isOtherIdStart()) &&
+    (
+        isUppercaseLetter() || isLowercaseLetter() || isTitlecaseLetter() || isModifierLetter() ||
+            isOtherLetter() || isLetterNumber() || isOtherIdStart()
+        ) &&
         !(isPatternSyntax() || isPatternWhitespace())
 }
 
 val isIdContinueCache = mutableMapOf<Char, Boolean>()
 fun Char.isIdContinue() = isIdContinueCache.getOrPut(this) {
-    (isIdStart() || isCategoryMn() || isCategoryMc() || isCategoryNd() || isCategoryPc() ||
-        isOtherIdContinue()) && !(isPatternSyntax() || isPatternWhitespace())
+    (
+        isIdStart() || isCategoryMn() || isCategoryMc() || isCategoryNd() || isCategoryPc() ||
+            isOtherIdContinue()
+        ) && !(isPatternSyntax() || isPatternWhitespace())
 }

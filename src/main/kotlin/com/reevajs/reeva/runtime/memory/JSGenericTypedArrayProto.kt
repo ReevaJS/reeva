@@ -14,7 +14,7 @@ open class JSGenericTypedArrayProto(
         super.init()
 
         defineOwnProperty("BYTES_PER_ELEMENT", kind.size.toValue(), 0)
-        defineOwnProperty("constructor", kind.getCtor(realm), attrs { +conf -enum +writ})
+        defineOwnProperty("constructor", kind.getCtor(realm), attrs { +conf - enum + writ })
     }
 }
 
@@ -83,4 +83,3 @@ class JSBigUint64ArrayProto(realm: Realm) : JSGenericTypedArrayProto(realm, Oper
         fun create(realm: Realm) = JSBigUint64ArrayProto(realm).initialize()
     }
 }
-

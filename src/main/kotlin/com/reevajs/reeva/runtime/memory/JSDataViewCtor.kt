@@ -37,7 +37,12 @@ class JSDataViewCtor private constructor(realm: Realm) : JSNativeFunction(realm,
         } else bufferByteLength - offset
 
         val theRealm = (newTarget as? JSObject)?.realm ?: realm
-        val obj = Operations.ordinaryCreateFromConstructor(realm, newTarget, theRealm.dataViewProto, listOf(SlotName.DataView))
+        val obj = Operations.ordinaryCreateFromConstructor(
+            realm,
+            newTarget,
+            theRealm.dataViewProto,
+            listOf(SlotName.DataView),
+        )
         if (Operations.isDetachedBuffer(buffer))
             Errors.TODO("DataViewCtor isDetachedBuffer 2").throwTypeError(realm)
 

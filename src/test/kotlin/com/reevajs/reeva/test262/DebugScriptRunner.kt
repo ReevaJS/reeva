@@ -88,19 +88,19 @@ private fun collectTest262Script(): String {
     return buildString {
         test262Helpers.forEach {
             append(File(Test262Runner.harnessDirectory, it).readText())
-            append('\n');
+            append('\n')
         }
     }
 }
 
 // PARSER BENCHMARK
-//// https://gist.github.com/olegcherr/b62a09aba1bff643a049
-//fun simpleMeasureTest(
+// // https://gist.github.com/olegcherr/b62a09aba1bff643a049
+// fun simpleMeasureTest(
 //    ITERATIONS: Int = 1000,
 //    TEST_COUNT: Int = 10,
 //    WARM_COUNT: Int = 2,
 //    callback: () -> Unit
-//) {
+// ) {
 //    val results = ArrayList<Long>()
 //    var totalTime = 0L
 //    var t = 0
@@ -130,20 +130,20 @@ private fun collectTest262Script(): String {
 //    val median = results.sorted()[results.size / 2]
 //
 //    println("$PRINT_REFIX -> average=${average}ms / median=${median}ms")
-//}
+// }
 //
-///**
+// /**
 // * Used to filter console messages easily
 // */
-//private val PRINT_REFIX = "[TimeTest]"
+// private val PRINT_REFIX = "[TimeTest]"
 //
-//fun main() {
+// fun main() {
 //    val source = File("./demo/index.js").readText()
 //
 //    try {
-////        simpleMeasureTest(30, 20, 10) {
-////            Parser(source).parseScript()
-////        }
+// //        simpleMeasureTest(30, 20, 10) {
+// //            Parser(source).parseScript()
+// //        }
 //        val ast = Parser(source).parseScript()
 //        ast.debugPrint()
 //    } catch (e: Parser.ParsingException) {
@@ -151,4 +151,4 @@ private fun collectTest262Script(): String {
 //    } finally {
 //        Reeva.teardown()
 //    }
-//}
+// }

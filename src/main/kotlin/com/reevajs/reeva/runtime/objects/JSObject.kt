@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.builtins.Builtin
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.index.IndexedProperties
 import com.reevajs.reeva.runtime.primitives.*
@@ -214,14 +213,36 @@ open class JSObject protected constructor(
         return getOwnPropertyDescriptor(property)?.toObject(realm, this) ?: JSUndefined
     }
 
-    @JvmOverloads fun defineOwnProperty(property: String, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) = defineOwnProperty(property.key(), Descriptor(value, attributes))
-    @JvmOverloads fun defineOwnProperty(property: JSSymbol, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) = defineOwnProperty(property.key(), Descriptor(value, attributes))
-    @JvmOverloads fun defineOwnProperty(property: Int, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) = defineOwnProperty(property.key(), Descriptor(value, attributes))
-    @JvmOverloads fun defineOwnProperty(property: Long, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) = defineOwnProperty(property.toString().key(), Descriptor(value, attributes))
+    @JvmOverloads
+    fun defineOwnProperty(
+        property: String,
+        value: JSValue,
+        attributes: Int = Descriptor.DEFAULT_ATTRIBUTES
+    ) = defineOwnProperty(property.key(), Descriptor(value, attributes))
+    @JvmOverloads
+    fun defineOwnProperty(
+        property: JSSymbol,
+        value: JSValue,
+        attributes: Int = Descriptor.DEFAULT_ATTRIBUTES
+    ) = defineOwnProperty(property.key(), Descriptor(value, attributes))
+
+    @JvmOverloads
+    fun defineOwnProperty(property: Int, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) =
+        defineOwnProperty(property.key(), Descriptor(value, attributes))
+    @JvmOverloads
+    fun defineOwnProperty(property: Long, value: JSValue, attributes: Int = Descriptor.DEFAULT_ATTRIBUTES) =
+        defineOwnProperty(property.toString().key(), Descriptor(value, attributes))
 
     @ECMAImpl("9.1.6")
     open fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
-        return Operations.validateAndApplyPropertyDescriptor(realm, this, property, isExtensible(), descriptor, getOwnPropertyDescriptor(property))
+        return Operations.validateAndApplyPropertyDescriptor(
+            realm,
+            this,
+            property,
+            isExtensible(),
+            descriptor,
+            getOwnPropertyDescriptor(property),
+        )
     }
 
     @JvmOverloads fun get(property: String, receiver: JSValue = this) = get(property.key(), receiver)
@@ -241,8 +262,11 @@ open class JSObject protected constructor(
         return desc.getActualValue(realm, receiver)
     }
 
-    @JvmOverloads fun set(property: String, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
-    @JvmOverloads fun set(property: JSSymbol, value: JSValue, receiver: JSValue = this) = set(property.key(), value, receiver)
+    @JvmOverloads fun set(property: String, value: JSValue, receiver: JSValue = this) =
+        set(property.key(), value, receiver)
+    @JvmOverloads fun set(property: JSSymbol, value: JSValue, receiver: JSValue = this) =
+        set(property.key(), value, receiver)
+
     @JvmOverloads
     fun set(property: Number, value: JSValue, receiver: JSValue = this) = when (property) {
         is Int -> set(property.key(), value, receiver)
@@ -257,7 +281,12 @@ open class JSObject protected constructor(
     }
 
     @ECMAImpl("9.1.9.2")
-    private fun ordinarySetWithOwnDescriptor(property: PropertyKey, value: JSValue, receiver: JSValue, ownDesc_: Descriptor?): Boolean {
+    private fun ordinarySetWithOwnDescriptor(
+        property: PropertyKey,
+        value: JSValue,
+        receiver: JSValue,
+        ownDesc_: Descriptor?
+    ): Boolean {
         var ownDesc = ownDesc_
         if (ownDesc == null) {
             val parent = getPrototype()
@@ -327,11 +356,21 @@ open class JSObject protected constructor(
         }.map { PropertyKey.from(it.name) }
     }
 
-    fun defineNativeProperty(key: String, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
+    fun defineNativeProperty(
+        key: String,
+        attributes: Int,
+        getter: NativeGetterSignature?,
+        setter: NativeSetterSignature?
+    ) {
         defineNativeProperty(key.key(), attributes, getter, setter)
     }
 
-    fun defineNativeProperty(key: PropertyKey, attributes: Int, getter: NativeGetterSignature?, setter: NativeSetterSignature?) {
+    fun defineNativeProperty(
+        key: PropertyKey,
+        attributes: Int,
+        getter: NativeGetterSignature?,
+        setter: NativeSetterSignature?
+    ) {
         val value = JSNativeProperty(getter, setter)
         addProperty(key, Descriptor(value, attributes))
     }
@@ -411,7 +450,7 @@ open class JSObject protected constructor(
         name: String,
         length: Int,
         builtin: Builtin,
-        attributes: Int = attrs { +conf -enum +writ },
+        attributes: Int = attrs { +conf - enum + writ },
     ) {
         defineBuiltin(name.key(), name, length, builtin, attributes)
     }
@@ -420,7 +459,7 @@ open class JSObject protected constructor(
         name: JSSymbol,
         length: Int,
         builtin: Builtin,
-        attributes: Int = attrs { +conf -enum +writ },
+        attributes: Int = attrs { +conf - enum + writ },
     ) {
         defineBuiltin(name.key(), "[${name.description}]", length, builtin, attributes)
     }
@@ -430,7 +469,7 @@ open class JSObject protected constructor(
         jsName: String,
         length: Int,
         builtin: Builtin,
-        attributes: Int = attrs { +conf -enum +writ },
+        attributes: Int = attrs { +conf - enum + writ },
     ) {
         val function = JSNativeFunction.forBuiltin(realm, jsName, length, builtin)
         addProperty(key, Descriptor(function, attributes))

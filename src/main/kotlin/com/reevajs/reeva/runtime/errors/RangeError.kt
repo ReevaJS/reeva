@@ -4,7 +4,10 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 
-class JSRangeErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.rangeErrorProto) {
+class JSRangeErrorObject private constructor(
+    realm: Realm,
+    message: String? = null,
+) : JSErrorObject(realm, message, realm.rangeErrorProto) {
     companion object {
         @JvmStatic
         fun create(realm: Realm, message: String? = null) = JSRangeErrorObject(realm, message).initialize()

@@ -20,7 +20,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.`@@toStringTag`, ReevaBuiltin.JSONGetSymbolToStringTag, attrs { +conf -enum -writ })
+        defineBuiltinGetter(Realm.`@@toStringTag`, ReevaBuiltin.JSONGetSymbolToStringTag, attrs { +conf - enum - writ })
         defineBuiltin("parse", 2, ReevaBuiltin.JSONParse)
         defineBuiltin("stringify", 3, ReevaBuiltin.JSONStringify)
     }
@@ -91,7 +91,12 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             return "JSON".toValue()
         }
 
-        private fun serializeJSONProperty(realm: Realm, state: SerializeState, key: PropertyKey, holder: JSObject): String? {
+        private fun serializeJSONProperty(
+            realm: Realm,
+            state: SerializeState,
+            key: PropertyKey,
+            holder: JSObject,
+        ): String? {
             var value = holder.get(key)
             if (value is JSObject || value is JSBigInt) {
                 val toJSON = Operations.getV(realm, value, "toJSON".toValue())
@@ -216,13 +221,15 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             Operations.enumerableOwnPropertyNames(realm, value, PropertyKind.Key).forEach { property ->
                 val strP = serializeJSONProperty(realm, state, Operations.toPropertyKey(realm, property), value)
                 if (strP != null) {
-                    partial.add(buildString {
-                        append(quoteJSONString(Operations.toString(realm, property).string))
-                        append(":")
-                        if (state.gap.isNotEmpty())
-                            append(" ")
-                        append(strP)
-                    })
+                    partial.add(
+                        buildString {
+                            append(quoteJSONString(Operations.toString(realm, property).string))
+                            append(":")
+                            if (state.gap.isNotEmpty())
+                                append(" ")
+                            append(strP)
+                        }
+                    )
                 }
             }
 

@@ -1,12 +1,11 @@
 package com.reevajs.reeva.runtime.iterators
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
-import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.utils.key
 
 class JSIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {

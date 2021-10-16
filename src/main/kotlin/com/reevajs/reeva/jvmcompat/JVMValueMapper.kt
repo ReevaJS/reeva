@@ -124,7 +124,12 @@ object JVMValueMapper {
 
     @JvmOverloads
     @JvmStatic
-    fun coerceValueToType(realm: Realm, value: JSValue, type: Class<*>, genericInfo: Array<Type>? = null): Any? = if (type.isInstance(value)) {
+    fun coerceValueToType(
+        realm: Realm,
+        value: JSValue,
+        type: Class<*>,
+        genericInfo: Array<Type>? = null,
+    ): Any? = if (type.isInstance(value)) {
         value
     } else when (value) {
         is JSUndefined -> {
@@ -144,7 +149,8 @@ object JVMValueMapper {
         is JSNumber -> {
             when (type) {
                 Double::class.javaPrimitiveType, Double::class.javaObjectType, Any::class.java -> value.number
-                Float::class.javaPrimitiveType, Float::class.javaObjectType -> value.number.toFloat() // TODO: Perhaps these conversion algos need more fine tuning
+                // TODO: Perhaps these conversion algos need more fine tuning
+                Float::class.javaPrimitiveType, Float::class.javaObjectType -> value.number.toFloat()
                 Long::class.javaPrimitiveType, Long::class.javaObjectType -> value.number.toLong()
                 Int::class.javaPrimitiveType, Int::class.javaObjectType -> value.number.toInt()
                 Short::class.javaPrimitiveType, Short::class.javaObjectType -> value.number.toInt().toShort()
@@ -164,8 +170,9 @@ object JVMValueMapper {
                 Int::class.javaPrimitiveType, Int::class.javaObjectType, Short::class.javaPrimitiveType,
                 Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType ->
                     coerceValueToType(realm, Operations.toNumber(realm, value), type)
-                Char::class.javaPrimitiveType, Char::class.javaObjectType ->
-                    if (value.string.length == 1) value.string[0] else coerceValueToType(realm, Operations.toNumber(realm, value), type)
+                Char::class.javaPrimitiveType, Char::class.javaObjectType -> if (value.string.length == 1) {
+                    value.string[0]
+                } else coerceValueToType(realm, Operations.toNumber(realm, value), type)
                 else -> Errors.JVMCompat.InconvertibleType(value, type).throwTypeError(realm)
             }
         }
@@ -179,7 +186,9 @@ object JVMValueMapper {
             if (type == String::class.java) {
                 Operations.toString(realm, value).string
             } else if (List::class.java.isAssignableFrom(type)) {
-                val listInstance: MutableList<Any?> = if (type == List::class.java) mutableListOf() else type.newInstance() as MutableList<Any?>
+                val listInstance: MutableList<Any?> = if (type == List::class.java) {
+                    mutableListOf()
+                } else type.newInstance() as MutableList<Any?>
                 val listType = genericInfo?.firstOrNull() as? Class<*> ?: Any::class.java
 
                 value.indexedProperties.indices().forEach { index ->
@@ -191,11 +200,18 @@ object JVMValueMapper {
                 listInstance
             } else if (type.isArray || type == Any::class.java) {
                 val arrayType = if (type.isArray) type.componentType else Any::class.java
-                val constructedArray = java.lang.reflect.Array.newInstance(arrayType, value.getLength(realm, value).asInt)
+                val constructedArray = java.lang.reflect.Array.newInstance(
+                    arrayType,
+                    value.getLength(realm, value).asInt,
+                )
                 value.indexedProperties.indices().forEach { index ->
                     if (index !in Int.MIN_VALUE..Int.MAX_VALUE)
                         TODO()
-                    java.lang.reflect.Array.set(constructedArray, index.toInt(), coerceValueToType(realm, value.get(index), arrayType))
+                    java.lang.reflect.Array.set(
+                        constructedArray,
+                        index.toInt(),
+                        coerceValueToType(realm, value.get(index), arrayType),
+                    )
                 }
                 constructedArray
             } else {
@@ -262,7 +278,12 @@ object JVMValueMapper {
         return arguments.mapIndexed { index, jsValue ->
             val genericType = genericTypes[index]
             if (genericType is ParameterizedType) {
-                coerceValueToType(realm, jsValue, genericType.rawType as Class<*>, genericInfo = genericType.actualTypeArguments)
+                coerceValueToType(
+                    realm,
+                    jsValue,
+                    genericType.rawType as Class<*>,
+                    genericInfo = genericType.actualTypeArguments,
+                )
             } else coerceValueToType(realm, jsValue, genericType as Class<*>)
         }
     }

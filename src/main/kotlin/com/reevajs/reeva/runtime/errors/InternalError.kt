@@ -4,7 +4,10 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 
-class JSInternalErrorObject private constructor(realm: Realm, message: String? = null) : JSErrorObject(realm, message, realm.internalErrorProto) {
+class JSInternalErrorObject private constructor(
+    realm: Realm,
+    message: String? = null,
+) : JSErrorObject(realm, message, realm.internalErrorProto) {
     companion object {
         @JvmStatic
         fun create(realm: Realm, message: String? = null) = JSInternalErrorObject(realm, message).initialize()

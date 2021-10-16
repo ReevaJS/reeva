@@ -41,7 +41,12 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         if (newTarget == JSUndefined)
             return n
 
-        return Operations.ordinaryCreateFromConstructor(realm, newTarget, realm.numberProto, listOf(SlotName.NumberData)).also {
+        return Operations.ordinaryCreateFromConstructor(
+            realm,
+            newTarget,
+            realm.numberProto,
+            listOf(SlotName.NumberData),
+        ).also {
             it.setSlot(SlotName.NumberData, n)
         }
     }
