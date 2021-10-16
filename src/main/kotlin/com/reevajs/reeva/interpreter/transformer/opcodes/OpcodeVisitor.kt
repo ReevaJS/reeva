@@ -112,6 +112,9 @@ interface OpcodeVisitor {
             is CopyObjectExcludingProperties -> visitCopyObjectExcludingProperties(opcode)
             is LoadBoolean -> visitLoadBoolean(opcode)
             is StoreBoolean -> visitStoreBoolean(opcode)
+            PushJVMFalse -> visitPushJVMFalse()
+            PushJVMTrue -> visitPushJVMTrue()
+            is PushJVMInt -> visitPushJVMInt(opcode)
         }
     }
 
@@ -332,4 +335,10 @@ interface OpcodeVisitor {
     fun visitLoadBoolean(opcode: LoadBoolean)
 
     fun visitStoreBoolean(opcode: StoreBoolean)
+
+    fun visitPushJVMFalse()
+
+    fun visitPushJVMTrue()
+
+    fun visitPushJVMInt(opcode: PushJVMInt)
 }

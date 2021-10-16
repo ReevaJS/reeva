@@ -70,11 +70,11 @@ class IRPrinter(private val executable: Executable) {
                     println(" { $entries }")
                 }
                 is JumpInstr -> println(" @${opcode.to}")
-                is LoadCurrentEnvSlot -> println(" #${opcode.slot}")
-                is LoadEnvSlot -> println(" (${opcode.slot}) #${opcode.distance}")
+                is LoadCurrentEnvSlot -> println(" [${opcode.slot}]")
+                is LoadEnvSlot -> println(" [${opcode.slot}] #${opcode.distance}")
                 is LoadGlobal -> println(" \"${opcode.name}\"")
-                is LoadInt -> println(" #${opcode.local}")
-                is LoadValue -> println(" #${opcode.local}")
+                is LoadInt -> println(" [${opcode.local}]")
+                is LoadValue -> println(" [${opcode.local}]")
                 is PushConstant -> {
                     if (opcode.literal is String) {
                         println(" \"${opcode.literal}\"")
@@ -83,14 +83,16 @@ class IRPrinter(private val executable: Executable) {
                 is PushDeclarativeEnvRecord -> println(" #${opcode.slotCount}")
                 is SetGeneratorPhase -> println(" #${opcode.phase}")
                 is StoreNamedProperty -> println(" \"${opcode.name}\"")
-                is StoreCurrentEnvSlot -> println(" #${opcode.slot}")
-                is StoreEnvSlot -> println(" #${opcode.slot} #${opcode.distance}")
+                is StoreCurrentEnvSlot -> println(" [${opcode.slot}]")
+                is StoreEnvSlot -> println(" [${opcode.slot}] #${opcode.distance}")
                 is StoreGlobal -> println(" \"${opcode.name}\"")
-                is StoreInt -> println(" #${opcode.local}")
-                is StoreValue -> println(" #${opcode.local}")
+                is StoreInt -> println(" [${opcode.local}]")
+                is StoreValue -> println(" [${opcode.local}]")
                 is ThrowConstantError -> println(" \"${opcode.message}\"")
-                is StoreArrayIndexed -> println(" #${opcode.index}")
+                is StoreArray -> println(" [${opcode.index}]")
+                is StoreArrayIndexed -> println(" [${opcode.index}]")
                 is CopyObjectExcludingProperties -> println(" #${opcode.propertiesLocal}")
+                is PushJVMInt -> println(" #${opcode.int}")
                 else -> println()
             }
         }
