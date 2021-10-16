@@ -236,10 +236,14 @@ class JVMValueMapperTests {
         array.set(0, 1.0.toValue())
         array.set(1, 3.0.toValue())
         array.set(2, "5.0".toValue())
-        val doubleGenericInfo = (TestClass::class.java.declaredMethods.find { it.name == "doubleListConsumer" }!!
-            .genericParameterTypes.first() as ParameterizedType).actualTypeArguments
-        val booleanGenericInfo = (TestClass::class.java.declaredMethods.find { it.name == "booleanListConsumer" }!!
-            .genericParameterTypes.first() as ParameterizedType).actualTypeArguments
+        val doubleGenericInfo = (
+            TestClass::class.java.declaredMethods.find { it.name == "doubleListConsumer" }!!
+                .genericParameterTypes.first() as ParameterizedType
+            ).actualTypeArguments
+        val booleanGenericInfo = (
+            TestClass::class.java.declaredMethods.find { it.name == "booleanListConsumer" }!!
+                .genericParameterTypes.first() as ParameterizedType
+            ).actualTypeArguments
 
         expectThat(array.toType<String>())
             .isA<String>()

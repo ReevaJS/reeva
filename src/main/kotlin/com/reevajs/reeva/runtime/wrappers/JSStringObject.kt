@@ -2,11 +2,11 @@ package com.reevajs.reeva.runtime.wrappers
 
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.Operations
-import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
+import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSString
 import com.reevajs.reeva.utils.toValue
 

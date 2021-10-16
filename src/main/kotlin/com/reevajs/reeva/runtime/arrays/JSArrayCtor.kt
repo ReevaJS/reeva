@@ -2,11 +2,11 @@ package com.reevajs.reeva.runtime.arrays
 
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.ThrowException
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
-import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.errors.JSTypeErrorObject
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
@@ -87,9 +87,9 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
 
             val usingIterator = Operations.getMethod(realm, items, Realm.`@@iterator`)
             if (usingIterator != JSUndefined) {
-                val array = (if (Operations.isConstructor(arguments.thisValue)) {
-                    Operations.construct(arguments.thisValue)
-                } else Operations.arrayCreate(realm, 0)) as JSObject
+                val array = if (Operations.isConstructor(arguments.thisValue)) {
+                    Operations.construct(arguments.thisValue) as JSObject
+                } else Operations.arrayCreate(realm, 0)
 
                 val iteratorRecord =
                     Operations.getIterator(realm, items, Operations.IteratorHint.Sync, usingIterator as JSFunction)
@@ -132,9 +132,9 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
 
             val arrayLike = Operations.toObject(realm, items)
             val len = Operations.lengthOfArrayLike(realm, arrayLike)
-            val array = (if (Operations.isConstructor(arguments.thisValue)) {
-                Operations.construct(arguments.thisValue, listOf(len.toValue()))
-            } else Operations.arrayCreate(realm, len)) as JSObject
+            val array = if (Operations.isConstructor(arguments.thisValue)) {
+                Operations.construct(arguments.thisValue, listOf(len.toValue())) as JSObject
+            } else Operations.arrayCreate(realm, len)
 
             var k = 0
             while (k < len) {
@@ -159,9 +159,9 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         @ECMAImpl("23.1.2.3")
         @JvmStatic
         fun of(realm: Realm, arguments: JSArguments): JSValue {
-            val array = (if (Operations.isConstructor(arguments.thisValue)) {
-                Operations.construct(arguments.thisValue, listOf(arguments.size.toValue()))
-            } else Operations.arrayCreate(realm, arguments.size)) as JSObject
+            val array = if (Operations.isConstructor(arguments.thisValue)) {
+                Operations.construct(arguments.thisValue, listOf(arguments.size.toValue())) as JSObject
+            } else Operations.arrayCreate(realm, arguments.size)
 
             arguments.forEachIndexed { index, value ->
                 Operations.createDataPropertyOrThrow(realm, array, index.key(), value)

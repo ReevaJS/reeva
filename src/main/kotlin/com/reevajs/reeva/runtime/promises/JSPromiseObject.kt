@@ -3,8 +3,8 @@ package com.reevajs.reeva.runtime.promises
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
-import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.runtime.objects.SlotName
 
 class JSPromiseObject private constructor(
     state: Operations.PromiseState,
@@ -19,6 +19,7 @@ class JSPromiseObject private constructor(
     var isHandled by slot(SlotName.PromiseIsHandled, false)
 
     companion object {
-        fun create(state: Operations.PromiseState, result: JSValue, realm: Realm) = JSPromiseObject(state, result, realm).initialize()
+        fun create(state: Operations.PromiseState, result: JSValue, realm: Realm) =
+            JSPromiseObject(state, result, realm).initialize()
     }
 }

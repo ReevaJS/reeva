@@ -159,7 +159,7 @@ class Call(val argCount: Int) : Opcode(-1 - argCount)
 
 object CallArray : Opcode(-2)
 
-class Construct(val argCount : Int) : Opcode(-1 - argCount)
+class Construct(val argCount: Int) : Opcode(-1 - argCount)
 
 object ConstructArray : Opcode(-2)
 

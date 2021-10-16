@@ -23,7 +23,10 @@ class BlockStatementNode(val block: BlockNode) : ASTNodeBase(listOf(block)), Sta
 
 // useStrict is an ASTNode so that we can point to it during errors in case it is
 // invalid (i.e. in functions with non-simple parameter lists).
-class BlockNode(val statements: StatementList, val useStrict: ASTNode?) : NodeWithScope(statements), StatementNode, Labellable {
+class BlockNode(
+    val statements: StatementList,
+    val useStrict: ASTNode?,
+) : NodeWithScope(statements), StatementNode, Labellable {
     val hasUseStrict: Boolean get() = useStrict != null
 
     override var labels: MutableSet<String> = mutableSetOf()
@@ -31,7 +34,7 @@ class BlockNode(val statements: StatementList, val useStrict: ASTNode?) : NodeWi
 
 class EmptyStatementNode : ASTNodeBase(), StatementNode
 
-class ExpressionStatementNode(val node: ExpressionNode): ASTNodeBase(listOf(node)), StatementNode
+class ExpressionStatementNode(val node: ExpressionNode) : ASTNodeBase(listOf(node)), StatementNode
 
 class IfStatementNode(
     val condition: ExpressionNode,
@@ -146,3 +149,5 @@ class BreakStatementNode(val label: String?) : ASTNodeBase(), StatementNode
 class ContinueStatementNode(val label: String?) : ASTNodeBase(), StatementNode
 
 class ReturnStatementNode(val expression: ExpressionNode?) : ASTNodeBase(listOfNotNull(expression)), StatementNode
+
+class DebuggerStatementNode : ASTNodeBase(), StatementNode

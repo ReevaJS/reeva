@@ -49,12 +49,14 @@ class Transformer(val executable: Executable) : ASTVisitor {
                 }
             }
 
-            TransformerResult.Success(FunctionInfo(
-                executable.name,
-                builder.build(),
-                script.scope.isStrict,
-                isTopLevel = true,
-            ))
+            TransformerResult.Success(
+                FunctionInfo(
+                    executable.name,
+                    builder.build(),
+                    script.scope.isStrict,
+                    isTopLevel = true,
+                )
+            )
         } catch (e: Throwable) {
             TransformerResult.InternalError(e)
         }
@@ -121,15 +123,17 @@ class Transformer(val executable: Executable) : ASTVisitor {
             +DeclareGlobals(declaredVarNames, lexNames, functionNames)
 
         for (func in functionsToInitialize) {
-            builder.addNestedFunction(visitFunctionHelper(
-                func.identifier.name,
-                func.parameters,
-                func.body,
-                func.functionScope,
-                func.body.scope,
-                func.body.scope.isStrict,
-                func.kind,
-            ))
+            builder.addNestedFunction(
+                visitFunctionHelper(
+                    func.identifier.name,
+                    func.parameters,
+                    func.body,
+                    func.functionScope,
+                    func.body.scope,
+                    func.body.scope.isStrict,
+                    func.kind,
+                )
+            )
 
             storeToSource(func)
         }
@@ -213,15 +217,17 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
             // BlockScopeInstantiation
             node.scope.variableSources.filterIsInstance<FunctionDeclarationNode>().forEach {
-                builder.addNestedFunction(visitFunctionHelper(
-                    it.name(),
-                    it.parameters,
-                    it.body,
-                    it.functionScope,
-                    it.body.scope,
-                    it.body.scope.isStrict,
-                    it.kind,
-                ))
+                builder.addNestedFunction(
+                    visitFunctionHelper(
+                        it.name(),
+                        it.parameters,
+                        it.body,
+                        it.functionScope,
+                        it.body.scope,
+                        it.body.scope.isStrict,
+                        it.kind,
+                    )
+                )
 
                 storeToSource(it)
             }
@@ -438,15 +444,17 @@ class Transformer(val executable: Executable) : ASTVisitor {
         }
 
         for (func in functionsToInitialize) {
-            builder.addNestedFunction(visitFunctionHelper(
-                func.identifier.name,
-                func.parameters,
-                func.body,
-                func.functionScope,
-                func.body.scope,
-                isStrict,
-                func.kind,
-            ))
+            builder.addNestedFunction(
+                visitFunctionHelper(
+                    func.identifier.name,
+                    func.parameters,
+                    func.body,
+                    func.functionScope,
+                    func.body.scope,
+                    isStrict,
+                    func.kind,
+                )
+            )
 
             storeToSource(func)
         }
@@ -924,7 +932,6 @@ class Transformer(val executable: Executable) : ASTVisitor {
             +PushUndefined
         }
 
-
         when (declaration) {
             is NamedDeclaration -> assign(declaration)
             is DestructuringDeclaration -> assign(declaration.pattern)
@@ -1125,7 +1132,6 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
         +LoadValue(arrayLocal)
     }
-
 
     override fun visitAssignmentExpression(node: AssignmentExpressionNode) {
         val lhs = node.lhs
@@ -1394,27 +1400,31 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
-        builder.addNestedFunction(visitFunctionHelper(
-            node.identifier?.name ?: "<anonymous>",
-            node.parameters,
-            node.body,
-            node.functionScope,
-            node.body.scope,
-            node.functionScope.isStrict,
-            node.kind,
-        ))
+        builder.addNestedFunction(
+            visitFunctionHelper(
+                node.identifier?.name ?: "<anonymous>",
+                node.parameters,
+                node.body,
+                node.functionScope,
+                node.body.scope,
+                node.functionScope.isStrict,
+                node.kind,
+            )
+        )
     }
 
     override fun visitArrowFunction(node: ArrowFunctionNode) {
-        builder.addNestedFunction(visitFunctionHelper(
-            "<anonymous>",
-            node.parameters,
-            node.body,
-            node.functionScope,
-            if (node.body is BlockNode) node.body.scope else node.functionScope,
-            node.functionScope.isStrict,
-            node.kind,
-        ))
+        builder.addNestedFunction(
+            visitFunctionHelper(
+                "<anonymous>",
+                node.parameters,
+                node.body,
+                node.functionScope,
+                if (node.body is BlockNode) node.body.scope else node.functionScope,
+                node.functionScope.isStrict,
+                node.kind,
+            )
+        )
     }
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {

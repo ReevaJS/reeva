@@ -142,7 +142,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             return array
         }
 
-
         @ECMAImpl("23.1.3.3")
         @JvmStatic
         fun copyWithin(realm: Realm, arguments: JSArguments): JSValue {
@@ -511,7 +510,6 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
             if (arguments.size > 2) {
                 arguments.subList(2, arguments.size).forEachIndexed { index, item ->
                     Operations.set(realm, obj, (actualStart + index).key(), item, true)
-
                 }
             }
 

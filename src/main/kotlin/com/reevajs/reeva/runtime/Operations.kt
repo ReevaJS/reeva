@@ -4,31 +4,17 @@ package com.reevajs.reeva.runtime
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.ASTNode
-import com.reevajs.reeva.ast.FunctionDeclarationNode
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.ThrowException
-import com.reevajs.reeva.interpreter.Interpreter
-import com.reevajs.reeva.interpreter.transformer.Transformer
-import com.reevajs.reeva.interpreter.transformer.IRPrinter
 import com.reevajs.reeva.jvmcompat.JSClassInstanceObject
 import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.mfbt.Dtoa
 import com.reevajs.reeva.mfbt.StringToFP
-import com.reevajs.reeva.parsing.Parser
-import com.reevajs.reeva.parsing.ParsingResult
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
-import com.reevajs.reeva.runtime.other.JSProxyObject
-import com.reevajs.reeva.runtime.promises.JSCapabilitiesExecutor
-import com.reevajs.reeva.runtime.promises.JSPromiseObject
-import com.reevajs.reeva.runtime.promises.JSRejectFunction
-import com.reevajs.reeva.runtime.promises.JSResolveFunction
-import com.reevajs.reeva.runtime.regexp.JSRegExpObject
-import com.reevajs.reeva.runtime.regexp.JSRegExpProto
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.errors.JSErrorObject
 import com.reevajs.reeva.runtime.errors.JSErrorProto
-import com.reevajs.reeva.runtime.errors.JSSyntaxErrorObject
 import com.reevajs.reeva.runtime.functions.JSBoundFunction
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.iterators.JSArrayIterator
@@ -39,12 +25,18 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.objects.index.IndexedStorage
+import com.reevajs.reeva.runtime.other.JSProxyObject
 import com.reevajs.reeva.runtime.primitives.*
+import com.reevajs.reeva.runtime.promises.JSCapabilitiesExecutor
+import com.reevajs.reeva.runtime.promises.JSPromiseObject
+import com.reevajs.reeva.runtime.promises.JSRejectFunction
+import com.reevajs.reeva.runtime.promises.JSResolveFunction
+import com.reevajs.reeva.runtime.regexp.JSRegExpObject
+import com.reevajs.reeva.runtime.regexp.JSRegExpProto
 import com.reevajs.reeva.runtime.wrappers.*
 import com.reevajs.reeva.utils.*
 import org.joni.Matcher
 import org.joni.Option
-import java.io.StringWriter
 import java.math.BigInteger
 import java.nio.ByteBuffer
 import java.time.*
@@ -66,12 +58,14 @@ object Operations {
     const val MAX_ARRAY_INDEX = MAX_32BIT_INT - 1L
 
     val MAX_64BIT_INT = BigInteger(
-        1, byteArrayOf(
+        1,
+        byteArrayOf(
             0x80.toByte(), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
         )
     )
     val MAX_63BIT_INT = BigInteger(
-        1, byteArrayOf(
+        1,
+        byteArrayOf(
             0x40.toByte(), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
         )
     )
@@ -928,10 +922,15 @@ object Operations {
     fun toPropertyKey(realm: Realm, value: JSValue): PropertyKey {
         val key = toPrimitive(realm, value, ToPrimitiveHint.AsString)
 
-        if (key is JSNumber && key.number.let { it in 0.0..IndexedStorage.INDEX_UPPER_BOUND.toDouble() && floor(it) == it })
+        if (key is JSNumber && key.number.let {
+            it in 0.0..IndexedStorage.INDEX_UPPER_BOUND.toDouble() &&
+                floor(it) == it
+        }
+        ) {
             return if (key.number > Int.MAX_VALUE) {
                 PropertyKey.from(key.number.toLong())
             } else PropertyKey.from(key.number.toInt())
+        }
 
         if (key is JSSymbol)
             return PropertyKey.from(key)
@@ -1680,8 +1679,10 @@ object Operations {
             if (currentDesc.isDataDescriptor != newDesc.isDataDescriptor) {
                 if (currentDesc.run { hasConfigurable && !isConfigurable })
                     return false
-                val newAttrs = ((currentDesc.attributes and (Descriptor.CONFIGURABLE or Descriptor.ENUMERABLE))
-                    or Descriptor.HAS_CONFIGURABLE or Descriptor.HAS_ENUMERABLE)
+                val newAttrs = (
+                    (currentDesc.attributes and (Descriptor.CONFIGURABLE or Descriptor.ENUMERABLE))
+                        or Descriptor.HAS_CONFIGURABLE or Descriptor.HAS_ENUMERABLE
+                    )
 
                 currentDesc = if (currentDesc.isDataDescriptor) {
                     Descriptor(JSAccessor(null, null), newAttrs)
@@ -2240,7 +2241,6 @@ object Operations {
                 val lstr = toString(realm, lprim)
                 val rstr = toString(realm, rprim)
                 return JSString(lstr.string + rstr.string)
-
             }
         }
 

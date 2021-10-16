@@ -34,7 +34,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         // "The initial value of the @@iterator property is the same function object
         // as the initial value of the 'entries' property."
-        defineOwnProperty(Realm.`@@iterator`, internalGet("entries".key())!!.getRawValue(), attrs { +conf +writ })
+        defineOwnProperty(Realm.`@@iterator`, internalGet("entries".key())!!.getRawValue(), attrs { +conf + writ })
     }
 
     companion object {

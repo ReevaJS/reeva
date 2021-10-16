@@ -32,7 +32,8 @@ class SimpleIndexedStorage : IndexedStorage {
 
         if (index >= sizeBacker) {
             sizeBacker = index + 1L
-            val minCapacity = (index + IndexedStorage.MIN_PACKED_RESIZE_AMOUNT).coerceAtMost(IndexedStorage.SPARSE_ARRAY_THRESHOLD)
+            val minCapacity = (index + IndexedStorage.MIN_PACKED_RESIZE_AMOUNT)
+                .coerceAtMost(IndexedStorage.SPARSE_ARRAY_THRESHOLD)
             repeat(minCapacity - elements.size) {
                 elements.add(JSEmpty)
             }

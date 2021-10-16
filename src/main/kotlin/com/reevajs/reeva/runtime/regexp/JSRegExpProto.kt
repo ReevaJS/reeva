@@ -241,7 +241,12 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             return getFlagHelper(realm, arguments.thisValue, "unicode", JSRegExpObject.Flag.Unicode)
         }
 
-        private fun getFlagHelper(realm: Realm, thisValue: JSValue, methodName: String, flag: JSRegExpObject.Flag): JSValue {
+        private fun getFlagHelper(
+            realm: Realm,
+            thisValue: JSValue,
+            methodName: String,
+            flag: JSRegExpObject.Flag,
+        ): JSValue {
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype.$methodName").throwTypeError(realm)
             val flags = thisValue.getSlotAs<String?>(SlotName.OriginalFlags)

@@ -79,7 +79,7 @@ open class JSGlobalObject protected constructor(
 
         // Debug method
         // TODO
-//        defineNativeFunction("isStrict".key(), 0, 0) { Operations.isStrict().toValue() }
+        // defineNativeFunction("isStrict".key(), 0, 0) { Operations.isStrict().toValue() }
     }
 
     companion object {
@@ -93,7 +93,13 @@ open class JSGlobalObject protected constructor(
         }
 
         @ECMAImpl("18.2.1.1")
-        fun performEval(realm: Realm, argument: JSValue, callerRealm: Realm, strictCaller: Boolean, direct: Boolean): JSValue {
+        fun performEval(
+            realm: Realm,
+            argument: JSValue,
+            callerRealm: Realm,
+            strictCaller: Boolean,
+            direct: Boolean,
+        ): JSValue {
             // TODO
             Errors.Custom("eval is not yet implemented in Reeva").throwInternalError(realm)
 
@@ -278,7 +284,11 @@ open class JSGlobalObject protected constructor(
 
         @JvmStatic
         fun parseInt(realm: Realm, arguments: JSArguments): JSValue {
-            var inputString = Operations.trimString(realm, Operations.toString(realm, arguments.argument(0)), Operations.TrimType.Start)
+            var inputString = Operations.trimString(
+                realm,
+                Operations.toString(realm, arguments.argument(0)),
+                Operations.TrimType.Start,
+            )
             val sign = when {
                 inputString.startsWith("-") -> {
                     inputString = inputString.substring(1)
@@ -307,7 +317,8 @@ open class JSGlobalObject protected constructor(
                 radix = 16
             }
 
-            val end = inputString.indexOfFirst { !it.isRadixDigit(radix) }.let { if (it == -1) inputString.length else it }
+            val end = inputString.indexOfFirst { !it.isRadixDigit(radix) }
+                .let { if (it == -1) inputString.length else it }
             val content = inputString.substring(0, end)
             if (content.isEmpty())
                 return JSNumber.NaN

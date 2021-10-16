@@ -14,13 +14,15 @@ fun ecmaAssert(condition: Boolean, message: String? = null) {
     }
 
     if (!condition) {
-        throw ECMAError(buildString {
-            append("ECMA assertion failed")
-            if (message != null) {
-                append(": ")
-                append(message)
+        throw ECMAError(
+            buildString {
+                append("ECMA assertion failed")
+                if (message != null) {
+                    append(": ")
+                    append(message)
+                }
             }
-        })
+        )
     }
 }
 

@@ -19,6 +19,7 @@ class JSSetIterator private constructor(
     }
 
     companion object {
-        fun create(realm: Realm, data: JSSetObject.SetData, kind: PropertyKind) = JSSetIterator(realm, data, kind).initialize()
+        fun create(realm: Realm, data: JSSetObject.SetData, kind: PropertyKind) =
+            JSSetIterator(realm, data, kind).initialize()
     }
 }

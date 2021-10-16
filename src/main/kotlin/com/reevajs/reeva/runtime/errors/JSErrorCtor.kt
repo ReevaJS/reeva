@@ -1,13 +1,13 @@
 package com.reevajs.reeva.runtime.errors
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.attrs
 import com.reevajs.reeva.utils.key
@@ -31,9 +31,8 @@ open class JSErrorCtor protected constructor(
 
         if (message != JSUndefined) {
             val msg = Operations.toString(realm, message)
-            val msgDesc = Descriptor(msg, attrs { +conf -enum +writ })
+            val msgDesc = Descriptor(msg, attrs { +conf - enum + writ })
             Operations.definePropertyOrThrow(realm, obj, "message".key(), msgDesc)
-
         }
 
         return obj

@@ -38,8 +38,8 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
                 return value as JSNumber
             if (value !is JSObject)
                 Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError(realm)
-            return value.getSlotAs(SlotName.NumberData) ?:
-                Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError(realm)
+            return value.getSlotAs(SlotName.NumberData)
+                ?: Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError(realm)
         }
 
         @ECMAImpl("20.1.3.2")

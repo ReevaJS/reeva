@@ -125,7 +125,11 @@ class ScopeResolver : ASTVisitor {
         }
     }
 
-    private fun visitBindingDeclarationOrPattern(node: BindingDeclarationOrPattern, mode: VariableMode, type: VariableType) {
+    private fun visitBindingDeclarationOrPattern(
+        node: BindingDeclarationOrPattern,
+        mode: VariableMode,
+        type: VariableType
+    ) {
         if (node.isBindingPattern) {
             visitBindingPattern(node.asBindingPattern, mode, type)
         } else {
@@ -206,7 +210,12 @@ class ScopeResolver : ASTVisitor {
     override fun visitMethodDefinition(node: MethodDefinitionNode) {
         node.scope = scope
         visit(node.propName)
-        node.functionScope = visitFunctionHelper(node.parameters, node.body, node.kind.toFunctionKind(), isLexical = false)
+        node.functionScope = visitFunctionHelper(
+            node.parameters,
+            node.body,
+            node.kind.toFunctionKind(),
+            isLexical = false,
+        )
     }
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {

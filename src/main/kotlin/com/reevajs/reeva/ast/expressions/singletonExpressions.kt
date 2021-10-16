@@ -9,4 +9,3 @@ object ImportMetaExpressionNode : ASTNodeBase(), ExpressionNode
 class NewTargetNode : VariableRefNode(), ExpressionNode {
     override fun name() = "*new.target"
 }
-

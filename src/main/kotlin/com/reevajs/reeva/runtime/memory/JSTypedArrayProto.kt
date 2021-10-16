@@ -17,11 +17,15 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.`@@toStringTag`, ReevaBuiltin.TypedArrayProtoGetSymbolToStringTag, attrs { +conf - enum })
-        defineBuiltinGetter("buffer", ReevaBuiltin.TypedArrayProtoGetBuffer, attrs { +conf -enum })
-        defineBuiltinGetter("byteLength", ReevaBuiltin.TypedArrayProtoGetByteLength, attrs { +conf -enum })
-        defineBuiltinGetter("byteOffset", ReevaBuiltin.TypedArrayProtoGetByteOffset, attrs { +conf -enum })
-        defineBuiltinGetter("length", ReevaBuiltin.TypedArrayProtoGetLength, attrs { +conf -enum })
+        defineBuiltinGetter(
+            Realm.`@@toStringTag`,
+            ReevaBuiltin.TypedArrayProtoGetSymbolToStringTag,
+            attrs { +conf - enum },
+        )
+        defineBuiltinGetter("buffer", ReevaBuiltin.TypedArrayProtoGetBuffer, attrs { +conf - enum })
+        defineBuiltinGetter("byteLength", ReevaBuiltin.TypedArrayProtoGetByteLength, attrs { +conf - enum })
+        defineBuiltinGetter("byteOffset", ReevaBuiltin.TypedArrayProtoGetByteOffset, attrs { +conf - enum })
+        defineBuiltinGetter("length", ReevaBuiltin.TypedArrayProtoGetLength, attrs { +conf - enum })
 
         defineBuiltin("at", 1, ReevaBuiltin.TypedArrayProtoAt)
         defineBuiltin("copyWithin", 2, ReevaBuiltin.TypedArrayProtoCopyWithin)
@@ -52,7 +56,9 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
     companion object {
         // For use with the generic array methods
-        private val lengthProducer = { realm: Realm, obj: JSObject -> getLength(realm, JSArguments(emptyList(), obj)).asLong }
+        private val lengthProducer = { realm: Realm, obj: JSObject ->
+            getLength(realm, JSArguments(emptyList(), obj)).asLong
+        }
         private val indicesProducer = { realm: Realm ->
             { obj: JSObject ->
                 sequence {

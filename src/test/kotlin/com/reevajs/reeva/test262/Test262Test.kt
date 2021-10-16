@@ -18,8 +18,13 @@ class Test262Test(
     private val metadata: Test262Metadata,
 ) {
     // TODO: Split these phases up
-    private val shouldErrorDuringParse = metadata.negative?.phase.let { it == Negative.Phase.Parse || it == Negative.Phase.Early }
-    private val shouldErrorDuringRuntime = metadata.negative?.phase.let { it == Negative.Phase.Resolution || it == Negative.Phase.Runtime }
+    private val shouldErrorDuringParse = metadata.negative?.phase.let {
+        it == Negative.Phase.Parse || it == Negative.Phase.Early
+    }
+
+    private val shouldErrorDuringRuntime = metadata.negative?.phase.let {
+        it == Negative.Phase.Resolution || it == Negative.Phase.Runtime
+    }
 
     fun test() {
         val agent = Reeva.activeAgent
@@ -145,7 +150,8 @@ class Test262Test(
             }
         } else {
             Assertions.assertTrue(testResult is ExecutionResult.Success) {
-                "Expected execution to complete normally, but received error ${testResult::class.simpleName} ($testResult)"
+                "Expected execution to complete normally, but received error " +
+                    "${testResult::class.simpleName} ($testResult)"
             }
         }
     }

@@ -54,8 +54,8 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
                 return thisValue
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError(realm)
-            return thisValue.getSlotAs(SlotName.StringData) ?:
-                Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError(realm)
+            return thisValue.getSlotAs(SlotName.StringData)
+                ?: Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError(realm)
         }
 
         @JvmStatic
@@ -199,7 +199,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
                 string.length
             } else Operations.toIntegerOrInfinity(realm, numPos).asInt.coerceIn(0, string.length)
 
-
             return string.lastIndexOf(searchString, pos).toValue()
         }
 
@@ -252,12 +251,15 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
             val preserved = string.substring(0, position)
             val replacement = if (functionalReplace) {
-                Operations.toString(realm, Operations.call(
+                Operations.toString(
                     realm,
-                    replaceValue,
-                    JSUndefined,
-                    listOf(searchString.toValue(), position.toValue(), string.toValue())
-                )).asString
+                    Operations.call(
+                        realm,
+                        replaceValue,
+                        JSUndefined,
+                        listOf(searchString.toValue(), position.toValue(), string.toValue())
+                    )
+                ).asString
             } else {
                 getSubstitution(searchString, string, position, emptyList(), emptyMap(), replaceValue.asString)
             }
@@ -347,7 +349,12 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
                     continue
                 }
 
-                Operations.createDataPropertyOrThrow(realm, array, arrayLength.key(), string.substring(splitStart, splitEnd).toValue())
+                Operations.createDataPropertyOrThrow(
+                    realm,
+                    array,
+                    arrayLength.key(),
+                    string.substring(splitStart, splitEnd).toValue(),
+                )
                 arrayLength++
                 if (arrayLength == lim)
                     return array
@@ -355,7 +362,13 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
                 splitEnd = splitStart
             }
 
-            Operations.createDataPropertyOrThrow(realm, array, arrayLength.key(), string.substring(splitStart, stringLength).toValue())
+            Operations.createDataPropertyOrThrow(
+                realm,
+                array,
+                arrayLength.key(),
+                string.substring(splitStart, stringLength).toValue(),
+            )
+
             return array
         }
 
@@ -459,7 +472,13 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
             return thisStringValue(realm, arguments.thisValue, "valueOf")
         }
 
-        private fun stringPad(realm: Realm, obj: JSValue, maxLength: JSValue, fillString: JSValue, isStart: Boolean): String {
+        private fun stringPad(
+            realm: Realm,
+            obj: JSValue,
+            maxLength: JSValue,
+            fillString: JSValue,
+            isStart: Boolean,
+        ): String {
             val string = Operations.toString(realm, obj).string
             val intMaxLength = Operations.toLength(realm, maxLength).asInt
             if (intMaxLength < string.length)

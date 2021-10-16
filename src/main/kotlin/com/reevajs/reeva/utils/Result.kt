@@ -53,8 +53,8 @@ fun <E, T> Result<E, Result<E, T>>.flatten(): Result<E, T> {
     return if (hasValue) value() else Result.error(error())
 }
 
-//@Suppress("UNCHECKED_CAST")
-//inline class Result<out T> private constructor(private val value: Any?) {
+// @Suppress("UNCHECKED_CAST")
+// inline class Result<out T> private constructor(private val value: Any?) {
 //    val isSuccess: Boolean get() = value !is Failure
 //
 //    val isFailure: Boolean get() = value is Failure
@@ -102,4 +102,4 @@ fun <E, T> Result<E, Result<E, T>>.flatten(): Result<E, T> {
 //            failure(e)
 //        }
 //    }
-//}
+// }

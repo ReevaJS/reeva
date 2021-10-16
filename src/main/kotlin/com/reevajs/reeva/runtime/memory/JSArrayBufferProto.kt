@@ -20,7 +20,7 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
         super.init()
 
         defineOwnProperty(Realm.`@@toStringTag`, "ArrayBuffer".toValue(), attrs { +conf })
-        defineOwnProperty("constructor", realm.arrayBufferCtor, attrs { +conf -enum +writ })
+        defineOwnProperty("constructor", realm.arrayBufferCtor, attrs { +conf - enum + writ })
         defineBuiltinGetter("byteLength", ReevaBuiltin.ArrayBufferProtoGetByteLength, attrs { +conf - enum })
         defineBuiltin("slice", 2, ReevaBuiltin.ArrayBufferProtoSlice)
     }
@@ -54,7 +54,7 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
                 Errors.TODO("ArrayBuffer.prototype.slice isDetachedBuffer").throwTypeError(realm)
 
             val length = thisValue.getSlotAs<Int>(SlotName.ArrayBufferByteLength)
-            val relativeStart = arguments.argument(0).toIntegerOrInfinity(realm, )
+            val relativeStart = arguments.argument(0).toIntegerOrInfinity(realm)
             val first = when {
                 relativeStart.number < 0 -> max(length + relativeStart.asInt, 0)
                 relativeStart.isNegativeInfinity -> 0
@@ -64,7 +64,7 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
             val relativeEnd = arguments.argument(1).let {
                 if (it == JSUndefined) {
                     length.toValue()
-                } else it.toIntegerOrInfinity(realm, )
+                } else it.toIntegerOrInfinity(realm)
             }
 
             val final = when {
