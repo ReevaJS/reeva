@@ -321,6 +321,15 @@ class Interpreter(
         push(Operations.typeofOperator(popValue()))
     }
 
+    override fun visitTypeOfGlobal(opcode: TypeOfGlobal) {
+        if (!realm.globalEnv.hasBinding(opcode.name)) {
+            push(JSString("undefined"))
+        } else {
+            visitLoadGlobal(LoadGlobal(opcode.name))
+            visitTypeOf()
+        }
+    }
+
     override fun visitToNumber() {
         push(Operations.toNumber(realm, popValue()))
     }

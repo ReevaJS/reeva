@@ -848,6 +848,13 @@ class Transformer(val executable: Executable) : ASTVisitor {
             return
         }
 
+        if (node.expression is IdentifierReferenceNode && node.op == UnaryOperator.Typeof &&
+            node.expression.source.mode == VariableMode.Global
+        ) {
+            +TypeOfGlobal(node.expression.identifierName)
+            return
+        }
+
         visitExpression(node.expression)
 
         when (node.op) {

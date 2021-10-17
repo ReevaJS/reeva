@@ -39,6 +39,7 @@ interface OpcodeVisitor {
             TestInstanceOf -> visitTestInstanceOf()
             TestIn -> visitTestIn()
             TypeOf -> visitTypeOf()
+            is TypeOfGlobal -> visitTypeOfGlobal(opcode)
             ToNumber -> visitToNumber()
             ToNumeric -> visitToNumeric()
             ToString -> visitToString()
@@ -189,6 +190,8 @@ interface OpcodeVisitor {
     fun visitTestIn()
 
     fun visitTypeOf()
+
+    fun visitTypeOfGlobal(opcode: TypeOfGlobal)
 
     fun visitToNumber()
 
