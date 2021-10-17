@@ -34,6 +34,9 @@ class Agent {
         get() = byteOrder == ByteOrder.BIG_ENDIAN
 
     internal val callStack = ArrayDeque<JSFunction>()
+    val activeFunction: JSFunction
+        get() = callStack.last()
+
     val microtaskQueue = MicrotaskQueue(this)
 
     init {
