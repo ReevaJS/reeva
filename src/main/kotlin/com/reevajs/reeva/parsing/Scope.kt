@@ -233,4 +233,4 @@ open class HoistingScope(
     }
 }
 
-class GlobalScope : HoistingScope(null, true)
+class GlobalScope : HoistingScope(null, isLexical = false)
