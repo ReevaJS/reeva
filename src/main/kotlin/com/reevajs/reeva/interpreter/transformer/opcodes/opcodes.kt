@@ -103,6 +103,8 @@ object TestIn : Opcode(-1)
 
 object TypeOf : Opcode(0)
 
+class TypeOfGlobal(val name: String) : Opcode(1)
+
 object ToNumber : Opcode(0)
 
 object ToNumeric : Opcode(0)
