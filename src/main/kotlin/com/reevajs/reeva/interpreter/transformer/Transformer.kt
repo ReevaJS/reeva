@@ -761,10 +761,12 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     override fun visitCommaExpression(node: CommaExpressionNode) {
-        for (expression in node.expressions) {
+        for (expression in node.expressions.dropLast(1)) {
             visitExpression(expression)
             +Pop
         }
+
+        visitExpression(node.expressions.last())
     }
 
     override fun visitBinaryExpression(node: BinaryExpressionNode) {
