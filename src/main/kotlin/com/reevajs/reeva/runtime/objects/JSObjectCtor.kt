@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.objects
 
+import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -46,7 +47,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val value = arguments.argument(0)
         val newTarget = arguments.newTarget
         // TODO: "If NewTarget is neither undefined nor the active function, then..."
-        if (newTarget != JSUndefined /*&& newTarget != Agent.runningContext.function*/)
+        if (newTarget != JSUndefined && newTarget != Reeva.activeAgent.activeFunction)
             return Operations.ordinaryCreateFromConstructor(realm, newTarget, realm.objectProto)
         if (value.isUndefined || value.isNull)
             return JSObject.create(realm)
