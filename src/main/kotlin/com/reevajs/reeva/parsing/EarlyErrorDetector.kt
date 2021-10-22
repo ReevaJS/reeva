@@ -2,6 +2,7 @@ package com.reevajs.reeva.parsing
 
 import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
+import com.reevajs.reeva.ast.literals.PropertyName
 import com.reevajs.reeva.ast.statements.BlockNode
 import com.reevajs.reeva.runtime.Operations
 
@@ -34,6 +35,26 @@ class EarlyErrorDetector(private val reporter: ErrorReporter) : ASTVisitor {
     override fun visitMethodDefinition(node: MethodDefinitionNode) {
         visitScope(node.scope)
         super.visitMethodDefinition(node)
+    }
+
+    override fun visitClassDeclaration(node: ClassDeclarationNode) {
+        visitClassNode(node.classNode)
+    }
+
+    override fun visitClassExpression(node: ClassExpressionNode) {
+        visitClassNode(node.classNode)
+    }
+
+    private fun visitClassNode(node: ClassNode) {
+        for (element in node.body) {
+            if (element is ClassFieldNode) {
+                if (element.identifier.type == PropertyName.Type.Identifier) {
+                    val name = (element.identifier.expression as IdentifierNode).processedName
+                    if (name == "constructor" || (element.isStatic && name == "prototype"))
+                        reporter.at(element.identifier).classFieldInvalidName(element.isStatic, name)
+                }
+            }
+        }
     }
 
     private fun visitScope(scope: Scope) {
