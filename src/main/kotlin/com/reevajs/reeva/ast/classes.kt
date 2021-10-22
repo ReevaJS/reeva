@@ -7,7 +7,7 @@ class ClassDeclarationNode(
     val identifier: IdentifierNode?, // can be omitted in default exports
     val classNode: ClassNode,
 ) : VariableSourceNode(listOfNotNull(identifier, classNode)), StatementNode {
-    override fun name() = identifier?.name ?: TODO()
+    override fun name() = identifier?.processedName ?: TODO()
 }
 
 class ClassExpressionNode(

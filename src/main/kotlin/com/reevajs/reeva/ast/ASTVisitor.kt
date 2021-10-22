@@ -89,8 +89,6 @@ interface ASTVisitor {
             is MethodDefinitionNode -> visitMethodDefinition(node)
             is ScriptNode -> visitScript(node)
             is PropertyName -> visitPropertyName(node)
-            is NamedDeclaration -> visitNamedDeclaration(node)
-            is DestructuringDeclaration -> visitDestructuringDeclaration(node)
             is BindingPatternNode -> visitBindingPattern(node)
             is BindingDeclaration -> visitBindingDeclaration(node)
             is BindingDeclarationOrPattern -> visitBindingDeclarationOrPattern(node)
@@ -204,8 +202,8 @@ interface ASTVisitor {
 
     private fun visitDeclaration(declaration: Declaration) {
         when (declaration) {
-            is NamedDeclaration -> visit(declaration.identifier)
-            is DestructuringDeclaration -> visit(declaration.pattern)
+            is NamedDeclaration -> visitNamedDeclaration(declaration)
+            is DestructuringDeclaration -> visitDestructuringDeclaration(declaration)
         }
     }
 
@@ -301,7 +299,7 @@ interface ASTVisitor {
 
     fun visitPropertyName(node: PropertyName) {
         when (node.type) {
-            PropertyName.Type.Identifier -> (node.expression as IdentifierNode).name
+            PropertyName.Type.Identifier -> (node.expression as IdentifierNode).processedName
             PropertyName.Type.Computed -> visit(node.expression)
             else -> {
             }

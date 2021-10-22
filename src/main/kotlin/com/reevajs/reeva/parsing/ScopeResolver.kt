@@ -277,7 +277,7 @@ class ScopeResolver : ASTVisitor {
         for (param in parameters) {
             when (param) {
                 is SimpleParameter -> {
-                    if (param.identifier.name == "arguments")
+                    if (param.identifier.processedName == "arguments")
                         hasArgumentsIdentifier = true
                     if (param.initializer != null)
                         hasParameterExpressions = true

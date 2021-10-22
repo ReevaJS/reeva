@@ -28,5 +28,5 @@ class NamedDeclaration(
     val identifier: IdentifierNode,
     override val initializer: ExpressionNode?,
 ) : VariableSourceNode(listOfNotNull(identifier, identifier)), Declaration {
-    override fun name() = identifier.name
+    override fun name() = identifier.processedName
 }

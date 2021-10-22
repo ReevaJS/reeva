@@ -30,7 +30,7 @@ enum class BindingKind {
 class BindingDeclaration(
     val identifier: IdentifierNode,
 ) : VariableSourceNode(listOf(identifier)) {
-    override fun name() = identifier.name
+    override fun name() = identifier.processedName
 }
 
 class BindingDeclarationOrPattern(

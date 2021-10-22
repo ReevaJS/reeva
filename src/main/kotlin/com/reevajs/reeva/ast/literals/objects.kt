@@ -29,7 +29,7 @@ class PropertyName(
     val type: Type,
 ) : ASTNodeBase(listOf(expression)) {
     fun asString() = when (type) {
-        Type.Identifier -> (expression as IdentifierNode).name
+        Type.Identifier -> (expression as IdentifierNode).processedName
         Type.String -> (expression as StringLiteralNode).value
         Type.Number -> Operations.numberToString((expression as NumericLiteralNode).value)
         Type.Computed -> "[computed method name]"
@@ -54,7 +54,7 @@ class MethodDefinitionNode(
 
     fun isConstructor(): Boolean {
         return propName.type == PropertyName.Type.Identifier && propName.expression.let {
-            (it as IdentifierNode).name == "constructor"
+            (it as IdentifierNode).processedName == "constructor"
         } && kind == Kind.Normal
     }
 
