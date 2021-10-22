@@ -755,6 +755,16 @@ class Interpreter(
         push(state.phase)
     }
 
+    override fun visitPushToGeneratorState() {
+        val state = locals[Transformer.GENERATOR_STATE_LOCAL.value] as GeneratorState
+        state.push(pop())
+    }
+
+    override fun visitPopFromGeneratorState() {
+        val state = locals[Transformer.GENERATOR_STATE_LOCAL.value] as GeneratorState
+        push(state.pop())
+    }
+
     override fun visitGetSuperBase() {
         TODO("Not yet implemented")
     }
@@ -973,13 +983,23 @@ class Interpreter(
         }
     }
 
+    // Extends from JSValue so it can be passed as an argument
     data class GeneratorState(
         var phase: Int = 0,
         var yieldedValue: JSValue = JSEmpty,
         var sentValue: JSValue = JSEmpty,
         var shouldThrow: Boolean = false,
         var shouldReturn: Boolean = false,
-    ) : JSValue() // Extends from JSValue so it can be passed as an argument
+    ) : JSValue() {
+        // Used to preserve the stack in between yields
+        private val stack = ArrayDeque<Any>()
+
+        fun push(value: Any) {
+            stack.addLast(value)
+        }
+
+        fun pop() = stack.removeLast()
+    }
 
     companion object {
         fun wrap(

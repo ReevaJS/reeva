@@ -1,5 +1,6 @@
 package com.reevajs.reeva.interpreter.transformer
 
+import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.*
@@ -1662,6 +1663,12 @@ class Transformer(val executable: Executable) : ASTVisitor {
     override fun visitYieldExpression(node: YieldExpressionNode) {
         val phase = builder.incrementAndGetGeneratorPhase()
         +SetGeneratorPhase(phase)
+
+        val stackHeight = builder.stackHeight
+        repeat(stackHeight) {
+            +PushToGeneratorState
+        }
+
         if (node.expression == null) {
             +PushUndefined
         } else {
@@ -1671,6 +1678,11 @@ class Transformer(val executable: Executable) : ASTVisitor {
         +Return
 
         builder.addJumpTableTarget(phase, builder.opcodeCount())
+
+        // Restore the stack
+        repeat(stackHeight) {
+            +PopFromGeneratorState
+        }
 
         // Load the received value onto the stack
         +GetGeneratorSentValue
