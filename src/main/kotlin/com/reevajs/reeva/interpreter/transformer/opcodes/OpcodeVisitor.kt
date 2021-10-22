@@ -91,11 +91,12 @@ interface OpcodeVisitor {
             is CreateGeneratorClosure -> visitCreateGeneratorClosure(opcode)
             is CreateAsyncClosure -> visitCreateAsyncClosure(opcode)
             is CreateAsyncGeneratorClosure -> visitCreateAsyncGeneratorClosure(opcode)
-            CreateRestParam -> visitCreateRestParam()
+            CollectRestArgs -> visitCreateRestParam()
             GetSuperConstructor -> visitGetSuperConstructor()
             CreateUnmappedArgumentsObject -> visitCreateUnmappedArgumentsObject()
             CreateMappedArgumentsObject -> visitCreateMappedArgumentsObject()
-            is ThrowConstantError -> visitThrowConstantError(opcode)
+            is ThrowConstantReassignmentError -> visitThrowConstantReassignmentError(opcode)
+            is ThrowLexicalAccessError -> visitThrowLexicalAccessError(opcode)
             ThrowSuperNotInitializedIfEmpty -> visitThrowSuperNotInitializedIfEmpty()
             PushClosure -> visitPushClosure()
             Throw -> visitThrow()
@@ -309,9 +310,11 @@ interface OpcodeVisitor {
 
     fun visitCreateMappedArgumentsObject()
 
-    fun visitThrowConstantError(opcode: ThrowConstantError)
-
     fun visitThrowSuperNotInitializedIfEmpty()
+
+    fun visitThrowConstantReassignmentError(opcode: ThrowConstantReassignmentError)
+
+    fun visitThrowLexicalAccessError(opcode: ThrowLexicalAccessError)
 
     fun visitPushClosure()
 

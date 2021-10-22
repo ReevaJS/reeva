@@ -689,8 +689,12 @@ class Interpreter(
         TODO("Not yet implemented")
     }
 
-    override fun visitThrowConstantError(opcode: ThrowConstantError) {
-        TODO("Not yet implemented")
+    override fun visitThrowConstantReassignmentError(opcode: ThrowConstantReassignmentError) {
+        Errors.AssignmentToConstant(opcode.name).throwTypeError(realm)
+    }
+
+    override fun visitThrowLexicalAccessError(opcode: ThrowLexicalAccessError) {
+        Errors.AccessBeforeInitialization(opcode.name).throwReferenceError(realm)
     }
 
     override fun visitThrowSuperNotInitializedIfEmpty() {
