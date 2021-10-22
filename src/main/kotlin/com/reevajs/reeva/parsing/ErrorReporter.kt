@@ -40,9 +40,9 @@ abstract class Reporter {
     fun functionStatementNoName(): Nothing = error("function statement requires a name")
     fun identifierAfterNumericLiteral(): Nothing = error("numeric literal cannot be directly followed by an identifier")
     fun identifierStrictReservedWord(identifier: String): Nothing =
-        error("\"$identifier\" is a reserved word in strict-mode code and cannot be an identifier")
+        error("\"$identifier\" is a reserved word in strict-mode code and cannot be used as an identifier")
     fun identifierReservedWord(identifier: String): Nothing =
-        error("\"$identifier\" is a reserved word and cannot be an identifier")
+        error("\"$identifier\" is a reserved word and cannot be used as an identifier")
     fun identifierInvalidEscapeSequence(identifier: String): Nothing =
         error("\"$identifier\" contains an invalid unicode escape sequence")
     fun invalidBreakTarget(target: String): Nothing = error("invalid break target \"$target\"")

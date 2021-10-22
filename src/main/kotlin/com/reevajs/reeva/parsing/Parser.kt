@@ -1141,19 +1141,20 @@ class Parser(val executable: Executable) {
         IdentifierNode(unescaped, identifier)
     }
 
-    private fun parseBindingIdentifier(): IdentifierNode {
-        if (!matchIdentifierName())
-            reporter.at(token).expected("identifier")
-        val identifier = parseIdentifier()
-
+    private fun validateBindingIdentifier(identifier: IdentifierNode) {
         if (isStrict && identifier.processedName in strictProtectedNames)
             reporter.at(identifier).identifierStrictReservedWord(identifier.rawName)
 
         val matchedToken = TokenType.values().firstOrNull { it.isIdentifierNameToken && it.string == identifier.processedName }
         if (matchedToken != null)
             reporter.at(identifier).identifierReservedWord(identifier.rawName)
+    }
 
-        return identifier
+    private fun parseBindingIdentifier(): IdentifierNode {
+        if (!matchIdentifierName())
+            reporter.at(token).expected("identifier")
+
+        return parseIdentifier().also(::validateBindingIdentifier)
     }
 
     private fun checkForAndConsumeUseStrict(): ASTNode? = nps {
@@ -1736,7 +1737,13 @@ class Parser(val executable: Executable) {
             if (name.type != PropertyName.Type.Identifier)
                 reporter.at(name).invalidShorthandProperty()
 
-            val node = IdentifierReferenceNode(name.expression as IdentifierNode).withPosition(name)
+            val identifierNode = name.expression as IdentifierNode
+
+            // As this is a shorthand property, it is also a binding identifier, and must
+            // be validated as such
+            validateBindingIdentifier(identifierNode)
+
+            val node = IdentifierReferenceNode(identifierNode).withPosition(name)
 
             return@nps ShorthandProperty(node)
         }
