@@ -219,6 +219,10 @@ class SetGeneratorPhase(val phase: Int) : Opcode(0)
 
 object GetGeneratorSentValue : Opcode(1)
 
+object PushToGeneratorState : Opcode(-1)
+
+object PopFromGeneratorState : Opcode(1)
+
 /////////////
 // Classes //
 /////////////

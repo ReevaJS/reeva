@@ -35,6 +35,8 @@ class IRBuilder(
     private val locals = mutableListOf<LocalKind>()
     private val nestedFunctions = mutableListOf<FunctionInfo>()
     private val handlers = mutableListOf<Handler>()
+    var stackHeight = 0
+        private set
 
     private val generatorJumpTable = mutableMapOf<Int, Int>()
     private var generatorPhase = 0
@@ -61,7 +63,7 @@ class IRBuilder(
     }
 
     fun initializeJumpTable() {
-        opcodes.add(JumpTable(generatorJumpTable))
+        addOpcode(JumpTable(generatorJumpTable))
     }
 
     fun addJumpTableTarget(phase: Int, target: Int) {
@@ -80,6 +82,7 @@ class IRBuilder(
 
     fun addOpcode(opcode: Opcode) {
         opcodes.add(opcode)
+        stackHeight += opcode.stackHeightModifier
     }
 
     fun opcodeCount(): Int = opcodes.size

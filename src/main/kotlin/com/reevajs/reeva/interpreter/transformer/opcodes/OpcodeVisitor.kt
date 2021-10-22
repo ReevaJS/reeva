@@ -109,6 +109,8 @@ interface OpcodeVisitor {
             PushEmpty -> visitPushEmpty()
             is SetGeneratorPhase -> visitSetGeneratorPhase(opcode)
             GetGeneratorSentValue -> visitGeneratorSentValue()
+            PushToGeneratorState -> visitPushToGeneratorState()
+            PopFromGeneratorState -> visitPopFromGeneratorState()
             is CopyObjectExcludingProperties -> visitCopyObjectExcludingProperties(opcode)
             is LoadBoolean -> visitLoadBoolean(opcode)
             is StoreBoolean -> visitStoreBoolean(opcode)
@@ -356,4 +358,8 @@ interface OpcodeVisitor {
     fun visitAttachComputedClassMethod(opcode: AttachComputedClassMethod)
 
     fun visitFinalizeClass()
+
+    fun visitPushToGeneratorState()
+
+    fun visitPopFromGeneratorState()
 }
