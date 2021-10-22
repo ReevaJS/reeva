@@ -55,7 +55,7 @@ class Interpreter(
     }
 
     fun interpret(): ExecutionResult {
-        for ((index, arg) in arguments.withIndex()) {
+        for ((index, arg) in arguments.take(info.ir.argCount).withIndex()) {
             locals[index] = arg
         }
 
