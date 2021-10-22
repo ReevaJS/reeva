@@ -1152,6 +1152,12 @@ class Parser(val executable: Executable) {
         if (matchedToken != null)
             reporter.at(node).identifierReservedWord(unescaped)
 
+        if (!unescaped[0].let { it == '$' || it == '_' || it.isIdStart() })
+                reporter.at(node).identifierInvalidEscapeSequence(string)
+
+        if (!unescaped.drop(1).all { it == '$' || it.isIdContinue() || it == '\u200c' || it == '\u200d' })
+            reporter.at(node).identifierInvalidEscapeSequence(string)
+
         return node
     }
 

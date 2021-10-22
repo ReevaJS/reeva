@@ -43,6 +43,8 @@ abstract class Reporter {
         error("\"$identifier\" is a reserved word in strict-mode code and cannot be an identifier")
     fun identifierReservedWord(identifier: String): Nothing =
         error("\"$identifier\" is a reserved word and cannot be an identifier")
+    fun identifierInvalidEscapeSequence(identifier: String): Nothing =
+        error("\"$identifier\" contains an invalid unicode escape sequence")
     fun invalidBreakTarget(target: String): Nothing = error("invalid break target \"$target\"")
     fun invalidContinueTarget(target: String): Nothing = error("invalid continue target \"$target\"")
     fun invalidNewMetaProperty(): Nothing = error("new.target is the only valid \"new\" meta-property")
