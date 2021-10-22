@@ -25,6 +25,8 @@ abstract class Reporter {
     fun classGeneratorAccessor(isGetter: Boolean): Nothing =
         error("class ${if (isGetter) "getter" else "setter"} cannot be a generator")
     fun classGeneratorField(): Nothing = error("class declaration field cannot be a generator")
+    fun classFieldInvalidName(isStatic: Boolean, name: String): Nothing =
+        error("${if (isStatic) "static " else ""}class field cannot be named \"$name\"")
     fun constMissingInitializer(): Nothing = error("const variable declaration must have an initializer")
     fun continueOutsideOfLoop(): Nothing = error("continue statement must be inside of a loop")
     fun duplicateClassConstructor(): Nothing = error("class cannot have multiple constructors")
