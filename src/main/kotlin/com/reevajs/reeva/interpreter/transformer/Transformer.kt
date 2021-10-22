@@ -1534,6 +1534,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
             isTopLevel = false,
         ).also {
             builder = prevBuilder
+            builder.addNestedFunction(it)
         }
     }
 
@@ -1542,6 +1543,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         +LoadNamedProperty(Realm.`@@classInstanceFields`)
         +LoadValue(RECEIVER_LOCAL)
         +Call(0)
+        +Pop
     }
 
     private fun makeImplicitClassConstructor(
