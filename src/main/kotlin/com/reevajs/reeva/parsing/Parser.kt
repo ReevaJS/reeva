@@ -843,7 +843,7 @@ class Parser(val executable: Executable) {
             if (!inDefaultContext)
                 reporter.classDeclarationNoName()
             null
-        } else parseIdentifier()
+        } else parseBindingIdentifier()
 
         ClassDeclarationNode(identifier, parseClassNode())
     }
