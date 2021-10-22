@@ -1,6 +1,7 @@
 package com.reevajs.reeva.interpreter
 
 import com.reevajs.reeva.Reeva
+import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.ThrowException
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
@@ -21,6 +22,7 @@ import com.reevajs.reeva.runtime.iterators.JSObjectPropertyIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.JSObject.Companion.initialize
+import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.runtime.regexp.JSRegExpObject
 import com.reevajs.reeva.utils.*
@@ -657,10 +659,6 @@ class Interpreter(
         push(function)
     }
 
-    override fun visitCreateClassConstructor(opcode: CreateClassConstructor) {
-        TODO("Not yet implemented")
-    }
-
     override fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure) {
         val function = GeneratorIRFunction(realm, executable.forInfo(opcode.ir), activeEnvRecord).initialize()
         Operations.setFunctionName(realm, function, opcode.ir.name.key())
@@ -784,6 +782,134 @@ class Interpreter(
     override fun visitGeneratorSentValue() {
         val state = locals[Transformer.GENERATOR_STATE_LOCAL.value] as GeneratorState
         push(state.sentValue)
+    }
+
+    override fun visitCreateClassConstructor(opcode: CreateMethod) {
+        push(NormalIRFunction(realm, executable.forInfo(opcode.ir), activeEnvRecord).initialize())
+    }
+
+    override fun visitCreateClass() {
+        val superClass = popValue()
+        val constructor = popValue()
+
+        expect(constructor is JSFunction)
+
+        val protoParent: JSValue
+        val constructorParent: JSObject
+
+        when {
+            superClass == JSEmpty -> {
+                protoParent = realm.objectProto
+                constructorParent = realm.functionProto
+            }
+            superClass == JSNull -> {
+                protoParent = JSNull
+                constructorParent = realm.functionProto
+            }
+            !Operations.isConstructor(superClass) ->
+                Errors.NotACtor(superClass.toJSString(realm).string).throwTypeError(realm)
+            else -> {
+                protoParent = superClass.get("prototype")
+                if (protoParent != JSNull && protoParent !is JSObject)
+                    Errors.TODO("superClass.prototype invalid type").throwTypeError(realm)
+                constructorParent = superClass
+            }
+        }
+
+        val proto = JSObject.create(realm, protoParent)
+        Operations.makeClassConstructor(constructor)
+
+        // TODO// Operations.setFunctionName(constructor, className)
+
+        Operations.makeConstructor(realm, constructor, false, proto)
+
+        if (superClass != JSEmpty)
+            constructor.constructorKind = JSFunction.ConstructorKind.Derived
+
+        constructor.setPrototype(constructorParent)
+        Operations.makeMethod(constructor, proto)
+        Operations.createMethodProperty(proto, "constructor".key(), constructor)
+
+        push(ClassCtorAndProto(constructor, proto))
+    }
+
+    data class ClassCtorAndProto(val constructor: JSFunction, val proto: JSObject)
+
+    override fun visitAttachClassMethod(opcode: AttachClassMethod) {
+        val (constructor, proto) = pop() as ClassCtorAndProto
+        methodDefinitionEvaluation(
+            opcode.name.key(),
+            opcode.kind,
+            if (opcode.isStatic) constructor else proto,
+            enumerable = false,
+            opcode.ir,
+        )
+    }
+
+    override fun visitAttachComputedClassMethod(opcode: AttachComputedClassMethod) {
+        val name = popValue().toPropertyKey(realm)
+        val (constructor, proto) = pop() as ClassCtorAndProto
+        methodDefinitionEvaluation(
+            name,
+            opcode.kind,
+            if (opcode.isStatic) constructor else proto,
+            enumerable = false,
+            opcode.ir,
+        )
+    }
+
+    private fun methodDefinitionEvaluation(
+        name: PropertyKey,
+        kind: MethodDefinitionNode.Kind,
+        obj: JSObject,
+        enumerable: Boolean,
+        info: FunctionInfo,
+    ) {
+        val closure = when (kind) {
+            MethodDefinitionNode.Kind.Normal,
+            MethodDefinitionNode.Kind.Getter,
+            MethodDefinitionNode.Kind.Setter ->
+                NormalIRFunction(realm, executable.forInfo(info), activeEnvRecord).initialize()
+            MethodDefinitionNode.Kind.Generator ->
+                GeneratorIRFunction(realm, executable.forInfo(info), activeEnvRecord).initialize()
+            else -> TODO()
+        }
+
+        Operations.makeMethod(closure, obj)
+
+        if (kind == MethodDefinitionNode.Kind.Getter || kind == MethodDefinitionNode.Kind.Setter) {
+            val (prefix, desc) = if (kind == MethodDefinitionNode.Kind.Getter) {
+                "get" to Descriptor(JSAccessor(closure, null), Descriptor.CONFIGURABLE)
+            } else {
+                "set" to Descriptor(JSAccessor(null, closure), Descriptor.CONFIGURABLE)
+            }
+
+            Operations.setFunctionName(realm, closure, name, prefix)
+            Operations.definePropertyOrThrow(realm, obj, name, desc)
+            return
+        }
+
+        when (kind) {
+            MethodDefinitionNode.Kind.Normal,
+            MethodDefinitionNode.Kind.Getter,
+            MethodDefinitionNode.Kind.Setter -> {}
+            MethodDefinitionNode.Kind.Generator -> {
+                val prototype = JSObject.create(realm, realm.generatorObjectProto)
+                Operations.definePropertyOrThrow(
+                    realm,
+                    closure,
+                    "prototype".key(),
+                    Descriptor(prototype, Descriptor.WRITABLE),
+                )
+            }
+            else -> TODO()
+        }
+
+        Operations.defineMethodProperty(realm, name, obj, closure, enumerable)
+    }
+
+    override fun visitFinalizeClass() {
+        push((pop() as ClassCtorAndProto).constructor)
     }
 
     private fun pop(): Any = stack.removeLast()

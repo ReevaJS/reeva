@@ -1,7 +1,9 @@
 package com.reevajs.reeva.interpreter.transformer.opcodes
 
+import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.interpreter.transformer.FunctionInfo
 import com.reevajs.reeva.interpreter.transformer.Local
+import com.reevajs.reeva.runtime.Operations
 import java.math.BigInteger
 
 sealed class Opcode(val stackHeightModifier: Int) {
@@ -217,6 +219,57 @@ class SetGeneratorPhase(val phase: Int) : Opcode(0)
 
 object GetGeneratorSentValue : Opcode(1)
 
+/////////////
+// Classes //
+/////////////
+
+/**
+ * Creates a class. Note that this is a temporary data class to allow proper
+ * setup of class methods. FinalizeClass must be called on the result in order
+ * to get the JS class.
+ *
+ * Stack:
+ *   ... ctor superClass -> ... class
+ */
+object CreateClass : Opcode(-1)
+
+/**
+ * Creates a method. Works similarly to CreateClosure but without
+ * unnecessary Operations calls
+ */
+class CreateMethod(val ir: FunctionInfo) : Opcode(1)
+
+/**
+ * Attaches a class method given the result of CreateClass
+ *
+ * Stack:
+ *   ... class -> ...
+ */
+class AttachClassMethod(
+    val name: String,
+    val isStatic: Boolean,
+    val kind: MethodDefinitionNode.Kind,
+    val ir: FunctionInfo,
+) : Opcode(-1)
+
+
+/**
+ * Attaches a class method given the result of CreateClass
+ *
+ * Stack:
+ *   ... class name -> ...
+ */
+class AttachComputedClassMethod(
+    val isStatic: Boolean,
+    val kind: MethodDefinitionNode.Kind,
+    val ir: FunctionInfo,
+) : Opcode(-2)
+
+/**
+ * Creates a JSValue from the data class created by CreateClass
+ */
+object FinalizeClass : Opcode(0)
+
 // Misc
 
 class CopyObjectExcludingProperties(val propertiesLocal: Local) : Opcode(0)
@@ -236,8 +289,6 @@ class CreateTemplateLiteral(val numberOfParts: Int) : Opcode(-numberOfParts + 1)
 object ForInEnumerate : Opcode(0)
 
 class CreateClosure(val ir: FunctionInfo) : Opcode(1)
-
-class CreateClassConstructor(val info: FunctionInfo) : Opcode(1)
 
 class CreateGeneratorClosure(val ir: FunctionInfo) : Opcode(1)
 
