@@ -177,11 +177,11 @@ class LoadGlobal(val name: String) : Opcode(1)
 
 class StoreGlobal(val name: String) : Opcode(-1)
 
-class LoadCurrentEnvSlot(val slot: Int) : Opcode(-1)
+class LoadCurrentEnvSlot(val slot: Int) : Opcode(1)
 
 class StoreCurrentEnvSlot(val slot: Int) : Opcode(-1)
 
-class LoadEnvSlot(val slot: Int, val distance: Int) : Opcode(-1)
+class LoadEnvSlot(val slot: Int, val distance: Int) : Opcode(1)
 
 class StoreEnvSlot(val slot: Int, val distance: Int) : Opcode(-1)
 
