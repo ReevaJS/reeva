@@ -125,7 +125,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         for (func in functionsToInitialize) {
             builder.addNestedFunction(
                 visitFunctionHelper(
-                    func.identifier.name,
+                    func.identifier.processedName,
                     func.parameters,
                     func.body,
                     func.functionScope,
@@ -397,7 +397,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         for (func in functionsToInitialize) {
             builder.addNestedFunction(
                 visitFunctionHelper(
-                    func.identifier.name,
+                    func.identifier.processedName,
                     func.parameters,
                     func.body,
                     func.functionScope,
@@ -791,7 +791,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
                     if (expr.type == MemberExpressionNode.Type.Computed) {
                         visit(expr.rhs)
                     } else {
-                        +PushConstant((expr.rhs as IdentifierNode).name)
+                        +PushConstant((expr.rhs as IdentifierNode).processedName)
                     }
 
                     +if (node.scope.isStrict) DeletePropertyStrict else DeletePropertySloppy
@@ -865,7 +865,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
                         +StoreKeyedProperty
                     }
                     MemberExpressionNode.Type.NonComputed -> {
-                        val name = (target.rhs as IdentifierNode).name
+                        val name = (target.rhs as IdentifierNode).processedName
                         +LoadNamedProperty(name)
                         execute(DupX1)
                         +StoreNamedProperty(name)
@@ -939,7 +939,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
                     return
                 }
                 is SimpleBindingProperty -> {
-                    val name = property.declaration.identifier.name
+                    val name = property.declaration.identifier.processedName
                     +LoadValue(valueLocal)
                     +LoadNamedProperty(name)
 
@@ -1133,7 +1133,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
                     MemberExpressionNode.Type.NonComputed -> {
                         pushRhs()
                         +DupX1
-                        +StoreNamedProperty((lhs.rhs as IdentifierNode).name)
+                        +StoreNamedProperty((lhs.rhs as IdentifierNode).processedName)
                     }
                     MemberExpressionNode.Type.Tagged -> TODO()
                 }
@@ -1171,7 +1171,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
                 +LoadKeyedProperty
             }
             MemberExpressionNode.Type.NonComputed -> {
-                +LoadNamedProperty((node.rhs as IdentifierNode).name)
+                +LoadNamedProperty((node.rhs as IdentifierNode).processedName)
             }
             MemberExpressionNode.Type.Tagged -> TODO()
         }
@@ -1355,14 +1355,14 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
     override fun visitPropertyName(node: PropertyName) {
         if (node.type == PropertyName.Type.Identifier) {
-            +PushConstant((node.expression as IdentifierNode).name)
+            +PushConstant((node.expression as IdentifierNode).processedName)
         } else visitExpression(node.expression)
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
         builder.addNestedFunction(
             visitFunctionHelper(
-                node.identifier?.name ?: "<anonymous>",
+                node.identifier?.processedName ?: "<anonymous>",
                 node.parameters,
                 node.body,
                 node.functionScope,
@@ -1389,12 +1389,12 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
     override fun visitClassDeclaration(node: ClassDeclarationNode) {
         expect(node.identifier != null)
-        visitClassImpl(node.identifier.name, node.classNode)
+        visitClassImpl(node.identifier.processedName, node.classNode)
         storeToSource(node)
     }
 
     override fun visitClassExpression(node: ClassExpressionNode) {
-        visitClassImpl(node.identifier?.name, node.classNode)
+        visitClassImpl(node.identifier?.processedName, node.classNode)
     }
 
     private fun visitClassImpl(name: String?, node: ClassNode) {
@@ -1603,7 +1603,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         }
 
         if (field.identifier.type == PropertyName.Type.Identifier) {
-            val name = (field.identifier.expression as IdentifierNode).name
+            val name = (field.identifier.expression as IdentifierNode).processedName
             loadValue()
             +StoreNamedProperty(name)
         } else {
@@ -1639,7 +1639,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
             visitExpression(node.target)
             +LoadKeyedProperty
         } else {
-            +LoadNamedProperty((node.target as IdentifierNode).name)
+            +LoadNamedProperty((node.target as IdentifierNode).processedName)
         }
     }
 
@@ -1789,7 +1789,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
     private fun storeObjectProperty(property: PropertyName, valueProducer: () -> Unit) {
         if (property.type == PropertyName.Type.Identifier) {
             valueProducer()
-            val name = (property.expression as IdentifierNode).name
+            val name = (property.expression as IdentifierNode).processedName
             +StoreNamedProperty(name)
             return
         } else visitExpression(property.expression)

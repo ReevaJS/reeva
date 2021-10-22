@@ -179,7 +179,7 @@ class Parser(val executable: Executable) {
             val peeked = peek() ?: break
             if (peeked.type != TokenType.Colon)
                 break
-            labels.add(parseIdentifierString())
+            labels.add(parseIdentifier().processedName)
             consume(TokenType.Colon)
         }
 
@@ -562,7 +562,7 @@ class Parser(val executable: Executable) {
         }
 
         if (matchIdentifier()) {
-            val identifier = parseIdentifierString()
+            val identifier = parseIdentifier().processedName
             labelStateStack.last().validateContinue(continueToken, lastToken)
             return@nps ContinueStatementNode(identifier).also { asi() }
         }
@@ -589,7 +589,7 @@ class Parser(val executable: Executable) {
         }
 
         if (matchIdentifier()) {
-            val identifier = parseIdentifierString()
+            val identifier = parseIdentifier().processedName
             labelStateStack.last().validateBreak(breakToken, lastToken)
             return@nps BreakStatementNode(identifier).also { asi() }
         }
@@ -950,7 +950,7 @@ class Parser(val executable: Executable) {
 
         if (!match(TokenType.Equals) && !match(TokenType.OpenParen)) {
             if (name.type == PropertyName.Type.Identifier) {
-                val identifier = (name.expression as IdentifierNode).name
+                val identifier = (name.expression as IdentifierNode).processedName
                 val isGetter = identifier == "get"
                 val isSetter = identifier == "set"
 
@@ -1116,15 +1116,8 @@ class Parser(val executable: Executable) {
         return match(TokenType.Identifier) || tokenType.category == TokenType.Category.Keyword
     }
 
-    private fun parseIdentifierString(): String {
-        expect(matchIdentifierName())
-        val identifier = token.literals
-        consume()
-        return identifier
-    }
-
     private fun parseIdentifierReference(): IdentifierReferenceNode = nps {
-        IdentifierReferenceNode(parseIdentifierString())
+        IdentifierReferenceNode(parseIdentifier())
     }
 
     private val strictProtectedNames = setOf(
@@ -1132,33 +1125,35 @@ class Parser(val executable: Executable) {
     )
 
     private fun parseIdentifier(): IdentifierNode = nps {
-        IdentifierNode(parseIdentifierString())
+        expect(matchIdentifierName())
+        val token = this.token
+        val identifier = token.literals
+        consume()
+
+        val unescaped = unescapeString(identifier)
+
+        if (!unescaped[0].let { it == '$' || it == '_' || it.isIdStart() })
+            reporter.at(token).identifierInvalidEscapeSequence(identifier)
+
+        if (!unescaped.drop(1).all { it == '$' || it.isIdContinue() || it == '\u200c' || it == '\u200d' })
+            reporter.at(token).identifierInvalidEscapeSequence(identifier)
+
+        IdentifierNode(unescaped, identifier)
     }
 
     private fun parseBindingIdentifier(): IdentifierNode {
-        var string: String
-        val node = nps {
-            if (!matchIdentifierName())
-                reporter.at(token).expected("identifier")
-            string = parseIdentifierString()
-            IdentifierNode(string)
-        }
+        if (!matchIdentifierName())
+            reporter.at(token).expected("identifier")
+        val identifier = parseIdentifier()
 
-        val unescaped = unescapeString(string)
-        if (isStrict && unescaped in strictProtectedNames)
-            reporter.at(node).identifierStrictReservedWord(unescaped)
+        if (isStrict && identifier.processedName in strictProtectedNames)
+            reporter.at(identifier).identifierStrictReservedWord(identifier.rawName)
 
-        val matchedToken = TokenType.values().firstOrNull { it.isIdentifierNameToken && it.string == unescaped }
+        val matchedToken = TokenType.values().firstOrNull { it.isIdentifierNameToken && it.string == identifier.processedName }
         if (matchedToken != null)
-            reporter.at(node).identifierReservedWord(unescaped)
+            reporter.at(identifier).identifierReservedWord(identifier.rawName)
 
-        if (!unescaped[0].let { it == '$' || it == '_' || it.isIdStart() })
-                reporter.at(node).identifierInvalidEscapeSequence(string)
-
-        if (!unescaped.drop(1).all { it == '$' || it.isIdContinue() || it == '\u200c' || it == '\u200d' })
-            reporter.at(node).identifierInvalidEscapeSequence(string)
-
-        return node
+        return identifier
     }
 
     private fun checkForAndConsumeUseStrict(): ASTNode? = nps {
@@ -1715,7 +1710,7 @@ class Parser(val executable: Executable) {
                 if (name.type != PropertyName.Type.Identifier || isGeneratorToken != null)
                     reporter.unexpectedToken(tokenType)
 
-                val identifier = (name.expression as IdentifierNode).name
+                val identifier = (name.expression as IdentifierNode).rawName
                 if (identifier != "get" && identifier != "set")
                     reporter.unexpectedToken(tokenType)
 
@@ -1741,8 +1736,7 @@ class Parser(val executable: Executable) {
             if (name.type != PropertyName.Type.Identifier)
                 reporter.at(name).invalidShorthandProperty()
 
-            val identifier = (name.expression as IdentifierNode).name
-            val node = IdentifierReferenceNode(identifier).withPosition(name)
+            val node = IdentifierReferenceNode(name.expression as IdentifierNode).withPosition(name)
 
             return@nps ShorthandProperty(node)
         }

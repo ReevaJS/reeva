@@ -17,7 +17,7 @@ class ParameterList(parameters: List<Parameter> = emptyList()) : ASTListNode<Par
 
     fun containsDuplicates(): Boolean {
         return filterIsInstance<SimpleParameter>()
-            .map { it.identifier.name }
+            .map { it.identifier.processedName }
             .duplicates()
             .isNotEmpty()
     }
@@ -47,7 +47,7 @@ class SimpleParameter(
 ) : VariableSourceNode(listOfNotNull(identifier, initializer)), Parameter {
     override val isSimple = initializer == null
 
-    override fun name() = identifier.name
+    override fun name() = identifier.processedName
 }
 
 class RestParameter(val declaration: BindingDeclarationOrPattern) : ASTNodeBase(), Parameter {
@@ -70,7 +70,7 @@ class FunctionDeclarationNode(
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
 
-    override fun name() = identifier.name
+    override fun name() = identifier.processedName
 }
 
 class FunctionExpressionNode(
