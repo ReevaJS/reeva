@@ -238,6 +238,7 @@ class Realm {
         lateinit var `@@toStringTag`: JSSymbol private set
         lateinit var `@@unscopables`: JSSymbol private set
 
+        // Reeva-internal symbols
         internal lateinit var `@@classInstanceFields`: JSSymbol private set
 
         fun setupSymbols() {
@@ -259,7 +260,6 @@ class Realm {
             `@@isConcatSpreadable` = JSSymbol("Symbol.isConcatSpreadable").also {
                 wellknownSymbols["@@isConcatSpreadable"] = it
             }
-
             `@@classInstanceFields` = JSSymbol("Symbol.classInstanceFields")
         }
     }

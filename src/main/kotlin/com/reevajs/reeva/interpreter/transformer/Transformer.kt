@@ -1,6 +1,5 @@
 package com.reevajs.reeva.interpreter.transformer
 
-import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.*
@@ -389,7 +388,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
                     assign(param.pattern, local)
                 }
                 is RestParameter -> {
-                    +CreateRestParam
+                    +CollectRestArgs
                     assign(param.declaration.node)
                 }
             }
@@ -453,7 +452,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         if (source.mode == VariableMode.Global) {
             if (source.name() == "undefined") {
                 if (source.scope.isStrict) {
-                    +ThrowConstantError("cannot assign to constant variable \"undefined\"")
+                    +ThrowConstantReassignmentError("undefined")
                 } else return
             } else {
                 expect(source.type == VariableType.Var)
@@ -1145,7 +1144,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
     private fun checkForConstReassignment(node: VariableRefNode): Boolean {
         return if (node.source.type == VariableType.Const) {
-            +ThrowConstantError("cannot reassign constant variable \"${node.source.name()}\"")
+            +ThrowConstantReassignmentError(node.source.name())
             true
         } else false
     }
@@ -1209,7 +1208,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         // We need to check if the variable has been initialized
         +Dup
         builder.ifHelper(::JumpIfNotEmpty) {
-            +ThrowConstantError("cannot access lexical variable \"${node.identifierName}\" before initialization")
+            +ThrowLexicalAccessError(node.identifierName)
         }
     }
 
@@ -1574,7 +1573,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
             // Initializer the super constructor
             +GetSuperConstructor
             +LoadValue(NEW_TARGET_LOCAL)
-            +CreateRestParam
+            +CollectRestArgs
             +ConstructArray
             if (hasInstanceFields)
                 callClassInstanceFieldInitializer()
