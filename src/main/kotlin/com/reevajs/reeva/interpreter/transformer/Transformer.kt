@@ -153,6 +153,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
         isStrict: Boolean,
         kind: Operations.FunctionKind,
         classConstructorKind: JSFunction.ConstructorKind? = null,
+        instantiateFunction: Boolean = true,
     ): FunctionInfo {
         val prevBuilder = builder
         builder = IRBuilder(
@@ -189,13 +190,16 @@ class Transformer(val executable: Executable) : ASTVisitor {
 
         builder = prevBuilder
         val closureOp = when {
-            classConstructorKind != null -> ::CreateClassConstructor
+            classConstructorKind != null -> ::CreateMethod
             kind.isGenerator && kind.isAsync -> ::CreateAsyncGeneratorClosure
             kind.isGenerator -> ::CreateGeneratorClosure
             kind.isAsync -> ::CreateAsyncClosure
             else -> ::CreateClosure
         }
-        +closureOp(functionPackage)
+
+        if (instantiateFunction)
+            +closureOp(functionPackage)
+
         return functionPackage
     }
 
@@ -239,59 +243,6 @@ class Transformer(val executable: Executable) : ASTVisitor {
         } finally {
             if (pushScope)
                 exitScope(node.scope)
-        }
-    }
-
-    private fun callClassInstanceFieldInitializer() {
-        +PushClosure
-        +LoadNamedProperty(Realm.`@@classInstanceFields`)
-        +LoadValue(RECEIVER_LOCAL)
-        +Call(0)
-    }
-
-    private fun makeImplicitClassConstructor(
-        name: String,
-        constructorKind: JSFunction.ConstructorKind,
-        hasInstanceFields: Boolean,
-    ): FunctionInfo {
-        // One for the receiver/new.target
-        var argCount = getReservedLocalsCount(isGenerator = false)
-        if (constructorKind == JSFunction.ConstructorKind.Derived) {
-            // ...and one for the rest param, if necessary
-            argCount++
-        }
-
-        val prevBuilder = builder
-        builder = IRBuilder(
-            argCount,
-            0,
-            constructorKind == JSFunction.ConstructorKind.Derived,
-            isGenerator = false,
-        )
-
-        if (constructorKind == JSFunction.ConstructorKind.Base) {
-            if (hasInstanceFields)
-                callClassInstanceFieldInitializer()
-            +PushUndefined
-            +Return
-        } else {
-            // Initializer the super constructor
-            +GetSuperConstructor
-            +LoadValue(NEW_TARGET_LOCAL)
-            +CreateRestParam
-            +ConstructArray
-            if (hasInstanceFields)
-                callClassInstanceFieldInitializer()
-            +Return
-        }
-
-        return FunctionInfo(
-            name,
-            builder.build(),
-            isStrict = true,
-            isTopLevel = false,
-        ).also {
-            builder = prevBuilder
         }
     }
 
@@ -1447,7 +1398,217 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     private fun visitClassImpl(name: String?, node: ClassNode) {
-        TODO()
+        val instanceFields = mutableListOf<ClassFieldNode>()
+        val staticFields = mutableListOf<ClassFieldNode>()
+        val methods = mutableListOf<ClassMethodNode>()
+        var constructor: ClassMethodNode? = null
+
+        node.body.forEach {
+            if (it is ClassFieldNode) {
+                if (it.isStatic) {
+                    staticFields.add(it)
+                } else {
+                    instanceFields.add(it)
+                }
+            } else {
+                val method = it as ClassMethodNode
+                if (method.isConstructor()) {
+                    expect(constructor == null)
+                    constructor = method
+                } else {
+                    methods.add(method)
+                }
+            }
+        }
+
+        val constructorKind = if (node.heritage == null) {
+            JSFunction.ConstructorKind.Base
+        } else JSFunction.ConstructorKind.Derived
+
+        if (constructor != null) {
+            val method = constructor!!.method
+
+            visitFunctionHelper(
+                name ?: "<anonymous class constructor>",
+                method.parameters,
+                method.body,
+                method.functionScope,
+                method.body.scope,
+                isStrict = true,
+                Operations.FunctionKind.Normal,
+                classConstructorKind = constructorKind,
+            )
+        } else {
+            val info = makeImplicitClassConstructor(
+                name ?: "<anonymous class constructor>",
+                constructorKind,
+                instanceFields.isNotEmpty(),
+            )
+            +CreateMethod(info)
+        }
+
+        if (node.heritage != null) {
+            visit(node.heritage)
+        } else {
+            +PushEmpty
+        }
+
+        // ctor superCtor
+
+        +CreateClass
+
+        // class
+
+        for (classMethod in methods) {
+            +Dup
+
+            val method = classMethod.method
+            val propName = method.propName
+            val isComputed = propName.type == PropertyName.Type.Computed
+
+            val functionInfo = visitFunctionHelper(
+                propName.asString(),
+                method.parameters,
+                method.body,
+                method.functionScope,
+                method.body.scope,
+                isStrict = true,
+                method.kind.toFunctionKind(),
+                constructorKind,
+                instantiateFunction = false,
+            ).also(builder::addNestedFunction)
+
+            // If the name is computed, that comes before the method register
+            if (isComputed) {
+                // TODO: Cast to property name
+                visitExpression(propName.expression)
+                +AttachComputedClassMethod(classMethod.isStatic, method.kind, functionInfo)
+            } else {
+                +AttachClassMethod(propName.asString(), classMethod.isStatic, method.kind, functionInfo)
+            }
+        }
+
+        +FinalizeClass
+
+        // Process fields
+        // Instance fields are initialized in a dedicated method, whereas static fields
+        // are created on the class after it is created with CreateClass
+
+        if (instanceFields.isEmpty() && staticFields.isEmpty())
+            return
+
+        if (instanceFields.isNotEmpty()) {
+            +Dup
+            val instanceFieldInitializerMethod = makeClassFieldInitializerMethod(instanceFields)
+            +CreateClosure(instanceFieldInitializerMethod)
+            +StoreNamedProperty(Realm.`@@classInstanceFields`)
+        }
+
+        for (field in staticFields) {
+            +Dup
+            storeClassField(field)
+        }
+    }
+
+    private fun makeClassFieldInitializerMethod(fields: List<ClassFieldNode>): FunctionInfo {
+        val prevBuilder = builder
+        builder = IRBuilder(
+            getReservedLocalsCount(isGenerator = false),
+            0,
+            isDerivedClassConstructor = false,
+            isGenerator = false,
+        )
+
+        for (field in fields) {
+            +LoadValue(RECEIVER_LOCAL)
+            storeClassField(field)
+        }
+
+        +PushUndefined
+        +Return
+
+        return FunctionInfo(
+            "<class instance field initializer>",
+            builder.build(),
+            isStrict = true,
+            isTopLevel = false,
+        ).also {
+            builder = prevBuilder
+        }
+    }
+
+    private fun callClassInstanceFieldInitializer() {
+        +PushClosure
+        +LoadNamedProperty(Realm.`@@classInstanceFields`)
+        +LoadValue(RECEIVER_LOCAL)
+        +Call(0)
+    }
+
+    private fun makeImplicitClassConstructor(
+        name: String,
+        constructorKind: JSFunction.ConstructorKind,
+        hasInstanceFields: Boolean,
+    ): FunctionInfo {
+        // One for the receiver/new.target
+        var argCount = getReservedLocalsCount(isGenerator = false)
+        if (constructorKind == JSFunction.ConstructorKind.Derived) {
+            // ...and one for the rest param, if necessary
+            argCount++
+        }
+
+        val prevBuilder = builder
+        builder = IRBuilder(
+            argCount,
+            0,
+            constructorKind == JSFunction.ConstructorKind.Derived,
+            isGenerator = false,
+        )
+
+        if (constructorKind == JSFunction.ConstructorKind.Base) {
+            if (hasInstanceFields)
+                callClassInstanceFieldInitializer()
+            +PushUndefined
+            +Return
+        } else {
+            // Initializer the super constructor
+            +GetSuperConstructor
+            +LoadValue(NEW_TARGET_LOCAL)
+            +CreateRestParam
+            +ConstructArray
+            if (hasInstanceFields)
+                callClassInstanceFieldInitializer()
+            +Return
+        }
+
+        return FunctionInfo(
+            name,
+            builder.build(),
+            isStrict = true,
+            isTopLevel = false,
+        ).also {
+            builder = prevBuilder
+            builder.addNestedFunction(it)
+        }
+    }
+
+    private fun storeClassField(field: ClassFieldNode) {
+        fun loadValue() {
+            if (field.initializer != null) {
+                visitExpression(field.initializer)
+            } else {
+                +PushUndefined
+            }
+        }
+
+        if (field.identifier.type == PropertyName.Type.Identifier) {
+            val name = (field.identifier.expression as IdentifierNode).name
+            loadValue()
+            +StoreNamedProperty(name)
+        } else {
+            visitExpression(field.identifier.expression)
+            loadValue()
+            +StoreKeyedProperty
+        }
     }
 
     override fun visitAwaitExpression(node: AwaitExpressionNode) {

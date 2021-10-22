@@ -88,7 +88,6 @@ interface OpcodeVisitor {
             is CreateTemplateLiteral -> visitCreateTemplateLiteral(opcode)
             ForInEnumerate -> visitForInEnumerate()
             is CreateClosure -> visitCreateClosure(opcode)
-            is CreateClassConstructor -> visitCreateClassConstructor(opcode)
             is CreateGeneratorClosure -> visitCreateGeneratorClosure(opcode)
             is CreateAsyncClosure -> visitCreateAsyncClosure(opcode)
             is CreateAsyncGeneratorClosure -> visitCreateAsyncGeneratorClosure(opcode)
@@ -116,6 +115,11 @@ interface OpcodeVisitor {
             PushJVMFalse -> visitPushJVMFalse()
             PushJVMTrue -> visitPushJVMTrue()
             is PushJVMInt -> visitPushJVMInt(opcode)
+            is CreateMethod -> visitCreateClassConstructor(opcode)
+            CreateClass -> visitCreateClass()
+            is AttachClassMethod -> visitAttachClassMethod(opcode)
+            is AttachComputedClassMethod -> visitAttachComputedClassMethod(opcode)
+            FinalizeClass -> visitFinalizeClass()
         }
     }
 
@@ -289,8 +293,6 @@ interface OpcodeVisitor {
 
     fun visitCreateClosure(opcode: CreateClosure)
 
-    fun visitCreateClassConstructor(opcode: CreateClassConstructor)
-
     fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure)
 
     fun visitCreateAsyncClosure(opcode: CreateAsyncClosure)
@@ -344,4 +346,14 @@ interface OpcodeVisitor {
     fun visitPushJVMTrue()
 
     fun visitPushJVMInt(opcode: PushJVMInt)
+
+    fun visitCreateClassConstructor(opcode: CreateMethod)
+
+    fun visitCreateClass()
+
+    fun visitAttachClassMethod(opcode: AttachClassMethod)
+
+    fun visitAttachComputedClassMethod(opcode: AttachComputedClassMethod)
+
+    fun visitFinalizeClass()
 }
