@@ -1001,7 +1001,14 @@ class Parser(val executable: Executable) {
     ): ClassElementNode = nps {
         if (match(TokenType.Equals)) {
             parseClassField(name, isStatic)
-        } else parseClassMethod(name, kind, isStatic)
+        } else if (match(TokenType.OpenParen)) {
+            parseClassMethod(name, kind, isStatic)
+        } else if (match(TokenType.Semicolon) || token.afterNewline) {
+            // Must be a class field with no initializer
+            ClassFieldNode(name, null, isStatic)
+        } else {
+            reporter.at(token).expected("class field initializer or semicolon")
+        }
     }
 
     private fun parseMethodDefinition(name: PropertyName, kind: MethodDefinitionNode.Kind): MethodDefinitionNode = nps {
