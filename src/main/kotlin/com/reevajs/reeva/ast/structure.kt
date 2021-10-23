@@ -19,11 +19,16 @@ open class ASTNodeBase(children: List<ASTNode> = emptyList()) : ASTNode {
     override val astNodeName: String
         get() = this::class.java.simpleName
 
-    override var sourceStart: TokenLocation = TokenLocation.EMPTY
-    override var sourceEnd: TokenLocation = TokenLocation.EMPTY
+    final override var sourceStart: TokenLocation = TokenLocation.EMPTY
+    final override var sourceEnd: TokenLocation = TokenLocation.EMPTY
 
     init {
         children.forEach { it.parent = this }
+
+        if (children.size == 1) {
+            sourceStart = children.first().sourceStart
+            sourceEnd = children.first().sourceEnd
+        }
     }
 }
 
@@ -35,6 +40,8 @@ fun <T : ASTNode> T.withPosition(start: TokenLocation, end: TokenLocation) = app
 fun <T : ASTNode> T.withPosition(token: Token) = withPosition(token.start, token.end)
 
 fun <T : ASTNode> T.withPosition(node: ASTNode) = withPosition(node.sourceStart, node.sourceEnd)
+
+fun <T : ASTNode> T.withPosition(start: ASTNode, end: ASTNode) = withPosition(start.sourceStart, end.sourceEnd)
 
 open class NodeWithScope(children: List<ASTNode> = emptyList()) : ASTNodeBase(children) {
     lateinit var scope: Scope

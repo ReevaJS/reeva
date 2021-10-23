@@ -4,9 +4,17 @@ import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.ast.literals.PropertyName
 import com.reevajs.reeva.ast.statements.BlockNode
+import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.utils.expect
 
 class EarlyErrorDetector(private val reporter: ErrorReporter) : ASTVisitor {
+    override fun visit(node: ASTNode) {
+        // Verify that we're setting node location properties correctly
+        expect(node.sourceStart != TokenLocation.EMPTY && node.sourceEnd != TokenLocation.EMPTY)
+        super.visit(node)
+    }
+
     override fun visitScript(node: ScriptNode) {
         visitScope(node.scope)
         super.visitScript(node)
@@ -37,15 +45,7 @@ class EarlyErrorDetector(private val reporter: ErrorReporter) : ASTVisitor {
         super.visitMethodDefinition(node)
     }
 
-    override fun visitClassDeclaration(node: ClassDeclarationNode) {
-        visitClassNode(node.classNode)
-    }
-
-    override fun visitClassExpression(node: ClassExpressionNode) {
-        visitClassNode(node.classNode)
-    }
-
-    private fun visitClassNode(node: ClassNode) {
+    override fun visitClass(node: ClassNode) {
         for (element in node.body) {
             if (element is ClassFieldNode) {
                 if (element.identifier.type == PropertyName.Type.Identifier) {

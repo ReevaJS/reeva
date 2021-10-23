@@ -101,6 +101,9 @@ interface ASTVisitor {
             is SimpleParameter -> visitSimpleParameter(node)
             is BindingParameter -> visitBindingParameter(node)
             is RestParameter -> visitRestParameter(node)
+            is ClassFieldNode -> visitClassField(node)
+            is ClassMethodNode -> visitClassMethod(node)
+            is ClassNode -> visitClass(node)
             else -> throw IllegalArgumentException("Unrecognized ASTNode ${node.astNodeName}")
         }
     }
@@ -322,11 +325,28 @@ interface ASTVisitor {
     }
 
     fun visitClassDeclaration(node: ClassDeclarationNode) {
-        // TODO: Default handling
+        node.identifier?.let(::visit)
+        visit(node.classNode)
     }
 
     fun visitClassExpression(node: ClassExpressionNode) {
-        // TODO: Default handling
+        node.identifier?.let(::visit)
+        visit(node.classNode)
+    }
+
+    fun visitClass(node: ClassNode) {
+        node.heritage?.let(::visit)
+        for (element in node.body)
+            visit(element)
+    }
+
+    fun visitClassField(node: ClassFieldNode) {
+        visit(node.identifier)
+        node.initializer?.let(::visit)
+    }
+
+    fun visitClassMethod(node: ClassMethodNode) {
+        visit(node.method)
     }
 
     fun visitBinaryExpression(node: BinaryExpressionNode) {
