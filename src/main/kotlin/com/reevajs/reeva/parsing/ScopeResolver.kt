@@ -14,25 +14,25 @@ class ScopeResolver : ASTVisitor {
     private lateinit var scope: Scope
     private var allowVarInlining = true
 
-    fun resolve(script: ScriptNode) {
+    fun resolve(node: NodeWithScope) {
         val globalScope = GlobalScope()
         scope = globalScope
-        globalScope.isStrict = script.hasUseStrict
+        node.scope = scope
 
-        script.scope = scope
-
-        visit(script.statements)
-
-        scope.finish()
-    }
-
-    fun resolve(function: FunctionDeclarationNode) {
-        val globalScope = GlobalScope()
-        scope = globalScope
-
-        function.scope = scope
-
-        visit(function)
+        when (node) {
+            is ScriptNode -> {
+                globalScope.isStrict = node.hasUseStrict
+                visit(node.statements)
+            }
+            is FunctionDeclarationNode -> {
+                node.scope = scope
+                visit(node)
+            }
+            is ModuleNode -> {
+                globalScope.isStrict = true
+                visit(node.body)
+            }
+        }
 
         scope.finish()
     }

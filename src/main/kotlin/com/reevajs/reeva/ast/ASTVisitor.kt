@@ -88,6 +88,7 @@ interface ASTVisitor {
             is ASTListNode<*> -> visitASTListNode(node)
             is MethodDefinitionNode -> visitMethodDefinition(node)
             is ScriptNode -> visitScript(node)
+            is ModuleNode -> visitModule(node)
             is PropertyName -> visitPropertyName(node)
             is BindingPatternNode -> visitBindingPattern(node)
             is BindingDeclaration -> visitBindingDeclaration(node)
@@ -111,6 +112,10 @@ interface ASTVisitor {
 
     fun visitScript(node: ScriptNode) {
         visit(node.statements)
+    }
+
+    fun visitModule(node: ModuleNode) {
+        visit(node.body)
     }
 
     fun visitASTListNode(node: ASTListNode<*>) {

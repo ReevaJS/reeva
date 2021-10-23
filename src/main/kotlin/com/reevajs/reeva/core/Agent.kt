@@ -1,7 +1,7 @@
 package com.reevajs.reeva.core
 
 import com.reevajs.reeva.Reeva
-import com.reevajs.reeva.ast.ScriptNode
+import com.reevajs.reeva.ast.RootNode
 import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.core.lifecycle.ExecutionResult
 import com.reevajs.reeva.interpreter.Interpreter
@@ -12,7 +12,6 @@ import com.reevajs.reeva.interpreter.transformer.TransformerResult
 import com.reevajs.reeva.parsing.Parser
 import com.reevajs.reeva.parsing.ParsingResult
 import com.reevajs.reeva.runtime.functions.JSFunction
-import com.reevajs.reeva.utils.expect
 import java.io.File
 import java.nio.ByteOrder
 
@@ -44,10 +43,17 @@ class Agent {
     }
 
     fun parse(executable: Executable): ParsingResult {
-        val result = Parser(executable).parseScript()
+        val parser = Parser(executable)
+
+        val result = when {
+            executable.file == null -> parser.parseScript()
+            executable.file.extension == "js" -> parser.parseScript()
+            executable.file.extension == "mjs" -> parser.parseModule()
+            else -> throw IllegalArgumentException("Unknown file extension: ${executable.file.extension}")
+        }
+
         if (result is ParsingResult.Success) {
-            expect(result.node is ScriptNode)
-            executable.script = result.node
+            executable.rootNode = result.node as RootNode
         }
         return result
     }
@@ -57,7 +63,7 @@ class Agent {
         if (result is TransformerResult.Success) {
             executable.functionInfo = result.ir
             // Let the script get garbage collected
-            executable.script = null
+            executable.rootNode = null
         }
         return result
     }
@@ -78,7 +84,7 @@ class Agent {
         }
 
         if (printAST) {
-            executable.script!!.debugPrint()
+            executable.rootNode!!.debugPrint()
             println("\n")
         }
 

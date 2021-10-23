@@ -192,37 +192,11 @@ inline fun <reified T : Any> ASTNode.childrenOfType(): List<T> {
 
 inline fun <reified T : Any> ASTNode.containsAny() = childrenOfType<T>().isNotEmpty()
 
-class ScriptNode(val statements: StatementList, val hasUseStrict: Boolean) : NodeWithScope(statements)
+sealed class RootNode(children: List<ASTNode>) : NodeWithScope(children)
 
-class ModuleNode(val body: StatementList) : NodeWithScope(body)
+class ScriptNode(val statements: StatementList, val hasUseStrict: Boolean) : RootNode(statements)
+
+class ModuleNode(val body: StatementList) : RootNode(body)
 
 interface StatementNode : ASTNode
 interface ExpressionNode : ASTNode
-
-// TODO: Remove
-class ScriptOrModuleNode(private val value: Any) {
-    init {
-        expect(value is ScriptNode || value is ModuleNode)
-    }
-
-    val isScript: Boolean
-        get() = value is ScriptNode
-
-    val isModule: Boolean
-        get() = value is ModuleNode
-
-    val asScript: ScriptNode
-        get() = value as ScriptNode
-
-    val asModule: ModuleNode
-        get() = value as ModuleNode
-
-    val isStrict: Boolean
-        get() = isModule
-
-    fun dump(n: Int = 0) = when {
-        isScript -> asScript.dump(n)
-        isModule -> asModule.dump(n)
-        else -> unreachable()
-    }
-}
