@@ -57,7 +57,7 @@ class RestParameter(val declaration: BindingDeclarationOrPattern) : ASTNodeBase(
 class BindingParameter(
     val pattern: BindingPatternNode,
     val initializer: ExpressionNode?,
-) : ASTNodeBase(), Parameter {
+) : ASTNodeBase(listOfNotNull(pattern, initializer)), Parameter {
     override val isSimple = false
 }
 

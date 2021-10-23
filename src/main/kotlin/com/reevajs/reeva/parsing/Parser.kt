@@ -415,8 +415,9 @@ class Parser(val executable: Executable) {
 
         while (!match(TokenType.CloseBracket)) {
             while (match(TokenType.Comma)) {
+                val element = BindingElisionElement().withPosition(token)
                 consume()
-                bindingEntries.add(BindingElisionElement())
+                bindingEntries.add(element)
             }
 
             if (match(TokenType.TriplePeriod)) {
@@ -428,19 +429,29 @@ class Parser(val executable: Executable) {
                 } else {
                     parseBindingPattern()
                 }
-                bindingEntries.add(BindingRestElement(BindingDeclarationOrPattern(declaration)))
+                val declOrPattern = BindingDeclarationOrPattern(declaration).withPosition(declaration)
+                val bindingElement = BindingRestElement(declOrPattern).withPosition(declOrPattern)
+                bindingEntries.add(bindingElement)
                 break
             }
 
-            val alias = if (matchIdentifier()) {
-                parseBindingDeclaration()
-            } else if (!matchBindingPattern()) {
-                reporter.at(token).expected("binding pattern or identifier", tokenType)
-            } else {
-                parseBindingPattern()
+            val bindingElement = nps {
+                val declOrPattern = nps {
+                    val alias = if (matchIdentifier()) {
+                        parseBindingDeclaration()
+                    } else if (!matchBindingPattern()) {
+                        reporter.at(token).expected("binding pattern or identifier", tokenType)
+                    } else {
+                        parseBindingPattern()
+                    }
+                    BindingDeclarationOrPattern(alias)
+                }
+
+                SimpleBindingElement(declOrPattern, parseInitializer())
             }
 
-            bindingEntries.add(SimpleBindingElement(BindingDeclarationOrPattern(alias), parseInitializer()))
+
+            bindingEntries.add(bindingElement)
 
             if (match(TokenType.Comma)) {
                 consume()
@@ -1091,8 +1102,10 @@ class Parser(val executable: Executable) {
             }
 
             if (matchBindingPattern()) {
-                val pattern = parseBindingPattern()
-                parameters.add(BindingParameter(pattern, parseInitializer()))
+                val parameter = nps {
+                    BindingParameter(parseBindingPattern(), parseInitializer())
+                }
+                parameters.add(parameter)
             } else if (!matchIdentifier()) {
                 reporter.at(token).expected("identifier")
             } else {

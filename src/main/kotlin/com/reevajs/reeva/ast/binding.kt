@@ -49,31 +49,31 @@ class BindingDeclarationOrPattern(
     }
 }
 
-sealed class BindingEntry : ASTNodeBase()
+sealed class BindingEntry(children: List<ASTNode>) : ASTNodeBase(children)
 
-sealed class BindingProperty : BindingEntry()
+sealed class BindingProperty(children: List<ASTNode>) : BindingEntry(children)
 
-class BindingRestProperty(val declaration: BindingDeclaration) : BindingProperty()
+class BindingRestProperty(val declaration: BindingDeclaration) : BindingProperty(listOf(declaration))
 
 class SimpleBindingProperty(
     val declaration: BindingDeclaration,
     val alias: BindingDeclarationOrPattern?,
     val initializer: ExpressionNode?,
-) : BindingProperty()
+) : BindingProperty(listOfNotNull(declaration, alias, initializer))
 
 class ComputedBindingProperty(
     val name: PropertyName,
     val alias: BindingDeclarationOrPattern,
     val initializer: ExpressionNode?,
-) : BindingProperty()
+) : BindingProperty(listOfNotNull(name, alias, initializer))
 
-sealed class BindingElement : BindingEntry()
+sealed class BindingElement(children: List<ASTNode>) : BindingEntry(children)
 
-class BindingRestElement(val declaration: BindingDeclarationOrPattern) : BindingElement()
+class BindingRestElement(val declaration: BindingDeclarationOrPattern) : BindingElement(listOf(declaration))
 
 class SimpleBindingElement(
     val alias: BindingDeclarationOrPattern,
     val initializer: ExpressionNode?,
-) : BindingElement()
+) : BindingElement(listOfNotNull(alias, initializer))
 
-class BindingElisionElement : BindingElement()
+class BindingElisionElement : BindingElement(listOf())

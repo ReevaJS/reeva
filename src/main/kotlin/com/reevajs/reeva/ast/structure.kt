@@ -2,6 +2,7 @@ package com.reevajs.reeva.ast
 
 import com.reevajs.reeva.ast.statements.StatementList
 import com.reevajs.reeva.parsing.Scope
+import com.reevajs.reeva.parsing.lexer.Token
 import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.newline
@@ -30,6 +31,8 @@ fun <T : ASTNode> T.withPosition(start: TokenLocation, end: TokenLocation) = app
     sourceStart = start
     sourceEnd = end
 }
+
+fun <T : ASTNode> T.withPosition(token: Token) = withPosition(token.start, token.end)
 
 fun <T : ASTNode> T.withPosition(node: ASTNode) = withPosition(node.sourceStart, node.sourceEnd)
 
