@@ -61,6 +61,10 @@ class Interpreter(
             locals[index] = arg
         }
 
+        repeat(info.ir.argCount - arguments.size) {
+            locals[it + arguments.size] = JSUndefined
+        }
+
         while (!isDone) {
             try {
                 val startHandler = handlerStarts[ip]
