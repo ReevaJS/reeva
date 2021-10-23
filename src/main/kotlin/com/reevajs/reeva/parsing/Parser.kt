@@ -322,30 +322,23 @@ class Parser(val executable: Executable) {
                 .also { asi() }
         }
 
-        fun parseFrom(): String {
-            if (!match(TokenType.Identifier) || token.rawLiterals != "from")
-                reporter.at(token).expected("\"from\"")
-            consume()
-            return parseStringLiteral().value
-        }
-
         val defaultImport = parseDefaultImport()
 
         if (defaultImport != null) {
             if (!match(TokenType.Comma))
-                return@nps ImportDeclarationNode(ImportList(listOf(defaultImport)), parseFrom())
+                return@nps ImportDeclarationNode(ImportList(listOf(defaultImport)), parseImportExportFrom())
 
             consume()
 
             val namespaceImport = parseNameSpaceImport()
             if (namespaceImport != null)
-                return@nps ImportDeclarationNode(ImportList(listOf(defaultImport, namespaceImport)), parseFrom())
+                return@nps ImportDeclarationNode(ImportList(listOf(defaultImport, namespaceImport)), parseImportExportFrom())
 
             val namedImports = parseNamedImports()
             if (namedImports != null) {
                 return@nps ImportDeclarationNode(
                     ImportList(listOf(defaultImport, *namedImports.toTypedArray())),
-                    parseFrom()
+                    parseImportExportFrom()
                 )
             }
 
@@ -354,11 +347,11 @@ class Parser(val executable: Executable) {
 
         val namespaceImport = parseNameSpaceImport()
         if (namespaceImport != null)
-            return@nps ImportDeclarationNode(ImportList(listOf(namespaceImport)), parseFrom())
+            return@nps ImportDeclarationNode(ImportList(listOf(namespaceImport)), parseImportExportFrom())
 
         val namedImports = parseNamedImports()
         if (namedImports != null)
-            return@nps ImportDeclarationNode(namedImports, parseFrom())
+            return@nps ImportDeclarationNode(namedImports, parseImportExportFrom())
 
         reporter.at(token).expected("namespace import or named import list")
     }
@@ -441,8 +434,120 @@ class Parser(val executable: Executable) {
         ImportList(imports)
     }
 
+    /*
+     * ExportDeclaration :
+     *     export ExportFromClause FromClause ;
+     *     export NamedExports ;
+     *     export VariableStatement
+     *     export Declaration
+     *     export default HoistableDeclaration
+     *     export default ClassDeclaration
+     *     export default [lookahead ∉ { function, async [no LineTerminator here] function, class }]
+     *         AssignmentExpression ;
+     */
     private fun parseExportDeclaration(): ExportNode = nps {
-        TODO()
+        consume(TokenType.Export)
+
+        parseExportFromClause()?.let { return@nps it }
+        parseNamedExports()?.let { return@nps it }
+
+        if (match(TokenType.Var) || match(TokenType.Let) || match(TokenType.Const))
+            return@nps DeclarationExportNode(parseVariableDeclaration())
+
+        if (!match(TokenType.Default))
+            reporter.at(token).expected("\"default\"")
+
+        consume()
+
+        inDefaultContext = true
+
+        if (match(TokenType.Class))
+            return@nps DefaultClassExportNode(parseClassDeclaration())
+
+        if (match(TokenType.Function) || match(TokenType.Async))
+            return@nps DefaultFunctionExportNode(parseFunctionDeclaration())
+
+        DefaultExpressionExportNode(parseExpression()).also {
+            inDefaultContext = false
+        }
+    }
+
+    /*
+     * ExportDeclaration :
+     *     export ExportFromClause FromClause ;
+     *
+     * ExportFromClause :
+     *     *
+     *     * as IdentifierName
+     *     NamedExports
+     *
+     * FromClause :
+     *     from ModuleSpecifier
+     *
+     * ModuleSpecifier :
+     *     StringLiteral
+     */
+    private fun parseExportFromClause(): ExportFromNode? = nps {
+        if (match(TokenType.Mul)) {
+            consume()
+            if (match(TokenType.Identifier) && token.rawLiterals == "as") {
+                consume()
+                return@nps ExportAllAsFromNode(parseIdentifier(), parseImportExportFrom())
+            }
+
+            return@nps ExportAllFromNode(parseImportExportFrom())
+        }
+
+        parseNamedExports()?.let { ExportNamedFromNode(it, parseImportExportFrom()) }
+    }
+
+    /*
+     * NamedExports :
+     *     { }
+     *     { ExportsList }
+     *     { ExportsList , }
+     *
+     * ExportsList :
+     *     ExportSpecifier
+     *     ExportsList , ExportSpecifier
+     *
+     * ExportSpecifier :
+     *     IdentifierName
+     *     IdentifierName as IdentifierName
+     */
+    private fun parseNamedExports(): NamedExports? = nps {
+        if (!match(TokenType.OpenCurly))
+            return@nps null
+
+        consume()
+
+        val list = mutableListOf<NamedExport>()
+
+        while (!match(TokenType.CloseCurly)) {
+            val name = parseIdentifier()
+            if (tokenType == TokenType.Identifier && token.rawLiterals == "as") {
+                consume()
+                list.add(NamedExport(name, parseIdentifier()))
+            } else {
+                list.add(NamedExport(name, null))
+            }
+
+            if (!match(TokenType.Comma))
+                break
+
+            consume()
+        }
+
+        consume(TokenType.CloseCurly)
+
+        NamedExports(ExportList(list))
+    }
+
+    fun parseImportExportFrom(): String {
+        if (!match(TokenType.Identifier) || token.rawLiterals != "from")
+            reporter.at(token).expected("\"from\"")
+        consume()
+        return parseStringLiteral().value
     }
 
     private fun asi() {
@@ -1054,7 +1159,7 @@ class Parser(val executable: Executable) {
      *     class BindingIdentifier ClassTail
      *     [+Default] class ClassTail
      */
-    private fun parseClassDeclaration(): StatementNode = nps {
+    private fun parseClassDeclaration(): ClassDeclarationNode = nps {
         consume(TokenType.Class)
         val identifier = if (!matchIdentifier()) {
             if (!inDefaultContext)
