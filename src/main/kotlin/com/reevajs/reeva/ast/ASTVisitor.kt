@@ -104,6 +104,7 @@ interface ASTVisitor {
             is ClassFieldNode -> visitClassField(node)
             is ClassMethodNode -> visitClassMethod(node)
             is ClassNode -> visitClass(node)
+            is Import -> visitImport(node)
             else -> throw IllegalArgumentException("Unrecognized ASTNode ${node.astNodeName}")
         }
     }
@@ -268,9 +269,37 @@ interface ASTVisitor {
 
     fun visitDebuggerStatement() {}
 
-    fun visitImportDeclaration(node: ImportDeclarationNode) {}
+    fun visitImportDeclaration(node: ImportDeclarationNode) {
+        node.imports?.forEach(::visit)
+    }
 
-    fun visitExport(node: ExportNode) {}
+    fun visitImport(node: Import) {
+        when (node) {
+            is AliasedImport -> {
+                visit(node.identifierNode)
+                visit(node.alias)
+            }
+            is DefaultImport -> visit(node.identifierNode)
+            is NamespaceImport -> visit(node.identifierNode)
+            is NormalImport -> visit(node.identifierNode)
+        }
+    }
+
+    fun visitExport(node: ExportNode) {
+        when (node) {
+            is DeclarationExportNode -> visit(node.declaration)
+            is DefaultClassExportNode -> visit(node.classNode)
+            is DefaultExpressionExportNode -> visit(node.expression)
+            is DefaultFunctionExportNode -> visit(node.declaration)
+            is ExportAllAsFromNode -> visit(node.identifierNode)
+            ExportAllFromNode -> {}
+            is ExportNamedFromNode -> node.exports.forEach(::visit)
+            is NamedExport -> {
+                visit(node.identifierNode)
+                node.alias?.let(::visit)
+            }
+        }
+    }
 
     fun visitArgument(node: ArgumentNode) {
         visit(node.expression)

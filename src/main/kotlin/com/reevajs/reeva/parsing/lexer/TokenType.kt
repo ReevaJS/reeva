@@ -266,6 +266,8 @@ enum class TokenType(val string: String, val category: Category = Category.None)
             Const,
             Debugger,
             Semicolon,
+            Import,
+            Export,
             *expressionTokens.toTypedArray(),
         )
 
