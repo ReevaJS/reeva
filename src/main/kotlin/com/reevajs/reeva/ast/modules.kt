@@ -3,6 +3,7 @@ package com.reevajs.reeva.ast
 import com.reevajs.reeva.ast.statements.ASTListNode
 
 typealias ImportList = ASTListNode<Import>
+typealias ExportList = ASTListNode<NamedExport>
 
 class ImportDeclarationNode(
     val imports: ImportList?, // null indicates `import 'file'` syntax
@@ -39,18 +40,26 @@ class NamespaceImport(val identifierNode: IdentifierNode) : Import(listOf(identi
 
 sealed class ExportNode(children: List<ASTNode>) : ASTNodeBase(children), StatementNode
 
-sealed class ExportFromNode(children: List<ASTNode>) : ExportNode(children)
+sealed class ExportFromNode(val moduleName: String, children: List<ASTNode>) : ExportNode(children)
 
-object ExportAllFromNode : ExportFromNode(emptyList())
+class ExportAllFromNode(moduleName: String) : ExportFromNode(moduleName, emptyList())
 
-class ExportAllAsFromNode(val identifierNode: IdentifierNode) : ExportFromNode(listOf(identifierNode))
+class ExportAllAsFromNode(
+    val identifierNode: IdentifierNode,
+    moduleName: String,
+) : ExportFromNode(moduleName, listOf(identifierNode))
 
-class ExportNamedFromNode(val exports: List<NamedExport>) : ExportFromNode(exports)
+class ExportNamedFromNode(
+    val exports: NamedExports,
+    moduleName: String,
+) : ExportFromNode(moduleName, exports.exports)
 
 class NamedExport(
     val identifierNode: IdentifierNode,
     val alias: IdentifierNode?,
 ) : ExportNode(listOfNotNull(identifierNode, alias))
+
+class NamedExports(val exports: ExportList) : ExportNode(exports)
 
 class DeclarationExportNode(val declaration: StatementNode) : ExportNode(listOf(declaration))
 

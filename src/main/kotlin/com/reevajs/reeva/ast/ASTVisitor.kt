@@ -297,12 +297,13 @@ interface ASTVisitor {
             is DefaultExpressionExportNode -> visit(node.expression)
             is DefaultFunctionExportNode -> visit(node.declaration)
             is ExportAllAsFromNode -> visit(node.identifierNode)
-            ExportAllFromNode -> {}
-            is ExportNamedFromNode -> node.exports.forEach(::visit)
+            is ExportAllFromNode -> {}
+            is ExportNamedFromNode -> node.exports.exports.forEach(::visit)
             is NamedExport -> {
                 visit(node.identifierNode)
                 node.alias?.let(::visit)
             }
+            is NamedExports -> visit(node.exports)
         }
     }
 
