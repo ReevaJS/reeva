@@ -29,20 +29,20 @@ class Transformer(val executable: Executable) : ASTVisitor {
     private val continuableScopes = mutableListOf<LabelledSection>()
 
     fun transform(): TransformerResult {
-        expect(executable.script != null)
+        expect(executable.rootNode != null)
         expect(!::builder.isInitialized, "Cannot reuse a Transformer")
 
         return try {
-            val script = executable.script!!
+            val rootNode = executable.rootNode!!
             builder = IRBuilder(
                 getReservedLocalsCount(isGenerator = false),
-                script.scope.inlineableLocalCount,
+                rootNode.scope.inlineableLocalCount,
                 isDerivedClassConstructor = false,
                 isGenerator = false,
             )
 
-            globalDeclarationInstantiation(script.scope as HoistingScope) {
-                visit(script.statements)
+            globalDeclarationInstantiation(rootNode.scope as HoistingScope) {
+                rootNode.children.forEach(::visit)
                 if (!builder.isDone) {
                     +PushUndefined
                     +Return
@@ -53,7 +53,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
                 FunctionInfo(
                     executable.name,
                     builder.build(),
-                    script.scope.isStrict,
+                    rootNode.scope.isStrict,
                     isTopLevel = true,
                 )
             )

@@ -1,6 +1,6 @@
 package com.reevajs.reeva.core.lifecycle
 
-import com.reevajs.reeva.ast.ScriptNode
+import com.reevajs.reeva.ast.RootNode
 import com.reevajs.reeva.interpreter.transformer.FunctionInfo
 import java.io.File
 
@@ -9,8 +9,7 @@ data class Executable(
     val source: String,
     val name: String = file?.name ?: "<script>"
 ) {
-    // TODO: Modules
-    var script: ScriptNode? = null
+    var rootNode: RootNode? = null
 
     var functionInfo: FunctionInfo? = null
 
