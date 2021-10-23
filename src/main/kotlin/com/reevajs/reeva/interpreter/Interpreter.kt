@@ -682,7 +682,17 @@ class Interpreter(
     }
 
     override fun visitGetSuperConstructor() {
-        TODO("Not yet implemented")
+        push(Reeva.activeAgent.callStack.last().getPrototype())
+    }
+
+    override fun visitGetSuperBase() {
+        val homeObject = Reeva.activeAgent.callStack.last().homeObject
+        if (homeObject == JSUndefined) {
+            push(JSUndefined)
+        } else {
+            ecmaAssert(homeObject is JSObject)
+            push(homeObject.getPrototype())
+        }
     }
 
     override fun visitCreateUnmappedArgumentsObject() {
@@ -771,10 +781,6 @@ class Interpreter(
     override fun visitPopFromGeneratorState() {
         val state = locals[Transformer.GENERATOR_STATE_LOCAL.value] as GeneratorState
         push(state.pop())
-    }
-
-    override fun visitGetSuperBase() {
-        TODO("Not yet implemented")
     }
 
     override fun visitJumpTable(opcode: JumpTable) {
