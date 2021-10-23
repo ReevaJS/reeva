@@ -4,6 +4,7 @@ import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
+import com.reevajs.reeva.core.ModuleRecord
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.interpreter.transformer.opcodes.*
@@ -35,13 +36,18 @@ class Transformer(val executable: Executable) : ASTVisitor {
         return try {
             val rootNode = executable.rootNode!!
             builder = IRBuilder(
-                getReservedLocalsCount(isGenerator = false),
+                getReservedLocalsCount(isGenerator = executable.isModule),
                 rootNode.scope.inlineableLocalCount,
                 isDerivedClassConstructor = false,
-                isGenerator = false,
+                isGenerator = executable.isModule,
             )
 
             globalDeclarationInstantiation(rootNode.scope as HoistingScope) {
+                if (executable.isModule) {
+                    +PushModuleEnvRecord
+                    insertGeneratorPrologue()
+                }
+
                 rootNode.children.forEach(::visit)
                 if (!builder.isDone) {
                     +PushUndefined
@@ -144,6 +150,20 @@ class Transformer(val executable: Executable) : ASTVisitor {
             exitScope(scope)
     }
 
+    private fun insertGeneratorPrologue() {
+        +GetGeneratorPhase
+        builder.initializeJumpTable()
+
+        // Always add the exhausted case
+        // TODO: Determine if a generator will never be exhausted?
+        builder.addJumpTableTarget(-1, builder.opcodeCount())
+        +PushUndefined
+        +Return
+
+        // Add the default case
+        builder.addJumpTableTarget(0, builder.opcodeCount())
+    }
+
     private fun visitFunctionHelper(
         name: String,
         parameters: ParameterList,
@@ -163,19 +183,8 @@ class Transformer(val executable: Executable) : ASTVisitor {
             isGenerator = kind.isGenerator,
         )
 
-        if (kind.isGenerator) {
-            +GetGeneratorPhase
-            builder.initializeJumpTable()
-
-            // Always add the exhausted case
-            // TODO: Determine if a generator will never be exhausted?
-            builder.addJumpTableTarget(-1, builder.opcodeCount())
-            +PushUndefined
-            +Return
-
-            // Add the default case
-            builder.addJumpTableTarget(0, builder.opcodeCount())
-        }
+        if (kind.isGenerator)
+            insertGeneratorPrologue()
 
         val functionPackage = makeFunctionInfo(
             name,
@@ -1340,7 +1349,45 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     override fun visitImportDeclaration(node: ImportDeclarationNode) {
-        TODO()
+        generatorYieldPoint {
+            +PushConstant(node.moduleName)
+        }
+
+        // At this point, the top of the stack contains a ModuleRecord for the
+        // module that we asked for, however it may not be fully linked yet.
+        // We need to verify that the structure is correct (i.e. it exports
+        // everything we've asked for), however we should not actually access
+        // any of the module's exports until they are needed.
+
+        if (node.imports == null) {
+            // This is a file import, so seeing as there are no direct imports,
+            // the ModuleRecord does not need to be kept around
+            +Pop
+        }
+
+        val namedImports = mutableSetOf<String>()
+
+        for (import in node.imports!!) {
+            when (import) {
+                is AliasedImport -> {
+                    expect(import.identifierNode.processedName !in namedImports)
+                    namedImports.add(import.identifierNode.processedName)
+                }
+                is NormalImport -> {
+                    expect(import.identifierNode.processedName !in namedImports)
+                    namedImports.add(import.identifierNode.processedName)
+                }
+                is DefaultImport -> {
+                    expect(ModuleRecord.DEFAULT_SPECIFIER !in namedImports)
+                    namedImports.add(ModuleRecord.DEFAULT_SPECIFIER)
+                }
+                is NamespaceImport -> TODO()
+            }
+        }
+
+        +Dup
+        +DeclareNamedImports(namedImports)
+        +StoreModuleRecord
     }
 
     override fun visitExport(node: ExportNode) {
@@ -1662,6 +1709,16 @@ class Transformer(val executable: Executable) : ASTVisitor {
     }
 
     override fun visitYieldExpression(node: YieldExpressionNode) {
+        generatorYieldPoint {
+            if (node.expression == null) {
+                +PushUndefined
+            } else {
+                visitExpression(node.expression)
+            }
+        }
+    }
+
+    private fun generatorYieldPoint(block: () -> Unit) {
         val phase = builder.incrementAndGetGeneratorPhase()
         +SetGeneratorPhase(phase)
 
@@ -1670,11 +1727,7 @@ class Transformer(val executable: Executable) : ASTVisitor {
             +PushToGeneratorState
         }
 
-        if (node.expression == null) {
-            +PushUndefined
-        } else {
-            visitExpression(node.expression)
-        }
+        block()
 
         +Return
 

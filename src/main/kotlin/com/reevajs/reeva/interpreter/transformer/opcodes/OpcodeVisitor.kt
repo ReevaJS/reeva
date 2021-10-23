@@ -68,6 +68,7 @@ interface OpcodeVisitor {
             ConstructArray -> visitConstructArray()
             is DeclareGlobals -> visitDeclareGlobals(opcode)
             is PushDeclarativeEnvRecord -> visitPushDeclarativeEnvRecord(opcode)
+            is PushModuleEnvRecord -> visitPushModuleEnvRecord()
             PopEnvRecord -> visitPopEnvRecord()
             is LoadGlobal -> visitLoadGlobal(opcode)
             is StoreGlobal -> visitStoreGlobal(opcode)
@@ -123,6 +124,8 @@ interface OpcodeVisitor {
             is AttachClassMethod -> visitAttachClassMethod(opcode)
             is AttachComputedClassMethod -> visitAttachComputedClassMethod(opcode)
             FinalizeClass -> visitFinalizeClass()
+            is DeclareNamedImports -> visitDeclareNamedImports(opcode)
+            StoreModuleRecord -> visitStoreModuleRecord()
         }
     }
 
@@ -256,6 +259,8 @@ interface OpcodeVisitor {
 
     fun visitPushDeclarativeEnvRecord(opcode: PushDeclarativeEnvRecord)
 
+    fun visitPushModuleEnvRecord()
+
     fun visitPopEnvRecord()
 
     fun visitLoadGlobal(opcode: LoadGlobal)
@@ -365,4 +370,8 @@ interface OpcodeVisitor {
     fun visitPushToGeneratorState()
 
     fun visitPopFromGeneratorState()
+
+    fun visitDeclareNamedImports(opcode: DeclareNamedImports)
+
+    fun visitStoreModuleRecord()
 }

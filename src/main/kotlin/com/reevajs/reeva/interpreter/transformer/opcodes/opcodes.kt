@@ -457,6 +457,12 @@ class DeclareGlobals(val vars: List<String>, val lexs: List<String>, val funcs: 
 class PushDeclarativeEnvRecord(val slotCount: Int) : Opcode(0)
 
 /**
+ * Creates a new ModuleEnvRecord with the current EnvRecord as its parent,
+ * and sets the new record as the active EnvRecord.
+ */
+object PushModuleEnvRecord : Opcode(0)
+
+/**
  * Sets the active EnvRecord to the currently active EnvRecord's parent.
  */
 object PopEnvRecord : Opcode(0)
@@ -733,6 +739,27 @@ object CreateUnmappedArgumentsObject : Opcode(0)
  * perform the binding to the "arguments" variable.
  */
 object CreateMappedArgumentsObject : Opcode(0)
+
+/////////////
+// Modules //
+/////////////
+
+/**
+ * Declares the list of named which are imported by the module. This is
+ * required to make sure that the module being import from actually contains
+ * these exports, as if it does not, it is an error at the time of the import.
+ *
+ * Stack:
+ *   ... moduleRecord -> ...
+ */
+class DeclareNamedImports(val namedImports: Set<String>) : Opcode(-1)
+
+/**
+ * Stores the ModuleRecord at the top of the stack into the currently-active
+ * ModuleEnvRecord. As imports are always top-level, the active EnvRecord is
+ * guaranteed to be a ModuleEnvRecord.
+ */
+object StoreModuleRecord : Opcode(-1)
 
 //////////
 // Misc //

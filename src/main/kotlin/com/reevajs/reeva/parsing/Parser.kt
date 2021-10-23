@@ -454,6 +454,12 @@ class Parser(val executable: Executable) {
         if (match(TokenType.Var) || match(TokenType.Let) || match(TokenType.Const))
             return@nps DeclarationExportNode(parseVariableDeclaration())
 
+        if (match(TokenType.Function) || match(TokenType.Async))
+            return@nps DeclarationExportNode(parseFunctionDeclaration())
+
+        if (match(TokenType.Class))
+            return@nps DeclarationExportNode(parseClassDeclaration())
+
         if (!match(TokenType.Default))
             reporter.at(token).expected("\"default\"")
 
@@ -461,12 +467,13 @@ class Parser(val executable: Executable) {
 
         inDefaultContext = true
 
-        if (match(TokenType.Class))
-            return@nps DefaultClassExportNode(parseClassDeclaration())
-
         if (match(TokenType.Function) || match(TokenType.Async))
             return@nps DefaultFunctionExportNode(parseFunctionDeclaration())
 
+        if (match(TokenType.Class))
+            return@nps DefaultClassExportNode(parseClassDeclaration())
+
+        // TODO: AssignmentExpression, not Expression
         DefaultExpressionExportNode(parseExpression()).also {
             inDefaultContext = false
         }
