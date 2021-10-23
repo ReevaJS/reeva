@@ -69,14 +69,14 @@ class Agent {
     }
 
     fun run(source: String, realm: Realm): ExecutionResult {
-        return run(Executable(null, source), realm)
+        return run(Executable(realm, null, source))
     }
 
     fun run(file: File, realm: Realm): ExecutionResult {
-        return run(Executable(file, file.readText()), realm)
+        return run(Executable(realm, file, file.readText()))
     }
 
-    fun run(executable: Executable, realm: Realm): ExecutionResult {
+    fun run(executable: Executable): ExecutionResult {
         when (val result = parse(executable)) {
             is ParsingResult.InternalError -> return ExecutionResult.InternalError(executable, result.cause)
             is ParsingResult.ParseError ->
@@ -102,8 +102,8 @@ class Agent {
         IRValidator(executable.functionInfo!!.ir).validate()
 
         return try {
-            val function = Interpreter.wrap(realm, executable, realm.globalEnv)
-            ExecutionResult.Success(executable, function.call(realm.globalObject, emptyList()))
+            val function = Interpreter.wrap(executable, executable.realm.globalEnv)
+            ExecutionResult.Success(executable, function.call(executable.realm.globalObject, emptyList()))
         } catch (e: ThrowException) {
             ExecutionResult.RuntimeError(executable, e.value)
         } catch (e: Throwable) {

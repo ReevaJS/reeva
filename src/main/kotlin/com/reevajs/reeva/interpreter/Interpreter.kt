@@ -657,14 +657,14 @@ class Interpreter(
     }
 
     override fun visitCreateClosure(opcode: CreateClosure) {
-        val function = NormalIRFunction(realm, executable.forInfo(opcode.ir), activeEnvRecord).initialize()
+        val function = NormalIRFunction(executable.forInfo(opcode.ir), activeEnvRecord).initialize()
         Operations.setFunctionName(realm, function, opcode.ir.name.key())
         Operations.makeConstructor(realm, function)
         push(function)
     }
 
     override fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure) {
-        val function = GeneratorIRFunction(realm, executable.forInfo(opcode.ir), activeEnvRecord).initialize()
+        val function = GeneratorIRFunction(executable.forInfo(opcode.ir), activeEnvRecord).initialize()
         Operations.setFunctionName(realm, function, opcode.ir.name.key())
         push(function)
     }
@@ -809,7 +809,7 @@ class Interpreter(
     }
 
     override fun visitCreateClassConstructor(opcode: CreateMethod) {
-        push(NormalIRFunction(realm, executable.forInfo(opcode.ir), activeEnvRecord).initialize())
+        push(NormalIRFunction(executable.forInfo(opcode.ir), activeEnvRecord).initialize())
     }
 
     override fun visitCreateClass() {
@@ -893,9 +893,9 @@ class Interpreter(
             MethodDefinitionNode.Kind.Normal,
             MethodDefinitionNode.Kind.Getter,
             MethodDefinitionNode.Kind.Setter ->
-                NormalIRFunction(realm, executable.forInfo(info), activeEnvRecord).initialize()
+                NormalIRFunction(executable.forInfo(info), activeEnvRecord).initialize()
             MethodDefinitionNode.Kind.Generator ->
-                GeneratorIRFunction(realm, executable.forInfo(info), activeEnvRecord).initialize()
+                GeneratorIRFunction(executable.forInfo(info), activeEnvRecord).initialize()
             else -> TODO()
         }
 
@@ -947,17 +947,15 @@ class Interpreter(
     }
 
     abstract class IRFunction(
-        realm: Realm,
         val executable: Executable,
         val outerEnvRecord: EnvRecord,
-        prototype: JSValue = realm.functionProto,
-    ) : JSFunction(realm, executable.functionInfo!!.isStrict, prototype)
+        prototype: JSValue = executable.realm.functionProto,
+    ) : JSFunction(executable.realm, executable.functionInfo!!.isStrict, prototype)
 
     class NormalIRFunction(
-        realm: Realm,
         executable: Executable,
         outerEnvRecord: EnvRecord,
-    ) : IRFunction(realm, executable, outerEnvRecord) {
+    ) : IRFunction(executable, outerEnvRecord) {
         override fun evaluate(arguments: JSArguments): JSValue {
             val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
             return when (val result = Interpreter(realm, executable, args, outerEnvRecord).interpret()) {
@@ -970,10 +968,9 @@ class Interpreter(
     }
 
     class GeneratorIRFunction(
-        realm: Realm,
         executable: Executable,
         outerEnvRecord: EnvRecord,
-    ) : IRFunction(realm, executable, outerEnvRecord) {
+    ) : IRFunction(executable, outerEnvRecord) {
         lateinit var generatorObject: JSGeneratorObject
 
         override fun init() {
@@ -1017,12 +1014,11 @@ class Interpreter(
 
     companion object {
         fun wrap(
-            realm: Realm,
             executable: Executable,
             outerEnvRecord: EnvRecord,
             kind: Operations.FunctionKind = Operations.FunctionKind.Normal,
         ) = when (kind) {
-            Operations.FunctionKind.Normal -> NormalIRFunction(realm, executable, outerEnvRecord)
+            Operations.FunctionKind.Normal -> NormalIRFunction(executable, outerEnvRecord)
             else -> TODO()
         }.initialize()
     }
