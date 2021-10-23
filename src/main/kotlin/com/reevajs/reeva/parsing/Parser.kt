@@ -56,9 +56,8 @@ class Parser(val executable: Executable) {
     }
 
     fun parseScript(): ParsingResult {
-        return try {
-            initLexer()
-            val script = if (tokens.size == 1) {
+        return parseImpl {
+            if (tokens.size == 1) {
                 // The script is empty
                 val newlineCount = source.count { it == '\n' }
                 val indexOfLastNewline = source.indexOfLast { it == '\n' }
@@ -66,32 +65,42 @@ class Parser(val executable: Executable) {
                 val end = TokenLocation(source.lastIndex, newlineCount, source.lastIndex - indexOfLastNewline)
                 ScriptNode(StatementList().withPosition(start, end), false).withPosition(start, end)
             } else parseScriptImpl()
+        }
+    }
 
-            if (!isDone)
-                reporter.at(token).unexpectedToken(tokenType)
-
-            ScopeResolver().resolve(script)
-            EarlyErrorDetector(reporter).visit(script)
-
-            ParsingResult.Success(script)
-        } catch (e: ParsingException) {
-            ParsingResult.ParseError(e.message!!, e.start, e.end)
-        } catch (e: Throwable) {
-            ParsingResult.InternalError(e)
+    fun parseModule(): ParsingResult {
+        return parseImpl {
+            if (tokens.size == 1) {
+                // The script is empty
+                val newlineCount = source.count { it == '\n' }
+                val indexOfLastNewline = source.indexOfLast { it == '\n' }
+                val start = TokenLocation(0, 0, 0)
+                val end = TokenLocation(source.lastIndex, newlineCount, source.lastIndex - indexOfLastNewline)
+                ModuleNode(StatementList().withPosition(start, end)).withPosition(start, end)
+            } else parseModuleImpl()
         }
     }
 
     fun parseFunction(expectedKind: Operations.FunctionKind): ParsingResult {
+        return parseImpl {
+            parseFunctionDeclaration().also {
+                expect(it.kind == expectedKind)
+            }
+        }
+    }
+
+    private fun parseImpl(block: () -> NodeWithScope): ParsingResult {
         return try {
             initLexer()
 
-            val function = parseFunctionDeclaration()
+            val result = block()
             if (!isDone)
                 reporter.at(token).unexpectedToken(tokenType)
-            expect(function.kind == expectedKind)
-            ScopeResolver().resolve(function)
-            EarlyErrorDetector(reporter).visit(function)
-            ParsingResult.Success(function)
+
+            ScopeResolver().resolve(result)
+            EarlyErrorDetector(reporter).visit(result)
+
+            ParsingResult.Success(result)
         } catch (e: ParsingException) {
             ParsingResult.ParseError(e.message!!, e.start, e.end)
         } catch (e: Throwable) {
@@ -99,15 +108,54 @@ class Parser(val executable: Executable) {
         }
     }
 
+    /*
+     * Script :
+     *     ScriptBody?
+     *
+     * ScriptBody :
+     *     StatementList
+     */
     private fun parseScriptImpl(): ScriptNode = nps {
-        // Script :
-        //     ScriptBody?
-        //
-        // ScriptBody :
-        //     StatementList
-
         isStrict = checkForAndConsumeUseStrict() != null
         ScriptNode(parseStatementList(), isStrict)
+    }
+
+    /*
+     * Module :
+     *     ModuleBody?
+     *
+     * ModuleBody :
+     *     ModuleItemList
+     */
+    private fun parseModuleImpl(): ModuleNode = nps {
+        isStrict = true
+        ModuleNode(parseModuleItemList())
+    }
+
+    /*
+     * ModuleItemList :
+     *     ModuleItem
+     *     ModuleItemList ModuleItem
+     *
+     * ModuleItem :
+     *     ImportDeclaration
+     *     ExportDeclaration
+     *     StatementListItem
+     */
+    private fun parseModuleItemList(): StatementList = nps {
+        val list = mutableListOf<StatementNode>()
+
+        while (tokenType.isStatementToken) {
+            if (match(TokenType.Export)) {
+                list.add(parseExportDeclaration())
+            } else if (match(TokenType.Import)) {
+                list.add(parseImportDeclaration())
+            } else {
+                list.add(parseStatement())
+            }
+        }
+
+        StatementList(list)
     }
 
     /*
@@ -249,6 +297,152 @@ class Parser(val executable: Executable) {
                 reporter.expected("statement", tokenType)
             }
         }
+    }
+
+    /*
+     * ImportDeclaration :
+     *     import ImportClause FromClause ;
+     *     import ModuleSpecifier ;
+     *
+     * ImportClause :
+     *     ImportedDefaultBinding
+     *     NameSpaceImport
+     *     NamedImports
+     *     ImportedDefaultBinding , NameSpaceImport
+     *     ImportedDefaultBinding , NamedImports
+     *
+     * ModuleSpecifier :
+     *     StringLiteral
+     */
+    private fun parseImportDeclaration(): ImportDeclarationNode = nps {
+        consume(TokenType.Import)
+
+        if (tokenType == TokenType.StringLiteral) {
+            return@nps ImportDeclarationNode(null, parseStringLiteral().value)
+                .also { asi() }
+        }
+
+        fun parseFrom(): String {
+            if (!match(TokenType.Identifier) || token.rawLiterals != "from")
+                reporter.at(token).expected("\"from\"")
+            consume()
+            return parseStringLiteral().value
+        }
+
+        val defaultImport = parseDefaultImport()
+
+        if (defaultImport != null) {
+            if (!match(TokenType.Comma))
+                return@nps ImportDeclarationNode(ImportList(listOf(defaultImport)), parseFrom())
+
+            consume()
+
+            val namespaceImport = parseNameSpaceImport()
+            if (namespaceImport != null)
+                return@nps ImportDeclarationNode(ImportList(listOf(defaultImport, namespaceImport)), parseFrom())
+
+            val namedImports = parseNamedImports()
+            if (namedImports != null) {
+                return@nps ImportDeclarationNode(
+                    ImportList(listOf(defaultImport, *namedImports.toTypedArray())),
+                    parseFrom()
+                )
+            }
+
+            reporter.at(token).expected("namespace import or named import list")
+        }
+
+        val namespaceImport = parseNameSpaceImport()
+        if (namespaceImport != null)
+            return@nps ImportDeclarationNode(ImportList(listOf(namespaceImport)), parseFrom())
+
+        val namedImports = parseNamedImports()
+        if (namedImports != null)
+            return@nps ImportDeclarationNode(namedImports, parseFrom())
+
+        reporter.at(token).expected("namespace import or named import list")
+    }
+
+    /*
+     * ImportedDefaultBinding :
+     *     ImportedBinding
+     *
+     * ImportedBinding :
+     *     BindingIdentifier
+     */
+    private fun parseDefaultImport(): DefaultImport? = nps {
+        if (matchIdentifierName()) {
+            DefaultImport(parseBindingIdentifier())
+        } else null
+    }
+
+    /*
+     * NameSpaceImport :
+     *     * as ImportedBinding
+     *
+     * ImportedBinding :
+     *     BindingIdentifier
+     */
+    private fun parseNameSpaceImport(): NamespaceImport? = nps {
+        if (!match(TokenType.Mul))
+            return@nps null
+
+        consume()
+        if (!match(TokenType.Identifier) || token.rawLiterals != "as")
+            reporter.at(token).expected("\"as\"")
+        consume()
+        NamespaceImport(parseBindingIdentifier())
+    }
+
+    /*
+     * NamedImports :
+     *     { }
+     *     { ImportsList }
+     *     { ImportsList , }
+     *
+     * ImportsList:
+     *     ImportSpecifier
+     *     ImportsList , ImportSpecifier
+     *
+     * ImportSpecifier :
+     *     ImportedBinding
+     *     IdentifierName as ImportedBinding
+     *
+     * ImportedBinding :
+     *     BindingIdentifier
+     */
+    private fun parseNamedImports(): ImportList? = nps {
+        if (!match(TokenType.OpenCurly))
+            return@nps null
+
+        consume()
+
+        val imports = mutableListOf<Import>()
+
+        while (!match(TokenType.CloseCurly)) {
+            val peeked = peek(1) ?: reporter.at(token).error("unexpected eol")
+            if (peeked.type == TokenType.Identifier && peeked.rawLiterals == "as") {
+                val target = parseIdentifier()
+                consume(TokenType.Identifier)
+                val alias = parseBindingIdentifier()
+                imports.add(AliasedImport(target, alias))
+            } else {
+                imports.add(NormalImport(parseBindingIdentifier()))
+            }
+
+            if (!match(TokenType.Comma))
+                break
+
+            consume()
+        }
+
+        consume(TokenType.CloseCurly)
+
+        ImportList(imports)
+    }
+
+    private fun parseExportDeclaration(): ExportNode = nps {
+        TODO()
     }
 
     private fun asi() {
@@ -1172,7 +1366,8 @@ class Parser(val executable: Executable) {
         if (isStrict && identifier.processedName in strictProtectedNames)
             reporter.at(identifier).identifierStrictReservedWord(identifier.rawName)
 
-        val matchedToken = TokenType.values().firstOrNull { it.isIdentifierNameToken && it.string == identifier.processedName }
+        val matchedToken =
+            TokenType.values().firstOrNull { it.isIdentifierNameToken && it.string == identifier.processedName }
         if (matchedToken != null)
             reporter.at(identifier).identifierReservedWord(identifier.rawName)
     }
@@ -1539,7 +1734,7 @@ class Parser(val executable: Executable) {
         AwaitExpressionNode(parseExpression(2))
     }
 
-    private fun parseStringLiteral(): ExpressionNode = nps {
+    private fun parseStringLiteral(): StringLiteralNode = nps {
         consume(TokenType.StringLiteral)
         StringLiteralNode(unescapeString(lastToken.literals))
     }
