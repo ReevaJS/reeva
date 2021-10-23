@@ -2,10 +2,12 @@ package com.reevajs.reeva.interpreter
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
+import com.reevajs.reeva.core.ModuleRecord
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.ThrowException
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
 import com.reevajs.reeva.core.environment.EnvRecord
+import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.core.lifecycle.ExecutionResult
 import com.reevajs.reeva.interpreter.transformer.FunctionInfo
@@ -570,6 +572,10 @@ class Interpreter(
         activeEnvRecord = DeclarativeEnvRecord(activeEnvRecord, opcode.slotCount)
     }
 
+    override fun visitPushModuleEnvRecord() {
+        activeEnvRecord = ModuleEnvRecord(activeEnvRecord)
+    }
+
     override fun visitPopEnvRecord() {
         activeEnvRecord = activeEnvRecord.outer!!
     }
@@ -936,6 +942,18 @@ class Interpreter(
         push((pop() as ClassCtorAndProto).constructor)
     }
 
+    override fun visitDeclareNamedImports(opcode: DeclareNamedImports) {
+        val moduleRecord = pop() as ModuleRecord
+        for (name in opcode.namedImports) {
+            if (moduleRecord.getNamedExport(name) == null)
+                Errors.NonExistentImport(moduleRecord.specifier, name).throwSyntaxError(realm)
+        }
+    }
+
+    override fun visitStoreModuleRecord() {
+        (activeEnvRecord as ModuleEnvRecord).storeModuleRecord(pop() as ModuleRecord)
+    }
+
     private fun pop(): Any = stack.removeLast()
 
     private fun popInt(): Int = pop() as Int
@@ -994,6 +1012,27 @@ class Interpreter(
         }
     }
 
+    class ModuleIRFunction(
+        executable: Executable,
+        outerEnvRecord: EnvRecord,
+    ) : IRFunction(executable, outerEnvRecord) {
+        private val generatorFunction = GeneratorIRFunction(executable, outerEnvRecord).initialize()
+
+        override fun evaluate(arguments: JSArguments): JSValue {
+            // TODO: Avoid the JS runtime here
+
+            val generatorObj = generatorFunction.evaluate(arguments)
+            var result = Operations.invoke(executable.realm, generatorObj, "next".key())
+
+            while (!Operations.getV(executable.realm, result, "done".key()).asBoolean) {
+                val moduleToImport = Operations.getV(executable.realm, result, "value".key()).asString
+                result = Operations.invoke(executable.realm, generatorObj, "next".key(), listOf(TODO()))
+            }
+
+            return JSEmpty
+        }
+    }
+
     // Extends from JSValue so it can be passed as an argument
     data class GeneratorState(
         var phase: Int = 0,
@@ -1016,10 +1055,10 @@ class Interpreter(
         fun wrap(
             executable: Executable,
             outerEnvRecord: EnvRecord,
-            kind: Operations.FunctionKind = Operations.FunctionKind.Normal,
-        ) = when (kind) {
-            Operations.FunctionKind.Normal -> NormalIRFunction(executable, outerEnvRecord)
-            else -> TODO()
+        ) = if (executable.isModule) {
+            ModuleIRFunction(executable, outerEnvRecord)
+        } else {
+            NormalIRFunction(executable, outerEnvRecord)
         }.initialize()
     }
 }

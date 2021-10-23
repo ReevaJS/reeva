@@ -1,5 +1,6 @@
 package com.reevajs.reeva.utils
 
+import com.reevajs.reeva.core.ModuleRecord
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.ThrowException
 import com.reevajs.reeva.runtime.JSValue
@@ -94,6 +95,10 @@ object Errors {
         Error("descriptor cannot specify a \"get\" or \"set\" property with a \"value\" or \"writable\" property")
 
     object CantCompileStrings : Error("Compiled strings are not allowed in this Reeva context")
+
+    class NonExistentImport(module: String, name: String) : Error("The module \"$module\" does not provide ${
+        if (name == ModuleRecord.DEFAULT_SPECIFIER) "a default export" else "an export named $name"
+    }")
 
     class Custom(message: String) : Error(message)
     class TODO(message: String) : Error("TODO: message ($message)")
