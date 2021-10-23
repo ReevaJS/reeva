@@ -60,7 +60,11 @@ class Parser(val executable: Executable) {
             initLexer()
             val script = if (tokens.size == 1) {
                 // The script is empty
-                ScriptNode(StatementList(), false)
+                val newlineCount = source.count { it == '\n' }
+                val indexOfLastNewline = source.indexOfLast { it == '\n' }
+                val start = TokenLocation(0, 0, 0)
+                val end = TokenLocation(source.lastIndex, newlineCount, source.lastIndex - indexOfLastNewline)
+                ScriptNode(StatementList().withPosition(start, end), false).withPosition(start, end)
             } else parseScriptImpl()
 
             if (!isDone)
@@ -365,35 +369,43 @@ class Parser(val executable: Executable) {
             }
 
             if (matchIdentifier()) {
-                val identifier = parseBindingDeclaration()
+                val bindingProperty = nps {
+                    val identifier = parseBindingDeclaration()
 
-                val alias = if (match(TokenType.Colon)) {
-                    consume()
+                    val alias = if (match(TokenType.Colon)) {
+                        consume()
 
-                    if (matchBindingPattern()) {
-                        parseBindingPattern()
-                    } else {
-                        parseBindingDeclaration()
-                    }.let(::BindingDeclarationOrPattern)
-                } else null
+                        if (matchBindingPattern()) {
+                            parseBindingPattern()
+                        } else {
+                            parseBindingDeclaration()
+                        }.let(::BindingDeclarationOrPattern)
+                    } else null
 
-                bindingEntries.add(SimpleBindingProperty(identifier, alias, parseInitializer()))
-            } else if (matchPropertyName()) {
-                val identifier = parsePropertyName()
-
-                val alias = if (match(TokenType.Colon)) {
-                    consume()
-
-                    if (matchBindingPattern()) {
-                        parseBindingPattern()
-                    } else {
-                        parseBindingDeclaration()
-                    }.let(::BindingDeclarationOrPattern)
-                } else {
-                    reporter.at(token).missingBindingElement()
+                    SimpleBindingProperty(identifier, alias, parseInitializer())
                 }
 
-                bindingEntries.add(ComputedBindingProperty(identifier, alias, parseInitializer()))
+                bindingEntries.add(bindingProperty)
+            } else if (matchPropertyName()) {
+                val bindingProperty = nps {
+                    val identifier = parsePropertyName()
+
+                    val alias = if (match(TokenType.Colon)) {
+                        consume()
+
+                        if (matchBindingPattern()) {
+                            parseBindingPattern()
+                        } else {
+                            parseBindingDeclaration()
+                        }.let(::BindingDeclarationOrPattern)
+                    } else {
+                        reporter.at(token).missingBindingElement()
+                    }
+
+                    ComputedBindingProperty(identifier, alias, parseInitializer())
+                }
+
+                bindingEntries.add(bindingProperty)
             } else {
                 reporter.at(token).expected("property name or rest property", tokenType)
             }
@@ -1109,7 +1121,9 @@ class Parser(val executable: Executable) {
             } else if (!matchIdentifier()) {
                 reporter.at(token).expected("identifier")
             } else {
-                parameters.add(SimpleParameter(parseBindingIdentifier(), parseInitializer()))
+                parameters.add(nps {
+                    SimpleParameter(parseBindingIdentifier(), parseInitializer())
+                })
             }
 
             if (!match(TokenType.Comma))
@@ -1743,7 +1757,9 @@ class Parser(val executable: Executable) {
 
             // TODO: Async/Generator methods
             val body = parseFunctionBody(isAsync = false, isGenerator = isGeneratorToken != null)
-            return@nps MethodProperty(MethodDefinitionNode(methodName, params, body, type))
+            val methoDefinitionNode = MethodDefinitionNode(methodName, params, body, type)
+                .withPosition(methodName, body)
+            return@nps MethodProperty(methoDefinitionNode)
         }
 
         if (matches(TokenType.Comma, TokenType.CloseCurly)) {
