@@ -1,7 +1,7 @@
 package com.reevajs.reeva.parsing
 
 import com.reevajs.reeva.ast.*
-import com.reevajs.reeva.interpreter.transformer.Transformer
+import com.reevajs.reeva.transformer.Transformer
 
 open class Scope(val outer: Scope? = null, val allowVarInlining: Boolean = true) {
     val outerHoistingScope = outerScopeOfType<HoistingScope>()

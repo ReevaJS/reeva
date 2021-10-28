@@ -1,4 +1,4 @@
-package com.reevajs.reeva.interpreter.transformer.opcodes
+package com.reevajs.reeva.transformer.opcodes
 
 interface OpcodeVisitor {
     fun visit(opcode: Opcode) {

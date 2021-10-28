@@ -1,7 +1,7 @@
-package com.reevajs.reeva.interpreter.transformer
+package com.reevajs.reeva.transformer
 
-import com.reevajs.reeva.interpreter.transformer.opcodes.JumpInstr
-import com.reevajs.reeva.interpreter.transformer.opcodes.Return
+import com.reevajs.reeva.transformer.opcodes.JumpInstr
+import com.reevajs.reeva.transformer.opcodes.Return
 import com.reevajs.reeva.utils.expect
 
 class IRValidator(val ir: IR) {
