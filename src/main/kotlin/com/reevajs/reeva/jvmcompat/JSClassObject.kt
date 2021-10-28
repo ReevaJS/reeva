@@ -12,7 +12,10 @@ import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.*
 import java.lang.reflect.Modifier
 
-class JSClassObject private constructor(realm: Realm, val clazz: Class<*>) : JSNativeFunction(realm, clazz.name, 0) {
+class JSClassObject private constructor(
+    realm: Realm,
+    val clazz: Class<*>,
+) : JSNativeFunction(realm, clazz.name, 0) {
     private val clazzProto = classProtoCache.getOrPut(clazz) { makeClassProto(clazz) }
     private val className = clazz.name.replace('/', '.').replace("L", "").replace(";", "")
 

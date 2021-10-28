@@ -5,9 +5,11 @@ import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.functions.JSFunction
 
+// TODO: Add source information
 data class StackTraceFrame(
     val enclosingFunction: JSFunction,
-    val location: TokenLocation?, // null indicates native context
+    val name: String,
+    val isNative: Boolean,
 )
 
 interface ErrorReporter {

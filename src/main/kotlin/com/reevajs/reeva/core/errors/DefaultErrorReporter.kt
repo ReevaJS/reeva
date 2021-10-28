@@ -44,9 +44,8 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter {
         out.println(cause.toPrintableString())
         out.println("From: ${sourceInfo.type.name}")
         for (frame in stackTrace) {
-            // TODO: Print a nicer function name if this is a builtin
-            //       i.e. "Array.prototype.map" instead of just "map"
-            out.println("    at ${frame.enclosingFunction.get("name").asString} (${frame.location ?: "<native function>"})")
+            // TODO: Add location information
+            out.println("    at ${frame.enclosingFunction.debugName}")
         }
 
         out.println("\u001B[0m")

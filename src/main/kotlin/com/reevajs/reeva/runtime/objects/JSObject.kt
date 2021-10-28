@@ -5,6 +5,7 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.index.IndexedProperties
 import com.reevajs.reeva.runtime.primitives.*
@@ -415,7 +416,7 @@ open class JSObject protected constructor(
         isGetter: Boolean,
     ) {
         val length = if (isGetter) 0 else 1
-        val function = JSNativeFunction.forBuiltin(realm, jsName, length, builtin)
+        val function = JSBuiltinFunction.forBuiltin(realm, jsName, length, builtin)
 
         val existingProperty = internalGet(key)
         if (existingProperty != null) {
@@ -471,7 +472,7 @@ open class JSObject protected constructor(
         builtin: Builtin,
         attributes: Int = attrs { +conf - enum + writ },
     ) {
-        val function = JSNativeFunction.forBuiltin(realm, jsName, length, builtin)
+        val function = JSBuiltinFunction.forBuiltin(realm, jsName, length, builtin)
         addProperty(key, Descriptor(function, attributes))
     }
 

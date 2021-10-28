@@ -16,8 +16,9 @@ abstract class JSNativeFunction protected constructor(
     private val name: String,
     private val length: Int,
     prototype: JSValue = realm.functionProto,
+    debugName: String = name,
     private val isConstructor: Boolean = true
-) : JSFunction(realm, prototype = prototype) {
+) : JSFunction(realm, debugName, prototype = prototype) {
     override fun isConstructor() = isConstructor
 
     override fun init() {
@@ -44,15 +45,5 @@ abstract class JSNativeFunction protected constructor(
                 }
             }
         }.initialize()
-
-        fun forBuiltin(realm: Realm, name: String, length: Int, builtin: Builtin): JSFunction {
-            return object : JSNativeFunction(realm, name, length, isConstructor = false) {
-                override fun evaluate(arguments: JSArguments): JSValue {
-                    if (arguments.newTarget != JSUndefined)
-                        Errors.NotACtor(name).throwTypeError(realm)
-                    return builtin.handle.invokeExact(realm, arguments) as JSValue
-                }
-            }.initialize()
-        }
     }
 }

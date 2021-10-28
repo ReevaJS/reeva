@@ -685,11 +685,11 @@ class Interpreter(
     }
 
     override fun visitGetSuperConstructor() {
-        push(Reeva.activeAgent.callStack.last().getPrototype())
+        push(Reeva.activeAgent.activeFunction.getPrototype())
     }
 
     override fun visitGetSuperBase() {
-        val homeObject = Reeva.activeAgent.callStack.last().homeObject
+        val homeObject = Reeva.activeAgent.activeFunction.homeObject
         if (homeObject == JSUndefined) {
             push(JSUndefined)
         } else {
@@ -742,7 +742,7 @@ class Interpreter(
     }
 
     override fun visitPushClosure() {
-        push(Reeva.activeAgent.callStack.last())
+        push(Reeva.activeAgent.activeFunction)
     }
 
     override fun visitReturn() {
@@ -967,6 +967,7 @@ class Interpreter(
         prototype: JSValue = transformedSource.realm.functionProto,
     ) : JSFunction(
         transformedSource.realm,
+        transformedSource.functionInfo.name,
         transformedSource.functionInfo.isStrict,
         prototype,
     )

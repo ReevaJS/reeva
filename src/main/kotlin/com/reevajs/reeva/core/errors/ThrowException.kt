@@ -1,5 +1,11 @@
 package com.reevajs.reeva.core.errors
 
+import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.runtime.JSValue
 
-class ThrowException(val value: JSValue) : Throwable()
+class ThrowException private constructor(
+    val value: JSValue,
+    val stackTrace: List<StackTraceFrame>,
+) : Throwable() {
+    constructor(value: JSValue) : this(value, Reeva.activeAgent.callStack.toList())
+}
