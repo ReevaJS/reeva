@@ -6,9 +6,9 @@ import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
 import com.reevajs.reeva.core.ModuleRecord
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.interpreter.transformer.opcodes.*
 import com.reevajs.reeva.parsing.HoistingScope
+import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.functions.JSFunction
@@ -16,7 +16,7 @@ import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.unreachable
 import java.math.BigInteger
 
-class Transformer(val executable: Executable) : ASTVisitor {
+class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     private lateinit var builder: IRBuilder
     private var currentScope: Scope? = null
 
@@ -29,43 +29,41 @@ class Transformer(val executable: Executable) : ASTVisitor {
     private val breakableScopes = mutableListOf<LabelledSection>()
     private val continuableScopes = mutableListOf<LabelledSection>()
 
-    fun transform(): TransformerResult {
-        expect(executable.rootNode != null)
+    fun transform(): TransformedSource {
         expect(!::builder.isInitialized, "Cannot reuse a Transformer")
 
-        return try {
-            val rootNode = executable.rootNode!!
-            builder = IRBuilder(
-                getReservedLocalsCount(isGenerator = executable.isModule),
-                rootNode.scope.inlineableLocalCount,
-                isDerivedClassConstructor = false,
-                isGenerator = executable.isModule,
-            )
+        val rootNode = parsedSource.node
+        val isModule = parsedSource.sourceInfo.type.isModule
 
-            globalDeclarationInstantiation(rootNode.scope as HoistingScope) {
-                if (executable.isModule) {
-                    +PushModuleEnvRecord
-                    insertGeneratorPrologue()
-                }
+        builder = IRBuilder(
+            getReservedLocalsCount(isGenerator = isModule),
+            rootNode.scope.inlineableLocalCount,
+            isDerivedClassConstructor = false,
+            isGenerator = isModule,
+        )
 
-                rootNode.children.forEach(::visit)
-                if (!builder.isDone) {
-                    +PushUndefined
-                    +Return
-                }
+        globalDeclarationInstantiation(rootNode.scope as HoistingScope) {
+            if (isModule) {
+                +PushModuleEnvRecord
+                insertGeneratorPrologue()
             }
 
-            TransformerResult.Success(
-                FunctionInfo(
-                    executable.name,
-                    builder.build(),
-                    rootNode.scope.isStrict,
-                    isTopLevel = true,
-                )
-            )
-        } catch (e: Throwable) {
-            TransformerResult.InternalError(e)
+            rootNode.children.forEach(::visit)
+            if (!builder.isDone) {
+                +PushUndefined
+                +Return
+            }
         }
+
+        return TransformedSource(
+            parsedSource.sourceInfo,
+            FunctionInfo(
+                parsedSource.sourceInfo.type.name,
+                builder.build(),
+                rootNode.scope.isStrict,
+                isTopLevel = true,
+            )
+        )
     }
 
     private fun enterScope(scope: Scope) {

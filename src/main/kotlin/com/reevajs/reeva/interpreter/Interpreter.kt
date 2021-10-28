@@ -4,16 +4,11 @@ import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.core.ModuleRecord
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.core.ThrowException
+import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
-import com.reevajs.reeva.core.lifecycle.Executable
-import com.reevajs.reeva.core.lifecycle.ExecutionResult
-import com.reevajs.reeva.interpreter.transformer.FunctionInfo
-import com.reevajs.reeva.interpreter.transformer.Handler
-import com.reevajs.reeva.interpreter.transformer.LocalKind
-import com.reevajs.reeva.interpreter.transformer.Transformer
+import com.reevajs.reeva.interpreter.transformer.*
 import com.reevajs.reeva.interpreter.transformer.opcodes.*
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
@@ -30,13 +25,15 @@ import com.reevajs.reeva.runtime.regexp.JSRegExpObject
 import com.reevajs.reeva.utils.*
 
 class Interpreter(
-    private val realm: Realm,
-    private val executable: Executable,
+    private val transformedSource: TransformedSource,
     private val arguments: List<JSValue>,
     initialEnvRecord: EnvRecord,
 ) : OpcodeVisitor {
     private val info: FunctionInfo
-        get() = executable.functionInfo!!
+        get() = transformedSource.functionInfo
+
+    private val realm: Realm
+        get() = transformedSource.realm
 
     private val stack = ArrayDeque<Any>()
     private val locals = Array<Any?>(info.ir.locals.size) { null }
@@ -58,7 +55,7 @@ class Interpreter(
         }
     }
 
-    fun interpret(): ExecutionResult {
+    fun interpret(): Result<ThrowException, JSValue> {
         for ((index, arg) in arguments.take(info.ir.argCount).withIndex()) {
             locals[index] = arg
         }
@@ -99,7 +96,7 @@ class Interpreter(
                 }
 
                 if (!handled)
-                    return ExecutionResult.RuntimeError(executable, e.value)
+                    return Result.error(e)
             } catch (e: Throwable) {
                 println("Exception in FunctionInfo ${info.name}, opcode ${ip - 1}")
                 throw e
@@ -108,7 +105,7 @@ class Interpreter(
 
         expect(stack.size == 1)
         expect(stack[0] is JSValue)
-        return ExecutionResult.Success(executable, stack[0] as JSValue)
+        return Result.success(stack[0] as JSValue)
     }
 
     override fun visitCopyObjectExcludingProperties(opcode: CopyObjectExcludingProperties) {
@@ -663,14 +660,14 @@ class Interpreter(
     }
 
     override fun visitCreateClosure(opcode: CreateClosure) {
-        val function = NormalIRFunction(executable.forInfo(opcode.ir), activeEnvRecord).initialize()
+        val function = NormalIRFunction(transformedSource.forInfo(opcode.ir), activeEnvRecord).initialize()
         Operations.setFunctionName(realm, function, opcode.ir.name.key())
         Operations.makeConstructor(realm, function)
         push(function)
     }
 
     override fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure) {
-        val function = GeneratorIRFunction(executable.forInfo(opcode.ir), activeEnvRecord).initialize()
+        val function = GeneratorIRFunction(transformedSource.forInfo(opcode.ir), activeEnvRecord).initialize()
         Operations.setFunctionName(realm, function, opcode.ir.name.key())
         push(function)
     }
@@ -815,7 +812,7 @@ class Interpreter(
     }
 
     override fun visitCreateClassConstructor(opcode: CreateMethod) {
-        push(NormalIRFunction(executable.forInfo(opcode.ir), activeEnvRecord).initialize())
+        push(NormalIRFunction(transformedSource.forInfo(opcode.ir), activeEnvRecord).initialize())
     }
 
     override fun visitCreateClass() {
@@ -899,9 +896,9 @@ class Interpreter(
             MethodDefinitionNode.Kind.Normal,
             MethodDefinitionNode.Kind.Getter,
             MethodDefinitionNode.Kind.Setter ->
-                NormalIRFunction(executable.forInfo(info), activeEnvRecord).initialize()
+                NormalIRFunction(transformedSource.forInfo(info), activeEnvRecord).initialize()
             MethodDefinitionNode.Kind.Generator ->
-                GeneratorIRFunction(executable.forInfo(info), activeEnvRecord).initialize()
+                GeneratorIRFunction(transformedSource.forInfo(info), activeEnvRecord).initialize()
             else -> TODO()
         }
 
@@ -965,31 +962,31 @@ class Interpreter(
     }
 
     abstract class IRFunction(
-        val executable: Executable,
+        val transformedSource: TransformedSource,
         val outerEnvRecord: EnvRecord,
-        prototype: JSValue = executable.realm.functionProto,
-    ) : JSFunction(executable.realm, executable.functionInfo!!.isStrict, prototype)
+        prototype: JSValue = transformedSource.realm.functionProto,
+    ) : JSFunction(
+        transformedSource.realm,
+        transformedSource.functionInfo.isStrict,
+        prototype,
+    )
 
     class NormalIRFunction(
-        executable: Executable,
+        transformedSource: TransformedSource,
         outerEnvRecord: EnvRecord,
-    ) : IRFunction(executable, outerEnvRecord) {
+    ) : IRFunction(transformedSource, outerEnvRecord) {
         override fun evaluate(arguments: JSArguments): JSValue {
             val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
-            return when (val result = Interpreter(realm, executable, args, outerEnvRecord).interpret()) {
-                is ExecutionResult.InternalError -> throw result.cause
-                is ExecutionResult.ParseError -> unreachable()
-                is ExecutionResult.RuntimeError -> throw ThrowException(result.value)
-                is ExecutionResult.Success -> result.value
-            }
+            val result = Interpreter(transformedSource, args, outerEnvRecord).interpret()
+            return result.valueOrElse { throw result.error() }
         }
     }
 
     class GeneratorIRFunction(
-        executable: Executable,
+        transformedSource: TransformedSource,
         outerEnvRecord: EnvRecord,
-    ) : IRFunction(executable, outerEnvRecord) {
-        lateinit var generatorObject: JSGeneratorObject
+    ) : IRFunction(transformedSource, outerEnvRecord) {
+        private lateinit var generatorObject: JSGeneratorObject
 
         override fun init() {
             super.init()
@@ -999,10 +996,9 @@ class Interpreter(
         override fun evaluate(arguments: JSArguments): JSValue {
             if (!::generatorObject.isInitialized) {
                 generatorObject = JSGeneratorObject.create(
-                    realm,
+                    transformedSource,
                     arguments.thisValue,
                     arguments,
-                    executable,
                     GeneratorState(),
                     outerEnvRecord,
                 )
@@ -1013,20 +1009,21 @@ class Interpreter(
     }
 
     class ModuleIRFunction(
-        executable: Executable,
+        transformedSource: TransformedSource,
         outerEnvRecord: EnvRecord,
-    ) : IRFunction(executable, outerEnvRecord) {
-        private val generatorFunction = GeneratorIRFunction(executable, outerEnvRecord).initialize()
+    ) : IRFunction(transformedSource, outerEnvRecord) {
+        private val generatorFunction = GeneratorIRFunction(transformedSource, outerEnvRecord).initialize()
 
         override fun evaluate(arguments: JSArguments): JSValue {
             // TODO: Avoid the JS runtime here
 
+            val realm = transformedSource.realm
             val generatorObj = generatorFunction.evaluate(arguments)
-            var result = Operations.invoke(executable.realm, generatorObj, "next".key())
+            var result = Operations.invoke(realm, generatorObj, "next".key())
 
-            while (!Operations.getV(executable.realm, result, "done".key()).asBoolean) {
-                val moduleToImport = Operations.getV(executable.realm, result, "value".key()).asString
-                result = Operations.invoke(executable.realm, generatorObj, "next".key(), listOf(TODO()))
+            while (!Operations.getV(realm, result, "done".key()).asBoolean) {
+                val moduleToImport = Operations.getV(realm, result, "value".key()).asString
+                result = Operations.invoke(realm, generatorObj, "next".key(), listOf(TODO()))
             }
 
             return JSEmpty
@@ -1053,12 +1050,11 @@ class Interpreter(
 
     companion object {
         fun wrap(
-            executable: Executable,
-            outerEnvRecord: EnvRecord,
-        ) = if (executable.isModule) {
-            ModuleIRFunction(executable, outerEnvRecord)
+            transformedSource: TransformedSource
+        ) = if (transformedSource.sourceInfo.type.isModule) {
+            ModuleIRFunction(transformedSource, transformedSource.realm.globalEnv)
         } else {
-            NormalIRFunction(executable, outerEnvRecord)
+            NormalIRFunction(transformedSource, transformedSource.realm.globalEnv)
         }.initialize()
     }
 }

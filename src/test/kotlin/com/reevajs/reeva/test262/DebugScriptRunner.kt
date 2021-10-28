@@ -2,12 +2,8 @@ package com.reevajs.reeva.test262
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.lifecycle.Executable
-import com.reevajs.reeva.core.lifecycle.ExecutionResult
 import com.reevajs.reeva.runtime.toPrintableString
-import com.reevajs.reeva.utils.unreachable
 import java.io.File
-import kotlin.math.max
 
 val test262Helpers = listOf(
     "assert.js",
@@ -32,55 +28,12 @@ fun main() {
     agent.printIR = true
 
     val file = File("./demo/index.js")
-    val script = file.readText()
-    val result = agent.run(Executable(file, script), realm)
+    val result = agent.run(realm, file)
     agent.microtaskQueue.blockUntilEmpty()
     Reeva.teardown()
 
-    if (result.isError) {
-        printError(result, script)
-    } else {
-        println("Script result: ${(result as ExecutionResult.Success).value.toPrintableString()}")
-    }
-}
-
-fun printError(result: ExecutionResult, script: String) {
-    when (result) {
-        is ExecutionResult.InternalError -> result.cause.printStackTrace()
-        is ExecutionResult.RuntimeError ->
-            print("\u001b[31mRuntimeError: ${result.value.toPrintableString()}\u001b[0m")
-        is ExecutionResult.ParseError -> {
-            val reason = result.reason
-            val start = result.start
-            val end = result.end
-
-            val lines = script.lines()
-            val firstLine = (start.line - 2).coerceAtLeast(0)
-            val lastLine = (start.line + 2).coerceAtMost(lines.lastIndex)
-
-            val lineIndexWidth = max(firstLine.toString().length, lastLine.toString().length)
-
-            for (i in firstLine..lastLine) {
-                if (lines[i].isBlank())
-                    continue
-
-                print("\u001b[2;37m%${lineIndexWidth}d:    \u001b[0m".format(i))
-                println(lines[i])
-                if (i == start.line) {
-                    print(" ".repeat(start.column + lineIndexWidth + 5))
-                    print("\u001b[31m")
-                    val numCarets = if (start.line == end.line) {
-                        (end.column - start.column).coerceAtMost(lines[i].length)
-                    } else lines[i].length - start.column
-                    println("^".repeat(numCarets))
-                    print("\u001b[0m")
-                }
-            }
-
-            println()
-            println("\u001b[31mSyntaxError: $reason\u001b[0m")
-        }
-        is ExecutionResult.Success -> unreachable()
+    result.unwrap()?.also {
+        println("Script result: ${it.toPrintableString()}")
     }
 }
 

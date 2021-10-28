@@ -5,7 +5,7 @@ package com.reevajs.reeva.runtime
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.ASTNode
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.core.ThrowException
+import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.jvmcompat.JSClassInstanceObject
 import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.mfbt.Dtoa
