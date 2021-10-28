@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.arrays
 
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.core.ThrowException
+import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl

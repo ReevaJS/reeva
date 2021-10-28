@@ -4,7 +4,7 @@ import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
-import com.reevajs.reeva.core.lifecycle.Executable
+import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.lexer.Lexer
 import com.reevajs.reeva.parsing.lexer.Token
 import com.reevajs.reeva.parsing.lexer.TokenLocation
@@ -16,9 +16,9 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
 @OptIn(ExperimentalContracts::class)
-class Parser(val executable: Executable) {
+class Parser(val sourceInfo: SourceInfo) {
     private val source: String
-        get() = executable.source
+        get() = sourceInfo.source
 
     private var inDefaultContext = false
     private var inFunctionContext = false
@@ -52,10 +52,10 @@ class Parser(val executable: Executable) {
     private var isStrict = false
 
     private fun initLexer() {
-        tokens.addAll(Lexer(executable.source).getTokens())
+        tokens.addAll(Lexer(source).getTokens())
     }
 
-    fun parseScript(): ParsingResult {
+    fun parseScript(): Result<ParsingError, ParsedSource> {
         return parseImpl {
             if (tokens.size == 1) {
                 // The script is empty
@@ -68,7 +68,7 @@ class Parser(val executable: Executable) {
         }
     }
 
-    fun parseModule(): ParsingResult {
+    fun parseModule(): Result<ParsingError, ParsedSource> {
         return parseImpl {
             if (tokens.size == 1) {
                 // The script is empty
@@ -81,7 +81,7 @@ class Parser(val executable: Executable) {
         }
     }
 
-    fun parseFunction(expectedKind: Operations.FunctionKind): ParsingResult {
+    fun parseFunction(expectedKind: Operations.FunctionKind): Result<ParsingError, ParsedSource> {
         return parseImpl {
             parseFunctionDeclaration().also {
                 expect(it.kind == expectedKind)
@@ -89,7 +89,7 @@ class Parser(val executable: Executable) {
         }
     }
 
-    private fun parseImpl(block: () -> NodeWithScope): ParsingResult {
+    private fun parseImpl(block: () -> NodeWithScope): Result<ParsingError, ParsedSource> {
         return try {
             initLexer()
 
@@ -100,11 +100,9 @@ class Parser(val executable: Executable) {
             ScopeResolver().resolve(result)
             EarlyErrorDetector(reporter).visit(result)
 
-            ParsingResult.Success(result)
+            Result.success(ParsedSource(sourceInfo, result))
         } catch (e: ParsingException) {
-            ParsingResult.ParseError(e.message!!, e.start, e.end)
-        } catch (e: Throwable) {
-            ParsingResult.InternalError(e)
+            Result.error(ParsingError(e.message!!, e.start, e.end))
         }
     }
 

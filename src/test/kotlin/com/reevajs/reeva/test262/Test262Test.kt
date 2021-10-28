@@ -3,13 +3,22 @@ package com.reevajs.reeva.test262
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.core.lifecycle.ExecutionResult
+import com.reevajs.reeva.core.RunResult
+import com.reevajs.reeva.core.errors.DefaultErrorReporter
+import com.reevajs.reeva.core.lifecycle.FileSourceType
+import com.reevajs.reeva.core.lifecycle.LiteralSourceType
+import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.toPrintableString
+import com.reevajs.reeva.utils.expect
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assumptions
 import org.opentest4j.AssertionFailedError
 import org.opentest4j.TestAbortedException
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.PrintStream
+import java.nio.charset.StandardCharsets
 
 class Test262Test(
     private val name: String,
@@ -49,17 +58,21 @@ class Test262Test(
             } else ""
 
             val realm = Reeva.makeRealm()
+            val isModule = if (metadata.flags != null) Flag.Module in metadata.flags else false
 
             if (metadata.flags != null) {
                 Assumptions.assumeTrue(Flag.Module !in metadata.flags)
                 Assumptions.assumeTrue(Flag.Async !in metadata.flags)
             }
-            val isModule = false
 
-            val pretestResult = agent.run(requiredScript, realm)
+            val pretestResult = agent.run(SourceInfo(
+                realm,
+                requiredScript,
+                LiteralSourceType(isModule = false, "pretest"),
+            ))
 
-            Assertions.assertTrue(!pretestResult.isError) {
-                "Expected pretest to run without exception, but received $pretestResult"
+            Assertions.assertTrue(pretestResult is RunResult.Success) {
+                "[PRETEST] ${getResultMessage(pretestResult)}"
             }
 
             if (metadata.flags != null && Flag.Async in metadata.flags) {
@@ -124,35 +137,38 @@ class Test262Test(
         if ("buildString(" in theScript)
             TODO("For some reason this function infinitely loops")
 
-        val testResult = agent.run(theScript, realm)
+        val testResult = agent.run(
+            SourceInfo(
+                realm,
+                theScript,
+                FileSourceType(file),
+            )
+        )
 
-        if (shouldErrorDuringParse || shouldErrorDuringRuntime) {
-            Assertions.assertTrue(testResult.isError) {
-                "Expected error during execution, but no error was generated"
+        if (shouldErrorDuringParse) {
+            Assertions.assertTrue(testResult is RunResult.ParseError) {
+                "Expected parse error during execution\n${getResultMessage(testResult)}"
             }
-
-            // FIXME: Implement
-            if (shouldErrorDuringParse) {
-                Assertions.assertTrue(testResult is ExecutionResult.ParseError) {
-                    "Expected ParseError, but received ${testResult::class.simpleName} ($testResult)"
-                }
-            } else {
-                Assertions.assertTrue(testResult is ExecutionResult.RuntimeError) {
-                    "Expected RuntimeError, but received ${testResult::class.simpleName} ($testResult)"
-                }
-
-                val expectedClass = "JS${metadata.negative!!.type}Object"
-                val actualClass = (testResult as ExecutionResult.RuntimeError).value::class.simpleName
-
-                Assertions.assertTrue(actualClass == expectedClass) {
-                    "Expected $expectedClass to be thrown, but found $actualClass"
-                }
+        } else if (shouldErrorDuringRuntime) {
+            Assertions.assertTrue(testResult is RunResult.RuntimeError) {
+                "Expected ${metadata.negative!!.type} during execution\n${getResultMessage(testResult)}"
             }
         } else {
-            Assertions.assertTrue(testResult is ExecutionResult.Success) {
-                "Expected execution to complete normally, but received error " +
-                    "${testResult::class.simpleName} ($testResult)"
+            Assertions.assertTrue(testResult is RunResult.Success) {
+                "Expected no error during execution\n${getResultMessage(testResult)}"
             }
+        }
+    }
+
+    private fun getResultMessage(runResult: RunResult): String {
+        if (runResult is RunResult.Success)
+            return runResult.result.toPrintableString()
+
+        return ByteArrayOutputStream().use { baos ->
+            PrintStream(baos, true, StandardCharsets.UTF_8.name()).use { ps ->
+                runResult.unwrap(DefaultErrorReporter(ps))
+            }
+            baos.toString(StandardCharsets.UTF_8.name())
         }
     }
 

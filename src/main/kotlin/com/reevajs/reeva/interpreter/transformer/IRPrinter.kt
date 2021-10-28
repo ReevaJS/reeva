@@ -1,23 +1,12 @@
 package com.reevajs.reeva.interpreter.transformer
 
-import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.interpreter.transformer.opcodes.*
 
-class IRPrinter(private val executable: Executable) {
+class IRPrinter(private val transformedSource: TransformedSource) {
     private fun printInfo(info: FunctionInfo) {
         val header = buildString {
             append("=== ")
-            if (executable.file != null) {
-                append(executable.file.name)
-                append(": ")
-            }
-
-            if (info.isTopLevel) {
-                append("<top-level script>")
-            } else {
-                append(info.name)
-            }
-
+            append(transformedSource.sourceInfo.type.name)
             append(" ===")
         }
 
@@ -112,6 +101,6 @@ class IRPrinter(private val executable: Executable) {
     }
 
     fun print() {
-        printInfo(executable.functionInfo!!)
+        printInfo(transformedSource.functionInfo)
     }
 }

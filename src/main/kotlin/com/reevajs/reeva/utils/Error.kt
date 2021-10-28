@@ -2,7 +2,7 @@ package com.reevajs.reeva.utils
 
 import com.reevajs.reeva.core.ModuleRecord
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.core.ThrowException
+import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.errors.*
