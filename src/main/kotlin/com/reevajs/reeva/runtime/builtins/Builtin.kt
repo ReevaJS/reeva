@@ -9,13 +9,16 @@ import java.lang.invoke.MethodType
 
 interface Builtin {
     val handle: MethodHandle
+    val debugName: String
 
     companion object {
         val METHOD_TYPE: MethodType =
             MethodType.methodType(JSValue::class.java, Realm::class.java, JSArguments::class.java)
 
-        fun forClass(clazz: Class<*>, name: String) = object : Builtin {
+        fun forClass(clazz: Class<*>, name: String, debugName: String = name) = object : Builtin {
             override val handle: MethodHandle = MethodHandles.publicLookup().findStatic(clazz, name, METHOD_TYPE)
+            override val debugName = debugName
+
         }
     }
 }

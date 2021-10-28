@@ -3,6 +3,7 @@ package com.reevajs.reeva.core
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.errors.DefaultErrorReporter
 import com.reevajs.reeva.core.errors.ErrorReporter
+import com.reevajs.reeva.core.errors.StackTraceFrame
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.FileSourceType
 import com.reevajs.reeva.core.lifecycle.LiteralSourceType
@@ -13,7 +14,10 @@ import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.parsing.Parser
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
+import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
 import com.reevajs.reeva.runtime.functions.JSFunction
+import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.utils.Result
 import java.io.File
 import java.nio.ByteOrder
@@ -21,7 +25,7 @@ import java.nio.ByteOrder
 sealed class RunResult(val sourceInfo: SourceInfo) {
     class ParseError(sourceInfo: SourceInfo, val error: ParsingError) : RunResult(sourceInfo)
 
-    class RuntimeError(sourceInfo: SourceInfo, val cause: JSValue) : RunResult(sourceInfo)
+    class RuntimeError(sourceInfo: SourceInfo, val cause: ThrowException) : RunResult(sourceInfo)
 
     class Success(sourceInfo: SourceInfo, val result: JSValue) : RunResult(sourceInfo)
 
@@ -40,8 +44,8 @@ sealed class RunResult(val sourceInfo: SourceInfo) {
             is RuntimeError -> {
                 errorReporter.reportRuntimeError(
                     this.sourceInfo,
-                    this.cause,
-                    listOf(), // TODO
+                    this.cause.value,
+                    this.cause.stackTrace,
                 )
                 null
             }
@@ -69,9 +73,9 @@ class Agent {
     val isBigEndian: Boolean
         get() = byteOrder == ByteOrder.BIG_ENDIAN
 
-    internal val callStack = ArrayDeque<JSFunction>()
+    internal val callStack = ArrayDeque<StackTraceFrame>()
     val activeFunction: JSFunction
-        get() = callStack.last()
+        get() = callStack.last().enclosingFunction
 
     val microtaskQueue = MicrotaskQueue(this)
 
@@ -143,12 +147,12 @@ class Agent {
 
         val interpretResult = interpret(transformedSource)
         if (interpretResult.hasError)
-            return RunResult.RuntimeError(sourceInfo, interpretResult.error().value)
+            return RunResult.RuntimeError(sourceInfo, interpretResult.error())
         return RunResult.Success(sourceInfo, interpretResult.value())
     }
 
     internal fun <T> inCallScope(function: JSFunction, block: () -> T): T {
-        callStack.add(function)
+        callStack.add(StackTraceFrame(function, function.debugName, isNative = function is JSNativeFunction))
         return try {
             block()
         } finally {
