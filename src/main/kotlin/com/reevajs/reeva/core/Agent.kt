@@ -9,13 +9,11 @@ import com.reevajs.reeva.core.lifecycle.FileSourceType
 import com.reevajs.reeva.core.lifecycle.LiteralSourceType
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.interpreter.Interpreter
-import com.reevajs.reeva.interpreter.transformer.*
+import com.reevajs.reeva.transformer.*
 import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.parsing.Parser
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
-import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.utils.Result

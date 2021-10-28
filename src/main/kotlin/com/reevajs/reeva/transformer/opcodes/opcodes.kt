@@ -1,8 +1,8 @@
-package com.reevajs.reeva.interpreter.transformer.opcodes
+package com.reevajs.reeva.transformer.opcodes
 
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
-import com.reevajs.reeva.interpreter.transformer.FunctionInfo
-import com.reevajs.reeva.interpreter.transformer.Local
+import com.reevajs.reeva.transformer.FunctionInfo
+import com.reevajs.reeva.transformer.Local
 import com.reevajs.reeva.runtime.Operations
 import java.math.BigInteger
 

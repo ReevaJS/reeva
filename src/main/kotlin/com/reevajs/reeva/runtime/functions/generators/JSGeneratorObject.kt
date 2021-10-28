@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.functions.generators
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.interpreter.Interpreter
-import com.reevajs.reeva.interpreter.transformer.TransformedSource
+import com.reevajs.reeva.transformer.TransformedSource
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.objects.JSObject

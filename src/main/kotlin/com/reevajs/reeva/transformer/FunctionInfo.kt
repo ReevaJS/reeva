@@ -1,4 +1,4 @@
-package com.reevajs.reeva.interpreter.transformer
+package com.reevajs.reeva.transformer
 
 data class FunctionInfo(
     val name: String,

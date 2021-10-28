@@ -1,6 +1,6 @@
-package com.reevajs.reeva.interpreter.transformer
+package com.reevajs.reeva.transformer
 
-import com.reevajs.reeva.interpreter.transformer.opcodes.*
+import com.reevajs.reeva.transformer.opcodes.*
 
 class IRPrinter(private val transformedSource: TransformedSource) {
     private fun printInfo(info: FunctionInfo) {
