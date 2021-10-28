@@ -660,14 +660,14 @@ class Interpreter(
     }
 
     override fun visitCreateClosure(opcode: CreateClosure) {
-        val function = NormalIRFunction(transformedSource.forInfo(opcode.ir), activeEnvRecord).initialize()
+        val function = NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir), activeEnvRecord)
         Operations.setFunctionName(realm, function, opcode.ir.name.key())
         Operations.makeConstructor(realm, function)
         push(function)
     }
 
     override fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure) {
-        val function = GeneratorIRFunction(transformedSource.forInfo(opcode.ir), activeEnvRecord).initialize()
+        val function = GeneratorInterpretedFunction.create(transformedSource.forInfo(opcode.ir), activeEnvRecord)
         Operations.setFunctionName(realm, function, opcode.ir.name.key())
         push(function)
     }
@@ -812,7 +812,7 @@ class Interpreter(
     }
 
     override fun visitCreateClassConstructor(opcode: CreateMethod) {
-        push(NormalIRFunction(transformedSource.forInfo(opcode.ir), activeEnvRecord).initialize())
+        push(NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir), activeEnvRecord))
     }
 
     override fun visitCreateClass() {
@@ -896,9 +896,9 @@ class Interpreter(
             MethodDefinitionNode.Kind.Normal,
             MethodDefinitionNode.Kind.Getter,
             MethodDefinitionNode.Kind.Setter ->
-                NormalIRFunction(transformedSource.forInfo(info), activeEnvRecord).initialize()
+                NormalInterpretedFunction.create(transformedSource.forInfo(info), activeEnvRecord)
             MethodDefinitionNode.Kind.Generator ->
-                GeneratorIRFunction(transformedSource.forInfo(info), activeEnvRecord).initialize()
+                GeneratorInterpretedFunction.create(transformedSource.forInfo(info), activeEnvRecord)
             else -> TODO()
         }
 
@@ -961,76 +961,6 @@ class Interpreter(
         stack.add(value)
     }
 
-    abstract class IRFunction(
-        val transformedSource: TransformedSource,
-        val outerEnvRecord: EnvRecord,
-        prototype: JSValue = transformedSource.realm.functionProto,
-    ) : JSFunction(
-        transformedSource.realm,
-        transformedSource.functionInfo.name,
-        transformedSource.functionInfo.isStrict,
-        prototype,
-    )
-
-    class NormalIRFunction(
-        transformedSource: TransformedSource,
-        outerEnvRecord: EnvRecord,
-    ) : IRFunction(transformedSource, outerEnvRecord) {
-        override fun evaluate(arguments: JSArguments): JSValue {
-            val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
-            val result = Interpreter(transformedSource, args, outerEnvRecord).interpret()
-            return result.valueOrElse { throw result.error() }
-        }
-    }
-
-    class GeneratorIRFunction(
-        transformedSource: TransformedSource,
-        outerEnvRecord: EnvRecord,
-    ) : IRFunction(transformedSource, outerEnvRecord) {
-        private lateinit var generatorObject: JSGeneratorObject
-
-        override fun init() {
-            super.init()
-            defineOwnProperty("prototype", realm.functionProto)
-        }
-
-        override fun evaluate(arguments: JSArguments): JSValue {
-            if (!::generatorObject.isInitialized) {
-                generatorObject = JSGeneratorObject.create(
-                    transformedSource,
-                    arguments.thisValue,
-                    arguments,
-                    GeneratorState(),
-                    outerEnvRecord,
-                )
-            }
-
-            return generatorObject
-        }
-    }
-
-    class ModuleIRFunction(
-        transformedSource: TransformedSource,
-        outerEnvRecord: EnvRecord,
-    ) : IRFunction(transformedSource, outerEnvRecord) {
-        private val generatorFunction = GeneratorIRFunction(transformedSource, outerEnvRecord).initialize()
-
-        override fun evaluate(arguments: JSArguments): JSValue {
-            // TODO: Avoid the JS runtime here
-
-            val realm = transformedSource.realm
-            val generatorObj = generatorFunction.evaluate(arguments)
-            var result = Operations.invoke(realm, generatorObj, "next".key())
-
-            while (!Operations.getV(realm, result, "done".key()).asBoolean) {
-                val moduleToImport = Operations.getV(realm, result, "value".key()).asString
-                result = Operations.invoke(realm, generatorObj, "next".key(), listOf(TODO()))
-            }
-
-            return JSEmpty
-        }
-    }
-
     // Extends from JSValue so it can be passed as an argument
     data class GeneratorState(
         var phase: Int = 0,
@@ -1053,9 +983,9 @@ class Interpreter(
         fun wrap(
             transformedSource: TransformedSource
         ) = if (transformedSource.sourceInfo.type.isModule) {
-            ModuleIRFunction(transformedSource, transformedSource.realm.globalEnv)
+            ModuleInterpretedFunction.create(transformedSource, transformedSource.realm.globalEnv)
         } else {
-            NormalIRFunction(transformedSource, transformedSource.realm.globalEnv)
-        }.initialize()
+            NormalInterpretedFunction.create(transformedSource, transformedSource.realm.globalEnv)
+        }
     }
 }
