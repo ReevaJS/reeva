@@ -1,6 +1,8 @@
 package com.reevajs.reeva.core
 
 import com.reevajs.reeva.Reeva
+import com.reevajs.reeva.core.lifecycle.FileSourceType
+import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
@@ -8,6 +10,8 @@ import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.utils.Errors
+import java.io.File
 
 open class HostHooks {
     @ECMAImpl("9.5.2")
@@ -71,5 +75,34 @@ open class HostHooks {
                 }
             }
         }
+    }
+
+    fun resolveImportedModule(referencingRecord: RootRecord, specifier: String): RootExecutable {
+        val existingModule = referencingRecord.realm.moduleTree.resolveImportedModule(referencingRecord, specifier)
+        if (existingModule != null)
+            return existingModule
+
+        return resolveImportedModuleImpl(referencingRecord, specifier).let { record ->
+            if (record.sourceInfo.type.isModule) ModuleRecord(record) else ScriptRecord(record).also {
+                referencingRecord.realm.moduleTree.setImportedModule(referencingRecord, specifier, it)
+            }
+        }
+    }
+
+    open fun resolveImportedModuleImpl(referencingRecord: RootRecord, specifier: String): RootRecord {
+        val file = resolveImportedFilePath(referencingRecord, specifier)
+        val source = SourceInfo(
+            referencingRecord.sourceInfo.realm,
+            file.readText(),
+            FileSourceType(file),
+        )
+        return RootRecord(source, null)
+    }
+
+    open fun resolveImportedFilePath(referencingRecord: RootRecord, specifier: String): File {
+        val resolvedFile = referencingRecord.sourceInfo.type.resolveImportedFilePath(specifier)
+        if (!resolvedFile.exists())
+            Errors.NonExistentImport(specifier, referencingRecord.sourceInfo.type.name).throwInternalError(referencingRecord.sourceInfo.realm)
+        return resolvedFile
     }
 }

@@ -51,6 +51,8 @@ class Realm {
         get() = globalEnvBacker ?: throw IllegalStateException("This Realm has no global EnvRecord")
         set(value) { globalEnvBacker = value }
 
+    internal val moduleTree = ModuleTree()
+
     // Special objects that have to be handled manually
     lateinit var objectProto: JSObjectProto private set
     lateinit var functionProto: JSFunctionProto private set
