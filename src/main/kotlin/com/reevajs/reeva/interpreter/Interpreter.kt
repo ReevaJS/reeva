@@ -943,7 +943,7 @@ class Interpreter(
         val moduleRecord = pop() as ModuleRecord
         for (name in opcode.namedImports) {
             if (moduleRecord.getNamedExport(name) == null)
-                Errors.NonExistentImport(moduleRecord.specifier, name).throwSyntaxError(realm)
+                Errors.NonExistentImport(moduleRecord.rootRecord.sourceInfo.type.name, name).throwSyntaxError(realm)
         }
     }
 
