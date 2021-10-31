@@ -27,7 +27,7 @@ fun main() {
 
     agent.printIR = true
 
-    val file = File("./demo/index.js")
+    val file = File("./demo/index.mjs")
     val result = agent.run(realm, file)
     agent.microtaskQueue.blockUntilEmpty()
     Reeva.teardown()

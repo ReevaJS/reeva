@@ -2,7 +2,6 @@ package com.reevajs.reeva.interpreter
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
-import com.reevajs.reeva.core.ModuleRecord
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
@@ -12,13 +11,10 @@ import com.reevajs.reeva.transformer.*
 import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
-import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSFunction
-import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObject
 import com.reevajs.reeva.runtime.iterators.JSObjectPropertyIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.JSObject.Companion.initialize
 import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.runtime.regexp.JSRegExpObject
@@ -37,6 +33,8 @@ class Interpreter(
 
     private val stack = ArrayDeque<Any>()
     private val locals = Array<Any?>(info.ir.locals.size) { null }
+
+    private var moduleEnv = initialEnvRecord as? ModuleEnvRecord
 
     var activeEnvRecord = initialEnvRecord
         private set
@@ -544,6 +542,9 @@ class Interpreter(
 
     override fun visitDeclareGlobals(opcode: DeclareGlobals) {
         // TODO: This is not spec compliant
+        if (moduleEnv != null)
+            return
+
         for (name in opcode.lexs) {
             if (realm.globalEnv.hasBinding(name))
                 Errors.RestrictedGlobalPropertyName(name).throwSyntaxError(realm)
@@ -939,16 +940,15 @@ class Interpreter(
         push((pop() as ClassCtorAndProto).constructor)
     }
 
-    override fun visitDeclareNamedImports(opcode: DeclareNamedImports) {
-        val moduleRecord = pop() as ModuleRecord
-        for (name in opcode.namedImports) {
-            if (moduleRecord.getNamedExport(name) == null)
-                Errors.NonExistentImport(moduleRecord.rootRecord.sourceInfo.type.name, name).throwSyntaxError(realm)
-        }
+    override fun visitLoadModuleVar(opcode: LoadModuleVar) {
+        val value = moduleEnv!!.getBinding(opcode.name)
+        if (value == JSEmpty)
+            Errors.CircularImport(opcode.name).throwReferenceError(realm)
+        push(value)
     }
 
-    override fun visitStoreModuleRecord() {
-        (activeEnvRecord as ModuleEnvRecord).storeModuleRecord(pop() as ModuleRecord)
+    override fun visitStoreModuleVar(opcode: StoreModuleVar) {
+        moduleEnv!!.setBinding(opcode.name, popValue())
     }
 
     private fun pop(): Any = stack.removeLast()
@@ -977,15 +977,5 @@ class Interpreter(
         }
 
         fun pop() = stack.removeLast()
-    }
-
-    companion object {
-        fun wrap(
-            transformedSource: TransformedSource
-        ) = if (transformedSource.sourceInfo.type.isModule) {
-            ModuleInterpretedFunction.create(transformedSource, transformedSource.realm.globalEnv)
-        } else {
-            NormalInterpretedFunction.create(transformedSource, transformedSource.realm.globalEnv)
-        }
     }
 }

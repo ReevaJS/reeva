@@ -83,6 +83,8 @@ class IRPrinter(private val transformedSource: TransformedSource) {
                 is StoreArrayIndexed -> println(" [${opcode.index}]")
                 is CopyObjectExcludingProperties -> println(" #${opcode.propertiesLocal}")
                 is PushJVMInt -> println(" #${opcode.int}")
+                is LoadModuleVar -> println(" \"${opcode.name}\"")
+                is StoreModuleVar -> println(" \"${opcode.name}\"")
                 else -> println()
             }
         }

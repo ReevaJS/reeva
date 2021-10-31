@@ -1,8 +1,7 @@
 package com.reevajs.reeva.core
 
 import com.reevajs.reeva.Reeva
-import com.reevajs.reeva.core.lifecycle.FileSourceType
-import com.reevajs.reeva.core.lifecycle.SourceInfo
+import com.reevajs.reeva.core.lifecycle.*
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
@@ -11,6 +10,7 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
+import com.reevajs.reeva.utils.expect
 import java.io.File
 
 open class HostHooks {
@@ -77,32 +77,29 @@ open class HostHooks {
         }
     }
 
-    fun resolveImportedModule(referencingRecord: RootRecord, specifier: String): RootExecutable {
-        val existingModule = referencingRecord.realm.moduleTree.resolveImportedModule(referencingRecord, specifier)
+    fun resolveImportedModule(referencingModule: ModuleRecord, specifier: String): ModuleRecord {
+        val sourceInfo = resolveImportedModuleImpl(referencingModule, specifier)
+        val existingModule = referencingModule.realm.moduleTree.resolveImportedModule(sourceInfo)
         if (existingModule != null)
             return existingModule
 
-        return resolveImportedModuleImpl(referencingRecord, specifier).let { record ->
-            if (record.sourceInfo.type.isModule) ModuleRecord(record) else ScriptRecord(record).also {
-                referencingRecord.realm.moduleTree.setImportedModule(referencingRecord, specifier, it)
-            }
-        }
+        return ModuleRecord.parseModule(sourceInfo).valueOrElse { TODO() }
     }
 
-    open fun resolveImportedModuleImpl(referencingRecord: RootRecord, specifier: String): RootRecord {
-        val file = resolveImportedFilePath(referencingRecord, specifier)
-        val source = SourceInfo(
-            referencingRecord.sourceInfo.realm,
+    open fun resolveImportedModuleImpl(referencingModule: ModuleRecord, specifier: String): SourceInfo {
+        val file = resolveImportedFilePath(referencingModule, specifier)
+        return SourceInfo(
+            referencingModule.realm,
             file.readText(),
             FileSourceType(file),
         )
-        return RootRecord(source, null)
     }
 
-    open fun resolveImportedFilePath(referencingRecord: RootRecord, specifier: String): File {
-        val resolvedFile = referencingRecord.sourceInfo.type.resolveImportedFilePath(specifier)
+    open fun resolveImportedFilePath(referencingModule: ModuleRecord, specifier: String): File {
+        val sourceInfo = referencingModule.parsedSource.sourceInfo
+        val resolvedFile = sourceInfo.type.resolveImportedFilePath(specifier)
         if (!resolvedFile.exists())
-            Errors.NonExistentImport(specifier, referencingRecord.sourceInfo.type.name).throwInternalError(referencingRecord.sourceInfo.realm)
+            Errors.NonExistentImport(specifier, sourceInfo.type.name).throwInternalError(sourceInfo.realm)
         return resolvedFile
     }
 }

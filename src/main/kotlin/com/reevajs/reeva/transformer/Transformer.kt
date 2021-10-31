@@ -4,7 +4,7 @@ import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
-import com.reevajs.reeva.core.ModuleRecord
+import com.reevajs.reeva.core.lifecycle.ModuleRecord
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.parsing.HoistingScope
@@ -33,21 +33,15 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         expect(!::builder.isInitialized, "Cannot reuse a Transformer")
 
         val rootNode = parsedSource.node
-        val isModule = parsedSource.sourceInfo.type.isModule
 
         builder = IRBuilder(
-            getReservedLocalsCount(isGenerator = isModule),
+            getReservedLocalsCount(isGenerator = false),
             rootNode.scope.inlineableLocalCount,
             isDerivedClassConstructor = false,
-            isGenerator = isModule,
+            isGenerator = false,
         )
 
-        globalDeclarationInstantiation(rootNode.scope as HoistingScope) {
-            if (isModule) {
-                +PushModuleEnvRecord
-                insertGeneratorPrologue()
-            }
-
+        globalDeclarationInstantiation(rootNode.scope.outerGlobalScope as HoistingScope) {
             rootNode.children.forEach(::visit)
             if (!builder.isDone) {
                 +PushUndefined
@@ -139,7 +133,8 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 )
             )
 
-            storeToSource(func)
+            if (func.parent !is ExportNode)
+                storeToSource(func)
         }
 
         block()
@@ -430,6 +425,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     private fun loadFromSource(source: VariableSourceNode) {
+        if (source is Import) {
+            +LoadModuleVar(source.name())
+            return
+        }
+
         if (source.mode == VariableMode.Global) {
             if (source.name() == "undefined") {
                 +PushUndefined
@@ -1347,45 +1347,51 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     override fun visitImportDeclaration(node: ImportDeclarationNode) {
-        generatorYieldPoint {
-            +PushConstant(node.moduleName)
-        }
-
-        // At this point, the top of the stack contains a ModuleRecord for the
-        // module that we asked for, however it may not be fully linked yet.
-        // We need to verify that the structure is correct (i.e. it exports
-        // everything we've asked for), however we should not actually access
-        // any of the module's exports until they are needed.
-
-        if (node.imports == null) {
-            // This is a file import, so seeing as there are no direct imports,
-            // the ModuleRecord does not need to be kept around
-            +Pop
-        }
-
-        val namedImports = mutableSetOf<String>()
-
-        for (import in node.imports!!) {
-            when (import) {
-                is NormalImport -> {
-                    expect(import.identifierNode.processedName !in namedImports)
-                    namedImports.add(import.identifierNode.processedName)
-                }
-                is DefaultImport -> {
-                    expect(ModuleRecord.DEFAULT_SPECIFIER !in namedImports)
-                    namedImports.add(ModuleRecord.DEFAULT_SPECIFIER)
-                }
-                is NamespaceImport -> TODO()
-            }
-        }
-
-        +Dup
-        +DeclareNamedImports(namedImports)
-        +StoreModuleRecord
+        // nop
     }
 
     override fun visitExport(node: ExportNode) {
-        TODO()
+        when (node) {
+            is DefaultClassExportNode -> {
+                visit(node.classNode)
+                +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
+            }
+            is DefaultExpressionExportNode -> {
+                visit(node.expression)
+                +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
+            }
+            is DefaultFunctionExportNode -> {
+                visit(node.declaration)
+                +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
+            }
+            is ExportAllAsFromNode -> TODO()
+            is ExportAllFromNode -> TODO()
+            is ExportNamedFromNode -> TODO()
+            is NamedExport -> {
+                visit(node.identifierNode)
+                +StoreModuleVar(node.alias?.processedName ?: node.identifierNode.processedName)
+            }
+            is NamedExports -> node.exports.forEach(::visit)
+            is DeclarationExportNode -> {
+                visit(node.declaration)
+                val name = when (val decl = node.declaration) {
+                    is FunctionDeclarationNode -> decl.identifier.processedName
+                    is ClassDeclarationNode -> decl.identifier!!.processedName
+                    is DeclarationNode -> {
+                        if (decl.declarations.size != 1)
+                            TODO()
+
+                        decl.declarations[0].let {
+                            if (it is DestructuringDeclaration)
+                                TODO()
+                            (it as NamedDeclaration).identifier.processedName
+                        }
+                    }
+                    else -> TODO()
+                }
+                +StoreModuleVar(name)
+            }
+        }
     }
 
     override fun visitArgument(node: ArgumentNode) {

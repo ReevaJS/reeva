@@ -67,30 +67,3 @@ class GeneratorInterpretedFunction private constructor(
             GeneratorInterpretedFunction(transformedSource, outerEnvRecord).initialize()
     }
 }
-
-class ModuleInterpretedFunction private constructor(
-    transformedSource: TransformedSource,
-    outerEnvRecord: EnvRecord,
-) : InterpretedFunction(transformedSource, outerEnvRecord) {
-    private val generatorFunction = GeneratorInterpretedFunction.create(transformedSource, outerEnvRecord)
-
-    override fun evaluate(arguments: JSArguments): JSValue {
-        // TODO: Avoid the JS runtime here
-
-        val realm = transformedSource.realm
-        val generatorObj = generatorFunction.evaluate(arguments)
-        var result = Operations.invoke(realm, generatorObj, "next".key())
-
-        while (!Operations.getV(realm, result, "done".key()).asBoolean) {
-            val moduleToImport = Operations.getV(realm, result, "value".key()).asString
-            result = Operations.invoke(realm, generatorObj, "next".key(), listOf(TODO()))
-        }
-
-        return JSEmpty
-    }
-
-    companion object {
-        fun create(transformedSource: TransformedSource, outerEnvRecord: EnvRecord) =
-            ModuleInterpretedFunction(transformedSource, outerEnvRecord).initialize()
-    }
-}

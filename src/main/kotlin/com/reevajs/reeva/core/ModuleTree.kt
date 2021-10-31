@@ -1,14 +1,16 @@
 package com.reevajs.reeva.core
 
+import com.reevajs.reeva.core.lifecycle.ModuleRecord
+import com.reevajs.reeva.core.lifecycle.SourceInfo
+import com.reevajs.reeva.utils.expect
+
 class ModuleTree {
-    private val moduleTree = mutableMapOf<RootRecord, MutableMap<String, RootExecutable>>()
+    private val moduleTree = mutableMapOf<SourceInfo, ModuleRecord>()
 
-    fun resolveImportedModule(referencingRecord: RootRecord, specifier: String): RootExecutable? {
-        val moduleMap = moduleTree[referencingRecord] ?: return null
-        return moduleMap[specifier]
-    }
+    fun resolveImportedModule(sourceInfo: SourceInfo) = moduleTree[sourceInfo]
 
-    fun setImportedModule(referencingRecord: RootRecord, specifier: String, resolvedModule: RootExecutable) {
-        moduleTree.getOrPut(referencingRecord) { mutableMapOf() }[specifier] = resolvedModule
+    fun setImportedModule(sourceInfo: SourceInfo, resolvedModule: ModuleRecord) {
+        expect(moduleTree[sourceInfo] == null)
+        moduleTree[sourceInfo] = resolvedModule
     }
 }
