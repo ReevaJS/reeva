@@ -74,6 +74,7 @@ abstract class Reporter {
     fun throwStatementNewLine(): Nothing =
         error("throw keyword cannot be separated from it's expression by a line terminator")
     fun unexpectedToken(token: TokenType): Nothing = error("unexpected token \"$token\"")
+    fun unsupportedFeature(feature: String): Nothing = error("unsupported feature: $feature")
     fun unterminatedTemplateLiteral(): Nothing = error("unterminated template literal")
     fun unterminatedTemplateLiteralExpr(): Nothing = error("unterminated template literal expression")
     fun variableRedeclaration(name: String, oldType: String, newType: String): Nothing =

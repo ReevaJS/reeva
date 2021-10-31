@@ -958,12 +958,13 @@ class Parser(val sourceInfo: SourceInfo) {
      *     with ( Expression ) Statement
      */
     private fun parseWithStatement(): StatementNode = nps {
-        consume(TokenType.With)
-        consume(TokenType.OpenParen)
-        val expression = parseExpression()
-        consume(TokenType.CloseParen)
-        val body = parseStatement()
-        WithStatementNode(expression, body)
+        reporter.at(token).unsupportedFeature("with statements")
+        // consume(TokenType.With)
+        // consume(TokenType.OpenParen)
+        // val expression = parseExpression()
+        // consume(TokenType.CloseParen)
+        // val body = parseStatement()
+        // WithStatementNode(expression, body)
     }
 
     /*
