@@ -124,8 +124,8 @@ interface OpcodeVisitor {
             is AttachClassMethod -> visitAttachClassMethod(opcode)
             is AttachComputedClassMethod -> visitAttachComputedClassMethod(opcode)
             FinalizeClass -> visitFinalizeClass()
-            is DeclareNamedImports -> visitDeclareNamedImports(opcode)
-            StoreModuleRecord -> visitStoreModuleRecord()
+            is LoadModuleVar -> visitLoadModuleVar(opcode)
+            is StoreModuleVar -> visitStoreModuleVar(opcode)
         }
     }
 
@@ -371,7 +371,7 @@ interface OpcodeVisitor {
 
     fun visitPopFromGeneratorState()
 
-    fun visitDeclareNamedImports(opcode: DeclareNamedImports)
+    fun visitLoadModuleVar(opcode: LoadModuleVar)
 
-    fun visitStoreModuleRecord()
+    fun visitStoreModuleVar(opcode: StoreModuleVar)
 }

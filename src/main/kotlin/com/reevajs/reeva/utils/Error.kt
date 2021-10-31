@@ -1,6 +1,6 @@
 package com.reevajs.reeva.utils
 
-import com.reevajs.reeva.core.ModuleRecord
+import com.reevajs.reeva.core.lifecycle.ModuleRecord
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
@@ -96,6 +96,7 @@ object Errors {
 
     object CantCompileStrings : Error("Compiled strings are not allowed in this Reeva context")
 
+    class CircularImport(name: String) : Error("The import \"$name\" is uninitialized; do you have circular imports?")
     class NonExistentImport(module: String, name: String) : Error("The module \"$module\" does not provide ${
         if (name == ModuleRecord.DEFAULT_SPECIFIER) "a default export" else "an export named $name"
     }")

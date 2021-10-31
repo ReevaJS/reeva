@@ -17,16 +17,24 @@ class VariableDeclarationNode(
 
 sealed interface Declaration : ASTNode {
     val initializer: ExpressionNode?
+
+    fun names(): List<String>
 }
 
 class DestructuringDeclaration(
     val pattern: BindingPatternNode,
     override val initializer: ExpressionNode?,
-) : ASTNodeBase(listOfNotNull(pattern, initializer)), Declaration
+) : ASTNodeBase(listOfNotNull(pattern, initializer)), Declaration {
+    override fun names(): List<String> {
+        TODO("Not yet implemented")
+    }
+}
 
 class NamedDeclaration(
     val identifier: IdentifierNode,
     override val initializer: ExpressionNode?,
 ) : VariableSourceNode(listOfNotNull(identifier, identifier)), Declaration {
     override fun name() = identifier.processedName
+
+    override fun names() = listOf(name())
 }

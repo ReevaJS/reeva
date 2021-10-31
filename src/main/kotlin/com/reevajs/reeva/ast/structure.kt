@@ -197,7 +197,5 @@ sealed class RootNode(children: List<ASTNode>) : NodeWithScope(children)
 
 class ScriptNode(val statements: StatementList, val hasUseStrict: Boolean) : RootNode(statements)
 
-class ModuleNode(val body: StatementList) : RootNode(body)
-
 interface StatementNode : ASTNode
 interface ExpressionNode : ASTNode

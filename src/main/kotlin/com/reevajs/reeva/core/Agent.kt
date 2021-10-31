@@ -5,9 +5,7 @@ import com.reevajs.reeva.core.errors.DefaultErrorReporter
 import com.reevajs.reeva.core.errors.ErrorReporter
 import com.reevajs.reeva.core.errors.StackTraceFrame
 import com.reevajs.reeva.core.errors.ThrowException
-import com.reevajs.reeva.core.lifecycle.FileSourceType
-import com.reevajs.reeva.core.lifecycle.LiteralSourceType
-import com.reevajs.reeva.core.lifecycle.SourceInfo
+import com.reevajs.reeva.core.lifecycle.*
 import com.reevajs.reeva.interpreter.Interpreter
 import com.reevajs.reeva.transformer.*
 import com.reevajs.reeva.parsing.ParsedSource
@@ -80,41 +78,6 @@ class Agent {
         Reeva.allAgents.add(this)
     }
 
-    fun parse(sourceInfo: SourceInfo): Result<ParsingError, ParsedSource> {
-        return Parser(sourceInfo).let {
-            if (sourceInfo.type.isModule) it.parseModule() else it.parseScript()
-        }.also {
-            if (printAST && it.hasValue) {
-                it.value().node.debugPrint()
-                println('\n')
-            }
-        }
-    }
-
-    fun transform(parsedSource: ParsedSource): TransformedSource {
-        return Transformer(parsedSource).transform().also {
-            if (printIR) {
-                IRPrinter(it).print()
-                println('\n')
-            }
-            IRValidator(it.functionInfo.ir).validate()
-        }
-    }
-
-    fun interpret(transformedSource: TransformedSource): Result<ThrowException, JSValue> {
-        return try {
-            Result.success(
-                Interpreter.wrap(transformedSource).call(transformedSource.realm.globalObject, emptyList())
-            )
-        } catch (e: ThrowException) {
-            Result.error(e)
-        }
-    }
-
-    fun compile(transformedSource: TransformedSource): JSFunction {
-        TODO()
-    }
-
     fun run(realm: Realm, file: File): RunResult {
         return run(
             SourceInfo(
@@ -136,16 +99,13 @@ class Agent {
     }
 
     fun run(sourceInfo: SourceInfo): RunResult {
-        val parseResult = parse(sourceInfo)
-        if (parseResult.hasError)
-            return RunResult.ParseError(sourceInfo, parseResult.error())
+        val result = if (sourceInfo.type.isModule) {
+            ModuleRecord.parseModule(sourceInfo)
+        } else ScriptRecord.parseScript(sourceInfo)
 
-        val transformedSource = transform(parseResult.value())
-
-        val interpretResult = interpret(transformedSource)
-        if (interpretResult.hasError)
-            return RunResult.RuntimeError(sourceInfo, interpretResult.error())
-        return RunResult.Success(sourceInfo, interpretResult.value())
+        return if (result.hasError) {
+            RunResult.ParseError(sourceInfo, result.error())
+        } else result.value().execute()
     }
 
     internal fun <T> inCallScope(function: JSFunction, block: () -> T): T {

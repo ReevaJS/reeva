@@ -1,14 +1,23 @@
 package com.reevajs.reeva.ast
 
 import com.reevajs.reeva.ast.statements.ASTListNode
+import com.reevajs.reeva.ast.statements.StatementList
 
 typealias ImportList = ASTListNode<Import>
 typealias ExportList = ASTListNode<NamedExport>
+
+class ModuleNode(val body: StatementList) : RootNode(body) {
+    fun requestedModules() = body.filterIsInstance<ImportDeclarationNode>().map { it.moduleName }
+}
 
 class ImportDeclarationNode(
     val imports: ImportList?, // null indicates `import 'file'` syntax
     val moduleName: String,
 ) : ASTNodeBase(imports ?: emptyList()), StatementNode {
+    init {
+        imports?.forEach { it.parentDeclNode = this }
+    }
+
     override fun dump(indent: Int) = buildString {
         dumpSelf(indent)
         imports?.forEach {
@@ -17,7 +26,9 @@ class ImportDeclarationNode(
     }
 }
 
-sealed class Import(children: List<ASTNode>) : VariableSourceNode(children)
+sealed class Import(children: List<ASTNode>) : VariableSourceNode(children) {
+    lateinit var parentDeclNode: ImportDeclarationNode
+}
 
 class NormalImport(
     val identifierNode: IdentifierNode,
