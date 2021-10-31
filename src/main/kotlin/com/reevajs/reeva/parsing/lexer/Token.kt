@@ -16,7 +16,10 @@ data class Token(
 ) {
     fun doubleValue(): Double {
         expect(type == TokenType.NumericLiteral)
-        return StringToFP(literals.filter { it != '_' }).parse() ?: TODO()
+        var literals = this.literals.filter { it != '_' }
+        if (literals.endsWith('.'))
+            literals += "0"
+        return StringToFP(literals).parse() ?: TODO()
     }
 
     fun error() = if (type == TokenType.Invalid) literals else null
