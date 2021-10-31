@@ -16,6 +16,8 @@ interface ErrorReporter {
     fun reportParseError(sourceInfo: SourceInfo, cause: String, start: TokenLocation, end: TokenLocation)
 
     fun reportRuntimeError(sourceInfo: SourceInfo, cause: JSValue, stackTrace: List<StackTraceFrame>)
+
+    fun reportInternalError(sourceInfo: SourceInfo, cause: Throwable)
 }
 
 

@@ -25,29 +25,28 @@ sealed class RunResult(val sourceInfo: SourceInfo) {
 
     class RuntimeError(sourceInfo: SourceInfo, val cause: ThrowException) : RunResult(sourceInfo)
 
+    class InternalError(sourceInfo: SourceInfo, val cause: Throwable) : RunResult(sourceInfo)
+
     class Success(sourceInfo: SourceInfo, val result: JSValue) : RunResult(sourceInfo)
 
     fun unwrap(errorReporter: ErrorReporter = Reeva.activeAgent.errorReporter): JSValue? {
-        return when (this) {
-            is Success -> this.result
-            is ParseError -> {
-                errorReporter.reportParseError(
-                    this.sourceInfo,
-                    this.error.cause,
-                    this.error.start,
-                    this.error.end,
-                )
-                null
-            }
-            is RuntimeError -> {
-                errorReporter.reportRuntimeError(
-                    this.sourceInfo,
-                    this.cause.value,
-                    this.cause.stackTrace,
-                )
-                null
-            }
+        when (this) {
+            is Success -> return result
+            is ParseError -> errorReporter.reportParseError(
+                sourceInfo,
+                error.cause,
+                error.start,
+                error.end,
+            )
+            is RuntimeError -> errorReporter.reportRuntimeError(
+                sourceInfo,
+                cause.value,
+                cause.stackTrace,
+            )
+            is InternalError -> errorReporter.reportInternalError(sourceInfo, cause)
         }
+
+        return null
     }
 }
 

@@ -50,4 +50,8 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter {
 
         out.println("\u001B[0m")
     }
+
+    override fun reportInternalError(sourceInfo: SourceInfo, cause: Throwable) {
+        cause.printStackTrace(out)
+    }
 }
