@@ -23,23 +23,23 @@ class IdentifierNode(
 }
 
 class IdentifierReferenceNode(val identifierNode: IdentifierNode) : VariableRefNode(), ExpressionNode {
-    val identifierName: String
+    val processedName: String
         get() = identifierNode.processedName
 
-    val rawIdentifierName: String
+    val rawName: String
         get() = identifierNode.rawName
 
     override val isInvalidAssignmentTarget = false
 
-    override fun name() = identifierName
+    override fun name() = processedName
 
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
         append(" (identifier=")
-        append(identifierName)
+        append(processedName)
         append(")\n")
     }
 
-    override fun toString() = identifierName
+    override fun toString() = processedName
 }
