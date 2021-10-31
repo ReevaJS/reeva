@@ -20,10 +20,13 @@ interface SourceType {
     fun resolveImportedFilePath(specifier: String): File
 }
 
-class FileSourceType(file: File) : SourceType {
+
+class FileSourceType @JvmOverloads constructor(
+    file: File,
+    override val isModule: Boolean = file.extension == "mjs",
+) : SourceType {
     val file = file.normalize()
     override val name: String = file.name
-    override val isModule = file.extension == "mjs"
 
     override fun resolveImportedFilePath(specifier: String): File {
         if (specifier.startsWith('/'))

@@ -60,11 +60,6 @@ class Test262Test(
             val realm = Reeva.makeRealm()
             val isModule = if (metadata.flags != null) Flag.Module in metadata.flags else false
 
-            if (metadata.flags != null) {
-                Assumptions.assumeTrue(Flag.Module !in metadata.flags)
-                Assumptions.assumeTrue(Flag.Async !in metadata.flags)
-            }
-
             val pretestResult = agent.run(SourceInfo(
                 realm,
                 requiredScript,
@@ -127,10 +122,7 @@ class Test262Test(
     }
 
     private fun runTestCommon(agent: Agent, realm: Realm, isModule: Boolean) {
-        if (isModule)
-            TODO()
-
-        val theScript = if (metadata.flags?.contains(Flag.OnlyStrict) == true) {
+        val theScript = if (metadata.flags?.contains(Flag.OnlyStrict) == true && !isModule) {
             "'use strict'; $script"
         } else script
 
@@ -144,7 +136,7 @@ class Test262Test(
             SourceInfo(
                 realm,
                 theScript,
-                FileSourceType(file),
+                FileSourceType(file, isModule),
             )
         )
 
