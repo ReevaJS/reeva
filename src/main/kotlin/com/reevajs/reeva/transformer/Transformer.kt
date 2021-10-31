@@ -543,7 +543,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         val jumpToEnd = JumpIfToBooleanFalse(-1)
 
         node.initializerScope?.also(::enterScope)
-        node.initializer?.also(::visit)
+        node.initializer?.also {
+            visit(it)
+            if (it is ExpressionNode)
+                +Pop
+        }
 
         enterContinuableScope(node.labels)
         val head = builder.opcodeCount()
