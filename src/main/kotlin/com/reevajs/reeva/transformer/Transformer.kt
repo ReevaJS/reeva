@@ -133,8 +133,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 )
             )
 
-            if (func.parent !is ExportNode)
-                storeToSource(func)
+            storeToSource(func)
         }
 
         block()
@@ -426,7 +425,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
     private fun loadFromSource(source: VariableSourceNode) {
         if (source is Import) {
-            +LoadModuleVar(source.name())
+            +LoadModuleVar(source.sourceModuleName())
             return
         }
 
@@ -456,6 +455,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     private fun storeToSource(source: VariableSourceNode) {
+        if (source.mode == VariableMode.Export) {
+            +Dup
+            +StoreModuleVar(source.name())
+        }
+
         if (source.mode == VariableMode.Global) {
             if (source.name() == "undefined") {
                 if (source.scope.isStrict) {
@@ -1360,10 +1364,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 visit(node.expression)
                 +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
             }
-            is DefaultFunctionExportNode -> {
-                visit(node.declaration)
-                +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
-            }
             is ExportAllAsFromNode -> TODO()
             is ExportAllFromNode -> TODO()
             is ExportNamedFromNode -> TODO()
@@ -1372,24 +1372,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 +StoreModuleVar(node.alias?.processedName ?: node.identifierNode.processedName)
             }
             is NamedExports -> node.exports.forEach(::visit)
-            is DeclarationExportNode -> {
-                visit(node.declaration)
-                val name = when (val decl = node.declaration) {
-                    is FunctionDeclarationNode -> decl.identifier.processedName
-                    is ClassDeclarationNode -> decl.identifier!!.processedName
-                    is DeclarationNode -> {
-                        if (decl.declarations.size != 1)
-                            TODO()
-
-                        decl.declarations[0].let {
-                            if (it is DestructuringDeclaration)
-                                TODO()
-                            (it as NamedDeclaration).identifier.processedName
-                        }
-                    }
-                    else -> TODO()
-                }
-                +StoreModuleVar(name)
+            else -> {
             }
         }
     }

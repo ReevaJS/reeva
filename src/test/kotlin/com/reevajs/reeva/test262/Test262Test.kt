@@ -140,6 +140,9 @@ class Test262Test(
             )
         )
 
+        if (isModule && testResult !is RunResult.Success)
+            println()
+
         if (shouldErrorDuringParse) {
             Assertions.assertTrue(testResult is RunResult.ParseError) {
                 "Expected parse error during execution\n${getResultMessage(testResult)}"

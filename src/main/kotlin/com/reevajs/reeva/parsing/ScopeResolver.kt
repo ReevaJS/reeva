@@ -71,6 +71,17 @@ class ScopeResolver : ASTVisitor {
         super.visitImport(node)
     }
 
+    override fun visitExport(node: ExportNode) {
+        super.visitExport(node)
+
+        when (node) {
+            is DefaultClassExportNode -> node.classNode.mode = VariableMode.Export
+            is DefaultFunctionExportNode -> node.declaration.mode = VariableMode.Export
+            is DeclarationExportNode -> (node.declaration as VariableSourceNode).mode = VariableMode.Export
+            else -> {}
+        }
+    }
+
     override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
         val type = if (node.isConst) VariableType.Const else VariableType.Let
 
