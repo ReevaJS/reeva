@@ -17,7 +17,6 @@ class ScopeResolver : ASTVisitor {
     fun resolve(node: NodeWithScope) {
         val globalScope = GlobalScope()
         scope = globalScope
-        node.scope = scope
 
         when (node) {
             is ScriptNode -> {
@@ -31,10 +30,13 @@ class ScopeResolver : ASTVisitor {
             is ModuleNode -> {
                 globalScope.isStrict = true
                 visit(node.body)
+                scope = ModuleScope(globalScope)
             }
         }
 
-        scope.finish()
+        node.scope = scope
+
+        globalScope.finish()
     }
 
     override fun visitBlock(node: BlockNode) {
@@ -60,6 +62,13 @@ class ScopeResolver : ASTVisitor {
 
             visitDeclaration(decl, mode, VariableType.Var)
         }
+    }
+
+    override fun visitImport(node: Import) {
+        scope.addVariableSource(node)
+        node.type = VariableType.Let
+        node.mode = VariableMode.Import
+        super.visitImport(node)
     }
 
     override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {

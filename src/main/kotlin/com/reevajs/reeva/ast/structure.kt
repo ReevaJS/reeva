@@ -88,6 +88,7 @@ enum class VariableMode {
     Declared,
     Parameter,
     Global,
+    Import,
 }
 
 enum class VariableType {
