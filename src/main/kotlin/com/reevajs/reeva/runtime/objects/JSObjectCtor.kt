@@ -12,6 +12,7 @@ import com.reevajs.reeva.runtime.primitives.JSFalse
 import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSTrue
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toObject
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.toValue
@@ -37,6 +38,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineBuiltin("isExtensible", 1, ReevaBuiltin.ObjectCtorIsExtensible)
         defineBuiltin("isFrozen", 1, ReevaBuiltin.ObjectCtorIsFrozen)
         defineBuiltin("isSealed", 1, ReevaBuiltin.ObjectCtorIsSealed)
+        defineBuiltin("keys", 1, ReevaBuiltin.ObjectCtorKeys)
         defineBuiltin("preventExtensions", 1, ReevaBuiltin.ObjectCtorPreventExtensions)
         defineBuiltin("seal", 1, ReevaBuiltin.ObjectCtorSeal)
         defineBuiltin("setPrototypeOf", 2, ReevaBuiltin.ObjectCtorSetPrototypeOf)

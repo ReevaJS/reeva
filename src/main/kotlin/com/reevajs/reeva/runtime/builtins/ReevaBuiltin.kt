@@ -247,6 +247,7 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     ObjectCtorIsExtensible(JSObjectCtor::class.java, "isExtensible", "Object.isExtensible"),
     ObjectCtorIsFrozen(JSObjectCtor::class.java, "isFrozen", "Object.isFrozen"),
     ObjectCtorIsSealed(JSObjectCtor::class.java, "isSealed", "Object.isSealed"),
+    ObjectCtorKeys(JSObjectCtor::class.java, "keys", "Object.keys"),
     ObjectCtorPreventExtensions(JSObjectCtor::class.java, "preventExtensions", "Object.preventExtensions"),
     ObjectCtorSeal(JSObjectCtor::class.java, "seal", "Object.seal"),
     ObjectCtorSetPrototypeOf(JSObjectCtor::class.java, "setPrototypeOf", "Object.setPrototypeOf"),
