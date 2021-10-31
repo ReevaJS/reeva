@@ -234,3 +234,7 @@ open class HoistingScope(
 }
 
 class GlobalScope : HoistingScope(null, isLexical = false)
+
+class ModuleScope(outer: Scope) : HoistingScope(outer, isLexical = false) {
+    override var isStrict = true
+}

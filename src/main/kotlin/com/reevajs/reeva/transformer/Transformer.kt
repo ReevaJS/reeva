@@ -83,7 +83,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     private fun globalDeclarationInstantiation(scope: HoistingScope, block: () -> Unit) {
         enterScope(scope)
 
-        val variables = scope.variableSources
+        val variables = scope.variableSources.filter { it.mode != VariableMode.Import }
 
         val varVariables = variables.filter { it.type == VariableType.Var }
         val lexVariables = variables.filter { it.type != VariableType.Var }
