@@ -445,8 +445,7 @@ class Parser(val sourceInfo: SourceInfo) {
     private fun parseExportDeclaration(): ExportNode = nps {
         consume(TokenType.Export)
 
-        parseExportFromClause()?.let { return@nps it }
-        parseNamedExports()?.let { return@nps it }
+        parseExportFromOrNamedExportsClause()?.let { return@nps it }
 
         if (match(TokenType.Var) || match(TokenType.Let) || match(TokenType.Const))
             return@nps DeclarationExportNode(parseVariableDeclaration())
@@ -491,7 +490,7 @@ class Parser(val sourceInfo: SourceInfo) {
      * ModuleSpecifier :
      *     StringLiteral
      */
-    private fun parseExportFromClause(): ExportFromNode? = nps {
+    private fun parseExportFromOrNamedExportsClause(): ExportNode? = nps {
         if (match(TokenType.Mul)) {
             consume()
             if (match(TokenType.Identifier) && token.rawLiterals == "as") {
@@ -502,7 +501,12 @@ class Parser(val sourceInfo: SourceInfo) {
             return@nps ExportAllFromNode(parseImportExportFrom())
         }
 
-        parseNamedExports()?.let { ExportNamedFromNode(it, parseImportExportFrom()) }
+        parseNamedExports()?.let {
+            val from = maybeParseImportExportFrom()
+            if (from != null) {
+                ExportNamedFromNode(it, parseImportExportFrom())
+            } else it
+        }
     }
 
     /*
@@ -547,9 +551,12 @@ class Parser(val sourceInfo: SourceInfo) {
         NamedExports(ExportList(list))
     }
 
-    fun parseImportExportFrom(): String {
+    private fun parseImportExportFrom(): String = maybeParseImportExportFrom() ?:
+        reporter.at(token).expected("\"from\"")
+
+    private fun maybeParseImportExportFrom(): String? {
         if (!match(TokenType.Identifier) || token.rawLiterals != "from")
-            reporter.at(token).expected("\"from\"")
+            return null
         consume()
         return parseStringLiteral().value
     }
