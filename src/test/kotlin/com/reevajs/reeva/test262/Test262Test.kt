@@ -134,8 +134,11 @@ class Test262Test(
             "'use strict'; $script"
         } else script
 
-        if ("buildString(" in theScript)
-            TODO("For some reason this function infinitely loops")
+        if ("buildString(" in theScript) {
+            Assertions.assertTrue(false) {
+                "For some reason this function infinitely loops"
+            }
+        }
 
         val testResult = agent.run(
             SourceInfo(
