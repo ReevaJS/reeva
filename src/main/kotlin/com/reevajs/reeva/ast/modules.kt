@@ -2,6 +2,7 @@ package com.reevajs.reeva.ast
 
 import com.reevajs.reeva.ast.statements.ASTListNode
 import com.reevajs.reeva.ast.statements.StatementList
+import com.reevajs.reeva.core.lifecycle.ModuleRecord
 
 typealias ImportList = ASTListNode<Import>
 typealias ExportList = ASTListNode<NamedExport>
@@ -28,6 +29,8 @@ class ImportDeclarationNode(
 
 sealed class Import(children: List<ASTNode>) : VariableSourceNode(children) {
     lateinit var parentDeclNode: ImportDeclarationNode
+
+    abstract fun sourceModuleName(): String
 }
 
 class NormalImport(
@@ -35,14 +38,20 @@ class NormalImport(
     val alias: IdentifierNode,
 ) : Import(listOf(identifierNode, alias)) {
     override fun name() = alias.processedName
+
+    override fun sourceModuleName() = identifierNode.processedName
 }
 
 class DefaultImport(val identifierNode: IdentifierNode) : Import(listOf(identifierNode)) {
     override fun name() = identifierNode.processedName
+
+    override fun sourceModuleName() = ModuleRecord.DEFAULT_SPECIFIER
 }
 
 class NamespaceImport(val identifierNode: IdentifierNode) : Import(listOf(identifierNode)) {
     override fun name() = identifierNode.processedName
+
+    override fun sourceModuleName() = ModuleRecord.NAMESPACE_SPECIFIER
 }
 
 sealed class ExportNode(children: List<ASTNode>) : ASTNodeBase(children), StatementNode

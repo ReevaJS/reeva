@@ -16,6 +16,7 @@ import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.runtime.other.JSModuleNamespaceObject
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.transformer.opcodes.StoreModuleVar
@@ -63,6 +64,9 @@ class ModuleRecord(val parsedSource: ParsedSource) : Executable {
     @ECMAImpl("16.2.1.4", name = "[[Environment]]")
     lateinit var env: ModuleEnvRecord
         private set
+
+    @ECMAImpl("16.2.1.4", name = "[[Namespace]]")
+    private var namespace: JSModuleNamespaceObject? = null
 
     @ECMAImpl("16.2.1.5", name = "[[Status]]")
     private var status = Status.Unlinked
@@ -256,6 +260,57 @@ class ModuleRecord(val parsedSource: ParsedSource) : Executable {
         return index
     }
 
+    private fun getExportedNames(stack: MutableList<ModuleRecord>): List<String> {
+        // Circular imports
+        if (this in stack)
+            return emptyList()
+
+        stack.add(this)
+
+        val node = parsedSource.node as ModuleNode
+        val names = mutableListOf<String>()
+
+        node.body.filterIsInstance<ExportNode>().forEach { export ->
+            when (export) {
+                is DefaultClassExportNode,
+                is DefaultExpressionExportNode,
+                is DefaultFunctionExportNode -> names.add(DEFAULT_SPECIFIER)
+                is ExportAllAsFromNode -> names.add(export.identifierNode.processedName)
+                is ExportAllFromNode -> {
+                    val requiredModule = Reeva.activeAgent.hostHooks.resolveImportedModule(this, export.moduleName)
+                    names.addAll(requiredModule.getExportedNames(stack))
+                }
+                is ExportNamedFromNode -> names.addAll(export.exports.exports.map {
+                    it.alias?.processedName ?: it.identifierNode.processedName
+                })
+                is NamedExport -> names.add(export.alias?.processedName ?: export.identifierNode.processedName)
+                is NamedExports -> names.addAll(export.exports.map {
+                    it.alias?.processedName ?: it.identifierNode.processedName
+                })
+                is DeclarationExportNode -> {
+                    val name = when (val decl = export.declaration) {
+                        is FunctionDeclarationNode -> decl.identifier.processedName
+                        is ClassDeclarationNode -> decl.identifier!!.processedName
+                        is DeclarationNode -> {
+                            if (decl.declarations.size != 1)
+                                TODO()
+
+                            decl.declarations[0].let {
+                                if (it is DestructuringDeclaration)
+                                    TODO()
+                                (it as NamedDeclaration).identifier.processedName
+                            }
+                        }
+                        else -> TODO()
+                    }
+                    names.add(name)
+                }
+            }
+        }
+
+        return names
+    }
+
     /**
      * Responsible for constructing and initializing this module's ModuleEnvRecord.
      */
@@ -277,8 +332,16 @@ class ModuleRecord(val parsedSource: ParsedSource) : Executable {
                 when (it) {
                     is DefaultImport ->
                         env.setIndirectBinding(DEFAULT_SPECIFIER, DEFAULT_SPECIFIER, requestedModule)
-                    is NamespaceImport ->
-                        env.setIndirectBinding(NAMESPACE_SPECIFIER, NAMESPACE_SPECIFIER, requestedModule)
+                    is NamespaceImport -> {
+                        if (namespace == null) {
+                            namespace = JSModuleNamespaceObject.create(
+                                realm,
+                                requestedModule,
+                                requestedModule.getExportedNames(mutableListOf()),
+                            )
+                        }
+                        env.setBinding(NAMESPACE_SPECIFIER, namespace!!)
+                    }
                     is NormalImport -> env.setIndirectBinding(
                         it.identifierNode.processedName,
                         it.alias.processedName,

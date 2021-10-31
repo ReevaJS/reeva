@@ -21,7 +21,7 @@ fun main() {
     val newFail = mutableListOf<String>()
 
     for (test in oldContents) {
-        val newTest = newMap[test.name]!!
+        val newTest = newMap[test.name] ?: continue
         val wasSuccess = test.status == Test262Runner.TestResult.Status.Passed
         val isSuccess = newTest.status == Test262Runner.TestResult.Status.Passed
 
