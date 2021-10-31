@@ -412,14 +412,13 @@ class Parser(val sourceInfo: SourceInfo) {
 
         while (!match(TokenType.CloseCurly)) {
             val peeked = peek(1) ?: reporter.at(token).error("unexpected eol")
-            if (peeked.type == TokenType.Identifier && peeked.rawLiterals == "as") {
-                val target = parseIdentifier()
+            val identifier = parseBindingIdentifier()
+            val alias = if (peeked.type == TokenType.Identifier && peeked.rawLiterals == "as") {
                 consume(TokenType.Identifier)
-                val alias = parseBindingIdentifier()
-                imports.add(AliasedImport(target, alias))
-            } else {
-                imports.add(NormalImport(parseBindingIdentifier()))
-            }
+                parseBindingIdentifier()
+            } else identifier
+
+            imports.add(NormalImport(identifier, alias).withPosition(identifier, alias))
 
             if (!match(TokenType.Comma))
                 break
