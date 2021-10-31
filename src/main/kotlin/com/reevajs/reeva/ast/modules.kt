@@ -19,11 +19,7 @@ class ImportDeclarationNode(
 
 sealed class Import(children: List<ASTNode>) : VariableSourceNode(children)
 
-class NormalImport(val identifierNode: IdentifierNode) : Import(listOf(identifierNode)) {
-    override fun name() = identifierNode.processedName
-}
-
-class AliasedImport(
+class NormalImport(
     val identifierNode: IdentifierNode,
     val alias: IdentifierNode,
 ) : Import(listOf(identifierNode, alias)) {
@@ -55,7 +51,7 @@ class ExportNamedFromNode(
 ) : ExportFromNode(moduleName, exports.exports)
 
 class NamedExport(
-    val identifierNode: IdentifierNode,
+    val identifierNode: IdentifierReferenceNode,
     val alias: IdentifierNode?,
 ) : ExportNode(listOfNotNull(identifierNode, alias))
 

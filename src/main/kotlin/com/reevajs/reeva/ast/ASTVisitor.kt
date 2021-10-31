@@ -280,13 +280,13 @@ interface ASTVisitor {
 
     fun visitImport(node: Import) {
         when (node) {
-            is AliasedImport -> {
-                visit(node.identifierNode)
-                visit(node.alias)
-            }
             is DefaultImport -> visit(node.identifierNode)
             is NamespaceImport -> visit(node.identifierNode)
-            is NormalImport -> visit(node.identifierNode)
+            is NormalImport -> {
+                visit(node.identifierNode)
+                if (node.identifierNode != node.alias)
+                    visit(node.alias)
+            }
         }
     }
 
