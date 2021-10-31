@@ -10,6 +10,7 @@ import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.transformer.*
 import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.runtime.*
+import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.iterators.JSObjectPropertyIterator
@@ -541,22 +542,21 @@ class Interpreter(
     }
 
     override fun visitDeclareGlobals(opcode: DeclareGlobals) {
-        // TODO: This is not spec compliant
         if (moduleEnv != null)
             return
 
         for (name in opcode.lexs) {
-            if (realm.globalEnv.hasBinding(name))
+            if (hasRestrictedGlobalProperty(name))
                 Errors.RestrictedGlobalPropertyName(name).throwSyntaxError(realm)
         }
 
         for (name in opcode.funcs) {
-            if (realm.globalEnv.hasBinding(name))
+            if (!canDeclareGlobalFunction(name))
                 Errors.InvalidGlobalFunction(name).throwSyntaxError(realm)
         }
 
         for (name in opcode.vars) {
-            if (realm.globalEnv.hasBinding(name))
+            if (!canDeclareGlobalVar(name))
                 Errors.InvalidGlobalVar(name).throwSyntaxError(realm)
         }
 
@@ -564,6 +564,28 @@ class Interpreter(
             realm.globalEnv.setBinding(name, JSUndefined)
         for (name in opcode.funcs)
             realm.globalEnv.setBinding(name, JSUndefined)
+    }
+
+    @ECMAImpl("9.1.1.4.14")
+    private fun hasRestrictedGlobalProperty(name: String): Boolean {
+        return realm.globalObject.getOwnPropertyDescriptor(name)?.isConfigurable?.not() ?: false
+    }
+
+    @ECMAImpl("9.1.1.4.15")
+    private fun canDeclareGlobalVar(name: String): Boolean {
+        return Operations.hasOwnProperty(realm.globalObject, name.key()) || realm.globalObject.isExtensible()
+    }
+
+    @ECMAImpl("9.1.1.4.16")
+    private fun canDeclareGlobalFunction(name: String): Boolean {
+        val existingProp = realm.globalObject.getOwnPropertyDescriptor(name)
+            ?: return realm.globalObject.isExtensible()
+
+        return when {
+            existingProp.isConfigurable -> true
+            existingProp.isDataDescriptor && existingProp.isWritable && existingProp.isEnumerable -> true
+            else -> false
+        }
     }
 
     override fun visitPushDeclarativeEnvRecord(opcode: PushDeclarativeEnvRecord) {
