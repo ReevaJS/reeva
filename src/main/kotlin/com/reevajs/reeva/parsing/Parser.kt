@@ -528,7 +528,7 @@ class Parser(val sourceInfo: SourceInfo) {
         val list = mutableListOf<NamedExport>()
 
         while (!match(TokenType.CloseCurly)) {
-            val name = parseIdentifier()
+            val name = parseIdentifierReference()
             if (tokenType == TokenType.Identifier && token.rawLiterals == "as") {
                 consume()
                 list.add(NamedExport(name, parseIdentifier()))
@@ -1565,7 +1565,7 @@ class Parser(val sourceInfo: SourceInfo) {
             if (lhs is MemberExpressionNode && lhs.isOptional)
                 reporter.at(lhs).invalidLhsInAssignment()
             if (isStrict && lhs is IdentifierReferenceNode) {
-                val name = lhs.identifierName
+                val name = lhs.processedName
                 if (name == "eval")
                     reporter.strictAssignToEval()
                 if (name == "arguments")

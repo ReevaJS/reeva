@@ -811,7 +811,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         if (node.expression is IdentifierReferenceNode && node.op == UnaryOperator.Typeof &&
             node.expression.source.mode == VariableMode.Global
         ) {
-            +TypeOfGlobal(node.expression.identifierName)
+            +TypeOfGlobal(node.expression.processedName)
             return
         }
 
@@ -1215,7 +1215,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         // We need to check if the variable has been initialized
         +Dup
         builder.ifHelper(::JumpIfNotEmpty) {
-            +ThrowLexicalAccessError(node.identifierName)
+            +ThrowLexicalAccessError(node.processedName)
         }
     }
 
@@ -1367,10 +1367,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         for (import in node.imports!!) {
             when (import) {
-                is AliasedImport -> {
-                    expect(import.identifierNode.processedName !in namedImports)
-                    namedImports.add(import.identifierNode.processedName)
-                }
                 is NormalImport -> {
                     expect(import.identifierNode.processedName !in namedImports)
                     namedImports.add(import.identifierNode.processedName)
@@ -1797,7 +1793,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 }
                 is ShorthandProperty -> {
                     visitExpression(property.key)
-                    +StoreNamedProperty(property.key.identifierName)
+                    +StoreNamedProperty(property.key.processedName)
                 }
                 is MethodProperty -> {
                     val method = property.method
