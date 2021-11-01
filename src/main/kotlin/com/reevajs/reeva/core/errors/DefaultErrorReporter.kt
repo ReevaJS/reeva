@@ -3,7 +3,11 @@ package com.reevajs.reeva.core.errors
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.functions.JSFunction
+import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.toPrintableString
+import com.reevajs.reeva.utils.key
 import java.io.PrintStream
 import kotlin.math.max
 
@@ -41,7 +45,17 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter {
     override fun reportRuntimeError(sourceInfo: SourceInfo, cause: JSValue, stackTrace: List<StackTraceFrame>) {
         out.println("\u001B[31m")
 
-        out.println(cause.toPrintableString())
+        if (cause is JSObject && cause.hasProperty("message".key())) {
+            val ctor = cause.get("constructor")
+            if (ctor is JSFunction) {
+                out.print(ctor.get("name"))
+                out.print(": ")
+            }
+            out.println(cause.get("message"))
+        } else {
+            out.println(cause.toPrintableString())
+        }
+
         out.println("From: ${sourceInfo.type.name}")
         for (frame in stackTrace) {
             // TODO: Add location information
