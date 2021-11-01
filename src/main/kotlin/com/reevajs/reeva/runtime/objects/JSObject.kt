@@ -389,7 +389,7 @@ open class JSObject protected constructor(
         builtin: Builtin,
         attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
     ) {
-        defineBuiltinAccessor(name.key(), "[get ${name.description}]", attributes, builtin, isGetter = true)
+        defineBuiltinAccessor(name.key(), "get [${name.description}]", attributes, builtin, isGetter = true)
     }
 
     fun defineBuiltinSetter(
@@ -405,7 +405,7 @@ open class JSObject protected constructor(
         builtin: Builtin,
         attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
     ) {
-        defineBuiltinAccessor(name.key(), "[set ${name.description}]", attributes, builtin, isGetter = false)
+        defineBuiltinAccessor(name.key(), "set [${name.description}]", attributes, builtin, isGetter = false)
     }
 
     private fun defineBuiltinAccessor(

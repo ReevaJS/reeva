@@ -74,7 +74,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         defineBuiltin("values", 1, ReevaBuiltin.ArrayProtoValues)
 
         // "The initial values of the @@iterator property is the same function object as the initial
-        // value of the Array.prototype.values property.
+        // value of the Array.prototype.values property."
         // https://tc39.es/ecma262/#sec-array.prototype-@@iterator
         defineOwnProperty(Realm.`@@iterator`, internalGet("values".key())!!.getRawValue())
     }

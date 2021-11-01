@@ -19,7 +19,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.ArrayCtorGetSymbolSpecies, attrs { +conf; -enum })
+        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.ArrayCtorGetSymbolSpecies, attrs { +conf; -enum; -writ })
 
         defineBuiltin("isArray", 1, ReevaBuiltin.ArrayCtorIsArray)
         defineBuiltin("from", 1, ReevaBuiltin.ArrayCtorFrom)
