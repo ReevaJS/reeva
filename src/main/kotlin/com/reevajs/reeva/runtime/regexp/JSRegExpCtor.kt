@@ -16,7 +16,7 @@ class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.RegExpCtorGetSpecies, attrs { +conf - enum })
+        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.RegExpCtorGetSpecies, attrs { +conf; -enum })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

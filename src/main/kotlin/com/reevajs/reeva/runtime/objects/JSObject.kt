@@ -451,7 +451,7 @@ open class JSObject protected constructor(
         name: String,
         length: Int,
         builtin: Builtin,
-        attributes: Int = attrs { +conf - enum + writ },
+        attributes: Int = attrs { +conf; -enum; +writ },
     ) {
         defineBuiltin(name.key(), name, length, builtin, attributes)
     }
@@ -460,7 +460,7 @@ open class JSObject protected constructor(
         name: JSSymbol,
         length: Int,
         builtin: Builtin,
-        attributes: Int = attrs { +conf - enum + writ },
+        attributes: Int = attrs { +conf; -enum; +writ },
     ) {
         defineBuiltin(name.key(), "[${name.description}]", length, builtin, attributes)
     }
@@ -470,7 +470,7 @@ open class JSObject protected constructor(
         jsName: String,
         length: Int,
         builtin: Builtin,
-        attributes: Int = attrs { +conf - enum + writ },
+        attributes: Int = attrs { +conf; -enum; +writ },
     ) {
         val function = JSBuiltinFunction.forBuiltin(realm, jsName, length, builtin)
         addProperty(key, Descriptor(function, attributes))

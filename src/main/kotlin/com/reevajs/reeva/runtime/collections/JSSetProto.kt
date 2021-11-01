@@ -19,7 +19,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
     override fun init() {
         super.init()
 
-        defineBuiltinGetter("size", ReevaBuiltin.SetProtoGetSize, attrs { +conf - enum })
+        defineBuiltinGetter("size", ReevaBuiltin.SetProtoGetSize, attrs { +conf; -enum })
         defineOwnProperty(Realm.`@@toStringTag`, "Set".toValue(), Descriptor.CONFIGURABLE)
         defineBuiltin("add", 1, ReevaBuiltin.SetProtoAdd)
         defineBuiltin("clear", 1, ReevaBuiltin.SetProtoClear)

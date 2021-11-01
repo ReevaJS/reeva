@@ -20,12 +20,12 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         defineBuiltinGetter(
             Realm.`@@toStringTag`,
             ReevaBuiltin.TypedArrayProtoGetSymbolToStringTag,
-            attrs { +conf - enum },
+            attrs { +conf; -enum },
         )
-        defineBuiltinGetter("buffer", ReevaBuiltin.TypedArrayProtoGetBuffer, attrs { +conf - enum })
-        defineBuiltinGetter("byteLength", ReevaBuiltin.TypedArrayProtoGetByteLength, attrs { +conf - enum })
-        defineBuiltinGetter("byteOffset", ReevaBuiltin.TypedArrayProtoGetByteOffset, attrs { +conf - enum })
-        defineBuiltinGetter("length", ReevaBuiltin.TypedArrayProtoGetLength, attrs { +conf - enum })
+        defineBuiltinGetter("buffer", ReevaBuiltin.TypedArrayProtoGetBuffer, attrs { +conf; -enum })
+        defineBuiltinGetter("byteLength", ReevaBuiltin.TypedArrayProtoGetByteLength, attrs { +conf; -enum })
+        defineBuiltinGetter("byteOffset", ReevaBuiltin.TypedArrayProtoGetByteOffset, attrs { +conf; -enum })
+        defineBuiltinGetter("length", ReevaBuiltin.TypedArrayProtoGetLength, attrs { +conf; -enum })
 
         defineBuiltin("at", 1, ReevaBuiltin.TypedArrayProtoAt)
         defineBuiltin("copyWithin", 2, ReevaBuiltin.TypedArrayProtoCopyWithin)

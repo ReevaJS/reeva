@@ -923,9 +923,9 @@ object Operations {
         val key = toPrimitive(realm, value, ToPrimitiveHint.AsString)
 
         if (key is JSNumber && key.number.let {
-            it in 0.0..IndexedStorage.INDEX_UPPER_BOUND.toDouble() &&
-                floor(it) == it
-        }
+                it in 0.0..IndexedStorage.INDEX_UPPER_BOUND.toDouble() &&
+                    floor(it) == it
+            }
         ) {
             return if (key.number > Int.MAX_VALUE) {
                 PropertyKey.from(key.number.toLong())
@@ -2520,7 +2520,7 @@ object Operations {
     fun regExpAlloc(realm: Realm, newTarget: JSValue): JSObject {
         val slots = listOf(SlotName.RegExpMatcher, SlotName.OriginalSource, SlotName.OriginalFlags)
         val obj = ordinaryCreateFromConstructor(realm, newTarget, realm.regExpProto, slots)
-        definePropertyOrThrow(realm, obj, "lastIndex".key(), Descriptor(JSEmpty, attrs { +writ - enum - conf }))
+        definePropertyOrThrow(realm, obj, "lastIndex".key(), Descriptor(JSEmpty, attrs { +writ; -enum; -conf }))
         return obj
     }
 

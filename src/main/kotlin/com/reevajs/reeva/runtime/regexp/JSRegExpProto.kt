@@ -15,7 +15,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
     override fun init() {
         super.init()
 
-        val attrs = attrs { +conf - enum }
+        val attrs = attrs { +conf; -enum }
         defineBuiltinGetter("dotAll", ReevaBuiltin.RegExpProtoGetDotAll, attributes = attrs)
         defineBuiltinGetter("flags", ReevaBuiltin.RegExpProtoGetFlags, attributes = attrs)
         defineBuiltinGetter("global", ReevaBuiltin.RegExpProtoGetGlobal, attributes = attrs)

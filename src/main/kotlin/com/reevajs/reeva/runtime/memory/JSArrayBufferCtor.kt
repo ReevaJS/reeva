@@ -17,7 +17,7 @@ class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(rea
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.ArrayBufferCtorGetSymbolSpecies, attrs { +conf - enum })
+        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.ArrayBufferCtorGetSymbolSpecies, attrs { +conf; -enum })
         defineBuiltin("isView", 1, ReevaBuiltin.ArrayBufferCtorIsView)
     }
 

@@ -11,7 +11,7 @@ class JSFunctionCtor private constructor(realm: Realm) : JSNativeFunction(realm,
     override fun init() {
         super.init()
 
-        defineOwnProperty("length", 1.toValue(), attrs { +conf - enum - writ })
+        defineOwnProperty("length", 1.toValue(), attrs { +conf; -enum; -writ })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

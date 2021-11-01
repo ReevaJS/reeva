@@ -15,7 +15,7 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.MapCtorGetSymbolSpecies, attrs { +conf - enum })
+        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.MapCtorGetSymbolSpecies, attrs { +conf; -enum })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

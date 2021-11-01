@@ -18,12 +18,12 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
     override fun init() {
         super.init()
 
-        defineOwnProperty("constructor", realm.dataViewCtor, attrs { +conf - enum + writ })
-        defineOwnProperty(Realm.`@@toStringTag`, "DataView".toValue(), attrs { +conf - enum - writ })
+        defineOwnProperty("constructor", realm.dataViewCtor, attrs { +conf; -enum; +writ })
+        defineOwnProperty(Realm.`@@toStringTag`, "DataView".toValue(), attrs { +conf; -enum; -writ })
 
-        defineBuiltinGetter("buffer", ReevaBuiltin.DataViewProtoGetBuffer, attrs { +conf - enum })
-        defineBuiltinGetter("byteLength", ReevaBuiltin.DataViewProtoGetByteLength, attrs { +conf - enum })
-        defineBuiltinGetter("byteOffset", ReevaBuiltin.DataViewProtoGetByteOffset, attrs { +conf - enum })
+        defineBuiltinGetter("buffer", ReevaBuiltin.DataViewProtoGetBuffer, attrs { +conf; -enum })
+        defineBuiltinGetter("byteLength", ReevaBuiltin.DataViewProtoGetByteLength, attrs { +conf; -enum })
+        defineBuiltinGetter("byteOffset", ReevaBuiltin.DataViewProtoGetByteOffset, attrs { +conf; -enum })
 
         defineBuiltin("getBigInt64", 1, ReevaBuiltin.DataViewProtoGetBigInt64)
         defineBuiltin("getBigUint64", 1, ReevaBuiltin.DataViewProtoGetBigUint64)

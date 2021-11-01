@@ -31,7 +31,7 @@ open class JSErrorCtor protected constructor(
 
         if (message != JSUndefined) {
             val msg = Operations.toString(realm, message)
-            val msgDesc = Descriptor(msg, attrs { +conf - enum + writ })
+            val msgDesc = Descriptor(msg, attrs { +conf; -enum; +writ })
             Operations.definePropertyOrThrow(realm, obj, "message".key(), msgDesc)
         }
 

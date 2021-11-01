@@ -19,7 +19,7 @@ open class JSArrayObject protected constructor(
     override fun init() {
         super.init()
 
-        defineNativeProperty("length", attrs { -conf - enum + writ }, ::getLength, ::setLength)
+        defineNativeProperty("length", attrs { -conf; -enum; +writ }, ::getLength, ::setLength)
     }
 
     fun getLength(realm: Realm, thisValue: JSValue): JSValue {

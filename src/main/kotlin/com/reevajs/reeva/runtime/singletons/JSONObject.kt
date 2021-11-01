@@ -20,7 +20,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.`@@toStringTag`, ReevaBuiltin.JSONGetSymbolToStringTag, attrs { +conf - enum - writ })
+        defineBuiltinGetter(Realm.`@@toStringTag`, ReevaBuiltin.JSONGetSymbolToStringTag, attrs { +conf; -enum; -writ })
         defineBuiltin("parse", 2, ReevaBuiltin.JSONParse)
         defineBuiltin("stringify", 3, ReevaBuiltin.JSONStringify)
     }
