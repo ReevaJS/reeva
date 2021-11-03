@@ -10,6 +10,7 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
+import com.reevajs.reeva.utils.expect
 import java.io.File
 
 open class HostHooks {
@@ -82,7 +83,7 @@ open class HostHooks {
         if (existingModule != null)
             return existingModule
 
-        return ModuleRecord.parseModule(referencingModule.realm, sourceInfo).valueOrElse { TODO() }
+        return SourceTextModuleRecord.parseModule(referencingModule.realm, sourceInfo).valueOrElse { TODO() }
     }
 
     open fun resolveImportedModuleImpl(referencingModule: ModuleRecord, specifier: String): SourceInfo {
@@ -91,6 +92,8 @@ open class HostHooks {
     }
 
     open fun resolveImportedFilePath(referencingModule: ModuleRecord, specifier: String): File {
+        // TODO: Get rid of this expect somehow
+        expect(referencingModule is SourceTextModuleRecord)
         val sourceInfo = referencingModule.parsedSource.sourceInfo
         val resolvedFile = sourceInfo.resolveImportedFilePath(specifier)
         if (!resolvedFile.exists())

@@ -18,7 +18,6 @@ interface SourceInfo {
     fun resolveImportedFilePath(specifier: String): File
 }
 
-
 class FileSourceInfo @JvmOverloads constructor(
     private val file: File,
     override val isModule: Boolean = file.extension == "mjs",

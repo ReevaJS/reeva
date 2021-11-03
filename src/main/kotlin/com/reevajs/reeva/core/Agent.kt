@@ -84,7 +84,7 @@ class Agent {
 
     fun run(realm: Realm, sourceInfo: SourceInfo): RunResult {
         val result = if (sourceInfo.isModule) {
-            ModuleRecord.parseModule(realm, sourceInfo)
+            SourceTextModuleRecord.parseModule(realm, sourceInfo)
         } else ScriptRecord.parseScript(realm, sourceInfo)
 
         return if (result.hasError) {
