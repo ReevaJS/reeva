@@ -3,6 +3,7 @@ package com.reevajs.reeva.core
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.lifecycle.*
 import com.reevajs.reeva.core.realm.Realm
+import com.reevajs.reeva.core.realm.RealmExtension
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
@@ -30,8 +31,8 @@ open class HostHooks {
     }
 
     @ECMAImpl("9.6")
-    open fun initializeHostDefinedRealm(): Realm {
-        val realm = Realm()
+    open fun initializeHostDefinedRealm(realmExtensions: Map<Any, RealmExtension>): Realm {
+        val realm = Realm(realmExtensions)
         realm.initObjects()
         val globalObject = initializeHostDefinedGlobalObject(realm)
         val thisValue = initializeHostDefinedGlobalThisValue(realm)

@@ -2,6 +2,7 @@ package com.reevajs.reeva
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
+import com.reevajs.reeva.core.realm.RealmExtension
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -23,7 +24,7 @@ object Reeva {
         internal set
 
     @JvmStatic
-    fun makeRealm() = activeAgent.hostHooks.initializeHostDefinedRealm()
+    fun makeRealm(extensions: Map<Any, RealmExtension>) = activeAgent.hostHooks.initializeHostDefinedRealm(extensions)
 
     @JvmStatic
     fun setAgent(agent: Agent) {

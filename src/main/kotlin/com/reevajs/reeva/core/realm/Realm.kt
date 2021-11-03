@@ -42,7 +42,7 @@ import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
 import java.util.concurrent.ConcurrentHashMap
 
-class Realm {
+class Realm(private val extensions: Map<Any, RealmExtension>) {
     lateinit var globalObject: JSObject
         private set
 
@@ -218,7 +218,14 @@ class Realm {
         functionProto.defineOwnProperty("constructor", functionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
 
         newObjectShape.setPrototypeWithoutTransition(objectProto)
+
+        // Initialize extensions
+        extensions.values.forEach { it.initObjects(this) }
     }
+
+    fun ext(key: Any) = extensions[key]
+
+    inline fun <reified T : RealmExtension> extAs(key: Any) = ext(key) as T
 
     @Suppress("ObjectPropertyName")
     companion object {
