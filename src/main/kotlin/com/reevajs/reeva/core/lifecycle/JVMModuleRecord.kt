@@ -65,7 +65,7 @@ class JVMModuleRecord(realm: Realm, private val specifier: String) : ModuleRecor
     override fun execute() = unreachable()
 
     companion object {
-        private val jvmSpecifierRegex = """^(\w+\.)+\w+$""".toRegex()
+        private val jvmSpecifierRegex = """^([\w$]+\.)+[\w$]+$""".toRegex()
 
         fun isJVMSpecifier(specifier: String) = jvmSpecifierRegex.matches(specifier)
     }
