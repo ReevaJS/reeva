@@ -4,6 +4,7 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
+import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 
 class JSPackageObject private constructor(
@@ -13,11 +14,16 @@ class JSPackageObject private constructor(
     private val packageObj = if (packageName == null) null else Package.getPackage(packageName)
 
     override fun get(property: PropertyKey, receiver: JSValue): JSValue {
-        val superProperty = super.get(property, receiver)
-        if (!superProperty.isNullish)
-            return superProperty
+        val protoProp = super.get(property, receiver)
 
-        val name = validatePropertyKey(property)
+        if (!property.isString)
+            return protoProp
+
+        // Return protoProp if it is not JSUndefined
+        if (protoProp != JSUndefined)
+            return protoProp
+
+        val name = property.asString
 
         return when {
             packageName == null -> create(realm, name)
@@ -57,14 +63,6 @@ class JSPackageObject private constructor(
 
     override fun ownPropertyKeys(onlyEnumerable: Boolean): List<PropertyKey> {
         return emptyList()
-    }
-
-    private fun validatePropertyKey(key: PropertyKey): String {
-        if (key.isSymbol)
-            Errors.JVMPackage.InvalidSymbolAccess.throwTypeError(realm)
-        if (!key.isString)
-            Errors.JVMPackage.InvalidNumberAccess.throwTypeError(realm)
-        return key.asString
     }
 
     companion object {
