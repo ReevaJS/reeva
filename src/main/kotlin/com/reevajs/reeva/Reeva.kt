@@ -24,7 +24,8 @@ object Reeva {
         internal set
 
     @JvmStatic
-    fun makeRealm(extensions: Map<Any, RealmExtension>) = activeAgent.hostHooks.initializeHostDefinedRealm(extensions)
+    fun makeRealm(extensions: Map<Any, RealmExtension> = emptyMap()) =
+        activeAgent.hostHooks.initializeHostDefinedRealm(extensions)
 
     @JvmStatic
     fun setAgent(agent: Agent) {
