@@ -1,5 +1,6 @@
 package com.reevajs.reeva.core.lifecycle
 
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.RunResult
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.interpreter.NormalInterpretedFunction
@@ -10,8 +11,7 @@ import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.utils.Result
 import com.reevajs.reeva.utils.expect
 
-class ScriptRecord(val parsedSource: ParsedSource) : Executable {
-    val realm by parsedSource.sourceInfo::realm
+class ScriptRecord(val realm: Realm, val parsedSource: ParsedSource) : Executable {
     private var cachedResult: RunResult? = null
 
     override fun execute(): RunResult {
@@ -19,14 +19,12 @@ class ScriptRecord(val parsedSource: ParsedSource) : Executable {
             return cachedResult!!
 
         val sourceInfo = parsedSource.sourceInfo
-        expect(!sourceInfo.type.isModule)
+        expect(!sourceInfo.isModule)
 
         return run {
             try {
                 val transformedSource = Executable.transform(parsedSource)
-                expect(realm == transformedSource.realm)
-
-                val function = NormalInterpretedFunction.create(transformedSource, realm.globalEnv)
+                val function = NormalInterpretedFunction.create(realm, transformedSource, realm.globalEnv)
                 RunResult.Success(sourceInfo, Operations.call(realm, function, realm.globalObject, emptyList()))
             } catch (e: ThrowException) {
                 RunResult.RuntimeError(sourceInfo, e)
@@ -39,8 +37,10 @@ class ScriptRecord(val parsedSource: ParsedSource) : Executable {
     }
 
     companion object {
-        fun parseScript(sourceInfo: SourceInfo): Result<ParsingError, ScriptRecord> {
-            return Parser(sourceInfo).parseScript().mapValue(::ScriptRecord)
+        fun parseScript(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, ScriptRecord> {
+            return Parser(sourceInfo).parseScript().mapValue { result ->
+                ScriptRecord(realm, result)
+            }
         }
     }
 }

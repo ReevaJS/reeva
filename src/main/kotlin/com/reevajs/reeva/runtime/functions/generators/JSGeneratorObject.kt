@@ -10,12 +10,13 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 
 class JSGeneratorObject private constructor(
+    realm: Realm,
     val transformedSource: TransformedSource,
     val receiver: JSValue,
     arguments: List<JSValue>,
     val generatorState: Interpreter.GeneratorState,
     var envRecord: EnvRecord,
-) : JSObject(transformedSource.realm, transformedSource.realm.generatorObjectProto) {
+) : JSObject(realm, realm.generatorObjectProto) {
     private val arguments = listOf(receiver, JSUndefined, generatorState) + arguments
 
     fun next(realm: Realm, value: JSValue): JSValue {
@@ -32,7 +33,7 @@ class JSGeneratorObject private constructor(
     }
 
     private fun execute(realm: Realm): JSValue {
-        val interpreter = Interpreter(transformedSource, arguments, envRecord)
+        val interpreter = Interpreter(realm, transformedSource, arguments, envRecord)
         val result = interpreter.interpret()
         return if (result.hasValue) {
             envRecord = interpreter.activeEnvRecord
@@ -46,11 +47,12 @@ class JSGeneratorObject private constructor(
 
     companion object {
         fun create(
+            realm: Realm,
             transformedSource: TransformedSource,
             receiver: JSValue,
             arguments: List<JSValue>,
             generatorState: Interpreter.GeneratorState,
             envRecord: EnvRecord,
-        ) = JSGeneratorObject(transformedSource, receiver, arguments, generatorState, envRecord).initialize()
+        ) = JSGeneratorObject(realm, transformedSource, receiver, arguments, generatorState, envRecord).initialize()
     }
 }

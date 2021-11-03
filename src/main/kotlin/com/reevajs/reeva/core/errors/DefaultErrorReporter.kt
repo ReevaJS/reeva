@@ -18,7 +18,7 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter {
         start: TokenLocation,
         end: TokenLocation,
     ) {
-        val lines = sourceInfo.source.lines()
+        val lines = sourceInfo.sourceText.lines()
         val firstLine = (start.line - 2).coerceAtLeast(0)
         val lastLine = (start.line + 2).coerceAtMost(lines.lastIndex)
 
@@ -56,7 +56,7 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter {
             out.println(cause.toPrintableString())
         }
 
-        out.println("From: ${sourceInfo.type.name}")
+        out.println("From: ${sourceInfo.name}")
         for (frame in stackTrace) {
             // TODO: Add location information
             out.println("    at ${frame.enclosingFunction.debugName}")

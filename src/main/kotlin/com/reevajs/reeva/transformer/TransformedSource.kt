@@ -7,8 +7,5 @@ data class TransformedSource(
     val sourceInfo: SourceInfo,
     val functionInfo: FunctionInfo,
 ) {
-    val realm: Realm
-        get() = sourceInfo.realm
-
     fun forInfo(newInfo: FunctionInfo) = TransformedSource(sourceInfo, newInfo)
 }

@@ -3,6 +3,7 @@ package com.reevajs.reeva.core.lifecycle
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.statements.*
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.RunResult
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.core.errors.ThrowException
@@ -58,9 +59,7 @@ import kotlin.math.min
 @ECMAImpl("16.2.1.4", name = "Abstract Module Records")
 @ECMAImpl("16.2.1.5", name = "Cyclic Module Records")
 @ECMAImpl("16.2.1.6", name = "Source Text Module Records")
-class ModuleRecord(val parsedSource: ParsedSource) : Executable {
-    val realm by parsedSource.sourceInfo::realm
-
+class ModuleRecord(val realm: Realm, val parsedSource: ParsedSource) : Executable {
     @ECMAImpl("16.2.1.4", name = "[[Environment]]")
     lateinit var env: ModuleEnvRecord
         private set
@@ -522,9 +521,9 @@ class ModuleRecord(val parsedSource: ParsedSource) : Executable {
      */
     private fun executeModule() {
         val sourceInfo = parsedSource.sourceInfo
-        expect(sourceInfo.type.isModule)
+        expect(sourceInfo.isModule)
         val transformedSource = Executable.transform(parsedSource)
-        val function = NormalInterpretedFunction.create(transformedSource, env)
+        val function = NormalInterpretedFunction.create(realm, transformedSource, env)
         Operations.call(realm, function, realm.globalObject, emptyList())
     }
 
@@ -542,9 +541,11 @@ class ModuleRecord(val parsedSource: ParsedSource) : Executable {
         const val DEFAULT_SPECIFIER = "*default*"
         const val NAMESPACE_SPECIFIER = "*namespace*"
 
-        fun parseModule(sourceInfo: SourceInfo): Result<ParsingError, ModuleRecord> {
+        fun parseModule(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, ModuleRecord> {
             return Parser(sourceInfo).parseModule().mapValue { result ->
-                ModuleRecord(result).also { sourceInfo.realm.moduleTree.setImportedModule(sourceInfo, it) }
+                ModuleRecord(realm, result).also {
+                    realm.moduleTree.setImportedModule(sourceInfo, it)
+                }
             }
         }
     }

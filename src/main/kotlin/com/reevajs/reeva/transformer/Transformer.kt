@@ -52,7 +52,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         return TransformedSource(
             parsedSource.sourceInfo,
             FunctionInfo(
-                parsedSource.sourceInfo.type.name,
+                parsedSource.sourceInfo.name,
                 builder.build(),
                 rootNode.scope.isStrict,
                 isTopLevel = true,

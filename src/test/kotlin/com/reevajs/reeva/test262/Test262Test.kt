@@ -5,12 +5,11 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.RunResult
 import com.reevajs.reeva.core.errors.DefaultErrorReporter
-import com.reevajs.reeva.core.lifecycle.FileSourceType
-import com.reevajs.reeva.core.lifecycle.LiteralSourceType
+import com.reevajs.reeva.core.lifecycle.FileSourceInfo
+import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.toPrintableString
-import com.reevajs.reeva.utils.expect
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assumptions
 import org.opentest4j.AssertionFailedError
@@ -60,11 +59,7 @@ class Test262Test(
             val realm = Reeva.makeRealm()
             val isModule = if (metadata.flags != null) Flag.Module in metadata.flags else false
 
-            val pretestResult = agent.run(SourceInfo(
-                realm,
-                requiredScript,
-                LiteralSourceType(isModule = false, "pretest"),
-            ))
+            val pretestResult = agent.run(realm, LiteralSourceInfo("pretest", requiredScript, isModule = false))
 
             Assertions.assertTrue(pretestResult is RunResult.Success) {
                 "[PRETEST] ${getResultMessage(pretestResult)}"
@@ -132,13 +127,7 @@ class Test262Test(
             }
         }
 
-        val testResult = agent.run(
-            SourceInfo(
-                realm,
-                theScript,
-                FileSourceType(file, isModule),
-            )
-        )
+        val testResult = agent.run(realm, FileSourceInfo(file, isModule, sourceText = theScript))
 
         if (isModule && testResult !is RunResult.Success)
             println()

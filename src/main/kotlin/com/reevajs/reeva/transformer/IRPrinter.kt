@@ -6,7 +6,7 @@ class IRPrinter(private val transformedSource: TransformedSource) {
     private fun printInfo(info: FunctionInfo) {
         val header = buildString {
             append("=== ")
-            append(transformedSource.sourceInfo.type.name)
+            append(transformedSource.sourceInfo.name)
             append(" ===")
         }
 

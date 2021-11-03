@@ -6,15 +6,11 @@ import com.reevajs.reeva.core.errors.ErrorReporter
 import com.reevajs.reeva.core.errors.StackTraceFrame
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.*
-import com.reevajs.reeva.interpreter.Interpreter
 import com.reevajs.reeva.transformer.*
-import com.reevajs.reeva.parsing.ParsedSource
-import com.reevajs.reeva.parsing.Parser
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
-import com.reevajs.reeva.utils.Result
 import java.io.File
 import java.nio.ByteOrder
 
@@ -79,29 +75,17 @@ class Agent {
     }
 
     fun run(realm: Realm, file: File): RunResult {
-        return run(
-            SourceInfo(
-                realm,
-                file.readText(),
-                FileSourceType(file),
-            )
-        )
+        return run(realm, FileSourceInfo(file))
     }
 
     fun run(realm: Realm, source: String, isModule: Boolean): RunResult {
-        return run(
-            SourceInfo(
-                realm,
-                source,
-                LiteralSourceType(isModule, "<anonymous>"),
-            )
-        )
+        return run(realm, LiteralSourceInfo("<anonymous>", source, isModule))
     }
 
-    fun run(sourceInfo: SourceInfo): RunResult {
-        val result = if (sourceInfo.type.isModule) {
-            ModuleRecord.parseModule(sourceInfo)
-        } else ScriptRecord.parseScript(sourceInfo)
+    fun run(realm: Realm, sourceInfo: SourceInfo): RunResult {
+        val result = if (sourceInfo.isModule) {
+            ModuleRecord.parseModule(realm, sourceInfo)
+        } else ScriptRecord.parseScript(realm, sourceInfo)
 
         return if (result.hasError) {
             RunResult.ParseError(sourceInfo, result.error())

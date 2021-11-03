@@ -1,8 +1,6 @@
 package com.reevajs.reeva.core.lifecycle
 
 import com.reevajs.reeva.Reeva
-import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.RunResult
 import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.transformer.IRPrinter
@@ -11,23 +9,22 @@ import com.reevajs.reeva.transformer.TransformedSource
 import com.reevajs.reeva.transformer.Transformer
 import com.reevajs.reeva.utils.unreachable
 import java.io.File
-import java.util.*
 
-interface SourceType {
+interface SourceInfo {
     val name: String
     val isModule: Boolean
+    val sourceText: String
 
     fun resolveImportedFilePath(specifier: String): File
 }
 
 
-class FileSourceType @JvmOverloads constructor(
-    file: File,
+class FileSourceInfo @JvmOverloads constructor(
+    private val file: File,
     override val isModule: Boolean = file.extension == "mjs",
-) : SourceType {
-    val file = file.normalize()
-    override val name: String = file.name
-
+    override val name: String = file.name,
+    override val sourceText: String = file.readText()
+) : SourceInfo {
     override fun resolveImportedFilePath(specifier: String): File {
         if (specifier.startsWith('/'))
             return File(specifier)
@@ -35,7 +32,7 @@ class FileSourceType @JvmOverloads constructor(
     }
 
     override fun equals(other: Any?): Boolean {
-        return other is FileSourceType && file == other.file
+        return other is FileSourceInfo && file == other.file
     }
 
     override fun hashCode(): Int {
@@ -43,7 +40,13 @@ class FileSourceType @JvmOverloads constructor(
     }
 }
 
-data class LiteralSourceType(override val isModule: Boolean, override val name: String) : SourceType {
+data class LiteralSourceInfo(
+    override val name: String,
+    private val source: String,
+    override val isModule: Boolean,
+) : SourceInfo {
+    override val sourceText = source
+
     override fun resolveImportedFilePath(specifier: String): File {
         // Literal sources are never modules, so we should never get here
         unreachable()
@@ -51,22 +54,17 @@ data class LiteralSourceType(override val isModule: Boolean, override val name: 
 }
 
 data class ReplSourceType(
-    override val isModule: Boolean,
     override val name: String,
+    override val sourceText: String,
+    override val isModule: Boolean,
     val parentDirectory: File,
-) : SourceType {
+) : SourceInfo {
     override fun resolveImportedFilePath(specifier: String): File {
         if (specifier.startsWith('/'))
             return File(specifier)
         return File(parentDirectory, specifier).normalize()
     }
 }
-
-data class SourceInfo(
-    val realm: Realm,
-    val source: String,
-    val type: SourceType,
-)
 
 interface Executable {
     fun execute(): RunResult

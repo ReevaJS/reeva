@@ -22,15 +22,13 @@ import com.reevajs.reeva.runtime.regexp.JSRegExpObject
 import com.reevajs.reeva.utils.*
 
 class Interpreter(
+    private val realm: Realm,
     private val transformedSource: TransformedSource,
     private val arguments: List<JSValue>,
     initialEnvRecord: EnvRecord,
 ) : OpcodeVisitor {
     private val info: FunctionInfo
         get() = transformedSource.functionInfo
-
-    private val realm: Realm
-        get() = transformedSource.realm
 
     private val stack = ArrayDeque<Any>()
     private val locals = Array<Any?>(info.ir.locals.size) { null }
@@ -683,14 +681,14 @@ class Interpreter(
     }
 
     override fun visitCreateClosure(opcode: CreateClosure) {
-        val function = NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir), activeEnvRecord)
+        val function = NormalInterpretedFunction.create(realm, transformedSource.forInfo(opcode.ir), activeEnvRecord)
         Operations.setFunctionName(realm, function, opcode.ir.name.key())
         Operations.makeConstructor(realm, function)
         push(function)
     }
 
     override fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure) {
-        val function = GeneratorInterpretedFunction.create(transformedSource.forInfo(opcode.ir), activeEnvRecord)
+        val function = GeneratorInterpretedFunction.create(realm, transformedSource.forInfo(opcode.ir), activeEnvRecord)
         Operations.setFunctionName(realm, function, opcode.ir.name.key())
         push(function)
     }
@@ -835,7 +833,7 @@ class Interpreter(
     }
 
     override fun visitCreateClassConstructor(opcode: CreateMethod) {
-        push(NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir), activeEnvRecord))
+        push(NormalInterpretedFunction.create(realm, transformedSource.forInfo(opcode.ir), activeEnvRecord))
     }
 
     override fun visitCreateClass() {
@@ -919,9 +917,9 @@ class Interpreter(
             MethodDefinitionNode.Kind.Normal,
             MethodDefinitionNode.Kind.Getter,
             MethodDefinitionNode.Kind.Setter ->
-                NormalInterpretedFunction.create(transformedSource.forInfo(info), activeEnvRecord)
+                NormalInterpretedFunction.create(realm, transformedSource.forInfo(info), activeEnvRecord)
             MethodDefinitionNode.Kind.Generator ->
-                GeneratorInterpretedFunction.create(transformedSource.forInfo(info), activeEnvRecord)
+                GeneratorInterpretedFunction.create(realm, transformedSource.forInfo(info), activeEnvRecord)
             else -> TODO()
         }
 

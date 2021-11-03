@@ -10,7 +10,6 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
-import com.reevajs.reeva.utils.expect
 import java.io.File
 
 open class HostHooks {
@@ -83,23 +82,19 @@ open class HostHooks {
         if (existingModule != null)
             return existingModule
 
-        return ModuleRecord.parseModule(sourceInfo).valueOrElse { TODO() }
+        return ModuleRecord.parseModule(referencingModule.realm, sourceInfo).valueOrElse { TODO() }
     }
 
     open fun resolveImportedModuleImpl(referencingModule: ModuleRecord, specifier: String): SourceInfo {
         val file = resolveImportedFilePath(referencingModule, specifier)
-        return SourceInfo(
-            referencingModule.realm,
-            file.readText(),
-            FileSourceType(file),
-        )
+        return FileSourceInfo(file)
     }
 
     open fun resolveImportedFilePath(referencingModule: ModuleRecord, specifier: String): File {
         val sourceInfo = referencingModule.parsedSource.sourceInfo
-        val resolvedFile = sourceInfo.type.resolveImportedFilePath(specifier)
+        val resolvedFile = sourceInfo.resolveImportedFilePath(specifier)
         if (!resolvedFile.exists())
-            Errors.NonExistentImport(specifier, sourceInfo.type.name).throwInternalError(sourceInfo.realm)
+            Errors.NonExistentImport(specifier, sourceInfo.name).throwInternalError(referencingModule.realm)
         return resolvedFile
     }
 }

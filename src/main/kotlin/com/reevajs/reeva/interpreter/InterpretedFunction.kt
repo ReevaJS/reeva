@@ -1,5 +1,6 @@
 package com.reevajs.reeva.interpreter
 
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -11,36 +12,39 @@ import com.reevajs.reeva.transformer.TransformedSource
 import com.reevajs.reeva.utils.key
 
 abstract class InterpretedFunction(
+    realm: Realm,
     val transformedSource: TransformedSource,
     val outerEnvRecord: EnvRecord,
-    prototype: JSValue = transformedSource.realm.functionProto,
+    prototype: JSValue = realm.functionProto,
 ) : JSFunction(
-    transformedSource.realm,
+    realm,
     transformedSource.functionInfo.name,
     transformedSource.functionInfo.isStrict,
     prototype,
 )
 
 class NormalInterpretedFunction private constructor(
+    realm: Realm,
     transformedSource: TransformedSource,
     outerEnvRecord: EnvRecord,
-) : InterpretedFunction(transformedSource, outerEnvRecord) {
+) : InterpretedFunction(realm, transformedSource, outerEnvRecord) {
     override fun evaluate(arguments: JSArguments): JSValue {
         val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
-        val result = Interpreter(transformedSource, args, outerEnvRecord).interpret()
+        val result = Interpreter(realm, transformedSource, args, outerEnvRecord).interpret()
         return result.valueOrElse { throw result.error() }
     }
 
     companion object {
-        fun create(transformedSource: TransformedSource, outerEnvRecord: EnvRecord) =
-            NormalInterpretedFunction(transformedSource, outerEnvRecord).initialize()
+        fun create(realm: Realm, transformedSource: TransformedSource, outerEnvRecord: EnvRecord) =
+            NormalInterpretedFunction(realm, transformedSource, outerEnvRecord).initialize()
     }
 }
 
 class GeneratorInterpretedFunction private constructor(
+    realm: Realm,
     transformedSource: TransformedSource,
     outerEnvRecord: EnvRecord,
-) : InterpretedFunction(transformedSource, outerEnvRecord) {
+) : InterpretedFunction(realm, transformedSource, outerEnvRecord) {
     private lateinit var generatorObject: JSGeneratorObject
 
     override fun init() {
@@ -51,6 +55,7 @@ class GeneratorInterpretedFunction private constructor(
     override fun evaluate(arguments: JSArguments): JSValue {
         if (!::generatorObject.isInitialized) {
             generatorObject = JSGeneratorObject.create(
+                realm,
                 transformedSource,
                 arguments.thisValue,
                 arguments,
@@ -63,7 +68,7 @@ class GeneratorInterpretedFunction private constructor(
     }
 
     companion object {
-        fun create(transformedSource: TransformedSource, outerEnvRecord: EnvRecord) =
-            GeneratorInterpretedFunction(transformedSource, outerEnvRecord).initialize()
+        fun create(realm: Realm, transformedSource: TransformedSource, outerEnvRecord: EnvRecord) =
+            GeneratorInterpretedFunction(realm, transformedSource, outerEnvRecord).initialize()
     }
 }

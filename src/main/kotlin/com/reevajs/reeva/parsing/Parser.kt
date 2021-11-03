@@ -18,7 +18,7 @@ import kotlin.contracts.contract
 @OptIn(ExperimentalContracts::class)
 class Parser(val sourceInfo: SourceInfo) {
     private val source: String
-        get() = sourceInfo.source
+        get() = sourceInfo.sourceText
 
     private var inDefaultContext = false
     private var inFunctionContext = false
