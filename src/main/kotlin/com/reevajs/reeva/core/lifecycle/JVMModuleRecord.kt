@@ -6,6 +6,7 @@ import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.jvmcompat.JSPackageObject
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
@@ -46,6 +47,11 @@ class JVMModuleRecord(realm: Realm, private val specifier: String) : ModuleRecor
         }
 
         return Operations.promiseResolve(realm.promiseCtor, JSUndefined)
+    }
+
+    override fun makeNamespaceImport(): JSObject {
+        expect(jvmObj is JSPackageObject)
+        return jvmObj
     }
 
     override fun getExportedNames() = emptyList<String>()

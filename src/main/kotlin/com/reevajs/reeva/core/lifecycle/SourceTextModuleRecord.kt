@@ -15,6 +15,7 @@ import com.reevajs.reeva.parsing.Parser
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.other.JSModuleNamespaceObject
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.utils.Result
@@ -58,13 +59,7 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
                         env.setIndirectBinding(DEFAULT_SPECIFIER, DEFAULT_SPECIFIER, requestedModule)
                     is NamespaceImport -> {
                         if (namespace == null) {
-                            // TODO: Let the module have control over this namespace object, and make namespace
-                            //       a generic JSObject
-                            namespace = JSModuleNamespaceObject.create(
-                                realm,
-                                requestedModule,
-                                requestedModule.getExportedNames(),
-                            )
+                            namespace = requestedModule.makeNamespaceImport()
                         }
                         env.setBinding(NAMESPACE_SPECIFIER, namespace!!)
                     }
@@ -178,6 +173,12 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
 
         return names
     }
+
+    override fun makeNamespaceImport() = JSModuleNamespaceObject.create(
+        realm,
+        this,
+        getExportedNames(),
+    )
 
     override fun executeModule() {
         val sourceInfo = parsedSource.sourceInfo

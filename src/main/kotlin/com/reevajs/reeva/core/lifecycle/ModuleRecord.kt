@@ -45,13 +45,15 @@ abstract class ModuleRecord(val realm: Realm) : Executable {
         protected set
 
     @ECMAImpl("16.2.1.4", name = "[[Namespace]]")
-    protected var namespace: JSModuleNamespaceObject? = null
+    protected var namespace: JSObject? = null
 
     abstract fun link()
 
     abstract fun evaluate(): JSValue
 
     abstract fun getExportedNames(): List<String>
+
+    abstract fun makeNamespaceImport(): JSObject
 
     /**
      * Non-standard function which lets a module know what imports are being
