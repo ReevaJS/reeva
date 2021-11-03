@@ -1,6 +1,6 @@
 package com.reevajs.reeva.runtime.memory
 
-import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName

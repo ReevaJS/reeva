@@ -1,12 +1,11 @@
 package com.reevajs.reeva.runtime.objects
 
 import com.reevajs.reeva.Reeva
-import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.builtins.Builtin
 import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
-import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.index.IndexedProperties
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.*

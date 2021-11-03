@@ -1,5 +1,6 @@
-package com.reevajs.reeva.core
+package com.reevajs.reeva.core.realm
 
+import com.reevajs.reeva.core.ModuleTree
 import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.jvmcompat.JSClassProto
 import com.reevajs.reeva.jvmcompat.JSPackageObject
@@ -164,7 +165,7 @@ class Realm {
         globalEnv = GlobalEnvRecord(actualThisValue)
     }
 
-    internal fun initObjects() {
+    fun initObjects() {
         objectProto = JSObjectProto.create(this)
         functionProto = JSFunctionProto.create(this)
         functionProto.initialize()
@@ -244,7 +245,7 @@ class Realm {
         internal lateinit var `@@classInstanceFields`: JSSymbol private set
 
         fun setupSymbols() {
-            if (::`@@asyncIterator`.isInitialized)
+            if (Companion::`@@asyncIterator`.isInitialized)
                 return
 
             `@@asyncIterator` = JSSymbol("Symbol.asyncIterator").also { wellknownSymbols["@@asyncIterator"] = it }

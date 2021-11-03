@@ -5,7 +5,7 @@ import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.statements.DeclarationNode
 import com.reevajs.reeva.ast.statements.DestructuringDeclaration
 import com.reevajs.reeva.ast.statements.NamedDeclaration
-import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.RunResult
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.core.errors.ThrowException
@@ -15,7 +15,6 @@ import com.reevajs.reeva.parsing.Parser
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.other.JSModuleNamespaceObject
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.utils.Result

@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.objects
 
 import com.reevajs.reeva.Reeva
-import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.utils.expect
 
 class Shape {

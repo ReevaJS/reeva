@@ -1,6 +1,6 @@
 package com.reevajs.reeva.runtime.functions.generators
 
-import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.interpreter.Interpreter
 import com.reevajs.reeva.transformer.TransformedSource

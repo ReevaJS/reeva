@@ -1,13 +1,11 @@
 package com.reevajs.reeva.core.lifecycle
 
-import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.RunResult
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
-import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.other.JSModuleNamespaceObject
 
 /**
  * ModuleRecord translates fairly literally to the object of the same name in the

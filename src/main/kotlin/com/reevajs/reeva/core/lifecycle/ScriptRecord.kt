@@ -1,6 +1,6 @@
 package com.reevajs.reeva.core.lifecycle
 
-import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.RunResult
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.interpreter.NormalInterpretedFunction

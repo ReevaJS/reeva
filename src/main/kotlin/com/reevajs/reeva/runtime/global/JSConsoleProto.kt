@@ -1,6 +1,6 @@
 package com.reevajs.reeva.runtime.global
 
-import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.arrays.JSArrayObject

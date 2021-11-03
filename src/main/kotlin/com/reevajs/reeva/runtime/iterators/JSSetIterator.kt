@@ -1,6 +1,6 @@
 package com.reevajs.reeva.runtime.iterators
 
-import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.collections.JSSetObject
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.expect

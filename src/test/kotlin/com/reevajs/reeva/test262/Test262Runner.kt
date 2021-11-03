@@ -4,7 +4,7 @@ import com.charleskorn.kaml.Yaml
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.HostHooks
-import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.expect
 import kotlinx.serialization.Serializable

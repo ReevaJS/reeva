@@ -6,7 +6,7 @@ import com.reevajs.reeva.core.errors.ErrorReporter
 import com.reevajs.reeva.core.errors.StackTraceFrame
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.*
-import com.reevajs.reeva.transformer.*
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.functions.JSFunction

@@ -2,12 +2,11 @@ package com.reevajs.reeva.test262
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.RunResult
 import com.reevajs.reeva.core.errors.DefaultErrorReporter
 import com.reevajs.reeva.core.lifecycle.FileSourceInfo
 import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
-import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.toPrintableString
 import org.junit.jupiter.api.Assertions

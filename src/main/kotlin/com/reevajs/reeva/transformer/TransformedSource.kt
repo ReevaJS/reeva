@@ -1,6 +1,5 @@
 package com.reevajs.reeva.transformer
 
-import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 
 data class TransformedSource(

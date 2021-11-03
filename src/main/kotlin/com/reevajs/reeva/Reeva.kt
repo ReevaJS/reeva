@@ -1,7 +1,7 @@
 package com.reevajs.reeva
 
 import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.realm.Realm
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 

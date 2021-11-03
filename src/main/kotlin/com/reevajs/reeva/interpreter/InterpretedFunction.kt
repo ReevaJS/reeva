@@ -1,15 +1,12 @@
 package com.reevajs.reeva.interpreter
 
-import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObject
-import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.transformer.TransformedSource
-import com.reevajs.reeva.utils.key
 
 abstract class InterpretedFunction(
     realm: Realm,
