@@ -68,7 +68,3 @@ fun <T> Iterable<T>.duplicates(): Set<T> {
     }
     return duplicates
 }
-
-fun <K, V> MutableMap<K, V>.getOrPut(key: K, default: () -> V): V {
-    return this[key] ?: default().also { this[key] = it }
-}

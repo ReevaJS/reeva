@@ -58,6 +58,8 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
                         env.setIndirectBinding(DEFAULT_SPECIFIER, DEFAULT_SPECIFIER, requestedModule)
                     is NamespaceImport -> {
                         if (namespace == null) {
+                            // TODO: Let the module have control over this namespace object, and make namespace
+                            //       a generic JSObject
                             namespace = JSModuleNamespaceObject.create(
                                 realm,
                                 requestedModule,
@@ -113,6 +115,23 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
                 }
             }
         }
+    }
+
+    override fun getImportedNames(specifier: String): Set<String> {
+        val node = parsedSource.node as ModuleNode
+        val modules = node.body.filterIsInstance<ImportDeclarationNode>().filter {
+            it.moduleName == specifier
+        }
+
+        return modules.flatMap { module ->
+            module.imports?.map {
+                when (it) {
+                    is DefaultImport -> DEFAULT_SPECIFIER
+                    is NamespaceImport -> NAMESPACE_SPECIFIER
+                    is NormalImport -> it.identifierNode.processedName
+                }
+            } ?: emptyList()
+        }.toSet()
     }
 
     override fun getExportedNames(): List<String> {
@@ -171,9 +190,7 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
     companion object {
         fun parseModule(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, ModuleRecord> {
             return Parser(sourceInfo).parseModule().mapValue { result ->
-                SourceTextModuleRecord(realm, result).also {
-                    realm.moduleTree.setImportedModule(sourceInfo, it)
-                }
+                SourceTextModuleRecord(realm, result)
             }
         }
     }

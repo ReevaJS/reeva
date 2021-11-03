@@ -173,9 +173,12 @@ class JSClassObject private constructor(
     }
 
     companion object {
+        private val classCache = mutableMapOf<Class<*>, JSClassObject>()
         private val classProtoCache = mutableMapOf<Class<*>, JSObject>()
 
-        fun create(realm: Realm, clazz: Class<*>) = JSClassObject(realm, clazz).initialize()
+        fun create(realm: Realm, clazz: Class<*>) = classCache.getOrPut(clazz) {
+            JSClassObject(realm, clazz).initialize()
+        }
 
         @JvmStatic
         fun toString(realm: Realm, arguments: JSArguments): JSValue {

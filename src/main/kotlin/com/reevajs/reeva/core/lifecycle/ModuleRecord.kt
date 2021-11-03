@@ -6,6 +6,7 @@ import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.other.JSModuleNamespaceObject
 
 /**
@@ -51,6 +52,14 @@ abstract class ModuleRecord(val realm: Realm) : Executable {
     abstract fun evaluate(): JSValue
 
     abstract fun getExportedNames(): List<String>
+
+    /**
+     * Non-standard function which lets a module know what imports are being
+     * requested from it. This is necessary for JVM modules, as we don't want
+     * to have to reflect the requested package and load every single class
+     * into the env if we only want one or two.
+     */
+    open fun notifyImportedNames(names: Set<String>) {}
 
     /**
      * This method treats this module as the top-level module in the module

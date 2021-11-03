@@ -2,14 +2,12 @@ package com.reevajs.reeva.core.lifecycle
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
-import com.reevajs.reeva.runtime.other.JSModuleNamespaceObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
@@ -133,6 +131,10 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
         for (required in requestedModules) {
             // Delegate resolving the module to the host, then link.
             val requiredModule = Reeva.activeAgent.hostHooks.resolveImportedModule(this, required)
+
+            // Non-standard step: tell the module which names we are attempting to import. This is
+            // required for JVM modules.
+            requiredModule.notifyImportedNames(getImportedNames(required))
 
             // We keep this index around to correctly track how many modules we have visited.
             if (requiredModule !is CyclicModuleRecord) {
@@ -339,6 +341,8 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
 
         return index
     }
+
+    abstract fun getImportedNames(specifier: String): Set<String>
 
     /**
      * Responsible for actually running the code of the module.

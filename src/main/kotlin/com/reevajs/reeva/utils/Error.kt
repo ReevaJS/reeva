@@ -216,14 +216,17 @@ object Errors {
     object JVMCompat {
         class InconvertibleType(value: JSValue, type: java.lang.Class<*>) :
             Error("$value isn't convertible to type $type")
-        class BadImportFromPackage(className: String, packageName: String) :
-            Error("JVM class $className not found in package $packageName")
 
         object JVMFuncNoArgs : Error("global jvm function expects at least one argument")
         object JVMFuncBadArgType : Error("global jvm function received an argument that was not a JVM class object")
         object JVMFuncMultipleBaseClasses :
             Error("global jvm function can only receive at most one concrete base class")
         class JVMFuncFinalClass(className: String) : Error("cannot extend final JVM class $className")
+
+        class JVMNamespaceClassImport(specifier: String) : Error("attempted to namespace import from JVM class " +
+            "\"$specifier\"; use a default import instead")
+        class JVMDefaultPackageImport(specifier: String) : Error("attempted to default import from JVM package " +
+            "\"$specifier\"; use a namespace import instead")
     }
 
     object JVMPackage {

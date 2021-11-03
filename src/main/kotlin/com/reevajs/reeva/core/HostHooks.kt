@@ -78,26 +78,47 @@ open class HostHooks {
     }
 
     fun resolveImportedModule(referencingModule: ModuleRecord, specifier: String): ModuleRecord {
-        val sourceInfo = resolveImportedModuleImpl(referencingModule, specifier)
-        val existingModule = referencingModule.realm.moduleTree.resolveImportedModule(sourceInfo)
+        val existingModule = referencingModule.realm.moduleTree.resolveImportedModule(referencingModule, specifier)
         if (existingModule != null)
             return existingModule
 
-        return SourceTextModuleRecord.parseModule(referencingModule.realm, sourceInfo).valueOrElse { TODO() }
+        return resolveImportedModuleImpl(referencingModule, specifier)
     }
 
-    open fun resolveImportedModuleImpl(referencingModule: ModuleRecord, specifier: String): SourceInfo {
-        val file = resolveImportedFilePath(referencingModule, specifier)
-        return FileSourceInfo(file)
-    }
+    open fun resolveImportedModuleImpl(referencingModule: ModuleRecord, specifier: String): ModuleRecord {
+        val existingModule = referencingModule.realm.moduleTree.resolveImportedModule(referencingModule, specifier)
+        if (existingModule != null)
+            return existingModule
 
-    open fun resolveImportedFilePath(referencingModule: ModuleRecord, specifier: String): File {
+        if (JVMModuleRecord.isJVMSpecifier(specifier)) {
+            // JVM modules should be the same regardless of the referencing module, so the only thing that
+            // matters for caching is the specifier. We need to access the module tree directly in order to
+            // see if we have already loaded this JVM module.
+            val moduleTree = referencingModule.realm.moduleTree.getAllLoadedModules()
+            val existingJVMModule = moduleTree.values.firstOrNull { specifier in it }?.get(specifier)
+            if (existingJVMModule != null)
+                return existingJVMModule
+
+            return JVMModuleRecord(referencingModule.realm, specifier).also {
+                referencingModule.realm.moduleTree.setImportedModule(referencingModule, specifier, it)
+            }
+        }
+
         // TODO: Get rid of this expect somehow
         expect(referencingModule is SourceTextModuleRecord)
-        val sourceInfo = referencingModule.parsedSource.sourceInfo
-        val resolvedFile = sourceInfo.resolveImportedFilePath(specifier)
+
+        val referencingSourceInfo = referencingModule.parsedSource.sourceInfo
+        val resolvedFile = referencingSourceInfo.resolveImportedFilePath(specifier)
         if (!resolvedFile.exists())
-            Errors.NonExistentImport(specifier, sourceInfo.name).throwInternalError(referencingModule.realm)
-        return resolvedFile
+            Errors.NonExistentImport(specifier, referencingSourceInfo.name).throwInternalError(referencingModule.realm)
+
+        val sourceInfo = FileSourceInfo(resolvedFile)
+
+        return SourceTextModuleRecord
+            .parseModule(referencingModule.realm, sourceInfo)
+            .valueOrElse { TODO() }
+            .also {
+                referencingModule.realm.moduleTree.setImportedModule(referencingModule, specifier, it)
+            }
     }
 }
