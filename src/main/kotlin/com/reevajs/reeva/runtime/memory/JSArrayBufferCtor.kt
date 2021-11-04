@@ -17,7 +17,7 @@ class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(rea
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.ArrayBufferCtorGetSymbolSpecies, attrs { +conf; -enum })
+        defineBuiltinGetter(Realm.WellKnownSymbols.species, ReevaBuiltin.ArrayBufferCtorGetSymbolSpecies, attrs { +conf; -enum })
         defineBuiltin("isView", 1, ReevaBuiltin.ArrayBufferCtorIsView)
     }
 
@@ -44,7 +44,7 @@ class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(rea
 
         @ECMAImpl("25.1.4.3")
         @JvmStatic
-        fun `get@@species`(realm: Realm, arguments: JSArguments): JSValue {
+        fun getSymbolSpecies(realm: Realm, arguments: JSArguments): JSValue {
             return arguments.thisValue
         }
     }

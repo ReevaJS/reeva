@@ -234,7 +234,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
             var (searchValue, replaceValue) = arguments.takeArgs(0..1)
 
             if (!searchValue.isNullish) {
-                val replacer = Operations.getMethod(realm, searchValue, Realm.`@@replace`)
+                val replacer = Operations.getMethod(realm, searchValue, Realm.WellKnownSymbols.replace)
                 if (replacer != JSUndefined)
                     return Operations.call(realm, replacer, searchValue, listOf(obj, replaceValue))
             }
@@ -306,7 +306,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
             val (separator, limit) = arguments.takeArgs(0..1)
 
             if (!separator.isNullish) {
-                val splitter = Operations.getMethod(realm, separator, Realm.`@@split`)
+                val splitter = Operations.getMethod(realm, separator, Realm.WellKnownSymbols.split)
                 if (splitter != JSUndefined)
                     return Operations.call(realm, splitter, separator, listOf(obj, limit))
             }

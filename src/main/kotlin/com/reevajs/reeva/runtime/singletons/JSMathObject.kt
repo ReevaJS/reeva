@@ -25,7 +25,7 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         defineOwnProperty("PI", JSNumber(3.1415926535897932), 0)
         defineOwnProperty("SQRT1_2", JSNumber(0.7071067811865476), 0)
         defineOwnProperty("SQRT2", JSNumber(1.4142135623730951), 0)
-        defineOwnProperty(Realm.`@@toStringTag`, "Math".toValue(), 0)
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Math".toValue(), 0)
 
         defineBuiltin("abs", 1, ReevaBuiltin.MathAbs)
         defineBuiltin("acos", 1, ReevaBuiltin.MathAcos)

@@ -17,7 +17,7 @@ class JSMapIteratorProto private constructor(realm: Realm) : JSObject(realm, rea
     override fun init() {
         super.init()
 
-        defineOwnProperty(Realm.`@@toStringTag`, "Map Iterator".toValue(), Descriptor.CONFIGURABLE)
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Map Iterator".toValue(), Descriptor.CONFIGURABLE)
         defineBuiltin("next", 0, ReevaBuiltin.MapIteratorProtoNext)
     }
 

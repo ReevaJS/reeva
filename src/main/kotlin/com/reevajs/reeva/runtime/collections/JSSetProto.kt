@@ -20,7 +20,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         super.init()
 
         defineBuiltinGetter("size", ReevaBuiltin.SetProtoGetSize, attrs { +conf; -enum })
-        defineOwnProperty(Realm.`@@toStringTag`, "Set".toValue(), Descriptor.CONFIGURABLE)
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Set".toValue(), Descriptor.CONFIGURABLE)
         defineBuiltin("add", 1, ReevaBuiltin.SetProtoAdd)
         defineBuiltin("clear", 1, ReevaBuiltin.SetProtoClear)
         defineBuiltin("delete", 1, ReevaBuiltin.SetProtoDelete)
@@ -35,7 +35,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         // "The initial value of the @@iterator property is the same function object as the initial value
         // of the 'values' property"
-        defineOwnProperty(Realm.`@@iterator`, internalGet("values".key())!!.getRawValue())
+        defineOwnProperty(Realm.WellKnownSymbols.iterator, internalGet("values".key())!!.getRawValue())
     }
 
     companion object {

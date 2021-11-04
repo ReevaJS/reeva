@@ -40,7 +40,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         Operations.createDataPropertyOrThrow(realm, unscopables, "includes".key(), JSTrue)
         Operations.createDataPropertyOrThrow(realm, unscopables, "keys".key(), JSTrue)
         Operations.createDataPropertyOrThrow(realm, unscopables, "values".key(), JSTrue)
-        defineOwnProperty(Realm.`@@unscopables`, unscopables, Descriptor.CONFIGURABLE)
+        defineOwnProperty(Realm.WellKnownSymbols.unscopables, unscopables, Descriptor.CONFIGURABLE)
 
         defineBuiltin("at", 1, ReevaBuiltin.ArrayProtoAt)
         defineBuiltin("concat", 1, ReevaBuiltin.ArrayProtoConcat)
@@ -76,7 +76,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         // "The initial values of the @@iterator property is the same function object as the initial
         // value of the Array.prototype.values property."
         // https://tc39.es/ecma262/#sec-array.prototype-@@iterator
-        defineOwnProperty(Realm.`@@iterator`, internalGet("values".key())!!.getRawValue())
+        defineOwnProperty(Realm.WellKnownSymbols.iterator, internalGet("values".key())!!.getRawValue())
     }
 
     companion object {
@@ -112,7 +112,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                 val isConcatSpreadable = if (item !is JSObject) {
                     false
                 } else {
-                    val isSpreadable = item.get(Realm.`@@isConcatSpreadable`)
+                    val isSpreadable = item.get(Realm.WellKnownSymbols.isConcatSpreadable)
                     if (isSpreadable != JSUndefined) {
                         Operations.toBoolean(isSpreadable)
                     } else Operations.isArray(realm, item)

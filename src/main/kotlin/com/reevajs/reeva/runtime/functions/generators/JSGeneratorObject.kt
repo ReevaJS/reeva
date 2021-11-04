@@ -24,11 +24,11 @@ class JSGeneratorObject private constructor(
         return execute(realm)
     }
 
-    fun `return`(realm: Realm, value: JSValue): JSValue {
+    fun return_(realm: Realm, value: JSValue): JSValue {
         TODO()
     }
 
-    fun `throw`(realm: Realm, value: JSValue): JSValue {
+    fun throw_(realm: Realm, value: JSValue): JSValue {
         TODO()
     }
 

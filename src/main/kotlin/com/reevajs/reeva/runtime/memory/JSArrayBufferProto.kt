@@ -19,7 +19,7 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
     override fun init() {
         super.init()
 
-        defineOwnProperty(Realm.`@@toStringTag`, "ArrayBuffer".toValue(), attrs { +conf })
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "ArrayBuffer".toValue(), attrs { +conf })
         defineOwnProperty("constructor", realm.arrayBufferCtor, attrs { +conf; -enum; +writ })
         defineBuiltinGetter("byteLength", ReevaBuiltin.ArrayBufferProtoGetByteLength, attrs { +conf; -enum })
         defineBuiltin("slice", 2, ReevaBuiltin.ArrayBufferProtoSlice)

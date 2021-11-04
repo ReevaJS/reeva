@@ -63,7 +63,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         defineBuiltin("toTimeString", 0, ReevaBuiltin.DateProtoToTimeString)
         defineBuiltin("toUTCString", 0, ReevaBuiltin.DateProtoToUTCString)
         defineBuiltin("valueOf", 0, ReevaBuiltin.DateProtoValueOf)
-        defineBuiltin(Realm.`@@toPrimitive`, 0, ReevaBuiltin.DateProtoSymbolToPrimitive, attrs { +conf; -enum })
+        defineBuiltin(Realm.WellKnownSymbols.toPrimitive, 0, ReevaBuiltin.DateProtoSymbolToPrimitive, attrs { +conf; -enum })
     }
 
     companion object {
@@ -553,7 +553,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
 
         @ECMAImpl("21.4.4.45")
         @JvmStatic
-        fun `@@toPrimitive`(realm: Realm, arguments: JSArguments): JSValue {
+        fun symbolToPrimitive(realm: Realm, arguments: JSArguments): JSValue {
             if (arguments.thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("Date.prototype[Symbol.toPrimitive]").throwTypeError(realm)
 

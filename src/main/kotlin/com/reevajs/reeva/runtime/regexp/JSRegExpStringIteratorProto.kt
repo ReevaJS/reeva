@@ -20,7 +20,7 @@ class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(r
         super.init()
 
         defineOwnProperty(
-            Realm.`@@toStringTag`,
+            Realm.WellKnownSymbols.toStringTag,
             "RegExp String Iterator".toValue(),
             Descriptor.CONFIGURABLE or Descriptor.HAS_BASIC
         )

@@ -16,19 +16,19 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun init() {
         super.init()
 
-        defineOwnProperty("asyncIterator", Realm.`@@asyncIterator`, 0)
-        defineOwnProperty("hasInstance", Realm.`@@hasInstance`, 0)
-        defineOwnProperty("isConcatSpreadable", Realm.`@@isConcatSpreadable`, 0)
-        defineOwnProperty("iterator", Realm.`@@iterator`, 0)
-        defineOwnProperty("match", Realm.`@@match`, 0)
-        defineOwnProperty("matchAll", Realm.`@@matchAll`, 0)
-        defineOwnProperty("replace", Realm.`@@replace`, 0)
-        defineOwnProperty("search", Realm.`@@search`, 0)
-        defineOwnProperty("species", Realm.`@@species`, 0)
-        defineOwnProperty("split", Realm.`@@split`, 0)
-        defineOwnProperty("toPrimitive", Realm.`@@toPrimitive`, 0)
-        defineOwnProperty("toStringTag", Realm.`@@toStringTag`, 0)
-        defineOwnProperty("unscopables", Realm.`@@unscopables`, 0)
+        defineOwnProperty("asyncIterator", Realm.WellKnownSymbols.asyncIterator, 0)
+        defineOwnProperty("hasInstance", Realm.WellKnownSymbols.hasInstance, 0)
+        defineOwnProperty("isConcatSpreadable", Realm.WellKnownSymbols.isConcatSpreadable, 0)
+        defineOwnProperty("iterator", Realm.WellKnownSymbols.iterator, 0)
+        defineOwnProperty("match", Realm.WellKnownSymbols.match, 0)
+        defineOwnProperty("matchAll", Realm.WellKnownSymbols.matchAll, 0)
+        defineOwnProperty("replace", Realm.WellKnownSymbols.replace, 0)
+        defineOwnProperty("search", Realm.WellKnownSymbols.search, 0)
+        defineOwnProperty("species", Realm.WellKnownSymbols.species, 0)
+        defineOwnProperty("split", Realm.WellKnownSymbols.split, 0)
+        defineOwnProperty("toPrimitive", Realm.WellKnownSymbols.toPrimitive, 0)
+        defineOwnProperty("toStringTag", Realm.WellKnownSymbols.toStringTag, 0)
+        defineOwnProperty("unscopables", Realm.WellKnownSymbols.unscopables, 0)
 
         defineBuiltin("for", 1, ReevaBuiltin.SymbolCtorFor)
         defineBuiltin("keyFor", 1, ReevaBuiltin.SymbolCtorKeyFor)
@@ -49,7 +49,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         @ECMAImpl("20.4.2.2")
         @JvmStatic
-        fun `for`(realm: Realm, arguments: JSArguments): JSValue {
+        fun for_(realm: Realm, arguments: JSArguments): JSValue {
             val key = arguments.argument(0).asString
             for ((globalKey, globalSymbol) in Realm.globalSymbolRegistry) {
                 if (globalKey == key)

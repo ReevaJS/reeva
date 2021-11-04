@@ -17,19 +17,26 @@ import com.reevajs.reeva.utils.toValue
 class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {
         super.init()
+
+        defineNativeProperty(
+            Realm.WellKnownSymbols.toStringTag.key(),
+            attrs { +conf; -enum; -writ },
+            ::getSymbolToStringTag,
+            null,
+        )
+
         defineOwnProperty("constructor", realm.symbolCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineNativeProperty("description", attrs { +conf; -enum }, ::getDescription, null)
-        defineNativeProperty(Realm.`@@toStringTag`.key(), attrs { +conf; -enum; -writ }, ::`get@@toStringTag`, null)
         defineBuiltin("toString", 0, ReevaBuiltin.SymbolProtoToString)
         defineBuiltin("toValue", 0, ReevaBuiltin.SymbolProtoToValue)
-        defineBuiltin(Realm.`@@toPrimitive`, 0, ReevaBuiltin.SymbolProtoSymbolToPrimitive)
+        defineBuiltin(Realm.WellKnownSymbols.toPrimitive, 0, ReevaBuiltin.SymbolProtoSymbolToPrimitive)
     }
 
     fun getDescription(realm: Realm, thisValue: JSValue): JSValue {
         return thisSymbolValue(realm, thisValue, "description").description?.toValue() ?: JSUndefined
     }
 
-    fun `get@@toStringTag`(realm: Realm, thisValue: JSValue) = "Symbol".toValue()
+    fun getSymbolToStringTag(realm: Realm, thisValue: JSValue) = "Symbol".toValue()
 
     companion object {
         fun create(realm: Realm) = JSSymbolProto(realm).initialize()
@@ -57,7 +64,7 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         @ECMAImpl("20.4.3.5")
         @JvmStatic
-        fun `@@toPrimitive`(realm: Realm, arguments: JSArguments): JSValue {
+        fun symbolToPrimitive(realm: Realm, arguments: JSArguments): JSValue {
             return thisSymbolValue(realm, arguments.thisValue, "@@toPrimitive")
         }
     }

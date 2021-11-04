@@ -15,7 +15,7 @@ class JSGeneratorObjectProto(realm: Realm) : JSObject(realm, realm.iteratorProto
     override fun init() {
         super.init()
 
-        defineOwnProperty(Realm.`@@toStringTag`, "Generator".toValue(), Descriptor.CONFIGURABLE)
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Generator".toValue(), Descriptor.CONFIGURABLE)
         defineBuiltin("next", 1, ReevaBuiltin.GeneratorObjectProtoNext)
         defineBuiltin("return", 1, ReevaBuiltin.GeneratorObjectProtoReturn)
         defineBuiltin("throw", 1, ReevaBuiltin.GeneratorObjectProtoThrow)
@@ -40,16 +40,16 @@ class JSGeneratorObjectProto(realm: Realm) : JSObject(realm, realm.iteratorProto
 
         @ECMAImpl("27.5.1.3")
         @JvmStatic
-        fun `return`(realm: Realm, arguments: JSArguments): JSValue {
+        fun return_(realm: Realm, arguments: JSArguments): JSValue {
             val generator = thisGeneratorObject(realm, arguments.thisValue, "return")
-            return generator.`return`(realm, arguments.argument(0))
+            return generator.return_(realm, arguments.argument(0))
         }
 
         @ECMAImpl("27.5.1.4")
         @JvmStatic
-        fun `throw`(realm: Realm, arguments: JSArguments): JSValue {
+        fun throw_(realm: Realm, arguments: JSArguments): JSValue {
             val generator = thisGeneratorObject(realm, arguments.thisValue, "throw")
-            return generator.`throw`(realm, arguments.argument(0))
+            return generator.throw_(realm, arguments.argument(0))
         }
     }
 }

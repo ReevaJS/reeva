@@ -16,7 +16,7 @@ import com.reevajs.reeva.utils.attrs
 class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set", 0) {
     override fun init() {
         super.init()
-        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.SetCtorGetSymbolSpecies, attrs { +conf; -enum })
+        defineBuiltinGetter(Realm.WellKnownSymbols.species, ReevaBuiltin.SetCtorGetSymbolSpecies, attrs { +conf; -enum })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -58,7 +58,7 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
 
         @ECMAImpl("24.2.2.2")
         @JvmStatic
-        fun `get@@species`(realm: Realm, arguments: JSArguments): JSValue {
+        fun getSymbolSpecies(realm: Realm, arguments: JSArguments): JSValue {
             return arguments.thisValue
         }
     }

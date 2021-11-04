@@ -19,7 +19,7 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         super.init()
 
         defineOwnProperty("constructor", realm.dataViewCtor, attrs { +conf; -enum; +writ })
-        defineOwnProperty(Realm.`@@toStringTag`, "DataView".toValue(), attrs { +conf; -enum; -writ })
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "DataView".toValue(), attrs { +conf; -enum; -writ })
 
         defineBuiltinGetter("buffer", ReevaBuiltin.DataViewProtoGetBuffer, attrs { +conf; -enum })
         defineBuiltinGetter("byteLength", ReevaBuiltin.DataViewProtoGetByteLength, attrs { +conf; -enum })

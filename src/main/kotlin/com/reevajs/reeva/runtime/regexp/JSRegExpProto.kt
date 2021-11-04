@@ -24,11 +24,11 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         defineBuiltinGetter("source", ReevaBuiltin.RegExpProtoGetSource, attributes = attrs)
         defineBuiltinGetter("sticky", ReevaBuiltin.RegExpProtoGetSticky, attributes = attrs)
         defineBuiltinGetter("unicode", ReevaBuiltin.RegExpProtoGetUnicode, attributes = attrs)
-        defineBuiltin(Realm.`@@match`, 1, ReevaBuiltin.RegExpProtoMatch)
-        defineBuiltin(Realm.`@@matchAll`, 1, ReevaBuiltin.RegExpProtoMatchAll)
-        defineBuiltin(Realm.`@@replace`, 2, ReevaBuiltin.RegExpProtoReplace)
-        defineBuiltin(Realm.`@@search`, 1, ReevaBuiltin.RegExpProtoSearch)
-        defineBuiltin(Realm.`@@split`, 2, ReevaBuiltin.RegExpProtoSplit)
+        defineBuiltin(Realm.WellKnownSymbols.match, 1, ReevaBuiltin.RegExpProtoMatch)
+        defineBuiltin(Realm.WellKnownSymbols.matchAll, 1, ReevaBuiltin.RegExpProtoMatchAll)
+        defineBuiltin(Realm.WellKnownSymbols.replace, 2, ReevaBuiltin.RegExpProtoReplace)
+        defineBuiltin(Realm.WellKnownSymbols.search, 1, ReevaBuiltin.RegExpProtoSearch)
+        defineBuiltin(Realm.WellKnownSymbols.split, 2, ReevaBuiltin.RegExpProtoSplit)
         defineBuiltin("exec", 1, ReevaBuiltin.RegExpProtoExec)
         defineBuiltin("test", 1, ReevaBuiltin.RegExpProtoTest)
         defineBuiltin("toString", 0, ReevaBuiltin.RegExpProtoToString)
@@ -91,7 +91,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         @ECMAImpl("22.2.5.7")
         @JvmStatic
-        fun `@@match`(realm: Realm, arguments: JSArguments): JSValue {
+        fun symbolMatch(realm: Realm, arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype[@@match]").throwTypeError(realm)
@@ -123,7 +123,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         @ECMAImpl("22.2.5.8")
         @JvmStatic
-        fun `@@matchAll`(realm: Realm, arguments: JSArguments): JSValue {
+        fun symbolMatchAll(realm: Realm, arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype[@@matchAll]").throwTypeError(realm)
@@ -150,7 +150,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         @ECMAImpl("22.2.5.10")
         @JvmStatic
-        fun `@@replace`(realm: Realm, arguments: JSArguments): JSValue {
+        fun symbolReplace(realm: Realm, arguments: JSArguments): JSValue {
             if (arguments.thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype[@@replace]").throwTypeError(realm)
             TODO()
@@ -158,7 +158,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         @ECMAImpl("22.2.5.11")
         @JvmStatic
-        fun `@@search`(realm: Realm, arguments: JSArguments): JSValue {
+        fun symbolSearch(realm: Realm, arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype[@@search]").throwTypeError(realm)
@@ -196,7 +196,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 
         @ECMAImpl("22.2.5.13")
         @JvmStatic
-        fun `@@split`(realm: Realm, arguments: JSArguments): JSValue {
+        fun symbolSplit(realm: Realm, arguments: JSArguments): JSValue {
             if (arguments.thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype[@@split]").throwTypeError(realm)
             TODO()

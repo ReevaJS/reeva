@@ -48,7 +48,7 @@ open class JSGenericTypedArrayCtor protected constructor(
             firstArgument.hasSlot(SlotName.ArrayBufferData) ->
                 initializeTypedArrayFromArrayBuffer(obj, firstArgument, arguments.argument(1), arguments.argument(2))
             else -> {
-                val usingIterator = Operations.getMethod(realm, firstArgument, Realm.`@@iterator`)
+                val usingIterator = Operations.getMethod(realm, firstArgument, Realm.WellKnownSymbols.iterator)
                 if (usingIterator != JSUndefined) {
                     val values = Operations.iterableToList(realm, firstArgument, usingIterator)
                     initializeTypedArrayFromList(obj, values)

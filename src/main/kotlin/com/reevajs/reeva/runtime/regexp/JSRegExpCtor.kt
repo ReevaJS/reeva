@@ -16,7 +16,7 @@ class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.RegExpCtorGetSpecies, attrs { +conf; -enum })
+        defineBuiltinGetter(Realm.WellKnownSymbols.species, ReevaBuiltin.RegExpCtorGetSpecies, attrs { +conf; -enum })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -55,7 +55,7 @@ class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         @ECMAImpl("22.2.4.2")
         @JvmStatic
-        fun `get@@species`(realm: Realm, arguments: JSArguments): JSValue {
+        fun getSymbolSpecies(realm: Realm, arguments: JSArguments): JSValue {
             return arguments.thisValue
         }
     }

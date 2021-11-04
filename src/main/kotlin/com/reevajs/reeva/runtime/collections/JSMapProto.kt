@@ -19,7 +19,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
     override fun init() {
         super.init()
 
-        defineOwnProperty(Realm.`@@toStringTag`, "Map".toValue(), Descriptor.CONFIGURABLE)
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Map".toValue(), Descriptor.CONFIGURABLE)
 
         defineBuiltinGetter("size", ReevaBuiltin.MapProtoGetSize, attrs { +conf; -enum })
         defineBuiltin("clear", 0, ReevaBuiltin.MapProtoClear)
@@ -34,7 +34,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         // "The initial value of the @@iterator property is the same function object
         // as the initial value of the 'entries' property."
-        defineOwnProperty(Realm.`@@iterator`, internalGet("entries".key())!!.getRawValue(), attrs { +conf; +writ })
+        defineOwnProperty(Realm.WellKnownSymbols.iterator, internalGet("entries".key())!!.getRawValue(), attrs { +conf; +writ })
     }
 
     companion object {

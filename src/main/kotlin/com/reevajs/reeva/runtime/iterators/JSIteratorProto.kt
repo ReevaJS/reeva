@@ -11,7 +11,7 @@ class JSIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.
     override fun init() {
         super.init()
 
-        defineBuiltin(Realm.`@@iterator`, 0, ReevaBuiltin.IteratorProtoSymbolIterator)
+        defineBuiltin(Realm.WellKnownSymbols.iterator, 0, ReevaBuiltin.IteratorProtoSymbolIterator)
     }
 
     companion object {
@@ -19,7 +19,7 @@ class JSIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("27.1.2.1")
         @JvmStatic
-        fun `@@iterator`(realm: Realm, arguments: JSArguments): JSValue {
+        fun symbolIterator(realm: Realm, arguments: JSArguments): JSValue {
             return arguments.thisValue
         }
     }

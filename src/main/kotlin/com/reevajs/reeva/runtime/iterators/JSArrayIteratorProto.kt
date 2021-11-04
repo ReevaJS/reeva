@@ -16,7 +16,7 @@ class JSArrayIteratorProto private constructor(realm: Realm) : JSObject(realm, r
     override fun init() {
         super.init()
 
-        defineOwnProperty(Realm.`@@toStringTag`, "Array Iterator".toValue(), Descriptor.CONFIGURABLE)
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Array Iterator".toValue(), Descriptor.CONFIGURABLE)
         defineBuiltin("next", 0, ReevaBuiltin.ArrayIteratorProtoNext)
     }
 

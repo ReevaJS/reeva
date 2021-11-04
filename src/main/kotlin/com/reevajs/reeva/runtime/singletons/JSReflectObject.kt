@@ -17,7 +17,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
     override fun init() {
         super.init()
 
-        defineOwnProperty(Realm.`@@toStringTag`, "Reflect".toValue(), Descriptor.CONFIGURABLE)
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Reflect".toValue(), Descriptor.CONFIGURABLE)
         defineBuiltin("apply", 3, ReevaBuiltin.ReflectApply)
         defineBuiltin("construct", 2, ReevaBuiltin.ReflectConstruct)
         defineBuiltin("defineProperty", 3, ReevaBuiltin.ReflectDefineProperty)

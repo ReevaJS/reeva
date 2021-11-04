@@ -168,7 +168,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
                 return "[object Null]".toValue()
 
             val obj = Operations.toObject(realm, arguments.thisValue)
-            val tag = obj.get(Realm.`@@toStringTag`).let {
+            val tag = obj.get(Realm.WellKnownSymbols.toStringTag).let {
                 if (it is JSString) {
                     it.string
                 } else {

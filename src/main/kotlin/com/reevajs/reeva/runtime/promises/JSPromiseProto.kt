@@ -17,7 +17,7 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
         super.init()
 
         defineOwnProperty("constructor", realm.promiseCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineOwnProperty(Realm.`@@toStringTag`, "Promise".toValue(), Descriptor.CONFIGURABLE)
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Promise".toValue(), Descriptor.CONFIGURABLE)
 
         defineBuiltin("catch", 1, ReevaBuiltin.PromiseProtoCatch)
         defineBuiltin("finally", 1, ReevaBuiltin.PromiseProtoFinally)

@@ -18,7 +18,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         super.init()
 
         defineBuiltinGetter(
-            Realm.`@@toStringTag`,
+            Realm.WellKnownSymbols.toStringTag,
             ReevaBuiltin.TypedArrayProtoGetSymbolToStringTag,
             attrs { +conf; -enum },
         )
@@ -71,7 +71,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
         @ECMAImpl("23.2.3.")
         @JvmStatic
-        fun `get@@toStringTag`(realm: Realm, arguments: JSArguments): JSValue {
+        fun getSymbolToStringTag(realm: Realm, arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (thisValue !is JSObject)
                 return JSUndefined

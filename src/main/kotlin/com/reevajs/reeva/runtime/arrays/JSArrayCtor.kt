@@ -19,7 +19,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.ArrayCtorGetSymbolSpecies, attrs { +conf; -enum; -writ })
+        defineBuiltinGetter(Realm.WellKnownSymbols.species, ReevaBuiltin.ArrayCtorGetSymbolSpecies, attrs { +conf; -enum; -writ })
 
         defineBuiltin("isArray", 1, ReevaBuiltin.ArrayCtorIsArray)
         defineBuiltin("from", 1, ReevaBuiltin.ArrayCtorFrom)
@@ -85,7 +85,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                 true
             }
 
-            val usingIterator = Operations.getMethod(realm, items, Realm.`@@iterator`)
+            val usingIterator = Operations.getMethod(realm, items, Realm.WellKnownSymbols.iterator)
             if (usingIterator != JSUndefined) {
                 val array = if (Operations.isConstructor(arguments.thisValue)) {
                     Operations.construct(arguments.thisValue) as JSObject
@@ -172,7 +172,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
 
         @ECMAImpl("23.1.2.5")
         @JvmStatic
-        fun `get@@species`(realm: Realm, arguments: JSArguments): JSValue {
+        fun getSymbolSpecies(realm: Realm, arguments: JSArguments): JSValue {
             return arguments.thisValue
         }
     }

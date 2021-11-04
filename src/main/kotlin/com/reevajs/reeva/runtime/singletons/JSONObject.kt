@@ -20,7 +20,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.`@@toStringTag`, ReevaBuiltin.JSONGetSymbolToStringTag, attrs { +conf; -enum; -writ })
+        defineBuiltinGetter(Realm.WellKnownSymbols.toStringTag, ReevaBuiltin.JSONGetSymbolToStringTag, attrs { +conf; -enum; -writ })
         defineBuiltin("parse", 2, ReevaBuiltin.JSONParse)
         defineBuiltin("stringify", 3, ReevaBuiltin.JSONStringify)
     }
@@ -87,7 +87,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         @ECMAImpl("25.5.3")
         @JvmStatic
-        fun `get@@toStringTag`(realm: Realm, arguments: JSArguments): JSValue {
+        fun getSymbolToStringTag(realm: Realm, arguments: JSArguments): JSValue {
             return "JSON".toValue()
         }
 

@@ -195,7 +195,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         @ECMAImpl("20.1.2.13")
         @JvmStatic
-        fun `is`(realm: Realm, arguments: JSArguments): JSValue {
+        fun is_(realm: Realm, arguments: JSArguments): JSValue {
             return arguments.argument(0).sameValue(arguments.argument(1)).toValue()
         }
 

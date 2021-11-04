@@ -15,7 +15,7 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.`@@species`, ReevaBuiltin.MapCtorGetSymbolSpecies, attrs { +conf; -enum })
+        defineBuiltinGetter(Realm.WellKnownSymbols.species, ReevaBuiltin.MapCtorGetSymbolSpecies, attrs { +conf; -enum })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -42,7 +42,7 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
 
         @ECMAImpl("24.1.2.2")
         @JvmStatic
-        fun `get@@species`(realm: Realm, arguments: JSArguments): JSValue {
+        fun getSymbolSpecies(realm: Realm, arguments: JSArguments): JSValue {
             return arguments.thisValue
         }
     }

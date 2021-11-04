@@ -30,7 +30,7 @@ import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
 
 enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: String) : Builtin {
-    ArrayCtorGetSymbolSpecies(JSArrayCtor::class.java, "get@@species", "Array[@@species]"),
+    ArrayCtorGetSymbolSpecies(JSArrayCtor::class.java, "getSymbolSpecies", "Array[@@species]"),
     ArrayCtorIsArray(JSArrayCtor::class.java, "isArray", "Array.isArray"),
     ArrayCtorFrom(JSArrayCtor::class.java, "from", "Array.from"),
     ArrayCtorOf(JSArrayCtor::class.java, "of", "Array.of"),
@@ -66,7 +66,7 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     ArrayProtoValues(JSArrayProto::class.java, "values", "Array.prototype.values"),
 
     ArrayBufferCtorIsView(JSArrayBufferCtor::class.java, "isView", "ArrayBuffer.isView"),
-    ArrayBufferCtorGetSymbolSpecies(JSArrayBufferCtor::class.java, "get@@species", "ArrayBuffer[@@species]"),
+    ArrayBufferCtorGetSymbolSpecies(JSArrayBufferCtor::class.java, "getSymbolSpecies", "ArrayBuffer[@@species]"),
     ArrayBufferProtoGetByteLength(JSArrayBufferProto::class.java, "getByteLength", "ArrayBuffer.prototype.getByteLength"),
     ArrayBufferProtoSlice(JSArrayBufferProto::class.java, "slice", "ArrayBuffer.prototype.slice"),
 
@@ -145,7 +145,7 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     DateProtoToTimeString(JSDateProto::class.java, "toTimeString", "Date.prototype.toTimeString"),
     DateProtoToUTCString(JSDateProto::class.java, "toUTCString", "Date.prototype.toUtcString"),
     DateProtoValueOf(JSDateProto::class.java, "valueOf", "Date.prototype.valueOf"),
-    DateProtoSymbolToPrimitive(JSDateProto::class.java, "@@toPrimitive", "Date.prototype[@@toPrimitive]"),
+    DateProtoSymbolToPrimitive(JSDateProto::class.java, "symbolToPrimitive", "Date.prototype[@@toPrimitive]"),
 
     ErrorProtoToString(JSErrorProto::class.java, "toString", "Error.prototype.toString"),
 
@@ -154,21 +154,21 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     FunctionProtoCall(JSFunctionProto::class.java, "call", "Function.prototype.call"),
 
     GeneratorObjectProtoNext(JSGeneratorObjectProto::class.java, "next", "GeneratorObject.prototype.next"),
-    GeneratorObjectProtoReturn(JSGeneratorObjectProto::class.java, "return", "GeneratorObject.prototype.return"),
-    GeneratorObjectProtoThrow(JSGeneratorObjectProto::class.java, "throw", "GeneratorObject.prototype.throw"),
+    GeneratorObjectProtoReturn(JSGeneratorObjectProto::class.java, "return_", "GeneratorObject.prototype.return"),
+    GeneratorObjectProtoThrow(JSGeneratorObjectProto::class.java, "throw_", "GeneratorObject.prototype.throw"),
 
     GlobalEval(JSGlobalObject::class.java, "eval", "eval"),
     GlobalParseInt(JSGlobalObject::class.java, "parseInt", "parseInt"),
 
-    IteratorProtoSymbolIterator(JSIteratorProto::class.java, "@@iterator", "Iterator.prototype[@@iterator]"),
+    IteratorProtoSymbolIterator(JSIteratorProto::class.java, "symbolIterator", "Iterator.prototype[@@iterator]"),
 
     JSONParse(JSONObject::class.java, "parse", "JSON.parse"),
     JSONStringify(JSONObject::class.java, "stringify", "JSON.stringify"),
-    JSONGetSymbolToStringTag(JSONObject::class.java, "get@@toStringTag", "JSON[@@toStringTag]"),
+    JSONGetSymbolToStringTag(JSONObject::class.java, "getSymbolToStringTag", "JSON[@@toStringTag]"),
 
     ListIteratorProtoNext(JSListIteratorProto::class.java, "next", "ListIterator.prototype.next"),
 
-    MapCtorGetSymbolSpecies(JSMapCtor::class.java, "get@@species", "Map[@@species]"),
+    MapCtorGetSymbolSpecies(JSMapCtor::class.java, "getSymbolSpecies", "Map[@@species]"),
     MapProtoClear(JSMapProto::class.java, "clear", "Map.prototype.clear"),
     MapProtoDelete(JSMapProto::class.java, "delete", "Map.prototype.delete"),
     MapProtoEntries(JSMapProto::class.java, "entries", "Map.prototype.entries"),
@@ -243,7 +243,7 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     ObjectCtorGetOwnPropertyNames(JSObjectCtor::class.java, "getOwnPropertyNames", "Object.getOwnPropertyNames"),
     ObjectCtorGetOwnPropertySymbols(JSObjectCtor::class.java, "getOwnPropertySymbols", "Object.getOwnPropertySymbols"),
     ObjectCtorGetPrototypeOf(JSObjectCtor::class.java, "getPrototypeOf", "Object.getPrototypeOf"),
-    ObjectCtorIs(JSObjectCtor::class.java, "is", "Object.is"),
+    ObjectCtorIs(JSObjectCtor::class.java, "is_", "Object.is"),
     ObjectCtorIsExtensible(JSObjectCtor::class.java, "isExtensible", "Object.isExtensible"),
     ObjectCtorIsFrozen(JSObjectCtor::class.java, "isFrozen", "Object.isFrozen"),
     ObjectCtorIsSealed(JSObjectCtor::class.java, "isSealed", "Object.isSealed"),
@@ -290,7 +290,7 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     ReflectSet(JSReflectObject::class.java, "set", "Reflect.set"),
     ReflectSetPrototypeOf(JSReflectObject::class.java, "setPrototypeOf", "Reflect.setPrototypeOf"),
 
-    RegExpCtorGetSpecies(JSRegExpCtor::class.java, "get@@species", "RegExp[@@species]"),
+    RegExpCtorGetSpecies(JSRegExpCtor::class.java, "getSymbolSpecies", "RegExp[@@species]"),
     RegExpProtoGetDotAll(JSRegExpProto::class.java, "getDotAll", "RegExp.prototype.getDotAll"),
     RegExpProtoGetFlags(JSRegExpProto::class.java, "getFlags", "RegExp.prototype.getFlags"),
     RegExpProtoGetGlobal(JSRegExpProto::class.java, "getGlobal", "RegExp.prototype.getGlobal"),
@@ -299,18 +299,18 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     RegExpProtoGetSource(JSRegExpProto::class.java, "getSource", "RegExp.prototype.getSource"),
     RegExpProtoGetSticky(JSRegExpProto::class.java, "getSticky", "RegExp.prototype.getSticky"),
     RegExpProtoGetUnicode(JSRegExpProto::class.java, "getUnicode", "RegExp.prototype.getUnicode"),
-    RegExpProtoMatch(JSRegExpProto::class.java, "@@match", "RegExp.prototype.match"),
-    RegExpProtoMatchAll(JSRegExpProto::class.java, "@@matchAll", "RegExp.prototype.matchAll"),
-    RegExpProtoReplace(JSRegExpProto::class.java, "@@replace", "RegExp.prototype.replace"),
-    RegExpProtoSearch(JSRegExpProto::class.java, "@@search", "RegExp.prototype.search"),
-    RegExpProtoSplit(JSRegExpProto::class.java, "@@split", "RegExp.prototype.split"),
+    RegExpProtoMatch(JSRegExpProto::class.java, "symbolMatch", "RegExp.prototype.match"),
+    RegExpProtoMatchAll(JSRegExpProto::class.java, "symbolMatchAll", "RegExp.prototype.matchAll"),
+    RegExpProtoReplace(JSRegExpProto::class.java, "symbolReplace", "RegExp.prototype.replace"),
+    RegExpProtoSearch(JSRegExpProto::class.java, "symbolSearch", "RegExp.prototype.search"),
+    RegExpProtoSplit(JSRegExpProto::class.java, "symbolSplit", "RegExp.prototype.split"),
     RegExpProtoExec(JSRegExpProto::class.java, "exec", "RegExp.prototype.exec"),
     RegExpProtoTest(JSRegExpProto::class.java, "test", "RegExp.prototype.test"),
     RegExpProtoToString(JSRegExpProto::class.java, "toString", "RegExp.prototype.toString"),
 
     RegExpStringIteratorProtoNext(JSRegExpStringIteratorProto::class.java, "next", "RegExpStringIterator.prototype.next"),
 
-    SetCtorGetSymbolSpecies(JSSetCtor::class.java, "get@@species", "Set[@@species]"),
+    SetCtorGetSymbolSpecies(JSSetCtor::class.java, "getSymbolSpecies", "Set[@@species]"),
     SetProtoGetSize(JSSetProto::class.java, "getSize", "Set.prototype.getSize"),
     SetProtoAdd(JSSetProto::class.java, "add", "Set.prototype.add"),
     SetProtoClear(JSSetProto::class.java, "clear", "Set.prototype.clear"),
@@ -349,15 +349,15 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     StringProtoTrimStart(JSStringProto::class.java, "trimStart", "String.prototype.trimStart"),
     StringProtoValueOf(JSStringProto::class.java, "valueOf", "String.prototype.valueOf"),
 
-    SymbolCtorFor(JSSymbolCtor::class.java, "for", "Symbol.for"),
+    SymbolCtorFor(JSSymbolCtor::class.java, "for_", "Symbol.for"),
     SymbolCtorKeyFor(JSSymbolCtor::class.java, "keyFor", "Symbol.keyFor"),
     SymbolProtoToString(JSSymbolProto::class.java, "toString", "Symbol.prototype.toString"),
     SymbolProtoToValue(JSSymbolProto::class.java, "toValue", "Symbol.prototype.toValue"),
-    SymbolProtoSymbolToPrimitive(JSSymbolProto::class.java, "@@toPrimitive", "Symbol.prototype[@@toPrimitive]"),
+    SymbolProtoSymbolToPrimitive(JSSymbolProto::class.java, "symbolToPrimitive", "Symbol.prototype[@@toPrimitive]"),
 
     TypedArrayCtorFrom(JSTypedArrayCtor::class.java, "from", "TypedArray.from"),
     TypedArrayCtorOf(JSTypedArrayCtor::class.java, "of", "TypedArray.of"),
-    TypedArrayProtoGetSymbolToStringTag(JSTypedArrayProto::class.java, "get@@toStringTag", "TypedArray.prototype[@@toStringTag]"),
+    TypedArrayProtoGetSymbolToStringTag(JSTypedArrayProto::class.java, "getSymbolToStringTag", "TypedArray.prototype[@@toStringTag]"),
     TypedArrayProtoGetBuffer(JSTypedArrayProto::class.java, "getBuffer", "TypedArray.prototype.getBuffer"),
     TypedArrayProtoGetByteLength(JSTypedArrayProto::class.java, "getByteLength", "TypedArray.prototype.getByteLength"),
     TypedArrayProtoGetByteOffset(JSTypedArrayProto::class.java, "getByteOffset", "TypedArray.prototype.getByteOffset"),

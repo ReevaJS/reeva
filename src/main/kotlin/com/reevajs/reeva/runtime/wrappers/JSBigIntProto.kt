@@ -18,7 +18,7 @@ class JSBigIntProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         super.init()
 
         defineOwnProperty("constructor", realm.bigIntCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineOwnProperty(Realm.`@@toStringTag`, "BigInt".toValue(), Descriptor.CONFIGURABLE or Descriptor.HAS_BASIC)
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "BigInt".toValue(), Descriptor.CONFIGURABLE or Descriptor.HAS_BASIC)
         defineBuiltin("toString", 0, ReevaBuiltin.BigIntProtoToString)
         defineBuiltin("valueOf", 0, ReevaBuiltin.BigIntProtoValueOf)
     }

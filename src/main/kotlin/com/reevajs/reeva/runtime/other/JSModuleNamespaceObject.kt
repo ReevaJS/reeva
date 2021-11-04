@@ -21,7 +21,7 @@ class JSModuleNamespaceObject private constructor(
     override fun init() {
         super.init()
 
-        defineOwnProperty(Realm.`@@toStringTag`, "Module".toValue(), Descriptor.HAS_BASIC)
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Module".toValue(), Descriptor.HAS_BASIC)
     }
 
     override fun getPrototype() = JSNull

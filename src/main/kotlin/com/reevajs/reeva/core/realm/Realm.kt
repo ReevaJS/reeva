@@ -227,50 +227,51 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
 
     inline fun <reified T : RealmExtension> extAs(key: Any) = ext(key) as T
 
+    object WellKnownSymbols {
+        lateinit var asyncIterator: JSSymbol internal set
+        lateinit var hasInstance: JSSymbol internal set
+        lateinit var isConcatSpreadable: JSSymbol internal set
+        lateinit var iterator: JSSymbol internal set
+        lateinit var match: JSSymbol internal set
+        lateinit var matchAll: JSSymbol internal set
+        lateinit var replace: JSSymbol internal set
+        lateinit var search: JSSymbol internal set
+        lateinit var species: JSSymbol internal set
+        lateinit var split: JSSymbol internal set
+        lateinit var toPrimitive: JSSymbol internal set
+        lateinit var toStringTag: JSSymbol internal set
+        lateinit var unscopables: JSSymbol internal set
+    }
+
     @Suppress("ObjectPropertyName")
     companion object {
+        private var symbolsInitialized = false
+
         val globalSymbolRegistry = ConcurrentHashMap<String, JSSymbol>()
 
-        // To get access to the symbol via their name without reflection
-        val wellknownSymbols = mutableMapOf<String, JSSymbol>()
-
-        lateinit var `@@asyncIterator`: JSSymbol private set
-        lateinit var `@@hasInstance`: JSSymbol private set
-        lateinit var `@@isConcatSpreadable`: JSSymbol private set
-        lateinit var `@@iterator`: JSSymbol private set
-        lateinit var `@@match`: JSSymbol private set
-        lateinit var `@@matchAll`: JSSymbol private set
-        lateinit var `@@replace`: JSSymbol private set
-        lateinit var `@@search`: JSSymbol private set
-        lateinit var `@@species`: JSSymbol private set
-        lateinit var `@@split`: JSSymbol private set
-        lateinit var `@@toPrimitive`: JSSymbol private set
-        lateinit var `@@toStringTag`: JSSymbol private set
-        lateinit var `@@unscopables`: JSSymbol private set
-
         // Reeva-internal symbols
-        internal lateinit var `@@classInstanceFields`: JSSymbol private set
+        internal lateinit var classInstanceFields: JSSymbol private set
 
         fun setupSymbols() {
-            if (Companion::`@@asyncIterator`.isInitialized)
+            if (symbolsInitialized)
                 return
 
-            `@@asyncIterator` = JSSymbol("Symbol.asyncIterator").also { wellknownSymbols["@@asyncIterator"] = it }
-            `@@hasInstance` = JSSymbol("Symbol.hasInstance").also { wellknownSymbols["@@hasInstance"] = it }
-            `@@iterator` = JSSymbol("Symbol.iterator").also { wellknownSymbols["@@iterator"] = it }
-            `@@match` = JSSymbol("Symbol.match").also { wellknownSymbols["@@match"] = it }
-            `@@matchAll` = JSSymbol("Symbol.matchAll").also { wellknownSymbols["@@matchAll"] = it }
-            `@@replace` = JSSymbol("Symbol.replace").also { wellknownSymbols["@@replace"] = it }
-            `@@search` = JSSymbol("Symbol.search").also { wellknownSymbols["@@search"] = it }
-            `@@species` = JSSymbol("Symbol.species").also { wellknownSymbols["@@species"] = it }
-            `@@split` = JSSymbol("Symbol.split").also { wellknownSymbols["@@split"] = it }
-            `@@toPrimitive` = JSSymbol("Symbol.toPrimitive").also { wellknownSymbols["@@toPrimitive"] = it }
-            `@@toStringTag` = JSSymbol("Symbol.toStringTag").also { wellknownSymbols["@@toStringTag"] = it }
-            `@@unscopables` = JSSymbol("Symbol.unscopables").also { wellknownSymbols["@@unscopables"] = it }
-            `@@isConcatSpreadable` = JSSymbol("Symbol.isConcatSpreadable").also {
-                wellknownSymbols["@@isConcatSpreadable"] = it
-            }
-            `@@classInstanceFields` = JSSymbol("Symbol.classInstanceFields")
+            symbolsInitialized = true
+
+            WellKnownSymbols.asyncIterator = JSSymbol("Symbol.asyncIterator")
+            WellKnownSymbols.hasInstance = JSSymbol("Symbol.hasInstance")
+            WellKnownSymbols.iterator = JSSymbol("Symbol.iterator")
+            WellKnownSymbols.match = JSSymbol("Symbol.match")
+            WellKnownSymbols.matchAll = JSSymbol("Symbol.matchAll")
+            WellKnownSymbols.replace = JSSymbol("Symbol.replace")
+            WellKnownSymbols.search = JSSymbol("Symbol.search")
+            WellKnownSymbols.species = JSSymbol("Symbol.species")
+            WellKnownSymbols.split = JSSymbol("Symbol.split")
+            WellKnownSymbols.toPrimitive = JSSymbol("Symbol.toPrimitive")
+            WellKnownSymbols.toStringTag = JSSymbol("Symbol.toStringTag")
+            WellKnownSymbols.unscopables = JSSymbol("Symbol.unscopables")
+            WellKnownSymbols.isConcatSpreadable = JSSymbol("Symbol.isConcatSpreadable")
+            classInstanceFields = JSSymbol("Symbol.classInstanceFields")
         }
     }
 }

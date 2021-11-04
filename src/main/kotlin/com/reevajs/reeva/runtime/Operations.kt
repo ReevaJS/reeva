@@ -589,7 +589,7 @@ object Operations {
         if (value !is JSObject)
             return value
 
-        val exoticToPrim = getMethod(realm, value, Realm.`@@toPrimitive`)
+        val exoticToPrim = getMethod(realm, value, Realm.WellKnownSymbols.toPrimitive)
         if (exoticToPrim !is JSUndefined) {
             val hint = when (type) {
                 ToPrimitiveHint.AsDefault, null -> "default"
@@ -1039,7 +1039,7 @@ object Operations {
     fun isRegExp(value: JSValue): Boolean {
         if (value !is JSObject)
             return false
-        val matcher = value.get(Realm.`@@match`)
+        val matcher = value.get(Realm.WellKnownSymbols.match)
         if (matcher != JSUndefined)
             return toBoolean(matcher)
         if (value is JSRegExpObject)
@@ -1421,7 +1421,7 @@ object Operations {
         if (ctor !is JSObject)
             Errors.BadCtor(toPrintableString(obj)).throwTypeError(realm)
 
-        val species = ctor.get(Realm.`@@species`)
+        val species = ctor.get(Realm.WellKnownSymbols.species)
         if (species.isNullish)
             return defaultCtor
 
@@ -1490,7 +1490,7 @@ object Operations {
     ): IteratorRecord {
         if (hint == IteratorHint.Async)
             TODO()
-        val theMethod = method ?: getMethod(realm, obj, Realm.`@@iterator`)
+        val theMethod = method ?: getMethod(realm, obj, Realm.WellKnownSymbols.iterator)
         if (theMethod is JSUndefined)
             Errors.NotIterable(toPrintableString(obj)).throwTypeError(realm)
         val iterator = call(realm, theMethod, obj)
@@ -1901,7 +1901,7 @@ object Operations {
                 ctor = JSUndefined
         }
         if (ctor is JSObject) {
-            ctor = ctor.get(Realm.`@@species`)
+            ctor = ctor.get(Realm.WellKnownSymbols.species)
             if (ctor == JSNull)
                 ctor = JSUndefined
         }
@@ -2219,7 +2219,7 @@ object Operations {
         if (ctor !is JSObject)
             Errors.InstanceOfBadRHS.throwTypeError(realm)
 
-        val instOfHandler = getMethod(realm, target, Realm.`@@hasInstance`)
+        val instOfHandler = getMethod(realm, target, Realm.WellKnownSymbols.hasInstance)
         if (instOfHandler !is JSUndefined) {
             val temp = call(realm, instOfHandler, ctor, listOf(target))
             return toBoolean(temp).toValue()

@@ -35,7 +35,7 @@ class JSTypedArrayCtor private constructor(realm: Realm) : JSNativeFunction(real
                 true
             } else false
 
-            val usingIterator = Operations.getMethod(realm, source, Realm.`@@iterator`)
+            val usingIterator = Operations.getMethod(realm, source, Realm.WellKnownSymbols.iterator)
             if (usingIterator != JSUndefined) {
                 val values = Operations.iterableToList(realm, source, usingIterator)
                 val targetObj = Operations.typedArrayCreate(
