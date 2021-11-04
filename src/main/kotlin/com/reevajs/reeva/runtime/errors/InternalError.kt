@@ -19,7 +19,7 @@ class JSInternalErrorProto private constructor(realm: Realm) : JSErrorProto(
 ) {
     override fun init() {
         super.init()
-        defineOwnProperty("constructor", realm.evalErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        defineOwnProperty("constructor", realm.internalErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     companion object {
