@@ -91,7 +91,7 @@ open class HostHooks {
         if (existingModule != null)
             return existingModule
 
-        if (JVMModuleRecord.isJVMSpecifier(specifier)) {
+        if (specifier.startsWith("jvm:")) {
             // JVM modules should be the same regardless of the referencing module, so the only thing that
             // matters for caching is the specifier. We need to access the module tree directly in order to
             // see if we have already loaded this JVM module.
@@ -111,7 +111,7 @@ open class HostHooks {
         val referencingSourceInfo = referencingModule.parsedSource.sourceInfo
         val resolvedFile = referencingSourceInfo.resolveImportedFilePath(specifier)
         if (!resolvedFile.exists())
-            Errors.NonExistentImport(specifier, referencingSourceInfo.name).throwInternalError(referencingModule.realm)
+            Errors.NonExistentModule(specifier).throwInternalError(referencingModule.realm)
 
         val sourceInfo = FileSourceInfo(resolvedFile)
 

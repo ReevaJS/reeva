@@ -13,7 +13,8 @@ import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.unreachable
 
-class JVMModuleRecord(realm: Realm, private val specifier: String) : ModuleRecord(realm) {
+class JVMModuleRecord(realm: Realm, specifier_: String) : ModuleRecord(realm) {
+    private val specifier = specifier_.removePrefix("jvm:")
     private var status = CyclicModuleRecord.Status.Unlinked
     private val requiredNames = mutableSetOf<String>()
 
@@ -69,10 +70,4 @@ class JVMModuleRecord(realm: Realm, private val specifier: String) : ModuleRecor
     }
 
     override fun execute() = unreachable()
-
-    companion object {
-        private val jvmSpecifierRegex = """^([\w$]+\.)+[\w$]+$""".toRegex()
-
-        fun isJVMSpecifier(specifier: String) = jvmSpecifierRegex.matches(specifier)
-    }
 }
