@@ -1,6 +1,7 @@
 package com.reevajs.reeva.test262
 
 import com.reevajs.reeva.Reeva
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSGlobalObject
 import com.reevajs.reeva.runtime.JSValue
@@ -38,7 +39,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
 
             @JvmStatic
             fun createRealm(realm: Realm, arguments: JSArguments): JSValue {
-                val newRealm = Reeva.makeRealm()
+                val newRealm = Agent.activeAgent.makeRealm()
                 return newRealm.globalObject.get("$262")
             }
 

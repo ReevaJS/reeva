@@ -1,6 +1,7 @@
 package com.reevajs.reeva.core.lifecycle
 
 import com.reevajs.reeva.Reeva
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
@@ -130,7 +131,7 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
 
         for (required in requestedModules) {
             // Delegate resolving the module to the host, then link.
-            val requiredModule = Reeva.activeAgent.hostHooks.resolveImportedModule(this, required)
+            val requiredModule = Agent.activeAgent.hostHooks.resolveImportedModule(this, required)
 
             // Non-standard step: tell the module which names we are attempting to import. This is
             // required for JVM modules.
@@ -296,7 +297,7 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
         stack.add(this)
 
         for (required in requestedModules) {
-            val requiredModule = Reeva.activeAgent.hostHooks.resolveImportedModule(this, required)
+            val requiredModule = Agent.activeAgent.hostHooks.resolveImportedModule(this, required)
 
             if (requiredModule !is CyclicModuleRecord) {
                 val promise = requiredModule.evaluate()

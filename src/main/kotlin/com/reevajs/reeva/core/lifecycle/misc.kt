@@ -1,6 +1,7 @@
 package com.reevajs.reeva.core.lifecycle
 
 import com.reevajs.reeva.Reeva
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.RunResult
 import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.transformer.IRPrinter
@@ -71,7 +72,7 @@ interface Executable {
     companion object {
         fun transform(parsedSource: ParsedSource): TransformedSource {
             return Transformer(parsedSource).transform().also {
-                if (Reeva.activeAgent.printIR) {
+                if (Agent.activeAgent.printIR) {
                     IRPrinter(it).print()
                     println('\n')
                 }

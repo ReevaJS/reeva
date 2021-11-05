@@ -1,6 +1,7 @@
 package com.reevajs.reeva.runtime.objects
 
 import com.reevajs.reeva.Reeva
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -18,7 +19,7 @@ open class JSObject protected constructor(
     prototype: JSValue = JSNull,
 ) : JSValue() {
     private val slots = mutableMapOf<Any, Any?>()
-    private val id = Reeva.activeAgent.nextObjectId()
+    private val id = Agent.activeAgent.nextObjectId()
 
     internal val storage = mutableListOf<JSValue>()
     internal val indexedProperties = IndexedProperties(realm)

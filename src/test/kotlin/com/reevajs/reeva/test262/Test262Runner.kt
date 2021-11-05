@@ -77,8 +77,6 @@ class Test262Runner {
         @BeforeAll
         @JvmStatic
         fun setup() {
-            Reeva.EMIT_CLASS_FILES = false
-
             if (!test262Directory.exists())
                 throw IllegalStateException("The test262 repo must be cloned into src/test/resources/test262/")
 
@@ -88,14 +86,15 @@ class Test262Runner {
 
             Reeva.setup()
 
-            val agent = Agent()
-            agent.hostHooks = object : HostHooks() {
-                override fun initializeHostDefinedGlobalObject(realm: Realm): JSObject {
-                    return Test262GlobalObject.create(realm)
+            val agent = Agent().apply {
+                hostHooks = object : HostHooks() {
+                    override fun initializeHostDefinedGlobalObject(realm: Realm): JSObject {
+                        return Test262GlobalObject.create(realm)
+                    }
                 }
             }
 
-            Reeva.setAgent(agent)
+            Agent.setAgent(agent)
         }
 
         @OptIn(ExperimentalSerializationApi::class)
@@ -110,8 +109,6 @@ class Test262Runner {
             File(filePath).writeText(
                 json.encodeToString(results)
             )
-
-            Reeva.teardown()
         }
     }
 }

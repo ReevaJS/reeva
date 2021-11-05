@@ -1,6 +1,7 @@
 package com.reevajs.reeva.runtime.promises
 
 import com.reevajs.reeva.Reeva
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
@@ -41,9 +42,9 @@ class JSResolveFunction private constructor(
         if (!Operations.isCallable(thenAction))
             return Operations.fulfillPromise(promise, resolution)
 
-        val thenJobCallback = Reeva.activeAgent.hostHooks.makeJobCallback(thenAction)
+        val thenJobCallback = Agent.activeAgent.hostHooks.makeJobCallback(thenAction)
         val job = Operations.newPromiseResolveThenableJob(realm, promise, resolution, thenJobCallback)
-        Reeva.activeAgent.hostHooks.enqueuePromiseJob(job.job, job.realm)
+        Agent.activeAgent.hostHooks.enqueuePromiseJob(job.job, job.realm)
 
         return JSUndefined
     }

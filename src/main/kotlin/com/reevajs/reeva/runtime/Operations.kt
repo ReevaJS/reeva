@@ -4,6 +4,7 @@ package com.reevajs.reeva.runtime
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.ASTNode
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.jvmcompat.JSClassInstanceObject
@@ -558,7 +559,7 @@ object Operations {
 //        if (reference.isUnresolvableReference) {
 //            if (reference.isStrict)
 //                Errors.UnresolvableReference(reference.name).throwReferenceError(realm)
-//            Reeva.activeAgent.activeRealm.globalObject.set(reference.name, value)
+//            Agent.activeAgent.activeRealm.globalObject.set(reference.name, value)
 //        } else if (reference.isPropertyReference) {
 //            if (reference.hasPrimitiveBase) {
 //                ecmaAssert(base != JSUndefined && base != JSNull)
@@ -1602,7 +1603,7 @@ object Operations {
 //    @JvmStatic @JvmOverloads
 //    @ECMAImpl("8.3.2")
 //    fun resolveBinding(name: String, env: EnvRecord? = null): JSReference {
-//        val actualEnv = env ?: Reeva.activeAgent.runningContext.lexicalEnv!!
+//        val actualEnv = env ?: Agent.activeAgent.runningContext.lexicalEnv!!
 //        // TODO: Strict mode checking
 //        return getIdentifierReference(actualEnv, name, isStrict())
 //    }
@@ -1612,7 +1613,7 @@ object Operations {
 //        // As the spec states, this is guaranteed to resolve without
 //        // any NPEs as there is always at least a global environment
 //        // with a this-binding
-//        var env = Reeva.activeAgent.runningContext.lexicalEnv!!
+//        var env = Agent.activeAgent.runningContext.lexicalEnv!!
 //        while (!env.hasThisBinding())
 //            env = env.outerEnv!!
 //        return env
@@ -1990,7 +1991,7 @@ object Operations {
 //    @JvmStatic @ECMAImpl("9.4.4.7.1")
 //    fun makeArgGetter(name: String, env: EnvRecord): NativeGetterSignature {
 //        return { _ ->
-//            val function = Reeva.activeAgent.runningContext.function
+//            val function = Agent.activeAgent.runningContext.function
 //            expect(function != null)
 //            env.getBindingValue(name, false)
 //        }
@@ -1999,7 +2000,7 @@ object Operations {
 //    @JvmStatic @ECMAImpl("9.4.4.7.2")
 //    fun makeArgSetter(name: String, env: EnvRecord): NativeSetterSignature {
 //        return { _, newValue ->
-//            val function = Reeva.activeAgent.runningContext.function
+//            val function = Agent.activeAgent.runningContext.function
 //            expect(function != null)
 //            env.setBinding(name, newValue, false)
 //        }
@@ -2333,7 +2334,7 @@ object Operations {
         //       avoid code duplication
         unreachable()
 
-        // val agent = Reeva.activeAgent
+        // val agent = Agent.activeAgent
         //
         // // TODO: Figure out the caller vs callee realm separation
         // agent.hostHooks.ensureCanCompileStrings(realm, realm)
@@ -2891,7 +2892,7 @@ object Operations {
         kind: TypedArrayKind,
         isTypedArray: Boolean,
         order: TypedArrayOrder,
-        isLittleEndian: Boolean = Reeva.activeAgent.isLittleEndian
+        isLittleEndian: Boolean = Agent.activeAgent.isLittleEndian
     ): JSValue {
         ecmaAssert(arrayBuffer is JSObject)
         ecmaAssert(!isDetachedBuffer(arrayBuffer))
@@ -2969,7 +2970,7 @@ object Operations {
         value: JSValue,
         isTypedArray: Boolean,
         order: TypedArrayOrder,
-        isLittleEndian: Boolean = Reeva.activeAgent.isLittleEndian
+        isLittleEndian: Boolean = Agent.activeAgent.isLittleEndian
     ) {
         ecmaAssert(arrayBuffer is JSObject)
         ecmaAssert(!isDetachedBuffer(arrayBuffer))
@@ -3136,7 +3137,7 @@ object Operations {
         promise.setSlot(SlotName.PromiseState, PromiseState.Rejected)
 
         if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled))
-            Reeva.activeAgent.hostHooks.promiseRejectionTracker(realm, promise, "reject")
+            Agent.activeAgent.hostHooks.promiseRejectionTracker(realm, promise, "reject")
 
         return triggerPromiseReactions(reactions, reason)
     }
@@ -3146,7 +3147,7 @@ object Operations {
     fun triggerPromiseReactions(reactions: List<PromiseReaction>, argument: JSValue): JSValue {
         reactions.forEach { reaction ->
             val job = newPromiseReactionJob(reaction, argument)
-            Reeva.activeAgent.hostHooks.enqueuePromiseJob(job.job, job.realm)
+            Agent.activeAgent.hostHooks.enqueuePromiseJob(job.job, job.realm)
         }
         return JSUndefined
     }
@@ -3164,7 +3165,7 @@ object Operations {
                     ThrowException(argument)
                 }
             } else try {
-                Reeva.activeAgent.hostHooks.callJobCallback(
+                Agent.activeAgent.hostHooks.callJobCallback(
                     handlerRealm!!,
                     reaction.handler,
                     JSArguments(listOf(argument))
@@ -3199,7 +3200,7 @@ object Operations {
         return PromiseReactionJob(then.callback.realm) {
             val (resolveFunction, rejectFunction) = createResolvingFunctions(promise)
             try {
-                Reeva.activeAgent.hostHooks.callJobCallback(
+                Agent.activeAgent.hostHooks.callJobCallback(
                     realm,
                     then,
                     JSArguments(listOf(resolveFunction, rejectFunction), thenable)
@@ -3244,10 +3245,10 @@ object Operations {
         resultCapability: PromiseCapability?
     ): JSValue {
         val onFulfilledCallback = if (isCallable(onFulfilled)) {
-            Reeva.activeAgent.hostHooks.makeJobCallback(onFulfilled)
+            Agent.activeAgent.hostHooks.makeJobCallback(onFulfilled)
         } else null
         val onRejectedCallback = if (isCallable(onRejected)) {
-            Reeva.activeAgent.hostHooks.makeJobCallback(onRejected)
+            Agent.activeAgent.hostHooks.makeJobCallback(onRejected)
         } else null
 
         val fulfillReaction = PromiseReaction(resultCapability, PromiseReaction.Type.Fulfill, onFulfilledCallback)
@@ -3261,13 +3262,13 @@ object Operations {
             PromiseState.Fulfilled -> {
                 val fulfillJob =
                     newPromiseReactionJob(fulfillReaction, promise.getSlotAs(SlotName.PromiseResult))
-                Reeva.activeAgent.hostHooks.enqueuePromiseJob(fulfillJob.job, fulfillJob.realm)
+                Agent.activeAgent.hostHooks.enqueuePromiseJob(fulfillJob.job, fulfillJob.realm)
             }
             else -> {
                 if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled))
-                    Reeva.activeAgent.hostHooks.promiseRejectionTracker(realm, promise, "handle")
+                    Agent.activeAgent.hostHooks.promiseRejectionTracker(realm, promise, "handle")
                 val rejectJob = newPromiseReactionJob(rejectReaction, promise.getSlotAs(SlotName.PromiseResult))
-                Reeva.activeAgent.hostHooks.enqueuePromiseJob(rejectJob.job, rejectJob.realm)
+                Agent.activeAgent.hostHooks.enqueuePromiseJob(rejectJob.job, rejectJob.realm)
             }
         }
 

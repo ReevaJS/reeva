@@ -5,6 +5,7 @@ import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.statements.DeclarationNode
 import com.reevajs.reeva.ast.statements.DestructuringDeclaration
 import com.reevajs.reeva.ast.statements.NamedDeclaration
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.RunResult
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
@@ -46,7 +47,7 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
         // For each import, we have to tie the identifier to the module which it comes
         // from.
         node.body.filterIsInstance<ImportDeclarationNode>().forEach { decl ->
-            val requestedModule = Reeva.activeAgent.hostHooks.resolveImportedModule(this, decl.moduleName)
+            val requestedModule = Agent.activeAgent.hostHooks.resolveImportedModule(this, decl.moduleName)
 
             // Note that we have to store the ModuleRecord in the indirect binding
             // instead of directly storing the ModuleEnvRecord. This is because the
@@ -139,7 +140,7 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
                 is DefaultFunctionExportNode -> names.add(DEFAULT_SPECIFIER)
                 is ExportAllAsFromNode -> names.add(export.identifierNode.processedName)
                 is ExportAllFromNode -> {
-                    val requiredModule = Reeva.activeAgent.hostHooks.resolveImportedModule(this, export.moduleName)
+                    val requiredModule = Agent.activeAgent.hostHooks.resolveImportedModule(this, export.moduleName)
                     names.addAll(requiredModule.getExportedNames())
                 }
                 is ExportNamedFromNode -> names.addAll(export.exports.exports.map {

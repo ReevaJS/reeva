@@ -2,6 +2,7 @@ package com.reevajs.reeva.interpreter
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
@@ -706,11 +707,11 @@ class Interpreter(
     }
 
     override fun visitGetSuperConstructor() {
-        push(Reeva.activeAgent.activeFunction.getPrototype())
+        push(Agent.activeAgent.activeFunction.getPrototype())
     }
 
     override fun visitGetSuperBase() {
-        val homeObject = Reeva.activeAgent.activeFunction.homeObject
+        val homeObject = Agent.activeAgent.activeFunction.homeObject
         if (homeObject == JSUndefined) {
             push(JSUndefined)
         } else {
@@ -763,7 +764,7 @@ class Interpreter(
     }
 
     override fun visitPushClosure() {
-        push(Reeva.activeAgent.activeFunction)
+        push(Agent.activeAgent.activeFunction)
     }
 
     override fun visitReturn() {

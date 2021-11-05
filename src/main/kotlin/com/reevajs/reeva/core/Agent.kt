@@ -7,6 +7,7 @@ import com.reevajs.reeva.core.errors.StackTraceFrame
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.*
 import com.reevajs.reeva.core.realm.Realm
+import com.reevajs.reeva.core.realm.RealmExtension
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.functions.JSFunction
@@ -23,7 +24,7 @@ sealed class RunResult(val sourceInfo: SourceInfo) {
 
     class Success(sourceInfo: SourceInfo, val result: JSValue) : RunResult(sourceInfo)
 
-    fun unwrap(errorReporter: ErrorReporter = Reeva.activeAgent.errorReporter): JSValue? {
+    fun unwrap(errorReporter: ErrorReporter = Agent.activeAgent.errorReporter): JSValue? {
         when (this) {
             is Success -> return result
             is ParseError -> errorReporter.reportParseError(
@@ -71,8 +72,11 @@ class Agent {
     val eventLoop = EventLoop()
 
     init {
-        Reeva.allAgents.add(this)
+        allAgents.add(this)
     }
+
+    fun makeRealm(extensions: Map<Any, RealmExtension> = emptyMap()) =
+        hostHooks.initializeHostDefinedRealm(extensions)
 
     fun run(realm: Realm, file: File): RunResult {
         return run(realm, FileSourceInfo(file))
@@ -104,4 +108,21 @@ class Agent {
     internal fun nextObjectId() = objectId++
 
     internal fun nextShapeId() = shapeId++
+
+    companion object {
+        private val agents = object : ThreadLocal<Agent>() {
+            override fun initialValue() = Agent()
+        }
+
+        internal val allAgents = mutableListOf<Agent>()
+
+        @JvmStatic
+        val activeAgent: Agent
+            get() = agents.get()
+
+        @JvmStatic
+        fun setAgent(agent: Agent) {
+            agents.set(agent)
+        }
+    }
 }

@@ -34,7 +34,7 @@ class Test262Test(
     }
 
     fun test() {
-        val agent = Reeva.activeAgent
+        val agent = Agent.activeAgent
 
         try {
             Assumptions.assumeTrue(metadata.features?.any { "intl" in it.lowercase() } != true)
@@ -55,7 +55,7 @@ class Test262Test(
                 }
             } else ""
 
-            val realm = Reeva.makeRealm()
+            val realm = agent.makeRealm()
             val isModule = if (metadata.flags != null) Flag.Module in metadata.flags else false
 
             val pretestResult = agent.run(realm, LiteralSourceInfo("pretest", requiredScript, isModule = false))

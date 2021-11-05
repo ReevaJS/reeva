@@ -16,8 +16,7 @@ fun main() {
     Reeva.setup()
 
     val agent = Agent()
-    Reeva.setAgent(agent)
-    val realm = Reeva.makeRealm()
+    val realm = agent.makeRealm()
 
 //     val test262Script = collectTest262Script()
 //     val test262Result = agent.run(test262Script, realm)
@@ -31,7 +30,6 @@ fun main() {
     val file = File("./demo/index.mjs")
     val result = agent.run(realm, file)
     agent.eventLoop.blockUntilEmpty()
-    Reeva.teardown()
 
     result.unwrap()?.also {
         println("Script result: ${it.toPrintableString()}")
