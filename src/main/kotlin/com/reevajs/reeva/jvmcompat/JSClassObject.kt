@@ -16,14 +16,14 @@ class JSClassObject private constructor(
     realm: Realm,
     val clazz: Class<*>,
 ) : JSNativeFunction(realm, clazz.name, 0) {
-    private val clazzProto = classProtoCache.getOrPut(clazz) { makeClassProto(clazz) }
-    private val className = clazz.name.replace('/', '.').replace("L", "").replace(";", "")
+    val clazzProto = classProtoCache.getOrPut(clazz) { makeClassProto(clazz) }
+    val className = clazz.name.replace('/', '.').replace("L", "").replace(";", "")
 
     override fun init() {
         super.init()
 
         defineOwnProperty("prototype", clazzProto, Descriptor.HAS_BASIC)
-        defineBuiltin("toString", 0, ReevaBuiltin.ClassObjectToString)
+        defineBuiltin("toString", 0, ReevaBuiltin.ClassToString)
     }
 
     override fun evaluate(_arguments: JSArguments): JSValue {
@@ -59,11 +59,11 @@ class JSClassObject private constructor(
     }
 
     private fun makeClassProto(clazz: Class<*>): JSObject {
-        val obj = create(realm)
+        val obj = create(realm, realm.functionProto)
 
         obj.defineOwnProperty("constructor", this, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
 
-        clazz.fields.forEach { field ->
+        clazz.declaredFields.forEach { field ->
             val isStatic = Modifier.isStatic(field.modifiers)
 
             val getter: NativeGetterSignature = { realm, thisValue ->
@@ -111,7 +111,7 @@ class JSClassObject private constructor(
             obj.defineNativeProperty(field.name.key(), Descriptor.DEFAULT_ATTRIBUTES, getter, setter)
         }
 
-        clazz.methods.groupBy { it.name to Modifier.isStatic(it.modifiers) }.forEach { (key, availableMethods) ->
+        clazz.declaredMethods.groupBy { it.name to Modifier.isStatic(it.modifiers) }.forEach { (key, availableMethods) ->
             val (name, isStatic) = key
 
             if (name.startsWith("access$") && name.endsWith("\$p")) {
@@ -183,8 +183,8 @@ class JSClassObject private constructor(
         @JvmStatic
         fun toString(realm: Realm, arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            expect(thisValue is JSClassObject)
-            return "Class(${thisValue.clazz.name})".toValue()
+            expect(thisValue is JSClassInstanceObject)
+            return thisValue.obj.toString().toValue()
         }
     }
 }

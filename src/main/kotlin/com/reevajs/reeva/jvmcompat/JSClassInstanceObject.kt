@@ -1,21 +1,22 @@
 package com.reevajs.reeva.jvmcompat
 
 import com.reevajs.reeva.core.realm.Realm
+import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 
 class JSClassInstanceObject private constructor(
     realm: Realm,
-    private val prototype: JSObject,
+    prototype: JSValue,
     val obj: Any,
 ) : JSObject(realm, prototype) {
-    override fun init() {
-        super.init()
-        defineOwnProperty("prototype", prototype, Descriptor.HAS_BASIC)
-    }
-
     companion object {
-        fun create(realm: Realm, prototype: JSObject, obj: Any) =
+        fun create(realm: Realm, prototype: JSValue, obj: Any) =
             JSClassInstanceObject(realm, prototype, obj).initialize()
+
+        fun wrap(realm: Realm, obj: Any): JSClassInstanceObject {
+            val clazz = JSClassObject.create(realm, obj::class.java)
+            return create(realm, clazz.clazzProto, obj)
+        }
     }
 }

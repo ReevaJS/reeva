@@ -1,6 +1,7 @@
 package com.reevajs.reeva.runtime.builtins
 
 import com.reevajs.reeva.jvmcompat.JSClassObject
+import com.reevajs.reeva.jvmcompat.JSClassProto
 import com.reevajs.reeva.jvmcompat.JSPackageProto
 import com.reevajs.reeva.runtime.JSGlobalObject
 import com.reevajs.reeva.runtime.arrays.JSArrayCtor
@@ -390,13 +391,14 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
 
     // Non-standard builtins
 
-    ClassObjectToString(JSClassObject::class.java, "toString", "Class.toString"),
+    ClassProtoToString(JSClassProto::class.java, "toString", "<JVM Class>.prototype.toString"),
+    ClassToString(JSClassObject::class.java, "toString", "<JVM Class>.toString"),
     ConsoleProtoLog(JSConsoleProto::class.java, "log", "Console.prototype.log"),
     GlobalIsNaN(JSGlobalObject::class.java, "isNaN", "isNaN"),
     GlobalId(JSGlobalObject::class.java, "id", "id"),
     GlobalJvm(JSGlobalObject::class.java, "jvm", "jvm"),
     GlobalInspect(JSGlobalObject::class.java, "inspect", "inspect"),
-    PackageProtoToString(JSPackageProto::class.java, "toString", "Package.prototype.toString");
+    PackageProtoToString(JSPackageProto::class.java, "toString", "<JVM Package>.prototype.toString");
 
     override val handle: MethodHandle = MethodHandles.publicLookup().findStatic(clazz, name, Builtin.METHOD_TYPE)
 }
