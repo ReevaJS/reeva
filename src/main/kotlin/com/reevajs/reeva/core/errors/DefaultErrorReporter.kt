@@ -11,7 +11,7 @@ import com.reevajs.reeva.utils.key
 import java.io.PrintStream
 import kotlin.math.max
 
-class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter {
+class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter() {
     override fun reportParseError(
         sourceInfo: SourceInfo,
         cause: String,

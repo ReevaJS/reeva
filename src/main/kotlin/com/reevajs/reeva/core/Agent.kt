@@ -27,18 +27,9 @@ sealed class RunResult(val sourceInfo: SourceInfo) {
     fun unwrap(errorReporter: ErrorReporter = Agent.activeAgent.errorReporter): JSValue? {
         when (this) {
             is Success -> return result
-            is ParseError -> errorReporter.reportParseError(
-                sourceInfo,
-                error.cause,
-                error.start,
-                error.end,
-            )
-            is RuntimeError -> errorReporter.reportRuntimeError(
-                sourceInfo,
-                cause.value,
-                cause.stackTrace,
-            )
-            is InternalError -> errorReporter.reportInternalError(sourceInfo, cause)
+            is ParseError -> errorReporter.reportParseError(this)
+            is RuntimeError -> errorReporter.reportRuntimeError(this)
+            is InternalError -> errorReporter.reportInternalError(this)
         }
 
         return null
