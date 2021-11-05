@@ -60,7 +60,10 @@ class Test262Runner {
     }
 
     companion object {
-        val test262Directory = File("./src/test/resources/test262/")
+        val IS_CI = "true" == System.getenv("IS_CI")
+        val test262Directory = if (IS_CI) {
+            File("./test262")
+        } else File("./src/test/resources/test262/")
         val testDirectory = File(test262Directory, "test")
         val testDirectoryStr = testDirectory.absolutePath
         val harnessDirectory = File(test262Directory, "harness")
@@ -100,7 +103,7 @@ class Test262Runner {
         @JvmStatic
         fun teardown() {
             val results = testResults.sortedBy { it.name }
-            val filePath = if ("true" == System.getenv("IS_CI")) {
+            val filePath = if (IS_CI) {
                 "./test_results.json"
             } else "./demo/test_results/${LocalDateTime.now()}.json"
 

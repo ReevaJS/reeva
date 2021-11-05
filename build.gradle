@@ -6,6 +6,7 @@ plugins {
 
 group = 'com.reevajs'
 version = '1.0.0'
+def RELEASE = false
 
 repositories {
     mavenCentral()
@@ -48,29 +49,67 @@ compileTestKotlin {
     }
 }
 
-publishing {
-    publications {
-        maven(MavenPublication) {
-            groupId = project.group
-            artifactId = project.name
-            version = project.version
-
-            from components.kotlin
-        }
+def getGitHash() {
+    def stdout = new ByteArrayOutputStream()
+    exec {
+        commandLine 'git', 'rev-parse', '--short', 'HEAD'
+        standardOutput = stdout
     }
+    return stdout.toString().trim()
+}
 
-    repositories {
-        maven {
-            name 'reposilite'
-            url = 'https://repo.mattco.me/snapshots'
+def publishingUsername = null
+def publishingPassword = null
 
-            credentials {
-                username = project.reposilite_user
-                password = project.reposilite_password
+if (project.hasProperty("IS_CI")) {
+    publishingUsername = System.getenv("REPOSILITE_USER")
+    publishingPassword = System.getenv("REPOSILITE_PASSWORD")
+} else if (project.hasProperty("reposilite_user")) {
+    publishingUsername = project.property("reposilite_user")
+    publishingPassword = project.property("reposilite_password")
+}
+
+jar {
+    from sourceSets.main.output
+}
+
+task jarWithSources(type: Jar) {
+    classifier('sources')
+    from sourceSets.main.allSource
+}
+
+if (publishingUsername != null && publishingPassword != null) {
+    publishing {
+        publications {
+            maven(MavenPublication) {
+                groupId = project.group
+                artifactId = project.name
+
+                if (RELEASE) {
+                    version = project.version
+                } else {
+                    version = getGitHash()
+                }
+
+                artifact jarWithSources
+
+                from components.kotlin
             }
+        }
 
-            authentication {
-                basic(BasicAuthentication)
+        repositories {
+            maven {
+                name 'reposilite'
+                url = 'https://repo.mattco.me/' + (RELEASE ? 'releases' : 'snapshots')
+
+                credentials {
+                    username = publishingUsername
+                    password = publishingPassword
+                }
+
+                authentication {
+                    basic(BasicAuthentication)
+                }
             }
         }
     }
