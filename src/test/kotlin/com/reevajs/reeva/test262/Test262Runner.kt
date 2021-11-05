@@ -7,6 +7,7 @@ import com.reevajs.reeva.core.HostHooks
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.expect
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -94,12 +95,16 @@ class Test262Runner {
             Reeva.setAgent(agent)
         }
 
+        @OptIn(ExperimentalSerializationApi::class)
         @AfterAll
         @JvmStatic
         fun teardown() {
             val results = testResults.sortedBy { it.name }
+            val filePath = if ("true" == System.getenv("IS_CI")) {
+                "./test_results.json"
+            } else "./demo/test_results/${LocalDateTime.now()}.json"
 
-            File("./demo/test_results/${LocalDateTime.now()}.json").writeText(
+            File(filePath).writeText(
                 json.encodeToString(results)
             )
 
