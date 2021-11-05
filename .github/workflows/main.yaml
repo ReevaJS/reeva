@@ -1,24 +1,25 @@
-name: main
-on: [push, pull_request]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Reeva
-        uses: actions/checkout@v2
-      - name: Checkout test262
-        uses: actions/checkout@v2
-        with:
-          repository: tc39/test262
-      - uses: actions/setup-java@v1
-        with:
-          java-version: 8
-      - uses: gradle/gradle-build-action@v2
-        with:
-          arguments: --no-daemon build
-        env:
-          IS_CI: true
-      - uses: actions/upload-artifact@v2
-        with:
-          name: test-results.json
-          path: ./test_results.json
+#name: main
+#on: [push, pull_request]
+#jobs:
+#  build:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout Reeva
+#        uses: actions/checkout@v2
+#      - name: Checkout test262
+#        uses: actions/checkout@v2
+#        with:
+#          repository: tc39/test262
+#          path: ./test262
+#      - uses: actions/setup-java@v1
+#        with:
+#          java-version: 8
+#      - uses: gradle/gradle-build-action@v2
+#        with:
+#          arguments: --no-daemon build
+#        env:
+#          IS_CI: true
+#      - uses: actions/upload-artifact@v2
+#        with:
+#          name: test-results.json
+#          path: ./test_results.json
