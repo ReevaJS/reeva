@@ -1,11 +1,11 @@
 plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.5.10'
     id 'org.jetbrains.kotlin.plugin.serialization' version '1.5.10'
+    id 'maven-publish'
 }
 
-group = 'me.mattco'
-archivesBaseName = 'reeva'
-version = '1.0-SNAPSHOT'
+group = 'com.reevajs'
+version = '1.0.0'
 
 repositories {
     mavenCentral()
@@ -45,5 +45,33 @@ compileKotlin {
 compileTestKotlin {
     kotlinOptions {
         jvmTarget = '1.8'
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = project.group
+            artifactId = project.name
+            version = project.version
+
+            from components.kotlin
+        }
+    }
+
+    repositories {
+        maven {
+            name 'reposilite'
+            url = 'https://repo.mattco.me/snapshots'
+
+            credentials {
+                username = project.reposilite_user
+                password = project.reposilite_password
+            }
+
+            authentication {
+                basic(BasicAuthentication)
+            }
+        }
     }
 }
