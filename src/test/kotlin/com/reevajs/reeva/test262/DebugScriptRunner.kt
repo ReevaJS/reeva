@@ -4,6 +4,7 @@ import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.runtime.toPrintableString
 import java.io.File
+import kotlin.concurrent.thread
 
 val test262Helpers = listOf(
     "assert.js",
@@ -29,7 +30,7 @@ fun main() {
 
     val file = File("./demo/index.mjs")
     val result = agent.run(realm, file)
-    agent.microtaskQueue.blockUntilEmpty()
+    agent.eventLoop.blockUntilEmpty()
     Reeva.teardown()
 
     result.unwrap()?.also {

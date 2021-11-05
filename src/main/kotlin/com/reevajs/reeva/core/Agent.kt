@@ -68,7 +68,7 @@ class Agent {
     val activeFunction: JSFunction
         get() = callStack.last().enclosingFunction
 
-    val microtaskQueue = MicrotaskQueue(this)
+    val eventLoop = EventLoop()
 
     init {
         Reeva.allAgents.add(this)
@@ -98,8 +98,6 @@ class Agent {
             block()
         } finally {
             callStack.removeLast()
-            if (callStack.isEmpty())
-                microtaskQueue.checkpoint()
         }
     }
 
