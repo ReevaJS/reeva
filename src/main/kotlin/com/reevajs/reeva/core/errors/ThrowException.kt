@@ -6,6 +6,6 @@ import com.reevajs.reeva.runtime.JSValue
 class ThrowException private constructor(
     val value: JSValue,
     val stackTrace: List<StackTraceFrame>,
-) : Throwable() {
+) : Exception() {
     constructor(value: JSValue) : this(value, Reeva.activeAgent.callStack.toList())
 }
