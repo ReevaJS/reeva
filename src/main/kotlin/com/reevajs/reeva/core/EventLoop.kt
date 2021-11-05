@@ -40,11 +40,27 @@ class EventLoop {
     private val initializationThread = Thread.currentThread()
     private val taskQueue = LinkedBlockingDeque<Task>()
     private val microtaskQueue = LinkedBlockingDeque<Microtask>()
-    private val scheduledTasks = TreeSet<DelayedTask> { a, b -> a.targetTime.compareTo(b.targetTime) }
+    private val scheduledTasks = Collections.synchronizedSortedSet(
+        TreeSet<DelayedTask> { a, b -> a.targetTime.compareTo(b.targetTime) }
+    )
     private val sleepLock = Object()
+
+    private fun executeTask(task: Task) {
+        synchronized(task.realm) {
+            task.execute()
+            while (microtaskQueue.isNotEmpty())
+                microtaskQueue.removeFirst().execute()
+        }
+    }
 
     /**
      * Perform an event loop tick.
+     *
+     * These statements are guaranteed to be true after calling this method:
+     *   - A task was executed
+     *   - The microtask queue is empty
+     *   - If there were microtasks in the queue when this method was executed,
+     *     all of the microtasks in the queue were executed.
      */
     fun tick() {
         expect(Thread.currentThread() == initializationThread)
@@ -55,37 +71,32 @@ class EventLoop {
             }
         }
 
-        synchronized(scheduledTasks) {
-            val currentTime = System.currentTimeMillis()
-            val scheduledTask = scheduledTasks.first()
+        val currentTime = System.currentTimeMillis()
+        val scheduledTask = scheduledTasks.first()
 
-            if (scheduledTask != null && scheduledTask.targetTime <= currentTime) {
-                scheduledTasks.pollFirst()
-                scheduledTask.task.execute()
+        if (scheduledTask != null && scheduledTask.targetTime <= currentTime) {
+            scheduledTasks.remove(scheduledTask)
+            executeTask(scheduledTask.task)
+            return
+        }
 
-                while (microtaskQueue.isNotEmpty())
-                    microtaskQueue.removeFirst().execute()
+        if (scheduledTask != null && taskQueue.isEmpty()) {
+            // If we only have scheduled tasks, then we can just sleep here, but with a timeout
+            // according to the delay of the first scheduled task. We use the same sleep lock so
+            // that if we get a task while we're sleeping, we'll wake up
+            synchronized(sleepLock) {
+                sleepLock.wait(scheduledTask.targetTime - currentTime)
+            }
 
-                return
-            } else if (scheduledTask != null && taskQueue.isEmpty()) {
-                // If we only have scheduled tasks, then we can just sleep here, but with a timeout
-                // according to the delay of the first scheduled task. We use the same sleep lock so
-                // that if we get a task while we're sleeping, we'll wake up
-                synchronized(sleepLock) {
-                    sleepLock.wait(scheduledTask.targetTime - currentTime)
-                }
-                return
+            if (taskQueue.isEmpty()) {
+                // Call tick again so we can recheck scheduled tasks (and possibly re-wait
+                // if necessary).
+                return tick()
             }
         }
 
         val task = taskQueue.pollFirst() ?: return
-
-        synchronized(task.realm) {
-            task.execute()
-
-            while (microtaskQueue.isNotEmpty())
-                microtaskQueue.removeFirst().execute()
-        }
+        executeTask(task)
     }
 
     /**
@@ -119,6 +130,9 @@ class EventLoop {
         val targetTime = System.currentTimeMillis() + delayMillis
         synchronized(scheduledTasks) {
             scheduledTasks.add(DelayedTask(targetTime, task))
+            synchronized(sleepLock) {
+                sleepLock.notify()
+            }
         }
     }
 
@@ -135,8 +149,19 @@ class EventLoop {
      * been executed.
      */
     fun blockUntilEmpty() {
-        while (taskQueue.isNotEmpty() || microtaskQueue.isNotEmpty() || scheduledTasks.isNotEmpty())
+        while (true) {
+            if (taskQueue.isNotEmpty() || microtaskQueue.isNotEmpty() || scheduledTasks.isNotEmpty())
             tick()
+        }
+    }
+
+    /**
+     * Clear all tasks from this EventLoop. Note that microtasks are _not_ cleared.
+     * See [tick] for more details.
+     */
+    fun clearTasks() {
+        taskQueue.clear()
+        scheduledTasks.clear()
     }
 
     data class DelayedTask(val targetTime: Long = System.currentTimeMillis(), val task: Task)
