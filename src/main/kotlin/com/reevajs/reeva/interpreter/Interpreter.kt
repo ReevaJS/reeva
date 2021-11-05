@@ -259,52 +259,52 @@ class Interpreter(
     override fun visitTestEqualStrict() {
         val rhs = popValue()
         val lhs = popValue()
-        push(Operations.strictEqualityComparison(lhs, rhs))
+        push(Operations.isLooselyEqual(lhs, rhs))
     }
 
     override fun visitTestNotEqualStrict() {
         val rhs = popValue()
         val lhs = popValue()
-        push(Operations.strictEqualityComparison(lhs, rhs).inv())
+        push(Operations.isLooselyEqual(lhs, rhs).inv())
     }
 
     override fun visitTestEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        push(Operations.abstractEqualityComparison(realm, lhs, rhs))
+        push(Operations.isStrictlyEqual(realm, lhs, rhs))
     }
 
     override fun visitTestNotEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        push(Operations.abstractEqualityComparison(realm, lhs, rhs).inv())
+        push(Operations.isStrictlyEqual(realm, lhs, rhs).inv())
     }
 
     override fun visitTestLessThan() {
         val rhs = popValue()
         val lhs = popValue()
-        val result = Operations.abstractRelationalComparison(realm, lhs, rhs, true)
+        val result = Operations.isLessThan(realm, lhs, rhs, true)
         push(result.ifUndefined(JSFalse))
     }
 
     override fun visitTestLessThanOrEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        val result = Operations.abstractRelationalComparison(realm, rhs, lhs, false)
+        val result = Operations.isLessThan(realm, rhs, lhs, false)
         push(if (result == JSFalse) JSTrue else JSFalse)
     }
 
     override fun visitTestGreaterThan() {
         val rhs = popValue()
         val lhs = popValue()
-        val result = Operations.abstractRelationalComparison(realm, rhs, lhs, false)
+        val result = Operations.isLessThan(realm, rhs, lhs, false)
         push(result.ifUndefined(JSFalse))
     }
 
     override fun visitTestGreaterThanOrEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        val result = Operations.abstractRelationalComparison(realm, lhs, rhs, true)
+        val result = Operations.isLessThan(realm, lhs, rhs, true)
         push(if (result == JSFalse) JSTrue else JSFalse)
     }
 

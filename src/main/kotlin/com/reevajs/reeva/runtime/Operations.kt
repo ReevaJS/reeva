@@ -1047,9 +1047,25 @@ object Operations {
         return value.hasSlot(SlotName.RegExpMatcher)
     }
 
+    fun isLessThan(realm: Realm, lhs: JSValue, rhs: JSValue): Boolean {
+        return isLessThan(realm, lhs, rhs, true).ifUndefined { JSFalse } == JSTrue
+    }
+
+    fun isLessThanOrEqual(realm: Realm, lhs: JSValue, rhs: JSValue): Boolean {
+        return isLessThan(realm, rhs, lhs, false) == JSFalse
+    }
+
+    fun isGreaterThan(realm: Realm, lhs: JSValue, rhs: JSValue): Boolean {
+        return isLessThan(realm, rhs, lhs, false).ifUndefined { JSFalse } == JSTrue
+    }
+
+    fun isGreaterThanOrEqual(realm: Realm, lhs: JSValue, rhs: JSValue): Boolean {
+        return isLessThan(realm, lhs, rhs, true) == JSFalse
+    }
+
     @JvmStatic
     @ECMAImpl("7.2.13")
-    fun abstractRelationalComparison(realm: Realm, lhs: JSValue, rhs: JSValue, leftFirst: Boolean): JSValue {
+    fun isLessThan(realm: Realm, lhs: JSValue, rhs: JSValue, leftFirst: Boolean): JSValue {
         val px: JSValue
         val py: JSValue
 
@@ -1106,9 +1122,9 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.2.14")
-    fun abstractEqualityComparison(realm: Realm, lhs: JSValue, rhs: JSValue): JSBoolean {
+    fun isStrictlyEqual(realm: Realm, lhs: JSValue, rhs: JSValue): JSBoolean {
         if (lhs.type == rhs.type)
-            return strictEqualityComparison(lhs, rhs)
+            return isLooselyEqual(lhs, rhs)
 
         if (lhs == JSNull && rhs == JSUndefined)
             return JSTrue
@@ -1116,13 +1132,13 @@ object Operations {
             return JSTrue
 
         if (lhs is JSNumber && rhs is JSString)
-            return abstractEqualityComparison(realm, lhs, toNumber(realm, rhs))
+            return isStrictlyEqual(realm, lhs, toNumber(realm, rhs))
         if (lhs is JSString && rhs is JSNumber)
-            return abstractEqualityComparison(realm, toNumber(realm, lhs), rhs)
+            return isStrictlyEqual(realm, toNumber(realm, lhs), rhs)
 
         if (lhs is JSBigInt && rhs is JSString) {
             return try {
-                abstractEqualityComparison(realm, lhs, BigInteger(rhs.string).toValue())
+                isStrictlyEqual(realm, lhs, BigInteger(rhs.string).toValue())
             } catch (e: NumberFormatException) {
                 JSFalse
             }
@@ -1130,21 +1146,21 @@ object Operations {
 
         if (lhs is JSString && rhs is JSBigInt) {
             return try {
-                abstractEqualityComparison(realm, BigInteger(lhs.string).toValue(), rhs)
+                isStrictlyEqual(realm, BigInteger(lhs.string).toValue(), rhs)
             } catch (e: NumberFormatException) {
                 JSFalse
             }
         }
 
         if (lhs is JSBoolean)
-            return abstractEqualityComparison(realm, toNumber(realm, lhs), rhs)
+            return isStrictlyEqual(realm, toNumber(realm, lhs), rhs)
         if (rhs is JSBoolean)
-            return abstractEqualityComparison(realm, lhs, toNumber(realm, rhs))
+            return isStrictlyEqual(realm, lhs, toNumber(realm, rhs))
 
         if ((lhs is JSString || lhs is JSNumber || lhs is JSBigInt || lhs is JSSymbol) && rhs is JSObject)
-            return abstractEqualityComparison(realm, lhs, toPrimitive(realm, rhs))
+            return isStrictlyEqual(realm, lhs, toPrimitive(realm, rhs))
         if ((rhs is JSString || rhs is JSNumber || rhs is JSBigInt || rhs is JSSymbol) && lhs is JSObject)
-            return abstractEqualityComparison(realm, toPrimitive(realm, lhs), rhs)
+            return isStrictlyEqual(realm, toPrimitive(realm, lhs), rhs)
 
         if ((lhs is JSBigInt && rhs is JSNumber) || (lhs is JSNumber && rhs is JSBigInt)) {
             if (!lhs.isFinite || !rhs.isFinite)
@@ -1160,7 +1176,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.2.15")
-    fun strictEqualityComparison(lhs: JSValue, rhs: JSValue): JSBoolean {
+    fun isLooselyEqual(lhs: JSValue, rhs: JSValue): JSBoolean {
         if (lhs.type != rhs.type)
             return JSFalse
         if (lhs is JSNumber)

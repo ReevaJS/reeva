@@ -786,7 +786,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                 it >= k
             }.forEach {
                 val value = obj.get(it)
-                if (Operations.strictEqualityComparison(searchElement, value) == JSTrue)
+                if (Operations.isLooselyEqual(searchElement, value) == JSTrue)
                     return it.toValue()
             }
 
@@ -822,7 +822,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
                 it <= limit
             }.toList().asReversed().forEach {
                 val value = obj.get(it)
-                if (Operations.strictEqualityComparison(searchElement, value) == JSTrue)
+                if (Operations.isLooselyEqual(searchElement, value) == JSTrue)
                     return it.toValue()
             }
 
