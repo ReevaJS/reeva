@@ -7,7 +7,10 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 object Reeva {
-    private val agents = ThreadLocal<Agent>()
+    private val agents = object : ThreadLocal<Agent>() {
+        override fun initialValue() = Agent()
+    }
+
     internal val allAgents = mutableListOf<Agent>()
 
     @JvmStatic
