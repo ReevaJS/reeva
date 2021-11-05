@@ -9,11 +9,14 @@ import com.reevajs.reeva.core.lifecycle.*
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.realm.RealmExtension
 import com.reevajs.reeva.parsing.ParsingError
+import com.reevajs.reeva.runtime.JSGlobalObject
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import java.io.File
 import java.nio.ByteOrder
+import java.util.function.BiFunction
+import java.util.function.Function
 
 sealed class RunResult(val sourceInfo: SourceInfo) {
     class ParseError(sourceInfo: SourceInfo, val error: ParsingError) : RunResult(sourceInfo)
@@ -68,6 +71,16 @@ class Agent {
 
     fun makeRealm(extensions: Map<Any, RealmExtension> = emptyMap()) =
         hostHooks.initializeHostDefinedRealm(extensions)
+
+    fun makeRealm(
+        extensions: Map<Any, RealmExtension> = emptyMap(),
+        globalObjProducer: Function<Realm, JSGlobalObject>,
+    ): Realm {
+        val realm = Realm(extensions)
+        realm.initObjects()
+        realm.setGlobalObject(globalObjProducer.apply(realm), hostHooks.initializeHostDefinedGlobalThisValue(realm))
+        return realm
+    }
 
     fun run(realm: Realm, file: File): RunResult {
         return run(realm, FileSourceInfo(file))
