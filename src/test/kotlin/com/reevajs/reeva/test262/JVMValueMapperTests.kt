@@ -1,16 +1,14 @@
 package com.reevajs.reeva.test262
 
 import com.reevajs.reeva.Reeva
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.jvmcompat.JVMValueMapper
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.toValue
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.*
 import strikt.api.expectThat
 import strikt.api.expectThrows
 import strikt.assertions.*
@@ -18,11 +16,13 @@ import java.lang.reflect.ParameterizedType
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JVMValueMapperTests {
-    init {
-        Reeva.setup()
-    }
+    lateinit var realm: Realm
 
-    val realm = Reeva.makeRealm().also { it.initObjects() }
+    @BeforeAll
+    fun setup() {
+        Reeva.setup()
+        realm = Reeva.makeRealm().also { it.initObjects() }
+    }
 
     @AfterAll
     fun teardown() {

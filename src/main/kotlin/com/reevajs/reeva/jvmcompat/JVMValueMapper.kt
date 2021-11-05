@@ -21,9 +21,7 @@ import java.lang.reflect.Type
 object JVMValueMapper {
     const val CONVERSION_FAILURE = -1
 
-    fun getConversionWeight(value: JSValue, type: Class<*>) = if (type.isInstance(value)) {
-        0
-    } else when (value) {
+    fun getConversionWeight(value: JSValue, type: Class<*>) = when (value) {
         is JSUndefined -> 1
         is JSBoolean -> {
             when (type) {
@@ -129,9 +127,7 @@ object JVMValueMapper {
         value: JSValue,
         type: Class<*>,
         genericInfo: Array<Type>? = null,
-    ): Any? = if (type.isInstance(value)) {
-        value
-    } else when (value) {
+    ): Any? = when (value) {
         is JSUndefined -> {
             if (type == String::class.java) {
                 "undefined"
