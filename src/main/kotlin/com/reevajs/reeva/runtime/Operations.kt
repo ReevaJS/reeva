@@ -2247,6 +2247,19 @@ object Operations {
         return ordinaryHasInstance(realm, ctor, target)
     }
 
+    fun exp(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "**")
+    fun mul(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "*")
+    fun div(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "/")
+    fun mod(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "%")
+    fun add(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "+")
+    fun sub(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "-")
+    fun shl(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "<<")
+    fun shr(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, ">>")
+    fun ushr(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, ">>>")
+    fun and(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "&")
+    fun xor(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "^")
+    fun or(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "|")
+
     @JvmStatic
     @ECMAImpl("12.15.5")
     fun applyStringOrNumericBinaryOperator(realm: Realm, lhs: JSValue, rhs: JSValue, op: String): JSValue {
