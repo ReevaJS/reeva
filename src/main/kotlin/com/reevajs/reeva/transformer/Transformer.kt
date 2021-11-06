@@ -55,6 +55,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 parsedSource.sourceInfo.name,
                 builder.build(),
                 rootNode.scope.isStrict,
+                0,
                 isTopLevel = true,
             )
         )
@@ -299,6 +300,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             name,
             builder.build(),
             isStrict,
+            parameters.expectedArgumentCount(),
             isTopLevel = false,
         )
     }
@@ -1579,6 +1581,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             "<class instance field initializer>",
             builder.build(),
             isStrict = true,
+            0,
             isTopLevel = false,
         ).also {
             builder = prevBuilder
@@ -1634,6 +1637,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             name,
             builder.build(),
             isStrict = true,
+            0,
             isTopLevel = false,
         ).also {
             builder = prevBuilder

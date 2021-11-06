@@ -686,12 +686,14 @@ class Interpreter(
         val function = NormalInterpretedFunction.create(realm, transformedSource.forInfo(opcode.ir), activeEnvRecord)
         Operations.setFunctionName(realm, function, opcode.ir.name.key())
         Operations.makeConstructor(realm, function)
+        Operations.setFunctionLength(realm, function, opcode.ir.length)
         push(function)
     }
 
     override fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure) {
         val function = GeneratorInterpretedFunction.create(realm, transformedSource.forInfo(opcode.ir), activeEnvRecord)
         Operations.setFunctionName(realm, function, opcode.ir.name.key())
+        Operations.setFunctionLength(realm, function, opcode.ir.length)
         push(function)
     }
 

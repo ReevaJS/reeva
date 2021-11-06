@@ -21,6 +21,15 @@ class ParameterList(parameters: List<Parameter> = emptyList()) : ASTListNode<Par
             .duplicates()
             .isNotEmpty()
     }
+
+    fun expectedArgumentCount(): Int {
+        for ((index, param) in withIndex()) {
+            if (!param.isSimple)
+                return index
+        }
+
+        return size
+    }
 }
 
 class ArgumentNode(

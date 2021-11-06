@@ -4,6 +4,7 @@ data class FunctionInfo(
     val name: String,
     val ir: IR,
     val isStrict: Boolean,
+    val length: Int,
     val isTopLevel: Boolean,
 )
 

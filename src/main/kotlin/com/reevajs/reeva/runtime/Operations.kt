@@ -2131,6 +2131,15 @@ object Operations {
         )
     }
 
+    fun setFunctionLength(realm: Realm, function: JSFunction, length: Int) {
+        definePropertyOrThrow(
+            realm,
+            function,
+            "length".key(),
+            Descriptor(length.toValue(), attrs { +conf; -enum; -writ }),
+        )
+    }
+
 //    @JvmStatic @ECMAImpl("12.3.3")
 //    fun evaluatePropertyAccessWithExpressionKey(baseValue: JSValue, property: JSValue, isStrict: Boolean): JSValue {
 //        val propertyValue = getValue(property)
