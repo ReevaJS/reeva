@@ -17,22 +17,24 @@ import org.joni.exception.ValueException
 
 class JSRegExpObject private constructor(
     realm: Realm,
-    originalSource: String,
-    originalFlags: String,
+    source: String,
+    flags: String,
 ) : JSObject(realm, realm.regExpProto) {
-    val originalSource by slot(SlotName.OriginalSource, originalSource)
-    val originalFlags by slot(SlotName.OriginalFlags, originalFlags)
+    val source by slot(SlotName.OriginalSource, source)
+    val flags by slot(SlotName.OriginalFlags, flags)
     var regex by lateinitSlot<Regex>(SlotName.RegExpMatcher)
 
     init {
-        val invalidFlag = originalFlags.firstOrNull { Flag.values().none { flag -> flag.char == it } }
+        val invalidFlag = flags.firstOrNull { Flag.values().none { flag -> flag.char == it } }
         if (invalidFlag != null)
             Errors.RegExp.InvalidFlag(invalidFlag).throwSyntaxError(realm)
-        if (originalFlags.toCharArray().distinct().size != originalFlags.length)
+        if (flags.toCharArray().distinct().size != flags.length)
             Errors.RegExp.DuplicateFlag.throwSyntaxError(realm)
 
-        regex = makeClosure(realm, originalSource, originalFlags)
+        regex = makeClosure(realm, source, flags)
     }
+
+    fun hasFlag(flag: Flag) = flag.char in flags
 
     enum class Flag(val char: Char) {
         IgnoreCase('i'),

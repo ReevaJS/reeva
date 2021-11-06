@@ -37,8 +37,8 @@ class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         } else currentNewTarget
 
         val (patternSource, flagSource) = when {
-            pattern is JSRegExpObject -> pattern.originalSource.toValue() to flags.ifUndefined {
-                pattern.originalFlags.toValue()
+            pattern is JSRegExpObject -> pattern.source.toValue() to flags.ifUndefined {
+                pattern.flags.toValue()
             }
             patternIsRegExp -> (pattern as JSObject).let {
                 it.get("source") to flags.ifUndefined { it.get("flags") }
