@@ -750,7 +750,7 @@ class Interpreter(
     }
 
     override fun visitCreateTemplateLiteral(opcode: CreateTemplateLiteral) {
-        val args = (0..opcode.numberOfParts).map { popValue() }.asReversed()
+        val args = (0 until opcode.numberOfParts).map { popValue() }.asReversed()
         val string = buildString {
             for (arg in args) {
                 expect(arg is JSString)
