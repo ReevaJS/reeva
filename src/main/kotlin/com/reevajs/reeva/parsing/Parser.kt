@@ -2252,7 +2252,7 @@ class Parser(val sourceInfo: SourceInfo) {
     private fun tryParseArrowFunction(): ArrowFunctionNode? = nps {
         val savedCursor = tokenCursor
 
-        try {
+        val parameters = try {
             val parameters = if (match(TokenType.OpenParen)) {
                 parseFunctionParameters()
             } else {
@@ -2265,21 +2265,23 @@ class Parser(val sourceInfo: SourceInfo) {
                 return@nps null
             }
 
-            if (token.afterNewline)
-                reporter.arrowFunctionNewLine()
-
-            consume()
-
-            // TODO: Async/Generator functions
-            val body = if (match(TokenType.OpenCurly)) {
-                parseFunctionBody(isAsync = false, isGenerator = false)
-            } else parseExpression(2)
-
-            ArrowFunctionNode(parameters, body, Operations.FunctionKind.Normal)
+            parameters
         } catch (e: ParsingException) {
             tokenCursor = savedCursor
-            null
+            return@nps null
         }
+
+        if (token.afterNewline)
+            reporter.arrowFunctionNewLine()
+
+        consume()
+
+        // TODO: Async/Generator functions
+        val body = if (match(TokenType.OpenCurly)) {
+            parseFunctionBody(isAsync = false, isGenerator = false)
+        } else parseExpression(2)
+
+        ArrowFunctionNode(parameters, body, Operations.FunctionKind.Normal)
     }
 
     private fun parseUnaryExpression(): ExpressionNode = nps {
