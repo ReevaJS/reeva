@@ -24,8 +24,16 @@ class FileSourceInfo @JvmOverloads constructor(
     private val file: File,
     override val isModule: Boolean = file.extension == "mjs",
     override val name: String = file.name,
-    override val sourceText: String = file.readText()
 ) : SourceInfo {
+    private var sourceTextBacker: String? = null
+
+    override val sourceText: String
+        get() {
+            if (sourceTextBacker == null)
+                sourceTextBacker = file.readText()
+            return sourceTextBacker!!
+        }
+
     override fun resolveImportedFilePath(specifier: String): File {
         if (specifier.startsWith('/'))
             return File(specifier)
