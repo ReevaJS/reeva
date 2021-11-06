@@ -1,19 +1,20 @@
 package com.reevajs.reeva.runtime.singletons
 
+import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
+import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.objects.SlotName
-import com.reevajs.reeva.runtime.primitives.JSBigInt
-import com.reevajs.reeva.runtime.primitives.JSFalse
-import com.reevajs.reeva.runtime.primitives.JSTrue
-import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.*
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.*
 import kotlin.math.min
 
 class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
@@ -38,7 +39,55 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         @ECMAImpl("24.5.1")
         @JvmStatic
         fun parse(realm: Realm, arguments: JSArguments): JSValue {
-            TODO()
+            val text = arguments.argument(0).toJSString(realm).string
+            val reviver = arguments.argument(1).let {
+                if (Operations.isCallable(it)) it else null
+            }
+
+            val result = try {
+                Json.Default.parseToJsonElement(text)
+            } catch (e: SerializationException) {
+                Error(e.message ?: "An error occurred while parsing JSON").throwSyntaxError(realm)
+            }
+            return parseHelper(realm, result, reviver)
+        }
+
+        private fun defineKeyValueProperty(
+            realm: Realm,
+            key: JSValue,
+            element: JsonElement,
+            value: JSObject,
+            reviver: JSValue?,
+        ) {
+            val result = parseHelper(realm, element, reviver)
+            if (reviver != null) {
+                val revived = Operations.call(realm, reviver, value, listOf(key, result))
+                if (revived != JSUndefined)
+                    Operations.createDataProperty(realm, value, key, revived)
+            } else {
+                Operations.createDataProperty(realm, value, key, result)
+            }
+        }
+
+        private fun parseHelper(realm: Realm, element: JsonElement, reviver: JSValue?): JSValue {
+            return when (element) {
+                JsonNull -> JSNull
+                is JsonPrimitive -> if (element.isString) {
+                    JSString(element.content)
+                } else JSNumber(element.content.toDouble())
+                is JsonObject -> {
+                    val obj = JSObject.create(realm)
+                    for ((key, value) in element)
+                        defineKeyValueProperty(realm, key.toValue(), value, obj, reviver)
+                    obj
+                }
+                is JsonArray -> {
+                    val arr = JSArrayObject.create(realm)
+                    for ((index, value) in element.withIndex())
+                        defineKeyValueProperty(realm, index.toString().toValue(), value, arr, reviver)
+                    arr
+                }
+            }
         }
 
         @ECMAImpl("24.5.2")
