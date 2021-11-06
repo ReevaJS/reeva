@@ -169,7 +169,7 @@ class JVMValueMapperTests {
             .isNull()
 
         expectThrows<Exception> {
-            JVMValueMapper.coerceValueToType(realm, JSNull, Double::class.javaPrimitiveType!!)
+            JVMValueMapper.jsToJvm(realm, JSNull, Double::class.javaPrimitiveType!!)
         }
     }
 
@@ -253,11 +253,11 @@ class JVMValueMapperTests {
         expectThat(array.toType<Array<Double>>())
             .isA<Array<Double>>()
 
-        expectThat(JVMValueMapper.coerceValueToType(realm, array, List::class.java, genericInfo = doubleGenericInfo))
+        expectThat(JVMValueMapper.jsToJvm(realm, array, List::class.java, genericInfo = doubleGenericInfo))
             .isA<List<Double>>()
 
         expectThrows<Exception> {
-            JVMValueMapper.coerceValueToType(realm, array, List::class.java, genericInfo = booleanGenericInfo)
+            JVMValueMapper.jsToJvm(realm, array, List::class.java, genericInfo = booleanGenericInfo)
         }
 
         expectThrows<Exception> {
@@ -285,5 +285,5 @@ class JVMValueMapperTests {
         }
     }
 
-    private inline fun <reified T> JSValue.toType(): Any? = JVMValueMapper.coerceValueToType(realm, this, T::class.java)
+    private inline fun <reified T> JSValue.toType(): Any? = JVMValueMapper.jsToJvm(realm, this, T::class.java)
 }

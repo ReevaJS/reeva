@@ -103,7 +103,7 @@ class JSClassObject private constructor(
                     instance
                 }
 
-                field.set(instance, JVMValueMapper.coerceValueToType(realm, value, field.type))
+                field.set(instance, JVMValueMapper.jsToJvm(realm, value, field.type))
 
                 JSUndefined
             }
