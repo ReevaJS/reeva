@@ -1,22 +1,25 @@
 package com.reevajs.reeva.test262
 
-import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.core.RunResult
-import com.reevajs.reeva.core.errors.DefaultErrorReporter
+import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.FileSourceInfo
 import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
+import com.reevajs.reeva.core.lifecycle.SourceInfo
+import com.reevajs.reeva.parsing.ParsingError
+import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.toPrintableString
+import com.reevajs.reeva.transformer.opcodes.Throw
+import com.reevajs.reeva.utils.Result
+import com.reevajs.reeva.utils.unreachable
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assumptions
 import org.opentest4j.AssertionFailedError
 import org.opentest4j.TestAbortedException
-import java.io.ByteArrayOutputStream
+import strikt.api.expectThat
+import strikt.assertions.isA
 import java.io.File
-import java.io.PrintStream
-import java.nio.charset.StandardCharsets
 
 class Test262Test(
     private val name: String,
@@ -58,10 +61,15 @@ class Test262Test(
             val realm = agent.makeRealm()
             val isModule = if (metadata.flags != null) Flag.Module in metadata.flags else false
 
-            val pretestResult = agent.run(realm, LiteralSourceInfo("pretest", requiredScript, isModule = false))
-
-            Assertions.assertTrue(pretestResult is RunResult.Success) {
-                "[PRETEST] ${getResultMessage(pretestResult)}"
+            val pretestSourceInfo = LiteralSourceInfo("pretest", requiredScript, isModule = false)
+            try {
+                val pretestResult = execute(agent, realm, pretestSourceInfo)
+                if (pretestResult.hasError) {
+                    agent.errorReporter.reportParseError(pretestSourceInfo, pretestResult.error())
+                    Assertions.fail<Nothing>()
+                }
+            } catch (e: Throwable) {
+                Assertions.fail(e)
             }
 
             if (metadata.flags != null && Flag.Async in metadata.flags) {
@@ -90,6 +98,10 @@ class Test262Test(
                 name, Test262Runner.TestResult.Status.Passed,
             )
         )
+    }
+
+    fun execute(agent: Agent, realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, JSValue> {
+        return agent.compile(realm, sourceInfo).mapValue { it.execute() }
     }
 
     private fun runSyncTest(agent: Agent, realm: Realm, isModule: Boolean) {
@@ -126,35 +138,32 @@ class Test262Test(
             }
         }
 
-        val testResult = agent.run(realm, FileSourceInfo(file, isModule, sourceText = theScript))
+        val sourceInfo = FileSourceInfo(file, isModule, sourceText = theScript)
 
-        if (isModule && testResult !is RunResult.Success)
-            println()
+        try {
+            val testResult = execute(agent, realm, sourceInfo)
 
-        if (shouldErrorDuringParse) {
-            Assertions.assertTrue(testResult is RunResult.ParseError) {
-                "Expected parse error during execution\n${getResultMessage(testResult)}"
+            if (testResult.hasError) {
+                Assertions.assertTrue(shouldErrorDuringParse) {
+                    agent.errorReporter.reportParseError(sourceInfo, testResult.error())
+                    "Expected no parse error during execution"
+                }
+            } else {
+                Assertions.assertTrue(!shouldErrorDuringParse) {
+                    "Expected parse error during execution"
+                }
             }
-        } else if (shouldErrorDuringRuntime) {
-            Assertions.assertTrue(testResult is RunResult.RuntimeError) {
-                "Expected ${metadata.negative!!.type} during execution\n${getResultMessage(testResult)}"
-            }
-        } else {
-            Assertions.assertTrue(testResult is RunResult.Success) {
-                "Expected no error during execution\n${getResultMessage(testResult)}"
-            }
-        }
-    }
 
-    private fun getResultMessage(runResult: RunResult): String {
-        if (runResult is RunResult.Success)
-            return runResult.result.toPrintableString()
-
-        return ByteArrayOutputStream().use { baos ->
-            PrintStream(baos, true, StandardCharsets.UTF_8.name()).use { ps ->
-                runResult.unwrap(DefaultErrorReporter(ps))
+            Assertions.assertTrue(!shouldErrorDuringRuntime) {
+                "Expected ${metadata.negative!!.type} during execution, but found no error"
             }
-            baos.toString(StandardCharsets.UTF_8.name())
+
+
+        } catch (e: ThrowException) {
+            Assertions.assertTrue(shouldErrorDuringRuntime) {
+                agent.errorReporter.reportRuntimeError(sourceInfo, e)
+                "Expected no runtime error during execution"
+            }
         }
     }
 

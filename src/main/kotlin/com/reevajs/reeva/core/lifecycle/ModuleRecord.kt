@@ -1,7 +1,6 @@
 package com.reevajs.reeva.core.lifecycle
 
 import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.core.RunResult
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -65,7 +64,7 @@ abstract class ModuleRecord(val realm: Realm) : Executable {
      * This method treats this module as the top-level module in the module
      * tree.
      */
-    abstract override fun execute(): RunResult
+    abstract override fun execute(): JSValue
 
     companion object {
         // These names don't really matter, as long as it isn't a valid

@@ -1,7 +1,7 @@
 package com.reevajs.reeva.core.errors
 
-import com.reevajs.reeva.core.RunResult
 import com.reevajs.reeva.core.lifecycle.SourceInfo
+import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.functions.JSFunction
@@ -14,18 +14,12 @@ data class StackTraceFrame(
 )
 
 abstract class ErrorReporter {
-    fun reportParseError(result: RunResult.ParseError) {
-        val error = result.error
-        reportParseError(result.sourceInfo, error.cause, error.start, error.end)
+    fun reportParseError(sourceInfo: SourceInfo, error: ParsingError) {
+        reportParseError(sourceInfo, error.cause, error.start, error.end)
     }
 
-    fun reportRuntimeError(result: RunResult.RuntimeError) {
-        val error = result.cause
-        reportRuntimeError(result.sourceInfo, error.value, error.stackTrace)
-    }
-
-    fun reportInternalError(result: RunResult.InternalError) {
-        reportInternalError(result.sourceInfo, result.cause)
+    fun reportRuntimeError(sourceInfo: SourceInfo, cause: ThrowException) {
+        reportRuntimeError(sourceInfo, cause.value, cause.stackTrace)
     }
 
     abstract fun reportParseError(sourceInfo: SourceInfo, cause: String, start: TokenLocation, end: TokenLocation)
@@ -34,5 +28,3 @@ abstract class ErrorReporter {
 
     abstract fun reportInternalError(sourceInfo: SourceInfo, cause: Throwable)
 }
-
-

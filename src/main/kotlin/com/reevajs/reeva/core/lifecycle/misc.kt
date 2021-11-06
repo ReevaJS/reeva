@@ -1,15 +1,16 @@
 package com.reevajs.reeva.core.lifecycle
 
-import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.RunResult
+import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.parsing.ParsedSource
+import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.transformer.IRPrinter
 import com.reevajs.reeva.transformer.IRValidator
 import com.reevajs.reeva.transformer.TransformedSource
 import com.reevajs.reeva.transformer.Transformer
 import com.reevajs.reeva.utils.unreachable
 import java.io.File
+import kotlin.jvm.Throws
 
 interface SourceInfo {
     val name: String
@@ -67,7 +68,8 @@ data class ReplSourceType(
 }
 
 interface Executable {
-    fun execute(): RunResult
+    @Throws(ThrowException::class)
+    fun execute(): JSValue
 
     companion object {
         fun transform(parsedSource: ParsedSource): TransformedSource {

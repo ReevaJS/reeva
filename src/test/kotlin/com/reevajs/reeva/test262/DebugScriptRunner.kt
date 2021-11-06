@@ -2,6 +2,8 @@ package com.reevajs.reeva.test262
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.errors.ThrowException
+import com.reevajs.reeva.core.lifecycle.FileSourceInfo
 import com.reevajs.reeva.runtime.toPrintableString
 import java.io.File
 
@@ -27,13 +29,23 @@ fun main() {
     agent.printIR = true
     Agent.setAgent(agent)
 
-    val file = File("./demo/index.mjs")
-    val result = agent.run(realm, file)
-    agent.microtaskQueue.blockUntilEmpty()
+    val sourceInfo = FileSourceInfo(File("./demo/index.mjs"))
+    val executable = agent.compile(realm, sourceInfo)
 
-    result.unwrap()?.also {
-        println("Script result: ${it.toPrintableString()}")
+    if (executable.hasError) {
+        agent.errorReporter.reportParseError(sourceInfo, executable.error())
+    } else {
+        try {
+            val result = executable.value().execute()
+            println("Executable result: ${result.toPrintableString()}")
+        } catch (e: ThrowException) {
+            agent.errorReporter.reportRuntimeError(sourceInfo, e)
+        } catch (e: Throwable) {
+            agent.errorReporter.reportInternalError(sourceInfo, e)
+        }
     }
+
+    agent.microtaskQueue.checkpoint()
 }
 
 private fun collectTest262Script(): String {

@@ -1,43 +1,17 @@
 package com.reevajs.reeva.core
 
-import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.errors.DefaultErrorReporter
-import com.reevajs.reeva.core.errors.ErrorReporter
 import com.reevajs.reeva.core.errors.StackTraceFrame
-import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.*
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.realm.RealmExtension
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.JSGlobalObject
-import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
-import java.io.File
+import com.reevajs.reeva.utils.Result
 import java.nio.ByteOrder
-import java.util.function.BiFunction
 import java.util.function.Function
-
-sealed class RunResult(val sourceInfo: SourceInfo) {
-    class ParseError(sourceInfo: SourceInfo, val error: ParsingError) : RunResult(sourceInfo)
-
-    class RuntimeError(sourceInfo: SourceInfo, val cause: ThrowException) : RunResult(sourceInfo)
-
-    class InternalError(sourceInfo: SourceInfo, val cause: Throwable) : RunResult(sourceInfo)
-
-    class Success(sourceInfo: SourceInfo, val result: JSValue) : RunResult(sourceInfo)
-
-    fun unwrap(errorReporter: ErrorReporter = Agent.activeAgent.errorReporter): JSValue? {
-        when (this) {
-            is Success -> return result
-            is ParseError -> errorReporter.reportParseError(this)
-            is RuntimeError -> errorReporter.reportRuntimeError(this)
-            is InternalError -> errorReporter.reportInternalError(this)
-        }
-
-        return null
-    }
-}
 
 class Agent {
     @Volatile
@@ -82,22 +56,18 @@ class Agent {
         return realm
     }
 
-    fun run(realm: Realm, file: File): RunResult {
-        return run(realm, FileSourceInfo(file))
+    fun compile(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, Executable> {
+        return if (sourceInfo.isModule) {
+            compileModule(realm, sourceInfo).cast()
+        } else compileScript(realm, sourceInfo).cast()
     }
 
-    fun run(realm: Realm, source: String, isModule: Boolean): RunResult {
-        return run(realm, LiteralSourceInfo("<anonymous>", source, isModule))
+    fun compileScript(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, ScriptRecord> {
+        return ScriptRecord.parseScript(realm, sourceInfo)
     }
 
-    fun run(realm: Realm, sourceInfo: SourceInfo): RunResult {
-        val result = if (sourceInfo.isModule) {
-            SourceTextModuleRecord.parseModule(realm, sourceInfo)
-        } else ScriptRecord.parseScript(realm, sourceInfo)
-
-        return if (result.hasError) {
-            RunResult.ParseError(sourceInfo, result.error())
-        } else result.value().execute()
+    fun compileModule(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, ModuleRecord> {
+        return SourceTextModuleRecord.parseModule(realm, sourceInfo)
     }
 
     internal fun <T> inCallScope(function: JSFunction, block: () -> T): T {

@@ -1,19 +1,17 @@
 package com.reevajs.reeva.core.lifecycle
 
-import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.statements.DeclarationNode
 import com.reevajs.reeva.ast.statements.DestructuringDeclaration
 import com.reevajs.reeva.ast.statements.NamedDeclaration
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.core.RunResult
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
-import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.interpreter.NormalInterpretedFunction
 import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.parsing.Parser
 import com.reevajs.reeva.parsing.ParsingError
+import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.other.JSModuleNamespaceObject
@@ -28,15 +26,9 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
         it.requestedModules()
     }
 
-    override fun execute(): RunResult {
-        return try {
-            link()
-            RunResult.Success(parsedSource.sourceInfo, evaluate())
-        } catch (e: ThrowException) {
-            RunResult.RuntimeError(parsedSource.sourceInfo, e)
-        } catch (e: Throwable) {
-            RunResult.InternalError(parsedSource.sourceInfo, e)
-        }
+    override fun execute(): JSValue {
+        link()
+        return evaluate()
     }
 
     override fun initializeEnvironment() {
