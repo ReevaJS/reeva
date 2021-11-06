@@ -125,6 +125,10 @@ class Agent {
             get() = agents.get()
 
         @JvmStatic
+        val activeRealm: Realm
+            inline get() = activeAgent.activeFunction.realm
+
+        @JvmStatic
         fun setAgent(agent: Agent) {
             agents.set(agent)
         }
