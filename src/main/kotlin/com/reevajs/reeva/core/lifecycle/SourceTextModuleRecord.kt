@@ -49,12 +49,8 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
                 when (it) {
                     is DefaultImport ->
                         env.setIndirectBinding(DEFAULT_SPECIFIER, DEFAULT_SPECIFIER, requestedModule)
-                    is NamespaceImport -> {
-                        if (namespace == null) {
-                            namespace = requestedModule.makeNamespaceImport()
-                        }
-                        env.setBinding(NAMESPACE_SPECIFIER, namespace!!)
-                    }
+                    is NamespaceImport ->
+                        env.setBinding(NAMESPACE_SPECIFIER, requestedModule.getNamespaceObject())
                     is NormalImport -> env.setIndirectBinding(
                         it.identifierNode.processedName,
                         it.alias.processedName,
