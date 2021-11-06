@@ -1152,6 +1152,7 @@ class Parser(val sourceInfo: SourceInfo) {
         // TODO: Allow no identifier in default export
         val identifier = when {
             matchIdentifier() -> parseBindingIdentifier()
+            inDefaultContext -> IdentifierNode("default")
             isDeclaration -> reporter.functionStatementNoName()
             else -> null
         }

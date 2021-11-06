@@ -457,11 +457,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     private fun storeToSource(source: VariableSourceNode) {
-        if (source.mode == VariableMode.Export) {
-            +Dup
-            +StoreModuleVar(source.name())
-        }
-
         if (source.mode == VariableMode.Global) {
             if (source.name() == "undefined") {
                 if (source.scope.isStrict) {
@@ -1388,6 +1383,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             }
             is DefaultExpressionExportNode -> {
                 visit(node.expression)
+                +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
+            }
+            is DefaultFunctionExportNode -> {
+                // The function has been created in the prologue of this IR
+                loadFromSource(node.declaration)
                 +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
             }
             is ExportAllAsFromNode -> TODO()
