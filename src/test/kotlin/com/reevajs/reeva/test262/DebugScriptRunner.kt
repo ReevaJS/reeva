@@ -26,6 +26,7 @@ fun main() {
 //     }
 
     agent.printIR = true
+    Agent.setAgent(agent)
 
     val file = File("./demo/index.mjs")
     val result = agent.run(realm, file)
