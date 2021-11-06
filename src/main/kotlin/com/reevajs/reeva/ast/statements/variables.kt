@@ -2,32 +2,34 @@ package com.reevajs.reeva.ast.statements
 
 import com.reevajs.reeva.ast.*
 
-interface DeclarationNode {
-    val declarations: List<Declaration>
+interface DeclarationNode : StatementNode {
+    val declarations: List<VariableSourceProvider>
+}
+
+interface VariableSourceProvider : ASTNode {
+    fun sources(): List<VariableSourceNode>
+
+    fun names() = sources().map { it.name() }
+}
+
+sealed interface Declaration : VariableSourceProvider {
+    val initializer: ExpressionNode?
 }
 
 class LexicalDeclarationNode(
     val isConst: Boolean,
     override val declarations: List<Declaration>,
-) : ASTNodeBase(declarations), DeclarationNode, StatementNode
+) : ASTNodeBase(declarations), DeclarationNode
 
 class VariableDeclarationNode(
     override val declarations: List<Declaration>,
-) : ASTNodeBase(declarations), DeclarationNode, StatementNode
-
-sealed interface Declaration : ASTNode {
-    val initializer: ExpressionNode?
-
-    fun names(): List<String>
-}
+) : ASTNodeBase(declarations), DeclarationNode
 
 class DestructuringDeclaration(
     val pattern: BindingPatternNode,
     override val initializer: ExpressionNode?,
-) : ASTNodeBase(listOfNotNull(pattern, initializer)), Declaration {
-    override fun names(): List<String> {
-        TODO("Not yet implemented")
-    }
+) : ASTNodeBase(listOf(pattern)), Declaration {
+    override fun sources() = pattern.sources()
 }
 
 class NamedDeclaration(
@@ -36,5 +38,5 @@ class NamedDeclaration(
 ) : VariableSourceNode(listOfNotNull(identifier, identifier)), Declaration {
     override fun name() = identifier.processedName
 
-    override fun names() = listOf(name())
+    override fun sources() = listOf(this)
 }

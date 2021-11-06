@@ -1,6 +1,7 @@
 package com.reevajs.reeva.ast
 
 import com.reevajs.reeva.ast.statements.ASTListNode
+import com.reevajs.reeva.ast.statements.DeclarationNode
 import com.reevajs.reeva.ast.statements.StatementList
 import com.reevajs.reeva.core.lifecycle.ModuleRecord
 
@@ -77,7 +78,7 @@ class NamedExport(
 
 class NamedExports(val exports: ExportList) : ExportNode(exports)
 
-class DeclarationExportNode(val declaration: StatementNode) : ExportNode(listOf(declaration))
+class DeclarationExportNode(val declaration: DeclarationNode) : ExportNode(listOf(declaration))
 
 class DefaultFunctionExportNode(val declaration: FunctionDeclarationNode) : ExportNode(listOf(declaration))
 

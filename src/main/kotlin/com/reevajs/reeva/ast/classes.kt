@@ -2,12 +2,18 @@ package com.reevajs.reeva.ast
 
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.ast.literals.PropertyName
+import com.reevajs.reeva.ast.statements.DeclarationNode
+import com.reevajs.reeva.ast.statements.VariableSourceProvider
 
 class ClassDeclarationNode(
     val identifier: IdentifierNode?, // can be omitted in default exports
     val classNode: ClassNode,
-) : VariableSourceNode(listOfNotNull(identifier, classNode)), StatementNode {
+) : VariableSourceNode(listOfNotNull(identifier, classNode)), DeclarationNode, VariableSourceProvider {
     override fun name() = identifier?.processedName ?: TODO()
+
+    override val declarations = listOf(this)
+
+    override fun sources() = listOf(this)
 }
 
 class ClassExpressionNode(

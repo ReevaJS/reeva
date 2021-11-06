@@ -82,23 +82,8 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
                 is NamedExports -> export.exports.forEach {
                     env.setBinding(it.alias?.processedName ?: it.identifierNode.processedName, JSEmpty)
                 }
-                is DeclarationExportNode -> {
-                    val name = when (val decl = export.declaration) {
-                        is FunctionDeclarationNode -> decl.identifier.processedName
-                        is ClassDeclarationNode -> decl.identifier!!.processedName
-                        is DeclarationNode -> {
-                            if (decl.declarations.size != 1)
-                                TODO()
-
-                            decl.declarations[0].let {
-                                if (it is DestructuringDeclaration)
-                                    TODO()
-                                (it as NamedDeclaration).identifier.processedName
-                            }
-                        }
-                        else -> TODO()
-                    }
-                    env.setBinding(name, JSEmpty)
+                is DeclarationExportNode -> export.declaration.declarations.flatMap { it.names() }.forEach {
+                    env.setBinding(it, JSEmpty)
                 }
             }
         }

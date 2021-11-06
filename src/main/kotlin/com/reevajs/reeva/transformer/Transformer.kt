@@ -1391,6 +1391,13 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 loadFromSource(node.declaration)
                 +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
             }
+            is DeclarationExportNode -> {
+                visit(node.declaration)
+                node.declaration.declarations.flatMap { it.sources() }.forEach {
+                    loadFromSource(it)
+                    +StoreModuleVar(it.name())
+                }
+            }
             is ExportAllAsFromNode -> TODO()
             is ExportAllFromNode -> TODO()
             is ExportNamedFromNode -> TODO()

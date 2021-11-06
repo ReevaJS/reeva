@@ -54,16 +54,6 @@ class ScopeResolver : ASTVisitor {
             scope = scope.outer!!
     }
 
-    override fun visitVariableDeclaration(node: VariableDeclarationNode) {
-        for (decl in node.declarations) {
-            val mode = if (scope.outerHoistingScope is GlobalScope) {
-                VariableMode.Global
-            } else VariableMode.Declared
-
-            visitDeclaration(decl, mode, VariableType.Var)
-        }
-    }
-
     override fun visitImport(node: Import) {
         scope.addVariableSource(node)
         node.type = VariableType.Let
@@ -77,17 +67,26 @@ class ScopeResolver : ASTVisitor {
         when (node) {
             is DefaultClassExportNode -> node.classNode.mode = VariableMode.Export
             is DefaultFunctionExportNode -> node.declaration.mode = VariableMode.Export
-            is DeclarationExportNode -> (node.declaration as VariableSourceNode).mode = VariableMode.Export
+            is DeclarationExportNode -> node.declaration.declarations.flatMap { it.sources() }
             else -> {}
+        }
+    }
+
+    override fun visitVariableDeclaration(node: VariableDeclarationNode) {
+        for (decl in node.declarations) {
+            val mode = if (scope.outerHoistingScope is GlobalScope) {
+                VariableMode.Global
+            } else VariableMode.Declared
+
+            visitDeclaration(decl, mode, VariableType.Var)
         }
     }
 
     override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
         val type = if (node.isConst) VariableType.Const else VariableType.Let
 
-        for (decl in node.declarations) {
+        for (decl in node.declarations)
             visitDeclaration(decl, VariableMode.Declared, type)
-        }
     }
 
     private fun visitDeclaration(declaration: Declaration, mode: VariableMode, type: VariableType) {

@@ -604,7 +604,7 @@ class Parser(val sourceInfo: SourceInfo) {
      *     BindingIdentifier Initializer?
      *     BindingPattern Initializer (TODO)
      */
-    private fun parseVariableDeclaration(isForEachLoop: Boolean = false): StatementNode = nps {
+    private fun parseVariableDeclaration(isForEachLoop: Boolean = false): DeclarationNode = nps {
         val type = consume()
         expect(type == TokenType.Var || type == TokenType.Let || type == TokenType.Const)
 

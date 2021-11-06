@@ -3,6 +3,8 @@ package com.reevajs.reeva.ast
 import com.reevajs.reeva.ast.ASTNode.Companion.appendIndent
 import com.reevajs.reeva.ast.statements.ASTListNode
 import com.reevajs.reeva.ast.statements.BlockNode
+import com.reevajs.reeva.ast.statements.DeclarationNode
+import com.reevajs.reeva.ast.statements.VariableSourceProvider
 import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.utils.duplicates
@@ -75,11 +77,15 @@ class FunctionDeclarationNode(
     val parameters: ParameterList,
     val body: BlockNode,
     val kind: Operations.FunctionKind,
-) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), StatementNode {
+) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), DeclarationNode, VariableSourceProvider {
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
 
     override fun name() = identifier.processedName
+
+    override val declarations = listOf(this)
+
+    override fun sources() = listOf(this)
 }
 
 class FunctionExpressionNode(
