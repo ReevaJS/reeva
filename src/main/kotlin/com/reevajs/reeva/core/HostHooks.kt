@@ -123,7 +123,7 @@ open class HostHooks {
         if (!resolvedFile.exists())
             Errors.NonExistentModule(specifier).throwInternalError(referencingModule.realm)
 
-        val sourceInfo = FileSourceInfo(resolvedFile)
+        val sourceInfo = makeSourceInfo(resolvedFile)
 
         val result = SourceTextModuleRecord
             .parseModule(referencingModule.realm, sourceInfo)
@@ -137,4 +137,6 @@ open class HostHooks {
             referencingModule.realm.moduleTree.setImportedModule(referencingModule, specifier, it)
         }
     }
+
+    open fun makeSourceInfo(file: File): SourceInfo = FileSourceInfo(file)
 }
