@@ -1379,6 +1379,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         when (node) {
             is DefaultClassExportNode -> {
                 visit(node.classNode)
+                loadFromSource(node.classNode)
                 +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
             }
             is DefaultExpressionExportNode -> {
