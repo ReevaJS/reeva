@@ -504,7 +504,7 @@ class Parser(val sourceInfo: SourceInfo) {
         parseNamedExports()?.let {
             val from = maybeParseImportExportFrom()
             if (from != null) {
-                ExportNamedFromNode(it, parseImportExportFrom())
+                ExportNamedFromNode(it, from)
             } else it
         }
     }
