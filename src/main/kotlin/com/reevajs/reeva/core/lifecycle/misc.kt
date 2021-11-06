@@ -78,7 +78,7 @@ interface Executable {
                     IRPrinter(it).print()
                     println('\n')
                 }
-                IRValidator(it.functionInfo.ir).validate()
+                IRValidator(it.functionInfo).validate()
             }
         }
     }

@@ -4,7 +4,8 @@ import com.reevajs.reeva.transformer.opcodes.JumpInstr
 import com.reevajs.reeva.transformer.opcodes.Return
 import com.reevajs.reeva.utils.expect
 
-class IRValidator(val ir: IR) {
+class IRValidator(private val info: FunctionInfo) {
+    private val ir: IR inline get() = info.ir
     private var stackHeight = 0
 
     private val postStackHeights = mutableMapOf<Int, Int>()
