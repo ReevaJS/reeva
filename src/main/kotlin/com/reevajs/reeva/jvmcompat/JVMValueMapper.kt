@@ -13,6 +13,7 @@ import com.reevajs.reeva.utils.toValue
 import java.lang.reflect.Executable
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
+import java.math.BigInteger
 
 /**
  * Based on the [https://www-archive.mozilla.org/js/liveconnect/lc3_method_overloading.html]
@@ -293,9 +294,12 @@ object JVMValueMapper {
     fun jvmToJS(realm: Realm, instance: Any?): JSValue {
         return when (instance) {
             null -> JSUndefined
+            is Boolean -> if (instance) JSTrue else JSFalse
             is String -> JSString(instance)
             is Double -> JSNumber(instance)
+            is Float -> JSNumber(instance.toDouble())
             is Number -> JSNumber(instance)
+            is BigInteger -> JSBigInt(instance)
             is Map<*, *> -> {
                 val jsMap = JSMapObject.create(realm)
                 instance.forEach { (key, value) ->
@@ -330,7 +334,7 @@ object JVMValueMapper {
             }
             is Package -> JSPackageObject.create(realm, instance.name)
             is Class<*> -> JSClassObject.create(realm, instance)
-            else -> TODO()
+            else -> JSClassInstanceObject.wrap(realm, instance)
         }
     }
 }
