@@ -70,9 +70,6 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
                 is DefaultClassExportNode,
                 is DefaultExpressionExportNode,
                 is DefaultFunctionExportNode -> env.setBinding(DEFAULT_SPECIFIER, JSEmpty)
-                is ExportAllAsFromNode -> TODO()
-                is ExportAllFromNode -> TODO()
-                is ExportNamedFromNode -> TODO()
                 is NamedExport ->
                     env.setBinding(export.alias?.processedName ?: export.identifierNode.processedName, JSEmpty)
                 is NamedExports -> export.exports.forEach {
@@ -80,6 +77,31 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
                 }
                 is DeclarationExportNode -> export.declaration.declarations.flatMap { it.names() }.forEach {
                     env.setBinding(it, JSEmpty)
+                }
+                is ExportFromNode -> { /* handled in next loop */ }
+            }
+        }
+
+        // Export from nodes are a bit special. Since they simply re-export values from a
+        // different modules, they're treated more like imports. The environment is initialized
+        // with indirect imports for each export from node.
+        node.body.filterIsInstance<ExportFromNode>().forEach { export ->
+            val requestedModule = Agent.activeAgent.hostHooks.resolveImportedModule(this, export.moduleName)
+
+            when (export) {
+                is ExportAllAsFromNode -> env.setBinding(
+                    export.identifierNode.processedName,
+                    requestedModule.getNamespaceObject(),
+                )
+                is ExportAllFromNode -> requestedModule.getExportedNames().forEach {
+                    env.setIndirectBinding(it, it, requestedModule)
+                }
+                is ExportNamedFromNode -> export.exports.exports.forEach {
+                    env.setIndirectBinding(
+                        it.alias?.processedName ?: it.identifierNode.processedName,
+                        it.identifierNode.processedName,
+                        requestedModule
+                    )
                 }
             }
         }
@@ -123,24 +145,7 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
                 is NamedExports -> names.addAll(export.exports.map {
                     it.alias?.processedName ?: it.identifierNode.processedName
                 })
-                is DeclarationExportNode -> {
-                    val name = when (val decl = export.declaration) {
-                        is FunctionDeclarationNode -> decl.identifier.processedName
-                        is ClassDeclarationNode -> decl.identifier!!.processedName
-                        is DeclarationNode -> {
-                            if (decl.declarations.size != 1)
-                                TODO()
-
-                            decl.declarations[0].let {
-                                if (it is DestructuringDeclaration)
-                                    TODO()
-                                (it as NamedDeclaration).identifier.processedName
-                            }
-                        }
-                        else -> TODO()
-                    }
-                    names.add(name)
-                }
+                is DeclarationExportNode -> names.addAll(export.declaration.declarations.flatMap { it.names() })
             }
         }
 

@@ -1398,15 +1398,14 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     +StoreModuleVar(it.name())
                 }
             }
-            is ExportAllAsFromNode -> TODO()
-            is ExportAllFromNode -> TODO()
-            is ExportNamedFromNode -> TODO()
             is NamedExport -> {
                 visit(node.identifierNode)
                 +StoreModuleVar(node.alias?.processedName ?: node.identifierNode.processedName)
             }
             is NamedExports -> node.exports.forEach(::visit)
-            else -> {
+            is ExportFromNode -> {
+                // These are treated mostly like imports, so all of the work is done
+                // in SourceTextModuleRecord
             }
         }
     }

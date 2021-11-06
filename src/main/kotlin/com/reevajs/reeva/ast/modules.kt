@@ -9,7 +9,8 @@ typealias ImportList = ASTListNode<Import>
 typealias ExportList = ASTListNode<NamedExport>
 
 class ModuleNode(val body: StatementList) : RootNode(body) {
-    fun requestedModules() = body.filterIsInstance<ImportDeclarationNode>().map { it.moduleName }
+    fun requestedModules() = body.filterIsInstance<ImportDeclarationNode>().map { it.moduleName } +
+        body.filterIsInstance<ExportFromNode>().map { it.moduleName }
 }
 
 class ImportDeclarationNode(
