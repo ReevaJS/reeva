@@ -149,10 +149,8 @@ class EventLoop {
      * been executed.
      */
     fun blockUntilEmpty() {
-        while (true) {
-            if (taskQueue.isNotEmpty() || microtaskQueue.isNotEmpty() || scheduledTasks.isNotEmpty())
+        while (taskQueue.isNotEmpty() || microtaskQueue.isNotEmpty() || scheduledTasks.isNotEmpty())
             tick()
-        }
     }
 
     /**
