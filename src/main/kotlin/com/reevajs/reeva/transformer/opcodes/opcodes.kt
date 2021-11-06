@@ -341,7 +341,7 @@ object CreateArray : Opcode(1)
  * Stack:
  *   ... array value -> ...
  */
-class StoreArray(val index: Local) : Opcode(-2)
+class StoreArray(val arrayLocal: Local, val indexLocal: Local) : Opcode(-1)
 
 /**
  * Stores a value into an array at the constant [index].
@@ -349,7 +349,7 @@ class StoreArray(val index: Local) : Opcode(-2)
  * Stack:
  *   ... array value -> ...
  */
-class StoreArrayIndexed(val index: Int) : Opcode(-2)
+class StoreArrayIndexed(val arrayLocal: Local, val index: Int) : Opcode(-1)
 
 /**
  * Deletes a property from an object using strict ECMAScript semantics.

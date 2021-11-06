@@ -965,9 +965,8 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     }
 
                     if (hasRest) {
-                        +LoadValue(excludedPropertiesLocal!!)
                         +PushConstant(name)
-                        +StoreArrayIndexed(index)
+                        +StoreArrayIndexed(excludedPropertiesLocal!!, index)
                     }
 
                     property.alias ?: BindingDeclarationOrPattern(property.declaration)
@@ -981,9 +980,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
                     if (hasRest) {
                         +Dup
-                        +LoadValue(excludedPropertiesLocal!!)
-                        +Swap
-                        +StoreArrayIndexed(index)
+                        +StoreArrayIndexed(excludedPropertiesLocal!!, index)
                     }
 
                     if (property.initializer != null) {
@@ -1100,9 +1097,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         +LoadValue(iteratorLocal)
 
         iterateValues(setOf(), iteratorLocal) {
-            +LoadValue(arrayLocal)
-            +Swap
-            +StoreArray(indexLocal)
+            +StoreArray(arrayLocal, indexLocal)
         }
 
         +LoadValue(arrayLocal)
@@ -1241,7 +1236,32 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     private fun pushArguments(arguments: ArgumentList): ArgumentsMode {
         val mode = argumentsMode(arguments)
         when (mode) {
-            ArgumentsMode.Spread -> TODO()
+            ArgumentsMode.Spread -> {
+                val arrayLocal = builder.newLocalSlot(LocalKind.Value)
+                val indexLocal = builder.newLocalSlot(LocalKind.Int)
+                val iteratorLocal = builder.newLocalSlot(LocalKind.Value)
+
+                +CreateArray
+                +StoreValue(arrayLocal)
+
+                +PushJVMInt(0)
+                +StoreInt(indexLocal)
+
+                for (argument in arguments) {
+                    visitExpression(argument.expression)
+
+                    if (argument.isSpread) {
+                        +GetIterator
+                        +StoreValue(iteratorLocal)
+                        iterateValues(setOf(), iteratorLocal) {
+                            +StoreArray(arrayLocal, indexLocal)
+                        }
+                        +LoadValue(arrayLocal)
+                    } else {
+                        +StoreArray(arrayLocal, indexLocal)
+                    }
+                }
+            }
             ArgumentsMode.Normal -> {
                 for (argument in arguments)
                     visitExpression(argument)
@@ -1379,12 +1399,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             else -> {
             }
         }
-    }
-
-    override fun visitArgument(node: ArgumentNode) {
-        if (node.isSpread)
-            TODO()
-        visitExpression(node.expression)
     }
 
     override fun visitPropertyName(node: PropertyName) {
@@ -1759,18 +1773,56 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     override fun visitArrayLiteral(node: ArrayLiteralNode) {
+        val arrayLocal = builder.newLocalSlot(LocalKind.Value)
+
         +CreateArray
-        for ((index, element) in node.elements.withIndex()) {
+        +StoreValue(arrayLocal)
+
+        var index: Int? = 0
+        var indexLocal: Local? = null
+        var iteratorLocal: Local? = null
+
+        for (element in node.elements) {
             when (element.type) {
-                ArrayElementNode.Type.Elision -> continue
-                ArrayElementNode.Type.Spread -> TODO()
-                ArrayElementNode.Type.Normal -> {
-                    +Dup
+                ArrayElementNode.Type.Elision -> {
+                    if (index != null) {
+                        index++
+                    } else {
+                        +IncInt(indexLocal!!)
+                    }
+                }
+                ArrayElementNode.Type.Spread -> {
+                    if (indexLocal == null) {
+                        indexLocal = builder.newLocalSlot(LocalKind.Int)
+                        +PushJVMInt(index!!)
+                        +StoreInt(indexLocal)
+                        index = null
+                    }
+
+                    if (iteratorLocal == null)
+                        iteratorLocal = builder.newLocalSlot(LocalKind.Value)
+
                     visitExpression(element.expression!!)
-                    +StoreArrayIndexed(index)
+
+                    +GetIterator
+                    +StoreValue(iteratorLocal)
+                    iterateValues(setOf(), iteratorLocal) {
+                        +StoreArray(arrayLocal, indexLocal)
+                    }
+                }
+                ArrayElementNode.Type.Normal -> {
+                    visitExpression(element.expression!!)
+                    if (index != null) {
+                        +StoreArrayIndexed(arrayLocal, index)
+                        index++
+                    } else {
+                        +StoreArray(arrayLocal, indexLocal!!)
+                    }
                 }
             }
         }
+
+        +LoadValue(arrayLocal)
     }
 
     override fun visitObjectLiteral(node: ObjectLiteralNode) {

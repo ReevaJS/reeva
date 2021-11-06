@@ -29,6 +29,10 @@ class IRValidator(val ir: IR) {
 
             stackHeight += opcode.stackHeightModifier
 
+            expect(stackHeight >= 0) {
+                "Detected negative stack height of $stackHeight after opcode $index"
+            }
+
             if (index != 0) {
                 val existingHeight = postStackHeights[index]
                 expect(existingHeight == null || existingHeight == stackHeight) {

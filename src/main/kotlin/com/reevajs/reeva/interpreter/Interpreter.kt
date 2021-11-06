@@ -413,15 +413,16 @@ class Interpreter(
 
     override fun visitStoreArray(opcode: StoreArray) {
         val value = popValue()
-        val index = locals[opcode.index.value] as Int
-        val array = popValue() as JSObject
+        val indexLocal = opcode.indexLocal.value
+        val index = locals[indexLocal] as Int
+        val array = locals[opcode.arrayLocal.value] as JSObject
         array.indexedProperties.set(array, index, value)
-        locals[opcode.index.value] = locals[opcode.index.value] as Int + 1
+        locals[indexLocal] = locals[indexLocal] as Int + 1
     }
 
     override fun visitStoreArrayIndexed(opcode: StoreArrayIndexed) {
         val value = popValue()
-        val array = popValue() as JSObject
+        val array = locals[opcode.arrayLocal.value] as JSObject
         array.indexedProperties.set(array, opcode.index, value)
     }
 
