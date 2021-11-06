@@ -703,10 +703,6 @@ class Interpreter(
         TODO("Not yet implemented")
     }
 
-    override fun visitCreateRestParam() {
-        TODO("Not yet implemented")
-    }
-
     override fun visitGetSuperConstructor() {
         push(Agent.activeAgent.activeFunction.getPrototype())
     }
@@ -770,6 +766,10 @@ class Interpreter(
 
     override fun visitReturn() {
         isDone = true
+    }
+
+    override fun visitCollectRestArgs() {
+        push(Operations.createArrayFromList(realm, arguments.drop(info.ir.argCount - 1)))
     }
 
     override fun visitDefineGetterProperty() {

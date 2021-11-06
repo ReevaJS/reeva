@@ -92,7 +92,6 @@ interface OpcodeVisitor {
             is CreateGeneratorClosure -> visitCreateGeneratorClosure(opcode)
             is CreateAsyncClosure -> visitCreateAsyncClosure(opcode)
             is CreateAsyncGeneratorClosure -> visitCreateAsyncGeneratorClosure(opcode)
-            CollectRestArgs -> visitCreateRestParam()
             GetSuperConstructor -> visitGetSuperConstructor()
             CreateUnmappedArgumentsObject -> visitCreateUnmappedArgumentsObject()
             CreateMappedArgumentsObject -> visitCreateMappedArgumentsObject()
@@ -126,6 +125,7 @@ interface OpcodeVisitor {
             FinalizeClass -> visitFinalizeClass()
             is LoadModuleVar -> visitLoadModuleVar(opcode)
             is StoreModuleVar -> visitStoreModuleVar(opcode)
+            CollectRestArgs -> visitCollectRestArgs()
         }
     }
 
@@ -307,8 +307,6 @@ interface OpcodeVisitor {
 
     fun visitCreateAsyncGeneratorClosure(opcode: CreateAsyncGeneratorClosure)
 
-    fun visitCreateRestParam()
-
     fun visitGetSuperConstructor()
 
     fun visitCreateUnmappedArgumentsObject()
@@ -374,4 +372,6 @@ interface OpcodeVisitor {
     fun visitLoadModuleVar(opcode: LoadModuleVar)
 
     fun visitStoreModuleVar(opcode: StoreModuleVar)
+
+    fun visitCollectRestArgs()
 }
