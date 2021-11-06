@@ -24,8 +24,9 @@ class FileSourceInfo @JvmOverloads constructor(
     private val file: File,
     override val isModule: Boolean = file.extension == "mjs",
     override val name: String = file.name,
+    sourceText: String? = null
 ) : SourceInfo {
-    private var sourceTextBacker: String? = null
+    private var sourceTextBacker: String? = sourceText
 
     override val sourceText: String
         get() {
