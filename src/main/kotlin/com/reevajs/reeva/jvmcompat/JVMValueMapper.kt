@@ -139,7 +139,7 @@ object JVMValueMapper {
             when (targetClass) {
                 Boolean::class.javaPrimitiveType, Boolean::class.javaObjectType, Any::class.java -> value.boolean
                 String::class.java -> value.boolean.toString()
-                else -> Errors.JVMCompat.InconvertibleType(value, targetClass).throwTypeError(realm)
+                else -> errorIfIncompatible(realm, value, targetClass)
             }
         }
         is JSNumber -> {
@@ -152,10 +152,10 @@ object JVMValueMapper {
                 Short::class.javaPrimitiveType, Short::class.javaObjectType -> value.number.toInt().toShort()
                 Byte::class.javaPrimitiveType, Byte::class.javaObjectType -> value.number.toInt().toByte()
                 Char::class.javaPrimitiveType, Char::class.javaObjectType ->
-                    if (value.isNaN) Errors.JVMCompat.InconvertibleType(value, targetClass).throwTypeError(realm)
+                    if (value.isNaN) errorIfIncompatible(realm, value, targetClass)
                     else value.number.toInt().toChar()
                 String::class.java -> Operations.numericToString(value)
-                else -> Errors.JVMCompat.InconvertibleType(value, targetClass).throwTypeError(realm)
+                else -> errorIfIncompatible(realm, value, targetClass)
             }
         }
         is JSString -> {
@@ -169,14 +169,14 @@ object JVMValueMapper {
                 Char::class.javaPrimitiveType, Char::class.javaObjectType -> if (value.string.length == 1) {
                     value.string[0]
                 } else jsToJvm(realm, Operations.toNumber(realm, value), targetClass)
-                else -> Errors.JVMCompat.InconvertibleType(value, targetClass).throwTypeError(realm)
+                else -> errorIfIncompatible(realm, value, targetClass)
             }
         }
         is JSNull -> {
             if (!targetClass.isPrimitive)
                 null
             else
-                Errors.JVMCompat.InconvertibleType(value, targetClass).throwTypeError(realm)
+                errorIfIncompatible(realm, value, targetClass)
         }
         is JSArrayObject -> {
             if (targetClass == String::class.java) {
@@ -211,7 +211,7 @@ object JVMValueMapper {
                 }
                 constructedArray
             } else {
-                Errors.JVMCompat.InconvertibleType(value, targetClass).throwTypeError(realm)
+                errorIfIncompatible(realm, value, targetClass)
             }
         }
         is JSClassInstanceObject -> {
@@ -225,14 +225,14 @@ object JVMValueMapper {
                 Int::class.javaPrimitiveType, Int::class.javaObjectType, Short::class.javaPrimitiveType,
                 Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType ->
                     jsToJvm(realm, javaObject.toString().toValue(), targetClass)
-                else -> Errors.JVMCompat.InconvertibleType(value, targetClass).throwTypeError(realm)
+                else -> errorIfIncompatible(realm, value, targetClass)
             }
         }
         is JSClassObject -> {
             when (targetClass) {
                 Class::class.java, Any::class.java -> value.clazz
                 String::class.java -> value.clazz.toString()
-                else -> Errors.JVMCompat.InconvertibleType(value, targetClass).throwTypeError(realm)
+                else -> errorIfIncompatible(realm, value, targetClass)
             }
         }
         is JSObject -> {
@@ -242,16 +242,21 @@ object JVMValueMapper {
                 Double::class.javaPrimitiveType, Double::class.javaObjectType, Float::class.javaPrimitiveType,
                 Float::class.javaObjectType, Long::class.javaPrimitiveType, Long::class.javaObjectType,
                 Int::class.javaPrimitiveType, Int::class.javaObjectType, Short::class.javaPrimitiveType,
-                Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType ->
-                    jsToJvm(
-                        realm,
-                        Operations.toPrimitive(realm, value, Operations.ToPrimitiveHint.AsNumber),
-                        targetClass
-                    )
-                else -> Errors.JVMCompat.InconvertibleType(value, targetClass).throwTypeError(realm)
+                Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType -> jsToJvm(
+                    realm,
+                    Operations.toPrimitive(realm, value, Operations.ToPrimitiveHint.AsNumber),
+                    targetClass
+                )
+                else -> errorIfIncompatible(realm, value, targetClass)
             }
         }
-        else -> Errors.JVMCompat.InconvertibleType(value, targetClass).throwTypeError(realm)
+        else -> errorIfIncompatible(realm, value, targetClass)
+    }
+
+    private fun errorIfIncompatible(realm: Realm, value: JSValue, targetClass: Class<*>): JSValue {
+        if (!targetClass.isInstance(value))
+            Errors.JVMCompat.InconvertibleType(value, targetClass).throwTypeError(realm)
+        return value
     }
 
     fun <T : Executable> findMatchingSignature(executables: List<T>, arguments: List<JSValue>): List<T> {

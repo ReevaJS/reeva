@@ -7,6 +7,7 @@ import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.jvmcompat.JVMValueMapper
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
+import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.toValue
 import org.junit.jupiter.api.*
@@ -272,6 +273,13 @@ class JVMValueMapperTests {
     @Test
     fun `JSObject maps correctly to JVM types`() {
         // TODO
+    }
+
+    @Test
+    fun `JSObject maps correctly to itself`() {
+        val obj = JSObject.create(realm)
+        expectThat(JVMValueMapper.jsToJvm(realm, obj, JSObject::class.java))
+            .isA<JSObject>()
     }
 
     class TestClass {
