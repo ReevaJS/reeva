@@ -14,7 +14,7 @@ class ModuleEnvRecord(outer: EnvRecord?) : EnvRecord(outer) {
     override fun hasBinding(name: String) = name in bindings
 
     override fun getBinding(name: String): JSValue {
-        return when (val binding = bindings[name]!!) {
+        return when (val binding = bindings[name] ?: throw IllegalArgumentException("Unknown binding $name")) {
             is DirectBinding -> binding.value
             is IndirectBinding -> binding.sourceModule.env.getBinding(binding.sourceName)
         }
