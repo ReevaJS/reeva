@@ -125,11 +125,16 @@ open class HostHooks {
 
         val sourceInfo = FileSourceInfo(resolvedFile)
 
-        return SourceTextModuleRecord
+        val result = SourceTextModuleRecord
             .parseModule(referencingModule.realm, sourceInfo)
-            .valueOrElse { TODO() }
-            .also {
-                referencingModule.realm.moduleTree.setImportedModule(referencingModule, specifier, it)
-            }
+
+        if (result.hasError) {
+            Agent.activeAgent.errorReporter.reportParseError(sourceInfo, result.error())
+            TODO()
+        }
+
+        return result.value().also {
+            referencingModule.realm.moduleTree.setImportedModule(referencingModule, specifier, it)
+        }
     }
 }
