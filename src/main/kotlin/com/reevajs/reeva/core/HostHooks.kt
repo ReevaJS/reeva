@@ -27,7 +27,7 @@ open class HostHooks {
 
     @ECMAImpl("9.5.4")
     open fun enqueuePromiseJob(job: () -> Unit, realm: Realm?) {
-        Agent.activeAgent.eventLoop.submitMicrotask(RunnableMicrotask(job))
+        Agent.activeAgent.microtaskQueue.addMicrotask(job)
     }
 
     @ECMAImpl("9.6")
@@ -67,14 +67,14 @@ open class HostHooks {
     @ECMAImpl("27.2.1.9")
     open fun promiseRejectionTracker(realm: Realm, promise: JSObject, operation: String) {
         if (operation == "reject") {
-            Agent.activeAgent.eventLoop.submitMicrotask(RunnableMicrotask {
+            Agent.activeAgent.microtaskQueue.addMicrotask {
                 // If promise does not have any handlers by the time this microtask is ran, it
                 // will not have any handlers, and we can print a warning
                 if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled)) {
                     val result = promise.getSlotAs<JSValue>(SlotName.PromiseResult)
                     println("\u001b[31mUnhandled promise rejection: ${Operations.toString(realm, result)}\u001B[0m")
                 }
-            })
+            }
         }
     }
 

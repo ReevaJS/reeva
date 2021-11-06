@@ -63,7 +63,7 @@ class Agent {
     val activeFunction: JSFunction
         get() = callStack.last().enclosingFunction
 
-    val eventLoop = EventLoop()
+    val microtaskQueue = MicrotaskQueue()
 
     init {
         allAgents.add(this)
@@ -106,6 +106,8 @@ class Agent {
             block()
         } finally {
             callStack.removeLast()
+            if (callStack.isEmpty())
+                microtaskQueue.checkpoint()
         }
     }
 
