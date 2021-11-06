@@ -13,6 +13,7 @@ import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.expect
+import java.io.File
 
 open class HostHooks {
     @ECMAImpl("9.5.2")
@@ -105,11 +106,20 @@ open class HostHooks {
             }
         }
 
-        // TODO: Get rid of this expect somehow
         expect(referencingModule is SourceTextModuleRecord)
 
         val referencingSourceInfo = referencingModule.parsedSource.sourceInfo
-        val resolvedFile = referencingSourceInfo.resolveImportedFilePath(specifier)
+        val resolvedFile = referencingSourceInfo.resolveImportedFilePath(specifier).let {
+            if (it.exists() && it.isDirectory) {
+                for (extension in listOf("js", "mjs", "json")) {
+                    val file = File(it, "index.$extension")
+                    if (file.exists())
+                        return@let file
+                }
+            }
+            it
+        }
+
         if (!resolvedFile.exists())
             Errors.NonExistentModule(specifier).throwInternalError(referencingModule.realm)
 
