@@ -57,6 +57,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 rootNode.scope.isStrict,
                 0,
                 isTopLevel = true,
+                isGenerator = false,
             )
         )
     }
@@ -303,6 +304,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             isStrict,
             parameters.expectedArgumentCount(),
             isTopLevel = false,
+            isGenerator = kind.isGenerator,
         )
     }
 
@@ -1597,6 +1599,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             isStrict = true,
             0,
             isTopLevel = false,
+            isGenerator = false,
         ).also {
             builder = prevBuilder
             builder.addNestedFunction(it)
@@ -1653,6 +1656,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             isStrict = true,
             0,
             isTopLevel = false,
+            isGenerator = false,
         ).also {
             builder = prevBuilder
             builder.addNestedFunction(it)

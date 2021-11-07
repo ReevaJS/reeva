@@ -13,7 +13,9 @@ import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
+import com.reevajs.reeva.runtime.collections.JSUnmappedArgumentsObject
 import com.reevajs.reeva.runtime.functions.JSFunction
+import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.iterators.JSObjectPropertyIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -721,11 +723,43 @@ class Interpreter(
     }
 
     override fun visitCreateUnmappedArgumentsObject() {
-        TODO("Not yet implemented")
+        push(createArgumentsObject())
     }
 
     override fun visitCreateMappedArgumentsObject() {
-        TODO("Not yet implemented")
+        // TODO: Create a mapped arguments object
+        push(createArgumentsObject())
+    }
+
+    private fun createArgumentsObject(): JSObject {
+        val arguments = this.arguments.drop(Transformer.getReservedLocalsCount(info.isGenerator))
+
+        val obj = JSUnmappedArgumentsObject.create(realm)
+        Operations.definePropertyOrThrow(
+            realm,
+            obj,
+            "length".key(),
+            Descriptor(arguments.size.toValue(), attrs { +conf; -enum; +writ })
+        )
+
+        for ((index, arg) in arguments.withIndex())
+            Operations.createDataPropertyOrThrow(realm, obj, index.key(), arg)
+
+        Operations.definePropertyOrThrow(
+            realm,
+            obj,
+            Realm.WellKnownSymbols.iterator,
+            Descriptor(realm.arrayProto.get("values"), attrs { +conf; -enum; +writ })
+        )
+
+        Operations.definePropertyOrThrow(
+            realm,
+            obj,
+            "callee".key(),
+            Descriptor(JSAccessor(realm.throwTypeError, realm.throwTypeError), 0),
+        )
+
+        return obj
     }
 
     override fun visitThrowConstantReassignmentError(opcode: ThrowConstantReassignmentError) {

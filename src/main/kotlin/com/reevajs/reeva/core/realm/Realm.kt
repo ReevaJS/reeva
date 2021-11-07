@@ -16,6 +16,7 @@ import com.reevajs.reeva.runtime.collections.JSSetProto
 import com.reevajs.reeva.runtime.errors.*
 import com.reevajs.reeva.runtime.functions.JSFunctionCtor
 import com.reevajs.reeva.runtime.functions.JSFunctionProto
+import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorFunctionCtor
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorFunctionProto
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObjectProto
@@ -38,6 +39,7 @@ import com.reevajs.reeva.runtime.singletons.JSMathObject
 import com.reevajs.reeva.runtime.singletons.JSONObject
 import com.reevajs.reeva.runtime.singletons.JSReflectObject
 import com.reevajs.reeva.runtime.wrappers.*
+import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
 import java.util.concurrent.ConcurrentHashMap
@@ -143,6 +145,12 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val referenceErrorCtor by lazy { JSReferenceErrorCtor.create(this) }
     val syntaxErrorCtor by lazy { JSSyntaxErrorCtor.create(this) }
     val uriErrorCtor by lazy { JSURIErrorCtor.create(this) }
+
+    val throwTypeError by lazy {
+        JSNativeFunction.fromLambda(this, "", 0) { realm, _ ->
+            Errors.CalleePropertyAccess.throwTypeError(realm)
+        }
+    }
 
     val mathObj by lazy { JSMathObject.create(this) }
     val reflectObj by lazy { JSReflectObject.create(this) }
