@@ -39,6 +39,9 @@ import com.reevajs.reeva.runtime.singletons.JSMathObject
 import com.reevajs.reeva.runtime.singletons.JSONObject
 import com.reevajs.reeva.runtime.singletons.JSReflectObject
 import com.reevajs.reeva.runtime.wrappers.*
+import com.reevajs.reeva.runtime.wrappers.strings.JSStringCtor
+import com.reevajs.reeva.runtime.wrappers.strings.JSStringIteratorProto
+import com.reevajs.reeva.runtime.wrappers.strings.JSStringProto
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
@@ -73,6 +76,7 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val promiseProto by lazy { JSPromiseProto.create(this) }
     val dateProto by lazy { JSDateProto.create(this) }
     val iteratorProto by lazy { JSIteratorProto.create(this) }
+    val stringIteratorProto by lazy { JSStringIteratorProto.create(this) }
     val arrayIteratorProto by lazy { JSArrayIteratorProto.create(this) }
     val setIteratorProto by lazy { JSSetIteratorProto.create(this) }
     val mapIteratorProto by lazy { JSMapIteratorProto.create(this) }

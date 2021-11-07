@@ -2,7 +2,6 @@
 
 package com.reevajs.reeva.runtime
 
-import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.ASTNode
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
@@ -35,6 +34,7 @@ import com.reevajs.reeva.runtime.promises.JSResolveFunction
 import com.reevajs.reeva.runtime.regexp.JSRegExpObject
 import com.reevajs.reeva.runtime.regexp.JSRegExpProto
 import com.reevajs.reeva.runtime.wrappers.*
+import com.reevajs.reeva.runtime.wrappers.strings.JSStringObject
 import com.reevajs.reeva.utils.*
 import org.joni.Matcher
 import org.joni.Option
@@ -895,6 +895,7 @@ object Operations {
                 val name = (value.getPrototype() as JSErrorProto).name
                 "$name: ${value.message}"
             }
+            is JSFunction -> "[Function <${value.debugName}>]"
             is JSObject -> "[object <${value::class.java.simpleName}>]"
             is JSAccessor -> "<accessor>"
             is JSNativeProperty -> "<native-property>"

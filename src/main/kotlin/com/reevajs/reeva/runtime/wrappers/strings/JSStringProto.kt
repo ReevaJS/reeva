@@ -1,4 +1,4 @@
-package com.reevajs.reeva.runtime.wrappers
+package com.reevajs.reeva.runtime.wrappers.strings
 
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
@@ -44,6 +44,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         defineBuiltin("trimEnd", 0, ReevaBuiltin.StringProtoTrimEnd)
         defineBuiltin("trimStart", 0, ReevaBuiltin.StringProtoTrimStart)
         defineBuiltin("valueOf", 0, ReevaBuiltin.StringProtoValueOf)
+        defineBuiltin(Realm.WellKnownSymbols.iterator, 0, ReevaBuiltin.StringProtoSymbolIterator)
     }
 
     companion object {
@@ -470,6 +471,14 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
         @JvmStatic
         fun valueOf(realm: Realm, arguments: JSArguments): JSValue {
             return thisStringValue(realm, arguments.thisValue, "valueOf")
+        }
+
+        @ECMAImpl("22.1.3.34")
+        @JvmStatic
+        fun symbolIterator(realm: Realm, arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
+            val string = obj.toJSString(realm).string
+            return JSStringIteratorObject.create(realm, string)
         }
 
         private fun stringPad(

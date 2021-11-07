@@ -27,6 +27,9 @@ import com.reevajs.reeva.runtime.singletons.JSMathObject
 import com.reevajs.reeva.runtime.singletons.JSONObject
 import com.reevajs.reeva.runtime.singletons.JSReflectObject
 import com.reevajs.reeva.runtime.wrappers.*
+import com.reevajs.reeva.runtime.wrappers.strings.JSStringCtor
+import com.reevajs.reeva.runtime.wrappers.strings.JSStringIteratorProto
+import com.reevajs.reeva.runtime.wrappers.strings.JSStringProto
 import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
 
@@ -323,6 +326,8 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
 
     SetIteratorProtoNext(JSSetIteratorProto::class.java, "next", "SetIterator.prototype.next"),
 
+    StringIteratorProtoNext(JSStringIteratorProto::class.java, "next", "StringIterator.prototype.next"),
+
     StringCtorFromCharCode(JSStringCtor::class.java, "fromCharCode", "String.fromCharCode"),
     StringCtorFromCodePoint(JSStringCtor::class.java, "fromCodePoint", "String.fromCodePoint"),
     StringProtoAt(JSStringProto::class.java, "at", "String.prototype.at"),
@@ -349,6 +354,7 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     StringProtoTrimEnd(JSStringProto::class.java, "trimEnd", "String.prototype.trimEnd"),
     StringProtoTrimStart(JSStringProto::class.java, "trimStart", "String.prototype.trimStart"),
     StringProtoValueOf(JSStringProto::class.java, "valueOf", "String.prototype.valueOf"),
+    StringProtoSymbolIterator(JSStringProto::class.java, "symbolIterator", "String.prototype[@@iterator]"),
 
     SymbolCtorFor(JSSymbolCtor::class.java, "for_", "Symbol.for"),
     SymbolCtorKeyFor(JSSymbolCtor::class.java, "keyFor", "Symbol.keyFor"),

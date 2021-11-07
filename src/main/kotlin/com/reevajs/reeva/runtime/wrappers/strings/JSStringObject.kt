@@ -1,4 +1,4 @@
-package com.reevajs.reeva.runtime.wrappers
+package com.reevajs.reeva.runtime.wrappers.strings
 
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.Operations
