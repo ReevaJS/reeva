@@ -522,6 +522,11 @@ class Interpreter(
         val newTarget = popValue()
         val target = popValue()
 
+        // For some reason, the spec says this check should happen here instead
+        // of in Construct
+        if (!Operations.isConstructor(target))
+            Errors.NotACtor(target.toPrintableString()).throwTypeError(realm)
+
         push(
             Operations.construct(
                 target,
