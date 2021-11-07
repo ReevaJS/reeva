@@ -10,7 +10,7 @@ class ThrowException(val value: JSValue) : Exception() {
     init {
         Agent.activeAgent.callStack.run {
             pushActiveFunction(activeFunction())
-            stackFrames = stackFrames()
+            stackFrames = stackFrames().asReversed()
             popActiveFunction()
         }
     }

@@ -18,6 +18,12 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter() {
         start: TokenLocation,
         end: TokenLocation,
     ) {
+        printSourceLines(sourceInfo, start, end)
+        out.println()
+        out.println("\u001b[31mSyntaxError: $cause\u001b[0m")
+    }
+
+    private fun printSourceLines(sourceInfo: SourceInfo, start: TokenLocation, end: TokenLocation) {
         val lines = sourceInfo.sourceText.lines()
         val firstLine = (start.line - 2).coerceAtLeast(0)
         val lastLine = (start.line + 2).coerceAtMost(lines.lastIndex)
@@ -37,12 +43,14 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter() {
                 out.print("\u001b[0m")
             }
         }
-
-        out.println()
-        out.println("\u001b[31mSyntaxError: $cause\u001b[0m")
     }
 
     override fun reportRuntimeError(sourceInfo: SourceInfo, cause: JSValue, stackFrames: List<StackTraceFrame>) {
+        val firstFrame = stackFrames.firstOrNull()
+        if (firstFrame?.invocationLocation != null) {
+            printSourceLines(sourceInfo, firstFrame.invocationLocation.start, firstFrame.invocationLocation.end)
+        }
+
         out.println("\u001B[31m")
 
         if (cause is JSObject && cause.hasProperty("message".key())) {
