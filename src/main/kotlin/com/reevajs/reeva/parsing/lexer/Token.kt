@@ -38,3 +38,5 @@ data class TokenLocation(val index: Int, val line: Int, val column: Int) {
         val EMPTY = TokenLocation(-1, -1, -1)
     }
 }
+
+data class SourceLocation(val start: TokenLocation, val end: TokenLocation)

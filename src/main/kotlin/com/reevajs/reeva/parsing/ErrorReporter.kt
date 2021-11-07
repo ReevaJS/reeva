@@ -96,7 +96,7 @@ class ErrorReporter(private val parser: Parser) : Reporter() {
         override val end = sourceEnd
     }
 
-    fun at(node: ASTNode) = at(node.sourceStart, node.sourceEnd)
+    fun at(node: ASTNode) = at(node.sourceLocation.start, node.sourceLocation.end)
 
     fun at(token: Token) = at(token.start, token.end)
 

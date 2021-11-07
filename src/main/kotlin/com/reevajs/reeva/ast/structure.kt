@@ -2,6 +2,7 @@ package com.reevajs.reeva.ast
 
 import com.reevajs.reeva.ast.statements.StatementList
 import com.reevajs.reeva.parsing.Scope
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.parsing.lexer.Token
 import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.utils.expect
@@ -19,29 +20,32 @@ open class ASTNodeBase(children: List<ASTNode> = emptyList()) : ASTNode {
     override val astNodeName: String
         get() = this::class.java.simpleName
 
-    final override var sourceStart: TokenLocation = TokenLocation.EMPTY
-    final override var sourceEnd: TokenLocation = TokenLocation.EMPTY
+    final override var sourceLocation = SourceLocation(TokenLocation.EMPTY, TokenLocation.EMPTY)
 
     init {
         children.forEach { it.parent = this }
 
-        if (children.size == 1) {
-            sourceStart = children.first().sourceStart
-            sourceEnd = children.first().sourceEnd
-        }
+        if (children.size == 1)
+            sourceLocation = children.first().sourceLocation
     }
 }
 
 fun <T : ASTNode> T.withPosition(start: TokenLocation, end: TokenLocation) = apply {
-    sourceStart = start
-    sourceEnd = end
+    sourceLocation = SourceLocation(start, end)
+}
+
+fun <T : ASTNode> T.withPosition(sourceLocation: SourceLocation) = apply {
+    this.sourceLocation = sourceLocation
 }
 
 fun <T : ASTNode> T.withPosition(token: Token) = withPosition(token.start, token.end)
 
-fun <T : ASTNode> T.withPosition(node: ASTNode) = withPosition(node.sourceStart, node.sourceEnd)
+fun <T : ASTNode> T.withPosition(node: ASTNode) = withPosition(node.sourceLocation)
 
-fun <T : ASTNode> T.withPosition(start: ASTNode, end: ASTNode) = withPosition(start.sourceStart, end.sourceEnd)
+fun <T : ASTNode> T.withPosition(start: ASTNode, end: ASTNode) = withPosition(
+    start.sourceLocation.start,
+    end.sourceLocation.end,
+)
 
 open class NodeWithScope(children: List<ASTNode> = emptyList()) : ASTNodeBase(children) {
     lateinit var scope: Scope
@@ -102,8 +106,7 @@ interface ASTNode {
     val astNodeName: String
     val children: MutableList<ASTNode>
 
-    var sourceStart: TokenLocation
-    var sourceEnd: TokenLocation
+    var sourceLocation: SourceLocation
 
     var parent: ASTNode
 
@@ -156,9 +159,9 @@ interface ASTNode {
     fun StringBuilder.appendName() {
         append(astNodeName)
         append(" (")
-        append(sourceStart)
+        append(sourceLocation.start)
         append(" - ")
-        append(sourceEnd)
+        append(sourceLocation.end)
         append(")")
     }
 

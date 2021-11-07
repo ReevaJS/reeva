@@ -5,10 +5,7 @@ import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
 import com.reevajs.reeva.core.lifecycle.SourceInfo
-import com.reevajs.reeva.parsing.lexer.Lexer
-import com.reevajs.reeva.parsing.lexer.Token
-import com.reevajs.reeva.parsing.lexer.TokenLocation
-import com.reevajs.reeva.parsing.lexer.TokenType
+import com.reevajs.reeva.parsing.lexer.*
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.utils.*
 import kotlin.contracts.ExperimentalContracts
@@ -1564,7 +1561,7 @@ class Parser(val sourceInfo: SourceInfo) {
         fun makeBinaryExpr(op: BinaryOperator): ExpressionNode {
             consume()
             return BinaryExpressionNode(lhs, parseExpression(minPrecedence, leftAssociative), op)
-                .withPosition(lhs.sourceStart, lastToken.end)
+                .withPosition(lhs.sourceLocation.start, lastToken.end)
         }
 
         fun makeAssignExpr(op: BinaryOperator?): ExpressionNode {
@@ -1584,7 +1581,7 @@ class Parser(val sourceInfo: SourceInfo) {
             }
 
             return AssignmentExpressionNode(lhs, parseExpression(minPrecedence, leftAssociative), op)
-                .withPosition(lhs.sourceStart, lastToken.end)
+                .withPosition(lhs.sourceLocation.start, lastToken.end)
         }
 
         return when (tokenType) {
@@ -1639,24 +1636,24 @@ class Parser(val sourceInfo: SourceInfo) {
                     nps { parseIdentifier() },
                     MemberExpressionNode.Type.NonComputed,
                     isOptional = false,
-                ).withPosition(lhs.sourceStart, lastToken.end)
+                ).withPosition(lhs.sourceLocation.start, lastToken.end)
             }
             TokenType.OpenBracket -> parseBracketedExpression(lhs, isOptional = false).withPosition(
-                lhs.sourceStart,
+                lhs.sourceLocation.start,
                 lastToken.end
             )
             TokenType.Inc -> {
                 consume()
                 UpdateExpressionNode(lhs, isIncrement = true, isPostfix = true)
-                    .withPosition(lhs.sourceStart, lastToken.end)
+                    .withPosition(lhs.sourceLocation.start, lastToken.end)
             }
             TokenType.Dec -> {
                 consume()
                 UpdateExpressionNode(lhs, isIncrement = false, isPostfix = true)
-                    .withPosition(lhs.sourceStart, lastToken.end)
+                    .withPosition(lhs.sourceLocation.start, lastToken.end)
             }
-            TokenType.QuestionMark -> parseConditional(lhs).withPosition(lhs.sourceStart, lastToken.end)
-            TokenType.OptionalChain -> parseOptionalChain(lhs).withPosition(lhs.sourceStart, lastToken.end)
+            TokenType.QuestionMark -> parseConditional(lhs).withPosition(lhs.sourceLocation.start, lastToken.end)
+            TokenType.OptionalChain -> parseOptionalChain(lhs).withPosition(lhs.sourceLocation.start, lastToken.end)
             else -> unreachable()
         }
     }
@@ -1694,7 +1691,7 @@ class Parser(val sourceInfo: SourceInfo) {
                     nps { parseIdentifier() },
                     MemberExpressionNode.Type.NonComputed,
                     isOptional = true,
-                ).withPosition(lhs.sourceStart, lastToken.end)
+                ).withPosition(lhs.sourceLocation.start, lastToken.end)
             }
         }
     }
@@ -2360,8 +2357,7 @@ class Parser(val sourceInfo: SourceInfo) {
             // it extends a nullable type.
             return node
         }
-        node.sourceStart = start
-        node.sourceEnd = lastToken.end
+        node.sourceLocation = SourceLocation(start, lastToken.end)
         return node
     }
 

@@ -11,7 +11,7 @@ import com.reevajs.reeva.utils.expect
 class EarlyErrorDetector(private val reporter: ErrorReporter) : ASTVisitor {
     override fun visit(node: ASTNode) {
         // Verify that we're setting node location properties correctly
-        expect(node.sourceStart != TokenLocation.EMPTY && node.sourceEnd != TokenLocation.EMPTY)
+        expect(node.sourceLocation.let { it.start != TokenLocation.EMPTY && it.end != TokenLocation.EMPTY })
         super.visit(node)
     }
 
@@ -66,7 +66,7 @@ class EarlyErrorDetector(private val reporter: ErrorReporter) : ASTVisitor {
         if (scope is HoistingScope)
             decls.addAll(scope.hoistedVariables)
 
-        decls.sortBy { it.sourceStart.index }
+        decls.sortBy { it.sourceLocation.start.index }
 
         decls.forEach {
             val name = it.name()
