@@ -20,7 +20,8 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
     protected var status = Status.Unlinked
 
     @ECMAImpl("16.2.1.5", name = "[[EvaluationError]]")
-    protected var evaluationError: ThrowException? = null
+    var evaluationError: ThrowException? = null
+        protected set
 
     /**
      * Tracks in what order this module was visited in the DFS module search,

@@ -559,7 +559,7 @@ object Operations {
 //        if (reference.isUnresolvableReference) {
 //            if (reference.isStrict)
 //                Errors.UnresolvableReference(reference.name).throwReferenceError(realm)
-//            Agent.activeAgent.activeRealm.globalObject.set(reference.name, value)
+//            Agent.activeRealm.globalObject.set(reference.name, value)
 //        } else if (reference.isPropertyReference) {
 //            if (reference.hasPrimitiveBase) {
 //                ecmaAssert(base != JSUndefined && base != JSNull)

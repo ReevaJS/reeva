@@ -1,7 +1,6 @@
 package com.reevajs.reeva.core
 
 import com.reevajs.reeva.core.errors.DefaultErrorReporter
-import com.reevajs.reeva.core.errors.StackTraceFrame
 import com.reevajs.reeva.core.lifecycle.*
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.realm.RealmExtension
@@ -33,9 +32,7 @@ class Agent {
     val isBigEndian: Boolean
         get() = byteOrder == ByteOrder.BIG_ENDIAN
 
-    internal val callStack = ArrayDeque<StackTraceFrame>()
-    val activeFunction: JSFunction
-        get() = callStack.last().enclosingFunction
+    val callStack = CallStack()
 
     val microtaskQueue = MicrotaskQueue()
 
@@ -70,17 +67,6 @@ class Agent {
         return SourceTextModuleRecord.parseModule(realm, sourceInfo)
     }
 
-    internal fun <T> inCallScope(function: JSFunction, block: () -> T): T {
-        callStack.add(StackTraceFrame(function, function.debugName, isNative = function is JSNativeFunction))
-        return try {
-            block()
-        } finally {
-            callStack.removeLast()
-            if (callStack.isEmpty())
-                microtaskQueue.checkpoint()
-        }
-    }
-
     internal fun nextObjectId() = objectId++
 
     internal fun nextShapeId() = shapeId++
@@ -97,8 +83,12 @@ class Agent {
             get() = agents.get()
 
         @JvmStatic
+        val activeFunction: JSFunction
+            inline get() = activeAgent.callStack.activeFunction()
+
+        @JvmStatic
         val activeRealm: Realm
-            inline get() = activeAgent.activeFunction.realm
+            inline get() = activeFunction.realm
 
         @JvmStatic
         fun setAgent(agent: Agent) {

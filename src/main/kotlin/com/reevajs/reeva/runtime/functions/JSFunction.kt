@@ -2,6 +2,7 @@ package com.reevajs.reeva.runtime.functions
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.StackTraceFrame
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -33,7 +34,7 @@ abstract class JSFunction(
     abstract fun evaluate(arguments: JSArguments): JSValue
 
     fun call(arguments: JSArguments): JSValue {
-        return Agent.activeAgent.inCallScope(this) {
+        return wrapInStackFrame {
             // TODO: Should this throw an error? Or will we never get here to due
             // the guard in Operations.call
             expect(isCallable)
@@ -48,7 +49,7 @@ abstract class JSFunction(
     }
 
     fun construct(arguments: JSArguments): JSValue {
-        return Agent.activeAgent.inCallScope(this) {
+        return wrapInStackFrame {
             // TODO: Should this throw an error? Or will we never get here to due
             // the guard in Operations.construct
             expect(isConstructor())
@@ -75,6 +76,15 @@ abstract class JSFunction(
 
     fun construct(newTarget: JSValue, arguments: List<JSValue>): JSValue {
         return construct(JSArguments(arguments, newTarget = newTarget))
+    }
+
+    private fun <T> wrapInStackFrame(block: () -> T): T {
+        Agent.activeAgent.callStack.pushActiveFunction(this)
+        return try {
+            block()
+        } finally {
+            Agent.activeAgent.callStack.popActiveFunction()
+        }
     }
 
     enum class ConstructorKind {

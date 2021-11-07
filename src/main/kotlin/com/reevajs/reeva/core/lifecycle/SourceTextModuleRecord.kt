@@ -28,7 +28,10 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
 
     override fun execute(): JSValue {
         link()
-        return evaluate()
+        return evaluate().also {
+            if (evaluationError != null)
+                throw evaluationError!!
+        }
     }
 
     override fun initializeEnvironment() {

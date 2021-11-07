@@ -1,9 +1,9 @@
 package com.reevajs.reeva.core.errors
 
+import com.reevajs.reeva.core.StackTraceFrame
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.toPrintableString
@@ -42,7 +42,7 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter() {
         out.println("\u001b[31mSyntaxError: $cause\u001b[0m")
     }
 
-    override fun reportRuntimeError(sourceInfo: SourceInfo, cause: JSValue, stackTrace: List<StackTraceFrame>) {
+    override fun reportRuntimeError(sourceInfo: SourceInfo, cause: JSValue, stackFrames: List<StackTraceFrame>) {
         out.println("\u001B[31m")
 
         if (cause is JSObject && cause.hasProperty("message".key())) {
@@ -56,10 +56,11 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter() {
             out.println(cause.toPrintableString())
         }
 
-        out.println("From: ${sourceInfo.name}")
-        for (frame in stackTrace) {
-            // TODO: Add location information
-            out.println("    at ${frame.enclosingFunction.debugName}")
+        for (frame in stackFrames.asReversed()) {
+            val location = frame.invocationLocation?.let {
+                "(${it.start.line + 1}:${it.start.column + 1})"
+            } ?: ""
+            out.println("    at ${frame.enclosingFunction.debugName} $location")
         }
 
         out.println("\u001B[0m")

@@ -73,6 +73,7 @@ class Interpreter(
                         savedStackHeights.removeLast()
                 }
 
+                Agent.activeAgent.callStack.setPendingLocation(info.ir.locationTable[ip])
                 visit(info.ir.opcodes[ip++])
             } catch (e: ThrowException) {
                 // TODO: Can we optimize this lookup?
@@ -706,11 +707,11 @@ class Interpreter(
     }
 
     override fun visitGetSuperConstructor() {
-        push(Agent.activeAgent.activeFunction.getPrototype())
+        push(Agent.activeFunction.getPrototype())
     }
 
     override fun visitGetSuperBase() {
-        val homeObject = Agent.activeAgent.activeFunction.homeObject
+        val homeObject = Agent.activeFunction.homeObject
         if (homeObject == JSUndefined) {
             push(JSUndefined)
         } else {
@@ -763,7 +764,7 @@ class Interpreter(
     }
 
     override fun visitPushClosure() {
-        push(Agent.activeAgent.activeFunction)
+        push(Agent.activeFunction)
     }
 
     override fun visitReturn() {
