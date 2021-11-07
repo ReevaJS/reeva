@@ -1,6 +1,7 @@
 package com.reevajs.reeva.parsing
 
 import com.reevajs.reeva.ast.*
+import com.reevajs.reeva.ast.expressions.SuperCallExpressionNode
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.ast.literals.PropertyName
 import com.reevajs.reeva.ast.statements.BlockNode
@@ -46,6 +47,17 @@ class EarlyErrorDetector(private val reporter: ErrorReporter) : ASTVisitor {
     }
 
     override fun visitClass(node: ClassNode) {
+        if (node.heritage == null) {
+            val ctor = node.body.firstOrNull {
+                it is ClassMethodNode && it.isConstructor()
+            }
+            if (ctor != null) {
+                val superCalls = ctor.childrenOfType<SuperCallExpressionNode>()
+                if (superCalls.isNotEmpty())
+                    reporter.at(superCalls[0]).baseClassSuperCall()
+            }
+        }
+
         for (element in node.body) {
             if (element is ClassFieldNode) {
                 if (element.identifier.type == PropertyName.Type.Identifier) {

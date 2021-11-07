@@ -18,6 +18,7 @@ abstract class Reporter {
 
     fun arrowFunctionNewLine(): Nothing =
         error("arrow function cannot be separated from it's arrow by a line terminator")
+    fun baseClassSuperCall(): Nothing = error("base class cannot contain a call to super")
     fun breakOutsideOfLoopOrSwitch(): Nothing = error("break statement must be inside of a loop or switch statement")
     fun classAsyncAccessor(isGetter: Boolean): Nothing =
         error("class ${if (isGetter) "getter" else "setter"} cannot be async")
