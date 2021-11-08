@@ -102,6 +102,8 @@ class Parser(val sourceInfo: SourceInfo) {
                 println(result.debugPrint())
 
             Result.success(ParsedSource(sourceInfo, result))
+        } catch (e: LexingException) {
+            Result.error(ParsingError(e.message!!, e.source, e.source.shiftColumn(1)))
         } catch (e: ParsingException) {
             Result.error(ParsingError(e.message!!, e.start, e.end))
         }

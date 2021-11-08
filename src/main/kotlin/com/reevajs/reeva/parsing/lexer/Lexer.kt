@@ -1,10 +1,7 @@
 package com.reevajs.reeva.parsing.lexer
 
-import com.reevajs.reeva.utils.isHexDigit
-import com.reevajs.reeva.utils.isIdContinue
-import com.reevajs.reeva.utils.isIdStart
-import com.reevajs.reeva.utils.isLineSeparator
-import com.reevajs.reeva.utils.isWhiteSpace
+import com.reevajs.reeva.utils.*
+import kotlin.Error
 
 class Lexer(private val source: String) {
     private var lineNum = 0
@@ -29,252 +26,242 @@ class Lexer(private val source: String) {
     }
 
     private fun nextToken(): Token {
-        try {
-            val triviaStartCursor = cursor
-            val inTemplate = templateStates.isNotEmpty()
+        val triviaStartCursor = cursor
+        val inTemplate = templateStates.isNotEmpty()
 
-            if (!inTemplate || templateStates.last().inExpr) {
-                // Consume whitespace and comments
-                while (!isDone) {
-                    if (char.isWhiteSpace()) {
-                        do {
-                            consume()
-                        } while (!isDone && char.isWhiteSpace())
-                    } else if (isCommentStart()) {
+        if (!inTemplate || templateStates.last().inExpr) {
+            // Consume whitespace and comments
+            while (!isDone) {
+                if (char.isWhiteSpace() || char.isLineSeparator()) {
+                    do {
                         consume()
-                        do {
-                            consume()
-                        } while (!isDone && char != '\n')
-                    } else if (has(2) && match(multilineCommentStart)) {
+                    } while (!isDone && (char.isWhiteSpace() || char.isLineSeparator()))
+                } else if (isCommentStart()) {
+                    consume()
+                    do {
                         consume()
-                        do {
-                            consume()
-                        } while (has(2) && !match(multilineCommentEnd))
+                    } while (!isDone && char != '\n')
+                } else if (has(2) && match(multilineCommentStart)) {
+                    consume()
+                    do {
+                        consume()
+                    } while (has(2) && !match(multilineCommentEnd))
 
-                        if (!isDone)
-                            consume(2)
-                    } else break
+                    if (!isDone)
+                        consume(2)
+                } else break
+            }
+        }
+
+        val afterNewline = source.substring(triviaStartCursor, cursor).any { it.isLineSeparator() }
+
+        val valueStartCursor = cursor
+        val valueStartLocation = TokenLocation(cursor, lineNum, columnNum)
+        var tokenType: TokenType
+
+        if (isDone) {
+            tokenType = TokenType.Eof
+        } else if (lastToken.type == TokenType.RegExpLiteral && !isDone && char.isLetter() && !afterNewline) {
+            tokenType = TokenType.RegexFlags
+            while (!isDone && char.isLetter())
+                consume()
+        } else if (char == '`') {
+            consume()
+
+            if (!inTemplate) {
+                tokenType = TokenType.TemplateLiteralStart
+                templateStates.add(TemplateState())
+            } else {
+                tokenType = if (templateStates.last().inExpr) {
+                    templateStates.add(TemplateState())
+                    TokenType.TemplateLiteralStart
+                } else {
+                    templateStates.removeLast()
+                    TokenType.TemplateLiteralEnd
                 }
             }
-
-            val afterNewline = source.substring(triviaStartCursor, cursor).any { it.isLineSeparator() }
-
-            val valueStartCursor = cursor
-            val valueStartLocation = TokenLocation(cursor, lineNum, columnNum)
-            var tokenType: TokenType
-
-            if (isDone) {
-                tokenType = TokenType.Eof
-            } else if (lastToken.type == TokenType.RegExpLiteral && !isDone && char.isLetter() && !afterNewline) {
-                tokenType = TokenType.RegexFlags
-                while (!isDone && char.isLetter())
-                    consume()
-            } else if (char == '`') {
-                consume()
-
-                if (!inTemplate) {
-                    tokenType = TokenType.TemplateLiteralStart
-                    templateStates.add(TemplateState())
-                } else {
-                    tokenType = if (templateStates.last().inExpr) {
-                        templateStates.add(TemplateState())
-                        TokenType.TemplateLiteralStart
-                    } else {
-                        templateStates.removeLast()
-                        TokenType.TemplateLiteralEnd
-                    }
+        } else if (inTemplate && templateStates.last().let { it.inExpr && it.openBracketCount == 0 } &&
+            char == '}'
+        ) {
+            consume()
+            tokenType = TokenType.TemplateLiteralExprEnd
+            templateStates.last().inExpr = false
+        } else if (inTemplate && !templateStates.last().inExpr) {
+            when {
+                isDone -> {
+                    tokenType = TokenType.UnterminatedTemplateLiteral
+                    templateStates.removeLast()
                 }
-            } else if (inTemplate && templateStates.last().let { it.inExpr && it.openBracketCount == 0 } &&
-                char == '}'
-            ) {
-                consume()
-                tokenType = TokenType.TemplateLiteralExprEnd
-                templateStates.last().inExpr = false
-            } else if (inTemplate && !templateStates.last().inExpr) {
-                when {
-                    isDone -> {
-                        tokenType = TokenType.UnterminatedTemplateLiteral
-                        templateStates.removeLast()
-                    }
-                    has(2) && match(templateExprStart) -> {
-                        tokenType = TokenType.TemplateLiteralExprStart
-                        consume(2)
-                        templateStates.last().inExpr = true
-                    }
-                    else -> {
-                        while (has(2) && !match(templateExprStart) && char != '`') {
-                            if (match(escapedDollar) || match(escapedGrave))
-                                consume()
-                            consume()
-                        }
-                        tokenType = TokenType.TemplateLiteralString
-                    }
+                has(2) && match(templateExprStart) -> {
+                    tokenType = TokenType.TemplateLiteralExprStart
+                    consume(2)
+                    templateStates.last().inExpr = true
                 }
-            } else if (isIdentStart()) {
-                do {
-                    consumeIdentChar()
-                } while (isIdentMiddle())
-
-                tokenType = keywordFromStr(source.substring(valueStartCursor, cursor))
-            } else if (isNumberLiteralStart()) {
-                tokenType = TokenType.NumericLiteral
-                if (char == '0') {
-                    consume()
-                    when (char) {
-                        '.' -> {
+                else -> {
+                    while (has(2) && !match(templateExprStart) && char != '`') {
+                        if (match(escapedDollar) || match(escapedGrave))
                             consume()
-                            while (char.isDigit())
-                                consume()
-                            if (char == 'e' || char == 'E')
-                                consumeExponent()
-                        }
-                        'e', 'E' -> consumeExponent()
-                        'o', 'O' -> {
-                            consume()
-                            while (char in '0'..'7')
-                                consume()
-                            if (char == 'n') {
-                                consume()
-                                tokenType = TokenType.BigIntLiteral
-                            }
-                        }
-                        'b', 'B' -> {
-                            consume()
-                            while (char == '0' || char == '1')
-                                consume()
-                            if (char == 'n') {
-                                consume()
-                                tokenType = TokenType.BigIntLiteral
-                            }
-                        }
-                        'x', 'X' -> {
-                            consume()
-                            while (char.isHexDigit())
-                                consume()
-                            if (char == 'n') {
-                                consume()
-                                tokenType = TokenType.BigIntLiteral
-                            }
-                        }
-                        'n' -> {
-                            consume()
-                            tokenType = TokenType.BigIntLiteral
-                        }
-                        else -> {
-                            if (char.isDigit()) {
-                                // Octal without 'O' prefix
-                                // TODO: Prevent in strict mode
-                                do {
-                                    consume()
-                                } while (char in '0'..'7')
-                            }
-                        }
+                        consume()
                     }
-                } else {
-                    while (char.isDigit() || char == '_')
+                    tokenType = TokenType.TemplateLiteralString
+                }
+            }
+        } else if (isIdentStart()) {
+            do {
+                consumeIdentChar()
+            } while (isIdentMiddle())
+
+            tokenType = keywordFromStr(source.substring(valueStartCursor, cursor))
+        } else if (isNumberLiteralStart()) {
+            tokenType = TokenType.NumericLiteral
+            if (char == '0') {
+                consume()
+                when (char) {
+                    '.' -> {
                         consume()
-                    if (char == 'n') {
-                        consume()
-                        tokenType = TokenType.BigIntLiteral
-                    } else {
-                        if (char == '.') {
+                        while (char.isDigit())
                             consume()
-                            while (char.isDigit() || char == '_')
-                                consume()
-                        }
                         if (char == 'e' || char == 'E')
                             consumeExponent()
                     }
-                }
-            } else if (char == '"' || char == '\'') {
-                val stopChar = char
-                consume()
-
-                // Note: Line breaks are invalid in string literals, but this is
-                // handled with a nice error message in the parser, as well as
-                // string unescaping
-                while (char != stopChar && !isDone) {
-                    if (char == '\\')
+                    'e', 'E' -> consumeExponent()
+                    'o', 'O' -> {
                         consume()
-                    consume()
-                }
-                tokenType = if (char != stopChar) {
-                    TokenType.UnterminatedStringLiteral
-                } else {
-                    consume()
-                    TokenType.StringLiteral
-                }
-            } else if (char == '/' && lastToken.type !in slashMeansDivision) {
-                consume()
-                tokenType = TokenType.RegExpLiteral
-
-                while (!isDone) {
-                    if (char == '[') {
-                        regexIsInCharClass = true
-                    } else if (char == ']') {
-                        regexIsInCharClass = false
-                    } else if (!regexIsInCharClass && char == '/') {
-                        break
+                        while (char in '0'..'7')
+                            consume()
+                        if (char == 'n') {
+                            consume()
+                            tokenType = TokenType.BigIntLiteral
+                        }
                     }
-
-                    if (has(2) && (
-                        match(escapedSlash) || match(escapedOpenBracket) ||
-                            match(escapedBackslash) || (regexIsInCharClass && match(escapedCloseBracket))
-                        )
-                    ) {
+                    'b', 'B' -> {
                         consume()
+                        while (char == '0' || char == '1')
+                            consume()
+                        if (char == 'n') {
+                            consume()
+                            tokenType = TokenType.BigIntLiteral
+                        }
                     }
-                    consume()
-                }
-
-                if (isDone) {
-                    tokenType = TokenType.UnterminatedRegexLiteral
-                } else {
-                    consume()
+                    'x', 'X' -> {
+                        consume()
+                        while (char.isHexDigit())
+                            consume()
+                        if (char == 'n') {
+                            consume()
+                            tokenType = TokenType.BigIntLiteral
+                        }
+                    }
+                    'n' -> {
+                        consume()
+                        tokenType = TokenType.BigIntLiteral
+                    }
+                    else -> {
+                        if (char.isDigit()) {
+                            // Octal without 'O' prefix
+                            // TODO: Prevent in strict mode
+                            do {
+                                consume()
+                            } while (char in '0'..'7')
+                        }
+                    }
                 }
             } else {
-                val type = matchSymbolicToken()
-                tokenType = type
-
-                if (type == TokenType.Invalid) {
+                while (char.isDigit() || char == '_')
                     consume()
+                if (char == 'n') {
+                    consume()
+                    tokenType = TokenType.BigIntLiteral
                 } else {
-                    consume(type.string.length)
+                    if (char == '.') {
+                        consume()
+                        while (char.isDigit() || char == '_')
+                            consume()
+                    }
+                    if (char == 'e' || char == 'E')
+                        consumeExponent()
                 }
             }
+        } else if (char == '"' || char == '\'') {
+            val stopChar = char
+            consume()
 
-            if (templateStates.isNotEmpty() && templateStates.last().inExpr) {
-                if (tokenType == TokenType.OpenCurly) {
-                    templateStates.last().openBracketCount++
-                } else if (tokenType == TokenType.CloseCurly) {
-                    templateStates.last().openBracketCount--
+            // Note: Line breaks are invalid in string literals, but this is
+            // handled with a nice error message in the parser, as well as
+            // string unescaping
+            while (char != stopChar && !isDone) {
+                if (char == '\\')
+                    consume()
+                consume()
+            }
+            tokenType = if (char != stopChar) {
+                TokenType.UnterminatedStringLiteral
+            } else {
+                consume()
+                TokenType.StringLiteral
+            }
+        } else if (char == '/' && lastToken.type !in slashMeansDivision) {
+            consume()
+            tokenType = TokenType.RegExpLiteral
+
+            while (!isDone) {
+                if (char == '[') {
+                    regexIsInCharClass = true
+                } else if (char == ']') {
+                    regexIsInCharClass = false
+                } else if (!regexIsInCharClass && char == '/') {
+                    break
                 }
+
+                if (has(2) && (
+                    match(escapedSlash) || match(escapedOpenBracket) ||
+                        match(escapedBackslash) || (regexIsInCharClass && match(escapedCloseBracket))
+                    )
+                ) {
+                    consume()
+                }
+                consume()
             }
 
-            val value = if (tokenType == TokenType.StringLiteral) {
-                source.substring(valueStartCursor + 1, cursor - 1)
-            } else source.substring(valueStartCursor, cursor)
+            if (isDone) {
+                tokenType = TokenType.UnterminatedRegexLiteral
+            } else {
+                consume()
+            }
+        } else {
+            val type = matchSymbolicToken()
+            tokenType = type
 
-            lastToken = Token(
-                tokenType,
-                valueStartLocation,
-                TokenLocation(cursor, lineNum, columnNum),
-                afterNewline,
-                value,
-                value, // TODO: Raw strings
-            )
+            if (type == TokenType.Invalid) {
+                val hexValue = char.code.toString(16).padStart(4, padChar = '0')
+                throw LexingException("invalid token \"\\u$hexValue\"", valueStartLocation)
+            }
 
-            return lastToken
-        } catch (e: Throwable) {
-            return Token(
-                TokenType.Invalid,
-                TokenLocation(cursor, lineNum, columnNum),
-                TokenLocation(cursor, lineNum, columnNum),
-                false,
-                e.message!!,
-                "",
-            )
+            consume(type.string.length)
         }
+
+        if (templateStates.isNotEmpty() && templateStates.last().inExpr) {
+            if (tokenType == TokenType.OpenCurly) {
+                templateStates.last().openBracketCount++
+            } else if (tokenType == TokenType.CloseCurly) {
+                templateStates.last().openBracketCount--
+            }
+        }
+
+        val value = if (tokenType == TokenType.StringLiteral) {
+            source.substring(valueStartCursor + 1, cursor - 1)
+        } else source.substring(valueStartCursor, cursor)
+
+        lastToken = Token(
+            tokenType,
+            valueStartLocation,
+            TokenLocation(cursor, lineNum, columnNum),
+            afterNewline,
+            value,
+            value, // TODO: Raw strings
+        )
+
+        return lastToken
     }
 
     private fun isIdentStart() = char.isIdStart() || char == '_' || char == '$' ||
