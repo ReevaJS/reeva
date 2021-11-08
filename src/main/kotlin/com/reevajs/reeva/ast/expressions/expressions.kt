@@ -46,7 +46,6 @@ class MemberExpressionNode(
     val lhs: ExpressionNode,
     val rhs: ExpressionNode,
     val type: Type,
-    val isOptional: Boolean,
 ) : ASTNodeBase(listOf(lhs, rhs)), ExpressionNode {
     override val isInvalidAssignmentTarget = false
 

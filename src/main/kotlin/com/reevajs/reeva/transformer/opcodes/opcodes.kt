@@ -566,6 +566,12 @@ class JumpIfNotUndefined(to: Int) : JumpInstr(to)
 class JumpIfNotNullish(to: Int) : JumpInstr(to)
 
 /**
+ * Jumps to [to] if the value on the top of the stack is either the
+ * JSUndefined instance or the JSNull instance.
+ */
+class JumpIfNullish(to: Int) : JumpInstr(to)
+
+/**
  * Jumps to [to] if the value on the top of the stack is not the JSEmpty
  * instance.
  */

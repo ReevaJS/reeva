@@ -677,6 +677,11 @@ class Interpreter(
             ip = opcode.to
     }
 
+    override fun visitJumpIfNullish(opcode: JumpIfNullish) {
+        if (popValue().isNullish)
+            ip = opcode.to
+    }
+
     override fun visitJumpIfNotEmpty(opcode: JumpIfNotEmpty) {
         if (popValue() != JSEmpty)
             ip = opcode.to

@@ -1625,15 +1625,16 @@ class Parser(val sourceInfo: SourceInfo) {
                     reporter.expected("identifier", tokenType)
                 MemberExpressionNode(
                     lhs,
-                    nps { parseIdentifier() },
+                    parseIdentifier(),
                     MemberExpressionNode.Type.NonComputed,
-                    isOptional = false,
                 ).withPosition(lhs.sourceLocation.start, lastToken.end)
             }
-            TokenType.OpenBracket -> parseBracketedExpression(lhs, isOptional = false).withPosition(
-                lhs.sourceLocation.start,
-                lastToken.end
-            )
+            TokenType.OpenBracket -> {
+                consume()
+                MemberExpressionNode(lhs, parseExpression(), MemberExpressionNode.Type.Computed).also {
+                    consume(TokenType.CloseBracket)
+                }.withPosition(lhs.sourceLocation.start, lastToken.end)
+            }
             TokenType.Inc -> {
                 consume()
                 validateAssignmentTarget(lhs)
@@ -1647,7 +1648,10 @@ class Parser(val sourceInfo: SourceInfo) {
                     .withPosition(lhs.sourceLocation.start, lastToken.end)
             }
             TokenType.QuestionMark -> parseConditional(lhs).withPosition(lhs.sourceLocation.start, lastToken.end)
-            TokenType.OptionalChain -> parseOptionalChain(lhs).withPosition(lhs.sourceLocation.start, lastToken.end)
+            TokenType.OptionalChain -> {
+                // TODO: Disallow "new Foo?.a"
+                parseOptionalChain(lhs).withPosition(lhs.sourceLocation.start, lastToken.end)
+            }
             else -> unreachable()
         }
     }
@@ -1660,34 +1664,48 @@ class Parser(val sourceInfo: SourceInfo) {
         ConditionalExpressionNode(lhs, ifTrue, ifFalse)
     }
 
-    private fun parseBracketedExpression(lhs: ExpressionNode, isOptional: Boolean): ExpressionNode = nps {
-        consume()
-        val rhs = parseExpression(0)
-        consume(TokenType.CloseBracket)
-        MemberExpressionNode(
-            lhs,
-            rhs,
-            MemberExpressionNode.Type.Computed,
-            isOptional,
-        )
-    }
+    private fun parseOptionalChain(base_: ExpressionNode): ExpressionNode = nps {
+        val (base, parts) = if (base_ is OptionalChainNode) {
+            base_.base to base_.parts.toMutableList()
+        } else base_ to mutableListOf()
 
-    private fun parseOptionalChain(lhs: ExpressionNode): ExpressionNode = nps {
-        consume(TokenType.OptionalChain)
-        when (tokenType) {
-            TokenType.OpenParen -> parseCallExpression(lhs, isOptional = true)
-            TokenType.OpenBracket -> parseBracketedExpression(lhs, isOptional = true)
-            else -> {
-                if (!matchIdentifierName())
-                    reporter.expected("identifier", tokenType)
-                MemberExpressionNode(
-                    lhs,
-                    nps { parseIdentifier() },
-                    MemberExpressionNode.Type.NonComputed,
-                    isOptional = true,
-                ).withPosition(lhs.sourceLocation.start, lastToken.end)
+        do {
+            when (tokenType) {
+                TokenType.OptionalChain -> {
+                    consume()
+                    when (tokenType) {
+                        TokenType.OpenParen -> parts.add(nps { OptionalCallChain(parseArguments(), isOptional = true) })
+                        TokenType.OpenBracket -> {
+                            consume()
+                            parts.add(nps { OptionalComputedAccessChain(parseExpression(), isOptional = true) })
+                            consume(TokenType.CloseBracket)
+                        }
+                        TokenType.TemplateLiteralStart -> reporter.at(token).templateLiteralAfterOptionalChain()
+                        else -> {
+                            if (!matchIdentifierName())
+                                reporter.at(token).expected("identifier", tokenType)
+                            parts.add(nps { OptionalAccessChain(parseIdentifier(), isOptional = true) })
+                        }
+                    }
+                }
+                TokenType.OpenParen -> parts.add(nps { OptionalCallChain(parseArguments(), isOptional = false) })
+                TokenType.Period -> {
+                    consume()
+                    if (!matchIdentifierName())
+                        reporter.at(token).expected("identifier", tokenType)
+                    parts.add(nps { OptionalAccessChain(parseIdentifier(), isOptional = false) })
+                }
+                TokenType.TemplateLiteralStart -> reporter.at(token).templateLiteralAfterOptionalChain()
+                TokenType.OpenBracket -> {
+                    consume()
+                    parts.add(nps { OptionalComputedAccessChain(parseExpression(), isOptional = false) })
+                    consume(TokenType.CloseBracket)
+                }
+                else -> break
             }
-        }
+        } while (!isDone)
+
+        OptionalChainNode(base, parts)
     }
 
     private fun parseCallExpression(lhs: ExpressionNode, isOptional: Boolean): ExpressionNode = nps {

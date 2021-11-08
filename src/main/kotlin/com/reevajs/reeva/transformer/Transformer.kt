@@ -1129,7 +1129,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 storeToSource(lhs.source)
             }
             is MemberExpressionNode -> {
-                expect(!lhs.isOptional)
                 visitExpression(lhs.lhs)
 
                 when (lhs.type) {
@@ -1168,12 +1167,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     private fun pushMemberExpression(node: MemberExpressionNode, pushReceiver: Boolean) {
         visitExpression(node.lhs)
 
-        if (node.isOptional) {
-            builder.ifHelper(::JumpIfNotNullish) {
-                +PushUndefined
-            }
-        }
-
         if (pushReceiver)
             +Dup
 
@@ -1190,6 +1183,75 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         if (pushReceiver)
             +Swap
+    }
+
+    override fun visitOptionalChain(node: OptionalChainNode) {
+        pushOptionalChain(node, false)
+    }
+
+    private fun pushOptionalChain(node: OptionalChainNode, pushReceiver: Boolean) {
+        val firstNeedsReceiver = node.parts[0] is OptionalCallChain
+
+        if (node.base is MemberExpressionNode) {
+            pushMemberExpression(node.base, firstNeedsReceiver)
+        } else {
+            visitExpression(node.base)
+            if (firstNeedsReceiver)
+                +PushUndefined
+        }
+
+        val jumps = mutableListOf<JumpInstr>()
+
+        var receiverLocal: Local? = null
+
+        if (firstNeedsReceiver) {
+            receiverLocal = builder.newLocalSlot(LocalKind.Value)
+            +StoreValue(receiverLocal)
+        }
+
+        for ((index, part) in node.parts.withIndex()) {
+            if (part.isOptional) {
+                +Dup
+                +JumpIfNullish(-1).also(jumps::add)
+            }
+
+            val needsReceiver =
+                (index < node.parts.lastIndex && node.parts[index + 1] is OptionalCallChain) ||
+                    (index == node.parts.lastIndex && pushReceiver)
+
+            if (needsReceiver) {
+                if (receiverLocal == null)
+                    receiverLocal = builder.newLocalSlot(LocalKind.Value)
+                +Dup
+                +StoreValue(receiverLocal)
+            }
+
+            when (part) {
+                is OptionalAccessChain -> +LoadNamedProperty(part.identifier.processedName)
+                is OptionalCallChain -> {
+                    +LoadValue(receiverLocal!!)
+                    if (pushArguments(part.arguments) == ArgumentsMode.Normal) {
+                        +Call(part.arguments.size)
+                    } else {
+                        +CallArray
+                    }
+                    builder.setLastOpcodeLocation(part.sourceLocation)
+                }
+                is OptionalComputedAccessChain -> {
+                    visitExpression(part.expr)
+                    +LoadKeyedProperty
+                }
+            }
+        }
+
+        val skip = +Jump(-1)
+        jumps.forEach { it.to = builder.opcodeCount() }
+        +Pop
+        +PushUndefined
+        skip.to = builder.opcodeCount()
+
+        if (pushReceiver)
+            +LoadValue(receiverLocal!!)
     }
 
     override fun visitReturnStatement(node: ReturnStatementNode) {
@@ -1274,31 +1336,21 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     override fun visitCallExpression(node: CallExpressionNode) {
-        if (node.target is MemberExpressionNode) {
-            pushMemberExpression(node.target, pushReceiver = true)
-        } else {
-            visitExpression(node.target)
-            +PushUndefined
-        }
-
-        fun buildCall() {
-            if (pushArguments(node.arguments) == ArgumentsMode.Normal) {
-                +Call(node.arguments.size)
-            } else {
-                +CallArray
+        when (node.target) {
+            is MemberExpressionNode -> pushMemberExpression(node.target, pushReceiver = true)
+            is OptionalChainNode -> pushOptionalChain(node.target, true)
+            else -> {
+                visitExpression(node.target)
+                +PushUndefined
             }
-            builder.setLastOpcodeLocation(node.sourceLocation)
         }
 
-        if (node.isOptional) {
-            builder.ifElseHelper(
-                ::JumpIfNotNullish,
-                { +PushUndefined },
-                { buildCall() },
-            )
+        if (pushArguments(node.arguments) == ArgumentsMode.Normal) {
+            +Call(node.arguments.size)
         } else {
-            buildCall()
+            +CallArray
         }
+        builder.setLastOpcodeLocation(node.sourceLocation)
     }
 
     override fun visitNewExpression(node: NewExpressionNode) {

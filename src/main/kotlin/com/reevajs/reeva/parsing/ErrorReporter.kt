@@ -34,6 +34,7 @@ abstract class Reporter {
     fun duplicateDeclaration(name: String, type: String): Nothing = error("duplicate $type declaration of \"$name\"")
     fun emptyParenthesizedExpression(): Nothing = error("parenthesized expression cannot be empty")
     fun emptyTemplateLiteralExpr(): Nothing = error("empty template literal expression")
+    fun expressionNotAssignable(): Nothing = error("invalid expression in assignment context")
     fun forEachMultipleDeclarations(): Nothing =
         error("for-in/of statement cannot contain multiple variable declarations")
     fun functionInExpressionContext(): Nothing =
@@ -49,7 +50,6 @@ abstract class Reporter {
     fun invalidBreakTarget(target: String): Nothing = error("invalid break target \"$target\"")
     fun invalidContinueTarget(target: String): Nothing = error("invalid continue target \"$target\"")
     fun invalidNewMetaProperty(): Nothing = error("new.target is the only valid \"new\" meta-property")
-    fun invalidLhsInAssignment(): Nothing = error("invalid left-hand-side in assignment expression")
     fun invalidShorthandProperty(): Nothing = error("object shorthand property must be an identifier name")
     fun invalidUseStrict(): Nothing =
         error("invalid \"use strict\" directive in function with non-simple parameter list")
@@ -72,6 +72,8 @@ abstract class Reporter {
         error("unicode codepoint escape sequence missing closing curly brace")
     fun stringUnicodeMissingDigits(): Nothing =
         error("unicode escape sequence without curly braces must contain four digits")
+    fun templateLiteralAfterOptionalChain(): Nothing =
+        error("unexpected template literal after optional chain")
     fun throwStatementNewLine(): Nothing =
         error("throw keyword cannot be separated from it's expression by a line terminator")
     fun unexpectedToken(token: TokenType): Nothing = error("unexpected token \"$token\"")

@@ -79,6 +79,7 @@ interface ASTVisitor {
             is BigIntLiteralNode -> visitBigIntLiteral(node)
             is NullLiteralNode -> visitNullLiteral()
             is ThisLiteralNode -> visitThisLiteral(node)
+            is OptionalChainNode -> visitOptionalChain(node)
             else -> throw IllegalArgumentException("Unrecognized ExpressionNode ${node.astNodeName}")
         }
     }
@@ -429,6 +430,17 @@ interface ASTVisitor {
     fun visitNewExpression(node: NewExpressionNode) {
         visit(node.target)
         node.arguments.forEach { visit(it.expression) }
+    }
+
+    fun visitOptionalChain(node: OptionalChainNode) {
+        visit(node.base)
+        for (part in node.parts) {
+            when (part) {
+                is OptionalAccessChain -> visit(part.identifier)
+                is OptionalCallChain -> visit(part.arguments)
+                is OptionalComputedAccessChain -> visit(part.expr)
+            }
+        }
     }
 
     fun visitSuperPropertyExpression(node: SuperPropertyExpressionNode) {

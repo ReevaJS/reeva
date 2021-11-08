@@ -84,6 +84,7 @@ interface OpcodeVisitor {
             is JumpIfUndefined -> visitJumpIfUndefined(opcode)
             is JumpIfNotUndefined -> visitJumpIfNotUndefined(opcode)
             is JumpIfNotNullish -> visitJumpIfNotNullish(opcode)
+            is JumpIfNullish -> visitJumpIfNullish(opcode)
             is JumpIfNotEmpty -> visitJumpIfNotEmpty(opcode)
             is CreateRegExpObject -> visitCreateRegExpObject(opcode)
             is CreateTemplateLiteral -> visitCreateTemplateLiteral(opcode)
@@ -290,6 +291,8 @@ interface OpcodeVisitor {
     fun visitJumpIfNotUndefined(opcode: JumpIfNotUndefined)
 
     fun visitJumpIfNotNullish(opcode: JumpIfNotNullish)
+
+    fun visitJumpIfNullish(opcode: JumpIfNullish)
 
     fun visitJumpIfNotEmpty(opcode: JumpIfNotEmpty)
 
