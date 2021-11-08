@@ -96,13 +96,12 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                 var k = 0L
                 while (true) {
                     if (k == Operations.MAX_SAFE_INTEGER) {
-                        return Operations.iteratorClose(
-                            iteratorRecord,
-                            JSTypeErrorObject.create(
-                                realm,
-                                "array length ${Long.MAX_VALUE} is too large"
-                            )
+                        val error = JSTypeErrorObject.create(
+                            realm,
+                            "array length ${Long.MAX_VALUE} is too large"
                         )
+                        Operations.iteratorClose(iteratorRecord, error)
+                        throw ThrowException(error)
                     }
 
                     val next = Operations.iteratorStep(iteratorRecord)
@@ -116,14 +115,16 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                         try {
                             Operations.call(realm, mapFn, thisArg, listOf(nextValue, k.toValue()))
                         } catch (e: ThrowException) {
-                            return Operations.iteratorClose(iteratorRecord, e.value)
+                            Operations.iteratorClose(iteratorRecord, e.value)
+                            throw e
                         }
                     } else nextValue
 
                     try {
                         Operations.createDataPropertyOrThrow(realm, array, k.key(), mappedValue)
                     } catch (e: ThrowException) {
-                        return Operations.iteratorClose(iteratorRecord, e.value)
+                        Operations.iteratorClose(iteratorRecord, e.value)
+                        throw e
                     }
 
                     k++

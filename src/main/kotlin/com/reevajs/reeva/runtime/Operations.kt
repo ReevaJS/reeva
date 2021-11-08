@@ -2750,19 +2750,19 @@ object Operations {
             }
             val key = try {
                 nextItem.get(0)
-            } catch (e: Throwable) {
+            } catch (e: ThrowException) {
                 iteratorClose(record, JSEmpty)
                 throw e
             }
             val value = try {
                 nextItem.get(1)
-            } catch (e: Throwable) {
+            } catch (e: ThrowException) {
                 iteratorClose(record, JSEmpty)
                 throw e
             }
             try {
                 call(realm, adder, target, listOf(key, value))
-            } catch (e: Throwable) {
+            } catch (e: ThrowException) {
                 iteratorClose(record, JSEmpty)
                 throw e
             }

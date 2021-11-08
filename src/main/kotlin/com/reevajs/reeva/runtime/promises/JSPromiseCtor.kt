@@ -69,7 +69,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                     else JSEmpty
                 } finally {
                     Operations.call(realm, capability.reject!!, JSUndefined, listOf(e.value))
-                    return capability.promise
+                    capability.promise
                 }
             }
         }
