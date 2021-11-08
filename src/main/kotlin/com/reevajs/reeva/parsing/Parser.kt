@@ -4,6 +4,7 @@ import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.lexer.*
 import com.reevajs.reeva.runtime.Operations
@@ -96,6 +97,9 @@ class Parser(val sourceInfo: SourceInfo) {
 
             ScopeResolver().resolve(result)
             EarlyErrorDetector(reporter).visit(result)
+
+            if (Agent.activeAgent.printAST)
+                println(result.debugPrint())
 
             Result.success(ParsedSource(sourceInfo, result))
         } catch (e: ParsingException) {
