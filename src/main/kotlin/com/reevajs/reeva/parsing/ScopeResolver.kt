@@ -217,6 +217,13 @@ class ScopeResolver : ASTVisitor {
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
+        if (node.identifier != null) {
+            node.type = VariableType.Var
+            node.mode = VariableMode.Declared
+
+            scope.addVariableSource(node)
+        }
+
         node.scope = scope
         node.functionScope = visitFunctionHelper(node.parameters, node.body, node.kind, isLexical = false)
     }

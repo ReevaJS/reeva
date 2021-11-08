@@ -1489,6 +1489,13 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 node.kind,
             )
         )
+
+        // If the function is inlineable, that means there are no recursive references inside it,
+        // meaning that we don't need to worry about storing it in the EnvRecord
+        if (node.identifier != null && !node.isInlineable) {
+            +Dup
+            storeToSource(node)
+        }
     }
 
     override fun visitArrowFunction(node: ArrowFunctionNode) {

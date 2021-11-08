@@ -93,9 +93,13 @@ class FunctionExpressionNode(
     val parameters: ParameterList,
     val body: BlockNode,
     val kind: Operations.FunctionKind,
-) : NodeWithScope(listOfNotNull(identifier) + parameters + body), ExpressionNode {
+) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), ExpressionNode {
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
+
+    // This expression node only functions as a VariableSourceNode if it has an
+    // identifier. If not, then this function will never be called
+    override fun name() = identifier!!.processedName
 }
 
 class ArrowFunctionNode(
