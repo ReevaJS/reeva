@@ -1566,19 +1566,7 @@ class Parser(val sourceInfo: SourceInfo) {
 
         fun makeAssignExpr(op: BinaryOperator?): ExpressionNode {
             consume()
-            if (lhs !is IdentifierReferenceNode && lhs !is MemberExpressionNode && lhs !is CallExpressionNode)
-                reporter.at(lhs).invalidLhsInAssignment()
-            if (lhs is MemberExpressionNode && lhs.isOptional)
-                reporter.at(lhs).invalidLhsInAssignment()
-            if (isStrict && lhs is IdentifierReferenceNode) {
-                val name = lhs.processedName
-                if (name == "eval")
-                    reporter.strictAssignToEval()
-                if (name == "arguments")
-                    reporter.strictAssignToArguments()
-            } else if (isStrict && lhs is CallExpressionNode) {
-                reporter.at(lhs).invalidLhsInAssignment()
-            }
+            validateAssignmentTarget(lhs)
 
             return AssignmentExpressionNode(lhs, parseExpression(minPrecedence, leftAssociative), op)
                 .withPosition(lhs.sourceLocation.start, lastToken.end)
@@ -1644,11 +1632,13 @@ class Parser(val sourceInfo: SourceInfo) {
             )
             TokenType.Inc -> {
                 consume()
+                validateAssignmentTarget(lhs)
                 UpdateExpressionNode(lhs, isIncrement = true, isPostfix = true)
                     .withPosition(lhs.sourceLocation.start, lastToken.end)
             }
             TokenType.Dec -> {
                 consume()
+                validateAssignmentTarget(lhs)
                 UpdateExpressionNode(lhs, isIncrement = false, isPostfix = true)
                     .withPosition(lhs.sourceLocation.start, lastToken.end)
             }
@@ -2286,8 +2276,14 @@ class Parser(val sourceInfo: SourceInfo) {
         val expression = parseExpression(type.operatorPrecedence, type.leftAssociative)
 
         when (type) {
-            TokenType.Inc -> UpdateExpressionNode(expression, isIncrement = true, isPostfix = false)
-            TokenType.Dec -> UpdateExpressionNode(expression, isIncrement = false, isPostfix = false)
+            TokenType.Inc -> {
+                validateAssignmentTarget(expression)
+                UpdateExpressionNode(expression, isIncrement = true, isPostfix = false)
+            }
+            TokenType.Dec -> {
+                validateAssignmentTarget(expression)
+                UpdateExpressionNode(expression, isIncrement = false, isPostfix = false)
+            }
             TokenType.Not -> UnaryExpressionNode(expression, UnaryOperator.Not)
             TokenType.BitwiseNot -> UnaryExpressionNode(expression, UnaryOperator.BitwiseNot)
             TokenType.Add -> UnaryExpressionNode(expression, UnaryOperator.Plus)
@@ -2340,6 +2336,22 @@ class Parser(val sourceInfo: SourceInfo) {
         labelStateStack.removeLast()
 
         return result
+    }
+
+    private fun validateAssignmentTarget(node: ExpressionNode) {
+        if (node !is IdentifierReferenceNode && node !is MemberExpressionNode && node !is CallExpressionNode)
+            reporter.at(node).expressionNotAssignable()
+        if (node is OptionalChainNode)
+            reporter.at(node).expressionNotAssignable()
+        if (isStrict && node is IdentifierReferenceNode) {
+            val name = node.processedName
+            if (name == "eval")
+                reporter.at(node).strictAssignToEval()
+            if (name == "arguments")
+                reporter.at(node).strictAssignToArguments()
+        } else if (isStrict && node is CallExpressionNode) {
+            reporter.at(node).expressionNotAssignable()
+        }
     }
 
     // Helper for setting source positions of AST. Stands for
