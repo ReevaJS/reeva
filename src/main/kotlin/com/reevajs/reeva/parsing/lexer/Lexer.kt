@@ -4,6 +4,7 @@ import com.reevajs.reeva.utils.isHexDigit
 import com.reevajs.reeva.utils.isIdContinue
 import com.reevajs.reeva.utils.isIdStart
 import com.reevajs.reeva.utils.isLineSeparator
+import com.reevajs.reeva.utils.isWhiteSpace
 
 class Lexer(private val source: String) {
     private var lineNum = 0
@@ -35,10 +36,10 @@ class Lexer(private val source: String) {
             if (!inTemplate || templateStates.last().inExpr) {
                 // Consume whitespace and comments
                 while (!isDone) {
-                    if (char.isWhitespace()) {
+                    if (char.isWhiteSpace()) {
                         do {
                             consume()
-                        } while (!isDone && char.isWhitespace())
+                        } while (!isDone && char.isWhiteSpace())
                     } else if (isCommentStart()) {
                         consume()
                         do {

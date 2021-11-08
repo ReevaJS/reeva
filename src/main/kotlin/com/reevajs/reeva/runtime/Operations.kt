@@ -2541,7 +2541,7 @@ object Operations {
     fun trimString(realm: Realm, string: JSValue, where: TrimType): String {
         val str = toString(realm, requireObjectCoercible(realm, string)).string
 
-        fun removable(ch: Char) = isWhitespace(ch) || isLineTerminator(ch)
+        fun removable(ch: Char) = ch.isWhiteSpace() || isLineTerminator(ch)
 
         return when (where) {
             TrimType.Start -> str.dropWhile(::removable)
@@ -2549,9 +2549,6 @@ object Operations {
             TrimType.StartEnd -> str.dropWhile(::removable).dropLastWhile(::removable)
         }
     }
-
-    private fun isWhitespace(ch: Char) = ch == '\u0009' || ch == '\u000b' || ch == '\u000c' || ch == ' ' ||
-        ch == '\u00a0' || ch == '\uffef' || ch.isSpaceSeparator()
 
     private fun isLineTerminator(ch: Char) = ch == '\u000a' || ch == '\u000d' || ch == '\u2028' || ch == '\u2029'
 

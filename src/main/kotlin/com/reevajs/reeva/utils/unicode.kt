@@ -74,32 +74,31 @@ fun Char.isCategoryCn() = this.isUnassigned()
 /* specific categories */
 val isLineSeparatorCache = mutableMapOf<Char, Boolean>()
 fun Char.isLineSeparator() = isLineSeparatorCache.getOrPut(this) {
-    this.toInt().let {
+    this.code.let {
         it == 0x000a || it == 0x000d || it == 0x2028 || it == 0x2029
     }
 }
 
-val isWhitespaceCache = mutableMapOf<Char, Boolean>()
-fun Char.isWhiteSpace() = isWhitespaceCache.getOrPut(this) {
-    this.toInt().let {
-        it in 0x9..0xd || it == 0x20 || it == 0x85 || it == 0xa0 || it == 0x1680 ||
-            it in 0x2000..0x200a || it == 0x2028 || it == 0x2029 || it == 0x202f ||
-            it == 0x205f || it == 0x3000
+val isWhiteSpaceCache = mutableMapOf<Char, Boolean>()
+fun Char.isWhiteSpace() = isWhiteSpaceCache.getOrPut(this) {
+    this.code.let {
+        it == 0x9 || it == 0xb || it == 0xc || it == 0x20 ||
+            it == 0xa0 || it == 0xffef || this.isSpaceSeparator()
     }
 }
 
 val isBidiControlCache = mutableMapOf<Char, Boolean>()
 fun Char.isBidiControl() = isBidiControlCache.getOrPut(this) {
-    this.toInt().let {
+    this.code.let {
         it == 0x61c || it in 0x200e..0x200f || it in 0x202a..0x202e || it in 0x2066..0x2069
     }
 }
 
-fun Char.isJoinControl() = this.toInt().let { it == 0x200c || it == 0x200d }
+fun Char.isJoinControl() = this.code.let { it == 0x200c || it == 0x200d }
 
 val isDashCache = mutableMapOf<Char, Boolean>()
 fun Char.isDash() = isDashCache.getOrPut(this) {
-    this.toInt().let {
+    this.code.let {
         it == 0x002D ||
             it == 0x058A ||
             it == 0x05BE ||
@@ -127,7 +126,7 @@ fun Char.isDash() = isDashCache.getOrPut(this) {
 
 val isHyphenCache = mutableMapOf<Char, Boolean>()
 fun Char.isHyphen() = isHyphenCache.getOrPut(this) {
-    this.toInt().let {
+    this.code.let {
         it == 0x002D ||
             it == 0x00AD ||
             it == 0x058A ||
@@ -143,7 +142,7 @@ fun Char.isHyphen() = isHyphenCache.getOrPut(this) {
 
 val isPatternSyntaxCache = mutableMapOf<Char, Boolean>()
 fun Char.isPatternSyntax() = isPatternSyntaxCache.getOrPut(this) {
-    this.toInt().let {
+    this.code.let {
         it in 0x0021..0x0023 ||
             it == 0x0024 ||
             it in 0x0025..0x0027 ||
@@ -397,7 +396,7 @@ fun Char.isPatternSyntax() = isPatternSyntaxCache.getOrPut(this) {
 
 val isPatternWhitespaceCache = mutableMapOf<Char, Boolean>()
 fun Char.isPatternWhitespace() = isPatternWhitespaceCache.getOrPut(this) {
-    this.toInt().let {
+    this.code.let {
         it in 0x0009..0x000d ||
             it == 0x0020 ||
             it == 0x0085 ||
@@ -409,14 +408,14 @@ fun Char.isPatternWhitespace() = isPatternWhitespaceCache.getOrPut(this) {
 
 val isOtherIdStartCache = mutableMapOf<Char, Boolean>()
 fun Char.isOtherIdStart() = isOtherIdStartCache.getOrPut(this) {
-    this.toInt().let {
+    this.code.let {
         it in 0x1885..0x1886 || it == 0x2118 || it == 0x212e || it in 0x309b..0x309c
     }
 }
 
 val isOtherIdContinueCache = mutableMapOf<Char, Boolean>()
 fun Char.isOtherIdContinue() = isOtherIdContinueCache.getOrPut(this) {
-    this.toInt().let {
+    this.code.let {
         it == 0x00b7 || it == 0x0387 || it in 0x1369..0x1371 || it == 0x19da
     }
 }
