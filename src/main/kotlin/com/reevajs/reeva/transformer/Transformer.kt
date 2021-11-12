@@ -123,16 +123,14 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             +DeclareGlobals(declaredVarNames, lexNames, functionNames)
 
         for (func in functionsToInitialize) {
-            builder.addNestedFunction(
-                visitFunctionHelper(
-                    func.identifier.processedName,
-                    func.parameters,
-                    func.body,
-                    func.functionScope,
-                    func.body.scope,
-                    func.body.scope.isStrict,
-                    func.kind,
-                )
+            visitFunctionHelper(
+                func.identifier.processedName,
+                func.parameters,
+                func.body,
+                func.functionScope,
+                func.body.scope,
+                func.body.scope.isStrict,
+                func.kind,
             )
 
             storeToSource(func)
@@ -180,7 +178,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         if (kind.isGenerator)
             insertGeneratorPrologue()
 
-        val functionPackage = makeFunctionInfo(
+        val functionInfo = makeFunctionInfo(
             name,
             parameters,
             body,
@@ -201,9 +199,9 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         }
 
         if (instantiateFunction)
-            +closureOp(functionPackage)
+            +closureOp(functionInfo)
 
-        return functionPackage
+        return functionInfo.also(builder::addNestedFunction)
     }
 
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
@@ -224,16 +222,14 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
             // BlockScopeInstantiation
             node.scope.variableSources.filterIsInstance<FunctionDeclarationNode>().forEach {
-                builder.addNestedFunction(
-                    visitFunctionHelper(
-                        it.name(),
-                        it.parameters,
-                        it.body,
-                        it.functionScope,
-                        it.body.scope,
-                        it.body.scope.isStrict,
-                        it.kind,
-                    )
+                visitFunctionHelper(
+                    it.name(),
+                    it.parameters,
+                    it.body,
+                    it.functionScope,
+                    it.body.scope,
+                    it.body.scope.isStrict,
+                    it.kind,
                 )
 
                 storeToSource(it)
@@ -401,16 +397,14 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         }
 
         for (func in functionsToInitialize) {
-            builder.addNestedFunction(
-                visitFunctionHelper(
-                    func.identifier.processedName,
-                    func.parameters,
-                    func.body,
-                    func.functionScope,
-                    func.body.scope,
-                    isStrict,
-                    func.kind,
-                )
+            visitFunctionHelper(
+                func.identifier.processedName,
+                func.parameters,
+                func.body,
+                func.functionScope,
+                func.body.scope,
+                isStrict,
+                func.kind,
             )
 
             storeToSource(func)
@@ -1478,16 +1472,14 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
-        builder.addNestedFunction(
-            visitFunctionHelper(
-                node.identifier?.processedName ?: "<anonymous>",
-                node.parameters,
-                node.body,
-                node.functionScope,
-                node.body.scope,
-                node.functionScope.isStrict,
-                node.kind,
-            )
+        visitFunctionHelper(
+            node.identifier?.processedName ?: "<anonymous>",
+            node.parameters,
+            node.body,
+            node.functionScope,
+            node.body.scope,
+            node.functionScope.isStrict,
+            node.kind,
         )
 
         // If the function is inlineable, that means there are no recursive references inside it,
@@ -1499,16 +1491,14 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     override fun visitArrowFunction(node: ArrowFunctionNode) {
-        builder.addNestedFunction(
-            visitFunctionHelper(
-                "<anonymous>",
-                node.parameters,
-                node.body,
-                node.functionScope,
-                if (node.body is BlockNode) node.body.scope else node.functionScope,
-                node.functionScope.isStrict,
-                node.kind,
-            )
+        visitFunctionHelper(
+            "<anonymous>",
+            node.parameters,
+            node.body,
+            node.functionScope,
+            if (node.body is BlockNode) node.body.scope else node.functionScope,
+            node.functionScope.isStrict,
+            node.kind,
         )
     }
 
@@ -1601,7 +1591,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 method.kind.toFunctionKind(),
                 constructorKind,
                 instantiateFunction = false,
-            ).also(builder::addNestedFunction)
+            )
 
             // If the name is computed, that comes before the method register
             if (isComputed) {
