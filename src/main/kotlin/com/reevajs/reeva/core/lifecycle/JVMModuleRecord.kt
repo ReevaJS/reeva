@@ -12,21 +12,24 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.unreachable
+import java.net.URI
 
-class JVMModuleRecord(realm: Realm, specifier_: String) : ModuleRecord(realm) {
-    private val specifier = specifier_.removePrefix("jvm:")
+class JVMModuleRecord(realm: Realm, val specifier: String) : ModuleRecord(realm) {
+    override val uri = URI(specifier.replace('.', '/'))
+
+    private val classOrPkgName = specifier.removePrefix("jvm:")
     private var status = CyclicModuleRecord.Status.Unlinked
     private val requiredNames = mutableSetOf<String>()
 
     private val jvmClass = try {
-        Class.forName(specifier)
+        Class.forName(classOrPkgName)
     } catch (e: ClassNotFoundException) {
         null
     }
 
     private val jvmObj = if (jvmClass != null) {
         JSClassObject.create(realm, jvmClass)
-    } else JSPackageObject.create(realm, specifier)
+    } else JSPackageObject.create(realm, classOrPkgName)
 
     override fun link() {
         ecmaAssert(status != CyclicModuleRecord.Status.Linking && status != CyclicModuleRecord.Status.Evaluating)
@@ -61,10 +64,10 @@ class JVMModuleRecord(realm: Realm, specifier_: String) : ModuleRecord(realm) {
         expect(status == CyclicModuleRecord.Status.Linked || status == CyclicModuleRecord.Status.Unlinked)
 
         if (DEFAULT_SPECIFIER in names && jvmObj is JSPackageObject)
-            Errors.JVMCompat.JVMDefaultPackageImport(specifier).throwSyntaxError(realm)
+            Errors.JVMCompat.JVMDefaultPackageImport(classOrPkgName).throwSyntaxError(realm)
 
         if (NAMESPACE_SPECIFIER in names && jvmObj is JSClassObject)
-            Errors.JVMCompat.JVMNamespaceClassImport(specifier).throwSyntaxError(realm)
+            Errors.JVMCompat.JVMNamespaceClassImport(classOrPkgName).throwSyntaxError(realm)
 
         requiredNames.addAll(names)
     }

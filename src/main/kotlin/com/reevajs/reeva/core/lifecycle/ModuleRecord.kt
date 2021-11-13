@@ -5,6 +5,7 @@ import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.JSObject
+import java.net.URI
 
 /**
  * ModuleRecord translates fairly literally to the object of the same name in the
@@ -37,6 +38,9 @@ import com.reevajs.reeva.runtime.objects.JSObject
  */
 @ECMAImpl("16.2.1.4", name = "Abstract Module Records")
 abstract class ModuleRecord(val realm: Realm) : Executable {
+    // Serves as a unique module identifier across a given Realm.
+    abstract val uri: URI
+
     @ECMAImpl("16.2.1.4", name = "[[Environment]]")
     lateinit var env: ModuleEnvRecord
         protected set

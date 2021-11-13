@@ -1,6 +1,5 @@
 package com.reevajs.reeva.core
 
-import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.lifecycle.*
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.realm.RealmExtension
@@ -13,7 +12,6 @@ import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.expect
-import com.reevajs.reeva.utils.key
 import java.io.File
 
 open class HostHooks {
@@ -81,22 +79,39 @@ open class HostHooks {
     }
 
     fun resolveImportedModule(referencingModule: ModuleRecord, specifier: String): ModuleRecord {
-        val existingModule = referencingModule.realm.moduleTree.resolveImportedModule(referencingModule, specifier)
+        val moduleTree = referencingModule.realm.moduleTree
+        val existingModule = moduleTree.resolveImportedModule(referencingModule, specifier)
         if (existingModule != null)
             return existingModule
 
         return resolveImportedModuleImpl(referencingModule, specifier).also {
-            referencingModule.realm.moduleTree.setImportedModule(referencingModule, specifier, it)
+            val module = moduleTree.getModule(it.uri)
+            if (module != null) {
+                expect(module === it) {
+                    "resolveImportedModuleImpl returned new ModuleRecord instance with a URI of an already loaded " +
+                        "ModuleRecord (${module.uri})"
+                }
+            } else {
+                moduleTree.setImportedModule(referencingModule, specifier, it)
+            }
         }
     }
 
+    /**
+     * This function is responsible for turning a module specifier into a concrete ModuleRecord
+     * instance. If the ModuleRecord returned by this function shares the same URI with a ModuleRecord
+     * which has been loaded some time in the past, then the two ModuleRecords must be the same instance.
+     */
     open fun resolveImportedModuleImpl(referencingModule: ModuleRecord, specifier: String): ModuleRecord {
         if (specifier.startsWith("jvm:")) {
             // JVM modules should be the same regardless of the referencing module, so the only thing that
             // matters for caching is the specifier. We need to access the module tree directly in order to
             // see if we have already loaded this JVM module.
-            val moduleTree = referencingModule.realm.moduleTree.getAllLoadedModules()
-            val existingJVMModule = moduleTree.values.firstOrNull { specifier in it }?.get(specifier)
+            val existingJVMModule = referencingModule.realm.moduleTree
+                .getAllLoadedModules()
+                .filterIsInstance<JVMModuleRecord>()
+                .firstOrNull { it.specifier == specifier }
+
             if (existingJVMModule != null)
                 return existingJVMModule
 
@@ -106,7 +121,7 @@ open class HostHooks {
         expect(referencingModule is SourceTextModuleRecord)
 
         val referencingSourceInfo = referencingModule.parsedSource.sourceInfo
-        val resolvedFile = referencingSourceInfo.resolveImportedFilePath(specifier).let {
+        val resolvedFile = File(referencingSourceInfo.resolveImportedSpecifier(specifier)).let {
             if (it.exists() && it.isDirectory) {
                 for (extension in listOf("js", "mjs", "json")) {
                     val file = File(it, "index.$extension")
@@ -123,12 +138,7 @@ open class HostHooks {
         val sourceInfo = makeSourceInfo(resolvedFile)
 
         // Check for existing modules with the same SourceInfo
-        val existingModule = referencingModule.realm.moduleTree.getAllLoadedModules().keys
-            .filterIsInstance<SourceTextModuleRecord>()
-            .firstOrNull {
-                it.parsedSource.sourceInfo == sourceInfo
-            }
-
+        val existingModule = referencingModule.realm.moduleTree.getModule(sourceInfo.uri)
         if (existingModule != null)
             return existingModule
 

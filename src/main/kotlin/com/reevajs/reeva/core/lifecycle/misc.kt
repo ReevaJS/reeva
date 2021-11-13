@@ -10,14 +10,32 @@ import com.reevajs.reeva.transformer.TransformedSource
 import com.reevajs.reeva.transformer.Transformer
 import com.reevajs.reeva.utils.unreachable
 import java.io.File
+import java.net.URI
 import kotlin.jvm.Throws
 
-interface SourceInfo {
-    val name: String
-    val isModule: Boolean
-    val sourceText: String
+abstract class SourceInfo {
+    abstract val name: String
+    abstract val isModule: Boolean
+    abstract val sourceText: String
 
-    fun resolveImportedFilePath(specifier: String): File
+    /**
+     * Used to determine if two SourceInfos have the same origin. Typically, the
+     * scheme relates somewhat to the origin of this SourceInfo, however the
+     * contents of this URI are unimportant; they are directly compared for equality
+     */
+    abstract val uri: URI
+
+    abstract fun resolveImportedSpecifier(specifier: String): URI
+
+    override fun equals(other: Any?) = other is SourceInfo && other.uri == uri
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + isModule.hashCode()
+        result = 31 * result + sourceText.hashCode()
+        result = 31 * result + uri.hashCode()
+        return result
+    }
 }
 
 class FileSourceInfo @JvmOverloads constructor(
@@ -25,8 +43,10 @@ class FileSourceInfo @JvmOverloads constructor(
     override val isModule: Boolean = file.extension == "mjs",
     override val name: String = file.name,
     sourceText: String? = null
-) : SourceInfo {
+) : SourceInfo() {
     private var sourceTextBacker: String? = sourceText
+
+    override val uri = file.toURI()
 
     override val sourceText: String
         get() {
@@ -35,10 +55,10 @@ class FileSourceInfo @JvmOverloads constructor(
             return sourceTextBacker!!
         }
 
-    override fun resolveImportedFilePath(specifier: String): File {
+    override fun resolveImportedSpecifier(specifier: String): URI {
         if (specifier.startsWith('/'))
-            return File(specifier)
-        return File(file.parentFile, specifier).normalize()
+            return File(specifier).toURI()
+        return File(file.parentFile, specifier).normalize().toURI()
     }
 
     override fun equals(other: Any?): Boolean {
@@ -54,25 +74,18 @@ data class LiteralSourceInfo(
     override val name: String,
     private val source: String,
     override val isModule: Boolean,
-) : SourceInfo {
+) : SourceInfo() {
+    override val uri = URI("literal:$name#${sourceTypeCount++}")
+
     override val sourceText = source
 
-    override fun resolveImportedFilePath(specifier: String): File {
+    override fun resolveImportedSpecifier(specifier: String): URI {
         // Literal sources are never modules, so we should never get here
         unreachable()
     }
-}
 
-data class ReplSourceType(
-    override val name: String,
-    override val sourceText: String,
-    override val isModule: Boolean,
-    val parentDirectory: File,
-) : SourceInfo {
-    override fun resolveImportedFilePath(specifier: String): File {
-        if (specifier.startsWith('/'))
-            return File(specifier)
-        return File(parentDirectory, specifier).normalize()
+    companion object {
+        private var sourceTypeCount = 0
     }
 }
 
