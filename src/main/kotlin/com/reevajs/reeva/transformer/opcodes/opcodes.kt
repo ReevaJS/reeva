@@ -357,7 +357,7 @@ class StoreArrayIndexed(val arrayLocal: Local, val index: Int) : Opcode(-1)
  * Stack:
  *   ... object property -> ...
  */
-object DeletePropertyStrict : Opcode(-2)
+object DeletePropertyStrict : Opcode(-1)
 
 /**
  * Deletes a property from an object using non-strict ECMAScript semantics.
@@ -365,7 +365,7 @@ object DeletePropertyStrict : Opcode(-2)
  * Stack:
  *   ... object property -> ...
  */
-object DeletePropertySloppy : Opcode(-2)
+object DeletePropertySloppy : Opcode(-1)
 
 ///////////////
 // Iterators //
