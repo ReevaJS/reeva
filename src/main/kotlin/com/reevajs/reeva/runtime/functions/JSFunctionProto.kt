@@ -9,10 +9,7 @@ import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.*
-import com.reevajs.reeva.utils.Errors
-import com.reevajs.reeva.utils.ecmaAssert
-import com.reevajs.reeva.utils.key
-import com.reevajs.reeva.utils.toValue
+import com.reevajs.reeva.utils.*
 import kotlin.math.max
 
 class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
@@ -22,6 +19,9 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
         val thrower = JSNativeFunction.fromLambda(realm, "", 0) { realm, _ ->
             Errors.Function.CallerArgumentsAccess.throwTypeError(realm)
         }
+
+        defineOwnProperty("name", "".toValue(), attrs { +conf; -enum; -writ })
+        defineOwnProperty("length", 0.toValue(), attrs { +conf; -enum; -writ })
 
         val desc = Descriptor(JSAccessor(thrower, thrower), Descriptor.CONFIGURABLE)
         defineOwnProperty("caller".key(), desc)
