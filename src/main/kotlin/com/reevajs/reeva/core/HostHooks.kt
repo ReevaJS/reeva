@@ -143,5 +143,5 @@ open class HostHooks {
         return result.value()
     }
 
-    open fun makeSourceInfo(file: File): SourceInfo = FileSourceInfo(file)
+    open fun makeSourceInfo(file: File): SourceInfo = FileSourceInfo(file, isModule = true)
 }
