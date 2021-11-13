@@ -1524,6 +1524,10 @@ class Parser(val sourceInfo: SourceInfo) {
         BlockNode(statements, useStrict)
     }
 
+    private fun matchSecondaryExpression() = tokenType.isSecondaryToken && if (matches(TokenType.Inc, TokenType.Dec)) {
+        !token.afterNewline
+    } else true
+
     private fun parseExpression(
         minPrecedence: Int = 0,
         leftAssociative: Boolean = false,
@@ -1536,7 +1540,7 @@ class Parser(val sourceInfo: SourceInfo) {
 
         var expression = parsePrimaryExpression()
 
-        while (tokenType.isSecondaryToken && tokenType !in excludedTokens) {
+        while (matchSecondaryExpression() && tokenType !in excludedTokens) {
             if (tokenType.operatorPrecedence < minPrecedence)
                 break
             if (tokenType.operatorPrecedence == minPrecedence && leftAssociative)
