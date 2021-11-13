@@ -117,61 +117,6 @@ open class JSObject protected constructor(
         return true
     }
 
-    internal fun getOwnPropertyLocation(property: PropertyKey): PropertyLocation? {
-        return when {
-            property.isInt -> if (indexedProperties.hasIndex(property.asInt)) {
-                IntIndexedProperty(property.asInt, 0)
-            } else null
-            property.isLong -> if (indexedProperties.hasIndex(property.asLong)) {
-                LongIndexedProperty(property.asLong, 0)
-            } else null
-            else -> {
-                val data = shape[property.toStringOrSymbol()] ?: return null
-                return StorageProperty(data.offset, data.attributes)
-            }
-        }
-    }
-
-    internal fun getPropertyLocation(property: PropertyKey): PropertyLocation? {
-        var receiver = this
-        var offset = 0
-
-        while (true) {
-            val location = receiver.getOwnPropertyLocation(property)
-            if (location != null) {
-                location.protoOffset = offset
-                return location
-            }
-            val parent = receiver.getPrototype()
-            if (parent !is JSObject)
-                break
-            receiver = parent
-            offset++
-        }
-
-        return null
-    }
-
-    internal fun getDescriptorAt(location: PropertyLocation): Descriptor {
-        val receiver = location.receiver(this)
-
-        return when (location) {
-            is IntIndexedProperty -> receiver.indexedProperties.getDescriptor(location.int)!!
-            is LongIndexedProperty -> receiver.indexedProperties.getDescriptor(location.long)!!
-            is StorageProperty -> Descriptor(receiver.storage[location.index], location.attributes)
-        }
-    }
-
-    internal fun setPropertyAt(location: PropertyLocation, descriptor: Descriptor) {
-        val receiver = location.receiver(this)
-
-        when (location) {
-            is IntIndexedProperty -> receiver.indexedProperties.setDescriptor(location.int, descriptor)
-            is LongIndexedProperty -> receiver.indexedProperties.setDescriptor(location.long, descriptor)
-            is StorageProperty -> receiver.storage[location.index] = descriptor.getActualValue(realm, receiver)
-        }
-    }
-
     fun hasProperty(property: String): Boolean = hasProperty(property.key())
     fun hasProperty(property: JSSymbol) = hasProperty(property.key())
     fun hasProperty(property: Int) = hasProperty(property.key())
@@ -179,7 +124,12 @@ open class JSObject protected constructor(
 
     @ECMAImpl("9.1.7")
     open fun hasProperty(property: PropertyKey): Boolean {
-        return getPropertyLocation(property) != null
+        if (getOwnPropertyDescriptor(property) != null)
+            return true
+        val parent = getPrototype()
+        if (parent == JSNull)
+            return false
+        return (parent as JSObject).hasProperty(property)
     }
 
     @ECMAImpl("9.1.3")
@@ -197,11 +147,14 @@ open class JSObject protected constructor(
     fun getOwnPropertyDescriptor(property: Long) = getOwnPropertyDescriptor(property.toString().key())
 
     open fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
-        return getOwnPropertyLocation(property)?.let(::getDescriptorAt)
-    }
-
-    fun getPropertyDescriptor(property: PropertyKey): Descriptor? {
-        return getPropertyLocation(property)?.let(::getDescriptorAt)
+        return when {
+            property.isInt -> indexedProperties.getDescriptor(property.asInt)
+            property.isLong -> indexedProperties.getDescriptor(property.asLong)
+            else -> {
+                val data = shape[property.toStringOrSymbol()] ?: return null
+                Descriptor(storage[data.offset], data.attributes)
+            }
+        }
     }
 
     fun getOwnProperty(property: String) = getOwnProperty(property.key())
@@ -257,10 +210,18 @@ open class JSObject protected constructor(
 
     @JvmOverloads @ECMAImpl("9.1.8")
     open fun get(property: PropertyKey, receiver: JSValue = this): JSValue {
-        val desc = getPropertyDescriptor(property) ?: return JSUndefined
-        if (desc.isAccessorDescriptor)
-            return if (desc.hasGetterFunction) Operations.call(realm, desc.getter!!, receiver) else JSUndefined
-        return desc.getActualValue(realm, receiver)
+        val desc = getOwnPropertyDescriptor(property) ?: run {
+            val parent = getPrototype()
+            if (parent == JSNull)
+                return JSUndefined
+            return (parent as JSObject).get(property, receiver)
+        }
+
+        return when {
+            desc.isDataDescriptor -> desc.getActualValue(realm, receiver)
+            desc.hasGetterFunction -> Operations.call(realm, desc.getter!!, receiver)
+            else -> JSUndefined
+        }
     }
 
     @JvmOverloads fun set(property: String, value: JSValue, receiver: JSValue = this) =
@@ -328,26 +289,24 @@ open class JSObject protected constructor(
 
     @ECMAImpl("9.1.10")
     open fun delete(property: PropertyKey): Boolean {
-        val location = getPropertyLocation(property) ?: return true
-        val desc = getDescriptorAt(location)
+        val desc = getOwnPropertyDescriptor(property) ?: return true
         if (!desc.isConfigurable)
             return false
 
-        val receiver = location.receiver(this)
+        return when {
+            property.isInt -> indexedProperties.remove(property.asInt)
+            property.isLong -> indexedProperties.remove(property.asLong)
+            else -> {
+                val stringOrSymbol = property.toStringOrSymbol()
+                val data = shape[stringOrSymbol] ?: return true
+                if (!shape.isUnique)
+                    shape = shape.makeUniqueClone()
 
-        val stringOrSymbol = when {
-            property.isInt -> return receiver.indexedProperties.remove(property.asInt)
-            property.isLong -> return receiver.indexedProperties.remove(property.asLong)
-            else -> property.toStringOrSymbol()
+                shape.removeUniqueShapeProperty(stringOrSymbol, data.offset)
+                storage.removeAt(data.offset)
+                true
+            }
         }
-
-        val data = receiver.shape[stringOrSymbol] ?: return true
-        if (!receiver.shape.isUnique)
-            receiver.shape = receiver.shape.makeUniqueClone()
-
-        receiver.shape.removeUniqueShapeProperty(stringOrSymbol, data.offset)
-        receiver.storage.removeAt(data.offset)
-        return true
     }
 
     @ECMAImpl("9.1.11")
@@ -631,19 +590,3 @@ open class JSObject protected constructor(
         }
     }
 }
-
-sealed class PropertyLocation(var protoOffset: Int) {
-    fun receiver(base: JSObject): JSObject {
-        var receiver = base
-        repeat(protoOffset) {
-            receiver = receiver.getPrototype() as JSObject
-        }
-        return receiver
-    }
-}
-
-class IntIndexedProperty(val int: Int, protoOffset: Int = 0) : PropertyLocation(protoOffset)
-
-class LongIndexedProperty(val long: Long, protoOffset: Int = 0) : PropertyLocation(protoOffset)
-
-class StorageProperty(val index: Int, val attributes: Int, protoOffset: Int = 0) : PropertyLocation(protoOffset)
