@@ -5,6 +5,7 @@ import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.lifecycle.ModuleRecord
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.lexer.*
 import com.reevajs.reeva.runtime.Operations
@@ -562,7 +563,11 @@ class Parser(val sourceInfo: SourceInfo) {
             val name = parseIdentifierReference()
             if (tokenType == TokenType.Identifier && token.rawLiterals == "as") {
                 consume()
-                val ident = parseIdentifier()
+                val ident = parseIdentifier().let {
+                    if (it.processedName == "default") {
+                        IdentifierNode(ModuleRecord.DEFAULT_SPECIFIER).withPosition(it)
+                    } else it
+                }
                 list.add(NamedExport(name, ident).withPosition(name, ident))
             } else {
                 list.add(NamedExport(name, null).withPosition(name))
