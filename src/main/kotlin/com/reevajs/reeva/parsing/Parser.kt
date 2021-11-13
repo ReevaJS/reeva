@@ -564,7 +564,7 @@ class Parser(val sourceInfo: SourceInfo) {
         return parseStringLiteral().value
     }
 
-    private fun asi() {
+    private fun asi(afterDoWhile: Boolean = false) {
         if (isDone)
             return
 
@@ -577,7 +577,8 @@ class Parser(val sourceInfo: SourceInfo) {
         if (matches(TokenType.CloseCurly, TokenType.Eof))
             return
 
-        reporter.expected(TokenType.Semicolon, tokenType)
+        if (!afterDoWhile)
+            reporter.expected(TokenType.Semicolon, tokenType)
     }
 
     /*
@@ -804,7 +805,7 @@ class Parser(val sourceInfo: SourceInfo) {
         consume(TokenType.OpenParen)
         val condition = parseExpression()
         consume(TokenType.CloseParen)
-        asi()
+        asi(afterDoWhile = true)
         DoWhileStatementNode(condition, statement)
     }
 
