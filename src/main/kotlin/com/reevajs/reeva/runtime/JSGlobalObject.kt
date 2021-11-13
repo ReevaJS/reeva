@@ -74,13 +74,17 @@ open class JSGlobalObject protected constructor(
         defineBuiltin("isNaN", 1, ReevaBuiltin.GlobalIsNaN)
         defineBuiltin("eval", 1, ReevaBuiltin.GlobalEval)
         defineBuiltin("parseInt", 1, ReevaBuiltin.GlobalParseInt)
-        defineBuiltin("decodeURI", 1, ReevaBuiltin.GlobalDecodeURI)
-        defineBuiltin("decodeURIComponent", 1, ReevaBuiltin.GlobalDecodeURIComponent)
-        defineBuiltin("encodeURI", 1, ReevaBuiltin.GlobalEncodeURI)
-        defineBuiltin("encodeURIComponent", 1, ReevaBuiltin.GlobalEncodeURIComponent)
         defineBuiltin("id", 1, ReevaBuiltin.GlobalId)
         defineBuiltin("jvm", 1, ReevaBuiltin.GlobalJvm)
         defineBuiltin("inspect", 1, ReevaBuiltin.GlobalInspect)
+
+        // TODO: The tests involving these functions have some pretty intense loop which increase
+        //       the test suite time significantly (~40%). These tests fail-fast when the functions
+        //       don't exist. These can be uncommented when Reeva's performance improves.
+        // defineBuiltin("decodeURI", 1, ReevaBuiltin.GlobalDecodeURI)
+        // defineBuiltin("decodeURIComponent", 1, ReevaBuiltin.GlobalDecodeURIComponent)
+        // defineBuiltin("encodeURI", 1, ReevaBuiltin.GlobalEncodeURI)
+        // defineBuiltin("encodeURIComponent", 1, ReevaBuiltin.GlobalEncodeURIComponent)
 
         // Debug method
         // TODO
