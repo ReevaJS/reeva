@@ -71,7 +71,11 @@ class ScopeResolver : ASTVisitor {
         when (node) {
             is DefaultClassExportNode -> node.classNode.mode = VariableMode.Export
             is DefaultFunctionExportNode -> node.declaration.mode = VariableMode.Export
-            is DeclarationExportNode -> node.declaration.declarations.flatMap { it.sources() }
+            is DeclarationExportNode -> node.declaration.declarations.forEach {
+                it.sources().forEach { source ->
+                    source.mode = VariableMode.Export
+                }
+            }
             else -> {}
         }
     }
