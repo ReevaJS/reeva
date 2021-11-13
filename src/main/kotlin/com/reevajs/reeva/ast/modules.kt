@@ -4,6 +4,7 @@ import com.reevajs.reeva.ast.statements.ASTListNode
 import com.reevajs.reeva.ast.statements.DeclarationNode
 import com.reevajs.reeva.ast.statements.StatementList
 import com.reevajs.reeva.core.lifecycle.ModuleRecord
+import com.reevajs.reeva.utils.unreachable
 
 typealias ImportList = ASTListNode<Import>
 typealias ExportList = ASTListNode<NamedExport>
@@ -11,6 +12,45 @@ typealias ExportList = ASTListNode<NamedExport>
 class ModuleNode(val body: StatementList) : RootNode(body) {
     fun requestedModules() = body.filterIsInstance<ImportDeclarationNode>().map { it.moduleName } +
         body.filterIsInstance<ExportFromNode>().map { it.moduleName }
+
+    fun firstDuplicateDirectImport(): Pair<String, ASTNode>? {
+        val seenNames = mutableSetOf<String>()
+
+        body.filterIsInstance<ExportNode>().forEach { export ->
+            when (export) {
+                is DeclarationExportNode -> export.declaration.declarations.forEach { provider ->
+                    provider.names().forEach {
+                        if (!seenNames.add(it))
+                            return it to provider
+                    }
+                }
+                is DefaultClassExportNode -> if (!seenNames.add(ModuleRecord.DEFAULT_SPECIFIER))
+                    return ModuleRecord.DEFAULT_SPECIFIER to export
+                is DefaultExpressionExportNode -> if (!seenNames.add(ModuleRecord.DEFAULT_SPECIFIER))
+                    return ModuleRecord.DEFAULT_SPECIFIER to export
+                is DefaultFunctionExportNode -> if (!seenNames.add(ModuleRecord.DEFAULT_SPECIFIER))
+                    return ModuleRecord.DEFAULT_SPECIFIER to export
+                is NamedExport -> unreachable()
+                is NamedExports -> export.exports.forEach {
+                    val name = it.alias?.processedName ?: it.identifierNode.processedName
+                    if (!seenNames.add(name))
+                        return name to it
+                }
+                is ExportAllAsFromNode -> if (!seenNames.add(export.identifierNode.processedName))
+                    return export.identifierNode.processedName to export
+                is ExportNamedFromNode -> export.exports.exports.forEach {
+                    val name = it.alias?.processedName ?: it.identifierNode.processedName
+                    if (!seenNames.add(name))
+                        return name to it
+                }
+                // Non-direct
+                is ExportAllFromNode -> {
+                }
+            }
+        }
+
+        return null
+    }
 }
 
 class ImportDeclarationNode(

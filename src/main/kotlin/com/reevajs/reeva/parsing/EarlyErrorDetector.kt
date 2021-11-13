@@ -21,6 +21,14 @@ class EarlyErrorDetector(private val reporter: ErrorReporter) : ASTVisitor {
         super.visitScript(node)
     }
 
+    override fun visitModule(node: ModuleNode) {
+        val duplicateExportPair = node.firstDuplicateDirectImport()
+        if (duplicateExportPair != null)
+            reporter.at(duplicateExportPair.second).duplicateExport(duplicateExportPair.first)
+        visitScope(node.scope)
+        super.visitModule(node)
+    }
+
     override fun visitBlock(node: BlockNode) {
         visitScope(node.scope)
         super.visitBlock(node)

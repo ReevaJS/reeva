@@ -34,6 +34,7 @@ abstract class Reporter {
     fun continueOutsideOfLoop(): Nothing = error("continue statement must be inside of a loop")
     fun duplicateClassConstructor(): Nothing = error("class cannot have multiple constructors")
     fun duplicateDeclaration(name: String, type: String): Nothing = error("duplicate $type declaration of \"$name\"")
+    fun duplicateExport(name: String): Nothing = error("duplicate export of \"$name\"")
     fun emptyParenthesizedExpression(): Nothing = error("parenthesized expression cannot be empty")
     fun emptyTemplateLiteralExpr(): Nothing = error("empty template literal expression")
     fun expressionNotAssignable(): Nothing = error("invalid expression in assignment context")
