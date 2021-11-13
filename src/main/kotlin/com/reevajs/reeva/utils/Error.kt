@@ -83,6 +83,7 @@ object Errors {
     class InvalidToPrimitiveHint(hint: String) :
         Error("invalid @@toPrimitive hint \"$hint\". Valid values are \"string\", \"number\", and \"default\"")
     class CtorCallWithoutNew(name: String) : Error("$name constructor cannot be called without \"new\" keyword")
+    class MalformedURI(uri: String) : Error("malformed uri sequence: \"$uri\"")
 
     class RestrictedGlobalPropertyName(name: String) :
         Error("cannot redefine restricted global lexical property name $name")

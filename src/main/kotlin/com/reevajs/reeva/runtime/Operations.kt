@@ -3314,7 +3314,7 @@ object Operations {
 
     data class IteratorRecord(val iterator: JSObject, val nextMethod: JSValue, var isDone: Boolean) : JSValue()
 
-    data class CodepointRecord(val codepoint: Int, val codeUnitCount: Int, val isUnpairedSurrogate: Boolean)
+    data class CodepointRecord(val codePoint: Int, val codeUnitCount: Int, val isUnpairedSurrogate: Boolean)
 
     enum class TrimType {
         Start,

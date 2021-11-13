@@ -8,6 +8,7 @@ import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.runtime.other.URIParser
 import com.reevajs.reeva.runtime.primitives.JSNumber
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
@@ -71,9 +72,13 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("undefined", JSUndefined, 0)
 
         defineBuiltin("isNaN", 1, ReevaBuiltin.GlobalIsNaN)
-        defineBuiltin("id", 1, ReevaBuiltin.GlobalId)
         defineBuiltin("eval", 1, ReevaBuiltin.GlobalEval)
         defineBuiltin("parseInt", 1, ReevaBuiltin.GlobalParseInt)
+        defineBuiltin("decodeURI", 1, ReevaBuiltin.GlobalDecodeURI)
+        defineBuiltin("decodeURIComponent", 1, ReevaBuiltin.GlobalDecodeURIComponent)
+        defineBuiltin("encodeURI", 1, ReevaBuiltin.GlobalEncodeURI)
+        defineBuiltin("encodeURIComponent", 1, ReevaBuiltin.GlobalEncodeURIComponent)
+        defineBuiltin("id", 1, ReevaBuiltin.GlobalId)
         defineBuiltin("jvm", 1, ReevaBuiltin.GlobalJvm)
         defineBuiltin("inspect", 1, ReevaBuiltin.GlobalInspect)
 
@@ -83,6 +88,24 @@ open class JSGlobalObject protected constructor(
     }
 
     companion object {
+        private val reservedURISet = setOf(';', '/', '?', ':', '@', '&', '=', '+', '$', ',', '#')
+        private val uriUnescaped = mutableSetOf<Char>().also {
+            it.addAll('a'..'z')
+            it.addAll('A'..'Z')
+            it.addAll('0'..'9')
+            it.add('-')
+            it.add('_')
+            it.add('.')
+            it.add('!')
+            it.add('~')
+            it.add('*')
+            it.add('\'')
+            it.add('(')
+            it.add(')')
+        }.toSet()
+
+        private val uriUnescapedExtended = uriUnescaped + reservedURISet + listOf('#')
+
         fun create(realm: Realm) = JSGlobalObject(realm).initialize()
 
         @JvmStatic
@@ -90,6 +113,30 @@ open class JSGlobalObject protected constructor(
         fun isNaN(realm: Realm, arguments: JSArguments): JSValue {
             val num = arguments.argument(0).toNumber(realm)
             return (num == JSNumber.NaN).toValue()
+        }
+
+        @JvmStatic
+        @ECMAImpl("19.2.6.2")
+        fun decodeURI(realm: Realm, arguments: JSArguments): JSValue {
+            return URIParser.decode(realm, arguments.argument(0).toJSString(realm).string, reservedURISet).toValue()
+        }
+
+        @JvmStatic
+        @ECMAImpl("19.2.6.3")
+        fun decodeURIComponent(realm: Realm, arguments: JSArguments): JSValue {
+            return URIParser.decode(realm, arguments.argument(0).toJSString(realm).string, emptySet()).toValue()
+        }
+
+        @JvmStatic
+        @ECMAImpl("19.2.6.4")
+        fun encodeURI(realm: Realm, arguments: JSArguments): JSValue {
+            return URIParser.encode(realm, arguments.argument(0).toJSString(realm).string, uriUnescapedExtended).toValue()
+        }
+
+        @JvmStatic
+        @ECMAImpl("19.2.6.5")
+        fun encodeURIComponent(realm: Realm, arguments: JSArguments): JSValue {
+            return URIParser.encode(realm, arguments.argument(0).toJSString(realm).string, uriUnescaped).toValue()
         }
 
         @ECMAImpl("18.2.1.1")

@@ -123,7 +123,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
             }
             if (position < 0 || position >= string.length)
                 return JSUndefined
-            return Operations.codePointAt(string, position).codepoint.toValue()
+            return Operations.codePointAt(string, position).codePoint.toValue()
         }
 
         @ECMAImpl("22.1.3.4")

@@ -13,11 +13,11 @@ fun CharArray.allIndexed(predicate: (index: Int, Char) -> Boolean) = this.mapInd
 fun Char.isHexDigit() = isDigit() || this in 'A'..'F' || this in 'a'..'f'
 fun Char.hexValue(): Int {
     if (this in '0'..'9')
-        return this.toInt() - '0'.toInt()
+        return this.code - '0'.code
     if (this in 'a'..'f')
-        return this.toInt() - 'a'.toInt() + 10
+        return this.code - 'a'.code + 10
     if (this in 'A'..'F')
-        return this.toInt() - 'A'.toInt() + 10
+        return this.code - 'A'.code + 10
     throw NumberFormatException("$this is not a hex character")
 }
 

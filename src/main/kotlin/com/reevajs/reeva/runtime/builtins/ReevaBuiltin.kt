@@ -404,6 +404,10 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     GlobalId(JSGlobalObject::class.java, "id", "id"),
     GlobalJvm(JSGlobalObject::class.java, "jvm", "jvm"),
     GlobalInspect(JSGlobalObject::class.java, "inspect", "inspect"),
+    GlobalDecodeURI(JSGlobalObject::class.java, "decodeURI", "decodeURI"),
+    GlobalDecodeURIComponent(JSGlobalObject::class.java, "decodeURIComponent", "decodeURIComponent"),
+    GlobalEncodeURI(JSGlobalObject::class.java, "encodeURI", "encodeURI"),
+    GlobalEncodeURIComponent(JSGlobalObject::class.java, "encodeURIComponent", "encodeURIComponent"),
     PackageProtoToString(JSPackageProto::class.java, "toString", "<JVM Package>.prototype.toString");
 
     override val handle: MethodHandle = MethodHandles.publicLookup().findStatic(clazz, name, Builtin.METHOD_TYPE)
