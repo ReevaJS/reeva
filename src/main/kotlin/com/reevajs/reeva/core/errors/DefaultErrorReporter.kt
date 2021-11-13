@@ -31,7 +31,7 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter() {
         val lineIndexWidth = max(firstLine.toString().length, lastLine.toString().length)
 
         for (i in firstLine..lastLine) {
-            out.print("\u001b[2;37m%${lineIndexWidth}d:    \u001b[0m".format(i))
+            out.print("\u001b[2;37m%${lineIndexWidth}d:    \u001b[0m".format(i + 1))
             out.println(lines[i])
             if (i == start.line) {
                 out.print(" ".repeat(start.column + lineIndexWidth + 5))
