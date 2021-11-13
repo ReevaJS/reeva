@@ -13,6 +13,7 @@ import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.expect
+import com.reevajs.reeva.utils.key
 import java.io.File
 
 open class HostHooks {
@@ -84,14 +85,12 @@ open class HostHooks {
         if (existingModule != null)
             return existingModule
 
-        return resolveImportedModuleImpl(referencingModule, specifier)
+        return resolveImportedModuleImpl(referencingModule, specifier).also {
+            referencingModule.realm.moduleTree.setImportedModule(referencingModule, specifier, it)
+        }
     }
 
     open fun resolveImportedModuleImpl(referencingModule: ModuleRecord, specifier: String): ModuleRecord {
-        val existingModule = referencingModule.realm.moduleTree.resolveImportedModule(referencingModule, specifier)
-        if (existingModule != null)
-            return existingModule
-
         if (specifier.startsWith("jvm:")) {
             // JVM modules should be the same regardless of the referencing module, so the only thing that
             // matters for caching is the specifier. We need to access the module tree directly in order to
@@ -101,9 +100,7 @@ open class HostHooks {
             if (existingJVMModule != null)
                 return existingJVMModule
 
-            return JVMModuleRecord(referencingModule.realm, specifier).also {
-                referencingModule.realm.moduleTree.setImportedModule(referencingModule, specifier, it)
-            }
+            return JVMModuleRecord(referencingModule.realm, specifier)
         }
 
         expect(referencingModule is SourceTextModuleRecord)
@@ -125,6 +122,16 @@ open class HostHooks {
 
         val sourceInfo = makeSourceInfo(resolvedFile)
 
+        // Check for existing modules with the same SourceInfo
+        val existingModule = referencingModule.realm.moduleTree.getAllLoadedModules().keys
+            .filterIsInstance<SourceTextModuleRecord>()
+            .firstOrNull {
+                it.parsedSource.sourceInfo == sourceInfo
+            }
+
+        if (existingModule != null)
+            return existingModule
+
         val result = SourceTextModuleRecord
             .parseModule(referencingModule.realm, sourceInfo)
 
@@ -133,9 +140,7 @@ open class HostHooks {
             TODO()
         }
 
-        return result.value().also {
-            referencingModule.realm.moduleTree.setImportedModule(referencingModule, specifier, it)
-        }
+        return result.value()
     }
 
     open fun makeSourceInfo(file: File): SourceInfo = FileSourceInfo(file)
