@@ -141,7 +141,12 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
                 is ExportAllAsFromNode -> names.add(export.identifierNode.processedName)
                 is ExportAllFromNode -> {
                     val requiredModule = Agent.activeAgent.hostHooks.resolveImportedModule(this, export.moduleName)
-                    names.addAll(requiredModule.getExportedNames())
+                    if (requiredModule === this) {
+                        // This export declaration won't introduce any other name bindings, as
+                        // they'll all already exist in an export declaration in the same module
+                    } else {
+                        names.addAll(requiredModule.getExportedNames())
+                    }
                 }
                 is ExportNamedFromNode -> names.addAll(export.exports.exports.map {
                     it.alias?.processedName ?: it.identifierNode.processedName
