@@ -55,6 +55,10 @@ class ScopeResolver : ASTVisitor {
     }
 
     override fun visitImport(node: Import) {
+        // Import vars never take a local slot, as they are always access by
+        // name with LoadModuleVar
+        node.isInlineable = false
+
         scope.addVariableSource(node)
         node.type = VariableType.Let
         node.mode = VariableMode.Import
