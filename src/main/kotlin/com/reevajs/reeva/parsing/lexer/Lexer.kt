@@ -3,7 +3,7 @@ package com.reevajs.reeva.parsing.lexer
 import com.reevajs.reeva.utils.*
 import kotlin.Error
 
-class Lexer(private val source: String) {
+class Lexer(private val source: String, private val isModule: Boolean) {
     private var lineNum = 0
     private var columnNum = 0
     private var cursor = 0
@@ -29,29 +29,8 @@ class Lexer(private val source: String) {
         val triviaStartCursor = cursor
         val inTemplate = templateStates.isNotEmpty()
 
-        if (!inTemplate || templateStates.last().inExpr) {
-            // Consume whitespace and comments
-            while (!isDone) {
-                if (char.isWhiteSpace() || char.isLineSeparator()) {
-                    do {
-                        consume()
-                    } while (!isDone && (char.isWhiteSpace() || char.isLineSeparator()))
-                } else if (isCommentStart()) {
-                    consume()
-                    do {
-                        consume()
-                    } while (!isDone && char != '\n')
-                } else if (has(2) && match(multilineCommentStart)) {
-                    consume()
-                    do {
-                        consume()
-                    } while (has(2) && !match(multilineCommentEnd))
-
-                    if (!isDone)
-                        consume(2)
-                } else break
-            }
-        }
+        if (!inTemplate || templateStates.last().inExpr)
+            consumeWhitespace()
 
         val afterNewline = source.substring(triviaStartCursor, cursor).any { it.isLineSeparator() }
 
@@ -489,9 +468,50 @@ class Lexer(private val source: String) {
 
     private fun isIdentMiddle() = isIdentStart() || char.isIdContinue()
 
-    private fun isCommentStart() =
-        (has(2) && match(charArrayOf('/', '/'))) ||
-            (has(4) && match(charArrayOf('<', '!', '-', '-')))
+    private fun consumeWhitespace() {
+        // Consume whitespace and comments
+        while (!isDone) {
+            if (char.isWhiteSpace() || char.isLineSeparator()) {
+                do {
+                    consume()
+                } while (!isDone && (char.isWhiteSpace() || char.isLineSeparator()))
+            } else if (isHTMLCommentStart()) {
+                if (isModule) {
+                    throw LexingException(
+                        "HTML comments are not allowed in module code",
+                        TokenLocation(cursor, lineNum, columnNum)
+                    )
+                }
+
+                consume(3)
+                do {
+                    consume()
+                } while (!isDone && char != '\n' && !isHTMLCommentEnd())
+
+                if (isHTMLCommentEnd())
+                    consume(3)
+            } else if (isLineCommentStart()) {
+                consume()
+                do {
+                    consume()
+                } while (!isDone && char != '\n')
+            } else if (has(2) && match(multilineCommentStart)) {
+                consume()
+                do {
+                    consume()
+                } while (has(2) && !match(multilineCommentEnd))
+
+                if (!isDone)
+                    consume(2)
+            } else break
+        }
+    }
+
+    private fun isHTMLCommentStart() = has(3) && match(charArrayOf('<', '!', '-', '-'))
+
+    private fun isHTMLCommentEnd() = has(2) && match(charArrayOf('<', '!', '-', '-'))
+
+    private fun isLineCommentStart() = has(2) && match(charArrayOf('/', '/'))
 
     private fun isNumberLiteralStart() =
         char.isDigit() || (has(1) && char == '.' && peek(1).isDigit())

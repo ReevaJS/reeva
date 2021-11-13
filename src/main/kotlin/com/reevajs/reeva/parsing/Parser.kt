@@ -49,12 +49,12 @@ class Parser(val sourceInfo: SourceInfo) {
 
     private var isStrict = false
 
-    private fun initLexer() {
-        tokens.addAll(Lexer(source).getTokens())
+    private fun initLexer(isModule: Boolean) {
+        tokens.addAll(Lexer(source, isModule).getTokens())
     }
 
     fun parseScript(): Result<ParsingError, ParsedSource> {
-        return parseImpl {
+        return parseImpl(isModule = false) {
             if (tokens.size == 1) {
                 // The script is empty
                 val newlineCount = source.count { it == '\n' }
@@ -67,7 +67,7 @@ class Parser(val sourceInfo: SourceInfo) {
     }
 
     fun parseModule(): Result<ParsingError, ParsedSource> {
-        return parseImpl {
+        return parseImpl(isModule = true) {
             if (tokens.size == 1) {
                 // The script is empty
                 val newlineCount = source.count { it == '\n' }
@@ -80,16 +80,16 @@ class Parser(val sourceInfo: SourceInfo) {
     }
 
     fun parseFunction(expectedKind: Operations.FunctionKind): Result<ParsingError, ParsedSource> {
-        return parseImpl {
+        return parseImpl(isModule = false) {
             parseFunctionDeclaration().also {
                 expect(it.kind == expectedKind)
             }
         }
     }
 
-    private fun parseImpl(block: () -> NodeWithScope): Result<ParsingError, ParsedSource> {
+    private fun parseImpl(isModule: Boolean, block: () -> NodeWithScope): Result<ParsingError, ParsedSource> {
         return try {
-            initLexer()
+            initLexer(isModule)
 
             val result = block()
             if (!isDone)
