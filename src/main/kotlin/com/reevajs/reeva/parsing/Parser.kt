@@ -555,15 +555,17 @@ class Parser(val sourceInfo: SourceInfo) {
 
         consume()
 
+        val start = token.start
         val list = mutableListOf<NamedExport>()
 
         while (!match(TokenType.CloseCurly)) {
             val name = parseIdentifierReference()
             if (tokenType == TokenType.Identifier && token.rawLiterals == "as") {
                 consume()
-                list.add(NamedExport(name, parseIdentifier()))
+                val ident = parseIdentifier()
+                list.add(NamedExport(name, ident).withPosition(name, ident))
             } else {
-                list.add(NamedExport(name, null))
+                list.add(NamedExport(name, null).withPosition(name))
             }
 
             if (!match(TokenType.Comma))
@@ -571,10 +573,11 @@ class Parser(val sourceInfo: SourceInfo) {
 
             consume()
         }
+        val end = token.end
 
         consume(TokenType.CloseCurly)
 
-        NamedExports(ExportList(list))
+        NamedExports(ExportList(list).withPosition(start, end))
     }
 
     private fun parseImportExportFrom(): String =
