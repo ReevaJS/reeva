@@ -129,7 +129,12 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
         }.toSet()
     }
 
-    override fun getExportedNames(): List<String> {
+    override fun getExportedNames(exportStarSet: MutableSet<SourceTextModuleRecord>): List<String> {
+        if (this in exportStarSet)
+            return emptyList()
+
+        exportStarSet.add(this)
+
         val node = parsedSource.node as ModuleNode
         val names = mutableListOf<String>()
 
@@ -145,7 +150,7 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
                         // This export declaration won't introduce any other name bindings, as
                         // they'll all already exist in an export declaration in the same module
                     } else {
-                        names.addAll(requiredModule.getExportedNames())
+                        names.addAll(requiredModule.getExportedNames(exportStarSet))
                     }
                 }
                 is ExportNamedFromNode -> names.addAll(export.exports.exports.map {

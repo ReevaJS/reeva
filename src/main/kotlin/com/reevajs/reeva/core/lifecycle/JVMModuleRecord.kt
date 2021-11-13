@@ -58,7 +58,7 @@ class JVMModuleRecord(realm: Realm, val specifier: String) : ModuleRecord(realm)
         return jvmObj
     }
 
-    override fun getExportedNames() = emptyList<String>()
+    override fun getExportedNames(exportStarSet: MutableSet<SourceTextModuleRecord>) = emptyList<String>()
 
     override fun notifyImportedNames(names: Set<String>) {
         expect(status == CyclicModuleRecord.Status.Linked || status == CyclicModuleRecord.Status.Unlinked)

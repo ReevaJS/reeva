@@ -52,7 +52,7 @@ abstract class ModuleRecord(val realm: Realm) : Executable {
 
     abstract fun evaluate(): JSValue
 
-    abstract fun getExportedNames(): List<String>
+    abstract fun getExportedNames(exportStarSet: MutableSet<SourceTextModuleRecord> = mutableSetOf()): List<String>
 
     protected abstract fun makeNamespaceImport(): JSObject
 
