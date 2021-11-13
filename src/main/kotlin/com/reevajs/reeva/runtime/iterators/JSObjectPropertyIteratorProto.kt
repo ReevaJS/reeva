@@ -10,6 +10,7 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toJSString
 import com.reevajs.reeva.utils.ecmaAssert
 
 class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
@@ -47,7 +48,7 @@ class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject
                         if (desc != null) {
                             thisValue.visitedKeys.add(key)
                             if (desc.isEnumerable) {
-                                return Operations.createIterResultObject(realm, key.asValue, false)
+                                return Operations.createIterResultObject(realm, key.asValue.toJSString(realm), false)
                             }
                         }
                     }
