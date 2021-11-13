@@ -555,8 +555,10 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         visitStatement(node.body)
 
         val incrementer = builder.opcodeCount()
-        node.incrementer?.also(::visitExpression)
-        +Pop
+        node.incrementer?.also {
+            visitExpression(it)
+            +Pop
+        }
         +Jump(head)
 
         jumpToEnd.to = builder.opcodeCount()
