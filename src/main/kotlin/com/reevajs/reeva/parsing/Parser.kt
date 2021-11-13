@@ -152,7 +152,7 @@ class Parser(val sourceInfo: SourceInfo) {
             } else if (match(TokenType.Import)) {
                 list.add(parseImportDeclaration())
             } else {
-                list.add(parseStatement())
+                list.add(parseStatement(orDecl = true))
             }
         }
 
@@ -168,7 +168,7 @@ class Parser(val sourceInfo: SourceInfo) {
         val list = mutableListOf<StatementNode>()
 
         while (tokenType.isStatementToken)
-            list.add(parseStatement())
+            list.add(parseStatement(orDecl = true))
 
         StatementList(list)
     }
@@ -266,7 +266,7 @@ class Parser(val sourceInfo: SourceInfo) {
         }
     }
 
-    private fun parseStatement(): StatementNode {
+    private fun parseStatement(orDecl: Boolean = false): StatementNode {
         if (isDone)
             reporter.at(lastToken).expected("statement", "eof")
 
@@ -274,7 +274,7 @@ class Parser(val sourceInfo: SourceInfo) {
             return parseLabellableStatement()
 
         return when (tokenType) {
-            TokenType.Var, TokenType.Let, TokenType.Const -> parseVariableDeclaration(false)
+            TokenType.Var -> parseVariableDeclaration(false)
             TokenType.Semicolon -> nps {
                 consume()
                 EmptyStatementNode()
@@ -285,18 +285,38 @@ class Parser(val sourceInfo: SourceInfo) {
             TokenType.With -> parseWithStatement()
             TokenType.Throw -> parseThrowStatement()
             TokenType.Debugger -> parseDebuggerStatement()
-            TokenType.Function, TokenType.Async -> parseFunctionDeclaration()
-            TokenType.Class -> parseClassDeclaration()
             else -> {
+                if (orDecl)
+                    parseDeclaration()?.also { return it }
+
                 if (tokenType.isExpressionToken) {
                     if (match(TokenType.Function))
                         reporter.functionInExpressionContext()
+                    if (match(TokenType.Async) &&
+                        peek(1)?.let { it.type == TokenType.Function && !it.afterNewline } == true
+                    ) {
+                        reporter.functionInExpressionContext()
+                    }
+
+                    if (match(TokenType.Class))
+                        reporter.functionInExpressionContext()
+
                     return nps {
                         ExpressionStatementNode(parseExpression().also { asi() })
                     }
                 }
+
                 reporter.expected("statement", tokenType)
             }
+        }
+    }
+
+    private fun parseDeclaration(): DeclarationNode? = nps {
+        when (tokenType) {
+            TokenType.Function, TokenType.Async -> parseFunctionDeclaration()
+            TokenType.Class -> parseClassDeclaration()
+            TokenType.Let, TokenType.Const -> parseVariableDeclaration(false)
+            else -> null
         }
     }
 
@@ -333,7 +353,10 @@ class Parser(val sourceInfo: SourceInfo) {
 
             val namespaceImport = parseNameSpaceImport()
             if (namespaceImport != null)
-                return@nps ImportDeclarationNode(ImportList(listOf(defaultImport, namespaceImport)), parseImportExportFrom())
+                return@nps ImportDeclarationNode(
+                    ImportList(listOf(defaultImport, namespaceImport)),
+                    parseImportExportFrom()
+                )
 
             val namedImports = parseNamedImports()
             if (namedImports != null) {
@@ -554,8 +577,8 @@ class Parser(val sourceInfo: SourceInfo) {
         NamedExports(ExportList(list))
     }
 
-    private fun parseImportExportFrom(): String = maybeParseImportExportFrom() ?:
-        reporter.at(token).expected("\"from\"")
+    private fun parseImportExportFrom(): String =
+        maybeParseImportExportFrom() ?: reporter.at(token).expected("\"from\"")
 
     private fun maybeParseImportExportFrom(): String? {
         if (!match(TokenType.Identifier) || token.rawLiterals != "from")

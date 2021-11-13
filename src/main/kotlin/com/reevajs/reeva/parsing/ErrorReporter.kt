@@ -23,6 +23,8 @@ abstract class Reporter {
     fun classAsyncAccessor(isGetter: Boolean): Nothing =
         error("class ${if (isGetter) "getter" else "setter"} cannot be async")
     fun classDeclarationNoName(): Nothing = error("class declaration must have an identifier")
+    fun classInExpressionContext(): Nothing =
+        error("class declarations are not allowed in single-statement contexts")
     fun classGeneratorAccessor(isGetter: Boolean): Nothing =
         error("class ${if (isGetter) "getter" else "setter"} cannot be a generator")
     fun classGeneratorField(): Nothing = error("class declaration field cannot be a generator")
