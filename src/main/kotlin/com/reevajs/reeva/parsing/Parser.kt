@@ -228,12 +228,16 @@ class Parser(val sourceInfo: SourceInfo) {
 
     private fun parseLabellableStatement(): StatementNode = nps {
         val labels = mutableSetOf<String>()
+        val currentLabelState = labelStateStack.last()
 
         while (matchIdentifier()) {
             val peeked = peek() ?: break
             if (peeked.type != TokenType.Colon)
                 break
-            labels.add(parseIdentifier().processedName)
+            val label = parseIdentifier()
+            if (!currentLabelState.canDeclareLabel(label.processedName))
+                reporter.at(label).duplicateLabel(label.processedName)
+            labels.add(label.processedName)
             consume(TokenType.Colon)
         }
 
@@ -250,7 +254,7 @@ class Parser(val sourceInfo: SourceInfo) {
             }
         }
 
-        labelStateStack.last().pushBlock(type, labels)
+        currentLabelState.pushBlock(type, labels)
 
         when (tokenType) {
             TokenType.If -> parseIfStatement()
@@ -2483,7 +2487,10 @@ class Parser(val sourceInfo: SourceInfo) {
     inner class LabelState {
         private val blocks = mutableListOf<Block>()
 
+        fun canDeclareLabel(label: String) = blocks.none { label in it.labels }
+
         fun pushBlock(type: LabellableBlockType, labels: Set<String>) {
+            expect(blocks.none { it.labels.intersect(labels).isNotEmpty() })
             blocks.add(Block(type, labels))
         }
 
