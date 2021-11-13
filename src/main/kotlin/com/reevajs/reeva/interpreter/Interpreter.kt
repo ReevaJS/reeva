@@ -320,7 +320,7 @@ class Interpreter(
     override fun visitTestIn() {
         val rhs = popValue()
         val lhs = popValue().toPropertyKey(realm)
-        push(Operations.hasProperty(rhs, lhs))
+        push(Operations.hasProperty(rhs, lhs).toValue())
     }
 
     override fun visitTypeOf() {
