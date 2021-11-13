@@ -77,17 +77,17 @@ class Test262Test(
             } else {
                 runSyncTest(agent, realm, isModule)
             }
-        } catch (e: AssertionFailedError) {
-            Test262Runner.testResults.add(
-                Test262Runner.TestResult(
-                    name, Test262Runner.TestResult.Status.Failed, e.message
-                )
-            )
-            throw e
         } catch (e: TestAbortedException) {
             Test262Runner.testResults.add(
                 Test262Runner.TestResult(
                     name, Test262Runner.TestResult.Status.Ignored, e.message
+                )
+            )
+            throw e
+        } catch (e: Throwable) {
+            Test262Runner.testResults.add(
+                Test262Runner.TestResult(
+                    name, Test262Runner.TestResult.Status.Failed, e.message
                 )
             )
             throw e
