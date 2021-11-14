@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.iterators
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -16,16 +17,16 @@ class JSListIteratorProto private constructor(realm: Realm) : JSObject(realm, re
     }
 
     companion object {
-        fun create(realm: Realm) = JSListIteratorProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSListIteratorProto(realm).initialize()
 
         // TODO: Spec doesn't say this is an actual method
         @JvmStatic
-        fun next(realm: Realm, arguments: JSArguments): JSValue {
+        fun next(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             ecmaAssert(thisValue is JSListIterator)
             if (thisValue.nextIndex >= thisValue.iteratorList.size)
-                return Operations.createIterResultObject(realm, JSUndefined, true)
-            return Operations.createIterResultObject(realm, thisValue.iteratorList[thisValue.nextIndex], false).also {
+                return Operations.createIterResultObject(JSUndefined, true)
+            return Operations.createIterResultObject(thisValue.iteratorList[thisValue.nextIndex], false).also {
                 thisValue.nextIndex++
             }
         }

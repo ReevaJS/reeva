@@ -20,8 +20,8 @@ abstract class JSBuiltinFunction protected constructor(
             return object : JSBuiltinFunction(builtin, realm, name, length, isConstructor = false) {
                 override fun evaluate(arguments: JSArguments): JSValue {
                     if (arguments.newTarget != JSUndefined)
-                        Errors.NotACtor(name).throwTypeError(realm)
-                    return builtin.handle.invokeExact(realm, arguments) as JSValue
+                        Errors.NotACtor(name).throwTypeError()
+                    return builtin.handle.invokeExact(arguments) as JSValue
                 }
             }.initialize()
         }

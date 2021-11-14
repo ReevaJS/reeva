@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.errors
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -11,7 +12,7 @@ class JSTypeErrorObject private constructor(
     companion object {
         @JvmStatic
         @JvmOverloads
-        fun create(realm: Realm, message: String? = null) = JSTypeErrorObject(realm, message).initialize()
+        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSTypeErrorObject(realm, message).initialize()
     }
 }
 
@@ -24,7 +25,7 @@ class JSTypeErrorProto private constructor(realm: Realm) : JSErrorProto(
     }
 
     companion object {
-        fun create(realm: Realm) = JSTypeErrorProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSTypeErrorProto(realm).initialize()
     }
 }
 
@@ -32,6 +33,6 @@ class JSTypeErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "Ty
     override fun errorProto(): JSObject = realm.typeErrorProto
 
     companion object {
-        fun create(realm: Realm) = JSTypeErrorCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSTypeErrorCtor(realm).initialize()
     }
 }

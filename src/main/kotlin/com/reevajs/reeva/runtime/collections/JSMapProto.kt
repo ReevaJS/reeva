@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.collections
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -38,12 +39,12 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
     }
 
     companion object {
-        fun create(realm: Realm) = JSMapProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSMapProto(realm).initialize()
 
         @ECMAImpl("24.1.3.1")
         @JvmStatic
-        fun clear(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisMapData(realm, arguments.thisValue, "clear")
+        fun clear(arguments: JSArguments): JSValue {
+            val data = thisMapData(arguments.thisValue, "clear")
             data.map.clear()
             if (data.iterationCount == 0) {
                 data.keyInsertionOrder.clear()
@@ -57,8 +58,8 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         @ECMAImpl("24.1.3.3")
         @JvmStatic
-        fun delete(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisMapData(realm, arguments.thisValue, "delete")
+        fun delete(arguments: JSArguments): JSValue {
+            val data = thisMapData(arguments.thisValue, "delete")
             val key = arguments.argument(0)
             if (data.iterationCount == 0) {
                 data.keyInsertionOrder.remove(key)
@@ -74,15 +75,15 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         @ECMAImpl("24.1.3.4")
         @JvmStatic
-        fun entries(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisMapData(realm, arguments.thisValue, "entries")
-            return JSMapIterator.create(realm, data, PropertyKind.KeyValue)
+        fun entries(arguments: JSArguments): JSValue {
+            val data = thisMapData(arguments.thisValue, "entries")
+            return JSMapIterator.create(data, PropertyKind.KeyValue)
         }
 
         @ECMAImpl("24.1.3.5")
         @JvmStatic
-        fun forEach(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisMapData(realm, arguments.thisValue, "forEach")
+        fun forEach(arguments: JSArguments): JSValue {
+            val data = thisMapData(arguments.thisValue, "forEach")
             val (callback, thisArg) = arguments.takeArgs(0..1)
             if (!Operations.isCallable(callback))
                 Errors.Map.CallableFirstArg("forEach")
@@ -93,7 +94,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
             while (index < data.keyInsertionOrder.size) {
                 val key = data.keyInsertionOrder[index]
                 if (key != JSEmpty)
-                    Operations.call(realm, callback, thisArg, listOf(data.map[key]!!, key, arguments.thisValue))
+                    Operations.call(callback, thisArg, listOf(data.map[key]!!, key, arguments.thisValue))
 
                 index++
             }
@@ -105,29 +106,29 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         @ECMAImpl("24.1.3.6")
         @JvmStatic
-        fun get(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisMapData(realm, arguments.thisValue, "get")
+        fun get(arguments: JSArguments): JSValue {
+            val data = thisMapData(arguments.thisValue, "get")
             return data.map[arguments.argument(0)] ?: JSUndefined
         }
 
         @ECMAImpl("24.1.3.7")
         @JvmStatic
-        fun has(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisMapData(realm, arguments.thisValue, "has")
+        fun has(arguments: JSArguments): JSValue {
+            val data = thisMapData(arguments.thisValue, "has")
             return (arguments.argument(0) in data.map).toValue()
         }
 
         @ECMAImpl("24.1.3.8")
         @JvmStatic
-        fun keys(realm: Realm, arguments: JSArguments): JSValue {
-            val map = thisMapData(realm, arguments.thisValue, "keys")
-            return JSMapIterator.create(realm, map, PropertyKind.Key)
+        fun keys(arguments: JSArguments): JSValue {
+            val map = thisMapData(arguments.thisValue, "keys")
+            return JSMapIterator.create(map, PropertyKind.Key)
         }
 
         @ECMAImpl("24.1.3.9")
         @JvmStatic
-        fun set(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisMapData(realm, arguments.thisValue, "set")
+        fun set(arguments: JSArguments): JSValue {
+            val data = thisMapData(arguments.thisValue, "set")
             val key = arguments.argument(0)
             data.map[key] = arguments.argument(1)
             data.keyInsertionOrder.add(key)
@@ -136,20 +137,20 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         @ECMAImpl("24.1.3.10")
         @JvmStatic
-        fun getSize(realm: Realm, arguments: JSArguments): JSValue {
-            return thisMapData(realm, arguments.thisValue, "size").map.size.toValue()
+        fun getSize(arguments: JSArguments): JSValue {
+            return thisMapData(arguments.thisValue, "size").map.size.toValue()
         }
 
         @ECMAImpl("24.1.3.11")
         @JvmStatic
-        fun values(realm: Realm, arguments: JSArguments): JSValue {
-            val map = thisMapData(realm, arguments.thisValue, "values")
-            return JSMapIterator.create(realm, map, PropertyKind.Value)
+        fun values(arguments: JSArguments): JSValue {
+            val map = thisMapData(arguments.thisValue, "values")
+            return JSMapIterator.create(map, PropertyKind.Value)
         }
 
-        private fun thisMapData(realm: Realm, thisValue: JSValue, method: String): JSMapObject.MapData {
+        private fun thisMapData(thisValue: JSValue, method: String): JSMapObject.MapData {
             if (!Operations.requireInternalSlot(thisValue, SlotName.MapData))
-                Errors.IncompatibleMethodCall("Map.prototype.$method").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("Map.prototype.$method").throwTypeError()
             return thisValue.getSlotAs(SlotName.MapData)
         }
     }

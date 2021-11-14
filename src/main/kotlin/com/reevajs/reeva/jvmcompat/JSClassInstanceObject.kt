@@ -1,5 +1,6 @@
 package com.reevajs.reeva.jvmcompat
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -11,12 +12,12 @@ class JSClassInstanceObject private constructor(
     val obj: Any,
 ) : JSObject(realm, prototype) {
     companion object {
-        fun create(realm: Realm, prototype: JSValue, obj: Any) =
+        fun create(prototype: JSValue, obj: Any, realm: Realm = Agent.activeAgent.getActiveRealm()) =
             JSClassInstanceObject(realm, prototype, obj).initialize()
 
-        fun wrap(realm: Realm, obj: Any): JSClassInstanceObject {
-            val clazz = JSClassObject.create(realm, obj::class.java)
-            return create(realm, clazz.clazzProto, obj)
+        fun wrap(obj: Any): JSClassInstanceObject {
+            val clazz = JSClassObject.create(obj::class.java)
+            return create(clazz.clazzProto, obj)
         }
     }
 }

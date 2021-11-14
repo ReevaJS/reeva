@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.errors
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -10,7 +11,7 @@ class JSURIErrorObject private constructor(
 ) : JSErrorObject(realm, message, realm.uriErrorProto) {
     companion object {
         @JvmStatic
-        fun create(realm: Realm, message: String? = null) = JSURIErrorObject(realm, message).initialize()
+        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSURIErrorObject(realm, message).initialize()
     }
 }
 
@@ -23,7 +24,7 @@ class JSURIErrorProto private constructor(realm: Realm) : JSErrorProto(
     }
 
     companion object {
-        fun create(realm: Realm) = JSURIErrorProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSURIErrorProto(realm).initialize()
     }
 }
 
@@ -31,6 +32,6 @@ class JSURIErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "URI
     override fun errorProto(): JSObject = realm.uriErrorProto
 
     companion object {
-        fun create(realm: Realm) = JSURIErrorCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSURIErrorCtor(realm).initialize()
     }
 }

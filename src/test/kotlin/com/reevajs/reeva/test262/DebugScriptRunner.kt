@@ -2,6 +2,7 @@ package com.reevajs.reeva.test262
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.FileSourceInfo
 import com.reevajs.reeva.runtime.toPrintableString
@@ -16,7 +17,7 @@ val test262Helpers = listOf(
 fun main() {
     Reeva.setup()
 
-    val agent = Agent()
+    val agent = Agent().also(Agent::setAgent)
     val realm = agent.makeRealm()
 
 //     val test262Script = collectTest262Script()
@@ -27,10 +28,9 @@ fun main() {
 //     }
 
     agent.printIR = true
-    Agent.setAgent(agent)
 
     val sourceInfo = FileSourceInfo(File("./demo/index.mjs"))
-    val executable = agent.compile(realm, sourceInfo)
+    val executable = Reeva.compile(realm, sourceInfo)
 
     if (executable.hasError) {
         agent.errorReporter.reportParseError(sourceInfo, executable.error())

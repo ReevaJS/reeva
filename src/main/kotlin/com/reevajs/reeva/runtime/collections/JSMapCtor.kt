@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.collections
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -20,10 +21,9 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
 
     override fun evaluate(arguments: JSArguments): JSValue {
         if (arguments.newTarget == JSUndefined)
-            Errors.CtorCallWithoutNew("Map").throwTypeError(realm)
+            Errors.CtorCallWithoutNew("Map").throwTypeError()
 
         val map = Operations.ordinaryCreateFromConstructor(
-            realm,
             arguments.newTarget,
             realm.mapProto,
             listOf(SlotName.MapData),
@@ -34,15 +34,15 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
             return map
 
         val adder = map.get("set")
-        return Operations.addEntriesFromIterable(realm, map, iterable, adder)
+        return Operations.addEntriesFromIterable(map, iterable, adder)
     }
 
     companion object {
-        fun create(realm: Realm) = JSMapCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSMapCtor(realm).initialize()
 
         @ECMAImpl("24.1.2.2")
         @JvmStatic
-        fun getSymbolSpecies(realm: Realm, arguments: JSArguments): JSValue {
+        fun getSymbolSpecies(arguments: JSArguments): JSValue {
             return arguments.thisValue
         }
     }

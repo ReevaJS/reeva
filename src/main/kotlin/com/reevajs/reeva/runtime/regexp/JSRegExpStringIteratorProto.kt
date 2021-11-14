@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.regexp
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -28,37 +29,37 @@ class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(r
     }
 
     companion object {
-        fun create(realm: Realm) = JSRegExpStringIteratorProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSRegExpStringIteratorProto(realm).initialize()
 
         @ECMAImpl("22.2.7.2.1")
         @JvmStatic
-        fun next(realm: Realm, arguments: JSArguments): JSValue {
+        fun next(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (thisValue !is JSRegExpStringIterator)
-                Errors.IncompatibleMethodCall("%RegExpStringIterator%.prototype.next").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("%RegExpStringIterator%.prototype.next").throwTypeError()
             if (thisValue.done)
-                return Operations.createIterResultObject(realm, JSUndefined, true)
+                return Operations.createIterResultObject(JSUndefined, true)
 
-            val match = Operations.regExpExec(realm, thisValue, thisValue.iteratedString, ".next")
+            val match = Operations.regExpExec(thisValue, thisValue.iteratedString, ".next")
             if (match == JSNull) {
                 thisValue.done = true
-                return Operations.createIterResultObject(realm, JSUndefined, true)
+                return Operations.createIterResultObject(JSUndefined, true)
             }
 
             expect(match is JSObject)
 
             return if (thisValue.global) {
-                val matchStr = Operations.toString(realm, match.get(0)).string
+                val matchStr = Operations.toString(match.get(0)).string
                 if (matchStr == "") {
-                    val thisIndex = Operations.toLength(realm, thisValue.get("lastIndex")).asInt
+                    val thisIndex = Operations.toLength(thisValue.get("lastIndex")).asInt
                     // TODO: AdvanceStringIndex
                     val nextIndex = thisIndex + 1
-                    Operations.set(realm, thisValue, "lastIndex".key(), nextIndex.toValue(), true)
+                    Operations.set(thisValue, "lastIndex".key(), nextIndex.toValue(), true)
                 }
-                Operations.createIterResultObject(realm, match, false)
+                Operations.createIterResultObject(match, false)
             } else {
                 thisValue.done = true
-                Operations.createIterResultObject(realm, match, false)
+                Operations.createIterResultObject(match, false)
             }
         }
     }

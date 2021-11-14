@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.regexp
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSString
@@ -14,7 +15,12 @@ class JSRegExpStringIterator private constructor(
     var done = false
 
     companion object {
-        fun create(realm: Realm, regexp: JSRegExpObject, string: JSString, global: Boolean, unicode: Boolean) =
-            JSRegExpStringIterator(realm, regexp, string, global, unicode).initialize()
+        fun create(
+            regexp: JSRegExpObject,
+            string: JSString,
+            global: Boolean,
+            unicode: Boolean,
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
+        ) = JSRegExpStringIterator(realm, regexp, string, global, unicode).initialize()
     }
 }

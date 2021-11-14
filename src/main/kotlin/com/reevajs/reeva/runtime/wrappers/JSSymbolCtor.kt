@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -36,20 +37,20 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
     override fun evaluate(arguments: JSArguments): JSValue {
         if (arguments.newTarget != JSUndefined)
-            Errors.NotACtor("Symbol").throwTypeError(realm)
+            Errors.NotACtor("Symbol").throwTypeError()
 
         val description = arguments.argument(0).let {
-            if (it == JSUndefined) null else Operations.toString(realm, it).string
+            if (it == JSUndefined) null else Operations.toString(it).string
         }
         return JSSymbol(description)
     }
 
     companion object {
-        fun create(realm: Realm) = JSSymbolCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSymbolCtor(realm).initialize()
 
         @ECMAImpl("20.4.2.2")
         @JvmStatic
-        fun for_(realm: Realm, arguments: JSArguments): JSValue {
+        fun for_(arguments: JSArguments): JSValue {
             val key = arguments.argument(0).asString
             for ((globalKey, globalSymbol) in Realm.globalSymbolRegistry) {
                 if (globalKey == key)
@@ -62,10 +63,10 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         @ECMAImpl("20.4.2.6")
         @JvmStatic
-        fun keyFor(realm: Realm, arguments: JSArguments): JSValue {
+        fun keyFor(arguments: JSArguments): JSValue {
             val sym = arguments.argument(0)
             if (!sym.isSymbol)
-                Errors.Symbol.KeyForBadArg.throwTypeError(realm)
+                Errors.Symbol.KeyForBadArg.throwTypeError()
             for ((globalKey, globalSymbol) in Realm.globalSymbolRegistry) {
                 if (sym == globalSymbol)
                     return globalKey.toValue()

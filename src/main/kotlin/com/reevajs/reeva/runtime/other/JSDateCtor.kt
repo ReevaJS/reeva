@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.other
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -42,20 +43,15 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
             1 -> {
                 val arg = arguments.argument(0)
                 if (arg is JSObject && arg.hasSlot(SlotName.DateValue)) {
-                    arg.getSlot(SlotName.DateValue) ?: return JSDateObject.create(realm, null)
+                    arg.getSlot(SlotName.DateValue) ?: return JSDateObject.create(null)
                 } else {
-                    val prim = Operations.toPrimitive(realm, arg)
+                    val prim = Operations.toPrimitive(arg)
                     if (prim is JSString) {
-                        parseHelper(realm, arguments)
+                        parseHelper(arguments)
                     } else {
                         Operations.timeClip(
                             ZonedDateTime.ofInstant(
-                                Instant.ofEpochMilli(
-                                    Operations.toNumber(
-                                        realm,
-                                        prim
-                                    ).asLong
-                                ),
+                                Instant.ofEpochMilli(Operations.toNumber(prim).asLong),
                                 Operations.defaultZone
                             )
                         )
@@ -66,17 +62,17 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
                 fun getArg(index: Int): Long? {
                     if (arguments.size <= index)
                         return 0L
-                    val value = Operations.toNumber(realm, arguments[index])
+                    val value = Operations.toNumber(arguments[index])
                     if (!value.isFinite)
                         return null
                     return value.asLong
                 }
 
-                val yearArg = Operations.toNumber(realm, arguments.argument(0))
+                val yearArg = Operations.toNumber(arguments.argument(0))
                 val year = if (yearArg.isNaN) {
                     return JSNumber.NaN
                 } else {
-                    val yi = Operations.toIntegerOrInfinity(realm, yearArg).asLong
+                    val yi = Operations.toIntegerOrInfinity(yearArg).asLong
                     (if (yi in 0..99) 1900 + yi else yearArg.asLong) - 1970
                 }
 
@@ -97,12 +93,11 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
                         .plus(millis, ChronoUnit.MILLIS)
                 }
 
-                return JSDateObject.create(realm, Operations.timeClip(ZonedDateTime.of(date, Operations.defaultZone)))
+                return JSDateObject.create(Operations.timeClip(ZonedDateTime.of(date, Operations.defaultZone)))
             }
         }
 
         return Operations.ordinaryCreateFromConstructor(
-            realm,
             arguments.newTarget,
             realm.dateProto,
             listOf(SlotName.DateValue)
@@ -110,22 +105,22 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
     }
 
     companion object {
-        fun create(realm: Realm) = JSDateCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSDateCtor(realm).initialize()
 
         @ECMAImpl("21.4.3.1")
         @JvmStatic
-        fun now(realm: Realm, arguments: JSArguments): JSValue {
+        fun now(arguments: JSArguments): JSValue {
             return Instant.now().toEpochMilli().toValue()
         }
 
         @ECMAImpl("21.4.3.2")
         @JvmStatic
-        fun parse(realm: Realm, arguments: JSArguments): JSValue {
-            return JSDateObject.create(realm, parseHelper(realm, arguments) ?: return JSNumber.NaN)
+        fun parse(arguments: JSArguments): JSValue {
+            return JSDateObject.create(parseHelper(arguments) ?: return JSNumber.NaN)
         }
 
-        private fun parseHelper(realm: Realm, arguments: JSArguments): ZonedDateTime? {
-            val arg = Operations.toString(realm, arguments.argument(0)).string
+        private fun parseHelper(arguments: JSArguments): ZonedDateTime? {
+            val arg = Operations.toString(arguments.argument(0)).string
 
             val result = dateTimeStringFormatter.parse(arg)
 
@@ -151,21 +146,21 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
 
         @ECMAImpl("21.4.3.4")
         @JvmStatic
-        fun utc(realm: Realm, arguments: JSArguments): JSValue {
+        fun utc(arguments: JSArguments): JSValue {
             fun getArg(index: Int, offset: Int = 0): Long? {
                 if (arguments.size <= index)
                     return 0L
-                val value = Operations.toNumber(realm, arguments[index])
+                val value = Operations.toNumber(arguments[index])
                 if (!value.isFinite)
                     return null
                 return value.asLong + offset
             }
 
-            val yearArg = Operations.toNumber(realm, arguments.argument(0))
+            val yearArg = Operations.toNumber(arguments.argument(0))
             val year = if (!yearArg.isFinite) {
                 return JSNumber.NaN
             } else {
-                val yi = Operations.toIntegerOrInfinity(realm, yearArg).asLong
+                val yi = Operations.toIntegerOrInfinity(yearArg).asLong
                 (if (yi in 0..99) 1900 + yi else yearArg.asLong) - 1970
             }
 

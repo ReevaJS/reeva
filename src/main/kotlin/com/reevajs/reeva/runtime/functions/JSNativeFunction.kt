@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.functions
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.collections.JSArguments
@@ -29,16 +30,16 @@ abstract class JSNativeFunction protected constructor(
 
     companion object {
         fun fromLambda(
-            realm: Realm,
             name: String,
             length: Int,
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
             lambda: NativeFunctionSignature,
         ) = object : JSNativeFunction(realm, name, length, isConstructor = false) {
             override fun evaluate(arguments: JSArguments): JSValue {
                 if (arguments.newTarget != JSUndefined)
-                    Errors.NotACtor(name).throwTypeError(realm)
+                    Errors.NotACtor(name).throwTypeError()
                 return try {
-                    lambda(realm, arguments)
+                    lambda(arguments)
                 } catch (e: InvocationTargetException) {
                     throw e.targetException
                 }

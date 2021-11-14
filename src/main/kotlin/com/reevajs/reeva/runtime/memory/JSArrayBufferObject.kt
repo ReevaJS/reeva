@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.memory
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -12,6 +13,6 @@ class JSArrayBufferObject private constructor(realm: Realm) : JSObject(realm, re
     val detachKey by slot<JSValue>(SlotName.ArrayBufferDetachKey, JSUndefined)
 
     companion object {
-        fun create(realm: Realm) = JSArrayBufferObject(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSArrayBufferObject(realm).initialize()
     }
 }

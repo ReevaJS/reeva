@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.mfbt.Dtoa
 import com.reevajs.reeva.runtime.*
@@ -30,29 +31,29 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
     }
 
     companion object {
-        fun create(realm: Realm) = JSNumberProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSNumberProto(realm).initialize()
 
         @ECMAImpl("20.1.3")
-        private fun thisNumberValue(realm: Realm, value: JSValue, methodName: String): JSNumber {
+        private fun thisNumberValue(value: JSValue, methodName: String): JSNumber {
             if (value.isNumber)
                 return value as JSNumber
             if (value !is JSObject)
-                Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError()
             return value.getSlotAs(SlotName.NumberData)
-                ?: Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError(realm)
+                ?: Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError()
         }
 
         @ECMAImpl("20.1.3.2")
         @JvmStatic
-        fun toExponential(realm: Realm, arguments: JSArguments): JSValue {
-            val x = thisNumberValue(realm, arguments.thisValue, "toExponential")
+        fun toExponential(arguments: JSArguments): JSValue {
+            val x = thisNumberValue(arguments.thisValue, "toExponential")
             val requestedDigits = arguments.argument(0).let {
                 if (it == JSUndefined) {
                     -1
                 } else {
-                    val value = it.toIntegerOrInfinity(realm)
+                    val value = it.toIntegerOrInfinity()
                     if (x.isFinite && (value.isInfinite || value.number !in 0.0..100.0))
-                        Errors.Number.PrecisionOutOfRange(value.toJSString(realm).string).throwRangeError(realm)
+                        Errors.Number.PrecisionOutOfRange(value.toJSString().string).throwRangeError()
                     value.asInt
                 }
             }
@@ -64,15 +65,15 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
 
         @ECMAImpl("20.1.3.3")
         @JvmStatic
-        fun toFixed(realm: Realm, arguments: JSArguments): JSValue {
-            val x = thisNumberValue(realm, arguments.thisValue, "toFixed")
+        fun toFixed(arguments: JSArguments): JSValue {
+            val x = thisNumberValue(arguments.thisValue, "toFixed")
             val requestedDigits = arguments.argument(0).let {
                 if (it == JSUndefined) {
                     0
                 } else {
-                    val value = it.toIntegerOrInfinity(realm)
+                    val value = it.toIntegerOrInfinity()
                     if (value.isInfinite || value.number !in 0.0..100.0)
-                        Errors.Number.PrecisionOutOfRange(value.toJSString(realm).string).throwRangeError(realm)
+                        Errors.Number.PrecisionOutOfRange(value.toJSString().string).throwRangeError()
                     value.asInt
                 }
             }
@@ -81,42 +82,42 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
 
             val value = x.asDouble
             if (value >= 1e21)
-                return toString(realm, JSArguments(emptyList(), thisValue = value.toValue()))
+                return toString(JSArguments(emptyList(), thisValue = value.toValue()))
 
             return Dtoa.toFixed(x.asDouble, requestedDigits)?.toValue() ?: TODO()
         }
 
         @ECMAImpl("20.1.3.3")
         @JvmStatic
-        fun toLocaleString(realm: Realm, arguments: JSArguments): JSValue {
+        fun toLocaleString(arguments: JSArguments): JSValue {
             TODO()
         }
 
         @ECMAImpl("20.1.3.3")
         @JvmStatic
-        fun toPrecision(realm: Realm, arguments: JSArguments): JSValue {
+        fun toPrecision(arguments: JSArguments): JSValue {
             if (arguments.argument(0) == JSUndefined)
-                return toString(realm, arguments)
+                return toString(arguments)
 
-            val x = thisNumberValue(realm, arguments.thisValue, "toFixed")
-            val requestedDigits = arguments.argument(0).toIntegerOrInfinity(realm)
+            val x = thisNumberValue(arguments.thisValue, "toFixed")
+            val requestedDigits = arguments.argument(0).toIntegerOrInfinity()
             if (!x.isFinite)
                 return Operations.numericToString(x).toValue()
 
             if (requestedDigits.isInfinite || requestedDigits.number !in 1.0..100.0)
-                Errors.Number.PrecisionOutOfRange(requestedDigits.toJSString(realm).string).throwRangeError(realm)
+                Errors.Number.PrecisionOutOfRange(requestedDigits.toJSString().string).throwRangeError()
 
             return Dtoa.toPrecision(x.asDouble, requestedDigits.asInt)?.toValue() ?: TODO()
         }
 
         @ECMAImpl("20.1.3.3")
         @JvmStatic
-        fun toString(realm: Realm, arguments: JSArguments): JSValue {
-            val x = thisNumberValue(realm, arguments.thisValue, "toString")
-            val r = arguments.argument(0).ifUndefined(10.toValue()).toIntegerOrInfinity(realm)
+        fun toString(arguments: JSArguments): JSValue {
+            val x = thisNumberValue(arguments.thisValue, "toString")
+            val r = arguments.argument(0).ifUndefined(10.toValue()).toIntegerOrInfinity()
 
             if (r.isInfinite || r.number !in 2.0..36.0)
-                Errors.Number.PrecisionOutOfRange(r.toJSString(realm).string).throwRangeError(realm)
+                Errors.Number.PrecisionOutOfRange(r.toJSString().string).throwRangeError()
 
             if (!x.isFinite)
                 return Operations.numericToString(x).toValue()
@@ -131,8 +132,8 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
 
         @ECMAImpl("20.1.3.3")
         @JvmStatic
-        fun valueOf(realm: Realm, arguments: JSArguments): JSValue {
-            return thisNumberValue(realm, arguments.thisValue, "valueOf")
+        fun valueOf(arguments: JSArguments): JSValue {
+            return thisNumberValue(arguments.thisValue, "valueOf")
         }
     }
 }

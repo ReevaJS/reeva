@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.collections
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -22,6 +23,6 @@ class JSMapObject private constructor(realm: Realm) : JSObject(realm, realm.mapP
     }
 
     companion object {
-        fun create(realm: Realm) = JSMapObject(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSMapObject(realm).initialize()
     }
 }

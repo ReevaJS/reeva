@@ -1,6 +1,7 @@
 package com.reevajs.reeva.runtime
 
 import com.reevajs.reeva.ast.statements.StatementList
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -110,234 +111,70 @@ open class JSGlobalObject protected constructor(
 
         private val uriUnescapedExtended = uriUnescaped + reservedURISet + listOf('#')
 
-        fun create(realm: Realm) = JSGlobalObject(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSGlobalObject(realm).initialize()
 
         @JvmStatic
         @ECMAImpl("19.2.3")
-        fun isNaN(realm: Realm, arguments: JSArguments): JSValue {
-            val num = arguments.argument(0).toNumber(realm)
+        fun isNaN(arguments: JSArguments): JSValue {
+            val num = arguments.argument(0).toNumber()
             return (num == JSNumber.NaN).toValue()
         }
 
         @JvmStatic
         @ECMAImpl("19.2.6.2")
-        fun decodeURI(realm: Realm, arguments: JSArguments): JSValue {
-            return URIParser.decode(realm, arguments.argument(0).toJSString(realm).string, reservedURISet).toValue()
+        fun decodeURI(arguments: JSArguments): JSValue {
+            return URIParser.decode(arguments.argument(0).toJSString().string, reservedURISet).toValue()
         }
 
         @JvmStatic
         @ECMAImpl("19.2.6.3")
-        fun decodeURIComponent(realm: Realm, arguments: JSArguments): JSValue {
-            return URIParser.decode(realm, arguments.argument(0).toJSString(realm).string, emptySet()).toValue()
+        fun decodeURIComponent(arguments: JSArguments): JSValue {
+            return URIParser.decode(arguments.argument(0).toJSString().string, emptySet()).toValue()
         }
 
         @JvmStatic
         @ECMAImpl("19.2.6.4")
-        fun encodeURI(realm: Realm, arguments: JSArguments): JSValue {
-            return URIParser.encode(realm, arguments.argument(0).toJSString(realm).string, uriUnescapedExtended).toValue()
+        fun encodeURI(arguments: JSArguments): JSValue {
+            return URIParser.encode(arguments.argument(0).toJSString().string, uriUnescapedExtended).toValue()
         }
 
         @JvmStatic
         @ECMAImpl("19.2.6.5")
-        fun encodeURIComponent(realm: Realm, arguments: JSArguments): JSValue {
-            return URIParser.encode(realm, arguments.argument(0).toJSString(realm).string, uriUnescaped).toValue()
+        fun encodeURIComponent(arguments: JSArguments): JSValue {
+            return URIParser.encode(arguments.argument(0).toJSString().string, uriUnescaped).toValue()
         }
 
         @ECMAImpl("18.2.1.1")
         fun performEval(
-            realm: Realm,
             argument: JSValue,
             callerRealm: Realm,
             strictCaller: Boolean,
             direct: Boolean,
         ): JSValue {
             // TODO
-            Errors.Custom("eval is not yet implemented in Reeva").throwInternalError(realm)
-
-//            if (!direct)
-//                ecmaAssert(!strictCaller)
-//
-//            if (argument !is JSString)
-//                return argument
-//
-//            val evalRealm = Agent.runningContext.realm
-//            var inFunction = false
-//            var inMethod = false
-//            var inDerivedConstructor = false
-//
-//            if (direct) {
-//                val thisEnv = Operations.getThisEnvironment()
-//                if (thisEnv is FunctionEnvRecord) {
-//                    val function = thisEnv.function
-//                    inFunction = true
-//                    inMethod = thisEnv.hasSuperBinding()
-//                    if (function.constructorKind == JSFunction.ConstructorKind.Derived)
-//                        inDerivedConstructor = true
-//                }
-//            }
-//
-//            val parser = Parser(argument.string)
-//            val scriptNode = parser.parseScript()
-//
-//            if (Reeva.PRINT_PARSE_NODES) {
-//                println("==== eval script ====")
-//                println(scriptNode.dump(1))
-//            }
-//
-//            if (parser.syntaxErrors.isNotEmpty())
-//                Error(parser.syntaxErrors.first().message).throwSyntaxError(realm)
-//
-//            val body = scriptNode.statementList
-//            if (!inFunction && body.contains("NewTargetExpressionNode"))
-//                Errors.NewTargetOutsideFunc.throwSyntaxError(realm)
-//
-//            if (!inMethod && body.contains("SuperPropertyExpressionNode"))
-//                Errors.SuperOutsideMethod.throwSyntaxError(realm)
-//
-//            if (!inDerivedConstructor && body.contains("SuperCallExpressionNode"))
-//                Errors.SuperCallOutsideCtor.throwSyntaxError(realm)
-//
-//            val strictEval = strictCaller || scriptNode.statementList.hasUseStrictDirective()
-//            val context = Agent.runningContext
-//
-//            var varEnv: EnvRecord
-//            val lexEnv: EnvRecord
-//
-//            if (direct) {
-//                varEnv = context.variableEnv!!
-//                lexEnv = DeclarativeEnvRecord.create(context.lexicalEnv)
-//            } else {
-//                varEnv = evalRealm.globalEnv
-//                lexEnv = DeclarativeEnvRecord.create(evalRealm.globalEnv)
-//            }
-//
-//            if (strictEval)
-//                varEnv = lexEnv
-//
-//            val evalContext = ExecutionContext(evalRealm, null)
-//            evalContext.variableEnv = varEnv
-//            evalContext.lexicalEnv = lexEnv
-//            Agent.pushContext(evalContext)
-//
-//            val interpreter = Interpreter(callerRealm)
-//
-//            try {
-//                evalDeclarationInstantiation(scriptNode.statementList, varEnv, lexEnv, strictEval, interpreter)
-//                return interpreter.interpretScript(scriptNode).let { if (it == JSEmpty) JSUndefined else it }
-//            } finally {
-//                Agent.popContext()
-//            }
-        }
-
-        private fun evalDeclarationInstantiation(
-            body: StatementList,
-            varEnv: EnvRecord,
-            lexEnv: EnvRecord,
-            strictEval: Boolean,
-        ) {
-            // TODO
-//            val varNames = body.varDeclaredNames()
-//            val varDeclarations = body.varScopedDeclarations()
-//            if (!strictEval) {
-//                if (varEnv is GlobalEnvRecord) {
-//                    varNames.forEach { name ->
-//                        if (varEnv.hasLexicalDeclaration(name))
-//                            Errors.TODO("evalDeclarationInstantiation 1").throwSyntaxError(realm)
-//                    }
-//                }
-//                var thisEnv = lexEnv
-//                while (thisEnv != varEnv) {
-//                    if (thisEnv !is ObjectEnvRecord) {
-//                        varNames.forEach { name ->
-//                            if (thisEnv.hasBinding(name))
-//                                Errors.TODO("evalDeclarationInstantiation 2").throwSyntaxError(realm)
-//                        }
-//                    }
-//                    thisEnv = thisEnv.outerEnv!!
-//                }
-//            }
-//            val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
-//            val declaredFunctionNames = mutableListOf<String>()
-//            varDeclarations.asReversed().forEach { decl ->
-//                if (decl is VariableDeclarationNode || decl is ForBindingNode || decl is BindingIdentifierNode)
-//                    return@forEach
-//                val functionName = decl.boundNames()[0]
-//                if (functionName !in declaredFunctionNames) {
-//                    if (varEnv is GlobalEnvRecord) {
-//                        if (!varEnv.canDeclareGlobalFunction(functionName))
-//                            Errors.TODO("evalDeclarationInstantiation 3").throwTypeError(realm)
-//                        declaredFunctionNames.add(functionName)
-//                        functionsToInitialize.add(0, decl as FunctionDeclarationNode)
-//                    }
-//                }
-//            }
-//
-//            val declaredVarNames = mutableListOf<String>()
-//            varDeclarations.forEach { decl ->
-//                if (decl !is VariableDeclarationNode && decl !is ForBindingNode && decl !is BindingIdentifierNode)
-//                    return@forEach
-//                decl.boundNames().forEach { name ->
-//                    if (name !in declaredFunctionNames) {
-//                        if (varEnv is GlobalEnvRecord) {
-//                            if (!varEnv.canDeclareGlobalVar(name))
-//                                Errors.TODO("evalDeclarationInstantiation 4").throwTypeError(realm)
-//                        }
-//                        if (name !in declaredVarNames)
-//                            declaredVarNames.add(name)
-//                    }
-//                }
-//            }
-//            body.lexicallyScopedDeclarations().forEach { decl ->
-//                decl.boundNames().forEach { name ->
-//                    if (decl.isConstantDeclaration()) {
-//                        lexEnv.createImmutableBinding(name, true)
-//                    } else {
-//                        lexEnv.createMutableBinding(name, false)
-//                    }
-//                }
-//            }
-//            functionsToInitialize.forEach { func ->
-//                val functionName = func.boundNames()[0]
-//                val function = interpreter.instantiateFunctionObject(func, lexEnv)
-//                if (varEnv is GlobalEnvRecord) {
-//                    varEnv.createGlobalFunctionBinding(functionName, function, true)
-//                } else {
-//                    if (!varEnv.hasBinding(functionName)) {
-//                        varEnv.createMutableBinding(functionName, true)
-//                        // TODO: Validate above step
-//                        varEnv.initializeBinding(functionName, function)
-//                    } else {
-//                        varEnv.setMutableBinding(functionName, function, false)
-//                    }
-//                }
-//            }
-//            declaredVarNames.forEach { name ->
-//                if (varEnv is GlobalEnvRecord) {
-//                    varEnv.createGlobalVarBinding(name, true)
-//                } else if (!varEnv.hasBinding(name)) {
-//                    varEnv.createMutableBinding(name, true)
-//                    // TODO: Validate above step
-//                    varEnv.initializeBinding(name, JSUndefined)
-//                }
-//            }
+            Errors.Custom("eval is not yet implemented in Reeva").throwInternalError()
         }
 
         @JvmStatic
-        fun id(realm: Realm, arguments: JSArguments): JSValue {
+        fun id(arguments: JSArguments): JSValue {
             val o = arguments.argument(0)
             return "${o::class.java.simpleName}@${Integer.toHexString(o.hashCode())}".toValue()
         }
 
         @JvmStatic
-        fun eval(realm: Realm, arguments: JSArguments): JSValue {
-            return performEval(realm, arguments.argument(0), realm, strictCaller = false, direct = false)
+        fun eval(arguments: JSArguments): JSValue {
+            return performEval(
+                arguments.argument(0),
+                Agent.activeAgent.getActiveRealm(),
+                strictCaller = false,
+                direct = false,
+            )
         }
 
         @JvmStatic
-        fun parseInt(realm: Realm, arguments: JSArguments): JSValue {
+        fun parseInt(arguments: JSArguments): JSValue {
             var inputString = Operations.trimString(
-                realm,
-                Operations.toString(realm, arguments.argument(0)),
+                Operations.toString(arguments.argument(0)),
                 Operations.TrimType.Start,
             )
             val sign = when {
@@ -353,7 +190,7 @@ open class JSGlobalObject protected constructor(
             }
 
             var stripPrefix = true
-            var radix = Operations.toInt32(realm, arguments.argument(1)).asInt.let {
+            var radix = Operations.toInt32(arguments.argument(1)).asInt.let {
                 if (it != 0) {
                     if (it !in 2..36)
                         return JSNumber.NaN
@@ -378,24 +215,24 @@ open class JSGlobalObject protected constructor(
         }
 
         @JvmStatic
-        fun jvm(realm: Realm, arguments: JSArguments): JSValue {
+        fun jvm(arguments: JSArguments): JSValue {
             // TODO
             return JSUndefined
 
 //        if (arguments.isEmpty())
-//            Errors.JVMCompat.JVMFuncNoArgs.throwTypeError(realm)
+//            Errors.JVMCompat.JVMFuncNoArgs.throwTypeError()
 //
 //        if (arguments.any { it !is JSClassObject })
-//            Errors.JVMCompat.JVMFuncBadArgType.throwTypeError(realm)
+//            Errors.JVMCompat.JVMFuncBadArgType.throwTypeError()
 //
 //        val classObjects = arguments.map { (it as JSClassObject).clazz }
 //        if (classObjects.count { it.isInterface } > 1)
-//            Errors.JVMCompat.JVMFuncMultipleBaseClasses.throwTypeError(realm)
+//            Errors.JVMCompat.JVMFuncMultipleBaseClasses.throwTypeError()
 //
 //        classObjects.firstOrNull {
 //            Modifier.isFinal(it.modifiers)
 //        }?.let {
-//            Errors.JVMCompat.JVMFuncFinalClass(it.name).throwTypeError(realm)
+//            Errors.JVMCompat.JVMFuncFinalClass(it.name).throwTypeError()
 //        }
 //
 //        val baseClass = classObjects.firstOrNull { !it.isInterface }
@@ -408,7 +245,7 @@ open class JSGlobalObject protected constructor(
         }
 
         @JvmStatic
-        fun inspect(realm: Realm, arguments: JSArguments): JSValue {
+        fun inspect(arguments: JSArguments): JSValue {
             val value = arguments.argument(0)
             println(inspect(value, simple = false).stringify())
             return JSUndefined

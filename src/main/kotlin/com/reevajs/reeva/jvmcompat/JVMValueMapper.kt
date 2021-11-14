@@ -124,7 +124,6 @@ object JVMValueMapper {
     @JvmOverloads
     @JvmStatic
     fun jsToJvm(
-        realm: Realm,
         value: JSValue,
         targetClass: Class<*>,
         genericInfo: Array<Type>? = null,
@@ -140,7 +139,7 @@ object JVMValueMapper {
             when (targetClass) {
                 Boolean::class.javaPrimitiveType, Boolean::class.javaObjectType, Any::class.java -> value.boolean
                 String::class.java -> value.boolean.toString()
-                else -> errorIfIncompatible(realm, value, targetClass)
+                else -> errorIfIncompatible(value, targetClass)
             }
         }
         is JSNumber -> {
@@ -153,10 +152,10 @@ object JVMValueMapper {
                 Short::class.javaPrimitiveType, Short::class.javaObjectType -> value.number.toInt().toShort()
                 Byte::class.javaPrimitiveType, Byte::class.javaObjectType -> value.number.toInt().toByte()
                 Char::class.javaPrimitiveType, Char::class.javaObjectType ->
-                    if (value.isNaN) errorIfIncompatible(realm, value, targetClass)
+                    if (value.isNaN) errorIfIncompatible(value, targetClass)
                     else value.number.toInt().toChar()
                 String::class.java -> Operations.numericToString(value)
-                else -> errorIfIncompatible(realm, value, targetClass)
+                else -> errorIfIncompatible(value, targetClass)
             }
         }
         is JSString -> {
@@ -166,22 +165,22 @@ object JVMValueMapper {
                 Float::class.javaObjectType, Long::class.javaPrimitiveType, Long::class.javaObjectType,
                 Int::class.javaPrimitiveType, Int::class.javaObjectType, Short::class.javaPrimitiveType,
                 Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType ->
-                    jsToJvm(realm, Operations.toNumber(realm, value), targetClass)
+                    jsToJvm(Operations.toNumber(value), targetClass)
                 Char::class.javaPrimitiveType, Char::class.javaObjectType -> if (value.string.length == 1) {
                     value.string[0]
-                } else jsToJvm(realm, Operations.toNumber(realm, value), targetClass)
-                else -> errorIfIncompatible(realm, value, targetClass)
+                } else jsToJvm(Operations.toNumber(value), targetClass)
+                else -> errorIfIncompatible(value, targetClass)
             }
         }
         is JSNull -> {
             if (!targetClass.isPrimitive)
                 null
             else
-                errorIfIncompatible(realm, value, targetClass)
+                errorIfIncompatible(value, targetClass)
         }
         is JSArrayObject -> {
             if (targetClass == String::class.java) {
-                Operations.toString(realm, value).string
+                Operations.toString(value).string
             } else if (List::class.java.isAssignableFrom(targetClass)) {
                 val listInstance: MutableList<Any?> = if (targetClass == List::class.java) {
                     mutableListOf()
@@ -191,7 +190,7 @@ object JVMValueMapper {
                 value.indexedProperties.indices().forEach { index ->
                     if (index !in Int.MIN_VALUE..Int.MAX_VALUE)
                         TODO()
-                    listInstance.add(index.toInt(), jsToJvm(realm, value.get(index), listType))
+                    listInstance.add(index.toInt(), jsToJvm(value.get(index), listType))
                 }
 
                 listInstance
@@ -199,7 +198,7 @@ object JVMValueMapper {
                 val arrayType = if (targetClass.isArray) targetClass.componentType else Any::class.java
                 val constructedArray = java.lang.reflect.Array.newInstance(
                     arrayType,
-                    value.getLength(realm, value).asInt,
+                    value.getLength(value).asInt,
                 )
                 value.indexedProperties.indices().forEach { index ->
                     if (index !in Int.MIN_VALUE..Int.MAX_VALUE)
@@ -207,12 +206,12 @@ object JVMValueMapper {
                     java.lang.reflect.Array.set(
                         constructedArray,
                         index.toInt(),
-                        jsToJvm(realm, value.get(index), arrayType),
+                        jsToJvm(value.get(index), arrayType),
                     )
                 }
                 constructedArray
             } else {
-                errorIfIncompatible(realm, value, targetClass)
+                errorIfIncompatible(value, targetClass)
             }
         }
         is JSClassInstanceObject -> {
@@ -225,38 +224,37 @@ object JVMValueMapper {
                 Float::class.javaObjectType, Long::class.javaPrimitiveType, Long::class.javaObjectType,
                 Int::class.javaPrimitiveType, Int::class.javaObjectType, Short::class.javaPrimitiveType,
                 Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType ->
-                    jsToJvm(realm, javaObject.toString().toValue(), targetClass)
-                else -> errorIfIncompatible(realm, value, targetClass)
+                    jsToJvm(javaObject.toString().toValue(), targetClass)
+                else -> errorIfIncompatible(value, targetClass)
             }
         }
         is JSClassObject -> {
             when (targetClass) {
                 Class::class.java, Any::class.java -> value.clazz
                 String::class.java -> value.clazz.toString()
-                else -> errorIfIncompatible(realm, value, targetClass)
+                else -> errorIfIncompatible(value, targetClass)
             }
         }
         is JSObject -> {
             when (targetClass) {
                 Any::class.java -> TODO("convert to map?")
-                String::class.java -> Operations.toString(realm, value).string
+                String::class.java -> Operations.toString(value).string
                 Double::class.javaPrimitiveType, Double::class.javaObjectType, Float::class.javaPrimitiveType,
                 Float::class.javaObjectType, Long::class.javaPrimitiveType, Long::class.javaObjectType,
                 Int::class.javaPrimitiveType, Int::class.javaObjectType, Short::class.javaPrimitiveType,
                 Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType -> jsToJvm(
-                    realm,
-                    Operations.toPrimitive(realm, value, Operations.ToPrimitiveHint.AsNumber),
+                    Operations.toPrimitive(value, Operations.ToPrimitiveHint.AsNumber),
                     targetClass
                 )
-                else -> errorIfIncompatible(realm, value, targetClass)
+                else -> errorIfIncompatible(value, targetClass)
             }
         }
-        else -> errorIfIncompatible(realm, value, targetClass)
+        else -> errorIfIncompatible(value, targetClass)
     }
 
-    private fun errorIfIncompatible(realm: Realm, value: JSValue, targetClass: Class<*>): JSValue {
+    private fun errorIfIncompatible(value: JSValue, targetClass: Class<*>): JSValue {
         if (!targetClass.isInstance(value))
-            Errors.JVMCompat.InconvertibleType(value, targetClass).throwTypeError(realm)
+            Errors.JVMCompat.InconvertibleType(value, targetClass).throwTypeError()
         return value
     }
 
@@ -281,17 +279,16 @@ object JVMValueMapper {
             val genericType = genericTypes[index]
             if (genericType is ParameterizedType) {
                 jsToJvm(
-                    realm,
                     jsValue,
                     genericType.rawType as Class<*>,
                     genericInfo = genericType.actualTypeArguments,
                 )
-            } else jsToJvm(realm, jsValue, genericType as Class<*>)
+            } else jsToJvm(jsValue, genericType as Class<*>)
         }
     }
 
     @JvmStatic
-    fun jvmToJS(realm: Realm, instance: Any?): JSValue {
+    fun jvmToJS(instance: Any?): JSValue {
         return when (instance) {
             null -> JSUndefined
             is Boolean -> if (instance) JSTrue else JSFalse
@@ -301,40 +298,40 @@ object JVMValueMapper {
             is Number -> JSNumber(instance)
             is BigInteger -> JSBigInt(instance)
             is Map<*, *> -> {
-                val jsMap = JSMapObject.create(realm)
+                val jsMap = JSMapObject.create()
                 instance.forEach { (key, value) ->
-                    val jsKey = jvmToJS(realm, key)
-                    jsMap.mapData.map[jsKey] = jvmToJS(realm, value)
+                    val jsKey = jvmToJS(key)
+                    jsMap.mapData.map[jsKey] = jvmToJS(value)
                     jsMap.mapData.keyInsertionOrder.add(jsKey)
                 }
                 jsMap
             }
             is Set<*> -> {
-                val jsSet = JSSetObject.create(realm)
+                val jsSet = JSSetObject.create()
                 instance.forEach { key ->
-                    val jsKey = jvmToJS(realm, key)
+                    val jsKey = jvmToJS(key)
                     jsSet.setData.set.add(jsKey)
                     jsSet.setData.insertionOrder.add(jsKey)
                 }
                 jsSet
             }
             is Collection<*> -> {
-                val jsArray = JSArrayObject.create(realm)
+                val jsArray = JSArrayObject.create()
                 instance.forEachIndexed { index, value ->
-                    jsArray.set(index, jvmToJS(realm, value))
+                    jsArray.set(index, jvmToJS(value))
                 }
                 jsArray
             }
             is Array<*> -> {
-                val jsArray = JSArrayObject.create(realm)
+                val jsArray = JSArrayObject.create()
                 instance.forEachIndexed { index, value ->
-                    jsArray.set(index, jvmToJS(realm, value))
+                    jsArray.set(index, jvmToJS(value))
                 }
                 jsArray
             }
-            is Package -> JSPackageObject.create(realm, instance.name)
-            is Class<*> -> JSClassObject.create(realm, instance)
-            else -> JSClassInstanceObject.wrap(realm, instance)
+            is Package -> JSPackageObject.create(instance.name)
+            is Class<*> -> JSClassObject.create(instance)
+            else -> JSClassInstanceObject.wrap(instance)
         }
     }
 }

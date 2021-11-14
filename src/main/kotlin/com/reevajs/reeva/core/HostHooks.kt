@@ -13,6 +13,7 @@ import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.expect
 import java.io.File
+import java.util.function.Function
 
 open class HostHooks {
     @ECMAImpl("9.5.2")
@@ -21,22 +22,29 @@ open class HostHooks {
     }
 
     @ECMAImpl("9.5.3")
-    open fun callJobCallback(realm: Realm, handler: Operations.JobCallback, arguments: JSArguments): JSValue {
-        return Operations.call(realm, handler.callback, arguments)
+    open fun callJobCallback(handler: Operations.JobCallback, arguments: JSArguments): JSValue {
+        return Operations.call(handler.callback, arguments)
     }
 
     @ECMAImpl("9.5.4")
-    open fun enqueuePromiseJob(job: () -> Unit, realm: Realm?) {
+    open fun enqueuePromiseJob(realm: Realm?, job: () -> Unit) {
         Agent.activeAgent.microtaskQueue.addMicrotask(job)
     }
 
     @ECMAImpl("9.6")
-    open fun initializeHostDefinedRealm(realmExtensions: Map<Any, RealmExtension>): Realm {
+    open fun initializeHostDefinedRealm(
+        realmExtensions: Map<Any, RealmExtension>,
+        globalObjProducer: Function<Realm, JSObject>,
+    ): Realm {
         val realm = Realm(realmExtensions)
-        realm.initObjects()
-        val globalObject = initializeHostDefinedGlobalObject(realm)
-        val thisValue = initializeHostDefinedGlobalThisValue(realm)
-        realm.setGlobalObject(globalObject, thisValue)
+
+        Agent.activeAgent.withRealm(realm) {
+            realm.initObjects()
+            val globalObject = globalObjProducer.apply(realm)
+            val thisValue = initializeHostDefinedGlobalThisValue(realm)
+            realm.setGlobalObject(globalObject, thisValue)
+        }
+
         return realm
     }
 
@@ -65,14 +73,14 @@ open class HostHooks {
     }
 
     @ECMAImpl("27.2.1.9")
-    open fun promiseRejectionTracker(realm: Realm, promise: JSObject, operation: String) {
+    open fun promiseRejectionTracker(promise: JSObject, operation: String) {
         if (operation == "reject") {
             Agent.activeAgent.microtaskQueue.addMicrotask {
                 // If promise does not have any handlers by the time this microtask is ran, it
                 // will not have any handlers, and we can print a warning
                 if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled)) {
                     val result = promise.getSlotAs<JSValue>(SlotName.PromiseResult)
-                    println("\u001b[31mUnhandled promise rejection: ${Operations.toString(realm, result)}\u001B[0m")
+                    println("\u001b[31mUnhandled promise rejection: ${Operations.toString(result)}\u001B[0m")
                 }
             }
         }

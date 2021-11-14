@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.arrays
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
@@ -32,16 +33,16 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         val proto = Operations.getPrototypeFromConstructor(realNewTarget, realm.arrayProto)
 
         return when (arguments.size) {
-            0 -> JSArrayObject.create(realm, proto)
+            0 -> JSArrayObject.create(proto = proto)
             1 -> {
-                val array = JSArrayObject.create(realm, proto)
+                val array = JSArrayObject.create(proto = proto)
                 val lengthArg = arguments[0]
                 val length = if (lengthArg.isNumber) {
-                    val intLen = Operations.toUint32(realm, lengthArg)
+                    val intLen = Operations.toUint32(lengthArg)
                     // TODO: The spec says "if intLen is not the same value as len...", does that refer to the
                     // operation SameValue? Or is it different?
                     if (!intLen.sameValue(lengthArg))
-                        Errors.InvalidArrayLength(Operations.toPrintableString(lengthArg)).throwRangeError(realm)
+                        Errors.InvalidArrayLength(Operations.toPrintableString(lengthArg)).throwRangeError()
                     intLen.asInt
                 } else {
                     array.set(0, lengthArg)
@@ -52,7 +53,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                 }
             }
             else -> {
-                val array = Operations.arrayCreate(realm, arguments.size, proto)
+                val array = Operations.arrayCreate(arguments.size, proto)
                 arguments.forEachIndexed { index, value ->
                     array.indexedProperties.set(array, index, value)
                 }
@@ -63,57 +64,57 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     }
 
     companion object {
-        fun create(realm: Realm) = JSArrayCtor(realm).initialize()
-        fun create(realm: Realm, length: Int) = JSArrayCtor(realm).initialize().also {
-            it.indexedProperties.setArrayLikeSize(length.toLong())
-        }
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSArrayCtor(realm).initialize()
 
-        fun create(realm: Realm, length: Long) = JSArrayCtor(realm).initialize().also {
-            it.indexedProperties.setArrayLikeSize(length)
-        }
+        fun create(length: Int, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+            JSArrayCtor(realm).initialize().also {
+                it.indexedProperties.setArrayLikeSize(length.toLong())
+            }
+
+        fun create(length: Long, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+            JSArrayCtor(realm).initialize().also {
+                it.indexedProperties.setArrayLikeSize(length)
+            }
 
         @ECMAImpl("23.1.2.1")
         @JvmStatic
-        fun from(realm: Realm, arguments: JSArguments): JSValue {
+        fun from(arguments: JSArguments): JSValue {
             val items = arguments.argument(0)
             val mapFn = arguments.argument(1)
             val thisArg = arguments.argument(2)
 
             val mapping = if (mapFn == JSUndefined) false else {
                 if (!Operations.isCallable(mapFn))
-                    Errors.NotCallable(Operations.toPrintableString(mapFn)).throwTypeError(realm)
+                    Errors.NotCallable(Operations.toPrintableString(mapFn)).throwTypeError()
                 true
             }
 
-            val usingIterator = Operations.getMethod(realm, items, Realm.WellKnownSymbols.iterator)
+            val usingIterator = Operations.getMethod(items, Realm.WellKnownSymbols.iterator)
             if (usingIterator != JSUndefined) {
                 val array = if (Operations.isConstructor(arguments.thisValue)) {
                     Operations.construct(arguments.thisValue) as JSObject
-                } else Operations.arrayCreate(realm, 0)
+                } else Operations.arrayCreate(0)
 
                 val iteratorRecord =
-                    Operations.getIterator(realm, items, Operations.IteratorHint.Sync, usingIterator as JSFunction)
+                    Operations.getIterator(items, Operations.IteratorHint.Sync, usingIterator as JSFunction)
                 var k = 0L
                 while (true) {
                     if (k == Operations.MAX_SAFE_INTEGER) {
-                        val error = JSTypeErrorObject.create(
-                            realm,
-                            "array length ${Long.MAX_VALUE} is too large"
-                        )
+                        val error = JSTypeErrorObject.create("array length ${Long.MAX_VALUE} is too large")
                         Operations.iteratorClose(iteratorRecord, error)
                         throw ThrowException(error)
                     }
 
                     val next = Operations.iteratorStep(iteratorRecord)
                     if (next == JSFalse) {
-                        Operations.set(realm, array, "length".key(), k.toValue(), true)
+                        Operations.set(array, "length".key(), k.toValue(), true)
                         return array
                     }
 
                     val nextValue = Operations.iteratorValue(next)
                     val mappedValue = if (mapping) {
                         try {
-                            Operations.call(realm, mapFn, thisArg, listOf(nextValue, k.toValue()))
+                            Operations.call(mapFn, thisArg, listOf(nextValue, k.toValue()))
                         } catch (e: ThrowException) {
                             Operations.iteratorClose(iteratorRecord, e.value)
                             throw e
@@ -121,7 +122,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                     } else nextValue
 
                     try {
-                        Operations.createDataPropertyOrThrow(realm, array, k.key(), mappedValue)
+                        Operations.createDataPropertyOrThrow(array, k.key(), mappedValue)
                     } catch (e: ThrowException) {
                         Operations.iteratorClose(iteratorRecord, e.value)
                         throw e
@@ -131,49 +132,49 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                 }
             }
 
-            val arrayLike = Operations.toObject(realm, items)
-            val len = Operations.lengthOfArrayLike(realm, arrayLike)
+            val arrayLike = Operations.toObject(items)
+            val len = Operations.lengthOfArrayLike(arrayLike)
             val array = if (Operations.isConstructor(arguments.thisValue)) {
                 Operations.construct(arguments.thisValue, listOf(len.toValue())) as JSObject
-            } else Operations.arrayCreate(realm, len)
+            } else Operations.arrayCreate(len)
 
             var k = 0
             while (k < len) {
                 val kValue = arrayLike.get(k)
                 val mappedValue = if (mapping) {
-                    Operations.call(realm, mapFn, thisArg, listOf(kValue, k.toValue()))
+                    Operations.call(mapFn, thisArg, listOf(kValue, k.toValue()))
                 } else kValue
-                Operations.createDataPropertyOrThrow(realm, array, k.key(), mappedValue)
+                Operations.createDataPropertyOrThrow(array, k.key(), mappedValue)
                 k++
             }
 
-            Operations.set(realm, array, "length".key(), len.toValue(), true)
+            Operations.set(array, "length".key(), len.toValue(), true)
             return array
         }
 
         @ECMAImpl("23.1.2.2")
         @JvmStatic
-        fun isArray(realm: Realm, arguments: JSArguments): JSValue {
-            return Operations.isArray(realm, arguments.argument(0)).toValue()
+        fun isArray(arguments: JSArguments): JSValue {
+            return Operations.isArray(arguments.argument(0)).toValue()
         }
 
         @ECMAImpl("23.1.2.3")
         @JvmStatic
-        fun of(realm: Realm, arguments: JSArguments): JSValue {
+        fun of(arguments: JSArguments): JSValue {
             val array = if (Operations.isConstructor(arguments.thisValue)) {
                 Operations.construct(arguments.thisValue, listOf(arguments.size.toValue())) as JSObject
-            } else Operations.arrayCreate(realm, arguments.size)
+            } else Operations.arrayCreate(arguments.size)
 
             arguments.forEachIndexed { index, value ->
-                Operations.createDataPropertyOrThrow(realm, array, index.key(), value)
+                Operations.createDataPropertyOrThrow(array, index.key(), value)
             }
-            Operations.set(realm, array, "length".key(), arguments.size.toValue(), true)
+            Operations.set(array, "length".key(), arguments.size.toValue(), true)
             return array
         }
 
         @ECMAImpl("23.1.2.5")
         @JvmStatic
-        fun getSymbolSpecies(realm: Realm, arguments: JSArguments): JSValue {
+        fun getSymbolSpecies(arguments: JSArguments): JSValue {
             return arguments.thisValue
         }
     }

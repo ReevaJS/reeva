@@ -1,6 +1,5 @@
 package com.reevajs.reeva.runtime.builtins
 
-import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.collections.JSArguments
 import java.lang.invoke.MethodHandle
@@ -13,7 +12,7 @@ interface Builtin {
 
     companion object {
         val METHOD_TYPE: MethodType =
-            MethodType.methodType(JSValue::class.java, Realm::class.java, JSArguments::class.java)
+            MethodType.methodType(JSValue::class.java, JSArguments::class.java)
 
         fun forClass(clazz: Class<*>, name: String, debugName: String = name) = object : Builtin {
             override val handle: MethodHandle = MethodHandles.publicLookup().findStatic(clazz, name, METHOD_TYPE)

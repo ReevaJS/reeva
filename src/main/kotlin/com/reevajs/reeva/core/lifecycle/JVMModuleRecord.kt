@@ -28,8 +28,8 @@ class JVMModuleRecord(realm: Realm, val specifier: String) : ModuleRecord(realm)
     }
 
     private val jvmObj = if (jvmClass != null) {
-        JSClassObject.create(realm, jvmClass)
-    } else JSPackageObject.create(realm, classOrPkgName)
+        JSClassObject.create(jvmClass, realm)
+    } else JSPackageObject.create(classOrPkgName, realm)
 
     override fun link() {
         ecmaAssert(status != CyclicModuleRecord.Status.Linking && status != CyclicModuleRecord.Status.Evaluating)

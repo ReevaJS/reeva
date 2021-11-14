@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.promises
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -16,19 +17,19 @@ class JSCapabilitiesExecutor private constructor(
         if (arguments.newTarget != JSUndefined)
             throw IllegalStateException("Unexpected construction of JSCapabilitiesExecutor")
         if (capability.resolve != null)
-            Errors.TODO("JSCapabilitiesExecutor 1").throwTypeError(realm)
+            Errors.TODO("JSCapabilitiesExecutor 1").throwTypeError()
         if (capability.reject != null)
-            Errors.TODO("JSCapabilitiesExecutor 2").throwTypeError(realm)
+            Errors.TODO("JSCapabilitiesExecutor 2").throwTypeError()
 
         arguments.argument(0).also {
             if (!Operations.isCallable(it))
-                Errors.TODO("JSCapabilitiesExecutor 3").throwTypeError(realm)
+                Errors.TODO("JSCapabilitiesExecutor 3").throwTypeError()
             capability.resolve = it
         }
 
         arguments.argument(1).also {
             if (!Operations.isCallable(it))
-                Errors.TODO("JSCapabilitiesExecutor 4").throwTypeError(realm)
+                Errors.TODO("JSCapabilitiesExecutor 4").throwTypeError()
             capability.reject = it
         }
 
@@ -36,7 +37,7 @@ class JSCapabilitiesExecutor private constructor(
     }
 
     companion object {
-        fun create(realm: Realm, capability: Operations.PromiseCapability) =
+        fun create(capability: Operations.PromiseCapability, realm: Realm = Agent.activeAgent.getActiveRealm()) =
             JSCapabilitiesExecutor(realm, capability).initialize()
     }
 }

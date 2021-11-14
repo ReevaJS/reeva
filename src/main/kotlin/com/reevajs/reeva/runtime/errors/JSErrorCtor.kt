@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.errors
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -26,19 +27,19 @@ open class JSErrorCtor protected constructor(
             //  function object; else let newTarget be NewTarget."
             JSUndefined
         }
-        val obj = Operations.ordinaryCreateFromConstructor(realm, newTarget, errorProto(), listOf(SlotName.ErrorData))
+        val obj = Operations.ordinaryCreateFromConstructor(newTarget, errorProto(), listOf(SlotName.ErrorData))
         val message = arguments.argument(0)
 
         if (message != JSUndefined) {
-            val msg = Operations.toString(realm, message)
+            val msg = Operations.toString(message)
             val msgDesc = Descriptor(msg, attrs { +conf; -enum; +writ })
-            Operations.definePropertyOrThrow(realm, obj, "message".key(), msgDesc)
+            Operations.definePropertyOrThrow(obj, "message".key(), msgDesc)
         }
 
         return obj
     }
 
     companion object {
-        fun create(realm: Realm) = JSErrorCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSErrorCtor(realm).initialize()
     }
 }

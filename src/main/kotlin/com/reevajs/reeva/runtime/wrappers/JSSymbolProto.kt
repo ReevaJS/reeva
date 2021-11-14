@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -32,40 +33,40 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         defineBuiltin(Realm.WellKnownSymbols.toPrimitive, 0, ReevaBuiltin.SymbolProtoSymbolToPrimitive)
     }
 
-    fun getDescription(realm: Realm, thisValue: JSValue): JSValue {
-        return thisSymbolValue(realm, thisValue, "description").description?.toValue() ?: JSUndefined
+    fun getDescription(thisValue: JSValue): JSValue {
+        return thisSymbolValue(thisValue, "description").description?.toValue() ?: JSUndefined
     }
 
-    fun getSymbolToStringTag(realm: Realm, thisValue: JSValue) = "Symbol".toValue()
+    fun getSymbolToStringTag(thisValue: JSValue) = "Symbol".toValue()
 
     companion object {
-        fun create(realm: Realm) = JSSymbolProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSymbolProto(realm).initialize()
 
         @ECMAImpl("19.4.3")
-        private fun thisSymbolValue(realm: Realm, value: JSValue, methodName: String): JSSymbol {
+        private fun thisSymbolValue(value: JSValue, methodName: String): JSSymbol {
             if (value.isSymbol)
                 return value.asSymbol
             if (value is JSSymbolObject)
                 return value.symbol
-            Errors.IncompatibleMethodCall("Symbol.prototype.$methodName").throwTypeError(realm)
+            Errors.IncompatibleMethodCall("Symbol.prototype.$methodName").throwTypeError()
         }
 
         @ECMAImpl("20.4.3.3")
         @JvmStatic
-        fun toString(realm: Realm, arguments: JSArguments): JSValue {
-            return thisSymbolValue(realm, arguments.thisValue, "toString").descriptiveString().toValue()
+        fun toString(arguments: JSArguments): JSValue {
+            return thisSymbolValue(arguments.thisValue, "toString").descriptiveString().toValue()
         }
 
         @ECMAImpl("20.4.3.4")
         @JvmStatic
-        fun toValue(realm: Realm, arguments: JSArguments): JSValue {
-            return thisSymbolValue(realm, arguments.thisValue, "toValue")
+        fun toValue(arguments: JSArguments): JSValue {
+            return thisSymbolValue(arguments.thisValue, "toValue")
         }
 
         @ECMAImpl("20.4.3.5")
         @JvmStatic
-        fun symbolToPrimitive(realm: Realm, arguments: JSArguments): JSValue {
-            return thisSymbolValue(realm, arguments.thisValue, "@@toPrimitive")
+        fun symbolToPrimitive(arguments: JSArguments): JSValue {
+            return thisSymbolValue(arguments.thisValue, "@@toPrimitive")
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.iterators
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -20,11 +21,11 @@ class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject
     }
 
     companion object {
-        fun create(realm: Realm) = JSObjectPropertyIteratorProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSObjectPropertyIteratorProto(realm).initialize()
 
         @ECMAImpl("14.7.5.10.2.1")
         @JvmStatic
-        fun next(realm: Realm, arguments: JSArguments): JSValue {
+        fun next(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             ecmaAssert(thisValue is JSObjectPropertyIterator)
             while (true) {
@@ -48,7 +49,7 @@ class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject
                         if (desc != null) {
                             thisValue.visitedKeys.add(key)
                             if (desc.isEnumerable) {
-                                return Operations.createIterResultObject(realm, key.asValue.toJSString(realm), false)
+                                return Operations.createIterResultObject(key.asValue.toJSString(), false)
                             }
                         }
                     }
@@ -56,7 +57,7 @@ class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject
                 thisValue.obj = obj.getPrototype()
                 thisValue.objWasVisited = false
                 if (thisValue.obj == JSNull)
-                    return Operations.createIterResultObject(realm, JSUndefined, true)
+                    return Operations.createIterResultObject(JSUndefined, true)
             }
         }
     }

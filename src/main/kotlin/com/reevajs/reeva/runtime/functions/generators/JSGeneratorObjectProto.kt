@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.functions.generators
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -22,34 +23,34 @@ class JSGeneratorObjectProto(realm: Realm) : JSObject(realm, realm.iteratorProto
     }
 
     companion object {
-        fun create(realm: Realm) = JSGeneratorObjectProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSGeneratorObjectProto(realm).initialize()
 
-        private fun thisGeneratorObject(realm: Realm, value: JSValue, method: String): JSGeneratorObject {
-            val obj = Operations.toObject(realm, value)
+        private fun thisGeneratorObject(value: JSValue, method: String): JSGeneratorObject {
+            val obj = Operations.toObject(value)
             if (obj !is JSGeneratorObject)
-                Errors.IncompatibleMethodCall("Generator.prototype.$method").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("Generator.prototype.$method").throwTypeError()
             return obj
         }
 
         @ECMAImpl("27.5.1.2")
         @JvmStatic
-        fun next(realm: Realm, arguments: JSArguments): JSValue {
-            val generator = thisGeneratorObject(realm, arguments.thisValue, "next")
-            return generator.next(realm, arguments.argument(0))
+        fun next(arguments: JSArguments): JSValue {
+            val generator = thisGeneratorObject(arguments.thisValue, "next")
+            return generator.next(arguments.argument(0))
         }
 
         @ECMAImpl("27.5.1.3")
         @JvmStatic
-        fun return_(realm: Realm, arguments: JSArguments): JSValue {
-            val generator = thisGeneratorObject(realm, arguments.thisValue, "return")
-            return generator.return_(realm, arguments.argument(0))
+        fun return_(arguments: JSArguments): JSValue {
+            val generator = thisGeneratorObject(arguments.thisValue, "return")
+            return generator.return_(arguments.argument(0))
         }
 
         @ECMAImpl("27.5.1.4")
         @JvmStatic
-        fun throw_(realm: Realm, arguments: JSArguments): JSValue {
-            val generator = thisGeneratorObject(realm, arguments.thisValue, "throw")
-            return generator.throw_(realm, arguments.argument(0))
+        fun throw_(arguments: JSArguments): JSValue {
+            val generator = thisGeneratorObject(arguments.thisValue, "throw")
+            return generator.throw_(arguments.argument(0))
         }
     }
 }

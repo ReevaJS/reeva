@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers.strings
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -20,24 +21,24 @@ class JSStringIteratorProto private constructor(realm: Realm) : JSObject(realm, 
     }
 
     companion object {
-        fun create(realm: Realm) = JSStringIteratorProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSStringIteratorProto(realm).initialize()
 
         @JvmStatic
-        fun next(realm: Realm, arguments: JSArguments): JSValue {
+        fun next(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (thisValue !is JSStringIteratorObject)
-                Errors.IncompatibleMethodCall("%StringIterator%.prototype.next").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("%StringIterator%.prototype.next").throwTypeError()
 
             val string = thisValue.string
-                ?: return Operations.createIterResultObject(realm, JSUndefined, true)
+                ?: return Operations.createIterResultObject(JSUndefined, true)
 
             val index = thisValue.nextIndex
             if (index >= string.length) {
                 thisValue.string = null
-                return Operations.createIterResultObject(realm, JSUndefined, true)
+                return Operations.createIterResultObject(JSUndefined, true)
             }
 
-            return Operations.createIterResultObject(realm, string[thisValue.nextIndex++].toValue(), false)
+            return Operations.createIterResultObject(string[thisValue.nextIndex++].toValue(), false)
         }
     }
 }

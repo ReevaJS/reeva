@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -24,24 +25,24 @@ class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
     override fun evaluate(arguments: JSArguments): JSValue {
         if (arguments.newTarget != JSUndefined)
-            Errors.BigInt.CtorCalledWithNew.throwTypeError(realm)
-        val prim = Operations.toPrimitive(realm, arguments.argument(0), Operations.ToPrimitiveHint.AsNumber)
+            Errors.BigInt.CtorCalledWithNew.throwTypeError()
+        val prim = Operations.toPrimitive(arguments.argument(0), Operations.ToPrimitiveHint.AsNumber)
         if (prim is JSNumber) {
             if (!Operations.isIntegralNumber(prim))
-                Errors.BigInt.Conversion(Operations.toPrintableString(prim)).throwRangeError(realm)
+                Errors.BigInt.Conversion(Operations.toPrintableString(prim)).throwRangeError()
             return BigInteger.valueOf(prim.asLong).toValue()
         }
-        return Operations.toBigInt(realm, prim)
+        return Operations.toBigInt(prim)
     }
 
     companion object {
-        fun create(realm: Realm) = JSBigIntCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSBigIntCtor(realm).initialize()
 
         @ECMAImpl("21.2.2.1")
         @JvmStatic
-        fun asIntN(realm: Realm, arguments: JSArguments): JSValue {
-            val bits = Operations.toIndex(realm, arguments.argument(0))
-            val bigint = Operations.toBigInt(realm, arguments.argument(1))
+        fun asIntN(arguments: JSArguments): JSValue {
+            val bits = Operations.toIndex(arguments.argument(0))
+            val bigint = Operations.toBigInt(arguments.argument(1))
             if (bits == 0)
                 return JSBigInt.ZERO
             val modRhs = BigInteger.valueOf(2L).shiftLeft(bits - 1)
@@ -53,9 +54,9 @@ class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         @ECMAImpl("21.2.2.2")
         @JvmStatic
-        fun asUintN(realm: Realm, arguments: JSArguments): JSValue {
-            val bits = Operations.toIndex(realm, arguments.argument(0))
-            val bigint = Operations.toBigInt(realm, arguments.argument(1))
+        fun asUintN(arguments: JSArguments): JSValue {
+            val bits = Operations.toIndex(arguments.argument(0))
+            val bigint = Operations.toBigInt(arguments.argument(1))
             return bigint.number.mod(BigInteger.valueOf(2L).shiftLeft(bits - 1)).toValue()
         }
     }

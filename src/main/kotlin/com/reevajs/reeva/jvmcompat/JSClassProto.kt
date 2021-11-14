@@ -1,5 +1,6 @@
 package com.reevajs.reeva.jvmcompat
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
@@ -16,10 +17,10 @@ class JSClassProto private constructor(realm: Realm) : JSObject(realm, realm.obj
     }
 
     companion object {
-        fun create(realm: Realm) = JSClassProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSClassProto(realm).initialize()
 
         @JvmStatic
-        fun toString(realm: Realm, arguments: JSArguments): JSValue {
+        fun toString(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             expect(thisValue is JSClassObject)
             return "Class(${thisValue.clazz.name})".toValue()

@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -23,28 +24,28 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
     }
 
     companion object {
-        fun create(realm: Realm) = JSBooleanProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSBooleanProto(realm).initialize()
 
-        private fun thisBooleanValue(realm: Realm, value: JSValue, methodName: String): JSBoolean {
+        private fun thisBooleanValue(value: JSValue, methodName: String): JSBoolean {
             if (value.isBoolean)
                 return value as JSBoolean
             if (value !is JSObject)
-                Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError()
             return value.getSlotAs(SlotName.BooleanData)
-                ?: Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError(realm)
+                ?: Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError()
         }
 
         @ECMAImpl("19.3.3.2")
         @JvmStatic
-        fun toString(realm: Realm, arguments: JSArguments): JSValue {
-            val b = thisBooleanValue(realm, arguments.thisValue, "toString")
+        fun toString(arguments: JSArguments): JSValue {
+            val b = thisBooleanValue(arguments.thisValue, "toString")
             return if (b.boolean) "true".toValue() else "false".toValue()
         }
 
         @ECMAImpl("19.3.3.2")
         @JvmStatic
-        fun valueOf(realm: Realm, arguments: JSArguments): JSValue {
-            return thisBooleanValue(realm, arguments.thisValue, "valueOf")
+        fun valueOf(arguments: JSArguments): JSValue {
+            return thisBooleanValue(arguments.thisValue, "valueOf")
         }
     }
 }

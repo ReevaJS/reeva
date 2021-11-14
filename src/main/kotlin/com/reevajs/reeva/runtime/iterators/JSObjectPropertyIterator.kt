@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.iterators
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -15,11 +16,11 @@ class JSObjectPropertyIterator private constructor(
     companion object {
         @JvmStatic @JvmOverloads
         fun create(
-            realm: Realm,
             obj: JSObject,
             objWasVisited: Boolean = false,
             visitedKeys: MutableList<PropertyKey> = ArrayList(),
             remainingKeys: MutableList<PropertyKey> = ArrayList(),
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = JSObjectPropertyIterator(realm, obj, objWasVisited, visitedKeys, remainingKeys).initialize()
     }
 }

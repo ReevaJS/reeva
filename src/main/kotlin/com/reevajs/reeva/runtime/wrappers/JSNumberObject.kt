@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -14,6 +15,6 @@ open class JSNumberObject protected constructor(realm: Realm, number: JSNumber) 
     }
 
     companion object {
-        fun create(realm: Realm, number: JSNumber) = JSNumberObject(realm, number).initialize()
+        fun create(number: JSNumber, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSNumberObject(realm, number).initialize()
     }
 }

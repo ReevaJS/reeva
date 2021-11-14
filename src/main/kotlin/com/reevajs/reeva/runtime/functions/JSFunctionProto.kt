@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.functions
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -16,8 +17,8 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
     override fun init() {
         super.init()
 
-        val thrower = JSNativeFunction.fromLambda(realm, "", 0) { realm, _ ->
-            Errors.Function.CallerArgumentsAccess.throwTypeError(realm)
+        val thrower = JSNativeFunction.fromLambda("", 0) {
+            Errors.Function.CallerArgumentsAccess.throwTypeError()
         }
 
         defineOwnProperty("name", "".toValue(), attrs { +conf; -enum; -writ })
@@ -34,30 +35,30 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
 
     companion object {
         // Special object: do not initialize
-        fun create(realm: Realm) = JSFunctionProto(realm)
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSFunctionProto(realm)
 
         @ECMAImpl("20.2.3.1")
         @JvmStatic
-        fun apply(realm: Realm, arguments: JSArguments): JSValue {
+        fun apply(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (!Operations.isCallable(thisValue))
-                Errors.Function.NonCallable("apply").throwTypeError(realm)
+                Errors.Function.NonCallable("apply").throwTypeError()
             val array = arguments.argument(1)
             if (array == JSUndefined || array == JSNull)
-                return Operations.call(realm, thisValue, arguments.argument(0))
-            val argList = Operations.createListFromArrayLike(realm, array)
-            return Operations.call(realm, thisValue, arguments.argument(0), argList)
+                return Operations.call(thisValue, arguments.argument(0))
+            val argList = Operations.createListFromArrayLike(array)
+            return Operations.call(thisValue, arguments.argument(0), argList)
         }
 
         @ECMAImpl("20.2.3.2")
         @JvmStatic
-        fun bind(realm: Realm, arguments: JSArguments): JSValue {
+        fun bind(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (!Operations.isCallable(thisValue))
-                Errors.Function.BindNonFunction.throwTypeError(realm)
+                Errors.Function.BindNonFunction.throwTypeError()
 
             val args = if (arguments.size > 1) arguments.takeArgs(1 until arguments.size) else emptyList()
-            val function = Operations.boundFunctionCreate(realm, thisValue, JSArguments(args, arguments.argument(0)))
+            val function = Operations.boundFunctionCreate(thisValue, JSArguments(args, arguments.argument(0)))
 
             var length = JSNumber.ZERO
 
@@ -67,7 +68,7 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
                     if (targetLen.isPositiveInfinity) {
                         length = targetLen
                     } else if (!targetLen.isNegativeInfinity) {
-                        val targetLenAsInt = Operations.toIntegerOrInfinity(realm, targetLen).let {
+                        val targetLenAsInt = Operations.toIntegerOrInfinity(targetLen).let {
                             ecmaAssert(it.isFinite)
                             it.asInt
                         }
@@ -77,7 +78,6 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
             }
 
             Operations.definePropertyOrThrow(
-                realm,
                 function,
                 "length".key(),
                 Descriptor(length, Descriptor.CONFIGURABLE)
@@ -87,17 +87,16 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
                 if (it !is JSString) "" else it.asString
             }
 
-            Operations.setFunctionName(realm, function, targetName.key(), "bound")
+            Operations.setFunctionName(function, targetName.key(), "bound")
             return function
         }
 
         @ECMAImpl("20.2.3.3")
         @JvmStatic
-        fun call(realm: Realm, arguments: JSArguments): JSValue {
+        fun call(arguments: JSArguments): JSValue {
             if (!Operations.isCallable(arguments.thisValue))
-                Errors.Function.NonCallable("call").throwTypeError(realm)
+                Errors.Function.NonCallable("call").throwTypeError()
             return Operations.call(
-                realm,
                 arguments.thisValue,
                 arguments.argument(0),
                 arguments.subList(1, arguments.size)

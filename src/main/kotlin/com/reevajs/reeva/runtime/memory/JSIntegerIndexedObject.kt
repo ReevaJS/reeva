@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.memory
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -13,7 +14,7 @@ import com.reevajs.reeva.runtime.primitives.JSUndefined
 class JSIntegerIndexedObject private constructor(
     realm: Realm,
     private val kind: Operations.TypedArrayKind,
-    proto: JSValue = kind.getProto(realm)
+    proto: JSValue = kind.getProto()
 ) : JSObject(realm, proto) {
     // ContentType slot is just kind.isBigInt, so we don't store that
 
@@ -28,7 +29,7 @@ class JSIntegerIndexedObject private constructor(
         if (property.isSymbol)
             return super.getOwnPropertyDescriptor(property)
 
-        val numericIndex = Operations.canonicalNumericIndexString(realm, property.asValue)
+        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
             ?: return super.getOwnPropertyDescriptor(property)
 
         val value = Operations.integerIndexedElementGet(this, numericIndex)
@@ -41,7 +42,7 @@ class JSIntegerIndexedObject private constructor(
     override fun hasProperty(property: PropertyKey): Boolean {
         if (property.isSymbol)
             return super.hasProperty(property)
-        val numericIndex = Operations.canonicalNumericIndexString(realm, property.asValue)
+        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
             ?: return super.hasProperty(property)
         return Operations.isValidIntegerIndex(this, numericIndex)
     }
@@ -50,7 +51,7 @@ class JSIntegerIndexedObject private constructor(
         if (property.isSymbol)
             return super.defineOwnProperty(property, descriptor)
 
-        val numericIndex = Operations.canonicalNumericIndexString(realm, property.asValue)
+        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
             ?: return super.defineOwnProperty(property, descriptor)
 
         if (!Operations.isValidIntegerIndex(this, numericIndex))
@@ -65,7 +66,7 @@ class JSIntegerIndexedObject private constructor(
         if (descriptor.hasWritable && !descriptor.isWritable)
             return false
         if (descriptor.getRawValue() != JSEmpty)
-            Operations.integerIndexedElementSet(realm, this, numericIndex, descriptor.getActualValue(realm, this))
+            Operations.integerIndexedElementSet(this, numericIndex, descriptor.getActualValue(this))
         return true
     }
 
@@ -73,7 +74,7 @@ class JSIntegerIndexedObject private constructor(
         if (property.isSymbol)
             return super.get(property, receiver)
 
-        val numericIndex = Operations.canonicalNumericIndexString(realm, property.asValue)
+        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
             ?: return super.get(property, receiver)
 
         return Operations.integerIndexedElementGet(receiver, numericIndex)
@@ -83,10 +84,10 @@ class JSIntegerIndexedObject private constructor(
         if (property.isSymbol)
             return super.set(property, value, receiver)
 
-        val numericIndex = Operations.canonicalNumericIndexString(realm, property.asValue)
+        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
             ?: return super.set(property, value, receiver)
 
-        Operations.integerIndexedElementSet(realm, receiver, numericIndex, value)
+        Operations.integerIndexedElementSet(receiver, numericIndex, value)
         return true
     }
 
@@ -94,7 +95,7 @@ class JSIntegerIndexedObject private constructor(
         if (property.isSymbol)
             return super.delete(property)
 
-        val numericIndex = Operations.canonicalNumericIndexString(realm, property.asValue)
+        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
             ?: return super.delete(property)
 
         return !Operations.isValidIntegerIndex(this, numericIndex)
@@ -111,7 +112,10 @@ class JSIntegerIndexedObject private constructor(
     }
 
     companion object {
-        fun create(realm: Realm, kind: Operations.TypedArrayKind, proto: JSValue = kind.getProto(realm)) =
-            JSIntegerIndexedObject(realm, kind, proto).initialize()
+        fun create(
+            kind: Operations.TypedArrayKind,
+            proto: JSValue = kind.getProto(),
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
+        ) = JSIntegerIndexedObject(realm, kind, proto).initialize()
     }
 }

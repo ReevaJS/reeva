@@ -236,7 +236,7 @@ enum class ReevaBuiltin(clazz: Class<*>, name: String, override val debugName: S
     NumberProtoValueOf(JSNumberProto::class.java, "valueOf", "Number.prototype.valueOf"),
 
     ObjectCtorAssign(JSObjectCtor::class.java, "assign", "Object.assign"),
-    ObjectCtorCreate(JSObjectCtor::class.java, "create", "Object.create"),
+    ObjectCtorCreate(JSObjectCtor::class.java, "create_", "Object.create"),
     ObjectCtorDefineProperties(JSObjectCtor::class.java, "defineProperties", "Object.defineProperties"),
     ObjectCtorDefineProperty(JSObjectCtor::class.java, "defineProperty", "Object.defineProperty"),
     ObjectCtorEntries(JSObjectCtor::class.java, "entries", "Object.entries"),

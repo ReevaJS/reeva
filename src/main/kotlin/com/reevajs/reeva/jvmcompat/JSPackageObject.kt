@@ -1,5 +1,6 @@
 package com.reevajs.reeva.jvmcompat
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -26,16 +27,16 @@ class JSPackageObject private constructor(
         val name = property.asString
 
         return when {
-            packageName == null -> create(realm, name)
-            packageObj == null -> create(realm, "$packageName.$name")
+            packageName == null -> create(name)
+            packageObj == null -> create("$packageName.$name")
             else -> {
                 val className = "$packageName.$name"
                 classObjectsCache.getOrPut(className) {
                     try {
                         val clazz = Class.forName(className)
-                        JSClassObject.create(realm, clazz)
+                        JSClassObject.create(clazz)
                     } catch (e: ClassNotFoundException) {
-                        return create(realm, "$packageName.$name")
+                        return create("$packageName.$name")
                     }
                 }
             }
@@ -43,17 +44,17 @@ class JSPackageObject private constructor(
     }
 
     override fun delete(property: PropertyKey): Boolean {
-        Errors.JVMPackage.InvalidDelete.throwTypeError(realm)
+        Errors.JVMPackage.InvalidDelete.throwTypeError()
     }
 
     override fun set(property: PropertyKey, value: JSValue, receiver: JSValue): Boolean {
-        Errors.JVMPackage.InvalidSet.throwTypeError(realm)
+        Errors.JVMPackage.InvalidSet.throwTypeError()
     }
 
     override fun isExtensible() = true
 
     override fun preventExtensions(): Boolean {
-        Errors.JVMPackage.InvalidPreventExtensions.throwTypeError(realm)
+        Errors.JVMPackage.InvalidPreventExtensions.throwTypeError()
     }
 
     override fun hasProperty(property: PropertyKey): Boolean {
@@ -68,6 +69,7 @@ class JSPackageObject private constructor(
     companion object {
         private val classObjectsCache = mutableMapOf<String, JSClassObject>()
 
-        fun create(realm: Realm, name: String? = null) = JSPackageObject(realm, name).initialize()
+        fun create(name: String?, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+            JSPackageObject(realm, name).initialize()
     }
 }

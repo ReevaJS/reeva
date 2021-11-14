@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.regexp
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -31,7 +32,7 @@ class JSRegExpObject private constructor(
         if (flags.toCharArray().distinct().size != flags.length)
             Errors.RegExp.DuplicateFlag.throwSyntaxError(realm)
 
-        regex = makeClosure(realm, source, flags)
+        regex = makeClosure(source, flags, realm)
     }
 
     fun hasFlag(flag: Flag) = flag.char in flags
@@ -87,7 +88,7 @@ class JSRegExpObject private constructor(
         }
 
         @ECMAImpl("N/A", name = "The [[RegExpMatcher]] Abstract Closure")
-        fun makeClosure(realm: Realm, source: String, flags: String): Regex {
+        fun makeClosure(source: String, flags: String, realm: Realm = Agent.activeAgent.getActiveRealm()): Regex {
             var options = 0
             if (Flag.IgnoreCase.char in flags)
                 options = options or Option.IGNORECASE
@@ -114,6 +115,6 @@ class JSRegExpObject private constructor(
         }
 
         @JvmStatic
-        fun create(realm: Realm, source: String, flags: String) = JSRegExpObject(realm, source, flags).initialize()
+        fun create(source: String, flags: String, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSRegExpObject(realm, source, flags).initialize()
     }
 }

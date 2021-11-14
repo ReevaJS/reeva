@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.collections
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -16,6 +17,6 @@ class JSUnmappedArgumentsObject private constructor(realm: Realm) : JSObject(rea
     }
 
     companion object {
-        fun create(realm: Realm) = JSUnmappedArgumentsObject(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSUnmappedArgumentsObject(realm).initialize()
     }
 }

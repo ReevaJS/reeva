@@ -1,5 +1,6 @@
 package com.reevajs.reeva.test262
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.collections.JSArguments
@@ -22,6 +23,6 @@ class JSAsyncDoneFunction private constructor(realm: Realm) : JSNativeFunction(r
     }
 
     companion object {
-        fun create(realm: Realm) = JSAsyncDoneFunction(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSAsyncDoneFunction(realm).initialize()
     }
 }

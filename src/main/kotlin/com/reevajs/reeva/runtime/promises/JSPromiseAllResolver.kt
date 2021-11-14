@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.promises
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -26,19 +27,19 @@ class JSPromiseAllResolver private constructor(
         values[index] = arguments.argument(0)
         remainingElements.value--
         if (remainingElements.value == 0) {
-            val valuesArray = Operations.createArrayFromList(realm, values)
-            return Operations.call(realm, capability.resolve!!, JSUndefined, listOf(valuesArray))
+            val valuesArray = Operations.createArrayFromList(values)
+            return Operations.call(capability.resolve!!, JSUndefined, listOf(valuesArray))
         }
         return JSUndefined
     }
 
     companion object {
         fun create(
-            realm: Realm,
             index: Int,
             values: MutableList<JSValue>,
             capability: Operations.PromiseCapability,
             remainingElements: Operations.Wrapper<Int>,
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = JSPromiseAllResolver(realm, index, values, capability, remainingElements).initialize()
     }
 }

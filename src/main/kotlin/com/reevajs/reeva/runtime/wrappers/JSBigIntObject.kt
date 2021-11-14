@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -9,6 +10,7 @@ class JSBigIntObject private constructor(realm: Realm, bigint: JSBigInt) : JSObj
     val bigint by slot(SlotName.BigIntData, bigint)
 
     companion object {
-        fun create(realm: Realm, value: JSBigInt) = JSBigIntObject(realm, value).initialize()
+        fun create(value: JSBigInt, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+            JSBigIntObject(realm, value).initialize()
     }
 }

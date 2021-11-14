@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.singletons
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
@@ -34,12 +35,12 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     )
 
     companion object {
-        fun create(realm: Realm) = JSONObject(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSONObject(realm).initialize()
 
         @ECMAImpl("24.5.1")
         @JvmStatic
-        fun parse(realm: Realm, arguments: JSArguments): JSValue {
-            val text = arguments.argument(0).toJSString(realm).string
+        fun parse(arguments: JSArguments): JSValue {
+            val text = arguments.argument(0).toJSString().string
             val reviver = arguments.argument(1).let {
                 if (Operations.isCallable(it)) it else null
             }
@@ -47,44 +48,43 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             val result = try {
                 Json.Default.parseToJsonElement(text)
             } catch (e: SerializationException) {
-                Error(e.message ?: "An error occurred while parsing JSON").throwSyntaxError(realm)
+                Error(e.message ?: "An error occurred while parsing JSON").throwSyntaxError()
             }
-            return parseHelper(realm, result, reviver)
+            return parseHelper(result, reviver)
         }
 
         private fun defineKeyValueProperty(
-            realm: Realm,
             key: JSValue,
             element: JsonElement,
             value: JSObject,
             reviver: JSValue?,
         ) {
-            val result = parseHelper(realm, element, reviver)
+            val result = parseHelper(element, reviver)
             if (reviver != null) {
-                val revived = Operations.call(realm, reviver, value, listOf(key, result))
+                val revived = Operations.call(reviver, value, listOf(key, result))
                 if (revived != JSUndefined)
-                    Operations.createDataProperty(realm, value, key, revived)
+                    Operations.createDataProperty(value, key, revived)
             } else {
-                Operations.createDataProperty(realm, value, key, result)
+                Operations.createDataProperty(value, key, result)
             }
         }
 
-        private fun parseHelper(realm: Realm, element: JsonElement, reviver: JSValue?): JSValue {
+        private fun parseHelper(element: JsonElement, reviver: JSValue?): JSValue {
             return when (element) {
                 JsonNull -> JSNull
                 is JsonPrimitive -> if (element.isString) {
                     JSString(element.content)
                 } else JSNumber(element.content.toDouble())
                 is JsonObject -> {
-                    val obj = JSObject.create(realm)
+                    val obj = JSObject.create()
                     for ((key, value) in element)
-                        defineKeyValueProperty(realm, key.toValue(), value, obj, reviver)
+                        defineKeyValueProperty(key.toValue(), value, obj, reviver)
                     obj
                 }
                 is JsonArray -> {
-                    val arr = JSArrayObject.create(realm)
+                    val arr = JSArrayObject.create()
                     for ((index, value) in element.withIndex())
-                        defineKeyValueProperty(realm, index.toString().toValue(), value, arr, reviver)
+                        defineKeyValueProperty(index.toString().toValue(), value, arr, reviver)
                     arr
                 }
             }
@@ -92,7 +92,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         @ECMAImpl("24.5.2")
         @JvmStatic
-        fun stringify(realm: Realm, arguments: JSArguments): JSValue {
+        fun stringify(arguments: JSArguments): JSValue {
             // TODO: ReplacerFunction
 
             val value = arguments.argument(0)
@@ -107,14 +107,14 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
 
             if (space is JSObject) {
                 if (space.hasSlot(SlotName.NumberData)) {
-                    space = space.toNumber(realm)
+                    space = space.toNumber()
                 } else if (space.hasSlot(SlotName.StringData)) {
-                    space = Operations.toString(realm, space)
+                    space = Operations.toString(space)
                 }
             }
 
             if (space.isNumber) {
-                repeat(min(10, Operations.toIntegerOrInfinity(realm, space).asInt)) {
+                repeat(min(10, Operations.toIntegerOrInfinity(space).asInt)) {
                     gap += " "
                 }
             } else if (space.isString) {
@@ -122,8 +122,8 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                 gap = if (str.length <= 10) str else str.substring(0, 10)
             }
 
-            val wrapper = JSObject.create(realm)
-            Operations.createDataPropertyOrThrow(realm, wrapper, "".toValue(), value)
+            val wrapper = JSObject.create()
+            Operations.createDataPropertyOrThrow(wrapper, "".toValue(), value)
             val state = SerializeState(
                 mutableListOf(),
                 "",
@@ -131,32 +131,31 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                 mutableListOf()
             )
 
-            return serializeJSONProperty(realm, state, "".key(), wrapper)?.toValue() ?: JSUndefined
+            return serializeJSONProperty(state, "".key(), wrapper)?.toValue() ?: JSUndefined
         }
 
         @ECMAImpl("25.5.3")
         @JvmStatic
-        fun getSymbolToStringTag(realm: Realm, arguments: JSArguments): JSValue {
+        fun getSymbolToStringTag(arguments: JSArguments): JSValue {
             return "JSON".toValue()
         }
 
         private fun serializeJSONProperty(
-            realm: Realm,
             state: SerializeState,
             key: PropertyKey,
             holder: JSObject,
         ): String? {
             var value = holder.get(key)
             if (value is JSObject || value is JSBigInt) {
-                val toJSON = Operations.getV(realm, value, "toJSON".toValue())
+                val toJSON = Operations.getV(value, "toJSON".toValue())
                 if (Operations.isCallable(toJSON)) {
-                    value = Operations.call(realm, toJSON, value, listOf(key.asValue))
+                    value = Operations.call(toJSON, value, listOf(key.asValue))
                 }
             }
             if (value is JSObject) {
                 value = when {
-                    value.hasSlot(SlotName.NumberData) -> value.toNumber(realm)
-                    value.hasSlot(SlotName.StringData) -> Operations.toString(realm, value)
+                    value.hasSlot(SlotName.NumberData) -> value.toNumber()
+                    value.hasSlot(SlotName.StringData) -> Operations.toString(value)
                     value.hasSlot(SlotName.BooleanData) -> value.getSlotAs(SlotName.BooleanData)
                     value.hasSlot(SlotName.BigIntData) -> value.getSlotAs(SlotName.BigIntData)
                     else -> value
@@ -172,16 +171,16 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                 return quoteJSONString(value.asString)
             if (value.isNumber) {
                 if (value.isFinite) {
-                    return Operations.toString(realm, value).string
+                    return Operations.toString(value).string
                 }
                 return "null"
             }
             if (value.isBigInt)
-                Errors.JSON.StringifyBigInt.throwTypeError(realm)
+                Errors.JSON.StringifyBigInt.throwTypeError()
             if (value.isObject && !Operations.isCallable(value)) {
-                if (Operations.isArray(realm, value))
-                    return serializeJSONArray(realm, state, value as JSArrayObject)
-                return serializeJSONObject(realm, state, value as JSObject)
+                if (Operations.isArray(value))
+                    return serializeJSONArray(state, value as JSArrayObject)
+                return serializeJSONObject(state, value as JSObject)
             }
             return null
         }
@@ -223,17 +222,17 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             return listOf(c1, c2)
         }
 
-        private fun serializeJSONArray(realm: Realm, state: SerializeState, value: JSArrayObject): String {
+        private fun serializeJSONArray(state: SerializeState, value: JSArrayObject): String {
             if (value in state.stack)
-                Errors.JSON.StringifyCircular.throwTypeError(realm)
+                Errors.JSON.StringifyCircular.throwTypeError()
 
             state.stack.add(value)
             val stepback = state.indent
             state.indent += state.gap
             val partial = mutableListOf<String>()
-            val len = Operations.lengthOfArrayLike(realm, value)
+            val len = Operations.lengthOfArrayLike(value)
             for (i in 0 until len) {
-                val strP = serializeJSONProperty(realm, state, i.key(), value)
+                val strP = serializeJSONProperty(state, i.key(), value)
                 partial.add(strP ?: "null")
             }
             val final = when {
@@ -258,21 +257,21 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             return final
         }
 
-        private fun serializeJSONObject(realm: Realm, state: SerializeState, value: JSObject): String {
+        private fun serializeJSONObject(state: SerializeState, value: JSObject): String {
             if (value in state.stack)
-                Errors.JSON.StringifyCircular.throwTypeError(realm)
+                Errors.JSON.StringifyCircular.throwTypeError()
 
             state.stack.add(value)
             val stepback = state.indent
             state.indent += state.gap
             val partial = mutableListOf<String>()
 
-            Operations.enumerableOwnPropertyNames(realm, value, PropertyKind.Key).forEach { property ->
-                val strP = serializeJSONProperty(realm, state, Operations.toPropertyKey(realm, property), value)
+            Operations.enumerableOwnPropertyNames(value, PropertyKind.Key).forEach { property ->
+                val strP = serializeJSONProperty(state, Operations.toPropertyKey(property), value)
                 if (strP != null) {
                     partial.add(
                         buildString {
-                            append(quoteJSONString(Operations.toString(realm, property).string))
+                            append(quoteJSONString(Operations.toString(property).string))
                             append(":")
                             if (state.gap.isNotEmpty())
                                 append(" ")

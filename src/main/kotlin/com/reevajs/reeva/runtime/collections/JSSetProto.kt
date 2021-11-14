@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.collections
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -39,18 +40,18 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
     }
 
     companion object {
-        fun create(realm: Realm) = JSSetProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSetProto(realm).initialize()
 
-        private fun thisSetObject(realm: Realm, thisValue: JSValue, method: String): JSSetObject.SetData {
+        private fun thisSetObject(thisValue: JSValue, method: String): JSSetObject.SetData {
             if (!Operations.requireInternalSlot(thisValue, SlotName.SetData))
-                Errors.IncompatibleMethodCall("Set.prototype.$method").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("Set.prototype.$method").throwTypeError()
             return thisValue.getSlotAs(SlotName.SetData)
         }
 
         @ECMAImpl("24.2.3.1")
         @JvmStatic
-        fun add(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisSetObject(realm, arguments.thisValue, "add")
+        fun add(arguments: JSArguments): JSValue {
+            val data = thisSetObject(arguments.thisValue, "add")
             data.set.add(arguments.argument(0))
             data.insertionOrder.add(arguments.argument(0))
             return arguments.thisValue
@@ -58,8 +59,8 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         @ECMAImpl("24.2.3.2")
         @JvmStatic
-        fun clear(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisSetObject(realm, arguments.thisValue, "clear")
+        fun clear(arguments: JSArguments): JSValue {
+            val data = thisSetObject(arguments.thisValue, "clear")
             data.set.clear()
             if (data.iterationCount == 0) {
                 data.insertionOrder.clear()
@@ -73,8 +74,8 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         @ECMAImpl("24.2.3.4")
         @JvmStatic
-        fun delete(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisSetObject(realm, arguments.thisValue, "delete")
+        fun delete(arguments: JSArguments): JSValue {
+            val data = thisSetObject(arguments.thisValue, "delete")
             val value = arguments.argument(0)
             if (data.iterationCount == 0) {
                 data.insertionOrder.remove(value)
@@ -89,18 +90,18 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         @ECMAImpl("24.2.3.5")
         @JvmStatic
-        fun entries(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisSetObject(realm, arguments.thisValue, "entries")
-            return JSSetIterator.create(realm, data, PropertyKind.KeyValue)
+        fun entries(arguments: JSArguments): JSValue {
+            val data = thisSetObject(arguments.thisValue, "entries")
+            return JSSetIterator.create(data, PropertyKind.KeyValue)
         }
 
         @ECMAImpl("24.2.3.6")
         @JvmStatic
-        fun forEach(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisSetObject(realm, arguments.thisValue, "forEach")
+        fun forEach(arguments: JSArguments): JSValue {
+            val data = thisSetObject(arguments.thisValue, "forEach")
             val (callback, thisArg) = arguments.takeArgs(0..1)
             if (!Operations.isCallable(callback))
-                Errors.Set.FirstArgNotCallable("forEach").throwTypeError(realm)
+                Errors.Set.FirstArgNotCallable("forEach").throwTypeError()
 
             data.iterationCount++
 
@@ -108,7 +109,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
             while (index < data.insertionOrder.size) {
                 val value = data.insertionOrder[index]
                 if (value != JSEmpty)
-                    Operations.call(realm, callback, thisArg, listOf(value, value, arguments.thisValue))
+                    Operations.call(callback, thisArg, listOf(value, value, arguments.thisValue))
 
                 index++
             }
@@ -120,22 +121,22 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         @ECMAImpl("24.2.3.7")
         @JvmStatic
-        fun has(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisSetObject(realm, arguments.thisValue, "has")
+        fun has(arguments: JSArguments): JSValue {
+            val data = thisSetObject(arguments.thisValue, "has")
             return (arguments.argument(0) in data.set).toValue()
         }
 
         @ECMAImpl("24.2.3.9")
         @JvmStatic
-        fun getSize(realm: Realm, arguments: JSArguments): JSValue {
-            return thisSetObject(realm, arguments.thisValue, "getSize").set.size.toValue()
+        fun getSize(arguments: JSArguments): JSValue {
+            return thisSetObject(arguments.thisValue, "getSize").set.size.toValue()
         }
 
         @ECMAImpl("24.2.3.10")
         @JvmStatic
-        fun values(realm: Realm, arguments: JSArguments): JSValue {
-            val data = thisSetObject(realm, arguments.thisValue, "values")
-            return JSSetIterator.create(realm, data, PropertyKind.Value)
+        fun values(arguments: JSArguments): JSValue {
+            val data = thisSetObject(arguments.thisValue, "values")
+            return JSSetIterator.create(data, PropertyKind.Value)
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -24,34 +25,34 @@ class JSBigIntProto private constructor(realm: Realm) : JSObject(realm, realm.ob
     }
 
     companion object {
-        fun create(realm: Realm) = JSBigIntProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSBigIntProto(realm).initialize()
 
-        private fun thisBigIntValue(realm: Realm, thisValue: JSValue, methodName: String): JSBigInt {
+        private fun thisBigIntValue(thisValue: JSValue, methodName: String): JSBigInt {
             if (thisValue is JSBigInt)
                 return thisValue
             if (thisValue !is JSObject)
-                Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError()
             return thisValue.getSlotAs(SlotName.BigIntData)
-                ?: Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError(realm)
+                ?: Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError()
         }
 
         @ECMAImpl("21.2.3.3")
         @JvmStatic
-        fun toString(realm: Realm, arguments: JSArguments): JSValue {
-            val bigInt = thisBigIntValue(realm, arguments.thisValue, "toString")
+        fun toString(arguments: JSArguments): JSValue {
+            val bigInt = thisBigIntValue(arguments.thisValue, "toString")
             val radixArg = arguments.argument(0)
             val radix = if (radixArg != JSUndefined) {
-                Operations.toIntegerOrInfinity(realm, arguments.argument(0)).asInt
+                Operations.toIntegerOrInfinity(arguments.argument(0)).asInt
             } else 10
             if (radix < 2 || radix > 36)
-                Errors.Number.InvalidRadix(radix).throwRangeError(realm)
+                Errors.Number.InvalidRadix(radix).throwRangeError()
             return bigInt.number.toString(radix).toValue()
         }
 
         @ECMAImpl("21.2.3.3")
         @JvmStatic
-        fun valueOf(realm: Realm, arguments: JSArguments): JSValue {
-            return thisBigIntValue(realm, arguments.thisValue, "valueOf")
+        fun valueOf(arguments: JSArguments): JSValue {
+            return thisBigIntValue(arguments.thisValue, "valueOf")
         }
     }
 }

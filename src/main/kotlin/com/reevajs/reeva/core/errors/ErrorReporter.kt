@@ -1,6 +1,6 @@
 package com.reevajs.reeva.core.errors
 
-import com.reevajs.reeva.core.StackTraceFrame
+import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.parsing.lexer.TokenLocation
@@ -12,12 +12,12 @@ abstract class ErrorReporter {
     }
 
     fun reportRuntimeError(sourceInfo: SourceInfo, cause: ThrowException) {
-        reportRuntimeError(sourceInfo, cause.value, cause.stackFrames)
+        reportRuntimeError(sourceInfo, cause.value, /*cause.stackFrames*/ emptyList())
     }
 
     abstract fun reportParseError(sourceInfo: SourceInfo, cause: String, start: TokenLocation, end: TokenLocation)
 
-    abstract fun reportRuntimeError(sourceInfo: SourceInfo, cause: JSValue, stackFrames: List<StackTraceFrame>)
+    abstract fun reportRuntimeError(sourceInfo: SourceInfo, cause: JSValue, stackFrames: List<ExecutionContext>)
 
     abstract fun reportInternalError(sourceInfo: SourceInfo, cause: Throwable)
 }

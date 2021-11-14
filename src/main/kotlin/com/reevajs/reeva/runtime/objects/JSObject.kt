@@ -164,7 +164,7 @@ open class JSObject protected constructor(
 
     @ECMAImpl("9.1.5")
     fun getOwnProperty(property: PropertyKey): JSValue {
-        return getOwnPropertyDescriptor(property)?.toObject(realm, this) ?: JSUndefined
+        return getOwnPropertyDescriptor(property)?.toObject(this) ?: JSUndefined
     }
 
     @JvmOverloads
@@ -190,7 +190,6 @@ open class JSObject protected constructor(
     @ECMAImpl("9.1.6")
     open fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
         return Operations.validateAndApplyPropertyDescriptor(
-            realm,
             this,
             property,
             isExtensible(),
@@ -218,8 +217,8 @@ open class JSObject protected constructor(
         }
 
         return when {
-            desc.isDataDescriptor -> desc.getActualValue(realm, receiver)
-            desc.hasGetterFunction -> Operations.call(realm, desc.getter!!, receiver)
+            desc.isDataDescriptor -> desc.getActualValue(receiver)
+            desc.hasGetterFunction -> Operations.call(desc.getter!!, receiver)
             else -> JSUndefined
         }
     }
@@ -275,7 +274,7 @@ open class JSObject protected constructor(
         expect(ownDesc.isAccessorDescriptor)
         if (!ownDesc.hasSetterFunction)
             return false
-        Operations.call(realm, ownDesc.setter!!, receiver, listOf(value))
+        Operations.call(ownDesc.setter!!, receiver, listOf(value))
         return true
     }
 
@@ -583,7 +582,10 @@ open class JSObject protected constructor(
     companion object {
         @JvmStatic
         @JvmOverloads
-        fun create(realm: Realm, proto: JSValue = realm.objectProto) = JSObject(realm, proto).initialize()
+        fun create(
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
+            proto: JSValue = realm.objectProto,
+        ) = JSObject(realm, proto).initialize()
 
         fun <T : JSObject> T.initialize() = apply {
             init()

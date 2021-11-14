@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers.strings
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -30,7 +31,7 @@ open class JSStringObject protected constructor(realm: Realm, string: JSString) 
     override fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
         val desc = stringGetOwnProperty(property)
         if (desc != null)
-            return Operations.isCompatiblePropertyDescriptor(realm, isExtensible(), descriptor, desc)
+            return Operations.isCompatiblePropertyDescriptor(isExtensible(), descriptor, desc)
         return super.defineOwnProperty(property, descriptor)
     }
 
@@ -44,7 +45,7 @@ open class JSStringObject protected constructor(realm: Realm, string: JSString) 
     private fun stringGetOwnProperty(property: PropertyKey): Descriptor? {
         if (property.isSymbol)
             return null
-        val index = Operations.canonicalNumericIndexString(realm, property.asValue) ?: return null
+        val index = Operations.canonicalNumericIndexString(property.asValue) ?: return null
         if (!Operations.isIntegralNumber(index))
             return null
         if (index.isNegativeZero)
@@ -56,6 +57,7 @@ open class JSStringObject protected constructor(realm: Realm, string: JSString) 
     }
 
     companion object {
-        fun create(realm: Realm, string: JSString) = JSStringObject(realm, string).initialize()
+        fun create(string: JSString, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+            JSStringObject(realm, string).initialize()
     }
 }

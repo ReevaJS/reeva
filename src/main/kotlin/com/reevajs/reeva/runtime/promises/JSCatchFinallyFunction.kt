@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.promises
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
@@ -18,14 +19,14 @@ class JSCatchFinallyFunction private constructor(
     override fun evaluate(arguments: JSArguments): JSValue {
         if (arguments.newTarget != JSUndefined)
             throw IllegalStateException("Unexpected construction of JSCatchFinallyFunction")
-        val result = Operations.call(realm, onFinally, JSUndefined)
+        val result = Operations.call(onFinally, JSUndefined)
         val promise = Operations.promiseResolve(ctor, result)
-        val valueThunk = fromLambda(realm, "", 0) { _, _ -> throw ThrowException(arguments.argument(0)) }
-        return Operations.invoke(realm, promise, "then".toValue(), listOf(valueThunk))
+        val valueThunk = fromLambda("", 0) { throw ThrowException(arguments.argument(0)) }
+        return Operations.invoke(promise, "then".toValue(), listOf(valueThunk))
     }
 
     companion object {
-        fun create(realm: Realm, ctor: JSFunction, onFinally: JSFunction) =
+        fun create(ctor: JSFunction, onFinally: JSFunction, realm: Realm = Agent.activeAgent.getActiveRealm()) =
             JSCatchFinallyFunction(realm, ctor, onFinally).initialize()
     }
 }

@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.collections
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -40,7 +41,7 @@ class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm
                 parameterMap.delete(property)
             } else {
                 if (descriptor.getRawValue() != JSEmpty) {
-                    val status = parameterMap.set(property, descriptor.getActualValue(realm, this))
+                    val status = parameterMap.set(property, descriptor.getActualValue(this))
                     ecmaAssert(status)
                 }
                 if (descriptor.hasWritable && !descriptor.isWritable)
@@ -79,6 +80,6 @@ class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm
     }
 
     companion object {
-        fun create(realm: Realm) = JSMappedArgumentsObject(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSMappedArgumentsObject(realm).initialize()
     }
 }

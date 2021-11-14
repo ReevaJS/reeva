@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.functions.generators
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.interpreter.Interpreter
@@ -19,26 +20,25 @@ class JSGeneratorObject private constructor(
 ) : JSObject(realm, realm.generatorObjectProto) {
     private val arguments = listOf(receiver, JSUndefined, generatorState) + arguments
 
-    fun next(realm: Realm, value: JSValue): JSValue {
+    fun next(value: JSValue): JSValue {
         generatorState.sentValue = value
-        return execute(realm)
+        return execute()
     }
 
-    fun return_(realm: Realm, value: JSValue): JSValue {
+    fun return_(value: JSValue): JSValue {
         TODO()
     }
 
-    fun throw_(realm: Realm, value: JSValue): JSValue {
+    fun throw_(value: JSValue): JSValue {
         TODO()
     }
 
-    private fun execute(realm: Realm): JSValue {
-        val interpreter = Interpreter(realm, transformedSource, arguments, envRecord)
+    private fun execute(): JSValue {
+        val interpreter = Interpreter(transformedSource, arguments, envRecord)
         val result = interpreter.interpret()
         return if (result.hasValue) {
             envRecord = interpreter.activeEnvRecord
             Operations.createIterResultObject(
-                realm,
                 result.value(),
                 generatorState.phase == -1,
             )
@@ -47,12 +47,12 @@ class JSGeneratorObject private constructor(
 
     companion object {
         fun create(
-            realm: Realm,
             transformedSource: TransformedSource,
             receiver: JSValue,
             arguments: List<JSValue>,
             generatorState: Interpreter.GeneratorState,
             envRecord: EnvRecord,
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = JSGeneratorObject(realm, transformedSource, receiver, arguments, generatorState, envRecord).initialize()
     }
 }

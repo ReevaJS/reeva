@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.collections
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.*
@@ -21,10 +22,9 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
 
     override fun evaluate(arguments: JSArguments): JSValue {
         if (arguments.newTarget == JSUndefined)
-            Errors.CtorCallWithoutNew("Set").throwTypeError(realm)
+            Errors.CtorCallWithoutNew("Set").throwTypeError()
 
         val set = Operations.ordinaryCreateFromConstructor(
-            realm,
             arguments.newTarget,
             realm.setProto,
             listOf(SlotName.SetData),
@@ -36,16 +36,16 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
 
         val adder = set.get("add")
         if (!Operations.isCallable(adder))
-            Errors.Set.ThisMissingAdd.throwTypeError(realm)
+            Errors.Set.ThisMissingAdd.throwTypeError()
 
-        val iteratorRecord = Operations.getIterator(realm, iterator)
+        val iteratorRecord = Operations.getIterator(iterator)
         while (true) {
             val next = Operations.iteratorStep(iteratorRecord)
             if (next == JSFalse)
                 return set
             val nextValue = Operations.iteratorValue(next)
             try {
-                Operations.call(realm, adder, set, listOf(nextValue))
+                Operations.call(adder, set, listOf(nextValue))
             } catch (e: ThrowException) {
                 Operations.iteratorClose(iteratorRecord, e.value)
                 throw e
@@ -54,11 +54,11 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
     }
 
     companion object {
-        fun create(realm: Realm) = JSSetCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSetCtor(realm).initialize()
 
         @ECMAImpl("24.2.2.2")
         @JvmStatic
-        fun getSymbolSpecies(realm: Realm, arguments: JSArguments): JSValue {
+        fun getSymbolSpecies(arguments: JSArguments): JSValue {
             return arguments.thisValue
         }
     }

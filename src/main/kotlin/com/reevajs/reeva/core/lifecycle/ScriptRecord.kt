@@ -1,5 +1,7 @@
 package com.reevajs.reeva.core.lifecycle
 
+import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.interpreter.NormalInterpretedFunction
 import com.reevajs.reeva.parsing.ParsedSource
@@ -15,10 +17,10 @@ class ScriptRecord(val realm: Realm, val parsedSource: ParsedSource) : Executabl
         val sourceInfo = parsedSource.sourceInfo
         expect(!sourceInfo.isModule)
 
-        return run {
+        return Agent.activeAgent.withRealm(realm, realm.globalEnv) {
             val transformedSource = Executable.transform(parsedSource)
-            val function = NormalInterpretedFunction.create(realm, transformedSource, realm.globalEnv)
-            Operations.call(realm, function, realm.globalObject, emptyList())
+            val function = NormalInterpretedFunction.create(transformedSource, realm.globalEnv)
+            Operations.call(function, realm.globalObject, emptyList())
         }
     }
 

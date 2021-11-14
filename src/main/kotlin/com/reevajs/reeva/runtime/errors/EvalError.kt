@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.errors
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -10,7 +11,7 @@ class JSEvalErrorObject private constructor(
 ) : JSErrorObject(realm, message, realm.evalErrorProto) {
     companion object {
         @JvmStatic
-        fun create(realm: Realm, message: String? = null) = JSEvalErrorObject(realm, message).initialize()
+        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSEvalErrorObject(realm, message).initialize()
     }
 }
 
@@ -23,7 +24,7 @@ class JSEvalErrorProto private constructor(realm: Realm) : JSErrorProto(
     }
 
     companion object {
-        fun create(realm: Realm) = JSEvalErrorProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSEvalErrorProto(realm).initialize()
     }
 }
 
@@ -31,6 +32,6 @@ class JSEvalErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "Ev
     override fun errorProto(): JSObject = realm.evalErrorProto
 
     companion object {
-        fun create(realm: Realm) = JSEvalErrorCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSEvalErrorCtor(realm).initialize()
     }
 }

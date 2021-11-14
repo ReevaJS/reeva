@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.functions
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -15,9 +16,7 @@ class JSFunctionCtor private constructor(realm: Realm) : JSNativeFunction(realm,
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        // TODO: Figure out correct realms
         return Operations.createDynamicFunction(
-            realm,
             this,
             arguments.newTarget,
             Operations.FunctionKind.Normal,
@@ -26,6 +25,6 @@ class JSFunctionCtor private constructor(realm: Realm) : JSNativeFunction(realm,
     }
 
     companion object {
-        fun create(realm: Realm) = JSFunctionCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSFunctionCtor(realm).initialize()
     }
 }

@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.promises
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -25,28 +26,28 @@ class JSPromiseAllSettledResolver private constructor(
             return JSUndefined
         alreadyCalled = true
 
-        val obj = create(realm)
+        val obj = create()
         val status = if (isRejector) "rejected" else "fulfilled"
         val valKey = if (isRejector) "reason" else "value"
-        Operations.createDataPropertyOrThrow(realm, obj, "status".toValue(), status.toValue())
-        Operations.createDataPropertyOrThrow(realm, obj, valKey.toValue(), arguments.argument(0))
+        Operations.createDataPropertyOrThrow(obj, "status".toValue(), status.toValue())
+        Operations.createDataPropertyOrThrow(obj, valKey.toValue(), arguments.argument(0))
         values[index] = obj
         remainingElements.value--
         if (remainingElements.value == 0) {
-            val valuesArray = Operations.createArrayFromList(realm, values)
-            return Operations.call(realm, capability.resolve!!, JSUndefined, listOf(valuesArray))
+            val valuesArray = Operations.createArrayFromList(values)
+            return Operations.call(capability.resolve!!, JSUndefined, listOf(valuesArray))
         }
         return JSUndefined
     }
 
     companion object {
         fun create(
-            realm: Realm,
             index: Int,
             values: MutableList<JSValue>,
             capability: Operations.PromiseCapability,
             remainingElements: Operations.Wrapper<Int>,
-            isRejector: Boolean
+            isRejector: Boolean,
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = JSPromiseAllSettledResolver(realm, index, values, capability, remainingElements, isRejector).initialize()
     }
 }

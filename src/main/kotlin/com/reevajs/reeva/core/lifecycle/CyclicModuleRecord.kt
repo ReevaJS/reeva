@@ -2,6 +2,7 @@ package com.reevajs.reeva.core.lifecycle
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
@@ -231,7 +232,7 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
 
         // Similarly to Link, we keep a stack of modules which have been visited in DFS order.
         val stack = mutableListOf<ModuleRecord>()
-        val capability = Operations.newPromiseCapability(module.realm, module.realm.promiseCtor)
+        val capability = Operations.newPromiseCapability(module.realm.promiseCtor)
         module.topLevelCapability = capability
 
         try {
@@ -243,7 +244,7 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
 
             // We have successfully evaluated this module and its children, so we can resolve
             // the promise.
-            Operations.call(module.realm, capability.resolve!!, JSUndefined, listOf(JSUndefined))
+            Operations.call(capability.resolve!!, JSUndefined, listOf(JSUndefined))
 
             // We better have visited all the modules. Otherwise, there are some modules which
             // have yet to be evaluated.
@@ -268,7 +269,7 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
             ecmaAssert(module.evaluationError == e)
 
             // Reject the promise with the cause of failure.
-            Operations.call(module.realm, capability.reject!!, JSUndefined, listOf(e.value))
+            Operations.call(capability.reject!!, JSUndefined, listOf(e.value))
         }
 
         // Return the promise to the caller.

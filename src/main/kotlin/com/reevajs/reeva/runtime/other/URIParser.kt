@@ -6,7 +6,7 @@ import com.reevajs.reeva.utils.*
 import kotlin.experimental.inv
 
 object URIParser {
-    fun encode(realm: Realm, string: String, unescapedSet: Set<Char>): String {
+    fun encode(string: String, unescapedSet: Set<Char>): String {
         val strLen = string.length
         val builder = StringBuilder()
         var i = 0
@@ -22,7 +22,7 @@ object URIParser {
             } else {
                 val codePoint = Operations.codePointAt(string, i)
                 if (codePoint.isUnpairedSurrogate)
-                    Errors.MalformedURI(string).throwURIError(realm)
+                    Errors.MalformedURI(string).throwURIError()
                 i += codePoint.codeUnitCount
 
                 try {
@@ -31,13 +31,13 @@ object URIParser {
                         builder.append("%%%02X".format(it))
                     }
                 } catch (e: IllegalArgumentException) {
-                    Errors.MalformedURI(string).throwURIError(realm)
+                    Errors.MalformedURI(string).throwURIError()
                 }
             }
         }
     }
 
-    fun decode(realm: Realm, string: String, reservedSet: Set<Char>): String {
+    fun decode(string: String, reservedSet: Set<Char>): String {
         val strLen = string.length
         val builder = StringBuilder()
         var i = 0
@@ -45,7 +45,7 @@ object URIParser {
         fun hexCharAt(i: Int) = try {
             (string[i].hexValue() shl 4) or string[i + 1].hexValue()
         } catch (e: NumberFormatException) {
-            Errors.MalformedURI(string).throwURIError(realm)
+            Errors.MalformedURI(string).throwURIError()
         }
 
         while (true) {
@@ -59,7 +59,7 @@ object URIParser {
             } else {
                 val start = i
                 if (i + 2 >= strLen)
-                    Errors.MalformedURI(string).throwURIError(realm)
+                    Errors.MalformedURI(string).throwURIError()
 
                 val leadingByteValue = hexCharAt(i + 1)
 
@@ -74,10 +74,10 @@ object URIParser {
                     }
                 } else {
                     if (leadingOneBits == 1 || leadingOneBits > 4)
-                        Errors.MalformedURI(string).throwURIError(realm)
+                        Errors.MalformedURI(string).throwURIError()
 
                     if (i + (3 * (leadingOneBits - 1)) >= strLen)
-                        Errors.MalformedURI(string).throwURIError(realm)
+                        Errors.MalformedURI(string).throwURIError()
 
                     // Other values will get overridden in the loop below
                     val octets = mutableListOf(leadingByteValue)
@@ -86,7 +86,7 @@ object URIParser {
                     while (j < leadingOneBits) {
                         i += 1
                         if (string[i] != '%')
-                            Errors.MalformedURI(string).throwURIError(realm)
+                            Errors.MalformedURI(string).throwURIError()
 
                         val byteValue = hexCharAt(i + 1)
 
@@ -98,7 +98,7 @@ object URIParser {
                     ecmaAssert(octets.size == leadingOneBits)
 
                     if (!validateOctets(octets))
-                        Errors.MalformedURI(string).throwURIError(realm)
+                        Errors.MalformedURI(string).throwURIError()
 
                     builder.appendCodePoint(codePoint(octets))
                 }

@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.global
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -17,16 +18,16 @@ class JSConsoleProto private constructor(realm: Realm) : JSObject(realm, realm.o
     }
 
     companion object {
-        fun create(realm: Realm) = JSConsoleProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSConsoleProto(realm).initialize()
 
         @JvmStatic
-        fun log(realm: Realm, arguments: JSArguments): JSValue {
+        fun log(arguments: JSArguments): JSValue {
             println(
                 arguments.joinToString(separator = " ") {
                     if (it is JSSymbol) {
                         it.descriptiveString()
                     } else {
-                        val str = Operations.toString(realm, it).string
+                        val str = Operations.toString(it).string
                         if (it is JSArrayObject) "[$str]" else str
                     }
                 }

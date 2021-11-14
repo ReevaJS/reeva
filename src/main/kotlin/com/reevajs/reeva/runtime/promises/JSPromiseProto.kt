@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.promises
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -25,13 +26,12 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
     }
 
     companion object {
-        fun create(realm: Realm) = JSPromiseProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSPromiseProto(realm).initialize()
 
         @ECMAImpl("27.2.5.1")
         @JvmStatic
-        fun catch(realm: Realm, arguments: JSArguments): JSValue {
+        fun catch(arguments: JSArguments): JSValue {
             return Operations.invoke(
-                realm,
                 arguments.thisValue,
                 "then".toValue(),
                 listOf(JSUndefined, arguments.argument(0))
@@ -40,35 +40,39 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
 
         @ECMAImpl("27.2.5.3")
         @JvmStatic
-        fun finally(realm: Realm, arguments: JSArguments): JSValue {
+        fun finally(arguments: JSArguments): JSValue {
             if (arguments.thisValue !is JSObject)
-                Errors.IncompatibleMethodCall("Promise.prototype.finally").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("Promise.prototype.finally").throwTypeError()
 
             val onFinally = arguments.argument(0)
-            val ctor = Operations.speciesConstructor(realm, arguments.thisValue, realm.promiseCtor)
+            val ctor = Operations.speciesConstructor(
+                arguments.thisValue,
+                Agent.activeAgent.getActiveRealm().promiseCtor,
+            )
             val (thenFinally, catchFinally) = if (!Operations.isCallable(onFinally)) {
                 onFinally to onFinally
             } else {
-                JSThenFinallyFunction.create(realm, ctor, onFinally) to JSCatchFinallyFunction.create(
-                    realm,
+                JSThenFinallyFunction.create(ctor, onFinally) to JSCatchFinallyFunction.create(
                     ctor,
                     onFinally
                 )
             }
 
-            return Operations.invoke(realm, arguments.thisValue, "then".toValue(), listOf(thenFinally, catchFinally))
+            return Operations.invoke(arguments.thisValue, "then".toValue(), listOf(thenFinally, catchFinally))
         }
 
         @ECMAImpl("27.2.5.4")
         @JvmStatic
-        fun then(realm: Realm, arguments: JSArguments): JSValue {
+        fun then(arguments: JSArguments): JSValue {
             if (!Operations.isPromise(arguments.thisValue))
-                Errors.IncompatibleMethodCall("Promise.prototype.then").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("Promise.prototype.then").throwTypeError()
 
-            val ctor = Operations.speciesConstructor(realm, arguments.thisValue, realm.promiseCtor)
-            val resultCapability = Operations.newPromiseCapability(realm, ctor)
+            val ctor = Operations.speciesConstructor(
+                arguments.thisValue,
+                Agent.activeAgent.getActiveRealm().promiseCtor,
+            )
+            val resultCapability = Operations.newPromiseCapability(ctor)
             return Operations.performPromiseThen(
-                realm,
                 arguments.thisValue,
                 arguments.argument(0),
                 arguments.argument(1),

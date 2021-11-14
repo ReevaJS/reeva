@@ -1,6 +1,6 @@
 package com.reevajs.reeva.core.errors
 
-import com.reevajs.reeva.core.StackTraceFrame
+import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.runtime.JSValue
@@ -45,7 +45,7 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter() {
         }
     }
 
-    override fun reportRuntimeError(sourceInfo: SourceInfo, cause: JSValue, stackFrames: List<StackTraceFrame>) {
+    override fun reportRuntimeError(sourceInfo: SourceInfo, cause: JSValue, stackFrames: List<ExecutionContext>) {
         val firstFrame = stackFrames.firstOrNull()
         if (firstFrame?.invocationLocation != null) {
             printSourceLines(sourceInfo, firstFrame.invocationLocation.start, firstFrame.invocationLocation.end)
@@ -65,6 +65,9 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter() {
         }
 
         for (frame in stackFrames.asReversed()) {
+            if (frame.enclosingFunction == null)
+                continue
+
             val location = frame.invocationLocation?.let {
                 "(${it.start.line + 1}:${it.start.column + 1})"
             } ?: ""

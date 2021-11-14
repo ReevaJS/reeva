@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.iterators
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -11,6 +12,7 @@ class JSListIterator private constructor(
     var nextIndex: Int = 0
 
     companion object {
-        fun create(realm: Realm, iteratorList: List<JSValue>) = JSListIterator(realm, iteratorList)
+        fun create(iteratorList: List<JSValue>, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+            JSListIterator(realm, iteratorList)
     }
 }

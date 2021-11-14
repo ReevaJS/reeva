@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.arrays
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -22,14 +23,14 @@ open class JSArrayObject protected constructor(
         defineNativeProperty("length", attrs { -conf; -enum; +writ }, ::getLength, ::setLength)
     }
 
-    fun getLength(realm: Realm, thisValue: JSValue): JSValue {
+    fun getLength(thisValue: JSValue): JSValue {
         expect(thisValue is JSObject)
         return thisValue.indexedProperties.arrayLikeSize.toValue()
     }
 
-    fun setLength(realm: Realm, thisValue: JSValue, newLength: JSValue): JSValue {
+    fun setLength(thisValue: JSValue, newLength: JSValue): JSValue {
         expect(thisValue is JSObject)
-        thisValue.indexedProperties.setArrayLikeSize(Operations.toLength(realm, newLength).asLong)
+        thisValue.indexedProperties.setArrayLikeSize(Operations.toLength(newLength).asLong)
         return JSUndefined
     }
 
@@ -39,21 +40,21 @@ open class JSArrayObject protected constructor(
         if (property.isString && property.asString == "length") {
             if (descriptor.getRawValue() == JSEmpty)
                 return super.defineOwnProperty(property, descriptor)
-            val value = descriptor.getActualValue(realm, this)
+            val value = descriptor.getActualValue(this)
             val newLenDesc = descriptor.copy()
-            val newLenObj = Operations.toUint32(realm, value)
-            val numberLen = Operations.toNumeric(realm, value)
+            val newLenObj = Operations.toUint32(value)
+            val numberLen = Operations.toNumeric(value)
             if (!newLenObj.sameValue(numberLen))
-                Errors.InvalidArrayLength(Operations.toPrintableString(value)).throwRangeError(realm)
+                Errors.InvalidArrayLength(Operations.toPrintableString(value)).throwRangeError()
 
             val newLen = newLenObj.asLong
-            newLenDesc.setActualValue(realm, this, newLenObj)
+            newLenDesc.setActualValue(this, newLenObj)
             val oldLenDesc = getOwnPropertyDescriptor("length")
             expect(oldLenDesc != null)
             ecmaAssert(oldLenDesc.isDataDescriptor)
             ecmaAssert(!oldLenDesc.isConfigurable)
 
-            val oldLen = oldLenDesc.getActualValue(realm, this).asLong
+            val oldLen = oldLenDesc.getActualValue(this).asLong
             if (newLen >= oldLen) {
                 indexedProperties.setArrayLikeSize(newLen)
                 return super.defineOwnProperty(property, newLenDesc)
@@ -75,7 +76,7 @@ open class JSArrayObject protected constructor(
             }.forEach {
                 val deleteSucceeded = delete(it)
                 if (!deleteSucceeded) {
-                    newLenDesc.setActualValue(realm, this, (it + 1L).toValue())
+                    newLenDesc.setActualValue(this, (it + 1L).toValue())
                     if (!newWritable)
                         newLenDesc.setWritable(false)
                     super.defineOwnProperty(property, newLenDesc)
@@ -105,7 +106,7 @@ open class JSArrayObject protected constructor(
             ecmaAssert(oldLenDesc.isDataDescriptor)
             ecmaAssert(!oldLenDesc.isConfigurable)
 
-            val oldLen = oldLenDesc.getActualValue(realm, this).let {
+            val oldLen = oldLenDesc.getActualValue(this).let {
                 if (it is JSString) it.string.toInt() else it.asInt
             }
             ecmaAssert(oldLen >= 0)
@@ -117,7 +118,7 @@ open class JSArrayObject protected constructor(
             if (!super.defineOwnProperty(property, descriptor))
                 return false
             if (index >= oldLen) {
-                oldLenDesc.setActualValue(realm, this, (index + 1).toValue())
+                oldLenDesc.setActualValue(this, (index + 1).toValue())
                 ecmaAssert(super.defineOwnProperty("length".key(), oldLenDesc))
             }
             return true
@@ -127,6 +128,9 @@ open class JSArrayObject protected constructor(
     }
 
     companion object {
-        fun create(realm: Realm, proto: JSValue = realm.arrayProto) = JSArrayObject(realm, proto).initialize()
+        fun create(
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
+            proto: JSValue = realm.arrayProto,
+        ) = JSArrayObject(realm, proto).initialize()
     }
 }

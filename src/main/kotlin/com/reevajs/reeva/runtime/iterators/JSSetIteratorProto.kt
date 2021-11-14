@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.iterators
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -22,16 +23,16 @@ class JSSetIteratorProto private constructor(realm: Realm) : JSObject(realm, rea
     }
 
     companion object {
-        fun create(realm: Realm) = JSSetIteratorProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSetIteratorProto(realm).initialize()
 
         @ECMAImpl("24.2.5.2.1")
         @JvmStatic
-        fun next(realm: Realm, arguments: JSArguments): JSValue {
+        fun next(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (thisValue !is JSSetIterator)
-                Errors.IncompatibleMethodCall("%MapIteratorPrototype%.next").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("%MapIteratorPrototype%.next").throwTypeError()
 
-            val set = thisValue.iteratedSet ?: return Operations.createIterResultObject(realm, JSUndefined, true)
+            val set = thisValue.iteratedSet ?: return Operations.createIterResultObject(JSUndefined, true)
 
             while (thisValue.nextIndex < set.insertionOrder.size) {
                 val value = set.insertionOrder[thisValue.nextIndex]
@@ -39,18 +40,17 @@ class JSSetIteratorProto private constructor(realm: Realm) : JSObject(realm, rea
                 if (value != JSEmpty) {
                     if (thisValue.iterationKind == PropertyKind.KeyValue) {
                         return Operations.createIterResultObject(
-                            realm,
-                            Operations.createArrayFromList(realm, listOf(value, value)),
+                            Operations.createArrayFromList(listOf(value, value)),
                             false
                         )
                     }
-                    return Operations.createIterResultObject(realm, value, false)
+                    return Operations.createIterResultObject(value, false)
                 }
             }
 
             set.iterationCount--
             thisValue.iteratedSet = null
-            return Operations.createIterResultObject(realm, JSUndefined, true)
+            return Operations.createIterResultObject(JSUndefined, true)
         }
     }
 }

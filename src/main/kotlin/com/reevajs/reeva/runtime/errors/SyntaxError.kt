@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.errors
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -10,7 +11,7 @@ class JSSyntaxErrorObject private constructor(
 ) : JSErrorObject(realm, message, realm.syntaxErrorProto) {
     companion object {
         @JvmStatic
-        fun create(realm: Realm, message: String? = null) = JSSyntaxErrorObject(realm, message).initialize()
+        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSyntaxErrorObject(realm, message).initialize()
     }
 }
 
@@ -23,7 +24,7 @@ class JSSyntaxErrorProto private constructor(realm: Realm) : JSErrorProto(
     }
 
     companion object {
-        fun create(realm: Realm) = JSSyntaxErrorProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSyntaxErrorProto(realm).initialize()
     }
 }
 
@@ -31,6 +32,6 @@ class JSSyntaxErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "
     override fun errorProto(): JSObject = realm.syntaxErrorProto
 
     companion object {
-        fun create(realm: Realm) = JSSyntaxErrorCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSyntaxErrorCtor(realm).initialize()
     }
 }

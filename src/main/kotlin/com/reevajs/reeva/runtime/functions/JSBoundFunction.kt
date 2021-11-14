@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.functions
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -25,7 +26,7 @@ class JSBoundFunction private constructor(
 
         if (arguments.newTarget == JSUndefined) {
             // [[Call]]
-            return Operations.call(realm, boundTargetFunction, boundArguments.thisValue, args)
+            return Operations.call(boundTargetFunction, boundArguments.thisValue, args)
         }
 
         // [[Construct]]
@@ -42,10 +43,10 @@ class JSBoundFunction private constructor(
 
     companion object {
         fun create(
-            realm: Realm,
             boundTargetFunction: JSFunction,
             arguments: JSArguments,
             prototype: JSValue,
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = JSBoundFunction(realm, boundTargetFunction, arguments, prototype).initialize()
     }
 }

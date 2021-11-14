@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.collections
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -22,6 +23,6 @@ class JSSetObject private constructor(realm: Realm) : JSObject(realm, realm.setP
     }
 
     companion object {
-        fun create(realm: Realm) = JSSetObject(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSetObject(realm).initialize()
     }
 }

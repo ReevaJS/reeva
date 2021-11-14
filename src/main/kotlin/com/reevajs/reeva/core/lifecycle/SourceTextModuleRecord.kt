@@ -5,6 +5,7 @@ import com.reevajs.reeva.ast.statements.DeclarationNode
 import com.reevajs.reeva.ast.statements.DestructuringDeclaration
 import com.reevajs.reeva.ast.statements.NamedDeclaration
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.interpreter.NormalInterpretedFunction
@@ -30,9 +31,11 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
 
     override fun execute(): JSValue {
         link()
-        return evaluate().also {
-            if (evaluationError != null)
-                throw evaluationError!!
+        return Agent.activeAgent.withRealm(realm, realm.globalEnv) {
+            evaluate().also {
+                if (evaluationError != null)
+                    throw evaluationError!!
+            }
         }
     }
 
@@ -167,18 +170,23 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
         return names
     }
 
-    override fun makeNamespaceImport() = JSModuleNamespaceObject.create(
-        realm,
-        this,
-        getExportedNames(),
-    )
+    override fun makeNamespaceImport() = JSModuleNamespaceObject.create(this, getExportedNames(), realm)
 
     override fun executeModule() {
         val sourceInfo = parsedSource.sourceInfo
         expect(sourceInfo.isModule)
         val transformedSource = Executable.transform(parsedSource)
-        val function = NormalInterpretedFunction.create(realm, transformedSource, env)
-        Operations.call(realm, function, realm.globalObject, emptyList())
+
+        val agent = Agent.activeAgent
+        val context = ExecutionContext(null, realm, realm.globalEnv, this, null)
+        agent.pushExecutionContext(context)
+
+        try {
+            val function = NormalInterpretedFunction.create(transformedSource, env)
+            Operations.call(function, realm.globalObject, emptyList())
+        } finally {
+            agent.popExecutionContext()
+        }
     }
 
     companion object {

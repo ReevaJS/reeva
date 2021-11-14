@@ -38,31 +38,31 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
             fun create(globalObject: JSObject, realm: Realm) = JS262Object(globalObject, realm).initialize()
 
             @JvmStatic
-            fun createRealm(realm: Realm, arguments: JSArguments): JSValue {
+            fun createRealm(arguments: JSArguments): JSValue {
                 val newRealm = Agent.activeAgent.makeRealm()
                 return newRealm.globalObject.get("$262")
             }
 
             @JvmStatic
-            fun detachArrayBuffer(realm: Realm, arguments: JSArguments): JSValue {
-                Operations.detachArrayBuffer(realm, arguments.argument(0))
+            fun detachArrayBuffer(arguments: JSArguments): JSValue {
+                Operations.detachArrayBuffer(arguments.argument(0))
                 return JSUndefined
             }
 
             @JvmStatic
-            fun gc(realm: Realm, arguments: JSArguments): JSValue {
-                Error("unable to force JVM garbage collection").throwTypeError(realm)
+            fun gc(arguments: JSArguments): JSValue {
+                Error("unable to force JVM garbage collection").throwTypeError()
             }
         }
     }
 
     class JS262AgentObject(realm: Realm) : JSObject(realm, realm.objectProto) {
         companion object {
-            fun create(realm: Realm) = JS262AgentObject(realm).initialize()
+            fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JS262AgentObject(realm).initialize()
         }
     }
 
     companion object {
-        fun create(realm: Realm) = Test262GlobalObject(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = Test262GlobalObject(realm).initialize()
     }
 }

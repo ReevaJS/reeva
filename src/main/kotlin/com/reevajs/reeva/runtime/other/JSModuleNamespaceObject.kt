@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.other
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.lifecycle.ModuleRecord
 import com.reevajs.reeva.runtime.JSValue
@@ -100,7 +101,7 @@ class JSModuleNamespaceObject private constructor(
     }
 
     companion object {
-        fun create(realm: Realm, module: ModuleRecord, exports: List<String>) =
+        fun create(module: ModuleRecord, exports: List<String>, realm: Realm = Agent.activeAgent.getActiveRealm()) =
             JSModuleNamespaceObject(realm, module, exports).initialize()
     }
 }

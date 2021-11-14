@@ -1,5 +1,6 @@
 package com.reevajs.reeva.core.realm
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.ModuleTree
 import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.jvmcompat.JSClassProto
@@ -46,8 +47,16 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
+@OptIn(ExperimentalContracts::class)
 class Realm(private val extensions: Map<Any, RealmExtension>) {
+    private val executionLock = ReentrantLock()
+
     lateinit var globalObject: JSObject
         private set
 
@@ -151,8 +160,8 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val uriErrorCtor by lazy { JSURIErrorCtor.create(this) }
 
     val throwTypeError by lazy {
-        JSNativeFunction.fromLambda(this, "", 0) { realm, _ ->
-            Errors.CalleePropertyAccess.throwTypeError(realm)
+        JSNativeFunction.fromLambda("", 0) {
+            Errors.CalleePropertyAccess.throwTypeError(Agent.activeAgent.getActiveRealm())
         }
     }
 
@@ -163,10 +172,26 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
 
     val packageProto by lazy { JSPackageProto.create(this) }
     val classProto by lazy { JSClassProto.create(this) }
-    val packageObj by lazy { JSPackageObject.create(this) }
+    val packageObj by lazy { JSPackageObject.create(null, this) }
 
-    internal val emptyShape = Shape(this)
-    internal val newObjectShape = Shape(this)
+    val emptyShape = Shape(this)
+    val newObjectShape = Shape(this)
+
+    // TODO: Make these locking functions internal?
+    fun hasLock() = executionLock.isHeldByCurrentThread
+
+    fun lock() {
+        executionLock.lock()
+    }
+
+    fun unlock() {
+        executionLock.unlock()
+    }
+
+    fun <T> withLock(action: () -> T): T {
+        contract { callsInPlace(action, InvocationKind.EXACTLY_ONCE) }
+        return executionLock.withLock(action)
+    }
 
     @ECMAImpl("9.3.3")
     internal fun setGlobalObject(globalObject: JSValue, thisValue: JSValue) {

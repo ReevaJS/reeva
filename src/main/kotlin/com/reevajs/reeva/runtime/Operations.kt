@@ -49,6 +49,9 @@ import kotlin.math.*
 
 @OptIn(ExperimentalContracts::class)
 object Operations {
+    private val realm: Realm
+        inline get() = Agent.activeAgent.getActiveRealm()
+
     const val MAX_SAFE_INTEGER: Long = (1L shl 53) - 1L
     const val MAX_32BIT_INT = 1L shl 32
     const val MAX_31BIT_INT = 1L shl 31
@@ -123,9 +126,9 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("6.1.6.1.2")
-    fun numericBitwiseNOT(realm: Realm, value: JSValue): JSValue {
+    fun numericBitwiseNOT(value: JSValue): JSValue {
         expect(value is JSNumber)
-        val oldValue = toInt32(realm, value)
+        val oldValue = toInt32(value)
         return JSNumber(oldValue.asDouble.toInt().inv())
     }
 
@@ -221,32 +224,32 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("6.1.6.1.9")
-    fun numericLeftShift(realm: Realm, lhs: JSValue, rhs: JSValue): JSValue {
+    fun numericLeftShift(lhs: JSValue, rhs: JSValue): JSValue {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
         if (lhs.isNaN || rhs.isNaN)
             return JSNumber.NaN
-        return JSNumber(toInt32(realm, lhs).asInt shl (toUint32(realm, rhs).asInt % 32))
+        return JSNumber(toInt32(lhs).asInt shl (toUint32(rhs).asInt % 32))
     }
 
     @JvmStatic
     @ECMAImpl("6.1.6.1.10")
-    fun numericSignedRightShift(realm: Realm, lhs: JSValue, rhs: JSValue): JSValue {
+    fun numericSignedRightShift(lhs: JSValue, rhs: JSValue): JSValue {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
         if (lhs.isNaN || rhs.isNaN)
             return JSNumber.NaN
-        return JSNumber(toInt32(realm, lhs).asInt shr (toUint32(realm, rhs).asInt % 32))
+        return JSNumber(toInt32(lhs).asInt shr (toUint32(rhs).asInt % 32))
     }
 
     @JvmStatic
     @ECMAImpl("6.1.6.1.11")
-    fun numericUnsignedRightShift(realm: Realm, lhs: JSValue, rhs: JSValue): JSValue {
+    fun numericUnsignedRightShift(lhs: JSValue, rhs: JSValue): JSValue {
         expect(lhs is JSNumber)
         expect(rhs is JSNumber)
         if (lhs.isNaN || rhs.isNaN)
             return JSNumber.NaN
-        return JSNumber(toInt32(realm, lhs).asInt ushr (toUint32(realm, rhs).asInt % 32))
+        return JSNumber(toInt32(lhs).asInt ushr (toUint32(rhs).asInt % 32))
     }
 
     @JvmStatic
@@ -291,20 +294,20 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("6.1.6.1.17")
-    fun numericBitwiseAND(realm: Realm, lhs: JSValue, rhs: JSValue): JSValue {
-        return JSNumber(toInt32(realm, lhs).asInt and toInt32(realm, rhs).asInt)
+    fun numericBitwiseAND(lhs: JSValue, rhs: JSValue): JSValue {
+        return JSNumber(toInt32(lhs).asInt and toInt32(rhs).asInt)
     }
 
     @JvmStatic
     @ECMAImpl("6.1.6.1.18")
-    fun numericBitwiseXOR(realm: Realm, lhs: JSValue, rhs: JSValue): JSValue {
-        return JSNumber(toInt32(realm, lhs).asInt xor toInt32(realm, rhs).asInt)
+    fun numericBitwiseXOR(lhs: JSValue, rhs: JSValue): JSValue {
+        return JSNumber(toInt32(lhs).asInt xor toInt32(rhs).asInt)
     }
 
     @JvmStatic
     @ECMAImpl("6.1.6.1.19")
-    fun numericBitwiseOR(realm: Realm, lhs: JSValue, rhs: JSValue): JSValue {
-        return JSNumber(toInt32(realm, lhs).asInt or toInt32(realm, rhs).asInt)
+    fun numericBitwiseOR(lhs: JSValue, rhs: JSValue): JSValue {
+        return JSNumber(toInt32(lhs).asInt or toInt32(rhs).asInt)
     }
 
     @JvmStatic
@@ -336,17 +339,17 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("6.1.6.2.3")
-    fun bigintExponentiate(realm: Realm, base: JSValue, exponent: JSValue): JSBigInt {
+    fun bigintExponentiate(base: JSValue, exponent: JSValue): JSBigInt {
         expect(base is JSBigInt)
         expect(exponent is JSBigInt)
         if (exponent.number.signum() == -1)
-            Errors.BigInt.NegativeExponentiation.throwRangeError(realm)
+            Errors.BigInt.NegativeExponentiation.throwRangeError()
         if (exponent.number.signum() == 0)
             return JSBigInt.ONE
         try {
             return base.number.pow(exponent.number.intValueExact()).toValue()
         } catch (e: ArithmeticException) {
-            Errors.BigInt.OutOfBoundsExponentiation.throwRangeError(realm)
+            Errors.BigInt.OutOfBoundsExponentiation.throwRangeError()
         }
     }
 
@@ -360,21 +363,21 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("6.1.6.2.5")
-    fun bigintDivide(realm: Realm, lhs: JSValue, rhs: JSValue): JSBigInt {
+    fun bigintDivide(lhs: JSValue, rhs: JSValue): JSBigInt {
         expect(lhs is JSBigInt)
         expect(rhs is JSBigInt)
         if (rhs.number == BigInteger.ZERO)
-            Errors.BigInt.DivideByZero.throwRangeError(realm)
+            Errors.BigInt.DivideByZero.throwRangeError()
         return lhs.number.divide(rhs.number).toValue()
     }
 
     @JvmStatic
     @ECMAImpl("6.1.6.2.6")
-    fun bigintRemainder(realm: Realm, lhs: JSValue, rhs: JSValue): JSBigInt {
+    fun bigintRemainder(lhs: JSValue, rhs: JSValue): JSBigInt {
         expect(lhs is JSBigInt)
         expect(rhs is JSBigInt)
         if (rhs.number == BigInteger.ZERO)
-            Errors.BigInt.DivideByZero.throwRangeError(realm)
+            Errors.BigInt.DivideByZero.throwRangeError()
         if (lhs.number == BigInteger.ZERO)
             return JSBigInt.ZERO
         return lhs.number.remainder(rhs.number).toValue()
@@ -398,28 +401,28 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("6.1.6.2.9")
-    fun bigintLeftShift(realm: Realm, lhs: JSValue, rhs: JSValue): JSBigInt {
+    fun bigintLeftShift(lhs: JSValue, rhs: JSValue): JSBigInt {
         expect(lhs is JSBigInt)
         expect(rhs is JSBigInt)
         try {
             return lhs.number.shiftLeft(rhs.number.intValueExact()).toValue()
         } catch (e: ArithmeticException) {
-            Errors.BigInt.OutOfBoundsShift.throwRangeError(realm)
+            Errors.BigInt.OutOfBoundsShift.throwRangeError()
         }
     }
 
     @JvmStatic
     @ECMAImpl("6.1.6.2.10")
-    fun bigintSignedRightShift(realm: Realm, lhs: JSValue, rhs: JSValue): JSBigInt {
+    fun bigintSignedRightShift(lhs: JSValue, rhs: JSValue): JSBigInt {
         expect(lhs is JSBigInt)
         expect(rhs is JSBigInt)
-        return bigintLeftShift(realm, lhs, rhs.number.negate().toValue())
+        return bigintLeftShift(lhs, rhs.number.negate().toValue())
     }
 
     @JvmStatic
     @ECMAImpl("6.1.6.2.11")
-    fun bigintUnsignedRightShift(realm: Realm, lhs: JSValue, rhs: JSValue): JSBigInt {
-        Errors.BigInt.UnsignedRightShift.throwTypeError(realm)
+    fun bigintUnsignedRightShift(lhs: JSValue, rhs: JSValue): JSBigInt {
+        Errors.BigInt.UnsignedRightShift.throwTypeError()
     }
 
     @JvmStatic
@@ -483,12 +486,12 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("6.2.8.1")
-    fun createByteDataBlock(realm: Realm, size: Int): DataBlock {
+    fun createByteDataBlock(size: Int): DataBlock {
         ecmaAssert(size >= 0)
         try {
             return DataBlock(size)
         } catch (e: OutOfMemoryError) {
-            Errors.DataBlock.OutOfMemory(size).throwRangeError(realm)
+            Errors.DataBlock.OutOfMemory(size).throwRangeError()
         }
     }
 
@@ -567,7 +570,7 @@ object Operations {
 //            }
 //            val succeeded = (base as JSObject).set(reference.name, value, reference.getThisValue())
 //            if (!succeeded && reference.isStrict)
-//                Errors.StrictModeFailedSet(reference.name, toPrintableString(base)).throwTypeError(realm)
+//                Errors.StrictModeFailedSet(reference.name, toPrintableString(base)).throwTypeError()
 //        } else {
 //            ecmaAssert(base is EnvRecord)
 //            expect(reference.name.isString)
@@ -586,29 +589,29 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.1.1")
-    fun toPrimitive(realm: Realm, value: JSValue, type: ToPrimitiveHint? = null): JSValue {
+    fun toPrimitive(value: JSValue, type: ToPrimitiveHint? = null): JSValue {
         if (value !is JSObject)
             return value
 
-        val exoticToPrim = getMethod(realm, value, Realm.WellKnownSymbols.toPrimitive)
+        val exoticToPrim = getMethod(value, Realm.WellKnownSymbols.toPrimitive)
         if (exoticToPrim !is JSUndefined) {
             val hint = when (type) {
                 ToPrimitiveHint.AsDefault, null -> "default"
                 ToPrimitiveHint.AsString -> "string"
                 ToPrimitiveHint.AsNumber -> "number"
             }.toValue()
-            val result = call(realm, exoticToPrim, value, listOf(hint))
+            val result = call(exoticToPrim, value, listOf(hint))
             if (result !is JSObject)
                 return result
-            Errors.BadToPrimitiveReturnValue.throwTypeError(realm)
+            Errors.BadToPrimitiveReturnValue.throwTypeError()
         }
 
-        return ordinaryToPrimitive(realm, value, type ?: ToPrimitiveHint.AsNumber)
+        return ordinaryToPrimitive(value, type ?: ToPrimitiveHint.AsNumber)
     }
 
     @JvmStatic
     @ECMAImpl("7.1.1.1")
-    fun ordinaryToPrimitive(realm: Realm, value: JSValue, hint: ToPrimitiveHint): JSValue {
+    fun ordinaryToPrimitive(value: JSValue, hint: ToPrimitiveHint): JSValue {
         ecmaAssert(value is JSObject)
         ecmaAssert(hint != ToPrimitiveHint.AsDefault)
         val methodNames = when (hint) {
@@ -618,12 +621,12 @@ object Operations {
         methodNames.forEach { methodName ->
             val method = value.get(methodName)
             if (isCallable(method)) {
-                val result = call(realm, method, value)
+                val result = call(method, value)
                 if (result !is JSObject)
                     return result
             }
         }
-        Errors.FailedToPrimitive(toPrintableString(value)).throwTypeError(realm)
+        Errors.FailedToPrimitive(toPrintableString(value)).throwTypeError()
     }
 
     @JvmStatic
@@ -643,24 +646,24 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.1.3")
-    fun toNumeric(realm: Realm, value: JSValue): JSValue {
-        val primValue = toPrimitive(realm, value, ToPrimitiveHint.AsNumber)
+    fun toNumeric(value: JSValue): JSValue {
+        val primValue = toPrimitive(value, ToPrimitiveHint.AsNumber)
         if (primValue is JSBigInt)
             return primValue
-        return toNumber(realm, primValue)
+        return toNumber(primValue)
     }
 
     @JvmStatic
     @ECMAImpl("7.1.4")
-    fun toNumber(realm: Realm, value: JSValue): JSNumber {
+    fun toNumber(value: JSValue): JSNumber {
         return when (value) {
             JSUndefined -> JSNumber.NaN
             JSNull, JSFalse -> JSNumber.ZERO
             JSTrue -> JSNumber(1)
             is JSNumber -> return value
             is JSString -> (stringToNumber(value.string)).toValue()
-            is JSSymbol, is JSBigInt -> Errors.FailedToNumber(value.type).throwTypeError(realm)
-            is JSObject -> toNumber(realm, toPrimitive(realm, value, ToPrimitiveHint.AsNumber))
+            is JSSymbol, is JSBigInt -> Errors.FailedToNumber(value.type).throwTypeError()
+            is JSObject -> toNumber(toPrimitive(value, ToPrimitiveHint.AsNumber))
             else -> unreachable()
         }
     }
@@ -671,8 +674,8 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.1.5")
-    fun toIntegerOrInfinity(realm: Realm, value: JSValue): JSNumber {
-        val number = toNumber(realm, value)
+    fun toIntegerOrInfinity(value: JSValue): JSNumber {
+        val number = toNumber(value)
         if (number.isNaN || number.isZero)
             return 0.toValue()
         if (number.isInfinite)
@@ -684,8 +687,8 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.1.6")
-    fun toInt32(realm: Realm, value: JSValue): JSNumber {
-        val number = toNumber(realm, value)
+    fun toInt32(value: JSValue): JSNumber {
+        val number = toNumber(value)
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
 
@@ -701,8 +704,8 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.1.7")
-    fun toUint32(realm: Realm, value: JSValue): JSNumber {
-        val number = toNumber(realm, value)
+    fun toUint32(value: JSValue): JSNumber {
+        val number = toNumber(value)
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
 
@@ -714,8 +717,8 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.1.8")
-    fun toInt16(realm: Realm, value: JSValue): JSNumber {
-        val number = toNumber(realm, value)
+    fun toInt16(value: JSValue): JSNumber {
+        val number = toNumber(value)
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
 
@@ -731,8 +734,8 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.1.9")
-    fun toUint16(realm: Realm, value: JSValue): JSNumber {
-        val number = toNumber(realm, value)
+    fun toUint16(value: JSValue): JSNumber {
+        val number = toNumber(value)
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
 
@@ -744,8 +747,8 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.1.10")
-    fun toInt8(realm: Realm, value: JSValue): JSNumber {
-        val number = toNumber(realm, value)
+    fun toInt8(value: JSValue): JSNumber {
+        val number = toNumber(value)
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
 
@@ -761,8 +764,8 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.1.11")
-    fun toUint8(realm: Realm, value: JSValue): JSNumber {
-        val number = toNumber(realm, value)
+    fun toUint8(value: JSValue): JSNumber {
+        val number = toNumber(value)
         if (number.isZero || number.isInfinite || number.isNaN)
             return JSNumber.ZERO
 
@@ -774,8 +777,8 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.1.12")
-    fun toUint8Clamp(realm: Realm, value: JSValue): JSNumber {
-        val number = toNumber(realm, value)
+    fun toUint8Clamp(value: JSValue): JSNumber {
+        val number = toNumber(value)
         if (number.isNaN)
             return JSNumber.ZERO
         if (number.number <= 0)
@@ -796,26 +799,26 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.1.13")
-    fun toBigInt(realm: Realm, value: JSValue): JSBigInt =
-        when (val prim = toPrimitive(realm, value, ToPrimitiveHint.AsNumber)) {
-            JSUndefined -> Errors.BigInt.Conversion("undefined").throwTypeError(realm)
-            JSNull -> Errors.BigInt.Conversion("null").throwTypeError(realm)
+    fun toBigInt(value: JSValue): JSBigInt =
+        when (val prim = toPrimitive(value, ToPrimitiveHint.AsNumber)) {
+            JSUndefined -> Errors.BigInt.Conversion("undefined").throwTypeError()
+            JSNull -> Errors.BigInt.Conversion("null").throwTypeError()
             is JSBoolean -> if (prim.boolean) JSBigInt.ONE else JSBigInt.ZERO
             is JSBigInt -> prim
-            is JSNumber -> Errors.BigInt.Conversion(prim.number.toString()).throwTypeError(realm)
-            is JSString -> stringToBigInt(realm, prim.string)
-            is JSSymbol -> Errors.BigInt.Conversion(prim.descriptiveString()).throwTypeError(realm)
+            is JSNumber -> Errors.BigInt.Conversion(prim.number.toString()).throwTypeError()
+            is JSString -> stringToBigInt(prim.string)
+            is JSSymbol -> Errors.BigInt.Conversion(prim.descriptiveString()).throwTypeError()
             else -> unreachable()
         }
 
     @JvmStatic
     @ECMAImpl("7.1.14")
-    fun stringToBigInt(realm: Realm, string: String): JSBigInt {
+    fun stringToBigInt(string: String): JSBigInt {
         val trimmed = string.trim()
         if (trimmed.isEmpty())
             return JSBigInt.ZERO
         if (trimmed == "Infinity" || '.' in trimmed || trimmed.matches(exponentRegex))
-            Errors.BigInt.Conversion(string).throwSyntaxError(realm)
+            Errors.BigInt.Conversion(string).throwSyntaxError()
 
         var lc = trimmed.lowercase()
         val radix = when {
@@ -837,14 +840,14 @@ object Operations {
         try {
             return BigInteger(lc, radix).toValue()
         } catch (e: NumberFormatException) {
-            Errors.BigInt.Conversion(string).throwSyntaxError(realm)
+            Errors.BigInt.Conversion(string).throwSyntaxError()
         }
     }
 
     @JvmStatic
     @ECMAImpl("7.1.15")
-    fun toBigInt64(realm: Realm, value: JSValue): JSBigInt {
-        val n = toBigInt(realm, value)
+    fun toBigInt64(value: JSValue): JSBigInt {
+        val n = toBigInt(value)
         val int64bit = n.number.mod(MAX_64BIT_INT)
         if (int64bit >= MAX_63BIT_INT)
             return int64bit.subtract(MAX_64BIT_INT).toValue()
@@ -853,13 +856,13 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.1.16")
-    fun toBigUint64(realm: Realm, value: JSValue): JSBigInt {
-        return toBigInt(realm, value).number.mod(MAX_64BIT_INT).toValue()
+    fun toBigUint64(value: JSValue): JSBigInt {
+        return toBigInt(value).number.mod(MAX_64BIT_INT).toValue()
     }
 
     @JvmStatic
     @ECMAImpl("7.1.17")
-    fun toString(realm: Realm, value: JSValue): JSString {
+    fun toString(value: JSValue): JSString {
         return when (value) {
             is JSString -> return value
             JSUndefined -> "undefined"
@@ -867,9 +870,9 @@ object Operations {
             JSTrue -> "true"
             JSFalse -> "false"
             is JSNumber -> numericToString(value)
-            is JSSymbol -> Errors.FailedSymbolToString.throwTypeError(realm)
+            is JSSymbol -> Errors.FailedSymbolToString.throwTypeError()
             is JSBigInt -> bigintToString(value)
-            is JSObject -> toString(realm, toPrimitive(realm, value, ToPrimitiveHint.AsString)).string
+            is JSObject -> toString(toPrimitive(value, ToPrimitiveHint.AsString)).string
             else -> unreachable()
         }.let(::JSString)
     }
@@ -906,23 +909,23 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.1.18")
-    fun toObject(realm: Realm, value: JSValue): JSObject {
+    fun toObject(value: JSValue): JSObject {
         return when (value) {
             is JSObject -> value
-            is JSUndefined, JSNull -> Errors.FailedToObject(value.type).throwTypeError(realm)
-            is JSBoolean -> JSBooleanObject.create(realm, value)
-            is JSNumber -> JSNumberObject.create(realm, value)
-            is JSString -> JSStringObject.create(realm, value)
-            is JSSymbol -> JSSymbolObject.create(realm, value)
-            is JSBigInt -> JSBigIntObject.create(realm, value)
+            is JSUndefined, JSNull -> Errors.FailedToObject(value.type).throwTypeError()
+            is JSBoolean -> JSBooleanObject.create(value)
+            is JSNumber -> JSNumberObject.create(value)
+            is JSString -> JSStringObject.create(value)
+            is JSSymbol -> JSSymbolObject.create(value)
+            is JSBigInt -> JSBigIntObject.create(value)
             else -> TODO()
         }
     }
 
     @JvmStatic
     @ECMAImpl("7.1.19")
-    fun toPropertyKey(realm: Realm, value: JSValue): PropertyKey {
-        val key = toPrimitive(realm, value, ToPrimitiveHint.AsString)
+    fun toPropertyKey(value: JSValue): PropertyKey {
+        val key = toPrimitive(value, ToPrimitiveHint.AsString)
 
         if (key is JSNumber && key.number.let {
                 it in 0.0..IndexedStorage.INDEX_UPPER_BOUND.toDouble() &&
@@ -937,13 +940,13 @@ object Operations {
         if (key is JSSymbol)
             return PropertyKey.from(key)
 
-        return PropertyKey.from(toString(realm, key))
+        return PropertyKey.from(toString(key))
     }
 
     @JvmStatic
     @ECMAImpl("7.1.20")
-    fun toLength(realm: Realm, value: JSValue): JSValue {
-        val len = toIntegerOrInfinity(realm, value)
+    fun toLength(value: JSValue): JSValue {
+        val len = toIntegerOrInfinity(value)
         val number = len.asLong
         if (number < 0)
             return 0.toValue()
@@ -951,56 +954,56 @@ object Operations {
     }
 
     @ECMAImpl("7.1.21")
-    fun canonicalNumericIndexString(realm: Realm, argument: JSValue): JSNumber? {
+    fun canonicalNumericIndexString(argument: JSValue): JSNumber? {
         if (argument is JSNumber)
             return argument
         ecmaAssert(argument is JSString)
         if (argument.string == "-0")
             return JSNumber.NEGATIVE_ZERO
-        val num = toNumber(realm, argument)
-        if (toString(realm, num).string != argument.string)
+        val num = toNumber(argument)
+        if (toString(num).string != argument.string)
             return null
         return num
     }
 
     @JvmStatic
     @ECMAImpl("7.1.22")
-    fun toIndex(realm: Realm, value: JSValue): Int {
+    fun toIndex(value: JSValue): Int {
         if (value == JSUndefined)
             return 0
-        val intIndex = toIntegerOrInfinity(realm, value)
+        val intIndex = toIntegerOrInfinity(value)
         if (intIndex.isNegativeInfinity || intIndex.asInt < 0)
-            Errors.BadIndex(toPrintableString(value)).throwRangeError(realm)
-        val index = toLength(realm, intIndex)
+            Errors.BadIndex(toPrintableString(value)).throwRangeError()
+        val index = toLength(intIndex)
         if (!intIndex.sameValue(index))
-            Errors.BadIndex(toPrintableString(value)).throwRangeError(realm)
+            Errors.BadIndex(toPrintableString(value)).throwRangeError()
         return index.asInt
     }
 
     @JvmStatic
     @ECMAImpl("7.2.1")
-    fun requireObjectCoercible(realm: Realm, value: JSValue): JSValue {
+    fun requireObjectCoercible(value: JSValue): JSValue {
         if (value is JSUndefined || value is JSNull)
-            Errors.FailedToObject(value.type).throwTypeError(realm)
+            Errors.FailedToObject(value.type).throwTypeError()
         return value
     }
 
     @JvmStatic
     @ECMAImpl("7.2.2")
-    fun isArray(realm: Realm, value: JSValue): Boolean {
+    fun isArray(value: JSValue): Boolean {
         if (!value.isObject)
             return false
         if (value is JSArrayObject)
             return true
         if (value is JSProxyObject) {
             if (value.handler == null)
-                Errors.Proxy.RevokedGeneric.throwTypeError(realm)
-            return isArray(realm, value.target)
+                Errors.Proxy.RevokedGeneric.throwTypeError()
+            return isArray(value.target)
         }
         if (value is JSObject) {
             val handler = value.getSlot(SlotName.ProxyHandler)
             if (handler != null)
-                return isArray(realm, value.getSlotAs(SlotName.ProxyTarget))
+                return isArray(value.getSlotAs(SlotName.ProxyTarget))
         }
         return false
     }
@@ -1049,34 +1052,34 @@ object Operations {
         return value.hasSlot(SlotName.RegExpMatcher)
     }
 
-    fun isLessThan(realm: Realm, lhs: JSValue, rhs: JSValue): Boolean {
-        return isLessThan(realm, lhs, rhs, true).ifUndefined { JSFalse } == JSTrue
+    fun isLessThan(lhs: JSValue, rhs: JSValue): Boolean {
+        return isLessThan(lhs, rhs, true).ifUndefined { JSFalse } == JSTrue
     }
 
-    fun isLessThanOrEqual(realm: Realm, lhs: JSValue, rhs: JSValue): Boolean {
-        return isLessThan(realm, rhs, lhs, false) == JSFalse
+    fun isLessThanOrEqual(lhs: JSValue, rhs: JSValue): Boolean {
+        return isLessThan(rhs, lhs, false) == JSFalse
     }
 
-    fun isGreaterThan(realm: Realm, lhs: JSValue, rhs: JSValue): Boolean {
-        return isLessThan(realm, rhs, lhs, false).ifUndefined { JSFalse } == JSTrue
+    fun isGreaterThan(lhs: JSValue, rhs: JSValue): Boolean {
+        return isLessThan(rhs, lhs, false).ifUndefined { JSFalse } == JSTrue
     }
 
-    fun isGreaterThanOrEqual(realm: Realm, lhs: JSValue, rhs: JSValue): Boolean {
-        return isLessThan(realm, lhs, rhs, true) == JSFalse
+    fun isGreaterThanOrEqual(lhs: JSValue, rhs: JSValue): Boolean {
+        return isLessThan(lhs, rhs, true) == JSFalse
     }
 
     @JvmStatic
     @ECMAImpl("7.2.13")
-    fun isLessThan(realm: Realm, lhs: JSValue, rhs: JSValue, leftFirst: Boolean): JSValue {
+    fun isLessThan(lhs: JSValue, rhs: JSValue, leftFirst: Boolean): JSValue {
         val px: JSValue
         val py: JSValue
 
         if (leftFirst) {
-            px = toPrimitive(realm, lhs, ToPrimitiveHint.AsNumber)
-            py = toPrimitive(realm, rhs, ToPrimitiveHint.AsNumber)
+            px = toPrimitive(lhs, ToPrimitiveHint.AsNumber)
+            py = toPrimitive(rhs, ToPrimitiveHint.AsNumber)
         } else {
-            py = toPrimitive(realm, rhs, ToPrimitiveHint.AsNumber)
-            px = toPrimitive(realm, lhs, ToPrimitiveHint.AsNumber)
+            py = toPrimitive(rhs, ToPrimitiveHint.AsNumber)
+            px = toPrimitive(lhs, ToPrimitiveHint.AsNumber)
         }
 
         if (px is JSString && py is JSString)
@@ -1098,8 +1101,8 @@ object Operations {
             }
         }
 
-        val nx = toNumeric(realm, px)
-        val ny = toNumeric(realm, py)
+        val nx = toNumeric(px)
+        val ny = toNumeric(py)
 
         if (nx is JSNumber && ny is JSNumber)
             return numericLessThan(nx, ny)
@@ -1124,7 +1127,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.2.14")
-    fun isStrictlyEqual(realm: Realm, lhs: JSValue, rhs: JSValue): JSBoolean {
+    fun isStrictlyEqual(lhs: JSValue, rhs: JSValue): JSBoolean {
         if (lhs.type == rhs.type)
             return isLooselyEqual(lhs, rhs)
 
@@ -1134,13 +1137,13 @@ object Operations {
             return JSTrue
 
         if (lhs is JSNumber && rhs is JSString)
-            return isStrictlyEqual(realm, lhs, toNumber(realm, rhs))
+            return isStrictlyEqual(lhs, toNumber(rhs))
         if (lhs is JSString && rhs is JSNumber)
-            return isStrictlyEqual(realm, toNumber(realm, lhs), rhs)
+            return isStrictlyEqual(toNumber(lhs), rhs)
 
         if (lhs is JSBigInt && rhs is JSString) {
             return try {
-                isStrictlyEqual(realm, lhs, BigInteger(rhs.string).toValue())
+                isStrictlyEqual(lhs, BigInteger(rhs.string).toValue())
             } catch (e: NumberFormatException) {
                 JSFalse
             }
@@ -1148,21 +1151,21 @@ object Operations {
 
         if (lhs is JSString && rhs is JSBigInt) {
             return try {
-                isStrictlyEqual(realm, BigInteger(lhs.string).toValue(), rhs)
+                isStrictlyEqual(BigInteger(lhs.string).toValue(), rhs)
             } catch (e: NumberFormatException) {
                 JSFalse
             }
         }
 
         if (lhs is JSBoolean)
-            return isStrictlyEqual(realm, toNumber(realm, lhs), rhs)
+            return isStrictlyEqual(toNumber(lhs), rhs)
         if (rhs is JSBoolean)
-            return isStrictlyEqual(realm, lhs, toNumber(realm, rhs))
+            return isStrictlyEqual(lhs, toNumber(rhs))
 
         if ((lhs is JSString || lhs is JSNumber || lhs is JSBigInt || lhs is JSSymbol) && rhs is JSObject)
-            return isStrictlyEqual(realm, lhs, toPrimitive(realm, rhs))
+            return isStrictlyEqual(lhs, toPrimitive(rhs))
         if ((rhs is JSString || rhs is JSNumber || rhs is JSBigInt || rhs is JSSymbol) && lhs is JSObject)
-            return isStrictlyEqual(realm, toPrimitive(realm, lhs), rhs)
+            return isStrictlyEqual(toPrimitive(lhs), rhs)
 
         if ((lhs is JSBigInt && rhs is JSNumber) || (lhs is JSNumber && rhs is JSBigInt)) {
             if (!lhs.isFinite || !rhs.isFinite)
@@ -1190,25 +1193,25 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.3.3")
-    fun getV(realm: Realm, target: JSValue, property: PropertyKey): JSValue {
-        val obj = toObject(realm, target)
+    fun getV(target: JSValue, property: PropertyKey): JSValue {
+        val obj = toObject(target)
         return obj.get(property)
     }
 
-    fun getV(realm: Realm, target: JSValue, property: JSValue) = getV(realm, target, toPropertyKey(realm, property))
+    fun getV(target: JSValue, property: JSValue) = getV(target, toPropertyKey(property))
 
     @JvmStatic
     @ECMAImpl("7.3.4")
-    fun set(realm: Realm, obj: JSObject, property: PropertyKey, value: JSValue, throws: Boolean): Boolean {
+    fun set(obj: JSObject, property: PropertyKey, value: JSValue, throws: Boolean): Boolean {
         val success = obj.set(property, value)
         if (!success && throws)
-            Errors.StrictModeFailedSet(property, toPrintableString(obj)).throwTypeError(realm)
+            Errors.StrictModeFailedSet(property, toPrintableString(obj)).throwTypeError()
         return success
     }
 
     @JvmStatic
-    fun createDataProperty(realm: Realm, target: JSValue, property: JSValue, value: JSValue): Boolean {
-        return createDataProperty(target, toPropertyKey(realm, property), value)
+    fun createDataProperty(target: JSValue, property: JSValue, value: JSValue): Boolean {
+        return createDataProperty(target, toPropertyKey(property), value)
     }
 
     @JvmStatic
@@ -1219,8 +1222,8 @@ object Operations {
     }
 
     @JvmStatic
-    fun createDataPropertyOrThrow(realm: Realm, target: JSValue, property: JSValue, value: JSValue): Boolean {
-        return createDataPropertyOrThrow(realm, target, toPropertyKey(realm, property), value)
+    fun createDataPropertyOrThrow(target: JSValue, property: JSValue, value: JSValue): Boolean {
+        return createDataPropertyOrThrow(target, toPropertyKey(property), value)
     }
 
     @JvmStatic
@@ -1231,43 +1234,43 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.3.7")
-    fun createDataPropertyOrThrow(realm: Realm, target: JSValue, property: PropertyKey, value: JSValue): Boolean {
+    fun createDataPropertyOrThrow(target: JSValue, property: PropertyKey, value: JSValue): Boolean {
         if (!createDataProperty(target, property, value))
-            Errors.StrictModeFailedSet(property, toPrintableString(target)).throwTypeError(realm)
+            Errors.StrictModeFailedSet(property, toPrintableString(target)).throwTypeError()
         return true
     }
 
     @JvmStatic
-    fun definePropertyOrThrow(realm: Realm, target: JSValue, property: JSValue, descriptor: Descriptor): Boolean {
-        return definePropertyOrThrow(realm, target, toPropertyKey(realm, property), descriptor)
+    fun definePropertyOrThrow(target: JSValue, property: JSValue, descriptor: Descriptor): Boolean {
+        return definePropertyOrThrow(target, toPropertyKey(property), descriptor)
     }
 
     @JvmStatic
     @ECMAImpl("7.3.8")
-    fun definePropertyOrThrow(realm: Realm, target: JSValue, property: PropertyKey, descriptor: Descriptor): Boolean {
+    fun definePropertyOrThrow(target: JSValue, property: PropertyKey, descriptor: Descriptor): Boolean {
         ecmaAssert(target is JSObject)
         if (!target.defineOwnProperty(property, descriptor))
-            Errors.StrictModeFailedSet(property, toPrintableString(target)).throwTypeError(realm)
+            Errors.StrictModeFailedSet(property, toPrintableString(target)).throwTypeError()
         return true
     }
 
     @JvmStatic
     @ECMAImpl("7.3.9")
-    fun deletePropertyOrThrow(realm: Realm, target: JSValue, property: PropertyKey): Boolean {
+    fun deletePropertyOrThrow(target: JSValue, property: PropertyKey): Boolean {
         ecmaAssert(target is JSObject)
         if (!target.delete(property))
-            Errors.StrictModeFailedDelete(property, toPrintableString(target)).throwTypeError(realm)
+            Errors.StrictModeFailedDelete(property, toPrintableString(target)).throwTypeError()
         return true
     }
 
     @JvmStatic
     @ECMAImpl("7.3.10")
-    fun getMethod(realm: Realm, value: JSValue, key: JSValue): JSValue {
-        val func = getV(realm, value, key)
+    fun getMethod(value: JSValue, key: JSValue): JSValue {
+        val func = getV(value, key)
         if (func is JSUndefined || func is JSNull)
             return JSUndefined
         if (!isCallable(func))
-            Errors.FailedCall(toPrintableString(func)).throwTypeError(realm)
+            Errors.FailedCall(toPrintableString(func)).throwTypeError()
         return func
     }
 
@@ -1288,15 +1291,15 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.3.13")
-    fun call(realm: Realm, function: JSValue, arguments: JSArguments): JSValue {
+    fun call(function: JSValue, arguments: JSArguments): JSValue {
         if (!isCallable(function))
             Errors.FailedCall(toPrintableString(function)).throwTypeError(realm)
         return function.call(arguments)
     }
 
     @JvmOverloads
-    fun call(realm: Realm, function: JSValue, thisValue: JSValue, arguments: List<JSValue> = emptyList()): JSValue {
-        return call(realm, function, JSArguments(arguments, thisValue))
+    fun call(function: JSValue, thisValue: JSValue, arguments: List<JSValue> = emptyList()): JSValue {
+        return call(function, JSArguments(arguments, thisValue))
     }
 
     @JvmStatic
@@ -1311,20 +1314,20 @@ object Operations {
     fun construct(
         constructor: JSValue,
         arguments: List<JSValue> = emptyList(),
-        newTarget: JSValue = constructor
+        newTarget: JSValue = constructor,
     ): JSValue {
         return construct(constructor, JSArguments(arguments, newTarget = newTarget))
     }
 
     @JvmStatic
     @ECMAImpl("7.3.15")
-    fun setIntegrityLevel(realm: Realm, obj: JSObject, level: IntegrityLevel): Boolean {
+    fun setIntegrityLevel(obj: JSObject, level: IntegrityLevel): Boolean {
         if (!obj.preventExtensions())
             return false
         val keys = obj.ownPropertyKeys(onlyEnumerable = false)
         if (level == IntegrityLevel.Sealed) {
             keys.forEach { key ->
-                definePropertyOrThrow(realm, obj, key, Descriptor(JSEmpty, Descriptor.HAS_CONFIGURABLE))
+                definePropertyOrThrow(obj, key, Descriptor(JSEmpty, Descriptor.HAS_CONFIGURABLE))
             }
             obj.isSealed = true
         } else {
@@ -1335,7 +1338,7 @@ object Operations {
                 } else {
                     Descriptor(JSEmpty, Descriptor.HAS_CONFIGURABLE or Descriptor.HAS_WRITABLE)
                 }
-                definePropertyOrThrow(realm, obj, key, desc)
+                definePropertyOrThrow(obj, key, desc)
             }
             obj.isFrozen = true
         }
@@ -1344,26 +1347,26 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.3.17")
-    fun createArrayFromList(realm: Realm, elements: List<JSValue>): JSValue {
-        val array = arrayCreate(realm, elements.size)
+    fun createArrayFromList(elements: List<JSValue>): JSValue {
+        val array = arrayCreate(elements.size)
         elements.forEachIndexed { index, value ->
-            createDataPropertyOrThrow(realm, array, index.toValue(), value)
+            createDataPropertyOrThrow(array, index.toValue(), value)
         }
         return array
     }
 
     @JvmStatic
     @ECMAImpl("7.3.18")
-    fun lengthOfArrayLike(realm: Realm, target: JSValue): Long {
+    fun lengthOfArrayLike(target: JSValue): Long {
         ecmaAssert(target is JSObject)
-        return toLength(realm, target.get("length")).asLong
+        return toLength(target.get("length")).asLong
     }
 
     @JvmStatic
     @ECMAImpl("7.3.19")
-    fun createListFromArrayLike(realm: Realm, obj: JSValue, types: List<JSValue.Type>? = null): List<JSValue> {
+    fun createListFromArrayLike(obj: JSValue, types: List<JSValue.Type>? = null): List<JSValue> {
         if (obj !is JSObject)
-            Errors.FailedToObject(obj.type).throwTypeError(realm)
+            Errors.FailedToObject(obj.type).throwTypeError()
 
         val elementTypes = types ?: listOf(
             JSValue.Type.Undefined,
@@ -1376,13 +1379,13 @@ object Operations {
             JSValue.Type.Object,
         )
 
-        val length = lengthOfArrayLike(realm, obj)
+        val length = lengthOfArrayLike(obj)
         val list = mutableListOf<JSValue>()
 
         for (i in 0 until length) {
             val next = obj.get(i)
             if (next.type !in elementTypes)
-                Errors.TODO("createListFromArray").throwTypeError(realm)
+                Errors.TODO("createListFromArray").throwTypeError()
             list.add(next)
         }
 
@@ -1391,17 +1394,17 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.3.20")
-    fun invoke(realm: Realm, value: JSValue, property: PropertyKey, arguments: List<JSValue> = emptyList()): JSValue {
-        return call(realm, getV(realm, value, property), value, arguments)
+    fun invoke(value: JSValue, property: PropertyKey, arguments: List<JSValue> = emptyList()): JSValue {
+        return call(getV(value, property), value, arguments)
     }
 
-    fun invoke(realm: Realm, value: JSValue, property: JSValue, arguments: List<JSValue> = emptyList()): JSValue {
-        return invoke(realm, value, toPropertyKey(realm, property), arguments)
+    fun invoke(value: JSValue, property: JSValue, arguments: List<JSValue> = emptyList()): JSValue {
+        return invoke(value, toPropertyKey(property), arguments)
     }
 
     @JvmStatic
     @ECMAImpl("7.3.21")
-    fun ordinaryHasInstance(realm: Realm, ctor: JSFunction, target: JSValue): JSValue {
+    fun ordinaryHasInstance(ctor: JSFunction, target: JSValue): JSValue {
         if (!isCallable(ctor))
             return JSFalse
 
@@ -1417,7 +1420,7 @@ object Operations {
 
         val ctorProto = ctor.get("prototype")
         if (ctorProto !is JSObject)
-            Errors.InstanceOfBadRHS.throwTypeError(realm)
+            Errors.InstanceOfBadRHS.throwTypeError()
 
         var obj = target
         while (true) {
@@ -1431,13 +1434,13 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.3.22")
-    fun speciesConstructor(realm: Realm, obj: JSValue, defaultCtor: JSFunction): JSFunction {
+    fun speciesConstructor(obj: JSValue, defaultCtor: JSFunction): JSFunction {
         ecmaAssert(obj is JSObject)
         val ctor = obj.get("constructor")
         if (ctor == JSUndefined)
             return defaultCtor
         if (ctor !is JSObject)
-            Errors.BadCtor(toPrintableString(obj)).throwTypeError(realm)
+            Errors.BadCtor(toPrintableString(obj)).throwTypeError()
 
         val species = ctor.get(Realm.WellKnownSymbols.species)
         if (species.isNullish)
@@ -1446,12 +1449,12 @@ object Operations {
         if (isConstructor(species))
             return species
 
-        Errors.SpeciesNotCtor.throwTypeError(realm)
+        Errors.SpeciesNotCtor.throwTypeError()
     }
 
     @JvmStatic
     @ECMAImpl("7.3.23")
-    fun enumerableOwnPropertyNames(realm: Realm, target: JSValue, kind: JSObject.PropertyKind): List<JSValue> {
+    fun enumerableOwnPropertyNames(target: JSValue, kind: JSObject.PropertyKind): List<JSValue> {
         ecmaAssert(target is JSObject)
         val properties = mutableListOf<JSValue>()
         target.ownPropertyKeys(onlyEnumerable = true).forEach { property ->
@@ -1461,13 +1464,13 @@ object Operations {
             if (!desc.isEnumerable)
                 return@forEach
             if (kind == JSObject.PropertyKind.Key) {
-                properties.add(toString(realm, property.asValue))
+                properties.add(toString(property.asValue))
             } else {
                 val value = target.get(property)
                 if (kind == JSObject.PropertyKind.Value) {
                     properties.add(value)
                 } else {
-                    properties.add(createArrayFromList(realm, listOf(toString(realm, property.asValue), value)))
+                    properties.add(createArrayFromList(listOf(toString(property.asValue), value)))
                 }
             }
         }
@@ -1476,15 +1479,10 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.3.25")
-    fun copyDataProperties(
-        sourceRealm: Realm,
-        target: JSObject,
-        source: JSValue,
-        excludedItems: List<PropertyKey>
-    ): JSObject {
+    fun copyDataProperties(target: JSObject, source: JSValue, excludedItems: List<PropertyKey>): JSObject {
         if (source.isNullish)
             return target
-        val from = toObject(sourceRealm, source)
+        val from = toObject(source)
         from.ownPropertyKeys(onlyEnumerable = true).forEach outer@{ key ->
             excludedItems.forEach {
                 if (it == key)
@@ -1492,7 +1490,7 @@ object Operations {
             }
             val desc = from.getOwnPropertyDescriptor(key)
             if (desc != null)
-                createDataPropertyOrThrow(target.realm, target, key, from.get(key))
+                createDataPropertyOrThrow(target, key, from.get(key))
         }
         return target
     }
@@ -1501,20 +1499,19 @@ object Operations {
     @JvmOverloads
     @ECMAImpl("7.4.1")
     fun getIterator(
-        realm: Realm,
         obj: JSValue,
         hint: IteratorHint? = IteratorHint.Sync,
         method: JSFunction? = null
     ): IteratorRecord {
         if (hint == IteratorHint.Async)
             TODO()
-        val theMethod = method ?: getMethod(realm, obj, Realm.WellKnownSymbols.iterator)
+        val theMethod = method ?: getMethod(obj, Realm.WellKnownSymbols.iterator)
         if (theMethod is JSUndefined)
-            Errors.NotIterable(toPrintableString(obj)).throwTypeError(realm)
-        val iterator = call(realm, theMethod, obj)
+            Errors.NotIterable(toPrintableString(obj)).throwTypeError()
+        val iterator = call(theMethod, obj)
         if (iterator !is JSObject)
-            Errors.NonObjectIterator.throwTypeError(realm)
-        val nextMethod = getV(realm, iterator, "next".toValue())
+            Errors.NonObjectIterator.throwTypeError()
+        val nextMethod = getV(iterator, "next".toValue())
         return IteratorRecord(iterator, nextMethod, false)
     }
 
@@ -1523,12 +1520,12 @@ object Operations {
     fun iteratorNext(record: IteratorRecord, value: JSValue? = null): JSObject {
         val realm = record.iterator.realm
         val result = if (value == null) {
-            call(realm, record.nextMethod, record.iterator)
+            call(record.nextMethod, record.iterator)
         } else {
-            call(realm, record.nextMethod, record.iterator, listOf(value))
+            call(record.nextMethod, record.iterator, listOf(value))
         }
         if (result !is JSObject)
-            Errors.NonObjectIteratorReturn.throwTypeError(realm)
+            Errors.NonObjectIteratorReturn.throwTypeError()
         return result
     }
 
@@ -1561,22 +1558,22 @@ object Operations {
         val method = record.iterator.get("return")
         if (method == JSUndefined)
             return value
-        return call(record.iterator.realm, method, record.iterator)
+        return call(method, record.iterator)
     }
 
     @JvmStatic
     @ECMAImpl("7.4.8")
-    fun createIterResultObject(realm: Realm, value: JSValue, done: Boolean): JSValue {
-        val obj = JSObject.create(realm)
-        createDataPropertyOrThrow(realm, obj, "value".toValue(), value)
-        createDataPropertyOrThrow(realm, obj, "done".toValue(), done.toValue())
+    fun createIterResultObject(value: JSValue, done: Boolean): JSValue {
+        val obj = JSObject.create()
+        createDataPropertyOrThrow(obj, "value".toValue(), value)
+        createDataPropertyOrThrow(obj, "done".toValue(), done.toValue())
         return obj
     }
 
     @JvmStatic
     @ECMAImpl("7.4.10")
-    fun iterableToList(realm: Realm, items: JSValue, method: JSValue? = null): List<JSValue> {
-        val iteratorRecord = getIterator(realm, items, method = method as? JSFunction)
+    fun iterableToList(items: JSValue, method: JSValue? = null): List<JSValue> {
+        val iteratorRecord = getIterator(items, method = method as? JSFunction)
         val values = mutableListOf<JSValue>()
         while (true) {
             val next = iteratorStep(iteratorRecord)
@@ -1639,24 +1636,22 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("8.3.6")
-    fun getGlobalObject(realm: Realm): JSObject {
+    fun getGlobalObject(): JSObject {
         return realm.globalObject
     }
 
     @JvmStatic
     @ECMAImpl("9.1.6.2")
     fun isCompatiblePropertyDescriptor(
-        realm: Realm,
         extensible: Boolean,
         desc: Descriptor,
         current: Descriptor?
     ): Boolean {
-        return validateAndApplyPropertyDescriptor(realm, null, null, extensible, desc, current)
+        return validateAndApplyPropertyDescriptor(null, null, extensible, desc, current)
     }
 
     @JvmStatic
     fun validateAndApplyPropertyDescriptor(
-        realm: Realm,
         target: JSObject?,
         property: PropertyKey?,
         extensible: Boolean,
@@ -1712,7 +1707,7 @@ object Operations {
                 if (currentDesc.run { hasConfigurable && hasWritable && !isConfigurable && !isWritable }) {
                     if (newDesc.isWritable)
                         return false
-                    if (!newDesc.getActualValue(realm, target).sameValue(currentDesc.getActualValue(realm, target)))
+                    if (!newDesc.getActualValue(target).sameValue(currentDesc.getActualValue(target)))
                         return false
                 }
             } else if (currentDesc.run { hasConfigurable && !isConfigurable }) {
@@ -1730,7 +1725,7 @@ object Operations {
 
         if (target != null) {
             if (newDesc.isDataDescriptor && newDesc.getRawValue() != JSEmpty)
-                currentDesc.setActualValue(realm, target, newDesc.getActualValue(realm, target))
+                currentDesc.setActualValue(target, newDesc.getActualValue(target))
 
             if (newDesc.hasGetter)
                 currentDesc.getter = newDesc.getter
@@ -1752,11 +1747,15 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("9.1.12")
-    fun ordinaryObjectCreate(realm: Realm, proto: JSValue, additionalInternalSlotList: List<SlotName>): JSObject {
+    fun ordinaryObjectCreate(
+        proto: JSValue,
+        additionalInternalSlotList: List<SlotName>,
+        realm: Realm = this.realm,
+    ): JSObject {
         // Spec deviation: [[Prototype]] and [[Extensible]] are not implemented as slots,
         // as they are present in every Object, and thus are just plain fields in the
         // Kotlin side
-        val obj = JSObject.create(realm, proto)
+        val obj = JSObject.create(realm, proto = proto)
         additionalInternalSlotList.forEach {
             obj.addSlot(it, JSUndefined)
         }
@@ -1766,13 +1765,13 @@ object Operations {
     @JvmStatic
     @ECMAImpl("9.1.13")
     fun ordinaryCreateFromConstructor(
-        realm: Realm,
         constructor: JSValue,
         intrinsicDefaultProto: JSObject,
-        internalSlotsList: List<SlotName> = emptyList()
+        internalSlotsList: List<SlotName> = emptyList(),
+        realm: Realm = this.realm,
     ): JSObject {
         val proto = getPrototypeFromConstructor(constructor, intrinsicDefaultProto)
-        return ordinaryObjectCreate(realm, proto, internalSlotsList)
+        return ordinaryObjectCreate(proto, internalSlotsList, realm)
     }
 
     @JvmStatic
@@ -1855,9 +1854,9 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("9.4.1.3")
-    fun boundFunctionCreate(realm: Realm, targetFunction: JSFunction, arguments: JSArguments): JSFunction {
+    fun boundFunctionCreate(targetFunction: JSFunction, arguments: JSArguments): JSFunction {
         val proto = targetFunction.getPrototype()
-        return JSBoundFunction.create(realm, targetFunction, arguments, proto)
+        return JSBoundFunction.create(targetFunction, arguments, proto)
     }
 
     /**
@@ -1887,31 +1886,31 @@ object Operations {
         }
     }
 
-    fun arrayCreate(realm: Realm, length: Int, proto: JSValue = realm.arrayProto): JSObject {
-        return arrayCreate(realm, length.toLong(), proto)
+    fun arrayCreate(length: Int, proto: JSValue = realm.arrayProto): JSObject {
+        return arrayCreate(length.toLong(), proto)
     }
 
     @JvmStatic
     @JvmOverloads
     @ECMAImpl("9.4.2.2")
-    fun arrayCreate(realm: Realm, length: Long, proto: JSValue = realm.arrayProto): JSObject {
+    fun arrayCreate(length: Long, proto: JSValue = realm.arrayProto): JSObject {
         if (length >= MAX_32BIT_INT - 1)
-            Errors.InvalidArrayLength(length).throwRangeError(realm)
-        val array = JSArrayObject.create(realm, proto)
+            Errors.InvalidArrayLength(length).throwRangeError()
+        val array = JSArrayObject.create(proto = proto)
         array.indexedProperties.setArrayLikeSize(length)
         return array
     }
 
     @JvmStatic
     @ECMAImpl("9.4.2.3")
-    fun arraySpeciesCreate(realm: Realm, originalArray: JSObject, length: Int) =
-        arraySpeciesCreate(realm, originalArray, length.toLong())
+    fun arraySpeciesCreate(originalArray: JSObject, length: Int) =
+        arraySpeciesCreate(originalArray, length.toLong())
 
     @JvmStatic
     @ECMAImpl("9.4.2.3")
-    fun arraySpeciesCreate(realm: Realm, originalArray: JSObject, length: Long): JSValue {
-        if (!isArray(realm, originalArray))
-            return arrayCreate(realm, length)
+    fun arraySpeciesCreate(originalArray: JSObject, length: Long): JSValue {
+        if (!isArray(originalArray))
+            return arrayCreate(length)
         var ctor = originalArray.get("constructor")
         if (isConstructor(ctor)) {
             val ctorRealm = (ctor as JSObject).realm
@@ -1924,9 +1923,9 @@ object Operations {
                 ctor = JSUndefined
         }
         if (ctor == JSUndefined)
-            return arrayCreate(realm, length)
+            return arrayCreate(length)
         if (!isConstructor(ctor))
-            Errors.SpeciesNotCtor.throwTypeError(realm)
+            Errors.SpeciesNotCtor.throwTypeError()
         return construct(ctor, listOf(length.toValue()))
     }
 
@@ -1965,7 +1964,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("9.4.5.11")
-    fun integerIndexedElementSet(realm: Realm, obj: JSValue, index: JSValue, value: JSValue) {
+    fun integerIndexedElementSet(obj: JSValue, index: JSValue, value: JSValue) {
         ecmaAssert(obj is JSIntegerIndexedObject)
 
         if (index !is JSNumber || !isValidIntegerIndex(obj, index))
@@ -1973,13 +1972,12 @@ object Operations {
 
         val kind = obj.getSlotAs<TypedArrayKind>(SlotName.TypedArrayKind)
         val numValue = if (kind.isBigInt) {
-            value.toBigInt(realm)
-        } else value.toNumber(realm)
+            value.toBigInt()
+        } else value.toNumber()
 
         val offset = obj.getSlotAs<Int>(SlotName.ByteOffset)
         val indexedPosition = (index.asInt * kind.size) + offset
         setValueInBuffer(
-            realm,
             obj.getSlotAs(SlotName.ViewedArrayBuffer),
             indexedPosition,
             kind,
@@ -2051,7 +2049,6 @@ object Operations {
     @JvmStatic
     @ECMAImpl("10.2.5")
     fun makeConstructor(
-        realm: Realm,
         function: JSFunction,
         writablePrototype: Boolean = true,
         prototype: JSObject? = null
@@ -2065,9 +2062,8 @@ object Operations {
         function.constructorKind = JSFunction.ConstructorKind.Base
 
         val actualPrototype = prototype ?: let {
-            JSObject.create(realm).also {
+            JSObject.create().also {
                 definePropertyOrThrow(
-                    realm,
                     it,
                     "constructor".key(),
                     Descriptor(function, attributes or Descriptor.CONFIGURABLE)
@@ -2075,7 +2071,7 @@ object Operations {
             }
         }
 
-        definePropertyOrThrow(realm, function, "prototype".key(), Descriptor(actualPrototype, attributes))
+        definePropertyOrThrow(function, "prototype".key(), Descriptor(actualPrototype, attributes))
     }
 
     @JvmStatic
@@ -2095,23 +2091,22 @@ object Operations {
     @JvmStatic
     @ECMAImpl("10.2.8")
     fun defineMethodProperty(
-        realm: Realm,
         key: PropertyKey,
         homeObject: JSValue,
         closure: JSFunction,
         enumerable: Boolean
     ) {
-        setFunctionName(realm, closure, key)
+        setFunctionName(closure, key)
         var attributes = Descriptor.WRITABLE or Descriptor.CONFIGURABLE
         if (enumerable)
             attributes = attributes or Descriptor.ENUMERABLE
-        definePropertyOrThrow(realm, homeObject, key, Descriptor(closure, attributes))
+        definePropertyOrThrow(homeObject, key, Descriptor(closure, attributes))
     }
 
     @JvmStatic
     @JvmOverloads
     @ECMAImpl("10.2.9")
-    fun setFunctionName(realm: Realm, function: JSFunction, name: PropertyKey, prefix: String? = null): Boolean {
+    fun setFunctionName(function: JSFunction, name: PropertyKey, prefix: String? = null): Boolean {
         ecmaAssert(function.isExtensible())
         val nameString = when {
             name.isSymbol -> name.asSymbol.description.let {
@@ -2125,16 +2120,14 @@ object Operations {
             } else it
         }
         return definePropertyOrThrow(
-            realm,
             function,
             "name".toValue(),
             Descriptor(nameString.toValue(), Descriptor.CONFIGURABLE)
         )
     }
 
-    fun setFunctionLength(realm: Realm, function: JSFunction, length: Int) {
+    fun setFunctionLength(function: JSFunction, length: Int) {
         definePropertyOrThrow(
-            realm,
             function,
             "length".key(),
             Descriptor(length.toValue(), attrs { +conf; -enum; -writ }),
@@ -2159,7 +2152,7 @@ object Operations {
 //    fun evaluateNew(target: JSValue, arguments: Array<JSValue>): JSValue {
 //        val constructor = getValue(target)
 //        if (!isConstructor(constructor))
-//            Errors.NotACtor(toPrintableString(target)).throwTypeError(realm)
+//            Errors.NotACtor(toPrintableString(target)).throwTypeError()
 //        return construct(constructor, arguments.toList())
 //    }
 
@@ -2175,7 +2168,7 @@ object Operations {
 //        } else JSUndefined
 //
 //        if (!isCallable(target))
-//            Errors.NotCallable(toPrintableString(target)).throwTypeError(realm)
+//            Errors.NotCallable(toPrintableString(target)).throwTypeError()
 //        if (tailPosition)
 //            TODO()
 //        return call(target, thisValue, arguments.toList())
@@ -2242,64 +2235,64 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("12.10.4")
-    fun instanceofOperator(realm: Realm, target: JSValue, ctor: JSValue): JSValue {
+    fun instanceofOperator(target: JSValue, ctor: JSValue): JSValue {
         if (ctor !is JSObject)
-            Errors.InstanceOfBadRHS.throwTypeError(realm)
+            Errors.InstanceOfBadRHS.throwTypeError()
 
-        val instOfHandler = getMethod(realm, target, Realm.WellKnownSymbols.hasInstance)
+        val instOfHandler = getMethod(target, Realm.WellKnownSymbols.hasInstance)
         if (instOfHandler !is JSUndefined) {
-            val temp = call(realm, instOfHandler, ctor, listOf(target))
+            val temp = call(instOfHandler, ctor, listOf(target))
             return toBoolean(temp).toValue()
         }
 
         if (!isCallable(ctor))
-            Errors.InstanceOfBadRHS.throwTypeError(realm)
+            Errors.InstanceOfBadRHS.throwTypeError()
 
-        return ordinaryHasInstance(realm, ctor, target)
+        return ordinaryHasInstance(ctor, target)
     }
 
-    fun exp(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "**")
-    fun mul(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "*")
-    fun div(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "/")
-    fun mod(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "%")
-    fun add(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "+")
-    fun sub(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "-")
-    fun shl(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "<<")
-    fun shr(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, ">>")
-    fun ushr(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, ">>>")
-    fun and(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "&")
-    fun xor(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "^")
-    fun or(realm: Realm, lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(realm, lhs, rhs, "|")
+    fun exp(lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(lhs, rhs, "**")
+    fun mul(lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(lhs, rhs, "*")
+    fun div(lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(lhs, rhs, "/")
+    fun mod(lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(lhs, rhs, "%")
+    fun add(lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(lhs, rhs, "+")
+    fun sub(lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(lhs, rhs, "-")
+    fun shl(lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(lhs, rhs, "<<")
+    fun shr(lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(lhs, rhs, ">>")
+    fun ushr(lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(lhs, rhs, ">>>")
+    fun and(lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(lhs, rhs, "&")
+    fun xor(lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(lhs, rhs, "^")
+    fun or(lhs: JSValue, rhs: JSValue) = applyStringOrNumericBinaryOperator(lhs, rhs, "|")
 
     @JvmStatic
     @ECMAImpl("12.15.5")
-    fun applyStringOrNumericBinaryOperator(realm: Realm, lhs: JSValue, rhs: JSValue, op: String): JSValue {
+    fun applyStringOrNumericBinaryOperator(lhs: JSValue, rhs: JSValue, op: String): JSValue {
         if (op == "+") {
-            val lprim = toPrimitive(realm, lhs)
-            val rprim = toPrimitive(realm, rhs)
+            val lprim = toPrimitive(lhs)
+            val rprim = toPrimitive(rhs)
             if (lprim.isString || rprim.isString) {
-                val lstr = toString(realm, lprim)
-                val rstr = toString(realm, rprim)
+                val lstr = toString(lprim)
+                val rstr = toString(rprim)
                 return JSString(lstr.string + rstr.string)
             }
         }
 
-        val lnum = toNumeric(realm, lhs)
-        val rnum = toNumeric(realm, rhs)
+        val lnum = toNumeric(lhs)
+        val rnum = toNumeric(rhs)
         if (lnum.type != rnum.type)
-            Errors.BadOperator(op, lnum.type, rnum.type).throwTypeError(realm)
+            Errors.BadOperator(op, lnum.type, rnum.type).throwTypeError()
 
         return if (lnum.type == JSValue.Type.BigInt) {
             when (op) {
-                "**" -> bigintExponentiate(realm, lnum, rnum)
+                "**" -> bigintExponentiate(lnum, rnum)
                 "*" -> bigintMultiply(lnum, rnum)
-                "/" -> bigintDivide(realm, lnum, rnum)
-                "%" -> bigintRemainder(realm, lnum, rnum)
+                "/" -> bigintDivide(lnum, rnum)
+                "%" -> bigintRemainder(lnum, rnum)
                 "+" -> bigintAdd(lnum, rnum)
                 "-" -> bigintSubtract(lnum, rnum)
-                "<<" -> bigintLeftShift(realm, lnum, rnum)
-                ">>" -> bigintSignedRightShift(realm, lnum, rnum)
-                ">>>" -> bigintUnsignedRightShift(realm, lnum, rnum)
+                "<<" -> bigintLeftShift(lnum, rnum)
+                ">>" -> bigintSignedRightShift(lnum, rnum)
+                ">>>" -> bigintUnsignedRightShift(lnum, rnum)
                 "&" -> bigintBitwiseAND(lnum, rnum)
                 "^" -> bigintBitwiseXOR(lnum, rnum)
                 "|" -> bigintBitwiseOR(lnum, rnum)
@@ -2312,12 +2305,12 @@ object Operations {
             "%" -> numericRemainder(lnum, rnum)
             "+" -> numericAdd(lnum, rnum)
             "-" -> numericSubtract(lnum, rnum)
-            "<<" -> numericLeftShift(realm, lnum, rnum)
-            ">>" -> numericSignedRightShift(realm, lnum, rnum)
-            ">>>" -> numericUnsignedRightShift(realm, lnum, rnum)
-            "&" -> numericBitwiseAND(realm, lnum, rnum)
-            "^" -> numericBitwiseXOR(realm, lnum, rnum)
-            "|" -> numericBitwiseOR(realm, lnum, rnum)
+            "<<" -> numericLeftShift(lnum, rnum)
+            ">>" -> numericSignedRightShift(lnum, rnum)
+            ">>>" -> numericUnsignedRightShift(lnum, rnum)
+            "&" -> numericBitwiseAND(lnum, rnum)
+            "^" -> numericBitwiseXOR(lnum, rnum)
+            "|" -> numericBitwiseOR(lnum, rnum)
             else -> unreachable()
         }
     }
@@ -2334,7 +2327,6 @@ object Operations {
     @JvmStatic
     @ECMAImpl("20.2.1.1.1")
     fun createDynamicFunction(
-        realm: Realm,
         constructor: JSObject,
         newTarget_: JSValue,
         kind: FunctionKind,
@@ -2347,7 +2339,7 @@ object Operations {
         // val agent = Agent.activeAgent
         //
         // // TODO: Figure out the caller vs callee realm separation
-        // agent.hostHooks.ensureCanCompileStrings(realm, realm)
+        // agent.hostHooks.ensureCanCompileStrings(realm)
         //
         // val newTarget = if (newTarget_ == JSUndefined) constructor else newTarget_ as JSObject
         //
@@ -2382,7 +2374,7 @@ object Operations {
         // val functionNode = when (val result = parser.parseFunction(kind)) {
         //     is ParsingResult.InternalError -> throw result.cause
         //     is ParsingResult.ParseError -> {
-        //         val exception = JSSyntaxErrorObject.create(realm, result.reason)
+        //         val exception = JSSyntaxErrorObject.create(result.reason)
         //         throw ThrowException(exception)
         //     }
         //     is ParsingResult.Success -> result.node as FunctionDeclarationNode
@@ -2418,7 +2410,7 @@ object Operations {
         //     Descriptor(functionNode.parameters.size.toValue(), Descriptor.CONFIGURABLE)
         // )
         //
-        // setFunctionName(realm, function, "anonymous".key())
+        // setFunctionName(function, "anonymous".key())
         //
         // when (kind) {
         //     FunctionKind.Normal -> {
@@ -2426,8 +2418,8 @@ object Operations {
         //         // makeConstructor(function)
         //     }
         //     FunctionKind.Generator -> {
-        //         val prototype = JSObject.create(realm, realm.generatorFunctionProto)
-        //         definePropertyOrThrow(realm, function, "prototype".key(), Descriptor(prototype, Descriptor.WRITABLE))
+        //         val prototype = JSObject.create(realm.generatorFunctionProto)
+        //         definePropertyOrThrow(function, "prototype".key(), Descriptor(prototype, Descriptor.WRITABLE))
         //     }
         //     else -> TODO()
         // }
@@ -2437,14 +2429,14 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("20.4.1.11")
-    fun makeTime(realm: Realm, hour: JSValue, min: JSValue, sec: JSValue, ms: JSValue): JSValue {
+    fun makeTime(hour: JSValue, min: JSValue, sec: JSValue, ms: JSValue): JSValue {
         if (!hour.isFinite || !min.isFinite || !sec.isFinite || !ms.isFinite)
             return JSNumber.NaN
 
-        val h = toIntegerOrInfinity(realm, hour).asInt
-        val m = toIntegerOrInfinity(realm, min).asInt
-        val s = toIntegerOrInfinity(realm, sec).asInt
-        val milli = toIntegerOrInfinity(realm, ms).asInt
+        val h = toIntegerOrInfinity(hour).asInt
+        val m = toIntegerOrInfinity(min).asInt
+        val s = toIntegerOrInfinity(sec).asInt
+        val milli = toIntegerOrInfinity(ms).asInt
 
         val lt = LocalTime.of(h, m, s, milli * 1_000_000)
 
@@ -2453,13 +2445,13 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("20.4.1.12")
-    fun makeDay(realm: Realm, year: JSValue, month: JSValue, day: JSValue): JSValue {
+    fun makeDay(year: JSValue, month: JSValue, day: JSValue): JSValue {
         if (!year.isFinite || !month.isFinite || !day.isFinite)
             return JSNumber.NaN
 
-        val y = toIntegerOrInfinity(realm, year).asInt
-        val m = toIntegerOrInfinity(realm, month).asInt
-        val d = toIntegerOrInfinity(realm, day).asInt
+        val y = toIntegerOrInfinity(year).asInt
+        val m = toIntegerOrInfinity(month).asInt
+        val d = toIntegerOrInfinity(day).asInt
 
         return makeDay(y, m, d).toValue()
     }
@@ -2538,8 +2530,8 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("21.1.3.29.1")
-    fun trimString(realm: Realm, string: JSValue, where: TrimType): String {
-        val str = toString(realm, requireObjectCoercible(realm, string)).string
+    fun trimString(string: JSValue, where: TrimType): String {
+        val str = toString(requireObjectCoercible(string)).string
 
         fun removable(ch: Char) = ch.isWhiteSpace() || isLineTerminator(ch)
 
@@ -2554,59 +2546,59 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("21.2.3.2.1")
-    fun regExpAlloc(realm: Realm, newTarget: JSValue): JSObject {
+    fun regExpAlloc(newTarget: JSValue): JSObject {
         val slots = listOf(SlotName.RegExpMatcher, SlotName.OriginalSource, SlotName.OriginalFlags)
-        val obj = ordinaryCreateFromConstructor(realm, newTarget, realm.regExpProto, slots)
-        definePropertyOrThrow(realm, obj, "lastIndex".key(), Descriptor(JSEmpty, attrs { +writ; -enum; -conf }))
+        val obj = ordinaryCreateFromConstructor(newTarget, realm.regExpProto, slots)
+        definePropertyOrThrow(obj, "lastIndex".key(), Descriptor(JSEmpty, attrs { +writ; -enum; -conf }))
         return obj
     }
 
     @JvmStatic
     @ECMAImpl("21.2.3.2.2")
-    fun regExpInitialize(realm: Realm, obj: JSObject, patternArg: JSValue, flagsArg: JSValue): JSObject {
-        val pattern = if (patternArg == JSUndefined) "" else toString(realm, patternArg).string
-        val flags = if (flagsArg == JSUndefined) "" else toString(realm, flagsArg).string
+    fun regExpInitialize(obj: JSObject, patternArg: JSValue, flagsArg: JSValue): JSObject {
+        val pattern = if (patternArg == JSUndefined) "" else toString(patternArg).string
+        val flags = if (flagsArg == JSUndefined) "" else toString(flagsArg).string
 
         val invalidFlag = flags.firstOrNull { JSRegExpObject.Flag.values().none { flag -> flag.char == it } }
         if (invalidFlag != null)
-            Errors.RegExp.InvalidFlag(invalidFlag).throwSyntaxError(realm)
+            Errors.RegExp.InvalidFlag(invalidFlag).throwSyntaxError()
         if (flags.toCharArray().distinct().size != flags.length)
-            Errors.RegExp.DuplicateFlag.throwSyntaxError(realm)
+            Errors.RegExp.DuplicateFlag.throwSyntaxError()
 
         obj.setSlot(SlotName.OriginalSource, pattern)
         obj.setSlot(SlotName.OriginalFlags, flags)
-        obj.setSlot(SlotName.RegExpMatcher, JSRegExpObject.makeClosure(realm, pattern, flags))
-        set(realm, obj, "lastIndex".key(), 0.toValue(), true)
+        obj.setSlot(SlotName.RegExpMatcher, JSRegExpObject.makeClosure(pattern, flags))
+        set(obj, "lastIndex".key(), 0.toValue(), true)
 
         return obj
     }
 
     @JvmStatic
     @ECMAImpl("21.2.3.2.4")
-    fun regExpCreate(realm: Realm, pattern: JSValue, flags: JSValue): JSObject {
-        val obj = regExpAlloc(realm, realm.regExpCtor)
-        return regExpInitialize(realm, obj, pattern, flags)
+    fun regExpCreate(pattern: JSValue, flags: JSValue): JSObject {
+        val obj = regExpAlloc(realm.regExpCtor)
+        return regExpInitialize(obj, pattern, flags)
     }
 
     @ECMAImpl("21.2.5.2.1")
-    fun regExpExec(realm: Realm, thisValue: JSValue, string: JSValue, methodName: String): JSValue {
+    fun regExpExec(thisValue: JSValue, string: JSValue, methodName: String): JSValue {
         ecmaAssert(thisValue is JSObject)
         ecmaAssert(string is JSString)
 
         val exec = thisValue.get("exec")
         if (isCallable(exec)) {
-            val result = call(realm, exec, thisValue, listOf(string))
+            val result = call(exec, thisValue, listOf(string))
             if (result !is JSObject && result != JSNull)
-                Errors.RegExp.ExecBadReturnType.throwTypeError(realm)
+                Errors.RegExp.ExecBadReturnType.throwTypeError()
             return result
         }
         if (thisValue !is JSRegExpProto)
-            Errors.IncompatibleMethodCall("RegExp.prototype$methodName").throwTypeError(realm)
-        return regExpBuiltinExec(realm, thisValue, string)
+            Errors.IncompatibleMethodCall("RegExp.prototype$methodName").throwTypeError()
+        return regExpBuiltinExec(thisValue, string)
     }
 
     @ECMAImpl("21.2.5.2.2")
-    fun regExpBuiltinExec(realm: Realm, thisValue: JSValue, string: JSValue): JSValue {
+    fun regExpBuiltinExec(thisValue: JSValue, string: JSValue): JSValue {
         ecmaAssert(thisValue is JSObject)
         ecmaAssert(string is JSString)
         requireInternalSlot(thisValue, SlotName.RegExpMatcher)
@@ -2618,7 +2610,7 @@ object Operations {
         val sticky = JSRegExpObject.Flag.Sticky.char in flags
         val fullUnicode = JSRegExpObject.Flag.Unicode.char in flags
         var lastIndex = if (global || sticky) {
-            toLength(realm, thisValue.get("lastIndex")).asInt
+            toLength(thisValue.get("lastIndex")).asInt
         } else 0
 
         val regex = thisValue.getSlotAs<org.joni.Regex>(SlotName.RegExpMatcher)
@@ -2628,13 +2620,13 @@ object Operations {
         while (!matchSucceeded) {
             if (lastIndex > length) {
                 if (global || sticky)
-                    set(realm, thisValue, "lastIndex".key(), 0.toValue(), true)
+                    set(thisValue, "lastIndex".key(), 0.toValue(), true)
                 return JSNull
             }
             val result = matcher.search(lastIndex, length - lastIndex, Option.DEFAULT)
             if (result == Matcher.FAILED || result == Matcher.INTERRUPTED) {
                 if (sticky) {
-                    set(realm, thisValue, "lastIndex".key(), 0.toValue(), true)
+                    set(thisValue, "lastIndex".key(), 0.toValue(), true)
                     return JSNull
                 }
                 if (fullUnicode)
@@ -2647,19 +2639,19 @@ object Operations {
 
         val eagerRegion = matcher.eagerRegion
 
-        val arr = arrayCreate(realm, eagerRegion.numRegs)
-        createDataPropertyOrThrow(realm, arr, "index".key(), lastIndex.toValue())
-        createDataPropertyOrThrow(realm, arr, "input".key(), string)
+        val arr = arrayCreate(eagerRegion.numRegs)
+        createDataPropertyOrThrow(arr, "index".key(), lastIndex.toValue())
+        createDataPropertyOrThrow(arr, "input".key(), string)
 
         val matchedSubstr = string.string.substring(lastIndex, eagerRegion.end[0])
-        createDataPropertyOrThrow(realm, arr, 0.key(), matchedSubstr.toValue())
+        createDataPropertyOrThrow(arr, 0.key(), matchedSubstr.toValue())
 
         val groupNames = regex.namedBackrefIterator().asSequence().toList()
         val groups = if (groupNames.isNotEmpty()) {
-            JSObject.create(realm, JSNull)
+            JSObject.create(proto = JSNull)
         } else JSUndefined
 
-        createDataPropertyOrThrow(realm, arr, "groups".key(), groups)
+        createDataPropertyOrThrow(arr, "groups".key(), groups)
 
         for (i in 1 until eagerRegion.numRegs) {
             val capturedValue = if (fullUnicode) {
@@ -2667,11 +2659,10 @@ object Operations {
             } else {
                 string.string.substring(eagerRegion.beg[i], eagerRegion.end[i])
             }.toValue()
-            createDataPropertyOrThrow(realm, arr, i.key(), capturedValue)
+            createDataPropertyOrThrow(arr, i.key(), capturedValue)
             val namedGroup = groupNames.firstOrNull { i in it.backRefs }
             if (namedGroup != null) {
                 createDataPropertyOrThrow(
-                    realm,
                     groups,
                     thisValue.getSlotAs<String>(SlotName.OriginalSource).substring(namedGroup.nameP, namedGroup.nameEnd)
                         .key(),
@@ -2684,58 +2675,58 @@ object Operations {
     }
 
     @ECMAImpl("22.1.5.1")
-    fun createArrayIterator(realm: Realm, array: JSObject, kind: JSObject.PropertyKind): JSValue {
-        return JSArrayIterator.create(realm, array, 0, kind)
+    fun createArrayIterator(array: JSObject, kind: JSObject.PropertyKind): JSValue {
+        return JSArrayIterator.create(array, 0, kind)
     }
 
     @JvmStatic
     @ECMAImpl("22.2.4.1")
-    fun typedArraySpeciesCreate(realm: Realm, exemplar: JSValue, arguments: JSArguments): JSObject {
+    fun typedArraySpeciesCreate(exemplar: JSValue, arguments: JSArguments): JSObject {
         ecmaAssert(exemplar is JSObject && exemplar.hasSlots(SlotName.TypedArrayName, SlotName.ContentType))
 
         val kind = exemplar.getSlotAs<TypedArrayKind>(SlotName.TypedArrayKind)
-        val defaultConstructor = kind.getCtor(exemplar.realm)
-        val constructor = speciesConstructor(realm, exemplar, defaultConstructor)
-        val result = typedArrayCreate(realm, constructor, arguments)
+        val defaultConstructor = kind.getCtor()
+        val constructor = speciesConstructor(exemplar, defaultConstructor)
+        val result = typedArrayCreate(constructor, arguments)
         if (result.getSlot(SlotName.ContentType) != exemplar.getSlot(SlotName.ContentType))
-            Errors.TODO("typedArraySpeciesCreate").throwTypeError(realm)
+            Errors.TODO("typedArraySpeciesCreate").throwTypeError()
         return result
     }
 
     @JvmStatic
     @ECMAImpl("22.2.4.2")
-    fun typedArrayCreate(realm: Realm, constructor: JSValue, arguments: JSArguments): JSObject {
+    fun typedArrayCreate(constructor: JSValue, arguments: JSArguments): JSObject {
         val newTypedArray = construct(constructor, arguments)
-        validateTypedArray(realm, newTypedArray)
+        validateTypedArray(newTypedArray)
         expect(newTypedArray is JSObject)
         if (arguments.size == 1) {
             val arg = arguments.argument(0)
             if (arg is JSNumber && newTypedArray.getSlotAs<Int>(SlotName.ArrayLength) != arg.asInt)
-                Errors.TODO("typedArrayCreate").throwTypeError(realm)
+                Errors.TODO("typedArrayCreate").throwTypeError()
         }
         return newTypedArray
     }
 
     @JvmStatic
     @ECMAImpl("22.2.4.3")
-    fun validateTypedArray(realm: Realm, obj: JSValue) {
+    fun validateTypedArray(obj: JSValue) {
         if (!requireInternalSlot(obj, SlotName.TypedArrayName))
-            Errors.TODO("validateTypedArray requireInternalSlot").throwTypeError(realm)
+            Errors.TODO("validateTypedArray requireInternalSlot").throwTypeError()
         ecmaAssert(obj.hasSlot(SlotName.ViewedArrayBuffer))
         val buffer = obj.getSlotAs<JSObject>(SlotName.ViewedArrayBuffer)
         if (isDetachedBuffer(buffer))
-            Errors.TODO("validateTypedArray isDetachedBuffer").throwTypeError(realm)
+            Errors.TODO("validateTypedArray isDetachedBuffer").throwTypeError()
     }
 
     @JvmStatic
     @ECMAImpl("23.1.1.2")
-    fun addEntriesFromIterable(realm: Realm, target: JSObject, iterable: JSValue, adder: JSValue): JSValue {
+    fun addEntriesFromIterable(target: JSObject, iterable: JSValue, adder: JSValue): JSValue {
         if (!isCallable(adder))
-            Errors.TODO("addEntriesFromIterable 1").throwTypeError(realm)
+            Errors.TODO("addEntriesFromIterable 1").throwTypeError()
 
         // TODO: This whole method is super scuffed
         ecmaAssert(iterable != JSUndefined && iterable != JSNull)
-        val record = getIterator(realm, iterable) as? IteratorRecord ?: return JSEmpty
+        val record = getIterator(iterable) as? IteratorRecord ?: return JSEmpty
         while (true) {
             val next = iteratorStep(record)
             if (next == JSFalse)
@@ -2743,7 +2734,7 @@ object Operations {
             val nextItem = iteratorValue(next)
             if (nextItem !is JSObject) {
                 iteratorClose(record, JSEmpty)
-                Errors.TODO("addEntriesFromIterable 2").throwTypeError(realm)
+                Errors.TODO("addEntriesFromIterable 2").throwTypeError()
             }
             val key = try {
                 nextItem.get(0)
@@ -2758,7 +2749,7 @@ object Operations {
                 throw e
             }
             try {
-                call(realm, adder, target, listOf(key, value))
+                call(adder, target, listOf(key, value))
             } catch (e: ThrowException) {
                 iteratorClose(record, JSEmpty)
                 throw e
@@ -2768,10 +2759,10 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("24.1.2.1")
-    fun allocateArrayBuffer(realm: Realm, constructor: JSValue, byteLength: Int): JSObject {
+    fun allocateArrayBuffer(constructor: JSValue, byteLength: Int): JSObject {
         val slots = listOf(SlotName.ArrayBufferData, SlotName.ArrayBufferByteLength, SlotName.ArrayBufferDetachKey)
-        val obj = ordinaryCreateFromConstructor(realm, constructor, realm.arrayBufferProto, slots)
-        val block = createByteDataBlock(realm, byteLength)
+        val obj = ordinaryCreateFromConstructor(constructor, realm.arrayBufferProto, slots)
+        val block = createByteDataBlock(byteLength)
         obj.setSlot(SlotName.ArrayBufferData, block)
         obj.setSlot(SlotName.ArrayBufferByteLength, byteLength)
         return obj
@@ -2786,7 +2777,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("24.1.2.3")
-    fun detachArrayBuffer(realm: Realm, arrayBuffer: JSValue, key: JSValue = JSUndefined) {
+    fun detachArrayBuffer(arrayBuffer: JSValue, key: JSValue = JSUndefined) {
         ecmaAssert(arrayBuffer is JSObject)
         ecmaAssert(
             arrayBuffer.hasSlots(
@@ -2800,7 +2791,7 @@ object Operations {
         val expectedKey = arrayBuffer.getSlotAs<JSValue>(SlotName.ArrayBufferDetachKey)
         if (!expectedKey.sameValue(key))
             Errors.ArrayBuffer.BadDetachKey(expectedKey.toPrintableString(), key.toPrintableString())
-                .throwTypeError(realm)
+                .throwTypeError()
 
         arrayBuffer.setSlot(SlotName.ArrayBufferData, null)
         arrayBuffer.setSlot(SlotName.ArrayBufferByteLength, 0)
@@ -2809,7 +2800,6 @@ object Operations {
     @JvmStatic
     @ECMAImpl("24.1.2.4")
     fun cloneArrayBuffer(
-        realm: Realm,
         srcBuffer: JSValue,
         srcByteOffset: Int,
         srcLength: Int,
@@ -2818,9 +2808,9 @@ object Operations {
         ecmaAssert(srcBuffer is JSObject && srcBuffer.hasSlot(SlotName.ArrayBufferData))
         ecmaAssert(cloneConstructor.isConstructor)
 
-        val targetBuffer = allocateArrayBuffer(realm, cloneConstructor, srcLength)
+        val targetBuffer = allocateArrayBuffer(cloneConstructor, srcLength)
         if (isDetachedBuffer(srcBuffer))
-            Errors.TODO("cloneArrayBuffer isDetachedBuffer").throwTypeError(realm)
+            Errors.TODO("cloneArrayBuffer isDetachedBuffer").throwTypeError()
         val srcBlock = srcBuffer.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
         val targetBlock = targetBuffer.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
         copyDataBlockBytes(targetBlock, 0, srcBlock, srcByteOffset, srcLength)
@@ -2915,7 +2905,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("24.1.2.11")
-    fun numericToRawBytes(realm: Realm, type: TypedArrayKind, value: JSValue, isLittleEndian: Boolean): ByteArray {
+    fun numericToRawBytes(type: TypedArrayKind, value: JSValue, isLittleEndian: Boolean): ByteArray {
         when (type) {
             TypedArrayKind.Float32 -> {
                 expect(value is JSNumber)
@@ -2933,7 +2923,7 @@ object Operations {
             }
             else -> {
                 val convOp = type.convOp!!
-                val numValue = convOp(realm, value).let {
+                val numValue = convOp(value).let {
                     if (it is JSBigInt) {
                         var arr = it.number.toByteArray()
                         if (arr.size < type.size) {
@@ -2970,7 +2960,6 @@ object Operations {
     @JvmStatic
     @ECMAImpl("24.1.2.12")
     fun setValueInBuffer(
-        realm: Realm,
         arrayBuffer: JSValue,
         byteIndex: Int,
         type: TypedArrayKind,
@@ -2986,7 +2975,7 @@ object Operations {
         val block = arrayBuffer.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
         ecmaAssert(byteIndex + type.size <= block.size)
 
-        val rawBytes = numericToRawBytes(realm, type, value, isLittleEndian)
+        val rawBytes = numericToRawBytes(type, value, isLittleEndian)
         if (isSharedArrayBuffer(arrayBuffer))
             TODO()
 
@@ -3001,25 +2990,24 @@ object Operations {
     @JvmStatic
     @ECMAImpl("24.3.1.1")
     fun getViewValue(
-        realm: Realm,
         view: JSValue,
         requestIndex: JSValue,
         littleEndian: JSValue,
         kind: TypedArrayKind
     ): JSValue {
         if (!requireInternalSlot(view, SlotName.DataView))
-            Errors.TODO("getViewValue requireInternalSlot").throwTypeError(realm)
+            Errors.TODO("getViewValue requireInternalSlot").throwTypeError()
 
-        val index = requestIndex.toIndex(realm)
+        val index = requestIndex.toIndex()
         val isLittleEndian = littleEndian.toBoolean()
         val buffer = view.getSlotAs<JSObject>(SlotName.ViewedArrayBuffer)
         if (isDetachedBuffer(buffer))
-            Errors.TODO("getViewValue isDetachedBuffer").throwTypeError(realm)
+            Errors.TODO("getViewValue isDetachedBuffer").throwTypeError()
 
         val viewOffset = view.getSlotAs<Int>(SlotName.ByteOffset)
         val viewSize = view.getSlotAs<Int>(SlotName.ByteLength)
         if (index + kind.size > viewSize)
-            Errors.TODO("getViewValue out of range").throwRangeError(realm)
+            Errors.TODO("getViewValue out of range").throwRangeError()
 
         return getValueFromBuffer(buffer, index + viewOffset, kind, false, TypedArrayOrder.Unordered, isLittleEndian)
     }
@@ -3027,7 +3015,6 @@ object Operations {
     @JvmStatic
     @ECMAImpl("24.3.1.2")
     fun setViewValue(
-        realm: Realm,
         view: JSValue,
         requestIndex: JSValue,
         littleEndian: JSValue,
@@ -3035,22 +3022,21 @@ object Operations {
         value: JSValue
     ) {
         if (!requireInternalSlot(view, SlotName.DataView))
-            Errors.TODO("setViewValue requireInternalSlot").throwTypeError(realm)
+            Errors.TODO("setViewValue requireInternalSlot").throwTypeError()
 
-        val index = requestIndex.toIndex(realm)
-        val numberValue = if (kind.isBigInt) value.toBigInt(realm) else value.toNumber(realm)
+        val index = requestIndex.toIndex()
+        val numberValue = if (kind.isBigInt) value.toBigInt() else value.toNumber()
         val isLittleEndian = littleEndian.toBoolean()
         val buffer = view.getSlotAs<JSObject>(SlotName.ViewedArrayBuffer)
         if (isDetachedBuffer(buffer))
-            Errors.TODO("getViewValue isDetachedBuffer").throwTypeError(realm)
+            Errors.TODO("getViewValue isDetachedBuffer").throwTypeError()
 
         val viewOffset = view.getSlotAs<Int>(SlotName.ByteOffset)
         val viewSize = view.getSlotAs<Int>(SlotName.ByteLength)
         if (index + kind.size > viewSize)
-            Errors.TODO("getViewValue out of range").throwRangeError(realm)
+            Errors.TODO("getViewValue out of range").throwRangeError()
 
         setValueInBuffer(
-            realm,
             buffer,
             index + viewOffset,
             kind,
@@ -3084,11 +3070,11 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("26.6.1.5")
-    fun newPromiseCapability(realm: Realm, ctor: JSValue): PromiseCapability {
+    fun newPromiseCapability(ctor: JSValue): PromiseCapability {
         if (!isConstructor(ctor))
-            Errors.TODO("newPromiseCapability").throwTypeError(realm)
+            Errors.TODO("newPromiseCapability").throwTypeError()
         val capability = PromiseCapability(JSEmpty, null, null)
-        val executor = JSCapabilitiesExecutor.create((ctor as JSObject).realm, capability)
+        val executor = JSCapabilitiesExecutor.create(capability)
         val promise = construct(ctor, listOf(executor))
         capability.promise = promise
         return capability
@@ -3110,9 +3096,12 @@ object Operations {
     }
 
     @JvmStatic
-    fun createPromise(realm: Realm, ctor: JSValue = realm.promiseCtor, proto: JSObject = realm.promiseProto): JSObject {
-        val promise = Operations.ordinaryCreateFromConstructor(
-            realm,
+    fun createPromise(
+        realm: Realm = this.realm,
+        ctor: JSValue = realm.promiseCtor,
+        proto: JSObject = realm.promiseProto,
+    ): JSObject {
+        val promise = ordinaryCreateFromConstructor(
             ctor,
             proto,
             listOf(
@@ -3121,12 +3110,13 @@ object Operations {
                 SlotName.PromiseFulfillReactions,
                 SlotName.PromiseRejectReactions,
                 SlotName.PromiseIsHandled,
-            )
+            ),
+            realm,
         )
 
-        promise.setSlot(SlotName.PromiseState, Operations.PromiseState.Pending)
-        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<Operations.PromiseReaction>())
-        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<Operations.PromiseReaction>())
+        promise.setSlot(SlotName.PromiseState, PromiseState.Pending)
+        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<PromiseReaction>())
+        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<PromiseReaction>())
         promise.setSlot(SlotName.PromiseIsHandled, false)
         promise.setSlot(SlotName.PromiseResult, JSUndefined)
 
@@ -3135,7 +3125,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("26.6.1.7")
-    internal fun rejectPromise(realm: Realm, promise: JSObject, reason: JSValue): JSValue {
+    internal fun rejectPromise(promise: JSObject, reason: JSValue): JSValue {
         ecmaAssert(promise.getSlot(SlotName.PromiseState) == PromiseState.Pending)
         val reactions = promise.getSlotAs<List<PromiseReaction>>(SlotName.PromiseRejectReactions).toList()
         promise.setSlot(SlotName.PromiseResult, reason)
@@ -3144,7 +3134,7 @@ object Operations {
         promise.setSlot(SlotName.PromiseState, PromiseState.Rejected)
 
         if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled))
-            Agent.activeAgent.hostHooks.promiseRejectionTracker(realm, promise, "reject")
+            Agent.activeAgent.hostHooks.promiseRejectionTracker(promise, "reject")
 
         return triggerPromiseReactions(reactions, reason)
     }
@@ -3154,7 +3144,7 @@ object Operations {
     fun triggerPromiseReactions(reactions: List<PromiseReaction>, argument: JSValue): JSValue {
         reactions.forEach { reaction ->
             val job = newPromiseReactionJob(reaction, argument)
-            Agent.activeAgent.hostHooks.enqueuePromiseJob(job.job, job.realm)
+            Agent.activeAgent.hostHooks.enqueuePromiseJob(job.realm, job.job)
         }
         return JSUndefined
     }
@@ -3173,7 +3163,6 @@ object Operations {
                 }
             } else try {
                 Agent.activeAgent.hostHooks.callJobCallback(
-                    handlerRealm!!,
                     reaction.handler,
                     JSArguments(listOf(argument))
                 )
@@ -3188,10 +3177,10 @@ object Operations {
 
             if (handlerResult is ThrowException) {
                 val rejectFunc = reaction.capability.reject!!
-                call(rejectFunc.realm, rejectFunc, JSUndefined, listOf(handlerResult.value))
+                call(rejectFunc, JSUndefined, listOf(handlerResult.value))
             } else {
                 val resolveFunc = reaction.capability.resolve!!
-                call(resolveFunc.realm, resolveFunc, JSUndefined, listOf(handlerResult as JSValue))
+                call(resolveFunc, JSUndefined, listOf(handlerResult as JSValue))
             }
         }
     }
@@ -3199,7 +3188,6 @@ object Operations {
     @JvmStatic
     @ECMAImpl("26.6.2.2")
     fun newPromiseResolveThenableJob(
-        realm: Realm,
         promise: JSObject,
         thenable: JSValue,
         then: JobCallback
@@ -3208,12 +3196,11 @@ object Operations {
             val (resolveFunction, rejectFunction) = createResolvingFunctions(promise)
             try {
                 Agent.activeAgent.hostHooks.callJobCallback(
-                    realm,
                     then,
                     JSArguments(listOf(resolveFunction, rejectFunction), thenable)
                 )
             } catch (e: ThrowException) {
-                call(realm, rejectFunction, JSUndefined, listOf(e.value))
+                call(rejectFunction, JSUndefined, listOf(e.value))
             }
         }
     }
@@ -3237,15 +3224,14 @@ object Operations {
                 return value
         }
 
-        val capability = newPromiseCapability(constructor.realm, constructor)
-        call(constructor.realm, capability.resolve!!, JSUndefined, listOf(value))
+        val capability = newPromiseCapability(constructor)
+        call(capability.resolve!!, JSUndefined, listOf(value))
         return capability.promise
     }
 
     @JvmStatic
     @ECMAImpl("26.6.5.4.1")
     fun performPromiseThen(
-        realm: Realm,
         promise: JSObject,
         onFulfilled: JSValue,
         onRejected: JSValue,
@@ -3269,13 +3255,13 @@ object Operations {
             PromiseState.Fulfilled -> {
                 val fulfillJob =
                     newPromiseReactionJob(fulfillReaction, promise.getSlotAs(SlotName.PromiseResult))
-                Agent.activeAgent.hostHooks.enqueuePromiseJob(fulfillJob.job, fulfillJob.realm)
+                Agent.activeAgent.hostHooks.enqueuePromiseJob(fulfillJob.realm, fulfillJob.job)
             }
             else -> {
                 if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled))
-                    Agent.activeAgent.hostHooks.promiseRejectionTracker(realm, promise, "handle")
+                    Agent.activeAgent.hostHooks.promiseRejectionTracker(promise, "handle")
                 val rejectJob = newPromiseReactionJob(rejectReaction, promise.getSlotAs(SlotName.PromiseResult))
-                Agent.activeAgent.hostHooks.enqueuePromiseJob(rejectJob.job, rejectJob.realm)
+                Agent.activeAgent.hostHooks.enqueuePromiseJob(rejectJob.realm, rejectJob.job)
             }
         }
 
@@ -3327,7 +3313,7 @@ object Operations {
         val isUnsigned: Boolean,
         val isUnclampedInt: Boolean,
         val isBigInt: Boolean,
-        val convOp: ((Realm, JSValue) -> JSValue)?
+        val convOp: ((JSValue) -> JSValue)?
     ) {
         Int8(1, false, true, false, ::toInt8),
         Uint8(1, true, true, false, ::toUint8),
@@ -3341,7 +3327,7 @@ object Operations {
         BigInt64(8, false, false, true, ::toBigInt64),
         BigUint64(8, true, false, true, ::toBigUint64);
 
-        fun getCtor(realm: Realm) = when (this) {
+        fun getCtor() = when (this) {
             Int8 -> realm.int8ArrayCtor
             Uint8 -> realm.uint8ArrayCtor
             Uint8C -> realm.uint8CArrayCtor
@@ -3355,7 +3341,7 @@ object Operations {
             BigUint64 -> realm.bigUint64ArrayCtor
         }
 
-        fun getProto(realm: Realm) = when (this) {
+        fun getProto() = when (this) {
             Int8 -> realm.int8ArrayProto
             Uint8 -> realm.uint8ArrayProto
             Uint8C -> realm.uint8CArrayProto

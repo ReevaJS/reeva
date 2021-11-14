@@ -1,12 +1,18 @@
 package com.reevajs.reeva.interpreter
 
+import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObject
+import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.transformer.TransformedSource
+import com.reevajs.reeva.utils.Errors
+import com.reevajs.reeva.utils.ecmaAssert
 
 abstract class InterpretedFunction(
     realm: Realm,
@@ -27,13 +33,16 @@ class NormalInterpretedFunction private constructor(
 ) : InterpretedFunction(realm, transformedSource, outerEnvRecord) {
     override fun evaluate(arguments: JSArguments): JSValue {
         val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
-        val result = Interpreter(realm, transformedSource, args, outerEnvRecord).interpret()
+        val result = Interpreter(transformedSource, args, outerEnvRecord).interpret()
         return result.valueOrElse { throw result.error() }
     }
 
     companion object {
-        fun create(realm: Realm, transformedSource: TransformedSource, outerEnvRecord: EnvRecord) =
-            NormalInterpretedFunction(realm, transformedSource, outerEnvRecord).initialize()
+        fun create(
+            transformedSource: TransformedSource,
+            outerEnvRecord: EnvRecord,
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
+        ) = NormalInterpretedFunction(realm, transformedSource, outerEnvRecord).initialize()
     }
 }
 
@@ -52,7 +61,6 @@ class GeneratorInterpretedFunction private constructor(
     override fun evaluate(arguments: JSArguments): JSValue {
         if (!::generatorObject.isInitialized) {
             generatorObject = JSGeneratorObject.create(
-                realm,
                 transformedSource,
                 arguments.thisValue,
                 arguments,
@@ -65,7 +73,10 @@ class GeneratorInterpretedFunction private constructor(
     }
 
     companion object {
-        fun create(realm: Realm, transformedSource: TransformedSource, outerEnvRecord: EnvRecord) =
-            GeneratorInterpretedFunction(realm, transformedSource, outerEnvRecord).initialize()
+        fun create(
+            transformedSource: TransformedSource,
+            outerEnvRecord: EnvRecord,
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
+        ) = GeneratorInterpretedFunction(realm, transformedSource, outerEnvRecord).initialize()
     }
 }

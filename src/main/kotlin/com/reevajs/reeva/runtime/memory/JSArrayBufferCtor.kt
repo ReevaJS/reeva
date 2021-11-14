@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.memory
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -24,27 +25,26 @@ class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(rea
     override fun evaluate(arguments: JSArguments): JSValue {
         val newTarget = arguments.newTarget
         if (newTarget == JSUndefined)
-            Errors.CtorCallWithoutNew("ArrayBuffer").throwTypeError(realm)
+            Errors.CtorCallWithoutNew("ArrayBuffer").throwTypeError()
 
         return Operations.allocateArrayBuffer(
-            (newTarget as JSObject).realm,
             newTarget,
-            arguments.argument(0).toIndex(realm)
+            arguments.argument(0).toIndex()
         )
     }
 
     companion object {
-        fun create(realm: Realm) = JSArrayBufferCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSArrayBufferCtor(realm).initialize()
 
         @ECMAImpl("25.1.4.1")
         @JvmStatic
-        fun isView(realm: Realm, arguments: JSArguments): JSValue {
+        fun isView(arguments: JSArguments): JSValue {
             return arguments.argument(0).let { it is JSObject && it.hasSlot(SlotName.ViewedArrayBuffer) }.toValue()
         }
 
         @ECMAImpl("25.1.4.3")
         @JvmStatic
-        fun getSymbolSpecies(realm: Realm, arguments: JSArguments): JSValue {
+        fun getSymbolSpecies(arguments: JSArguments): JSValue {
             return arguments.thisValue
         }
     }

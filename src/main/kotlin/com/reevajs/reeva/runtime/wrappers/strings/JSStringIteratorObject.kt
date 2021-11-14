@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers.strings
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.JSObject
 
@@ -10,8 +11,8 @@ class JSStringIteratorObject private constructor(
 ) : JSObject(realm, realm.stringIteratorProto) {
     companion object {
         fun create(
-            realm: Realm,
             string: String,
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = JSStringIteratorObject(realm, string, 0).initialize()
     }
 }

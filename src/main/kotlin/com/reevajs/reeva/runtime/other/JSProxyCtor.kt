@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.other
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -20,34 +21,34 @@ class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "P
 
     override fun evaluate(arguments: JSArguments): JSValue {
         if (arguments.newTarget == JSUndefined)
-            Errors.CtorCallWithoutNew("Proxy").throwTypeError(realm)
-        return proxyCreate(realm, arguments.argument(0), arguments.argument(1))
+            Errors.CtorCallWithoutNew("Proxy").throwTypeError()
+        return proxyCreate(arguments.argument(0), arguments.argument(1))
     }
 
     companion object {
-        fun create(realm: Realm) = JSProxyCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSProxyCtor(realm).initialize()
 
-        private fun proxyCreate(realm: Realm, target: JSValue, handler: JSValue): JSObject {
+        private fun proxyCreate(target: JSValue, handler: JSValue): JSObject {
             if (target !is JSObject)
-                Errors.Proxy.CtorFirstArgType.throwTypeError(realm)
+                Errors.Proxy.CtorFirstArgType.throwTypeError()
             if (handler !is JSObject)
-                Errors.Proxy.CtorSecondArgType.throwTypeError(realm)
-            return JSProxyObject.create(realm, target, handler)
+                Errors.Proxy.CtorSecondArgType.throwTypeError()
+            return JSProxyObject.create(target, handler)
         }
 
         @ECMAImpl("28.2.2.1")
         @JvmStatic
-        fun revocable(realm: Realm, arguments: JSArguments): JSValue {
-            val proxy = proxyCreate(realm, arguments.argument(0), arguments.argument(1))
+        fun revocable(arguments: JSArguments): JSValue {
+            val proxy = proxyCreate(arguments.argument(0), arguments.argument(1))
 
-            val resultObj = JSObject.create(realm)
-            Operations.createDataPropertyOrThrow(realm, resultObj, "proxy".key(), proxy)
+            val resultObj = JSObject.create()
+            Operations.createDataPropertyOrThrow(resultObj, "proxy".key(), proxy)
 
-            val revokeMethod = fromLambda(realm, "", 0) { _, _ ->
+            val revokeMethod = fromLambda("", 0) {
                 (proxy as JSProxyObject).revoke()
                 JSUndefined
             }
-            Operations.createDataPropertyOrThrow(realm, resultObj, "revoke".key(), revokeMethod)
+            Operations.createDataPropertyOrThrow(resultObj, "revoke".key(), revokeMethod)
 
             return resultObj
         }

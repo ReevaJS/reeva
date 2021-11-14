@@ -170,16 +170,16 @@ class JVMValueMapperTests {
             .isNull()
 
         expectThrows<Exception> {
-            JVMValueMapper.jsToJvm(realm, JSNull, Double::class.javaPrimitiveType!!)
+            JVMValueMapper.jsToJvm(JSNull, Double::class.javaPrimitiveType!!)
         }
     }
 
     @Nested
     inner class `JS JVM values map correctly to JVM types` {
-        val testClass = JSClassObject.create(realm, TestClass::class.java)
+        val testClass = JSClassObject.create(TestClass::class.java)
         val testClassInstance = testClass.construct(testClass, emptyList())
 
-        val numberLikeClass = JSClassObject.create(realm, NumberLikeClass::class.java)
+        val numberLikeClass = JSClassObject.create(NumberLikeClass::class.java)
         val numberLikeInstance = numberLikeClass.construct(numberLikeClass, emptyList())
 
         @Test
@@ -254,11 +254,11 @@ class JVMValueMapperTests {
         expectThat(array.toType<Array<Double>>())
             .isA<Array<Double>>()
 
-        expectThat(JVMValueMapper.jsToJvm(realm, array, List::class.java, genericInfo = doubleGenericInfo))
+        expectThat(JVMValueMapper.jsToJvm(array, List::class.java, genericInfo = doubleGenericInfo))
             .isA<List<Double>>()
 
         expectThrows<Exception> {
-            JVMValueMapper.jsToJvm(realm, array, List::class.java, genericInfo = booleanGenericInfo)
+            JVMValueMapper.jsToJvm(array, List::class.java, genericInfo = booleanGenericInfo)
         }
 
         expectThrows<Exception> {
@@ -278,7 +278,7 @@ class JVMValueMapperTests {
     @Test
     fun `JSObject maps correctly to itself`() {
         val obj = JSObject.create(realm)
-        expectThat(JVMValueMapper.jsToJvm(realm, obj, JSObject::class.java))
+        expectThat(JVMValueMapper.jsToJvm(obj, JSObject::class.java))
             .isA<JSObject>()
     }
 
@@ -293,5 +293,5 @@ class JVMValueMapperTests {
         }
     }
 
-    private inline fun <reified T> JSValue.toType(): Any? = JVMValueMapper.jsToJvm(realm, this, T::class.java)
+    private inline fun <reified T> JSValue.toType(): Any? = JVMValueMapper.jsToJvm(this, T::class.java)
 }

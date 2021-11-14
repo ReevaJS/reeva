@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.functions.generators
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -15,6 +16,6 @@ class JSGeneratorFunctionProto(realm: Realm) : JSObject(realm, realm.functionPro
     }
 
     companion object {
-        fun create(realm: Realm) = JSGeneratorFunctionProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSGeneratorFunctionProto(realm).initialize()
     }
 }

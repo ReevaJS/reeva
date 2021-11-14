@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.errors
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -27,25 +28,25 @@ open class JSErrorProto protected constructor(
     }
 
     companion object {
-        fun create(realm: Realm) = JSErrorProto(realm, realm.errorCtor, realm.objectProto).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSErrorProto(realm, realm.errorCtor, realm.objectProto).initialize()
 
         @ECMAImpl("20.5.3.4")
         @JvmStatic
-        fun toString(realm: Realm, arguments: JSArguments): JSValue {
+        fun toString(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (thisValue !is JSObject)
-                Errors.IncompatibleMethodCall("Error.prototype.toString").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("Error.prototype.toString").throwTypeError()
 
             val name = thisValue.get("name").let {
                 if (it == JSUndefined) {
                     "Error".toValue()
-                } else Operations.toString(realm, it)
+                } else Operations.toString(it)
             }
 
             val message = thisValue.get("message").let {
                 if (it == JSUndefined) {
                     "".toValue()
-                } else Operations.toString(realm, it)
+                } else Operations.toString(it)
             }
 
             if (name.string.isEmpty())

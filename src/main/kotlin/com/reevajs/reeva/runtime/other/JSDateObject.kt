@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.other
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -10,6 +11,7 @@ class JSDateObject private constructor(realm: Realm, dateValue: ZonedDateTime?) 
     var dateValue by slot(SlotName.DateValue, dateValue)
 
     companion object {
-        fun create(realm: Realm, dateValue: ZonedDateTime?) = JSDateObject(realm, dateValue).initialize()
+        fun create(dateValue: ZonedDateTime?, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+            JSDateObject(realm, dateValue).initialize()
     }
 }

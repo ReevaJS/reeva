@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.promises
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
@@ -27,6 +28,8 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
+        val realm = Agent.activeAgent.getActiveRealm()
+
         if (arguments.newTarget == JSUndefined)
             Errors.CtorCallWithoutNew("Promise").throwTypeError(realm)
 
@@ -38,37 +41,37 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         val (resolveFunction, rejectFunction) = Operations.createResolvingFunctions(promise)
 
         try {
-            Operations.call(realm, executor, JSUndefined, listOf(resolveFunction, rejectFunction))
+            Operations.call(executor, JSUndefined, listOf(resolveFunction, rejectFunction))
         } catch (e: ThrowException) {
-            Operations.call(realm, rejectFunction, JSUndefined, listOf(e.value))
+            Operations.call(rejectFunction, JSUndefined, listOf(e.value))
         }
         return promise
     }
 
     companion object {
-        fun create(realm: Realm) = JSPromiseCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSPromiseCtor(realm).initialize()
 
         @ECMAImpl("26.6.4.1")
         @ECMAImpl("26.6.4.1.2", name = "PerformPromiseAll")
         @JvmStatic
-        fun all(realm: Realm, arguments: JSArguments): JSValue {
-            val capability = Operations.newPromiseCapability(realm, arguments.thisValue)
-            val resolve = ifAbruptRejectPromise(realm, capability, { return it }) {
+        fun all(arguments: JSArguments): JSValue {
+            val capability = Operations.newPromiseCapability(arguments.thisValue)
+            val resolve = ifAbruptRejectPromise(capability, { return it }) {
                 Operations.getPromiseResolve(arguments.thisValue)
             }
-            val iteratorRecord = ifAbruptRejectPromise(realm, capability, { return it }) {
-                Operations.getIterator(realm, arguments.argument(0))
+            val iteratorRecord = ifAbruptRejectPromise(capability, { return it }) {
+                Operations.getIterator(arguments.argument(0))
             }
 
             return try {
-                performPromiseAll(realm, iteratorRecord, arguments.thisValue, capability, resolve)
+                performPromiseAll(iteratorRecord, arguments.thisValue, capability, resolve)
             } catch (e: ThrowException) {
                 try {
                     if (!iteratorRecord.isDone)
                         Operations.iteratorClose(iteratorRecord, e.value)
                     else JSEmpty
                 } finally {
-                    Operations.call(realm, capability.reject!!, JSUndefined, listOf(e.value))
+                    Operations.call(capability.reject!!, JSUndefined, listOf(e.value))
                     capability.promise
                 }
             }
@@ -100,8 +103,8 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                     iteratorRecord.isDone = true
                     remainingElementCount.value--
                     if (remainingElementCount.value == 0) {
-                        val valuesArray = Operations.createArrayFromList(realm, values)
-                        Operations.call(realm, resultCapability.resolve!!, JSUndefined, listOf(valuesArray))
+                        val valuesArray = Operations.createArrayFromList(values)
+                        Operations.call(resultCapability.resolve!!, JSUndefined, listOf(valuesArray))
                     }
                     return resultCapability.promise
                 }
@@ -114,9 +117,8 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                 }
 
                 values.add(JSUndefined)
-                val nextPromise = Operations.call(realm, promiseResolve, constructor, listOf(nextValue))
+                val nextPromise = Operations.call(promiseResolve, constructor, listOf(nextValue))
                 val resolveElement = JSPromiseAllSettledResolver.create(
-                    realm,
                     index,
                     values,
                     resultCapability,
@@ -124,7 +126,6 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                     false
                 )
                 val rejectElement = JSPromiseAllSettledResolver.create(
-                    realm,
                     index,
                     values,
                     resultCapability,
@@ -132,20 +133,20 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                     true
                 )
                 remainingElementCount.value++
-                Operations.invoke(realm, nextPromise, "then".toValue(), listOf(resolveElement, rejectElement))
+                Operations.invoke(nextPromise, "then".toValue(), listOf(resolveElement, rejectElement))
                 index++
             }
         }
 
         @ECMAImpl("27.2.4.2")
         @JvmStatic
-        fun allSettled(realm: Realm, arguments: JSArguments): JSValue {
-            val capability = Operations.newPromiseCapability(realm, arguments.thisValue)
-            val resolve = ifAbruptRejectPromise(realm, capability, { return it }) {
+        fun allSettled(arguments: JSArguments): JSValue {
+            val capability = Operations.newPromiseCapability(arguments.thisValue)
+            val resolve = ifAbruptRejectPromise(capability, { return it }) {
                 Operations.getPromiseResolve(arguments.thisValue)
             }
-            val iteratorRecord = ifAbruptRejectPromise(realm, capability, { return it }) {
-                Operations.getIterator(realm, arguments.argument(0))
+            val iteratorRecord = ifAbruptRejectPromise(capability, { return it }) {
+                Operations.getIterator(arguments.argument(0))
             }
 
             return try {
@@ -156,14 +157,13 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                         Operations.iteratorClose(iteratorRecord, e.value)
                     else JSEmpty
                 } finally {
-                    Operations.call(realm, capability.reject!!, JSUndefined, listOf(e.value))
+                    Operations.call(capability.reject!!, JSUndefined, listOf(e.value))
                     return capability.promise
                 }
             }
         }
 
         private fun performPromiseAll(
-            realm: Realm,
             iteratorRecord: Operations.IteratorRecord,
             constructor: JSValue,
             resultCapability: Operations.PromiseCapability,
@@ -188,8 +188,8 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                     iteratorRecord.isDone = true
                     remainingElementCount.value--
                     if (remainingElementCount.value == 0) {
-                        val valuesArray = Operations.createArrayFromList(realm, values)
-                        Operations.call(realm, resultCapability.resolve!!, JSUndefined, listOf(valuesArray))
+                        val valuesArray = Operations.createArrayFromList(values)
+                        Operations.call(resultCapability.resolve!!, JSUndefined, listOf(valuesArray))
                     }
                     return resultCapability.promise
                 }
@@ -202,12 +202,11 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                 }
 
                 values.add(JSUndefined)
-                val nextPromise = Operations.call(realm, promiseResolve, constructor, listOf(nextValue))
+                val nextPromise = Operations.call(promiseResolve, constructor, listOf(nextValue))
                 val resolveElement =
-                    JSPromiseAllResolver.create(realm, index, values, resultCapability, remainingElementCount)
+                    JSPromiseAllResolver.create(index, values, resultCapability, remainingElementCount)
                 remainingElementCount.value++
                 Operations.invoke(
-                    realm,
                     nextPromise,
                     "then".toValue(),
                     listOf(resolveElement, resultCapability.reject!!)
@@ -218,22 +217,21 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
 
         @ECMAImpl("27.2.4.6")
         @JvmStatic
-        fun reject(realm: Realm, arguments: JSArguments): JSValue {
-            val capability = Operations.newPromiseCapability(realm, arguments.thisValue)
-            Operations.call(realm, capability.reject!!, JSUndefined, listOf(arguments.argument(0)))
+        fun reject(arguments: JSArguments): JSValue {
+            val capability = Operations.newPromiseCapability(arguments.thisValue)
+            Operations.call(capability.reject!!, JSUndefined, listOf(arguments.argument(0)))
             return capability.promise
         }
 
         @ECMAImpl("27.2.4.7")
         @JvmStatic
-        fun resolve(realm: Realm, arguments: JSArguments): JSValue {
+        fun resolve(arguments: JSArguments): JSValue {
             if (arguments.thisValue !is JSObject)
-                Errors.IncompatibleMethodCall("Promise.resolve").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("Promise.resolve").throwTypeError()
             return Operations.promiseResolve(arguments.thisValue, arguments.argument(0))
         }
 
         private inline fun <T> ifAbruptRejectPromise(
-            realm: Realm,
             capability: Operations.PromiseCapability,
             returnBlock: (JSValue) -> Nothing,
             producer: () -> T
@@ -241,7 +239,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             return try {
                 producer()
             } catch (e: ThrowException) {
-                Operations.call(realm, capability.reject!!, JSUndefined, listOf(e.value))
+                Operations.call(capability.reject!!, JSUndefined, listOf(e.value))
                 returnBlock(capability.promise)
             }
         }

@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.memory
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -56,22 +57,22 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
     companion object {
         // For use with the generic array methods
-        private val lengthProducer = { realm: Realm, obj: JSObject ->
-            getLength(realm, JSArguments(emptyList(), obj)).asLong
+        private val lengthProducer = { obj: JSObject ->
+            getLength(JSArguments(emptyList(), obj)).asLong
         }
-        private val indicesProducer = { realm: Realm ->
+        private val indicesProducer = {
             { obj: JSObject ->
                 sequence {
-                    yieldAll(0L until lengthProducer(realm, obj))
+                    yieldAll(0L until lengthProducer(obj))
                 }
             }
         }
 
-        fun create(realm: Realm) = JSTypedArrayProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSTypedArrayProto(realm).initialize()
 
         @ECMAImpl("23.2.3.")
         @JvmStatic
-        fun getSymbolToStringTag(realm: Realm, arguments: JSArguments): JSValue {
+        fun getSymbolToStringTag(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (thisValue !is JSObject)
                 return JSUndefined
@@ -81,7 +82,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
         @ECMAImpl("23.2.3.1")
         @JvmStatic
-        fun getBuffer(realm: Realm, arguments: JSArguments): JSValue {
+        fun getBuffer(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             ecmaAssert(thisValue is JSObject && thisValue.hasSlot(SlotName.ViewedArrayBuffer))
             return thisValue.getSlotAs(SlotName.ViewedArrayBuffer)
@@ -89,8 +90,8 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
         @ECMAImpl("23.2.3.2")
         @JvmStatic
-        fun getByteLength(realm: Realm, arguments: JSArguments): JSValue {
-            val buffer = getBuffer(realm, arguments)
+        fun getByteLength(arguments: JSArguments): JSValue {
+            val buffer = getBuffer(arguments)
             if (Operations.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
             return (arguments.thisValue as JSObject).getSlotAs<Int>(SlotName.ByteLength).toValue()
@@ -98,8 +99,8 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
         @ECMAImpl("23.2.3.3")
         @JvmStatic
-        fun getByteOffset(realm: Realm, arguments: JSArguments): JSValue {
-            val buffer = getBuffer(realm, arguments)
+        fun getByteOffset(arguments: JSArguments): JSValue {
+            val buffer = getBuffer(arguments)
             if (Operations.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
             return (arguments.thisValue as JSObject).getSlotAs<Int>(SlotName.ByteOffset).toValue()
@@ -107,20 +108,20 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
         @ECMAImpl("23.2.3.18")
         @JvmStatic
-        fun getLength(realm: Realm, arguments: JSArguments): JSValue {
-            val buffer = getBuffer(realm, arguments)
+        fun getLength(arguments: JSArguments): JSValue {
+            val buffer = getBuffer(arguments)
             if (Operations.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
             return (arguments.thisValue as JSObject).getSlotAs<Int>(SlotName.ArrayLength).toValue()
         }
 
         @JvmStatic
-        fun at(realm: Realm, arguments: JSArguments): JSValue {
+        fun at(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             expect(thisValue is JSObject)
-            Operations.validateTypedArray(realm, thisValue)
+            Operations.validateTypedArray(thisValue)
             val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength)
-            val relativeIndex = Operations.toIntegerOrInfinity(realm, arguments.argument(0))
+            val relativeIndex = Operations.toIntegerOrInfinity(arguments.argument(0))
 
             val k = if (relativeIndex.isPositiveInfinity || relativeIndex.asLong >= 0) {
                 relativeIndex.asLong
@@ -136,17 +137,17 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
         @ECMAImpl("23.2.3.5")
         @JvmStatic
-        fun copyWithin(realm: Realm, arguments: JSArguments): JSValue {
+        fun copyWithin(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             expect(thisValue is JSObject)
-            Operations.validateTypedArray(realm, thisValue)
+            Operations.validateTypedArray(thisValue)
 
             val (target, start, end) = arguments.takeArgs(0..2)
             val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength)
 
-            val to = Operations.mapWrappedArrayIndex(target.toIntegerOrInfinity(realm), len.toLong())
-            val from = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(realm), len.toLong())
-            val relativeEnd = if (end == JSUndefined) len.toValue() else end.toIntegerOrInfinity(realm)
+            val to = Operations.mapWrappedArrayIndex(target.toIntegerOrInfinity(), len.toLong())
+            val from = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(), len.toLong())
+            val relativeEnd = if (end == JSUndefined) len.toValue() else end.toIntegerOrInfinity()
             val final = Operations.mapWrappedArrayIndex(relativeEnd, len.toLong())
 
             val count = min(final - from, len - to)
@@ -155,7 +156,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
             val buffer = thisValue.getSlotAs<JSValue>(SlotName.ViewedArrayBuffer)
             if (Operations.isDetachedBuffer(buffer))
-                Errors.TODO("%TypedArray%.prototype.copyWithin").throwTypeError(realm)
+                Errors.TODO("%TypedArray%.prototype.copyWithin").throwTypeError()
 
             val kind = thisValue.getSlotAs<Operations.TypedArrayKind>(SlotName.TypedArrayKind)
             val elementSize = kind.size
@@ -179,7 +180,6 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
                     Operations.TypedArrayOrder.Unordered
                 )
                 Operations.setValueInBuffer(
-                    realm,
                     buffer,
                     toByteIndex.toInt(),
                     Operations.TypedArrayKind.Uint8,
@@ -197,39 +197,39 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
         @ECMAImpl("23.2.3.6")
         @JvmStatic
-        fun entries(realm: Realm, arguments: JSArguments): JSValue {
-            Operations.validateTypedArray(realm, arguments.thisValue)
-            return Operations.createArrayIterator(realm, arguments.thisValue as JSObject, PropertyKind.KeyValue)
+        fun entries(arguments: JSArguments): JSValue {
+            Operations.validateTypedArray(arguments.thisValue)
+            return Operations.createArrayIterator(arguments.thisValue as JSObject, PropertyKind.KeyValue)
         }
 
         @ECMAImpl("23.2.3.7")
         @JvmStatic
-        fun every(realm: Realm, arguments: JSArguments): JSValue {
-            Operations.validateTypedArray(realm, arguments.thisValue)
-            return JSArrayProto.genericArrayEvery(realm, arguments, lengthProducer, indicesProducer(realm))
+        fun every(arguments: JSArguments): JSValue {
+            Operations.validateTypedArray(arguments.thisValue)
+            return JSArrayProto.genericArrayEvery(arguments, lengthProducer, indicesProducer())
         }
 
         @ECMAImpl("23.2.3.8")
         @JvmStatic
-        fun fill(realm: Realm, arguments: JSArguments): JSValue {
+        fun fill(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            Operations.validateTypedArray(realm, thisValue)
+            Operations.validateTypedArray(thisValue)
             expect(thisValue is JSObject)
 
             val (valueArg, start, end) = arguments.takeArgs(0..2)
             val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength).toLong()
             val kind = thisValue.getSlotAs<Operations.TypedArrayKind>(SlotName.TypedArrayKind)
-            val value = if (kind.isBigInt) valueArg.toBigInt(realm) else valueArg.toNumber(realm)
+            val value = if (kind.isBigInt) valueArg.toBigInt() else valueArg.toNumber()
 
-            var k = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(realm), len)
-            val relativeEnd = if (end == JSUndefined) len.toValue() else end.toIntegerOrInfinity(realm)
+            var k = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(), len)
+            val relativeEnd = if (end == JSUndefined) len.toValue() else end.toIntegerOrInfinity()
             val final = Operations.mapWrappedArrayIndex(relativeEnd, len)
 
             if (Operations.isDetachedBuffer(thisValue.getSlotAs(SlotName.ViewedArrayBuffer)))
-                Errors.TODO("%TypedArray%.prototype.fill isDetachedBuffer").throwTypeError(realm)
+                Errors.TODO("%TypedArray%.prototype.fill isDetachedBuffer").throwTypeError()
 
             while (k < final) {
-                Operations.set(realm, thisValue, k.key(), value, true)
+                Operations.set(thisValue, k.key(), value, true)
                 k++
             }
 
@@ -238,14 +238,14 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
         @ECMAImpl("23.2.3.9")
         @JvmStatic
-        fun filter(realm: Realm, arguments: JSArguments): JSValue {
+        fun filter(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            Operations.validateTypedArray(realm, thisValue)
+            Operations.validateTypedArray(thisValue)
             expect(thisValue is JSObject)
 
             val (callbackfn, thisArg) = arguments.takeArgs(0..1)
             if (!callbackfn.isCallable)
-                Errors.NotCallable(callbackfn.toPrintableString()).throwTypeError(realm)
+                Errors.NotCallable(callbackfn.toPrintableString()).throwTypeError()
 
             val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength)
             val kept = mutableListOf<JSValue>()
@@ -253,14 +253,14 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
             while (k < len) {
                 val value = thisValue.get(k)
-                if (Operations.call(realm, callbackfn, thisArg, listOf(value, k.toValue(), thisValue)).toBoolean())
+                if (Operations.call(callbackfn, thisArg, listOf(value, k.toValue(), thisValue)).toBoolean())
                     kept.add(value)
                 k++
             }
 
-            val newArr = Operations.typedArraySpeciesCreate(realm, thisValue, JSArguments(listOf(kept.size.toValue())))
+            val newArr = Operations.typedArraySpeciesCreate(thisValue, JSArguments(listOf(kept.size.toValue())))
             kept.forEachIndexed { index, value ->
-                Operations.set(realm, thisValue, index.key(), value, true)
+                Operations.set(thisValue, index.key(), value, true)
             }
 
             return newArr
@@ -268,68 +268,68 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
         @ECMAImpl("23.2.3.10")
         @JvmStatic
-        fun find(realm: Realm, arguments: JSArguments): JSValue {
-            return JSArrayProto.genericArrayFind(realm, arguments, lengthProducer, indicesProducer(realm))
+        fun find(arguments: JSArguments): JSValue {
+            return JSArrayProto.genericArrayFind(arguments, lengthProducer, indicesProducer())
         }
 
         @ECMAImpl("23.2.3.11")
         @JvmStatic
-        fun findIndex(realm: Realm, arguments: JSArguments): JSValue {
-            return JSArrayProto.genericArrayFindIndex(realm, arguments, lengthProducer, indicesProducer(realm))
+        fun findIndex(arguments: JSArguments): JSValue {
+            return JSArrayProto.genericArrayFindIndex(arguments, lengthProducer, indicesProducer())
         }
 
         @ECMAImpl("23.2.3.12")
         @JvmStatic
-        fun forEach(realm: Realm, arguments: JSArguments): JSValue {
-            return JSArrayProto.genericArrayForEach(realm, arguments, lengthProducer, indicesProducer(realm))
+        fun forEach(arguments: JSArguments): JSValue {
+            return JSArrayProto.genericArrayForEach(arguments, lengthProducer, indicesProducer())
         }
 
         @ECMAImpl("23.2.3.13")
         @JvmStatic
-        fun includes(realm: Realm, arguments: JSArguments): JSValue {
-            return JSArrayProto.genericArrayIncludes(realm, arguments, lengthProducer, indicesProducer(realm))
+        fun includes(arguments: JSArguments): JSValue {
+            return JSArrayProto.genericArrayIncludes(arguments, lengthProducer, indicesProducer())
         }
 
         @ECMAImpl("23.2.3.14")
         @JvmStatic
-        fun indexOf(realm: Realm, arguments: JSArguments): JSValue {
-            return JSArrayProto.genericArrayIndexOf(realm, arguments, lengthProducer, indicesProducer(realm))
+        fun indexOf(arguments: JSArguments): JSValue {
+            return JSArrayProto.genericArrayIndexOf(arguments, lengthProducer, indicesProducer())
         }
 
         @ECMAImpl("23.2.3.15")
         @JvmStatic
-        fun join(realm: Realm, arguments: JSArguments): JSValue {
-            return JSArrayProto.genericArrayJoin(realm, arguments, lengthProducer)
+        fun join(arguments: JSArguments): JSValue {
+            return JSArrayProto.genericArrayJoin(arguments, lengthProducer)
         }
 
         @ECMAImpl("23.2.3.17")
         @JvmStatic
-        fun lastIndexOf(realm: Realm, arguments: JSArguments): JSValue {
-            return JSArrayProto.genericArrayLastIndexOf(realm, arguments, lengthProducer, indicesProducer(realm))
+        fun lastIndexOf(arguments: JSArguments): JSValue {
+            return JSArrayProto.genericArrayLastIndexOf(arguments, lengthProducer, indicesProducer())
         }
 
         @ECMAImpl("23.2.3.20")
         @JvmStatic
-        fun reduce(realm: Realm, arguments: JSArguments): JSValue {
-            return JSArrayProto.genericArrayReduce(realm, arguments, lengthProducer, indicesProducer(realm), false)
+        fun reduce(arguments: JSArguments): JSValue {
+            return JSArrayProto.genericArrayReduce(arguments, lengthProducer, indicesProducer(), false)
         }
 
         @ECMAImpl("23.2.3.21")
         @JvmStatic
-        fun reduceRight(realm: Realm, arguments: JSArguments): JSValue {
-            return JSArrayProto.genericArrayReduce(realm, arguments, lengthProducer, indicesProducer(realm), true)
+        fun reduceRight(arguments: JSArguments): JSValue {
+            return JSArrayProto.genericArrayReduce(arguments, lengthProducer, indicesProducer(), true)
         }
 
         @ECMAImpl("23.2.3.22")
         @JvmStatic
-        fun reverse(realm: Realm, arguments: JSArguments): JSValue {
-            return JSArrayProto.genericArrayReverse(realm, arguments, lengthProducer, indicesProducer(realm))
+        fun reverse(arguments: JSArguments): JSValue {
+            return JSArrayProto.genericArrayReverse(arguments, lengthProducer, indicesProducer())
         }
 
         @ECMAImpl("23.2.3.26")
         @JvmStatic
-        fun some(realm: Realm, arguments: JSArguments): JSValue {
-            return JSArrayProto.genericArraySome(realm, arguments, lengthProducer, indicesProducer(realm))
+        fun some(arguments: JSArguments): JSValue {
+            return JSArrayProto.genericArraySome(arguments, lengthProducer, indicesProducer())
         }
     }
 }

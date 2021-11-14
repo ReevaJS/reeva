@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -9,6 +10,7 @@ class JSSymbolObject private constructor(realm: Realm, symbol: JSSymbol) : JSObj
     val symbol by slot(SlotName.SymbolData, symbol)
 
     companion object {
-        fun create(realm: Realm, symbol: JSSymbol) = JSSymbolObject(realm, symbol).initialize()
+        fun create(symbol: JSSymbol, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+            JSSymbolObject(realm, symbol).initialize()
     }
 }

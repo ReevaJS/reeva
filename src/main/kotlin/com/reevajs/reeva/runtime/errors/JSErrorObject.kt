@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.errors
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -22,6 +23,6 @@ open class JSErrorObject protected constructor(
 
     companion object {
         @JvmStatic
-        fun create(realm: Realm, message: String? = null) = JSErrorObject(realm, message).initialize()
+        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSErrorObject(realm, message).initialize()
     }
 }

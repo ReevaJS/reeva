@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.promises
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -19,14 +20,14 @@ class JSRejectFunction private constructor(
         if (alreadyResolved.value)
             return JSUndefined
         alreadyResolved.value = true
-        return Operations.rejectPromise(realm, promise, arguments.argument(0))
+        return Operations.rejectPromise(promise, arguments.argument(0))
     }
 
     companion object {
         fun create(
             promise: JSObject,
             alreadyResolved: Operations.Wrapper<Boolean>,
-            realm: Realm
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = JSRejectFunction(promise, alreadyResolved, realm).initialize()
     }
 }

@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers.strings
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -48,23 +49,23 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
     }
 
     companion object {
-        fun create(realm: Realm) = JSStringProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSStringProto(realm).initialize()
 
-        private fun thisStringValue(realm: Realm, thisValue: JSValue, methodName: String): JSString {
+        private fun thisStringValue(thisValue: JSValue, methodName: String): JSString {
             if (thisValue is JSString)
                 return thisValue
             if (thisValue !is JSObject)
-                Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError()
             return thisValue.getSlotAs(SlotName.StringData)
-                ?: Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError(realm)
+                ?: Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError()
         }
 
         @JvmStatic
-        fun at(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val str = Operations.toString(realm, obj).string
+        fun at(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val str = Operations.toString(obj).string
             val len = str.length
-            val relativeIndex = Operations.toIntegerOrInfinity(realm, arguments.argument(0))
+            val relativeIndex = Operations.toIntegerOrInfinity(arguments.argument(0))
 
             val k = if (relativeIndex.isPositiveInfinity || relativeIndex.asLong >= 0) {
                 relativeIndex.asLong
@@ -81,10 +82,10 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
         @ECMAImpl("22.1.3.1")
         @JvmStatic
-        fun charAt(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val str = Operations.toString(realm, obj)
-            val position = Operations.toIntegerOrInfinity(realm, arguments.argument(0)).let {
+        fun charAt(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val str = Operations.toString(obj)
+            val position = Operations.toIntegerOrInfinity(arguments.argument(0)).let {
                 if (it.isInfinite)
                     return "".toValue()
                 it.asInt
@@ -97,10 +98,10 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
         @ECMAImpl("22.1.3.2")
         @JvmStatic
-        fun charCodeAt(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val str = Operations.toString(realm, obj)
-            val position = Operations.toIntegerOrInfinity(realm, arguments.argument(0)).let {
+        fun charCodeAt(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val str = Operations.toString(obj)
+            val position = Operations.toIntegerOrInfinity(arguments.argument(0)).let {
                 if (it.isInfinite)
                     return JSNumber.NaN
                 it.asInt
@@ -113,10 +114,10 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
         @ECMAImpl("22.1.3.3")
         @JvmStatic
-        fun codePointAt(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
-            val position = Operations.toIntegerOrInfinity(realm, arguments.argument(0)).let {
+        fun codePointAt(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
+            val position = Operations.toIntegerOrInfinity(arguments.argument(0)).let {
                 if (it.isInfinite)
                     return JSUndefined
                 it.asInt
@@ -128,28 +129,28 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
         @ECMAImpl("22.1.3.4")
         @JvmStatic
-        fun concat(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
+        fun concat(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
             var result = string
             arguments.forEach {
-                result += Operations.toString(realm, it)
+                result += Operations.toString(it)
             }
             return result.toValue()
         }
 
         @ECMAImpl("22.1.3.6")
         @JvmStatic
-        fun endsWith(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
+        fun endsWith(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
             // TODO: RegExp check
-            val searchString = Operations.toString(realm, arguments.argument(0)).string
+            val searchString = Operations.toString(arguments.argument(0)).string
 
             val end = arguments.argument(1).let {
                 if (it == JSUndefined) {
                     string.length
-                } else Operations.toIntegerOrInfinity(realm, it).asInt
+                } else Operations.toIntegerOrInfinity(it).asInt
             }.coerceIn(0, string.length)
 
             if (searchString.isEmpty())
@@ -164,87 +165,87 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
         @ECMAImpl("22.1.3.7")
         @JvmStatic
-        fun includes(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
+        fun includes(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
 
             // TODO: RegExp check
-            val searchString = Operations.toString(realm, arguments.argument(0)).string
-            val pos = Operations.toIntegerOrInfinity(realm, arguments.argument(1)).asInt.coerceIn(0, string.length)
+            val searchString = Operations.toString(arguments.argument(0)).string
+            val pos = Operations.toIntegerOrInfinity(arguments.argument(1)).asInt.coerceIn(0, string.length)
             return string.substring(pos).contains(searchString).toValue()
         }
 
         @ECMAImpl("22.1.3.8")
         @JvmStatic
-        fun indexOf(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
+        fun indexOf(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
 
             // TODO: RegExp check
-            val searchString = Operations.toString(realm, arguments.argument(0)).string
-            val pos = Operations.toIntegerOrInfinity(realm, arguments.argument(1)).asInt.coerceIn(0, string.length)
+            val searchString = Operations.toString(arguments.argument(0)).string
+            val pos = Operations.toIntegerOrInfinity(arguments.argument(1)).asInt.coerceIn(0, string.length)
 
             return string.indexOf(searchString, pos).toValue()
         }
 
         @ECMAImpl("22.1.3.9")
         @JvmStatic
-        fun lastIndexOf(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
+        fun lastIndexOf(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
 
             // TODO: RegExp check
-            val searchString = Operations.toString(realm, arguments.argument(0)).string
-            val numPos = Operations.toNumber(realm, arguments.argument(1))
+            val searchString = Operations.toString(arguments.argument(0)).string
+            val numPos = Operations.toNumber(arguments.argument(1))
             val pos = if (numPos.isNaN) {
                 string.length
-            } else Operations.toIntegerOrInfinity(realm, numPos).asInt.coerceIn(0, string.length)
+            } else Operations.toIntegerOrInfinity(numPos).asInt.coerceIn(0, string.length)
 
             return string.lastIndexOf(searchString, pos).toValue()
         }
 
         @ECMAImpl("22.1.3.14")
         @JvmStatic
-        fun padEnd(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            return stringPad(realm, obj, arguments.argument(0), arguments.argument(1), false).toValue()
+        fun padEnd(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            return stringPad(obj, arguments.argument(0), arguments.argument(1), false).toValue()
         }
 
         @ECMAImpl("22.1.3.15")
         @JvmStatic
-        fun padStart(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            return stringPad(realm, obj, arguments.argument(0), arguments.argument(1), true).toValue()
+        fun padStart(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            return stringPad(obj, arguments.argument(0), arguments.argument(1), true).toValue()
         }
 
         @ECMAImpl("22.1.3.16")
         @JvmStatic
-        fun repeat(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
-            val count = Operations.toIntegerOrInfinity(realm, arguments.argument(0)).asInt
+        fun repeat(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
+            val count = Operations.toIntegerOrInfinity(arguments.argument(0)).asInt
             if (count < 0 || count == Int.MAX_VALUE)
-                Errors.TODO("String.prototype.repeat").throwRangeError(realm)
+                Errors.TODO("String.prototype.repeat").throwRangeError()
             return string.repeat(count).toValue()
         }
 
         @ECMAImpl("22.1.3.17")
         @JvmStatic
-        fun replace(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
+        fun replace(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
             var (searchValue, replaceValue) = arguments.takeArgs(0..1)
 
             if (!searchValue.isNullish) {
-                val replacer = Operations.getMethod(realm, searchValue, Realm.WellKnownSymbols.replace)
+                val replacer = Operations.getMethod(searchValue, Realm.WellKnownSymbols.replace)
                 if (replacer != JSUndefined)
-                    return Operations.call(realm, replacer, searchValue, listOf(obj, replaceValue))
+                    return Operations.call(replacer, searchValue, listOf(obj, replaceValue))
             }
 
-            val string = Operations.toString(realm, obj).string
-            val searchString = Operations.toString(realm, searchValue).asString
+            val string = Operations.toString(obj).string
+            val searchString = Operations.toString(searchValue).asString
             val functionalReplace = Operations.isCallable(replaceValue)
             if (!functionalReplace)
-                replaceValue = Operations.toString(realm, replaceValue)
+                replaceValue = Operations.toString(replaceValue)
 
             val position = string.indexOf(searchString)
             if (position == -1)
@@ -253,9 +254,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
             val preserved = string.substring(0, position)
             val replacement = if (functionalReplace) {
                 Operations.toString(
-                    realm,
                     Operations.call(
-                        realm,
                         replaceValue,
                         JSUndefined,
                         listOf(searchString.toValue(), position.toValue(), string.toValue())
@@ -270,11 +269,11 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
         @ECMAImpl("22.1.3.20")
         @JvmStatic
-        fun slice(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
+        fun slice(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
 
-            val from = Operations.toIntegerOrInfinity(realm, arguments.argument(0)).let {
+            val from = Operations.toIntegerOrInfinity(arguments.argument(0)).let {
                 when {
                     it.isNegativeInfinity -> 0
                     it.asInt < 0 -> max(string.length + it.asInt, 0)
@@ -283,7 +282,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
             }
 
             val to = if (arguments.size > 1) {
-                Operations.toIntegerOrInfinity(realm, arguments[1])
+                Operations.toIntegerOrInfinity(arguments[1])
             } else {
                 JSNumber(string.length)
             }.let {
@@ -302,35 +301,35 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
         @ECMAImpl("22.1.3.21")
         @JvmStatic
-        fun split(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
+        fun split(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
             val (separator, limit) = arguments.takeArgs(0..1)
 
             if (!separator.isNullish) {
-                val splitter = Operations.getMethod(realm, separator, Realm.WellKnownSymbols.split)
+                val splitter = Operations.getMethod(separator, Realm.WellKnownSymbols.split)
                 if (splitter != JSUndefined)
-                    return Operations.call(realm, splitter, separator, listOf(obj, limit))
+                    return Operations.call(splitter, separator, listOf(obj, limit))
             }
 
-            val string = Operations.toString(realm, obj).string
-            val array = Operations.arrayCreate(realm, 0)
+            val string = Operations.toString(obj).string
+            val array = Operations.arrayCreate(0)
             var arrayLength = 0
             val lim = if (limit == JSUndefined) {
                 Operations.MAX_32BIT_INT - 1
-            } else Operations.toUint32(realm, limit).asInt
+            } else Operations.toUint32(limit).asInt
 
-            val separatorString = Operations.toString(realm, separator).string
+            val separatorString = Operations.toString(separator).string
             if (lim == 0)
                 return array
             if (separator == JSUndefined) {
-                Operations.createDataPropertyOrThrow(realm, array, 0.key(), string.toValue())
+                Operations.createDataPropertyOrThrow(array, 0.key(), string.toValue())
                 return array
             }
 
             val stringLength = string.length
             if (stringLength == 0) {
                 if (separatorString.isNotEmpty())
-                    Operations.createDataPropertyOrThrow(realm, array, 0.key(), string.toValue())
+                    Operations.createDataPropertyOrThrow(array, 0.key(), string.toValue())
                 return array
             }
 
@@ -351,7 +350,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
                 }
 
                 Operations.createDataPropertyOrThrow(
-                    realm,
                     array,
                     arrayLength.key(),
                     string.substring(splitStart, splitEnd).toValue(),
@@ -364,7 +362,6 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
             }
 
             Operations.createDataPropertyOrThrow(
-                realm,
                 array,
                 arrayLength.key(),
                 string.substring(splitStart, stringLength).toValue(),
@@ -375,16 +372,16 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
         @ECMAImpl("22.1.3.22")
         @JvmStatic
-        fun startsWith(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
+        fun startsWith(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
             // TODO: RegExp check
-            val searchString = Operations.toString(realm, arguments.argument(0)).string
+            val searchString = Operations.toString(arguments.argument(0)).string
 
             val start = arguments.argument(1).let {
                 if (it == JSUndefined) {
                     0
-                } else Operations.toIntegerOrInfinity(realm, it).asInt
+                } else Operations.toIntegerOrInfinity(it).asInt
             }.coerceIn(0, string.length)
 
             if (searchString.isEmpty())
@@ -399,14 +396,14 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
         @ECMAImpl("22.1.3.23")
         @JvmStatic
-        fun substring(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
+        fun substring(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
 
-            val intStart = Operations.toIntegerOrInfinity(realm, arguments.argument(0)).asInt
+            val intStart = Operations.toIntegerOrInfinity(arguments.argument(0)).asInt
             val intEnd = if (arguments.size < 2) {
                 string.length
-            } else Operations.toIntegerOrInfinity(realm, arguments[1]).asInt
+            } else Operations.toIntegerOrInfinity(arguments[1]).asInt
 
             val finalStart = intStart.coerceIn(0, string.length)
             val finalEnd = intEnd.coerceIn(0, string.length)
@@ -419,9 +416,9 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
         @ECMAImpl("22.1.3.26")
         @JvmStatic
-        fun toLowerCase(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
+        fun toLowerCase(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
 
             // TODO: unicode handling
             return string.lowercase().toValue()
@@ -429,15 +426,15 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
         @ECMAImpl("22.1.3.27")
         @JvmStatic
-        fun toString(realm: Realm, arguments: JSArguments): JSValue {
-            return thisStringValue(realm, arguments.thisValue, "toString")
+        fun toString(arguments: JSArguments): JSValue {
+            return thisStringValue(arguments.thisValue, "toString")
         }
 
         @ECMAImpl("22.1.3.28")
         @JvmStatic
-        fun toUpperCase(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
+        fun toUpperCase(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
 
             // TODO: unicode handling
             return string.uppercase().toValue()
@@ -445,56 +442,55 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
         @ECMAImpl("22.1.3.29")
         @JvmStatic
-        fun trim(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
+        fun trim(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
             return string.trim().toValue()
         }
 
         @ECMAImpl("22.1.3.39")
         @JvmStatic
-        fun trimEnd(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
+        fun trimEnd(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
             return string.trimEnd().toValue()
         }
 
         @ECMAImpl("22.1.3.31")
         @JvmStatic
-        fun trimStart(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = Operations.toString(realm, obj).string
+        fun trimStart(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = Operations.toString(obj).string
             return string.trimStart().toValue()
         }
 
         @ECMAImpl("22.1.3.32")
         @JvmStatic
-        fun valueOf(realm: Realm, arguments: JSArguments): JSValue {
-            return thisStringValue(realm, arguments.thisValue, "valueOf")
+        fun valueOf(arguments: JSArguments): JSValue {
+            return thisStringValue(arguments.thisValue, "valueOf")
         }
 
         @ECMAImpl("22.1.3.34")
         @JvmStatic
-        fun symbolIterator(realm: Realm, arguments: JSArguments): JSValue {
-            val obj = Operations.requireObjectCoercible(realm, arguments.thisValue)
-            val string = obj.toJSString(realm).string
-            return JSStringIteratorObject.create(realm, string)
+        fun symbolIterator(arguments: JSArguments): JSValue {
+            val obj = Operations.requireObjectCoercible(arguments.thisValue)
+            val string = obj.toJSString().string
+            return JSStringIteratorObject.create(string)
         }
 
         private fun stringPad(
-            realm: Realm,
             obj: JSValue,
             maxLength: JSValue,
             fillString: JSValue,
             isStart: Boolean,
         ): String {
-            val string = Operations.toString(realm, obj).string
-            val intMaxLength = Operations.toLength(realm, maxLength).asInt
+            val string = Operations.toString(obj).string
+            val intMaxLength = Operations.toLength(maxLength).asInt
             if (intMaxLength < string.length)
                 return string
             val filler = if (fillString == JSUndefined) {
                 " "
-            } else Operations.toString(realm, fillString).string
+            } else Operations.toString(fillString).string
 
             if (filler.isEmpty())
                 return string

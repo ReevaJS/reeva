@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -14,6 +15,7 @@ open class JSBooleanObject protected constructor(realm: Realm, value: JSBoolean)
     }
 
     companion object {
-        fun create(realm: Realm, value: JSBoolean) = JSBooleanObject(realm, value).initialize()
+        fun create(value: JSBoolean, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+            JSBooleanObject(realm, value).initialize()
     }
 }

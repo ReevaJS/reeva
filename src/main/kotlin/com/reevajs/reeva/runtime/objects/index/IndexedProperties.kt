@@ -30,12 +30,12 @@ class IndexedProperties private constructor(
     fun getDescriptor(index: Long): Descriptor? = if (storage is SimpleIndexedStorage) null else storage.get(index)
 
     fun get(thisValue: JSValue, index: Int): JSValue {
-        return storage.get(index)?.getActualValue(realm, thisValue) ?: return JSUndefined
+        return storage.get(index)?.getActualValue(thisValue) ?: return JSUndefined
     }
 
     fun get(thisValue: JSValue, index: Long): JSValue {
         return if (storage is GenericIndexedStorage) {
-            storage.get(index)?.getActualValue(realm, thisValue) ?: return JSUndefined
+            storage.get(index)?.getActualValue(thisValue) ?: return JSUndefined
         } else JSUndefined
     }
 
@@ -76,7 +76,7 @@ class IndexedProperties private constructor(
             storage.set(index, descriptor)
             return
         }
-        existingValue.setActualValue(realm, thisValue, descriptor.getActualValue(realm, thisValue))
+        existingValue.setActualValue(thisValue, descriptor.getActualValue(thisValue))
         existingValue.attributes = descriptor.attributes
     }
 
@@ -88,7 +88,7 @@ class IndexedProperties private constructor(
             storage.set(index, descriptor)
             return
         }
-        existingValue.setActualValue(realm, thisValue, descriptor.getActualValue(realm, thisValue))
+        existingValue.setActualValue(thisValue, descriptor.getActualValue(thisValue))
         existingValue.attributes = descriptor.attributes
     }
 

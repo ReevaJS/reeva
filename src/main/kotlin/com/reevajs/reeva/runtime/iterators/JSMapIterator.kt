@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.iterators
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.collections.JSMapObject
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -17,7 +18,7 @@ class JSMapIterator private constructor(
     }
 
     companion object {
-        fun create(realm: Realm, data: JSMapObject.MapData, kind: PropertyKind) =
+        fun create(data: JSMapObject.MapData, kind: PropertyKind, realm: Realm = Agent.activeAgent.getActiveRealm()) =
             JSMapIterator(realm, data, kind).initialize()
     }
 }

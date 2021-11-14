@@ -1,6 +1,5 @@
 package com.reevajs.reeva.interpreter
 
-import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
@@ -15,7 +14,6 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.collections.JSUnmappedArgumentsObject
 import com.reevajs.reeva.runtime.functions.JSFunction
-import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.iterators.JSObjectPropertyIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -25,13 +23,15 @@ import com.reevajs.reeva.runtime.regexp.JSRegExpObject
 import com.reevajs.reeva.utils.*
 
 class Interpreter(
-    private val realm: Realm,
     private val transformedSource: TransformedSource,
     private val arguments: List<JSValue>,
     initialEnvRecord: EnvRecord,
 ) : OpcodeVisitor {
     private val info: FunctionInfo
-        get() = transformedSource.functionInfo
+        inline get() = transformedSource.functionInfo
+
+    private val realm: Realm
+        inline get() = Agent.activeAgent.getActiveRealm()
 
     private val stack = ArrayDeque<Any>()
     private val locals = Array<Any?>(info.ir.locals.size) { null }
@@ -75,7 +75,7 @@ class Interpreter(
                         savedStackHeights.removeLast()
                 }
 
-                Agent.activeAgent.callStack.setPendingLocation(info.ir.locationTable[ip])
+                Agent.activeAgent.setPendingSourceLocation(info.ir.locationTable[ip])
                 visit(info.ir.opcodes[ip++])
             } catch (e: ThrowException) {
                 // TODO: Can we optimize this lookup?
@@ -113,10 +113,10 @@ class Interpreter(
         val obj = popValue() as JSObject
         val excludedProperties = locals[opcode.propertiesLocal.value] as JSArrayObject
         val excludedNames = (0 until excludedProperties.indexedProperties.arrayLikeSize).map {
-            excludedProperties.indexedProperties.get(excludedProperties, it.toInt()).toPropertyKey(realm)
+            excludedProperties.indexedProperties.get(excludedProperties, it.toInt()).toPropertyKey()
         }.toSet()
 
-        val newObj = JSObject.create(realm)
+        val newObj = JSObject.create()
 
         for (name in obj.ownPropertyKeys()) {
             if (name !in excludedNames)
@@ -209,7 +209,7 @@ class Interpreter(
     private fun visitBinaryOperator(operator: String) {
         val rhs = popValue()
         val lhs = popValue()
-        push(Operations.applyStringOrNumericBinaryOperator(realm, lhs, rhs, operator))
+        push(Operations.applyStringOrNumericBinaryOperator(lhs, rhs, operator))
     }
 
     override fun visitAdd() {
@@ -275,51 +275,51 @@ class Interpreter(
     override fun visitTestEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        push(Operations.isStrictlyEqual(realm, lhs, rhs))
+        push(Operations.isStrictlyEqual(lhs, rhs))
     }
 
     override fun visitTestNotEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        push(Operations.isStrictlyEqual(realm, lhs, rhs).inv())
+        push(Operations.isStrictlyEqual(lhs, rhs).inv())
     }
 
     override fun visitTestLessThan() {
         val rhs = popValue()
         val lhs = popValue()
-        val result = Operations.isLessThan(realm, lhs, rhs, true)
+        val result = Operations.isLessThan(lhs, rhs, true)
         push(result.ifUndefined(JSFalse))
     }
 
     override fun visitTestLessThanOrEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        val result = Operations.isLessThan(realm, rhs, lhs, false)
+        val result = Operations.isLessThan(rhs, lhs, false)
         push(if (result == JSFalse) JSTrue else JSFalse)
     }
 
     override fun visitTestGreaterThan() {
         val rhs = popValue()
         val lhs = popValue()
-        val result = Operations.isLessThan(realm, rhs, lhs, false)
+        val result = Operations.isLessThan(rhs, lhs, false)
         push(result.ifUndefined(JSFalse))
     }
 
     override fun visitTestGreaterThanOrEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        val result = Operations.isLessThan(realm, lhs, rhs, true)
+        val result = Operations.isLessThan(lhs, rhs, true)
         push(if (result == JSFalse) JSTrue else JSFalse)
     }
 
     override fun visitTestInstanceOf() {
         val ctor = popValue()
-        push(Operations.instanceofOperator(realm, popValue(), ctor))
+        push(Operations.instanceofOperator(popValue(), ctor))
     }
 
     override fun visitTestIn() {
         val rhs = popValue()
-        val lhs = popValue().toPropertyKey(realm)
+        val lhs = popValue().toPropertyKey()
         push(Operations.hasProperty(rhs, lhs).toValue())
     }
 
@@ -337,11 +337,11 @@ class Interpreter(
     }
 
     override fun visitToNumber() {
-        push(Operations.toNumber(realm, popValue()))
+        push(Operations.toNumber(popValue()))
     }
 
     override fun visitToNumeric() {
-        push(Operations.toNumeric(realm, popValue()))
+        push(Operations.toNumeric(popValue()))
     }
 
     override fun visitNegate() {
@@ -357,7 +357,7 @@ class Interpreter(
         val value = popValue().let {
             if (it is JSBigInt) {
                 Operations.bigintBitwiseNOT(it)
-            } else Operations.numericBitwiseNOT(realm, it)
+            } else Operations.numericBitwiseNOT(it)
         }
         push(value)
     }
@@ -375,20 +375,20 @@ class Interpreter(
     }
 
     override fun visitLoadKeyedProperty() {
-        val key = popValue().toPropertyKey(realm)
-        val obj = popValue().toObject(realm)
+        val key = popValue().toPropertyKey()
+        val obj = popValue().toObject()
         push(obj.get(key))
     }
 
     override fun visitStoreKeyedProperty() {
         val value = popValue()
-        val key = popValue().toPropertyKey(realm)
-        val obj = popValue().toObject(realm)
+        val key = popValue().toPropertyKey()
+        val obj = popValue().toObject()
         obj.set(key, value)
     }
 
     override fun visitLoadNamedProperty(opcode: LoadNamedProperty) {
-        val obj = popValue().toObject(realm)
+        val obj = popValue().toObject()
         when (val name = opcode.name) {
             is String -> push(obj.get(name))
             is JSSymbol -> push(obj.get(name))
@@ -398,7 +398,7 @@ class Interpreter(
 
     override fun visitStoreNamedProperty(opcode: StoreNamedProperty) {
         val value = popValue()
-        val obj = popValue().toObject(realm)
+        val obj = popValue().toObject()
         when (val name = opcode.name) {
             is String -> obj.set(name, value)
             is JSSymbol -> obj.set(name, value)
@@ -407,11 +407,11 @@ class Interpreter(
     }
 
     override fun visitCreateObject() {
-        push(JSObject.create(realm))
+        push(JSObject.create())
     }
 
     override fun visitCreateArray() {
-        push(JSArrayObject.create(realm))
+        push(JSArrayObject.create())
     }
 
     override fun visitStoreArray(opcode: StoreArray) {
@@ -433,9 +433,9 @@ class Interpreter(
         val property = popValue()
         val target = popValue()
         if (target is JSObject) {
-            val key = property.toPropertyKey(realm)
+            val key = property.toPropertyKey()
             if (!target.delete(key))
-                Errors.StrictModeFailedDelete(key, target.toJSString(realm).string)
+                Errors.StrictModeFailedDelete(key, target.toJSString().string)
         }
         push(JSTrue)
     }
@@ -444,14 +444,14 @@ class Interpreter(
         val property = popValue()
         val target = popValue()
         if (target is JSObject) {
-            push(target.delete(property.toPropertyKey(realm)).toValue())
+            push(target.delete(property.toPropertyKey()).toValue())
         } else {
             push(JSTrue)
         }
     }
 
     override fun visitGetIterator() {
-        push(Operations.getIterator(realm, popValue().toObject(realm)))
+        push(Operations.getIterator(popValue().toObject()))
     }
 
     override fun visitIteratorNext() {
@@ -490,7 +490,6 @@ class Interpreter(
 
         push(
             Operations.call(
-                realm,
                 target,
                 receiver,
                 args.asReversed(),
@@ -504,7 +503,6 @@ class Interpreter(
         val target = popValue()
         push(
             Operations.call(
-                realm,
                 target,
                 receiver,
                 (0 until argsArray.indexedProperties.arrayLikeSize).map(argsArray::get),
@@ -525,7 +523,7 @@ class Interpreter(
         // For some reason, the spec says this check should happen here instead
         // of in Construct
         if (!Operations.isConstructor(target))
-            Errors.NotACtor(target.toPrintableString()).throwTypeError(realm)
+            Errors.NotACtor(target.toPrintableString()).throwTypeError()
 
         push(
             Operations.construct(
@@ -688,25 +686,25 @@ class Interpreter(
     }
 
     override fun visitForInEnumerate() {
-        val target = popValue().toObject(realm)
-        val iterator = JSObjectPropertyIterator.create(realm, target)
-        val nextMethod = Operations.getV(realm, iterator, "next".key())
+        val target = popValue().toObject()
+        val iterator = JSObjectPropertyIterator.create(target)
+        val nextMethod = Operations.getV(iterator, "next".key())
         val iteratorRecord = Operations.IteratorRecord(iterator, nextMethod, false)
         push(iteratorRecord)
     }
 
     override fun visitCreateClosure(opcode: CreateClosure) {
-        val function = NormalInterpretedFunction.create(realm, transformedSource.forInfo(opcode.ir), activeEnvRecord)
-        Operations.setFunctionName(realm, function, opcode.ir.name.key())
-        Operations.makeConstructor(realm, function)
-        Operations.setFunctionLength(realm, function, opcode.ir.length)
+        val function = NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir), activeEnvRecord)
+        Operations.setFunctionName(function, opcode.ir.name.key())
+        Operations.makeConstructor(function)
+        Operations.setFunctionLength(function, opcode.ir.length)
         push(function)
     }
 
     override fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure) {
-        val function = GeneratorInterpretedFunction.create(realm, transformedSource.forInfo(opcode.ir), activeEnvRecord)
-        Operations.setFunctionName(realm, function, opcode.ir.name.key())
-        Operations.setFunctionLength(realm, function, opcode.ir.length)
+        val function = GeneratorInterpretedFunction.create(transformedSource.forInfo(opcode.ir), activeEnvRecord)
+        Operations.setFunctionName(function, opcode.ir.name.key())
+        Operations.setFunctionLength(function, opcode.ir.length)
         push(function)
     }
 
@@ -719,11 +717,11 @@ class Interpreter(
     }
 
     override fun visitGetSuperConstructor() {
-        push(Agent.activeFunction.getPrototype())
+        push(Agent.activeAgent.getActiveFunction()!!.getPrototype())
     }
 
     override fun visitGetSuperBase() {
-        val homeObject = Agent.activeFunction.homeObject
+        val homeObject = Agent.activeAgent.getActiveFunction()!!.homeObject
         if (homeObject == JSUndefined) {
             push(JSUndefined)
         } else {
@@ -744,26 +742,23 @@ class Interpreter(
     private fun createArgumentsObject(): JSObject {
         val arguments = this.arguments.drop(Transformer.getReservedLocalsCount(info.isGenerator))
 
-        val obj = JSUnmappedArgumentsObject.create(realm)
+        val obj = JSUnmappedArgumentsObject.create()
         Operations.definePropertyOrThrow(
-            realm,
             obj,
             "length".key(),
             Descriptor(arguments.size.toValue(), attrs { +conf; -enum; +writ })
         )
 
         for ((index, arg) in arguments.withIndex())
-            Operations.createDataPropertyOrThrow(realm, obj, index.key(), arg)
+            Operations.createDataPropertyOrThrow(obj, index.key(), arg)
 
         Operations.definePropertyOrThrow(
-            realm,
             obj,
             Realm.WellKnownSymbols.iterator,
             Descriptor(realm.arrayProto.get("values"), attrs { +conf; -enum; +writ })
         )
 
         Operations.definePropertyOrThrow(
-            realm,
             obj,
             "callee".key(),
             Descriptor(JSAccessor(realm.throwTypeError, realm.throwTypeError), 0),
@@ -773,7 +768,7 @@ class Interpreter(
     }
 
     override fun visitThrowConstantReassignmentError(opcode: ThrowConstantReassignmentError) {
-        Errors.AssignmentToConstant(opcode.name).throwTypeError(realm)
+        Errors.AssignmentToConstant(opcode.name).throwTypeError()
     }
 
     override fun visitThrowLexicalAccessError(opcode: ThrowLexicalAccessError) {
@@ -789,11 +784,11 @@ class Interpreter(
     }
 
     override fun visitToString() {
-        push(Operations.toString(realm, popValue()))
+        push(Operations.toString(popValue()))
     }
 
     override fun visitCreateRegExpObject(opcode: CreateRegExpObject) {
-        push(JSRegExpObject.create(realm, opcode.source, opcode.flags))
+        push(JSRegExpObject.create(opcode.source, opcode.flags))
     }
 
     override fun visitCreateTemplateLiteral(opcode: CreateTemplateLiteral) {
@@ -808,7 +803,7 @@ class Interpreter(
     }
 
     override fun visitPushClosure() {
-        push(Agent.activeFunction)
+        push(Agent.activeAgent.getActiveFunction()!!)
     }
 
     override fun visitReturn() {
@@ -816,7 +811,7 @@ class Interpreter(
     }
 
     override fun visitCollectRestArgs() {
-        push(Operations.createArrayFromList(realm, arguments.drop(info.ir.argCount - 1)))
+        push(Operations.createArrayFromList(arguments.drop(info.ir.argCount - 1)))
     }
 
     override fun visitDefineGetterProperty() {
@@ -834,11 +829,11 @@ class Interpreter(
     }
 
     private fun defineAccessor(obj: JSObject, property: JSValue, method: JSFunction, isGetter: Boolean) {
-        val key = property.toPropertyKey(realm)
-        Operations.setFunctionName(realm, method, key, if (isGetter) "get" else "set")
+        val key = property.toPropertyKey()
+        Operations.setFunctionName(method, key, if (isGetter) "get" else "set")
         val accessor = if (isGetter) JSAccessor(method, null) else JSAccessor(null, method)
         val descriptor = Descriptor(accessor, Descriptor.CONFIGURABLE or Descriptor.ENUMERABLE)
-        Operations.definePropertyOrThrow(realm, obj, key, descriptor)
+        Operations.definePropertyOrThrow(obj, key, descriptor)
     }
 
     override fun visitGetGeneratorPhase() {
@@ -882,7 +877,7 @@ class Interpreter(
     }
 
     override fun visitCreateClassConstructor(opcode: CreateMethod) {
-        push(NormalInterpretedFunction.create(realm, transformedSource.forInfo(opcode.ir), activeEnvRecord))
+        push(NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir), activeEnvRecord))
     }
 
     override fun visitCreateClass() {
@@ -904,21 +899,21 @@ class Interpreter(
                 constructorParent = realm.functionProto
             }
             !Operations.isConstructor(superClass) ->
-                Errors.NotACtor(superClass.toJSString(realm).string).throwTypeError(realm)
+                Errors.NotACtor(superClass.toJSString().string).throwTypeError()
             else -> {
                 protoParent = superClass.get("prototype")
                 if (protoParent != JSNull && protoParent !is JSObject)
-                    Errors.TODO("superClass.prototype invalid type").throwTypeError(realm)
+                    Errors.TODO("superClass.prototype invalid type").throwTypeError()
                 constructorParent = superClass
             }
         }
 
-        val proto = JSObject.create(realm, protoParent)
+        val proto = JSObject.create(proto = protoParent)
         Operations.makeClassConstructor(constructor)
 
         // TODO// Operations.setFunctionName(constructor, className)
 
-        Operations.makeConstructor(realm, constructor, false, proto)
+        Operations.makeConstructor(constructor, false, proto)
 
         if (superClass != JSEmpty)
             constructor.constructorKind = JSFunction.ConstructorKind.Derived
@@ -944,7 +939,7 @@ class Interpreter(
     }
 
     override fun visitAttachComputedClassMethod(opcode: AttachComputedClassMethod) {
-        val name = popValue().toPropertyKey(realm)
+        val name = popValue().toPropertyKey()
         val (constructor, proto) = pop() as ClassCtorAndProto
         methodDefinitionEvaluation(
             name,
@@ -966,9 +961,9 @@ class Interpreter(
             MethodDefinitionNode.Kind.Normal,
             MethodDefinitionNode.Kind.Getter,
             MethodDefinitionNode.Kind.Setter ->
-                NormalInterpretedFunction.create(realm, transformedSource.forInfo(info), activeEnvRecord)
+                NormalInterpretedFunction.create(transformedSource.forInfo(info), activeEnvRecord)
             MethodDefinitionNode.Kind.Generator ->
-                GeneratorInterpretedFunction.create(realm, transformedSource.forInfo(info), activeEnvRecord)
+                GeneratorInterpretedFunction.create(transformedSource.forInfo(info), activeEnvRecord)
             else -> TODO()
         }
 
@@ -981,8 +976,8 @@ class Interpreter(
                 "set" to Descriptor(JSAccessor(null, closure), Descriptor.CONFIGURABLE)
             }
 
-            Operations.setFunctionName(realm, closure, name, prefix)
-            Operations.definePropertyOrThrow(realm, obj, name, desc)
+            Operations.setFunctionName(closure, name, prefix)
+            Operations.definePropertyOrThrow(obj, name, desc)
             return
         }
 
@@ -991,9 +986,8 @@ class Interpreter(
             MethodDefinitionNode.Kind.Getter,
             MethodDefinitionNode.Kind.Setter -> {}
             MethodDefinitionNode.Kind.Generator -> {
-                val prototype = JSObject.create(realm, realm.generatorObjectProto)
+                val prototype = JSObject.create(proto = realm.generatorObjectProto)
                 Operations.definePropertyOrThrow(
-                    realm,
                     closure,
                     "prototype".key(),
                     Descriptor(prototype, Descriptor.WRITABLE),
@@ -1002,7 +996,7 @@ class Interpreter(
             else -> TODO()
         }
 
-        Operations.defineMethodProperty(realm, name, obj, closure, enumerable)
+        Operations.defineMethodProperty(name, obj, closure, enumerable)
     }
 
     override fun visitFinalizeClass() {

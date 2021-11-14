@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -35,14 +36,13 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val newTarget = arguments.newTarget
         val value = arguments.argument(0)
         val n = if (value != JSUndefined) {
-            numberFromArg(realm, value).toValue()
+            numberFromArg(value).toValue()
         } else JSNumber.ZERO
 
         if (newTarget == JSUndefined)
             return n
 
         return Operations.ordinaryCreateFromConstructor(
-            realm,
             newTarget,
             realm.numberProto,
             listOf(SlotName.NumberData),
@@ -51,9 +51,9 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         }
     }
 
-    private fun numberFromArg(realm: Realm, argument: JSValue): Double {
+    private fun numberFromArg(argument: JSValue): Double {
         return if (!argument.isUndefined) {
-            val prim = Operations.toNumeric(realm, argument)
+            val prim = Operations.toNumeric(argument)
             if (prim is JSBigInt)
                 return prim.number.toDouble()
             prim.asDouble
@@ -61,11 +61,11 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     companion object {
-        fun create(realm: Realm) = JSNumberCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSNumberCtor(realm).initialize()
 
         @ECMAImpl("20.1.2.2")
         @JvmStatic
-        fun isFinite(realm: Realm, arguments: JSArguments): JSValue {
+        fun isFinite(arguments: JSArguments): JSValue {
             val number = arguments.argument(0)
             if (!number.isNumber)
                 return JSFalse
@@ -76,19 +76,19 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         @ECMAImpl("20.1.2.3")
         @JvmStatic
-        fun isInteger(realm: Realm, arguments: JSArguments): JSValue {
+        fun isInteger(arguments: JSArguments): JSValue {
             return Operations.isIntegralNumber(arguments.argument(0)).toValue()
         }
 
         @ECMAImpl("20.1.2.4")
         @JvmStatic
-        fun isNaN(realm: Realm, arguments: JSArguments): JSValue {
+        fun isNaN(arguments: JSArguments): JSValue {
             return arguments.argument(0).isNaN.toValue()
         }
 
         @ECMAImpl("20.1.2.5")
         @JvmStatic
-        fun isSafeInteger(realm: Realm, arguments: JSArguments): JSValue {
+        fun isSafeInteger(arguments: JSArguments): JSValue {
             if (!Operations.isIntegralNumber(arguments.argument(0)))
                 return JSFalse
             return (abs(arguments.argument(0).asDouble) <= Operations.MAX_SAFE_INTEGER).toValue()
@@ -96,13 +96,13 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         @ECMAImpl("20.1.2.12")
         @JvmStatic
-        fun parseFloat(realm: Realm, arguments: JSArguments): JSValue {
+        fun parseFloat(arguments: JSArguments): JSValue {
             TODO()
         }
 
         @ECMAImpl("20.1.2.13")
         @JvmStatic
-        fun parseInt(realm: Realm, arguments: JSArguments): JSValue {
+        fun parseInt(arguments: JSArguments): JSValue {
             TODO()
         }
     }

@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers.strings
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -29,41 +30,43 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             val value = arguments.argument(0)
             if (newTarget == JSUndefined && value is JSSymbol)
                 return value.descriptiveString().toValue()
-            Operations.toString(realm, value)
+            Operations.toString(value)
         }
 
         if (newTarget == JSUndefined)
             return theString
 
-        return JSStringObject.create(realm, theString).also {
-            it.setPrototype(Operations.getPrototypeFromConstructor(newTarget, realm.stringProto))
+        return JSStringObject.create(theString).also {
+            it.setPrototype(
+                Operations.getPrototypeFromConstructor(newTarget, Agent.activeAgent.getActiveRealm().stringProto),
+            )
         }
     }
 
     companion object {
-        fun create(realm: Realm) = JSStringCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSStringCtor(realm).initialize()
 
         @ECMAImpl("22.1.2.1")
         @JvmStatic
-        fun fromCharCode(realm: Realm, arguments: JSArguments): JSValue {
+        fun fromCharCode(arguments: JSArguments): JSValue {
             return buildString {
                 arguments.forEach {
-                    appendCodePoint(Operations.toUint16(realm, it).asInt)
+                    appendCodePoint(Operations.toUint16(it).asInt)
                 }
             }.toValue()
         }
 
         @ECMAImpl("22.1.2.2")
         @JvmStatic
-        fun fromCodePoint(realm: Realm, arguments: JSArguments): JSValue {
+        fun fromCodePoint(arguments: JSArguments): JSValue {
             return buildString {
                 arguments.forEach {
-                    val nextCP = Operations.toNumber(realm, it)
+                    val nextCP = Operations.toNumber(it)
                     if (!Operations.isIntegralNumber(nextCP))
-                        Errors.Strings.InvalidCodepoint(Operations.toPrintableString(nextCP)).throwRangeError(realm)
+                        Errors.Strings.InvalidCodepoint(Operations.toPrintableString(nextCP)).throwRangeError()
                     val value = nextCP.asInt
                     if (value < 0 || value > 0x10ffff)
-                        Errors.Strings.InvalidCodepoint(value.toString()).throwRangeError(realm)
+                        Errors.Strings.InvalidCodepoint(value.toString()).throwRangeError()
                     appendCodePoint(value)
                 }
             }.toValue()

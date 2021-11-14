@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.memory
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -48,45 +49,44 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
     }
 
     companion object {
-        fun create(realm: Realm) = JSDataViewProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSDataViewProto(realm).initialize()
 
         @ECMAImpl("25.3.4.1")
         @JvmStatic
-        fun getBuffer(realm: Realm, arguments: JSArguments): JSValue {
+        fun getBuffer(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (!Operations.requireInternalSlot(thisValue, SlotName.DataView))
-                Errors.IncompatibleMethodCall("DataView.prototype.buffer").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("DataView.prototype.buffer").throwTypeError()
             return thisValue.getSlotAs(SlotName.ViewedArrayBuffer)
         }
 
         @ECMAImpl("25.3.4.2")
         @JvmStatic
-        fun getByteLength(realm: Realm, arguments: JSArguments): JSValue {
+        fun getByteLength(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (!Operations.requireInternalSlot(thisValue, SlotName.DataView))
-                Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError()
             if (Operations.isDetachedBuffer(thisValue.getSlotAs(SlotName.ViewedArrayBuffer)))
-                Errors.TODO("DataView.prototype.byteLength isDetachedBuffer").throwTypeError(realm)
+                Errors.TODO("DataView.prototype.byteLength isDetachedBuffer").throwTypeError()
             return thisValue.getSlotAs<Int>(SlotName.ByteLength).toValue()
         }
 
         @ECMAImpl("25.3.4.3")
         @JvmStatic
-        fun getByteOffset(realm: Realm, arguments: JSArguments): JSValue {
+        fun getByteOffset(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             if (!Operations.requireInternalSlot(thisValue, SlotName.DataView))
-                Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError(realm)
+                Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError()
             if (Operations.isDetachedBuffer(thisValue.getSlotAs(SlotName.ViewedArrayBuffer)))
-                Errors.TODO("DataView.prototype.byteLength isDetachedBuffer").throwTypeError(realm)
+                Errors.TODO("DataView.prototype.byteLength isDetachedBuffer").throwTypeError()
             return thisValue.getSlotAs<Int>(SlotName.ByteOffset).toValue()
         }
 
         @ECMAImpl("25.3.4.5")
         @JvmStatic
-        fun getBigInt64(realm: Realm, arguments: JSArguments): JSValue {
+        fun getBigInt64(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
             return Operations.getViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian,
@@ -96,10 +96,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.6")
         @JvmStatic
-        fun getBigUint64(realm: Realm, arguments: JSArguments): JSValue {
+        fun getBigUint64(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
             return Operations.getViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian,
@@ -109,10 +108,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.7")
         @JvmStatic
-        fun getFloat32(realm: Realm, arguments: JSArguments): JSValue {
+        fun getFloat32(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
             return Operations.getViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
@@ -122,10 +120,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.8")
         @JvmStatic
-        fun getFloat64(realm: Realm, arguments: JSArguments): JSValue {
+        fun getFloat64(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
             return Operations.getViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
@@ -135,10 +132,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.9")
         @JvmStatic
-        fun getInt8(realm: Realm, arguments: JSArguments): JSValue {
+        fun getInt8(arguments: JSArguments): JSValue {
             val byteOffset = arguments.argument(0)
             return Operations.getViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 JSTrue,
@@ -148,10 +144,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.10")
         @JvmStatic
-        fun getInt16(realm: Realm, arguments: JSArguments): JSValue {
+        fun getInt16(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
             return Operations.getViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
@@ -161,10 +156,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.11")
         @JvmStatic
-        fun getInt32(realm: Realm, arguments: JSArguments): JSValue {
+        fun getInt32(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
             return Operations.getViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
@@ -174,10 +168,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.12")
         @JvmStatic
-        fun getUint8(realm: Realm, arguments: JSArguments): JSValue {
+        fun getUint8(arguments: JSArguments): JSValue {
             val byteOffset = arguments.argument(0)
             return Operations.getViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 JSTrue,
@@ -187,10 +180,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.13")
         @JvmStatic
-        fun getUint16(realm: Realm, arguments: JSArguments): JSValue {
+        fun getUint16(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
             return Operations.getViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
@@ -200,10 +192,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.14")
         @JvmStatic
-        fun getUint32(realm: Realm, arguments: JSArguments): JSValue {
+        fun getUint32(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
             return Operations.getViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
@@ -213,10 +204,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.15")
         @JvmStatic
-        fun setBigInt64(realm: Realm, arguments: JSArguments): JSValue {
+        fun setBigInt64(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
             Operations.setViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian,
@@ -228,10 +218,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.16")
         @JvmStatic
-        fun setBigUint64(realm: Realm, arguments: JSArguments): JSValue {
+        fun setBigUint64(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
             Operations.setViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian,
@@ -243,10 +232,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.17")
         @JvmStatic
-        fun setFloat32(realm: Realm, arguments: JSArguments): JSValue {
+        fun setFloat32(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
             Operations.setViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
@@ -258,10 +246,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.18")
         @JvmStatic
-        fun setFloat64(realm: Realm, arguments: JSArguments): JSValue {
+        fun setFloat64(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
             Operations.setViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
@@ -273,10 +260,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.19")
         @JvmStatic
-        fun setInt8(realm: Realm, arguments: JSArguments): JSValue {
+        fun setInt8(arguments: JSArguments): JSValue {
             val (byteOffset, value) = arguments.takeArgs(0..1)
             Operations.setViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 JSTrue,
@@ -288,10 +274,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.20")
         @JvmStatic
-        fun setInt16(realm: Realm, arguments: JSArguments): JSValue {
+        fun setInt16(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
             Operations.setViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
@@ -303,10 +288,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.21")
         @JvmStatic
-        fun setInt32(realm: Realm, arguments: JSArguments): JSValue {
+        fun setInt32(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
             Operations.setViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
@@ -318,10 +302,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.22")
         @JvmStatic
-        fun setUint8(realm: Realm, arguments: JSArguments): JSValue {
+        fun setUint8(arguments: JSArguments): JSValue {
             val (byteOffset, value) = arguments.takeArgs(0..1)
             Operations.setViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 JSTrue,
@@ -333,10 +316,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.23")
         @JvmStatic
-        fun setUint16(realm: Realm, arguments: JSArguments): JSValue {
+        fun setUint16(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
             Operations.setViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
@@ -348,10 +330,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
 
         @ECMAImpl("25.3.4.24")
         @JvmStatic
-        fun setUint32(realm: Realm, arguments: JSArguments): JSValue {
+        fun setUint32(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
             Operations.setViewValue(
-                realm,
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),

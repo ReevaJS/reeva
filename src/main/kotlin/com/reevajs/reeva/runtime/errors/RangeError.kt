@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.errors
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -10,7 +11,7 @@ class JSRangeErrorObject private constructor(
 ) : JSErrorObject(realm, message, realm.rangeErrorProto) {
     companion object {
         @JvmStatic
-        fun create(realm: Realm, message: String? = null) = JSRangeErrorObject(realm, message).initialize()
+        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSRangeErrorObject(realm, message).initialize()
     }
 }
 
@@ -23,7 +24,7 @@ class JSRangeErrorProto private constructor(realm: Realm) : JSErrorProto(
     }
 
     companion object {
-        fun create(realm: Realm) = JSRangeErrorProto(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSRangeErrorProto(realm).initialize()
     }
 }
 
@@ -31,6 +32,6 @@ class JSRangeErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "R
     override fun errorProto(): JSObject = realm.rangeErrorProto
 
     companion object {
-        fun create(realm: Realm) = JSRangeErrorCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSRangeErrorCtor(realm).initialize()
     }
 }

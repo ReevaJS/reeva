@@ -131,17 +131,17 @@ data class Descriptor constructor(
         } or HAS_WRITABLE
     }
 
-    fun getActualValue(realm: Realm, thisValue: JSValue?): JSValue {
+    fun getActualValue(thisValue: JSValue?): JSValue {
         return when (val v = value) {
-            is JSNativeProperty -> v.get(realm, thisValue!!)
+            is JSNativeProperty -> v.get(thisValue!!)
             is JSAccessor -> v.callGetter(thisValue!!)
             else -> v.ifEmpty(JSUndefined)
         }
     }
 
-    fun setActualValue(realm: Realm, thisValue: JSValue?, newValue: JSValue) {
+    fun setActualValue(thisValue: JSValue?, newValue: JSValue) {
         when (val v = value) {
-            is JSNativeProperty -> v.set(realm, thisValue!!, newValue)
+            is JSNativeProperty -> v.set(thisValue!!, newValue)
             is JSAccessor -> v.callSetter(thisValue!!, newValue)
             else -> value = newValue
         }
@@ -154,13 +154,13 @@ data class Descriptor constructor(
     }
 
     @ECMAImpl("6.2.5.4", "FromPropertyDescriptor")
-    fun toObject(realm: Realm, thisValue: JSValue): JSObject {
-        val obj = JSObject.create(realm)
+    fun toObject(thisValue: JSValue): JSObject {
+        val obj = JSObject.create()
         if (isAccessorDescriptor) {
             obj.set("get", (value as JSAccessor).getter ?: JSUndefined)
             obj.set("set", (value as JSAccessor).setter ?: JSUndefined)
         } else if (isDataDescriptor) {
-            obj.set("value", getActualValue(realm, thisValue))
+            obj.set("value", getActualValue(thisValue))
         }
 
         if (hasConfigurable)
@@ -228,9 +228,9 @@ data class Descriptor constructor(
         const val DEFAULT_ATTRIBUTES = CONFIGURABLE or ENUMERABLE or WRITABLE or HAS_BASIC
 
         @ECMAImpl("6.2.5.5", "ToPropertyDescriptor")
-        fun fromObject(realm: Realm, obj: JSValue): Descriptor {
+        fun fromObject(obj: JSValue): Descriptor {
             if (obj !is JSObject)
-                Errors.TODO("fromObject").throwTypeError(realm)
+                Errors.TODO("fromObject").throwTypeError()
 
             val descriptor = Descriptor(JSEmpty, 0)
             if (obj.hasProperty("enumerable")) {
@@ -259,7 +259,7 @@ data class Descriptor constructor(
             if (obj.hasProperty("get")) {
                 val getterTemp = obj.get("get")
                 if (!Operations.isCallable(getterTemp) && getterTemp != JSUndefined)
-                    Errors.DescriptorGetType.throwTypeError(realm)
+                    Errors.DescriptorGetType.throwTypeError()
                 getter = getterTemp as? JSFunction
                 descriptor.attributes = descriptor.attributes or HAS_GETTER
                 hasGetterOrSetter = true
@@ -268,7 +268,7 @@ data class Descriptor constructor(
             if (obj.hasProperty("set")) {
                 val setterTemp = obj.get("set")
                 if (!Operations.isCallable(setterTemp) && setterTemp != JSUndefined)
-                    Errors.DescriptorSetType.throwTypeError(realm)
+                    Errors.DescriptorSetType.throwTypeError()
                 setter = setterTemp as? JSFunction
                 descriptor.attributes = descriptor.attributes or HAS_SETTER
                 hasGetterOrSetter = true
@@ -276,7 +276,7 @@ data class Descriptor constructor(
 
             if (hasGetterOrSetter) {
                 if (descriptor.value != JSEmpty || descriptor.hasWritable)
-                    Errors.DescriptorPropType.throwTypeError(realm)
+                    Errors.DescriptorPropType.throwTypeError()
                 descriptor.setRawValue(JSAccessor(getter, setter))
             }
 

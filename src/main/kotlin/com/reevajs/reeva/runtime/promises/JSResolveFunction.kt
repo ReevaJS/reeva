@@ -1,6 +1,5 @@
 package com.reevajs.reeva.runtime.promises
 
-import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
@@ -26,8 +25,8 @@ class JSResolveFunction private constructor(
 
         val resolution = arguments.argument(0)
         if (resolution.sameValue(promise)) {
-            val selfResolutionError = JSTypeErrorObject.create(realm, "TODO: message (promise self resolution)")
-            return Operations.rejectPromise(realm, promise, selfResolutionError)
+            val selfResolutionError = JSTypeErrorObject.create("TODO: message (promise self resolution)")
+            return Operations.rejectPromise(promise, selfResolutionError)
         }
 
         if (resolution !is JSObject)
@@ -36,15 +35,15 @@ class JSResolveFunction private constructor(
         val thenAction = try {
             resolution.get("then")
         } catch (e: ThrowException) {
-            return Operations.rejectPromise(realm, promise, e.value)
+            return Operations.rejectPromise(promise, e.value)
         }
 
         if (!Operations.isCallable(thenAction))
             return Operations.fulfillPromise(promise, resolution)
 
         val thenJobCallback = Agent.activeAgent.hostHooks.makeJobCallback(thenAction)
-        val job = Operations.newPromiseResolveThenableJob(realm, promise, resolution, thenJobCallback)
-        Agent.activeAgent.hostHooks.enqueuePromiseJob(job.job, job.realm)
+        val job = Operations.newPromiseResolveThenableJob(promise, resolution, thenJobCallback)
+        Agent.activeAgent.hostHooks.enqueuePromiseJob(job.realm, job.job)
 
         return JSUndefined
     }
@@ -53,7 +52,7 @@ class JSResolveFunction private constructor(
         fun create(
             promise: JSObject,
             alreadyResolved: Operations.Wrapper<Boolean>,
-            realm: Realm
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = JSResolveFunction(promise, alreadyResolved, realm).initialize()
     }
 }

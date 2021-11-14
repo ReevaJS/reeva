@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.wrappers
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -16,9 +17,8 @@ class JSBooleanCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         if (newTarget == JSUndefined)
             return bool
         if (newTarget == realm.booleanCtor)
-            return JSBooleanObject.create(realm, Operations.toBoolean(arguments.argument(0)).toValue())
+            return JSBooleanObject.create(Operations.toBoolean(arguments.argument(0)).toValue())
         return Operations.ordinaryCreateFromConstructor(
-            realm,
             newTarget,
             realm.booleanProto,
             listOf(SlotName.BooleanData),
@@ -28,6 +28,6 @@ class JSBooleanCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
     }
 
     companion object {
-        fun create(realm: Realm) = JSBooleanCtor(realm).initialize()
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSBooleanCtor(realm).initialize()
     }
 }

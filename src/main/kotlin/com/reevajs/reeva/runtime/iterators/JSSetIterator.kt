@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.iterators
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.collections.JSSetObject
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -19,7 +20,7 @@ class JSSetIterator private constructor(
     }
 
     companion object {
-        fun create(realm: Realm, data: JSSetObject.SetData, kind: PropertyKind) =
+        fun create(data: JSSetObject.SetData, kind: PropertyKind, realm: Realm = Agent.activeAgent.getActiveRealm()) =
             JSSetIterator(realm, data, kind).initialize()
     }
 }

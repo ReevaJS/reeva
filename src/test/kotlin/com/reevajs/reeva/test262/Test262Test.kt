@@ -1,5 +1,6 @@
 package com.reevajs.reeva.test262
 
+import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
@@ -63,7 +64,7 @@ class Test262Test(
 
             val pretestSourceInfo = LiteralSourceInfo("pretest", requiredScript, isModule = false)
             try {
-                val pretestResult = execute(agent, realm, pretestSourceInfo)
+                val pretestResult = execute(realm, pretestSourceInfo)
                 if (pretestResult.hasError) {
                     agent.errorReporter.reportParseError(pretestSourceInfo, pretestResult.error())
                     Assertions.fail<Nothing>()
@@ -100,8 +101,8 @@ class Test262Test(
         )
     }
 
-    fun execute(agent: Agent, realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, JSValue> {
-        return agent.compile(realm, sourceInfo).mapValue { it.execute() }
+    fun execute(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, JSValue> {
+        return Reeva.compile(realm, sourceInfo).mapValue { it.execute() }
     }
 
     private fun runSyncTest(agent: Agent, realm: Realm, isModule: Boolean) {
@@ -123,7 +124,7 @@ class Test262Test(
         }
 
         Assertions.assertTrue(!Operations.toBoolean(doneFunction.result)) {
-            "Expected \$DONE to be called with falsy value, received ${Operations.toString(realm, doneFunction.result)}"
+            "Expected \$DONE to be called with falsy value, received ${Operations.toString(doneFunction.result)}"
         }
     }
 
@@ -141,7 +142,7 @@ class Test262Test(
         val sourceInfo = FileSourceInfo(file, isModule, sourceText = theScript)
 
         try {
-            val testResult = execute(agent, realm, sourceInfo)
+            val testResult = execute(realm, sourceInfo)
 
             if (testResult.hasError) {
                 Assertions.assertTrue(shouldErrorDuringParse) {
