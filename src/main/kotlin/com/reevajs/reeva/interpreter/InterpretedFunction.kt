@@ -120,7 +120,10 @@ class NormalInterpretedFunction private constructor(
         // 3.  If kind is base, then
         var thisArgument = if (constructorKind == ConstructorKind.Base) {
             // a. Let thisArgument be ? OrdinaryCreateFromConstructor(newTarget, "%Object.prototype%").
-            Operations.ordinaryCreateFromConstructor(arguments.newTarget, agent.getActiveRealm().objectProto)
+            Operations.ordinaryCreateFromConstructor(
+                arguments.newTarget,
+                defaultProto = Realm::objectProto,
+            )
         } else arguments.thisValue
 
         // 4.  Let calleeContext be PrepareForOrdinaryCall(F, newTarget).

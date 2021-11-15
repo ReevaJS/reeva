@@ -14,6 +14,7 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.key
 import com.reevajs.reeva.utils.toValue
+import java.util.function.Function
 
 open class JSGenericTypedArrayCtor protected constructor(
     realm: Realm,
@@ -34,15 +35,14 @@ open class JSGenericTypedArrayCtor protected constructor(
             Errors.CtorCallWithoutNew("${kind.name}Array").throwTypeError()
         ecmaAssert(newTarget is JSObject)
 
-        val proto = kind.getProto()
         if (arguments.isEmpty())
-            return allocateTypedArray(newTarget, proto, 0)
+            return allocateTypedArray(newTarget, kind::getProto, 0)
 
         val firstArgument = arguments.argument(0)
         if (firstArgument !is JSObject)
-            return allocateTypedArray(newTarget, proto, firstArgument.toIndex())
+            return allocateTypedArray(newTarget, kind::getProto, firstArgument.toIndex())
 
-        val obj = allocateTypedArray(newTarget, proto)
+        val obj = allocateTypedArray(newTarget, kind::getProto)
         when {
             firstArgument.hasSlot(SlotName.TypedArrayName) ->
                 initializeTypedArrayFromTypedArray(obj, firstArgument)
@@ -63,9 +63,13 @@ open class JSGenericTypedArrayCtor protected constructor(
     }
 
     @ECMAImpl("22.2.5.1.1")
-    private fun allocateTypedArray(newTarget: JSObject, defaultProto: JSObject, length: Int? = null): JSValue {
-        val proto = Operations.getPrototypeFromConstructor(newTarget, defaultProto)
-        val obj = JSIntegerIndexedObject.create(kind, proto)
+    private fun allocateTypedArray(
+        newTarget: JSObject,
+        defaultProtoProducer: Function<Realm, JSObject>,
+        length: Int? = null,
+    ): JSValue {
+        val proto = Operations.getPrototypeFromConstructor(newTarget, defaultProtoProducer)
+        val obj = JSIntegerIndexedObject.create(kind, proto = proto)
         if (length == null) {
             obj.setSlot(SlotName.ByteLength, 0)
             obj.setSlot(SlotName.ByteOffset, 0)

@@ -99,8 +99,8 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
 
         return Operations.ordinaryCreateFromConstructor(
             arguments.newTarget,
-            realm.dateProto,
-            listOf(SlotName.DateValue)
+            listOf(SlotName.DateValue),
+            defaultProto = Realm::dateProto,
         ).also { it.setSlot(SlotName.DateValue, zdt) }
     }
 

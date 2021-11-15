@@ -43,6 +43,7 @@ import java.nio.ByteBuffer
 import java.time.*
 import java.time.format.TextStyle
 import java.util.*
+import java.util.function.Function
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 import kotlin.math.*
@@ -1730,22 +1731,26 @@ object Operations {
     @ECMAImpl("9.1.13")
     fun ordinaryCreateFromConstructor(
         constructor: JSValue,
-        intrinsicDefaultProto: JSObject,
         internalSlotsList: List<SlotName> = emptyList(),
         realm: Realm = this.realm,
+        defaultProto: Function<Realm, JSObject>,
     ): JSObject {
-        val proto = getPrototypeFromConstructor(constructor, intrinsicDefaultProto)
+        val proto = getPrototypeFromConstructor(constructor, defaultProto)
         return ordinaryObjectCreate(proto, internalSlotsList, realm)
     }
 
     @JvmStatic
     @ECMAImpl("9.1.14")
-    fun getPrototypeFromConstructor(constructor: JSValue, intrinsicDefaultProto: JSObject): JSObject {
+    fun getPrototypeFromConstructor(
+        constructor: JSValue,
+        intrinsicDefaultProtoProducer: Function<Realm, JSObject>,
+    ): JSObject {
         ecmaAssert(isCallable(constructor))
         val proto = (constructor as JSObject).get("prototype")
         if (proto is JSObject)
             return proto
-        return intrinsicDefaultProto
+
+        return intrinsicDefaultProtoProducer.apply(getFunctionRealm(constructor))
     }
 
     @JvmStatic
@@ -2513,7 +2518,7 @@ object Operations {
     @ECMAImpl("21.2.3.2.1")
     fun regExpAlloc(newTarget: JSValue): JSObject {
         val slots = listOf(SlotName.RegExpMatcher, SlotName.OriginalSource, SlotName.OriginalFlags)
-        val obj = ordinaryCreateFromConstructor(newTarget, realm.regExpProto, slots)
+        val obj = ordinaryCreateFromConstructor(newTarget, slots, defaultProto = Realm::regExpProto)
         definePropertyOrThrow(obj, "lastIndex".key(), Descriptor(JSEmpty, attrs { +writ; -enum; -conf }))
         return obj
     }
@@ -2650,7 +2655,7 @@ object Operations {
         ecmaAssert(exemplar is JSObject && exemplar.hasSlots(SlotName.TypedArrayName, SlotName.ContentType))
 
         val kind = exemplar.getSlotAs<TypedArrayKind>(SlotName.TypedArrayKind)
-        val defaultConstructor = kind.getCtor()
+        val defaultConstructor = kind.getCtor(Agent.activeAgent.getActiveRealm())
         val constructor = speciesConstructor(exemplar, defaultConstructor)
         val result = typedArrayCreate(constructor, arguments)
         if (result.getSlot(SlotName.ContentType) != exemplar.getSlot(SlotName.ContentType))
@@ -2726,7 +2731,7 @@ object Operations {
     @ECMAImpl("24.1.2.1")
     fun allocateArrayBuffer(constructor: JSValue, byteLength: Int): JSObject {
         val slots = listOf(SlotName.ArrayBufferData, SlotName.ArrayBufferByteLength, SlotName.ArrayBufferDetachKey)
-        val obj = ordinaryCreateFromConstructor(constructor, realm.arrayBufferProto, slots)
+        val obj = ordinaryCreateFromConstructor(constructor, slots, defaultProto = Realm::arrayBufferProto)
         val block = createByteDataBlock(byteLength)
         obj.setSlot(SlotName.ArrayBufferData, block)
         obj.setSlot(SlotName.ArrayBufferByteLength, byteLength)
@@ -3061,34 +3066,6 @@ object Operations {
     }
 
     @JvmStatic
-    fun createPromise(
-        realm: Realm = this.realm,
-        ctor: JSValue = realm.promiseCtor,
-        proto: JSObject = realm.promiseProto,
-    ): JSObject {
-        val promise = ordinaryCreateFromConstructor(
-            ctor,
-            proto,
-            listOf(
-                SlotName.PromiseState,
-                SlotName.PromiseResult,
-                SlotName.PromiseFulfillReactions,
-                SlotName.PromiseRejectReactions,
-                SlotName.PromiseIsHandled,
-            ),
-            realm,
-        )
-
-        promise.setSlot(SlotName.PromiseState, PromiseState.Pending)
-        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<PromiseReaction>())
-        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<PromiseReaction>())
-        promise.setSlot(SlotName.PromiseIsHandled, false)
-        promise.setSlot(SlotName.PromiseResult, JSUndefined)
-
-        return promise
-    }
-
-    @JvmStatic
     @ECMAImpl("26.6.1.7")
     internal fun rejectPromise(promise: JSObject, reason: JSValue): JSValue {
         ecmaAssert(promise.getSlot(SlotName.PromiseState) == PromiseState.Pending)
@@ -3292,7 +3269,7 @@ object Operations {
         BigInt64(8, false, false, true, ::toBigInt64),
         BigUint64(8, true, false, true, ::toBigUint64);
 
-        fun getCtor() = when (this) {
+        fun getCtor(realm: Realm) = when (this) {
             Int8 -> realm.int8ArrayCtor
             Uint8 -> realm.uint8ArrayCtor
             Uint8C -> realm.uint8CArrayCtor
@@ -3306,7 +3283,7 @@ object Operations {
             BigUint64 -> realm.bigUint64ArrayCtor
         }
 
-        fun getProto() = when (this) {
+        fun getProto(realm: Realm) = when (this) {
             Int8 -> realm.int8ArrayProto
             Uint8 -> realm.uint8ArrayProto
             Uint8C -> realm.uint8CArrayProto

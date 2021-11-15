@@ -30,7 +30,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     override fun evaluate(arguments: JSArguments): JSValue {
         val realNewTarget = arguments.newTarget.ifUndefined(this)
 
-        val proto = Operations.getPrototypeFromConstructor(realNewTarget, realm.arrayProto)
+        val proto = Operations.getPrototypeFromConstructor(realNewTarget, Realm::arrayProto)
 
         return when (arguments.size) {
             0 -> JSArrayObject.create(proto = proto)

@@ -30,7 +30,7 @@ class JSURIErrorProto private constructor(realm: Realm) : JSErrorProto(
 }
 
 class JSURIErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "URIError") {
-    override fun errorProto(): JSObject = realm.uriErrorProto
+    override fun errorProto(realm: Realm): JSObject = realm.uriErrorProto
 
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSURIErrorCtor(realm).initialize()

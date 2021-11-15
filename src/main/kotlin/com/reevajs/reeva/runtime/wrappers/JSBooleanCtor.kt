@@ -20,8 +20,8 @@ class JSBooleanCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             return JSBooleanObject.create(Operations.toBoolean(arguments.argument(0)).toValue())
         return Operations.ordinaryCreateFromConstructor(
             newTarget,
-            realm.booleanProto,
             listOf(SlotName.BooleanData),
+            defaultProto = Realm::booleanProto,
         ).also {
             it.setSlot(SlotName.BooleanData, bool)
         }

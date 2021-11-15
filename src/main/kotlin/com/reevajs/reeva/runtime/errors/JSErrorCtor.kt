@@ -17,7 +17,7 @@ open class JSErrorCtor protected constructor(
     realm: Realm,
     name: String = "Error"
 ) : JSNativeFunction(realm, name, 1) {
-    open fun errorProto(): JSObject {
+    open fun errorProto(realm: Realm): JSObject {
         return realm.errorProto
     }
 
@@ -27,7 +27,11 @@ open class JSErrorCtor protected constructor(
             //  function object; else let newTarget be NewTarget."
             JSUndefined
         }
-        val obj = Operations.ordinaryCreateFromConstructor(newTarget, errorProto(), listOf(SlotName.ErrorData))
+        val obj = Operations.ordinaryCreateFromConstructor(
+            newTarget,
+            listOf(SlotName.ErrorData),
+            defaultProto = ::errorProto,
+        )
         val message = arguments.argument(0)
 
         if (message != JSUndefined) {

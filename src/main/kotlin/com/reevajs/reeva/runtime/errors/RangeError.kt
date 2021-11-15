@@ -30,7 +30,7 @@ class JSRangeErrorProto private constructor(realm: Realm) : JSErrorProto(
 }
 
 class JSRangeErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "RangeError") {
-    override fun errorProto(): JSObject = realm.rangeErrorProto
+    override fun errorProto(realm: Realm): JSObject = realm.rangeErrorProto
 
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSRangeErrorCtor(realm).initialize()

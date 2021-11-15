@@ -26,8 +26,8 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
 
         val set = Operations.ordinaryCreateFromConstructor(
             arguments.newTarget,
-            realm.setProto,
             listOf(SlotName.SetData),
+            defaultProto = Realm::setProto,
         )
         set.setSlot(SlotName.SetData, JSSetObject.SetData())
         val iterator = arguments.argument(0)

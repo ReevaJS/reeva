@@ -52,7 +52,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val newTarget = arguments.newTarget
         // TODO: "If NewTarget is neither undefined nor the active function, then..."
         if (newTarget != JSUndefined && newTarget != agent.getActiveFunction())
-            return Operations.ordinaryCreateFromConstructor(newTarget, agent.getActiveRealm().objectProto)
+            return Operations.ordinaryCreateFromConstructor(newTarget, defaultProto = Realm::objectProto)
         if (value.isUndefined || value.isNull)
             return JSObject.create()
         return Operations.toObject(value)

@@ -31,7 +31,7 @@ class JSTypeErrorProto private constructor(realm: Realm) : JSErrorProto(
 }
 
 class JSTypeErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "TypeError") {
-    override fun errorProto(): JSObject = realm.typeErrorProto
+    override fun errorProto(realm: Realm): JSObject = realm.typeErrorProto
 
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSTypeErrorCtor(realm).initialize()

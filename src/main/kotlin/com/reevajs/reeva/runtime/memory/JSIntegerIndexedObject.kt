@@ -14,7 +14,7 @@ import com.reevajs.reeva.runtime.primitives.JSUndefined
 class JSIntegerIndexedObject private constructor(
     realm: Realm,
     private val kind: Operations.TypedArrayKind,
-    proto: JSValue = kind.getProto()
+    proto: JSValue = kind.getProto(realm),
 ) : JSObject(realm, proto) {
     // ContentType slot is just kind.isBigInt, so we don't store that
 
@@ -114,8 +114,8 @@ class JSIntegerIndexedObject private constructor(
     companion object {
         fun create(
             kind: Operations.TypedArrayKind,
-            proto: JSValue = kind.getProto(),
             realm: Realm = Agent.activeAgent.getActiveRealm(),
+            proto: JSValue = kind.getProto(realm),
         ) = JSIntegerIndexedObject(realm, kind, proto).initialize()
     }
 }

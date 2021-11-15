@@ -10,6 +10,7 @@ import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.runtime.primitives.JSFalse
 import com.reevajs.reeva.runtime.primitives.JSUndefined
@@ -37,7 +38,25 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         if (!Operations.isCallable(executor))
             Errors.Promise.CtorFirstArgCallable.throwTypeError(realm)
 
-        val promise = Operations.createPromise(realm, arguments.newTarget)
+        val promise = Operations.ordinaryCreateFromConstructor(
+            arguments.newTarget,
+            listOf(
+                SlotName.PromiseState,
+                SlotName.PromiseResult,
+                SlotName.PromiseFulfillReactions,
+                SlotName.PromiseRejectReactions,
+                SlotName.PromiseIsHandled,
+            ),
+        ) {
+            it.promiseProto
+        }
+
+        promise.setSlot(SlotName.PromiseState, Operations.PromiseState.Pending)
+        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<Operations.PromiseReaction>())
+        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<Operations.PromiseReaction>())
+        promise.setSlot(SlotName.PromiseIsHandled, false)
+        promise.setSlot(SlotName.PromiseResult, JSUndefined)
+
         val (resolveFunction, rejectFunction) = Operations.createResolvingFunctions(promise)
 
         try {

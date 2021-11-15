@@ -30,7 +30,7 @@ class JSInternalErrorProto private constructor(realm: Realm) : JSErrorProto(
 }
 
 class JSInternalErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "InternalError") {
-    override fun errorProto(): JSObject = realm.internalErrorProto
+    override fun errorProto(realm: Realm): JSObject = realm.internalErrorProto
 
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSInternalErrorCtor(realm).initialize()

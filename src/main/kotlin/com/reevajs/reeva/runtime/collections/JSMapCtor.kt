@@ -25,8 +25,8 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
 
         val map = Operations.ordinaryCreateFromConstructor(
             arguments.newTarget,
-            realm.mapProto,
             listOf(SlotName.MapData),
+            defaultProto = Realm::mapProto,
         )
         map.setSlot(SlotName.MapData, JSMapObject.MapData())
         val iterable = arguments.argument(0)

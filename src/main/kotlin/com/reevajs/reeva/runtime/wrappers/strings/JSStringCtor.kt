@@ -38,7 +38,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         return JSStringObject.create(theString).also {
             it.setPrototype(
-                Operations.getPrototypeFromConstructor(newTarget, Agent.activeAgent.getActiveRealm().stringProto),
+                Operations.getPrototypeFromConstructor(newTarget, Realm::stringProto),
             )
         }
     }

@@ -44,8 +44,8 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         return Operations.ordinaryCreateFromConstructor(
             newTarget,
-            realm.numberProto,
             listOf(SlotName.NumberData),
+            defaultProto = Realm::numberProto,
         ).also {
             it.setSlot(SlotName.NumberData, n)
         }

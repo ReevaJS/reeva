@@ -30,7 +30,7 @@ class JSSyntaxErrorProto private constructor(realm: Realm) : JSErrorProto(
 }
 
 class JSSyntaxErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "SyntaxError") {
-    override fun errorProto(): JSObject = realm.syntaxErrorProto
+    override fun errorProto(realm: Realm): JSObject = realm.syntaxErrorProto
 
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSyntaxErrorCtor(realm).initialize()

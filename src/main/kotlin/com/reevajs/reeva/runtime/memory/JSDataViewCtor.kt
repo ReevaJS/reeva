@@ -38,8 +38,8 @@ class JSDataViewCtor private constructor(realm: Realm) : JSNativeFunction(realm,
 
         val obj = Operations.ordinaryCreateFromConstructor(
             newTarget,
-            Agent.activeAgent.getActiveRealm().dataViewProto,
             listOf(SlotName.DataView),
+            defaultProto = Realm::dataViewProto,
         )
         if (Operations.isDetachedBuffer(buffer))
             Errors.TODO("DataViewCtor isDetachedBuffer 2").throwTypeError()
