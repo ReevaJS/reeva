@@ -10,6 +10,7 @@ class JSGeneratorFunctionProto(realm: Realm) : JSObject(realm, realm.functionPro
     override fun init() {
         super.init()
 
+        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("prototype", realm.generatorObjectProto, Descriptor.CONFIGURABLE)
         defineOwnProperty("constructor", realm.generatorFunctionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "GeneratorFunction".toValue(), Descriptor.CONFIGURABLE)

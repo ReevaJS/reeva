@@ -1,6 +1,5 @@
 package com.reevajs.reeva.test262
 
-import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSGlobalObject
@@ -17,6 +16,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
     override fun init() {
         super.init()
 
+        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("$262", JS262Object.create(this, realm), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
@@ -27,6 +27,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
         override fun init() {
             super.init()
 
+            val realm = Agent.activeAgent.getActiveRealm()
             defineOwnProperty("global", globalObject, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
             defineOwnProperty("agent", JS262AgentObject.create(realm), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
             defineBuiltin("createRealm", 0, Builtin.forClass(this::class.java, "createRealm"))

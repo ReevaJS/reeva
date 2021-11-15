@@ -10,7 +10,7 @@ import com.reevajs.reeva.utils.ecmaAssert
 
 class JSBoundFunction private constructor(
     realm: Realm,
-    private val boundTargetFunction: JSFunction,
+    val boundTargetFunction: JSFunction,
     private val boundArguments: JSArguments,
     prototype: JSValue,
 ) : JSFunction(

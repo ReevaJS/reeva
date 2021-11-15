@@ -84,7 +84,7 @@ class JSModuleNamespaceObject private constructor(
 
         val binding = moduleRecord.env.getBinding(stringProp)
         if (binding == JSEmpty)
-            Errors.CircularImport(stringProp).throwReferenceError(realm)
+            Errors.CircularImport(stringProp).throwReferenceError()
         return binding
     }
 

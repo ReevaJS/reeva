@@ -26,6 +26,7 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             null,
         )
 
+        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.symbolCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineNativeProperty("description", attrs { +conf; -enum }, ::getDescription, null)
         defineBuiltin("toString", 0, ReevaBuiltin.SymbolProtoToString)

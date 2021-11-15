@@ -15,6 +15,7 @@ open class JSStringObject protected constructor(realm: Realm, string: JSString) 
     val string by slot(SlotName.StringData, string)
 
     override fun init() {
+        val realm = Agent.activeAgent.getActiveRealm()
         setPrototype(realm.stringProto)
         super.init()
 

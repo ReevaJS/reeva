@@ -22,6 +22,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     override fun init() {
         // No super call to avoid prototype complications
 
+        val realm = Agent.activeAgent.getActiveRealm()
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.arrayCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)

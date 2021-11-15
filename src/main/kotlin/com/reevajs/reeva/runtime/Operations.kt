@@ -1478,6 +1478,21 @@ object Operations {
     }
 
     @JvmStatic
+    @ECMAImpl("7.3.25")
+    fun getFunctionRealm(value: JSValue): Realm {
+        return when (value) {
+            is JSBoundFunction -> getFunctionRealm(value.boundTargetFunction)
+            is JSProxyObject -> {
+                if (value.handler == null)
+                    Errors.Proxy.RevokedGeneric.throwTypeError()
+                getFunctionRealm(value.target)
+            }
+            is JSFunction -> value.realm
+            else -> Agent.activeAgent.getActiveRealm()
+        }
+    }
+
+    @JvmStatic
     @ECMAImpl("7.3.26")
     fun copyDataProperties(target: JSObject, source: JSValue, excludedItems: List<PropertyKey>): JSObject {
         if (source.isNullish)
@@ -1518,7 +1533,6 @@ object Operations {
     @JvmStatic
     @ECMAImpl("7.4.2")
     fun iteratorNext(record: IteratorRecord, value: JSValue? = null): JSObject {
-        val realm = record.iterator.realm
         val result = if (value == null) {
             call(record.nextMethod, record.iterator)
         } else {
@@ -1863,8 +1877,9 @@ object Operations {
             return arrayCreate(length)
         var ctor = originalArray.get("constructor")
         if (isConstructor(ctor)) {
-            val ctorRealm = (ctor as JSObject).realm
-            if (realm != ctorRealm && ctor.sameValue(ctorRealm.arrayCtor))
+            val thisRealm = Agent.activeAgent.getActiveRealm()
+            val ctorRealm = getFunctionRealm(ctor)
+            if (thisRealm != ctorRealm && ctor.sameValue(ctorRealm.arrayCtor))
                 ctor = JSUndefined
         }
         if (ctor is JSObject) {
@@ -3001,8 +3016,8 @@ object Operations {
     @ECMAImpl("26.6.1.3")
     fun createResolvingFunctions(promise: JSObject): Pair<JSFunction, JSFunction> {
         val resolvedStatus = Wrapper(false)
-        val resolve = JSResolveFunction.create(promise, resolvedStatus, promise.realm)
-        val reject = JSRejectFunction.create(promise, resolvedStatus, promise.realm)
+        val resolve = JSResolveFunction.create(promise, resolvedStatus)
+        val reject = JSRejectFunction.create(promise, resolvedStatus)
         return resolve to reject
     }
 

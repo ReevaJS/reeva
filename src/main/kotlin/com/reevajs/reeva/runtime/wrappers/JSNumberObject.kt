@@ -10,6 +10,7 @@ open class JSNumberObject protected constructor(realm: Realm, number: JSNumber) 
     val number by slot(SlotName.NumberData, number)
 
     override fun init() {
+        val realm = Agent.activeAgent.getActiveRealm()
         setPrototype(realm.numberProto)
         super.init()
     }

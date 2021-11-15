@@ -20,6 +20,7 @@ class JSSyntaxErrorProto private constructor(realm: Realm) : JSErrorProto(
 ) {
     override fun init() {
         super.init()
+        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.syntaxErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 

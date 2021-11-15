@@ -17,6 +17,7 @@ import com.reevajs.reeva.utils.toValue
 
 class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JSNumber.ZERO) {
     override fun init() {
+        val realm = Agent.activeAgent.getActiveRealm()
         // No super call to avoid prototype complications
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)

@@ -21,7 +21,6 @@ class Shape {
     private val attributes: Int
     private val transitionType: TransitionType
     val isUnique: Boolean
-    val realm: Realm
 
     constructor(previousShape: Shape, name: JSObject.StringOrSymbol, attributes: Int, transitionType: TransitionType) {
         this.previousShape = previousShape
@@ -30,7 +29,6 @@ class Shape {
         this.transitionType = transitionType
 
         isUnique = false
-        realm = previousShape.realm
         prototype = previousShape.prototype
         propertyCount = if (transitionType == TransitionType.Put) {
             previousShape.propertyCount + 1
@@ -40,7 +38,6 @@ class Shape {
     constructor(previousShape: Shape, newProto: JSObject?) {
         this.previousShape = previousShape
         prototype = newProto
-        realm = previousShape.realm
         transitionType = TransitionType.Prototype
         propertyCount = previousShape.propertyCount
 
@@ -49,8 +46,7 @@ class Shape {
         attributes = 0
     }
 
-    constructor(realm: Realm, prototype: JSObject?, isUnique: Boolean) {
-        this.realm = realm
+    constructor(prototype: JSObject?, isUnique: Boolean) {
         this.prototype = prototype
         this.isUnique = isUnique
 
@@ -62,9 +58,7 @@ class Shape {
     }
 
     // For the empty shape
-    constructor(realm: Realm) {
-        this.realm = realm
-
+    constructor() {
         previousShape = null
         prototype = null
         name = null
@@ -103,7 +97,7 @@ class Shape {
     }
 
     fun makeUniqueClone(): Shape {
-        val newShape = Shape(realm, prototype, isUnique = true)
+        val newShape = Shape(prototype, isUnique = true)
         buildPropertyTable()
         // TODO: Why is this built when we just reassign it anyways?
         newShape.buildPropertyTable()

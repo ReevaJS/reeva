@@ -1,6 +1,5 @@
 package com.reevajs.reeva.runtime.objects
 
-import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
@@ -10,19 +9,15 @@ import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
 import com.reevajs.reeva.runtime.objects.index.IndexedProperties
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.*
-import java.util.*
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
-open class JSObject protected constructor(
-    val realm: Realm,
-    prototype: JSValue = JSNull,
-) : JSValue() {
+open class JSObject protected constructor(realm: Realm, prototype: JSValue = JSNull) : JSValue() {
     private val slots = mutableMapOf<Any, Any?>()
     private val id = Agent.activeAgent.nextObjectId()
 
     internal val storage = mutableListOf<JSValue>()
-    internal val indexedProperties = IndexedProperties(realm)
+    internal val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
     internal var shape: Shape
 
@@ -32,7 +27,7 @@ open class JSObject protected constructor(
         expect(prototype is JSObject || prototype == JSNull)
 
         if (prototype == JSNull) {
-            shape = Shape(realm)
+            shape = Shape()
         } else {
             shape = realm.emptyShape
             ordinarySetPrototype(prototype)
@@ -374,7 +369,7 @@ open class JSObject protected constructor(
         isGetter: Boolean,
     ) {
         val length = if (isGetter) 0 else 1
-        val function = JSBuiltinFunction.create(jsName, length, builtin, realm)
+        val function = JSBuiltinFunction.create(jsName, length, builtin)
 
         val existingProperty = internalGet(key)
         if (existingProperty != null) {
@@ -430,7 +425,7 @@ open class JSObject protected constructor(
         builtin: Builtin,
         attributes: Int = attrs { +conf; -enum; +writ },
     ) {
-        val function = JSBuiltinFunction.create(jsName, length, builtin, realm)
+        val function = JSBuiltinFunction.create(jsName, length, builtin)
         addProperty(key, Descriptor(function, attributes))
     }
 

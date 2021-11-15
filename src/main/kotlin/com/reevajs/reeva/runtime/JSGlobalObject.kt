@@ -23,6 +23,7 @@ open class JSGlobalObject protected constructor(
     override fun init() {
         super.init()
 
+        val realm = Agent.activeAgent.getActiveRealm()
         val attrs = Descriptor.CONFIGURABLE or Descriptor.WRITABLE
         defineOwnProperty("Array", realm.arrayCtor, attrs)
         defineOwnProperty("ArrayBuffer", realm.arrayBufferCtor, attrs)

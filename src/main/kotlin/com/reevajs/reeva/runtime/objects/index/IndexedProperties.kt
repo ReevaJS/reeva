@@ -9,10 +9,7 @@ import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import java.util.*
 
-class IndexedProperties private constructor(
-    private val realm: Realm,
-    private var storage: IndexedStorage
-) {
+class IndexedProperties private constructor(private var storage: IndexedStorage) {
     val size: Long
         get() = storage.size
     val arrayLikeSize: Long
@@ -21,7 +18,7 @@ class IndexedProperties private constructor(
     val isEmpty: Boolean
         get() = size == 0L
 
-    constructor(realm: Realm) : this(realm, SimpleIndexedStorage())
+    constructor() : this(SimpleIndexedStorage())
 
     fun hasIndex(index: Int) = storage.hasIndex(index)
     fun hasIndex(index: Long) = storage is GenericIndexedStorage && storage.hasIndex(index)

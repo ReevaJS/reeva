@@ -11,7 +11,7 @@ import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
 
 abstract class JSFunction(
-    realm: Realm,
+    val realm: Realm,
     val debugName: String,
     var isStrict: Boolean = false,
     prototype: JSValue = realm.functionProto,

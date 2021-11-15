@@ -86,7 +86,6 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             ecmaAssert(Operations.isConstructor(constructor))
             ecmaAssert(Operations.isCallable(promiseResolve))
 
-            val realm = iteratorRecord.iterator.realm
             val values = mutableListOf<JSValue>()
             val remainingElementCount = Operations.Wrapper(1)
             var index = 0

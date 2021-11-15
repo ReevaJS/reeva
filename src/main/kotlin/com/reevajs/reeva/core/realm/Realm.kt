@@ -175,8 +175,7 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val classProto by lazy { JSClassProto.create(this) }
     val packageObj by lazy { JSPackageObject.create(null, this) }
 
-    val emptyShape = Shape(this)
-    val newObjectShape = Shape(this)
+    val emptyShape = Shape()
 
     // TODO: Make these locking functions internal?
     fun hasLock() = executionLock.isHeldByCurrentThread
@@ -254,8 +253,6 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
         uriErrorCtor.defineOwnProperty("prototype", uriErrorProto, Descriptor.HAS_BASIC)
 
         functionProto.defineOwnProperty("constructor", functionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-
-        newObjectShape.setPrototypeWithoutTransition(objectProto)
 
         // Initialize extensions
         extensions.values.forEach { it.initObjects(this) }

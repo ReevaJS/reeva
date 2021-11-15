@@ -25,6 +25,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
     override fun init() {
         super.init()
 
+        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.dateCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineBuiltin("getDate", 0, ReevaBuiltin.DateProtoGetDate)
         defineBuiltin("getDay", 0, ReevaBuiltin.DateProtoGetDay)
