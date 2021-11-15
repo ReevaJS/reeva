@@ -374,7 +374,7 @@ open class JSObject protected constructor(
         isGetter: Boolean,
     ) {
         val length = if (isGetter) 0 else 1
-        val function = JSBuiltinFunction.forBuiltin(realm, jsName, length, builtin)
+        val function = JSBuiltinFunction.create(jsName, length, builtin, realm)
 
         val existingProperty = internalGet(key)
         if (existingProperty != null) {
@@ -430,7 +430,7 @@ open class JSObject protected constructor(
         builtin: Builtin,
         attributes: Int = attrs { +conf; -enum; +writ },
     ) {
-        val function = JSBuiltinFunction.forBuiltin(realm, jsName, length, builtin)
+        val function = JSBuiltinFunction.create(jsName, length, builtin, realm)
         addProperty(key, Descriptor(function, attributes))
     }
 

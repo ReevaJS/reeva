@@ -8,6 +8,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
+import com.reevajs.reeva.runtime.functions.JSRunnableFunction
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
@@ -44,7 +45,7 @@ class JSProxyCtor private constructor(realm: Realm) : JSNativeFunction(realm, "P
             val resultObj = JSObject.create()
             Operations.createDataPropertyOrThrow(resultObj, "proxy".key(), proxy)
 
-            val revokeMethod = fromLambda("", 0) {
+            val revokeMethod = JSRunnableFunction.create("", 0) {
                 (proxy as JSProxyObject).revoke()
                 JSUndefined
             }

@@ -8,6 +8,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
+import com.reevajs.reeva.runtime.functions.JSRunnableFunction
 import com.reevajs.reeva.runtime.primitives.JSFalse
 import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSTrue
@@ -144,12 +145,12 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             val iterable = arguments.argument(0)
             Operations.requireObjectCoercible(iterable)
             val obj = JSObject.create()
-            val adder = fromLambda("", 0) { args ->
+            val adder = JSRunnableFunction.create("", 0) { args ->
                 val key = args.argument(0)
                 val value = args.argument(1)
                 ecmaAssert(args.thisValue is JSObject)
                 Operations.createDataPropertyOrThrow(args.thisValue, key, value)
-                return@fromLambda JSUndefined
+                JSUndefined
             }
             return Operations.addEntriesFromIterable( obj, iterable, adder)
         }

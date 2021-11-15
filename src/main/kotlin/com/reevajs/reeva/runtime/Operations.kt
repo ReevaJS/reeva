@@ -1478,7 +1478,7 @@ object Operations {
     }
 
     @JvmStatic
-    @ECMAImpl("7.3.25")
+    @ECMAImpl("7.3.26")
     fun copyDataProperties(target: JSObject, source: JSValue, excludedItems: List<PropertyKey>): JSObject {
         if (source.isNullish)
             return target
@@ -1583,56 +1583,6 @@ object Operations {
         }
         return values
     }
-
-//    @JvmStatic @ECMAImpl("8.1.2.1")
-//    fun getIdentifierReference(env: EnvRecord?, name: String, isStrict: Boolean): JSReference {
-//        return when {
-//            env == null -> JSReference(JSUndefined, PropertyKey(name), isStrict)
-//            env.hasBinding(name) -> JSReference(env, PropertyKey(name), isStrict)
-//            else -> getIdentifierReference(env.outerEnv, name, isStrict)
-//        }
-//    }
-//
-//    @JvmStatic @ECMAImpl("8.3.1")
-//    fun getActiveScriptOrModule() {
-//        TODO()
-//    }
-
-//    @JvmStatic @JvmOverloads
-//    @ECMAImpl("8.3.2")
-//    fun resolveBinding(name: String, env: EnvRecord? = null): JSReference {
-//        val actualEnv = env ?: Agent.activeAgent.runningContext.lexicalEnv!!
-//        // TODO: Strict mode checking
-//        return getIdentifierReference(actualEnv, name, isStrict())
-//    }
-//
-//    @JvmStatic @ECMAImpl("8.3.3")
-//    fun getThisEnvironment(): EnvRecord {
-//        // As the spec states, this is guaranteed to resolve without
-//        // any NPEs as there is always at least a global environment
-//        // with a this-binding
-//        var env = Agent.activeAgent.runningContext.lexicalEnv!!
-//        while (!env.hasThisBinding())
-//            env = env.outerEnv!!
-//        return env
-//    }
-//
-//    @JvmStatic @ECMAImpl("8.3.4")
-//    fun resolveThisBinding(): JSValue {
-//        return when (val env = getThisEnvironment()) {
-//            is FunctionEnvRecord -> env.getThisBinding()
-//            is GlobalEnvRecord -> env.getThisBinding()
-//            is ModuleEnvRecord -> env.getThisBinding()
-//            else -> unreachable()
-//        }
-//    }
-//
-//    @JvmStatic @ECMAImpl("8.3.5")
-//    fun getNewTarget(): JSValue {
-//        val env = getThisEnvironment()
-//        ecmaAssert(env is FunctionEnvRecord)
-//        return env.newTarget
-//    }
 
     @JvmStatic
     @ECMAImpl("8.3.6")

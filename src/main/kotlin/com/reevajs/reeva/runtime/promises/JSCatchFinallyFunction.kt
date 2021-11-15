@@ -8,6 +8,7 @@ import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
+import com.reevajs.reeva.runtime.functions.JSRunnableFunction
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.toValue
 
@@ -21,7 +22,7 @@ class JSCatchFinallyFunction private constructor(
             throw IllegalStateException("Unexpected construction of JSCatchFinallyFunction")
         val result = Operations.call(onFinally, JSUndefined)
         val promise = Operations.promiseResolve(ctor, result)
-        val valueThunk = fromLambda("", 0) { throw ThrowException(arguments.argument(0)) }
+        val valueThunk = JSRunnableFunction.create("", 0) { throw ThrowException(arguments.argument(0)) }
         return Operations.invoke(promise, "then".toValue(), listOf(valueThunk))
     }
 

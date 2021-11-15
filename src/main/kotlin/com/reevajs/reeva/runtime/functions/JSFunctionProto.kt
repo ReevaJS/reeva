@@ -17,7 +17,7 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
     override fun init() {
         super.init()
 
-        val thrower = JSNativeFunction.fromLambda("", 0) {
+        val thrower = JSRunnableFunction.create("", 0) {
             Errors.Function.CallerArgumentsAccess.throwTypeError()
         }
 

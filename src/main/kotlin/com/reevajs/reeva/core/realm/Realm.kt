@@ -18,6 +18,7 @@ import com.reevajs.reeva.runtime.errors.*
 import com.reevajs.reeva.runtime.functions.JSFunctionCtor
 import com.reevajs.reeva.runtime.functions.JSFunctionProto
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
+import com.reevajs.reeva.runtime.functions.JSRunnableFunction
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorFunctionCtor
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorFunctionProto
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObjectProto
@@ -160,7 +161,7 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val uriErrorCtor by lazy { JSURIErrorCtor.create(this) }
 
     val throwTypeError by lazy {
-        JSNativeFunction.fromLambda("", 0) {
+        JSRunnableFunction.create("", 0, this) {
             Errors.CalleePropertyAccess.throwTypeError(Agent.activeAgent.getActiveRealm())
         }
     }

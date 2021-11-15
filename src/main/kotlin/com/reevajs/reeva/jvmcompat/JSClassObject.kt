@@ -7,6 +7,7 @@ import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
+import com.reevajs.reeva.runtime.functions.JSRunnableFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
@@ -154,7 +155,11 @@ class JSClassObject private constructor(
                 JVMValueMapper.jvmToJS(result)
             }
 
-            val function = fromLambda(name, availableMethods.minOf { it.parameterCount }, lambda = nativeMethod)
+            val function = JSRunnableFunction.create(
+                name,
+                availableMethods.minOf { it.parameterCount },
+                function = nativeMethod,
+            )
 
             val receiver = if (isStatic) this else obj
             receiver.addProperty(name.key(), Descriptor(function, Descriptor.DEFAULT_ATTRIBUTES))
