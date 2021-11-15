@@ -10,6 +10,7 @@ import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toJSString
 import com.reevajs.reeva.utils.attrs
 import com.reevajs.reeva.utils.key
 
@@ -35,7 +36,7 @@ open class JSErrorCtor protected constructor(
         val message = arguments.argument(0)
 
         if (message != JSUndefined) {
-            val msg = Operations.toString(message)
+            val msg = message.toJSString()
             val msgDesc = Descriptor(msg, attrs { +conf; -enum; +writ })
             Operations.definePropertyOrThrow(obj, "message".key(), msgDesc)
         }

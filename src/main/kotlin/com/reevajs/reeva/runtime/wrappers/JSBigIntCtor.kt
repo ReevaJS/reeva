@@ -2,8 +2,7 @@ package com.reevajs.reeva.runtime.wrappers
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
@@ -26,13 +25,13 @@ class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun evaluate(arguments: JSArguments): JSValue {
         if (arguments.newTarget != JSUndefined)
             Errors.BigInt.CtorCalledWithNew.throwTypeError()
-        val prim = Operations.toPrimitive(arguments.argument(0), Operations.ToPrimitiveHint.AsNumber)
+        val prim = arguments.argument(0).toPrimitive(Operations.ToPrimitiveHint.AsNumber)
         if (prim is JSNumber) {
             if (!Operations.isIntegralNumber(prim))
-                Errors.BigInt.Conversion(Operations.toPrintableString(prim)).throwRangeError()
+                Errors.BigInt.Conversion(prim.toString()).throwRangeError()
             return BigInteger.valueOf(prim.asLong).toValue()
         }
-        return Operations.toBigInt(prim)
+        return prim.toBigInt()
     }
 
     companion object {
@@ -41,8 +40,8 @@ class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @ECMAImpl("21.2.2.1")
         @JvmStatic
         fun asIntN(arguments: JSArguments): JSValue {
-            val bits = Operations.toIndex(arguments.argument(0))
-            val bigint = Operations.toBigInt(arguments.argument(1))
+            val bits = arguments.argument(0).toIndex()
+            val bigint = arguments.argument(1).toBigInt()
             if (bits == 0)
                 return JSBigInt.ZERO
             val modRhs = BigInteger.valueOf(2L).shiftLeft(bits - 1)
@@ -55,8 +54,8 @@ class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @ECMAImpl("21.2.2.2")
         @JvmStatic
         fun asUintN(arguments: JSArguments): JSValue {
-            val bits = Operations.toIndex(arguments.argument(0))
-            val bigint = Operations.toBigInt(arguments.argument(1))
+            val bits = arguments.argument(0).toIndex()
+            val bigint = arguments.argument(1).toBigInt()
             return bigint.number.mod(BigInteger.valueOf(2L).shiftLeft(bits - 1)).toValue()
         }
     }

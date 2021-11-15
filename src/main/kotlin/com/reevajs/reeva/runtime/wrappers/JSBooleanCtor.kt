@@ -8,16 +8,17 @@ import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toBoolean
 import com.reevajs.reeva.utils.toValue
 
 class JSBooleanCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Boolean", 1) {
     override fun evaluate(arguments: JSArguments): JSValue {
-        val bool = Operations.toBoolean(arguments.argument(0)).toValue()
+        val bool = arguments.argument(0).toBoolean().toValue()
         val newTarget = arguments.newTarget
         if (newTarget == JSUndefined)
             return bool
         if (newTarget == realm.booleanCtor)
-            return JSBooleanObject.create(Operations.toBoolean(arguments.argument(0)).toValue())
+            return JSBooleanObject.create(arguments.argument(0).toBoolean().toValue())
         return Operations.ordinaryCreateFromConstructor(
             newTarget,
             listOf(SlotName.BooleanData),

@@ -109,12 +109,12 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                 if (space.hasSlot(SlotName.NumberData)) {
                     space = space.toNumber()
                 } else if (space.hasSlot(SlotName.StringData)) {
-                    space = Operations.toString(space)
+                    space = space.toJSString()
                 }
             }
 
             if (space.isNumber) {
-                repeat(min(10, Operations.toIntegerOrInfinity(space).asInt)) {
+                repeat(min(10, space.toIntegerOrInfinity().asInt)) {
                     gap += " "
                 }
             } else if (space.isString) {
@@ -155,7 +155,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             if (value is JSObject) {
                 value = when {
                     value.hasSlot(SlotName.NumberData) -> value.toNumber()
-                    value.hasSlot(SlotName.StringData) -> Operations.toString(value)
+                    value.hasSlot(SlotName.StringData) -> value.toJSString()
                     value.hasSlot(SlotName.BooleanData) -> value.getSlotAs(SlotName.BooleanData)
                     value.hasSlot(SlotName.BigIntData) -> value.getSlotAs(SlotName.BigIntData)
                     else -> value
@@ -171,7 +171,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                 return quoteJSONString(value.asString)
             if (value.isNumber) {
                 if (value.isFinite) {
-                    return Operations.toString(value).string
+                    return value.toJSString().string
                 }
                 return "null"
             }
@@ -267,11 +267,11 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             val partial = mutableListOf<String>()
 
             Operations.enumerableOwnPropertyNames(value, PropertyKind.Key).forEach { property ->
-                val strP = serializeJSONProperty(state, Operations.toPropertyKey(property), value)
+                val strP = serializeJSONProperty(state, property.toPropertyKey(), value)
                 if (strP != null) {
                     partial.add(
                         buildString {
-                            append(quoteJSONString(Operations.toString(property).string))
+                            append(quoteJSONString(property.toJSString().string))
                             append(":")
                             if (state.gap.isNotEmpty())
                                 append(" ")

@@ -213,7 +213,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         @JvmStatic
         fun setDate(arguments: JSArguments): JSValue {
             val zdt = thisTimeValue(arguments.thisValue, "setDate") ?: return JSNumber.NaN
-            val days = Operations.toNumber(arguments.argument(0))
+            val days = arguments.argument(0).toNumber()
             ifAnyNotFinite(arguments.thisValue, days) { return it }
             return dateValueSetHelper(arguments.thisValue, zdt.plusDays(days.asLong))
         }
@@ -227,9 +227,9 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
                 Operations.defaultZone
             )
             expect(thisValue is JSDateObject)
-            val year = Operations.toNumber(arguments.argument(0))
-            val month = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMonth(arguments)
-            val date = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getDate(arguments)
+            val year = arguments.argument(0).toNumber()
+            val month = if (arguments.size > 1) arguments[1].toNumber() else getMonth(arguments)
+            val date = if (arguments.size > 2) arguments[2].toNumber() else getDate(arguments)
             ifAnyNotFinite(thisValue, year, month, date) { return it }
 
             return dateValueSetHelper(
@@ -247,13 +247,10 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
                 Operations.defaultZone
             )
             expect(thisValue is JSDateObject)
-            val hour = Operations.toNumber(arguments.argument(0))
-            val minute =
-                if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMinutes(arguments)
-            val second =
-                if (arguments.size > 2) Operations.toNumber(arguments[2]) else getSeconds(arguments)
-            val milli =
-                if (arguments.size > 3) Operations.toNumber(arguments[3]) else getMilliseconds(arguments)
+            val hour = arguments.argument(0).toNumber()
+            val minute = if (arguments.size > 1) arguments[1].toNumber() else getMinutes(arguments)
+            val second = if (arguments.size > 2) arguments[2].toNumber() else getSeconds(arguments)
+            val milli = if (arguments.size > 3) arguments[3].toNumber() else getMilliseconds(arguments)
             ifAnyNotFinite(thisValue, minute, second, milli) { return it }
 
             return dateValueSetHelper(
@@ -272,7 +269,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
                 Operations.defaultZone
             )
             expect(thisValue is JSDateObject)
-            val ms = Operations.toNumber(arguments.argument(0))
+            val ms = arguments.argument(0).toNumber()
             ifAnyNotFinite(thisValue, ms) { return it }
 
             return dateValueSetHelper(thisValue, zdt.withNano(ms.asInt))
@@ -287,11 +284,9 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
                 Operations.defaultZone
             )
             expect(thisValue is JSDateObject)
-            val minute = Operations.toNumber(arguments.argument(0))
-            val second =
-                if (arguments.size > 1) Operations.toNumber(arguments[1]) else getSeconds(arguments)
-            val milli =
-                if (arguments.size > 2) Operations.toNumber(arguments[2]) else getMilliseconds(arguments)
+            val minute = arguments.argument(0).toNumber()
+            val second = if (arguments.size > 1) arguments[1].toNumber() else getSeconds(arguments)
+            val milli = if (arguments.size > 2) arguments[2].toNumber() else getMilliseconds(arguments)
             ifAnyNotFinite(thisValue, minute, second, milli) { return it }
 
             return dateValueSetHelper(
@@ -309,8 +304,8 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
                 Operations.defaultZone
             )
             expect(thisValue is JSDateObject)
-            val month = Operations.toNumber(arguments.argument(0))
-            val date = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getDate(arguments)
+            val month = arguments.argument(0).toNumber()
+            val date = if (arguments.size > 1) arguments[1].toNumber() else getDate(arguments)
             ifAnyNotFinite(thisValue, month, date) { return it }
 
             return dateValueSetHelper(thisValue, zdt.withMonth(month.asInt).withDayOfMonth(date.asInt))
@@ -325,9 +320,9 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
                 Operations.defaultZone
             )
             expect(thisValue is JSDateObject)
-            val second = Operations.toNumber(arguments.argument(0))
+            val second = arguments.argument(0).toNumber()
             val milli =
-                if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMilliseconds(arguments)
+                if (arguments.size > 1) arguments[1].toNumber() else getMilliseconds(arguments)
             ifAnyNotFinite(thisValue, second, milli) { return it }
 
             return dateValueSetHelper(
@@ -342,7 +337,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             val thisValue = arguments.thisValue
             thisTimeValue(thisValue, "setTime")
             expect(thisValue is JSDateObject)
-            val time = Operations.toNumber(arguments.argument(0))
+            val time = arguments.argument(0).toNumber()
             ifAnyNotFinite(thisValue, time) { return it }
 
             val tv = ZonedDateTime.ofInstant(Instant.ofEpochMilli(time.asLong), Operations.defaultZone)
@@ -355,7 +350,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             val thisValue = arguments.thisValue
             thisUTCTimeValue(thisValue, "setUTCDate")
             expect(thisValue is JSDateObject)
-            val date = Operations.toNumber(arguments.argument(0))
+            val date = arguments.argument(0).toNumber()
             ifAnyNotFinite(thisValue, date) { return it }
             return dateValueSetHelper(
                 thisValue,
@@ -372,9 +367,9 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
                 ZoneOffset.UTC
             )
             expect(thisValue is JSDateObject)
-            val year = Operations.toNumber(arguments.argument(0))
-            val month = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMonth(arguments)
-            val date = if (arguments.size > 2) Operations.toNumber(arguments[2]) else getDate(arguments)
+            val year = arguments.argument(0).toNumber()
+            val month = if (arguments.size > 1) arguments[1].toNumber() else getMonth(arguments)
+            val date = if (arguments.size > 2) arguments[2].toNumber() else getDate(arguments)
             ifAnyNotFinite(thisValue, year, month, date) { return it }
 
             return dateValueSetHelper(
@@ -392,13 +387,10 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
                 ZoneOffset.UTC
             )
             expect(thisValue is JSDateObject)
-            val hour = Operations.toNumber(arguments.argument(0))
-            val minute =
-                if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMinutes(arguments)
-            val second =
-                if (arguments.size > 2) Operations.toNumber(arguments[2]) else getSeconds(arguments)
-            val milli =
-                if (arguments.size > 3) Operations.toNumber(arguments[3]) else getMilliseconds(arguments)
+            val hour = arguments.argument(0).toNumber()
+            val minute = if (arguments.size > 1) arguments[1].toNumber() else getMinutes(arguments)
+            val second = if (arguments.size > 2) arguments[2].toNumber() else getSeconds(arguments)
+            val milli = if (arguments.size > 3) arguments[3].toNumber() else getMilliseconds(arguments)
             ifAnyNotFinite(thisValue, hour, minute, second, milli) { return it }
 
             return dateValueSetHelper(
@@ -417,7 +409,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
                 ZoneOffset.UTC
             )
             expect(thisValue is JSDateObject)
-            val ms = Operations.toNumber(arguments.argument(0))
+            val ms = arguments.argument(0).toNumber()
             ifAnyNotFinite(thisValue, ms) { return it }
 
             return dateValueSetHelper(thisValue, zdt.withNano(ms.asInt))
@@ -432,11 +424,9 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
                 ZoneOffset.UTC
             )
             expect(thisValue is JSDateObject)
-            val minute = Operations.toNumber(arguments.argument(0))
-            val second =
-                if (arguments.size > 1) Operations.toNumber(arguments[1]) else getSeconds(arguments)
-            val milli =
-                if (arguments.size > 2) Operations.toNumber(arguments[2]) else getMilliseconds(arguments)
+            val minute = arguments.argument(0).toNumber()
+            val second = if (arguments.size > 1) arguments[1].toNumber() else getSeconds(arguments)
+            val milli = if (arguments.size > 2) arguments[2].toNumber() else getMilliseconds(arguments)
             ifAnyNotFinite(thisValue, minute, second, milli) { return it }
 
             return dateValueSetHelper(
@@ -454,8 +444,8 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
                 ZoneOffset.UTC
             )
             expect(thisValue is JSDateObject)
-            val month = Operations.toNumber(arguments.argument(0))
-            val date = if (arguments.size > 1) Operations.toNumber(arguments[1]) else getDate(arguments)
+            val month = arguments.argument(0).toNumber()
+            val date = if (arguments.size > 1) arguments[1].toNumber() else getDate(arguments)
             ifAnyNotFinite(thisValue, month, date) { return it }
 
             return dateValueSetHelper(thisValue, zdt.withMonth(month.asInt).withDayOfMonth(date.asInt))
@@ -470,9 +460,8 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
                 ZoneOffset.UTC
             )
             expect(thisValue is JSDateObject)
-            val second = Operations.toNumber(arguments.argument(0))
-            val milli =
-                if (arguments.size > 1) Operations.toNumber(arguments[1]) else getMilliseconds(arguments)
+            val second = arguments.argument(0).toNumber()
+            val milli = if (arguments.size > 1) arguments[1].toNumber() else getMilliseconds(arguments)
             ifAnyNotFinite(thisValue, second, milli) { return it }
 
             return dateValueSetHelper(
@@ -511,8 +500,8 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         @ECMAImpl("21.4.4.37")
         @JvmStatic
         fun toJSON(arguments: JSArguments): JSValue {
-            val obj = Operations.toObject(arguments.thisValue)
-            val tv = Operations.toPrimitive(obj, Operations.ToPrimitiveHint.AsNumber)
+            val obj = arguments.thisValue.toObject()
+            val tv = obj.toPrimitive(Operations.ToPrimitiveHint.AsNumber)
             if (tv is JSNumber && !tv.isFinite)
                 return JSNull
             return Operations.invoke(obj, "toISOString".toValue())
@@ -559,7 +548,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             if (arguments.thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("Date.prototype[Symbol.toPrimitive]").throwTypeError()
 
-            val hint = Operations.toString(arguments.argument(0)).string
+            val hint = arguments.argument(0).toJSString().string
 
             return when (hint) {
                 "string", "default" -> Operations.ordinaryToPrimitive(

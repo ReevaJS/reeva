@@ -10,6 +10,7 @@ import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.*
+import com.reevajs.reeva.runtime.toIntegerOrInfinity
 import com.reevajs.reeva.utils.*
 import kotlin.math.max
 
@@ -68,7 +69,7 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
                     if (targetLen.isPositiveInfinity) {
                         length = targetLen
                     } else if (!targetLen.isNegativeInfinity) {
-                        val targetLenAsInt = Operations.toIntegerOrInfinity(targetLen).let {
+                        val targetLenAsInt = targetLen.toIntegerOrInfinity().let {
                             ecmaAssert(it.isFinite)
                             it.asInt
                         }

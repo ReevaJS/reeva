@@ -10,6 +10,7 @@ import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.primitives.JSSymbol
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toJSString
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
@@ -40,7 +41,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             Errors.NotACtor("Symbol").throwTypeError()
 
         val description = arguments.argument(0).let {
-            if (it == JSUndefined) null else Operations.toString(it).string
+            if (it == JSUndefined) null else it.toJSString().string
         }
         return JSSymbol(description)
     }

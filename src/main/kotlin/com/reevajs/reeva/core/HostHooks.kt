@@ -80,7 +80,7 @@ open class HostHooks {
                 // will not have any handlers, and we can print a warning
                 if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled)) {
                     val result = promise.getSlotAs<JSValue>(SlotName.PromiseResult)
-                    println("\u001b[31mUnhandled promise rejection: ${Operations.toString(result)}\u001B[0m")
+                    println("\u001b[31mUnhandled promise rejection: ${result.toJSString()}\u001B[0m")
                 }
             }
         }

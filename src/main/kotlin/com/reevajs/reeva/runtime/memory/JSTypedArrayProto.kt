@@ -121,7 +121,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             expect(thisValue is JSObject)
             Operations.validateTypedArray(thisValue)
             val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength)
-            val relativeIndex = Operations.toIntegerOrInfinity(arguments.argument(0))
+            val relativeIndex = arguments.argument(0).toIntegerOrInfinity()
 
             val k = if (relativeIndex.isPositiveInfinity || relativeIndex.asLong >= 0) {
                 relativeIndex.asLong
@@ -245,7 +245,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
             val (callbackfn, thisArg) = arguments.takeArgs(0..1)
             if (!callbackfn.isCallable)
-                Errors.NotCallable(callbackfn.toPrintableString()).throwTypeError()
+                Errors.NotCallable(callbackfn.toString()).throwTypeError()
 
             val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength)
             val kept = mutableListOf<JSValue>()

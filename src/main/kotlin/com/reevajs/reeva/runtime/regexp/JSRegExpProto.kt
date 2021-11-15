@@ -45,7 +45,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
 //        Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher)
             return Operations.regExpBuiltinExec(
                 arguments.thisValue,
-                Operations.toString(arguments.argument(0))
+                arguments.argument(0).toJSString()
             )
         }
 
@@ -62,17 +62,17 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
                 Errors.IncompatibleMethodCall("RegExp.prototype.flags").throwTypeError()
             var result = ""
-            if (Operations.toBoolean(thisValue.get("global")))
+            if (thisValue.get("global").toBoolean())
                 result += "g"
-            if (Operations.toBoolean(thisValue.get("ignoreCase")))
+            if (thisValue.get("ignoreCase").toBoolean())
                 result += "i"
-            if (Operations.toBoolean(thisValue.get("multiline")))
+            if (thisValue.get("multiline").toBoolean())
                 result += "m"
-            if (Operations.toBoolean(thisValue.get("dotAll")))
+            if (thisValue.get("dotAll").toBoolean())
                 result += "s"
-            if (Operations.toBoolean(thisValue.get("unicode")))
+            if (thisValue.get("unicode").toBoolean())
                 result += "u"
-            if (Operations.toBoolean(thisValue.get("sticky")))
+            if (thisValue.get("sticky").toBoolean())
                 result += "s"
             return result.toValue()
         }
@@ -96,12 +96,12 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype[@@match]").throwTypeError()
 
-            val string = Operations.toString(arguments.argument(0))
-            val global = Operations.toBoolean(thisValue.get("global"))
+            val string = arguments.argument(0).toJSString()
+            val global = thisValue.get("global").toBoolean()
             if (!global)
                 return Operations.regExpExec(thisValue, string, "[@@match]")
 
-            val fullUnicode = Operations.toBoolean(thisValue.get("unicode"))
+            val fullUnicode = thisValue.get("unicode").toBoolean()
             Operations.set(thisValue, "lastIndex".key(), 0.toValue(), true)
             val arr = Operations.arrayCreate(0)
             var n = 0
@@ -109,10 +109,10 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
                 val result = Operations.regExpExec(thisValue, string, "[@@match]")
                 if (result == JSNull)
                     return if (n == 0) JSNull else arr
-                val matchStr = Operations.toString((result as JSObject).get(0))
+                val matchStr = (result as JSObject).get(0).toJSString()
                 Operations.createDataPropertyOrThrow(arr, n.key(), matchStr)
                 if (matchStr.string == "") {
-                    val thisIndex = Operations.toLength(thisValue.get("lastIndex")).asInt
+                    val thisIndex = thisValue.get("lastIndex").toLength().asInt
                     // TODO: AdvanceStringIndex
                     val nextIndex = thisIndex + 1
                     Operations.set(thisValue, "lastIndex".key(), nextIndex.toValue(), true)
@@ -128,10 +128,10 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype[@@matchAll]").throwTypeError()
 
-            val string = Operations.toString(arguments.argument(0))
+            val string = arguments.argument(0).toJSString()
             val ctor = Operations.speciesConstructor(thisValue, Agent.activeAgent.getActiveRealm().regExpCtor)
-            val flags = Operations.toString(thisValue.get("flags"))
-            val lastIndex = Operations.toLength(thisValue.get("lastIndex"))
+            val flags = thisValue.get("flags").toJSString()
+            val lastIndex = thisValue.get("lastIndex").toLength()
 
             val matcher = Operations.construct(ctor, listOf(thisValue, flags))
             expect(matcher is JSObject)
@@ -163,7 +163,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype[@@search]").throwTypeError()
 
-            val string = Operations.toString(arguments.argument(0))
+            val string = arguments.argument(0).toJSString()
             val previousLastIndex = thisValue.get("lastIndex")
             if (previousLastIndex.asInt != 0)
                 Operations.set(thisValue, "lastIndex".key(), 0.toValue(), true)
@@ -214,7 +214,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             val thisValue = arguments.thisValue
             if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
                 Errors.IncompatibleMethodCall("RegExp.prototype.test").throwTypeError()
-            val string = Operations.toString(arguments.argument(0))
+            val string = arguments.argument(0).toJSString()
             val match = Operations.regExpExec( thisValue, string, ".test")
             return (match != JSNull).toValue()
         }
@@ -225,8 +225,8 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             val thisValue = arguments.thisValue
             if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
                 Errors.IncompatibleMethodCall("RegExp.prototype.toString").throwTypeError()
-            val pattern = Operations.toString(thisValue.get("source"))
-            val flags = Operations.toString(thisValue.get("flags"))
+            val pattern = thisValue.get("source").toJSString()
+            val flags = thisValue.get("flags").toJSString()
             return buildString {
                 append('/')
                 append(pattern.string)

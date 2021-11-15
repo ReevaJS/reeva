@@ -9,6 +9,7 @@ import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.runtime.toObject
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
@@ -26,7 +27,7 @@ class JSGeneratorObjectProto(realm: Realm) : JSObject(realm, realm.iteratorProto
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSGeneratorObjectProto(realm).initialize()
 
         private fun thisGeneratorObject(value: JSValue, method: String): JSGeneratorObject {
-            val obj = Operations.toObject(value)
+            val obj = value.toObject()
             if (obj !is JSGeneratorObject)
                 Errors.IncompatibleMethodCall("Generator.prototype.$method").throwTypeError()
             return obj

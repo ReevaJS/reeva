@@ -175,7 +175,7 @@ open class JSGlobalObject protected constructor(
         @JvmStatic
         fun parseInt(arguments: JSArguments): JSValue {
             var inputString = Operations.trimString(
-                Operations.toString(arguments.argument(0)),
+                arguments.argument(0).toJSString(),
                 Operations.TrimType.Start,
             )
             val sign = when {
@@ -191,7 +191,7 @@ open class JSGlobalObject protected constructor(
             }
 
             var stripPrefix = true
-            var radix = Operations.toInt32(arguments.argument(1)).asInt.let {
+            var radix = arguments.argument(1).toInt32().asInt.let {
                 if (it != 0) {
                     if (it !in 2..36)
                         return JSNumber.NaN

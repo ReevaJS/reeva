@@ -10,6 +10,7 @@ import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSSymbol
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toJSString
 
 class JSConsoleProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {
@@ -27,7 +28,7 @@ class JSConsoleProto private constructor(realm: Realm) : JSObject(realm, realm.o
                     if (it is JSSymbol) {
                         it.descriptiveString()
                     } else {
-                        val str = Operations.toString(it).string
+                        val str = it.toJSString().string
                         if (it is JSArrayObject) "[$str]" else str
                     }
                 }

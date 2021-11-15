@@ -2,8 +2,7 @@ package com.reevajs.reeva.runtime.wrappers.strings
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
@@ -30,7 +29,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             val value = arguments.argument(0)
             if (newTarget == JSUndefined && value is JSSymbol)
                 return value.descriptiveString().toValue()
-            Operations.toString(value)
+            value.toJSString()
         }
 
         if (newTarget == JSUndefined)
@@ -51,7 +50,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         fun fromCharCode(arguments: JSArguments): JSValue {
             return buildString {
                 arguments.forEach {
-                    appendCodePoint(Operations.toUint16(it).asInt)
+                    appendCodePoint(it.toUint16().asInt)
                 }
             }.toValue()
         }
@@ -61,9 +60,9 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         fun fromCodePoint(arguments: JSArguments): JSValue {
             return buildString {
                 arguments.forEach {
-                    val nextCP = Operations.toNumber(it)
+                    val nextCP = it.toNumber()
                     if (!Operations.isIntegralNumber(nextCP))
-                        Errors.Strings.InvalidCodepoint(Operations.toPrintableString(nextCP)).throwRangeError()
+                        Errors.Strings.InvalidCodepoint(nextCP.toString()).throwRangeError()
                     val value = nextCP.asInt
                     if (value < 0 || value > 0x10ffff)
                         Errors.Strings.InvalidCodepoint(value.toString()).throwRangeError()

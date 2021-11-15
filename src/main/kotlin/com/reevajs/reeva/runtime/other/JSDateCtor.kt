@@ -45,13 +45,13 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
                 if (arg is JSObject && arg.hasSlot(SlotName.DateValue)) {
                     arg.getSlot(SlotName.DateValue) ?: return JSDateObject.create(null)
                 } else {
-                    val prim = Operations.toPrimitive(arg)
+                    val prim = arg.toPrimitive()
                     if (prim is JSString) {
                         parseHelper(arguments)
                     } else {
                         Operations.timeClip(
                             ZonedDateTime.ofInstant(
-                                Instant.ofEpochMilli(Operations.toNumber(prim).asLong),
+                                Instant.ofEpochMilli(prim.toNumber().asLong),
                                 Operations.defaultZone
                             )
                         )
@@ -62,17 +62,17 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
                 fun getArg(index: Int): Long? {
                     if (arguments.size <= index)
                         return 0L
-                    val value = Operations.toNumber(arguments[index])
+                    val value = arguments[index].toNumber()
                     if (!value.isFinite)
                         return null
                     return value.asLong
                 }
 
-                val yearArg = Operations.toNumber(arguments.argument(0))
+                val yearArg = arguments.argument(0).toNumber()
                 val year = if (yearArg.isNaN) {
                     return JSNumber.NaN
                 } else {
-                    val yi = Operations.toIntegerOrInfinity(yearArg).asLong
+                    val yi = yearArg.toIntegerOrInfinity().asLong
                     (if (yi in 0..99) 1900 + yi else yearArg.asLong) - 1970
                 }
 
@@ -120,7 +120,7 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
         }
 
         private fun parseHelper(arguments: JSArguments): ZonedDateTime? {
-            val arg = Operations.toString(arguments.argument(0)).string
+            val arg = arguments.argument(0).toJSString().string
 
             val result = dateTimeStringFormatter.parse(arg)
 
@@ -150,17 +150,17 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
             fun getArg(index: Int, offset: Int = 0): Long? {
                 if (arguments.size <= index)
                     return 0L
-                val value = Operations.toNumber(arguments[index])
+                val value = arguments[index].toNumber()
                 if (!value.isFinite)
                     return null
                 return value.asLong + offset
             }
 
-            val yearArg = Operations.toNumber(arguments.argument(0))
+            val yearArg = arguments.argument(0).toNumber()
             val year = if (!yearArg.isFinite) {
                 return JSNumber.NaN
             } else {
-                val yi = Operations.toIntegerOrInfinity(yearArg).asLong
+                val yi = yearArg.toIntegerOrInfinity().asLong
                 (if (yi in 0..99) 1900 + yi else yearArg.asLong) - 1970
             }
 

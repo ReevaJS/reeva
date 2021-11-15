@@ -10,6 +10,7 @@ import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toJSString
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
@@ -40,13 +41,13 @@ open class JSErrorProto protected constructor(
             val name = thisValue.get("name").let {
                 if (it == JSUndefined) {
                     "Error".toValue()
-                } else Operations.toString(it)
+                } else it.toJSString()
             }
 
             val message = thisValue.get("message").let {
                 if (it == JSUndefined) {
                     "".toValue()
-                } else Operations.toString(it)
+                } else it.toJSString()
             }
 
             if (name.string.isEmpty())

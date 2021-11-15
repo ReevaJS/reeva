@@ -53,7 +53,7 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
     private fun numberFromArg(argument: JSValue): Double {
         return if (!argument.isUndefined) {
-            val prim = Operations.toNumeric(argument)
+            val prim = argument.toNumeric()
             if (prim is JSBigInt)
                 return prim.number.toDouble()
             prim.asDouble

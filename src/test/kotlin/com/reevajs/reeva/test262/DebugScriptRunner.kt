@@ -2,10 +2,8 @@ package com.reevajs.reeva.test262
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.FileSourceInfo
-import com.reevajs.reeva.runtime.toPrintableString
 import java.io.File
 
 val test262Helpers = listOf(
@@ -37,7 +35,7 @@ fun main() {
     } else {
         try {
             val result = executable.value().execute()
-            println("Executable result: ${result.toPrintableString()}")
+            println("Executable result: $result")
         } catch (e: ThrowException) {
             agent.errorReporter.reportRuntimeError(sourceInfo, e)
         } catch (e: Throwable) {

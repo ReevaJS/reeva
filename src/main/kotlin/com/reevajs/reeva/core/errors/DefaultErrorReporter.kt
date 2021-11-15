@@ -6,7 +6,6 @@ import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.toPrintableString
 import com.reevajs.reeva.utils.key
 import java.io.PrintStream
 import kotlin.math.max
@@ -61,7 +60,7 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter() {
             }
             out.println(cause.get("message"))
         } else {
-            out.println(cause.toPrintableString())
+            out.println(cause.toString())
         }
 
         for (frame in stackFrames.asReversed()) {

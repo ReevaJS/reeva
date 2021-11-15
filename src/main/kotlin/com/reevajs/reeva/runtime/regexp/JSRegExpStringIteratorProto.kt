@@ -11,6 +11,8 @@ import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toJSString
+import com.reevajs.reeva.runtime.toLength
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.key
@@ -49,9 +51,9 @@ class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(r
             expect(match is JSObject)
 
             return if (thisValue.global) {
-                val matchStr = Operations.toString(match.get(0)).string
+                val matchStr = match.get(0).toJSString().string
                 if (matchStr == "") {
-                    val thisIndex = Operations.toLength(thisValue.get("lastIndex")).asInt
+                    val thisIndex = thisValue.get("lastIndex").toLength().asInt
                     // TODO: AdvanceStringIndex
                     val nextIndex = thisIndex + 1
                     Operations.set(thisValue, "lastIndex".key(), nextIndex.toValue(), true)

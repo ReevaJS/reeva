@@ -32,7 +32,7 @@ class JSTypedArrayCtor private constructor(realm: Realm) : JSNativeFunction(real
 
             val mapping = if (mapfn != JSUndefined) {
                 if (!Operations.isCallable(mapfn))
-                    Errors.NotCallable(mapfn.toPrintableString()).throwTypeError()
+                    Errors.NotCallable(mapfn.toString()).throwTypeError()
                 true
             } else false
 
@@ -53,7 +53,7 @@ class JSTypedArrayCtor private constructor(realm: Realm) : JSNativeFunction(real
             }
 
             val arrayLike = source.toObject()
-            val len = arrayLike.lengthOfArrayLike()
+            val len = Operations.lengthOfArrayLike(arrayLike)
             val targetObj = Operations.typedArrayCreate(thisValue, JSArguments(listOf(len.toValue())))
             for (index in 0 until len) {
                 val value = arrayLike.get(index)

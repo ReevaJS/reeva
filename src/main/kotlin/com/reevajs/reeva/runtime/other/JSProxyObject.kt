@@ -13,6 +13,8 @@ import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toBoolean
+import com.reevajs.reeva.runtime.toJSString
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
@@ -74,8 +76,7 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("setPrototypeOf") {
             return target.setPrototype(newPrototype)
         }
-        val booleanTrapResult =
-            Operations.toBoolean(Operations.call(trap, handler, listOf(target, newPrototype)))
+        val booleanTrapResult = Operations.call(trap, handler, listOf(target, newPrototype)).toBoolean()
         if (!booleanTrapResult)
             return false
         if (target.isExtensible())
@@ -90,7 +91,7 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("isExtensible") {
             return target.isExtensible()
         }
-        val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target)))
+        val booleanTrapResult = Operations.call(trap, handler, listOf(target)).toBoolean()
         if (booleanTrapResult != target.isExtensible())
             Errors.Proxy.IsExtensible.DifferentReturn.throwTypeError()
         return booleanTrapResult
@@ -100,7 +101,7 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("preventExtensions") {
             return target.preventExtensions()
         }
-        val booleanTrapResult = Operations.toBoolean(Operations.call(trap, handler, listOf(target)))
+        val booleanTrapResult = Operations.call(trap, handler, listOf(target)).toBoolean()
         if (booleanTrapResult && target.isExtensible())
             Errors.Proxy.PreventExtensions.ExtensibleReturn.throwTypeError()
         return booleanTrapResult
@@ -143,8 +144,7 @@ class JSProxyObject private constructor(
         }
 
         val descObj = descriptor.toObject(target)
-        val booleanTrapResult =
-            Operations.toBoolean(Operations.call(trap, handler, listOf(target, property.asValue, descObj)))
+        val booleanTrapResult = Operations.call(trap, handler, listOf(target, property.asValue, descObj)).toBoolean()
         if (!booleanTrapResult)
             return false
         val targetDesc = target.getOwnPropertyDescriptor(property)
@@ -174,7 +174,7 @@ class JSProxyObject private constructor(
             return target.hasProperty(property)
         }
         val booleanTrapResult =
-            Operations.toBoolean(Operations.call(trap, handler, listOf(target, property.asValue)))
+            Operations.call(trap, handler, listOf(target, property.asValue)).toBoolean()
         if (!booleanTrapResult) {
             val targetDesc = target.getOwnPropertyDescriptor(property)
             if (targetDesc != null) {
@@ -209,8 +209,7 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("set") {
             return target.set(property, value, receiver)
         }
-        val trapResult =
-            Operations.toBoolean(Operations.call(trap, handler, listOf(target, property.asValue, receiver)))
+        val trapResult = Operations.call(trap, handler, listOf(target, property.asValue, receiver)).toBoolean()
         if (!trapResult)
             return false
         val targetDesc = target.getOwnPropertyDescriptor(property)
@@ -227,13 +226,11 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("deleteProperty") {
             return target.delete(property)
         }
-        val booleanTrapResult = Operations.toBoolean(
-            Operations.call(
-                trap,
-                handler,
-                listOf(target, Operations.toString(property.asValue))
-            )
-        )
+        val booleanTrapResult = Operations.call(
+            trap,
+            handler,
+            listOf(target, property.asValue.toJSString())
+        ).toBoolean()
         if (!booleanTrapResult)
             return false
         val targetDesc = target.getOwnPropertyDescriptor(property) ?: return true

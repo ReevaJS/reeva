@@ -1,8 +1,7 @@
 package com.reevajs.reeva.jvmcompat
 
 import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.collections.JSMapObject
 import com.reevajs.reeva.runtime.collections.JSSetObject
@@ -165,10 +164,10 @@ object JVMValueMapper {
                 Float::class.javaObjectType, Long::class.javaPrimitiveType, Long::class.javaObjectType,
                 Int::class.javaPrimitiveType, Int::class.javaObjectType, Short::class.javaPrimitiveType,
                 Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType ->
-                    jsToJvm(Operations.toNumber(value), targetClass)
+                    jsToJvm(value.toNumber(), targetClass)
                 Char::class.javaPrimitiveType, Char::class.javaObjectType -> if (value.string.length == 1) {
                     value.string[0]
-                } else jsToJvm(Operations.toNumber(value), targetClass)
+                } else jsToJvm(value.toNumber(), targetClass)
                 else -> errorIfIncompatible(value, targetClass)
             }
         }
@@ -180,7 +179,7 @@ object JVMValueMapper {
         }
         is JSArrayObject -> {
             if (targetClass == String::class.java) {
-                Operations.toString(value).string
+                value.toJSString().string
             } else if (List::class.java.isAssignableFrom(targetClass)) {
                 val listInstance: MutableList<Any?> = if (targetClass == List::class.java) {
                     mutableListOf()
@@ -238,12 +237,12 @@ object JVMValueMapper {
         is JSObject -> {
             when (targetClass) {
                 Any::class.java -> TODO("convert to map?")
-                String::class.java -> Operations.toString(value).string
+                String::class.java -> value.toJSString().string
                 Double::class.javaPrimitiveType, Double::class.javaObjectType, Float::class.javaPrimitiveType,
                 Float::class.javaObjectType, Long::class.javaPrimitiveType, Long::class.javaObjectType,
                 Int::class.javaPrimitiveType, Int::class.javaObjectType, Short::class.javaPrimitiveType,
                 Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType -> jsToJvm(
-                    Operations.toPrimitive(value, Operations.ToPrimitiveHint.AsNumber),
+                    value.toPrimitive(Operations.ToPrimitiveHint.AsNumber),
                     targetClass
                 )
                 else -> errorIfIncompatible(value, targetClass)

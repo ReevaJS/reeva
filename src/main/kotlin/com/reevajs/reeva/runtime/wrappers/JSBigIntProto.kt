@@ -43,7 +43,7 @@ class JSBigIntProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             val bigInt = thisBigIntValue(arguments.thisValue, "toString")
             val radixArg = arguments.argument(0)
             val radix = if (radixArg != JSUndefined) {
-                Operations.toIntegerOrInfinity(arguments.argument(0)).asInt
+                arguments.argument(0).toIntegerOrInfinity().asInt
             } else 10
             if (radix < 2 || radix > 36)
                 Errors.Number.InvalidRadix(radix).throwRangeError()

@@ -80,7 +80,7 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
             val ctor = Operations.speciesConstructor(thisValue, Agent.activeAgent.getActiveRealm().arrayBufferCtor)
             val new = Operations.construct(ctor, listOf(newLength.toValue()))
             if (!Operations.requireInternalSlot(new, SlotName.ArrayBufferData))
-                Errors.ArrayBuffer.BadSpecies(new.toPrintableString()).throwTypeError()
+                Errors.ArrayBuffer.BadSpecies(new.toString()).throwTypeError()
 
             if (Operations.isSharedArrayBuffer(new))
                 Errors.TODO("ArrayBuffer.prototype.slice isSharedArrayBuffer 2").throwTypeError()

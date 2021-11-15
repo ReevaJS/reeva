@@ -2,8 +2,7 @@ package com.reevajs.reeva.runtime.arrays
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -30,7 +29,7 @@ open class JSArrayObject protected constructor(
 
     fun setLength(thisValue: JSValue, newLength: JSValue): JSValue {
         expect(thisValue is JSObject)
-        thisValue.indexedProperties.setArrayLikeSize(Operations.toLength(newLength).asLong)
+        thisValue.indexedProperties.setArrayLikeSize(newLength.toLength().asLong)
         return JSUndefined
     }
 
@@ -42,10 +41,10 @@ open class JSArrayObject protected constructor(
                 return super.defineOwnProperty(property, descriptor)
             val value = descriptor.getActualValue(this)
             val newLenDesc = descriptor.copy()
-            val newLenObj = Operations.toUint32(value)
-            val numberLen = Operations.toNumeric(value)
+            val newLenObj = value.toUint32()
+            val numberLen = value.toNumeric()
             if (!newLenObj.sameValue(numberLen))
-                Errors.InvalidArrayLength(Operations.toPrintableString(value)).throwRangeError()
+                Errors.InvalidArrayLength(value.toString()).throwRangeError()
 
             val newLen = newLenObj.asLong
             newLenDesc.setActualValue(this, newLenObj)

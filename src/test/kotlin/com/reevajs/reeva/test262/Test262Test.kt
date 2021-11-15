@@ -8,9 +8,7 @@ import com.reevajs.reeva.core.lifecycle.FileSourceInfo
 import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.ParsingError
-import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
-import com.reevajs.reeva.runtime.toPrintableString
+import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.transformer.opcodes.Throw
 import com.reevajs.reeva.utils.Result
 import com.reevajs.reeva.utils.unreachable
@@ -123,8 +121,8 @@ class Test262Test(
             }
         }
 
-        Assertions.assertTrue(!Operations.toBoolean(doneFunction.result)) {
-            "Expected \$DONE to be called with falsy value, received ${Operations.toString(doneFunction.result)}"
+        Assertions.assertTrue(!doneFunction.result.toBoolean()) {
+            "Expected \$DONE to be called with falsy value, received ${doneFunction.result.toJSString()}"
         }
     }
 

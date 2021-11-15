@@ -9,6 +9,7 @@ import com.reevajs.reeva.runtime.primitives.JSAccessor
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.runtime.primitives.JSNativeProperty
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toBoolean
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.toValue
@@ -235,17 +236,17 @@ data class Descriptor constructor(
             val descriptor = Descriptor(JSEmpty, 0)
             if (obj.hasProperty("enumerable")) {
                 descriptor.setHasEnumerable()
-                descriptor.setEnumerable(Operations.toBoolean(obj.get("enumerable")))
+                descriptor.setEnumerable(obj.get("enumerable").toBoolean())
             }
 
             if (obj.hasProperty("configurable")) {
                 descriptor.setHasConfigurable()
-                descriptor.setConfigurable(Operations.toBoolean(obj.get("configurable")))
+                descriptor.setConfigurable(obj.get("configurable").toBoolean())
             }
 
             if (obj.hasProperty("writable")) {
                 descriptor.setHasWritable()
-                descriptor.setWritable(Operations.toBoolean(obj.get("writable")))
+                descriptor.setWritable(obj.get("writable").toBoolean())
             }
 
             if (obj.hasProperty("value")) {

@@ -2,8 +2,7 @@ package com.reevajs.reeva.runtime.objects
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
@@ -55,7 +54,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             return Operations.ordinaryCreateFromConstructor(newTarget, defaultProto = Realm::objectProto)
         if (value.isUndefined || value.isNull)
             return JSObject.create()
-        return Operations.toObject(value)
+        return value.toObject()
     }
 
     companion object {
@@ -64,13 +63,13 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @ECMAImpl("20.1.2.1")
         @JvmStatic
         fun assign(arguments: JSArguments): JSValue {
-            val target = Operations.toObject(arguments.argument(0))
+            val target = arguments.argument(0).toObject()
             if (arguments.size == 1)
                 return target
             arguments.subList(1, arguments.size).forEach {
                 if (it == JSUndefined || it == JSNull)
                     return@forEach
-                val from = Operations.toObject(it)
+                val from = it.toObject()
                 from.ownPropertyKeys().forEach { key ->
                     val desc = from.getOwnPropertyDescriptor(key)
                     if (desc != null && desc.isEnumerable) {
@@ -112,7 +111,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             val obj = arguments.argument(0)
             if (obj !is JSObject)
                 Errors.Object.DefinePropertyBadArgType.throwTypeError()
-            val key = Operations.toPropertyKey(arguments.argument(1))
+            val key = arguments.argument(1).toPropertyKey()
             val desc = Descriptor.fromObject(arguments.argument(2))
             Operations.definePropertyOrThrow(obj, key.asValue, desc)
             return obj
@@ -121,7 +120,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @ECMAImpl("20.1.2.5")
         @JvmStatic
         fun entries(arguments: JSArguments): JSValue {
-            val obj = Operations.toObject(arguments.argument(0))
+            val obj = arguments.argument(0).toObject()
             val names = Operations.enumerableOwnPropertyNames(obj, PropertyKind.KeyValue)
             return Operations.createArrayFromList(names)
         }
@@ -142,8 +141,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @ECMAImpl("20.1.2.7")
         @JvmStatic
         fun fromEntries(arguments: JSArguments): JSValue {
-            val iterable = arguments.argument(0)
-            Operations.requireObjectCoercible(iterable)
+            val iterable = arguments.argument(0).requireObjectCoercible()
             val obj = JSObject.create()
             val adder = JSRunnableFunction.create("", 0) { args ->
                 val key = args.argument(0)
@@ -158,8 +156,8 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @ECMAImpl("20.1.2.8")
         @JvmStatic
         fun getOwnPropertyDescriptor(arguments: JSArguments): JSValue {
-            val obj = Operations.toObject(arguments.argument(0))
-            val key = Operations.toPropertyKey(arguments.argument(1))
+            val obj = arguments.argument(0).toObject()
+            val key = arguments.argument(1).toPropertyKey()
             val desc = obj.getOwnPropertyDescriptor(key) ?: return JSUndefined
             return desc.toObject(obj)
         }
@@ -167,7 +165,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @ECMAImpl("20.1.2.9")
         @JvmStatic
         fun getOwnPropertyDescriptors(arguments: JSArguments): JSValue {
-            val obj = Operations.toObject(arguments.argument(0))
+            val obj = arguments.argument(0).toObject()
             val descriptors = JSObject.create()
             obj.ownPropertyKeys().forEach { key ->
                 val desc = obj.getOwnPropertyDescriptor(key)!!
@@ -192,7 +190,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @ECMAImpl("20.1.2.12")
         @JvmStatic
         fun getPrototypeOf(arguments: JSArguments): JSValue {
-            val obj = Operations.toObject(arguments.argument(0))
+            val obj = arguments.argument(0).toObject()
             return obj.getPrototype()
         }
 
@@ -232,7 +230,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @ECMAImpl("20.1.2.17")
         @JvmStatic
         fun keys(arguments: JSArguments): JSValue {
-            val obj = Operations.toObject(arguments.argument(0))
+            val obj = arguments.argument(0).toObject()
             val nameList = Operations.enumerableOwnPropertyNames(obj, PropertyKind.Key)
             return Operations.createArrayFromList(nameList)
         }
@@ -266,8 +264,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @ECMAImpl("20.1.2.21")
         @JvmStatic
         fun setPrototypeOf(arguments: JSArguments): JSValue {
-            val obj = arguments.argument(0)
-            Operations.requireObjectCoercible(obj)
+            val obj = arguments.argument(0).requireObjectCoercible()
             val proto = arguments.argument(1)
             if (proto !is JSObject && proto != JSNull)
                 Errors.Object.SetPrototypeOfBadArgType.throwTypeError()
@@ -281,13 +278,13 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @ECMAImpl("20.1.2.22")
         @JvmStatic
         fun values(arguments: JSArguments): JSValue {
-            val obj = Operations.toObject(arguments.argument(0))
+            val obj = arguments.argument(0).toObject()
             val nameList = Operations.enumerableOwnPropertyNames(obj, PropertyKind.Value)
             return Operations.createArrayFromList(nameList)
         }
 
         private fun getOwnPropertyKeys(target: JSValue, isSymbols: Boolean): JSValue {
-            val obj = Operations.toObject(target)
+            val obj = target.toObject()
             val keyList = mutableListOf<JSValue>()
             obj.ownPropertyKeys().forEach { key ->
                 if (!key.isSymbol xor isSymbols)
@@ -298,7 +295,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         @ECMAImpl("19.1.2.3.1")
         private fun objectDefineProperties(target: JSObject, properties: JSValue): JSObject {
-            val props = Operations.toObject(properties)
+            val props = properties.toObject()
             val descriptors = mutableListOf<Pair<PropertyKey, Descriptor>>()
             props.ownPropertyKeys().forEach { key ->
                 val propDesc = props.getOwnPropertyDescriptor(key)!!

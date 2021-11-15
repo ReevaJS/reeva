@@ -9,6 +9,8 @@ import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSNumber
+import com.reevajs.reeva.runtime.toNumber
+import com.reevajs.reeva.runtime.toUint32
 import com.reevajs.reeva.utils.toValue
 import kotlin.math.pow
 import kotlin.random.Random
@@ -71,64 +73,64 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         @ECMAImpl("21.3.2.1")
         @JvmStatic
         fun abs(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.abs(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.2")
         @JvmStatic
         fun acos(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.acos(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.3")
         @JvmStatic
         fun acosh(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.acosh(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.4")
         @JvmStatic
         fun asin(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.asin(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.5")
         @JvmStatic
         fun asinh(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.asinh(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.6")
         @JvmStatic
         fun atan(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.atan(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.7")
         @JvmStatic
         fun atanh(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.atanh(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.8")
         @JvmStatic
         fun atan2(arguments: JSArguments): JSValue {
-            val y = Operations.toNumber(arguments.argument(0))
-            val x = Operations.toNumber(arguments.argument(1))
+            val y = arguments.argument(0).toNumber()
+            val x = arguments.argument(1).toNumber()
             return kotlin.math.atan2(y.asDouble, x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.9")
         @JvmStatic
         fun cbrt(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             val doubleVal = x.asDouble
             if (doubleVal.isNaN() || doubleVal == 0.0 || doubleVal.isInfinite())
                 return x
@@ -138,63 +140,63 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         @ECMAImpl("21.3.2.10")
         @JvmStatic
         fun ceil(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.ceil(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.11")
         @JvmStatic
         fun clz32(arguments: JSArguments): JSValue {
-            val x = Operations.toUint32(arguments.argument(0))
+            val x = arguments.argument(0).toUint32()
             return x.asInt.toUInt().countLeadingZeroBits().toValue()
         }
 
         @ECMAImpl("21.3.2.12")
         @JvmStatic
         fun cos(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.cos(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.13")
         @JvmStatic
         fun cosh(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.cosh(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.14")
         @JvmStatic
         fun exp(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.exp(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.15")
         @JvmStatic
         fun expm1(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.expm1(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.16")
         @JvmStatic
         fun floor(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.floor(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.17")
         @JvmStatic
         fun fround(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return x.asDouble.toFloat().toDouble().toValue()
         }
 
         @ECMAImpl("21.3.2.18")
         @JvmStatic
         fun hypot(arguments: JSArguments): JSValue {
-            val coerced = arguments.map { Operations.toNumber(it) }
+            val coerced = arguments.map { it.toNumber() }
             var onlyZero = true
 
             // The spec says the first parameter that is NaN or Infinity should be returned,
@@ -218,8 +220,8 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         @ECMAImpl("21.3.2.19")
         @JvmStatic
         fun imul(arguments: JSArguments): JSValue {
-            val a = Operations.toUint32(arguments.argument(0))
-            val b = Operations.toUint32(arguments.argument(1))
+            val a = arguments.argument(0).toUint32()
+            val b = arguments.argument(1).toUint32()
             val product = (a.asInt * b.asInt) % Operations.MAX_32BIT_INT
             if (product >= Operations.MAX_31BIT_INT)
                 return (product - Operations.MAX_32BIT_INT).toValue()
@@ -229,28 +231,28 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         @ECMAImpl("21.3.2.20")
         @JvmStatic
         fun log(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.ln(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.21")
         @JvmStatic
         fun log1p(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.ln1p(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.22")
         @JvmStatic
         fun log10(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.log10(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.23")
         @JvmStatic
         fun log2(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.log2(x.asDouble).toValue()
         }
 
@@ -259,7 +261,7 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         fun max(arguments: JSArguments): JSValue {
             if (arguments.isEmpty())
                 return JSNumber.NEGATIVE_INFINITY
-            val coerced = arguments.map { Operations.toNumber(it) }
+            val coerced = arguments.map { it.toNumber() }
             return coerced.maxOf { it.asDouble }.toValue()
         }
 
@@ -268,15 +270,15 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         fun min(arguments: JSArguments): JSValue {
             if (arguments.isEmpty())
                 return JSNumber.POSITIVE_INFINITY
-            val coerced = arguments.map { Operations.toNumber(it) }
+            val coerced = arguments.map { it.toNumber() }
             return coerced.minOf { it.asDouble }.toValue()
         }
 
         @ECMAImpl("21.3.2.26")
         @JvmStatic
         fun pow(arguments: JSArguments): JSValue {
-            val base = Operations.toNumber(arguments.argument(0))
-            val exp = Operations.toNumber(arguments.argument(1))
+            val base = arguments.argument(0).toNumber()
+            val exp = arguments.argument(1).toNumber()
             return base.asDouble.pow(exp.asDouble).toValue()
         }
 
@@ -289,7 +291,7 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         @ECMAImpl("21.3.2.28")
         @JvmStatic
         fun round(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             val doubleVal = x.asDouble
             if (doubleVal < 0.0 && doubleVal >= -0.5)
                 return JSNumber.NEGATIVE_ZERO
@@ -302,49 +304,49 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         @ECMAImpl("21.3.2.29")
         @JvmStatic
         fun sign(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.sign(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.30")
         @JvmStatic
         fun sin(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.sin(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.31")
         @JvmStatic
         fun sinh(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.sinh(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.32")
         @JvmStatic
         fun sqrt(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.sqrt(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.33")
         @JvmStatic
         fun tan(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.tan(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.34")
         @JvmStatic
         fun tanh(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.tanh(x.asDouble).toValue()
         }
 
         @ECMAImpl("21.3.2.35")
         @JvmStatic
         fun trunc(arguments: JSArguments): JSValue {
-            val x = Operations.toNumber(arguments.argument(0))
+            val x = arguments.argument(0).toNumber()
             return kotlin.math.truncate(x.asDouble).toValue()
         }
     }

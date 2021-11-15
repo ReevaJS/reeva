@@ -11,6 +11,7 @@ import com.reevajs.reeva.runtime.functions.JSRunnableFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toJSString
 import com.reevajs.reeva.utils.*
 import java.lang.reflect.Modifier
 
@@ -45,10 +46,8 @@ class JSClassObject private constructor(
 
         val matchingCtors = JVMValueMapper.findMatchingSignature(ctors, arguments)
 
-        if (matchingCtors.isEmpty())
-            Errors.JVMClass.NoValidCtor(className, arguments.map { Operations.toString(it).string })
-        if (matchingCtors.size > 1)
-            Errors.JVMClass.AmbiguousCtors(className, arguments.map { Operations.toString(it).string })
+        if (matchingCtors.isEmpty()) Errors.JVMClass.NoValidCtor(className, arguments.map { it.toJSString().string })
+        if (matchingCtors.size > 1) Errors.JVMClass.AmbiguousCtors(className, arguments.map { it.toJSString().string })
 
         val targetCtor = matchingCtors[0]
         val mappedArguments = JVMValueMapper.coerceArgumentsToSignature(realm, targetCtor, arguments).toTypedArray()
@@ -140,9 +139,9 @@ class JSClassObject private constructor(
                 val matchingMethods = JVMValueMapper.findMatchingSignature(availableMethods, arguments)
 
                 if (matchingMethods.isEmpty())
-                    Errors.JVMClass.NoValidMethod(className, arguments.map { Operations.toString(it).string })
+                    Errors.JVMClass.NoValidMethod(className, arguments.map { it.toJSString().string })
                 if (matchingMethods.size > 1)
-                    Errors.JVMClass.AmbiguousMethods(className, arguments.map { Operations.toString(it).string })
+                    Errors.JVMClass.AmbiguousMethods(className, arguments.map { it.toJSString().string })
 
                 val targetMethod = matchingMethods[0]
                 val mappedArguments = JVMValueMapper.coerceArgumentsToSignature(

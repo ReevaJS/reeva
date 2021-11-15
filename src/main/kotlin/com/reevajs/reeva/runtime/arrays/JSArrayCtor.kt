@@ -14,6 +14,8 @@ import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSFalse
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toObject
+import com.reevajs.reeva.runtime.toUint32
 import com.reevajs.reeva.utils.*
 
 class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Array", 1) {
@@ -38,11 +40,11 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                 val array = JSArrayObject.create(proto = proto)
                 val lengthArg = arguments[0]
                 val length = if (lengthArg.isNumber) {
-                    val intLen = Operations.toUint32(lengthArg)
+                    val intLen = lengthArg.toUint32()
                     // TODO: The spec says "if intLen is not the same value as len...", does that refer to the
                     // operation SameValue? Or is it different?
                     if (!intLen.sameValue(lengthArg))
-                        Errors.InvalidArrayLength(Operations.toPrintableString(lengthArg)).throwRangeError()
+                        Errors.InvalidArrayLength(lengthArg.toString()).throwRangeError()
                     intLen.asInt
                 } else {
                     array.set(0, lengthArg)
@@ -85,7 +87,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
 
             val mapping = if (mapFn == JSUndefined) false else {
                 if (!Operations.isCallable(mapFn))
-                    Errors.NotCallable(Operations.toPrintableString(mapFn)).throwTypeError()
+                    Errors.NotCallable(mapFn.toString()).throwTypeError()
                 true
             }
 
@@ -132,7 +134,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                 }
             }
 
-            val arrayLike = Operations.toObject(items)
+            val arrayLike = items.toObject()
             val len = Operations.lengthOfArrayLike(arrayLike)
             val array = if (Operations.isConstructor(arguments.thisValue)) {
                 Operations.construct(arguments.thisValue, listOf(len.toValue())) as JSObject

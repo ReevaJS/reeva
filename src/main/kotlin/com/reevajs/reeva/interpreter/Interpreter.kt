@@ -337,11 +337,11 @@ class Interpreter(
     }
 
     override fun visitToNumber() {
-        push(Operations.toNumber(popValue()))
+        push(popValue().toNumber())
     }
 
     override fun visitToNumeric() {
-        push(Operations.toNumeric(popValue()))
+        push(popValue().toNumeric())
     }
 
     override fun visitNegate() {
@@ -363,7 +363,7 @@ class Interpreter(
     }
 
     override fun visitToBooleanLogicalNot() {
-        push((!Operations.toBoolean(popValue())).toValue())
+        push((!popValue().toBoolean()).toValue())
     }
 
     override fun visitInc() {
@@ -523,7 +523,7 @@ class Interpreter(
         // For some reason, the spec says this check should happen here instead
         // of in Construct
         if (!Operations.isConstructor(target))
-            Errors.NotACtor(target.toPrintableString()).throwTypeError()
+            Errors.NotACtor(target.toString()).throwTypeError()
 
         push(
             Operations.construct(
@@ -784,7 +784,7 @@ class Interpreter(
     }
 
     override fun visitToString() {
-        push(Operations.toString(popValue()))
+        push(popValue().toJSString())
     }
 
     override fun visitCreateRegExpObject(opcode: CreateRegExpObject) {

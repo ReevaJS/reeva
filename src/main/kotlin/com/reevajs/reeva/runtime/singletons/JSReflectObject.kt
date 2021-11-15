@@ -11,6 +11,7 @@ import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toPropertyKey
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
@@ -42,7 +43,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
             val (target, thisArg, argumentsList) = arguments.takeArgs(0..2)
 
             if (!Operations.isCallable(target))
-                Errors.NotCallable(Operations.toPrintableString(target)).throwTypeError()
+                Errors.NotCallable(target.toString()).throwTypeError()
 
             val args = Operations.createListFromArrayLike(argumentsList)
             return Operations.call(target, thisArg, args)
@@ -56,11 +57,11 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
                 target
             } else arguments.argument(2).also {
                 if (!Operations.isConstructor(it))
-                    Errors.NotACtor(Operations.toPrintableString(it)).throwTypeError()
+                    Errors.NotACtor(it.toString()).throwTypeError()
             }
 
             if (!Operations.isCallable(target))
-                Errors.NotCallable(Operations.toPrintableString(target)).throwTypeError()
+                Errors.NotCallable(target.toString()).throwTypeError()
 
             val args = Operations.createListFromArrayLike(argumentsList)
             return Operations.construct(target, args, newTarget)
@@ -72,7 +73,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
             val (target, propertyKey, attributes) = arguments.takeArgs(0..2)
             if (target !is JSObject)
                 Errors.Reflect.FirstArgNotCallable("defineProperty").throwTypeError()
-            val key = Operations.toPropertyKey(propertyKey)
+            val key = propertyKey.toPropertyKey()
             val desc = Descriptor.fromObject(attributes)
             return target.defineOwnProperty(key, desc).toValue()
         }
@@ -83,7 +84,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
             val (target, propertyKey) = arguments.takeArgs(0..1)
             if (target !is JSObject)
                 Errors.Reflect.FirstArgNotCallable("deleteProperty").throwTypeError()
-            val key = Operations.toPropertyKey(propertyKey)
+            val key = propertyKey.toPropertyKey()
             return target.delete(key).toValue()
         }
 
@@ -93,7 +94,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
             val (target, propertyKey, receiver) = arguments.takeArgs(0..2)
             if (target !is JSObject)
                 Errors.Reflect.FirstArgNotCallable("get").throwTypeError()
-            val key = Operations.toPropertyKey(propertyKey)
+            val key = propertyKey.toPropertyKey()
             return target.get(key, receiver.ifUndefined(target))
         }
 
@@ -103,7 +104,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
             val (target, propertyKey) = arguments.takeArgs(0..1)
             if (target !is JSObject)
                 Errors.Reflect.FirstArgNotCallable("getOwnPropertyDescriptor").throwTypeError()
-            val key = Operations.toPropertyKey(propertyKey)
+            val key = propertyKey.toPropertyKey()
             return target.getOwnPropertyDescriptor(key)?.toObject(JSUndefined) ?: JSUndefined
         }
 
@@ -122,7 +123,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
             val (target, propertyKey) = arguments.takeArgs(0..1)
             if (target !is JSObject)
                 Errors.Reflect.FirstArgNotCallable("has").throwTypeError()
-            val key = Operations.toPropertyKey(propertyKey)
+            val key = propertyKey.toPropertyKey()
             return target.hasProperty(key).toValue()
         }
 
@@ -160,7 +161,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
             val (target, propertyKey, value, receiver) = arguments.takeArgs(0..3)
             if (target !is JSObject)
                 Errors.Reflect.FirstArgNotCallable("set").throwTypeError()
-            val key = Operations.toPropertyKey(propertyKey)
+            val key = propertyKey.toPropertyKey()
             return target.set(key, value, receiver.ifUndefined(target)).toValue()
         }
 
