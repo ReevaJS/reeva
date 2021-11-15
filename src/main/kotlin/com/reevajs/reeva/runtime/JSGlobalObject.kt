@@ -80,7 +80,7 @@ open class JSGlobalObject protected constructor(
         defineBuiltin("jvm", 1, ReevaBuiltin.GlobalJvm)
         defineBuiltin("inspect", 1, ReevaBuiltin.GlobalInspect)
 
-        // TODO: The tests involving these functions have some pretty intense loop which increase
+        // TODO: The tests involving these functions have some pretty intense for loops which increase
         //       the test suite time significantly (~40%). These tests fail-fast when the functions
         //       don't exist. These can be uncommented when Reeva's performance improves.
         // defineBuiltin("decodeURI", 1, ReevaBuiltin.GlobalDecodeURI)
