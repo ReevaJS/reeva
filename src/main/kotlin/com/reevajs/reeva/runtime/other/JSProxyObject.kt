@@ -15,10 +15,7 @@ import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toBoolean
 import com.reevajs.reeva.runtime.toJSString
-import com.reevajs.reeva.utils.Errors
-import com.reevajs.reeva.utils.ecmaAssert
-import com.reevajs.reeva.utils.expect
-import com.reevajs.reeva.utils.toValue
+import com.reevajs.reeva.utils.*
 
 class JSProxyObject private constructor(
     realm: Realm,
@@ -286,24 +283,26 @@ class JSProxyObject private constructor(
         return trapResult
     }
 
-    override fun evaluate(arguments: JSArguments): JSValue {
-        if (arguments.newTarget == JSUndefined) {
-            val (_, trap) = getTrapAndHandler("apply") {
-                return Operations.call(target as JSFunction, arguments)
-            }
-            val argArray = Operations.createArrayFromList(arguments)
-            return Operations.call(trap, arguments.thisValue, listOf(target, arguments.thisValue, argArray))
-        } else {
-            val (handler, trap) = getTrapAndHandler("construct") {
-                return Operations.construct(target as JSFunction, arguments, arguments.newTarget)
-            }
-            val argArray = Operations.createArrayFromList(arguments)
-            val newObj = Operations.call(trap, handler, listOf(target, argArray, arguments.newTarget))
-            if (newObj !is JSObject)
-                Errors.Proxy.Construct.NonObject.throwTypeError()
-            return newObj
+    override fun call(arguments: JSArguments): JSValue {
+        val (handler, trap) = getTrapAndHandler("apply") {
+            return (target as JSFunction).call(arguments)
         }
+        val argArray = Operations.createArrayFromList(arguments)
+        return Operations.call(trap, handler, listOf(target, arguments.thisValue, argArray))
     }
+
+    override fun construct(arguments: JSArguments): JSValue {
+        val (handler, trap) = getTrapAndHandler("construct") {
+            return (target as JSFunction).construct(arguments)
+        }
+        val argArray = Operations.createArrayFromList(arguments)
+        val newObj = Operations.call(trap, handler, listOf(target, argArray, arguments.newTarget))
+        if (newObj !is JSObject)
+            Errors.Proxy.Construct.NonObject.throwTypeError()
+        return newObj
+    }
+    
+    override fun evaluate(arguments: JSArguments) = unreachable()
 
     companion object {
         fun create(target: JSObject, handler: JSObject, realm: Realm = Agent.activeAgent.getActiveRealm()) =

@@ -29,48 +29,14 @@ abstract class JSFunction(
 
     protected abstract fun evaluate(arguments: JSArguments): JSValue
 
-    open fun call(arguments: JSArguments): JSValue {
-        // TODO: Should this throw an error? Or will we never get here to due
-        // the guard in Operations.call
-        expect(isCallable)
-        if (isClassConstructor)
-            Errors.Class.CtorRequiresNew.throwTypeError(Agent.activeAgent.getActiveRealm())
+    open fun call(arguments: JSArguments) = evaluate(arguments)
 
-        return evaluate(arguments)
-    }
+    open fun construct(arguments: JSArguments) = evaluate(arguments)
 
-    fun call(thisValue: JSValue, arguments: List<JSValue>): JSValue {
-        return call(JSArguments(arguments, thisValue))
-    }
+    fun call(thisValue: JSValue, arguments: List<JSValue>) = call(JSArguments(arguments, thisValue))
 
-    open fun construct(arguments: JSArguments): JSValue {
-        // TODO: Should this throw an error? Or will we never get here to due
-        // the guard in Operations.construct
-        expect(isConstructor())
-        ecmaAssert(arguments.newTarget is JSObject)
-
-        return evaluate(arguments)
-
-        // val thisValue = if (constructorKind == ConstructorKind.Base) {
-        //     Operations.ordinaryCreateFromConstructor(
-        //         realm,
-        //         arguments.newTarget,
-        //         realm.objectProto,
-        //     )
-        // } else JSEmpty
-        //
-        // val result = evaluate(arguments.withThisValue(thisValue))
-        // return when {
-        //     result is JSObject -> result
-        //     constructorKind == ConstructorKind.Base -> thisValue
-        //     result != JSUndefined -> Errors.Class.ReturnObjectFromDerivedCtor.throwTypeError()
-        //     else -> thisValue
-        // }
-    }
-
-    fun construct(newTarget: JSValue, arguments: List<JSValue>): JSValue {
-        return construct(JSArguments(arguments, newTarget = newTarget))
-    }
+    fun construct(newTarget: JSValue, arguments: List<JSValue>) =
+        construct(JSArguments(arguments, newTarget = newTarget))
 
     enum class ConstructorKind {
         Base,
@@ -79,7 +45,6 @@ abstract class JSFunction(
 
     enum class ThisMode {
         Lexical,
-        NonLexical,
         Strict,
         Global
     }

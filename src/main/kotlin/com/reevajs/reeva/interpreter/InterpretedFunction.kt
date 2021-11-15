@@ -27,6 +27,127 @@ abstract class InterpretedFunction(
     transformedSource.functionInfo.isStrict,
     prototype,
 ) {
+
+    @ECMAImpl("10.2.1", "[[Call]]")
+    override fun call(arguments: JSArguments): JSValue {
+        // Use JS function call boundaries as agent lock guards
+        return Agent.activeAgent.withLock {
+            // 1.  Let callerContext be the running execution context.
+            val agent = Agent.activeAgent
+            val callerContext = agent.runningExecutionContext
+
+            // 2.  Let calleeContext be PrepareForOrdinaryCall(F, undefined).
+            val calleeContext = prepareForOrdinaryCall()
+
+            // 3.  Assert: calleeContext is now the running execution context.
+            ecmaAssert(calleeContext == agent.runningExecutionContext)
+
+            // 4.  If F.[[IsClassConstructor]] is true, then
+            if (isClassConstructor) {
+                // a.  Let error be a newly created TypeError object.
+                // b.  NOTE: error is created in calleeContext with F's associated Realm Record.
+                // c.  Remove calleeContext from the execution context stack and restore callerContext as the running
+                //     execution context.
+                // d.  Return ThrowCompletion(error).
+
+                agent.popExecutionContext()
+                Errors.Class.CtorRequiresNew.throwTypeError(calleeContext.realm)
+            }
+
+            // 5.  Perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
+            // Note: This return value is non-spec. The spec simply binds it to the current environment, so it doesn't need
+            //       to return it. We need to pass it into the interpreter manually.
+            val thisArgument = ordinaryCallBindThis(calleeContext, arguments.thisValue)
+
+            try {
+                // 6.  Let result be OrdinaryCallEvaluateBody(F, argumentsList).
+                // 8.  If result.[[Type]] is return, return NormalCompletion(result.[[Value]]).
+                // 9.  ReturnIfAbrupt(result).
+                // 10. Return NormalCompletion(undefined).
+                evaluate(arguments.withThisValue(thisArgument))
+            } finally {
+                // 7.  Remove calleeContext from the execution context stack and restore callerContext as the running
+                //     execution context.
+                agent.popExecutionContext()
+            }
+        }
+    }
+
+    @ECMAImpl("10.2.2", "[[Construct]]")
+    override fun construct(arguments: JSArguments): JSValue {
+        // Use JS function construction boundaries as agent lock guards
+        return Agent.activeAgent.withLock {
+            // 1.  Let callerContext be the running executionContext.
+            val agent = Agent.activeAgent
+            val callerContext = agent.runningExecutionContext
+
+            // 2.  Let kind be F.[[ConstructorKind]].
+            // 3.  If kind is base, then
+            var thisArgument = if (constructorKind == ConstructorKind.Base) {
+                // a. Let thisArgument be ? OrdinaryCreateFromConstructor(newTarget, "%Object.prototype%").
+                Operations.ordinaryCreateFromConstructor(
+                    arguments.newTarget,
+                    defaultProto = Realm::objectProto,
+                )
+            } else arguments.thisValue
+
+            // 4.  Let calleeContext be PrepareForOrdinaryCall(F, newTarget).
+            val calleeContext = prepareForOrdinaryCall()
+
+            // 5.  Assert: calleeContext is now the running execution context.
+            ecmaAssert(calleeContext == agent.runningExecutionContext)
+
+            //  6.  If kind is base, then
+            if (constructorKind == ConstructorKind.Base) {
+                // a. Perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
+                // Note: See call for explanation of return value
+                thisArgument = ordinaryCallBindThis(calleeContext, thisArgument)
+
+                // b.  Let initializeResult be InitializeInstanceElements(thisArgument, F).
+                // c.  If initializeResult is an abrupt completion, then
+                //     i.  Remove calleeContext from the execution context stack and restore callerContext as the running
+                //         execution context.
+                //     ii. Return Completion(initializeResult).
+
+                // Class fields are handled in the IR/bytecode, so no work is done here
+            }
+
+            // 7.  Let constructorEnv be the LexicalEnvironment of calleeContext.
+            // Note: While our ExecutionContexts do store EnvRecords, EnvRecords do not store receiver bindings.
+
+            try {
+                // 8.  Let result be OrdinaryCallEvaluateBody(F, argumentsList).
+                val result = evaluate(arguments.withThisValue(thisArgument))
+
+
+                // 10. If result.[[Type]] is return, then
+                when {
+                    // a.  If Type(result.[[Value]]) is Object, return NormalCompletion(result.[[Value]]).
+                    result is JSObject -> result
+                    // b.  If kind is base, return NormalCompletion(thisArgument).
+                    constructorKind == ConstructorKind.Base -> thisArgument
+                    // c. If result.[[Value]] is not undefined, throw a TypeError exception.
+                    // Note: We have to use the callerContext realm here, as in the spec the ExecutionContext has been
+                    //       removed at this point, but here we do not remove the context until after this try-finally block
+                    //       executes.
+                    result != JSUndefined -> Errors.Class.ReturnObjectFromDerivedCtor.throwTypeError(callerContext.realm)
+                    else -> {
+                        // 11. Else, ReturnIfAbrupt(result).
+                        // Note: This is implicit, as we don't have a catch block. Any exceptions will propagate upwards.
+
+                        // 12. Return ? constructorEnv.getThisBinding().
+                        thisArgument
+                    }
+                }
+
+            } finally {
+                // 9.  Remove calleeContext from the execution context stack and restore callerContext as the running
+                //     execution context.
+                agent.popExecutionContext()
+            }
+        }
+    }
+
     /**
      * We don't need to accept a newTarget or push any environments, as this is
      * handled by the interpreter (the function may not need an environment
@@ -66,120 +187,6 @@ class NormalInterpretedFunction private constructor(
         val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
         val result = Interpreter(transformedSource, args, outerEnvRecord).interpret()
         return result.valueOrElse { throw result.error() }
-    }
-
-    @ECMAImpl("10.2.1", "[[Call]]")
-    override fun call(arguments: JSArguments): JSValue {
-        // 1.  Let callerContext be the running execution context.
-        val agent = Agent.activeAgent
-        val callerContext = agent.runningExecutionContext
-
-        // 2.  Let calleeContext be PrepareForOrdinaryCall(F, undefined).
-        val calleeContext = prepareForOrdinaryCall()
-
-        // 3.  Assert: calleeContext is now the running execution context.
-        ecmaAssert(calleeContext == agent.runningExecutionContext)
-
-        // 4.  If F.[[IsClassConstructor]] is true, then
-        if (isClassConstructor) {
-            // a.  Let error be a newly created TypeError object.
-            // b.  NOTE: error is created in calleeContext with F's associated Realm Record.
-            // c.  Remove calleeContext from the execution context stack and restore callerContext as the running
-            //     execution context.
-            // d.  Return ThrowCompletion(error).
-
-            agent.popExecutionContext()
-            Errors.Class.CtorRequiresNew.throwTypeError(calleeContext.realm)
-        }
-
-        // 5.  Perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
-        // Note: This return value is non-spec. The spec simply binds it to the current environment, so it doesn't need
-        //       to return it. We need to pass it into the interpreter manually.
-        val thisArgument = ordinaryCallBindThis(calleeContext, arguments.thisValue)
-
-        return try {
-            // 6.  Let result be OrdinaryCallEvaluateBody(F, argumentsList).
-            // 8.  If result.[[Type]] is return, return NormalCompletion(result.[[Value]]).
-            // 9.  ReturnIfAbrupt(result).
-            // 10. Return NormalCompletion(undefined).
-            evaluate(arguments.withThisValue(thisArgument))
-        } finally {
-            // 7.  Remove calleeContext from the execution context stack and restore callerContext as the running
-            //     execution context.
-            agent.popExecutionContext()
-        }
-    }
-
-    @ECMAImpl("10.2.2", "[[Construct]]")
-    override fun construct(arguments: JSArguments): JSValue {
-        // 1.  Let callerContext be the running executionContext.
-        val agent = Agent.activeAgent
-        val callerContext = agent.runningExecutionContext
-
-        // 2.  Let kind be F.[[ConstructorKind]].
-        // 3.  If kind is base, then
-        var thisArgument = if (constructorKind == ConstructorKind.Base) {
-            // a. Let thisArgument be ? OrdinaryCreateFromConstructor(newTarget, "%Object.prototype%").
-            Operations.ordinaryCreateFromConstructor(
-                arguments.newTarget,
-                defaultProto = Realm::objectProto,
-            )
-        } else arguments.thisValue
-
-        // 4.  Let calleeContext be PrepareForOrdinaryCall(F, newTarget).
-        val calleeContext = prepareForOrdinaryCall()
-
-        // 5.  Assert: calleeContext is now the running execution context.
-        ecmaAssert(calleeContext == agent.runningExecutionContext)
-
-        //  6.  If kind is base, then
-        if (constructorKind == ConstructorKind.Base) {
-            // a. Perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
-            // Note: See call for explanation of return value
-            thisArgument = ordinaryCallBindThis(calleeContext, thisArgument)
-
-            // b.  Let initializeResult be InitializeInstanceElements(thisArgument, F).
-            // c.  If initializeResult is an abrupt completion, then
-            //     i.  Remove calleeContext from the execution context stack and restore callerContext as the running
-            //         execution context.
-            //     ii. Return Completion(initializeResult).
-
-            // Class fields are handled in the IR/bytecode, so no work is done here
-        }
-
-        // 7.  Let constructorEnv be the LexicalEnvironment of calleeContext.
-        // Note: While our ExecutionContexts do store EnvRecords, EnvRecords do not store receiver bindings.
-
-        return try {
-            // 8.  Let result be OrdinaryCallEvaluateBody(F, argumentsList).
-            val result = evaluate(arguments.withThisValue(thisArgument))
-
-
-            // 10. If result.[[Type]] is return, then
-            when {
-                // a.  If Type(result.[[Value]]) is Object, return NormalCompletion(result.[[Value]]).
-                result is JSObject -> result
-                // b.  If kind is base, return NormalCompletion(thisArgument).
-                constructorKind == ConstructorKind.Base -> thisArgument
-                // c. If result.[[Value]] is not undefined, throw a TypeError exception.
-                // Note: We have to use the callerContext realm here, as in the spec the ExecutionContext has been
-                //       removed at this point, but here we do not remove the context until after this try-finally block
-                //       executes.
-                result != JSUndefined -> Errors.Class.ReturnObjectFromDerivedCtor.throwTypeError(callerContext.realm)
-                else -> {
-                    // 11. Else, ReturnIfAbrupt(result).
-                    // Note: This is implicit, as we don't have a catch block. Any exceptions will propagate upwards.
-
-                    // 12. Return ? constructorEnv.getThisBinding().
-                    thisArgument
-                }
-            }
-
-        } finally {
-            // 9.  Remove calleeContext from the execution context stack and restore callerContext as the running
-            //     execution context.
-            agent.popExecutionContext()
-        }
     }
 
     companion object {
