@@ -301,8 +301,6 @@ class JSProxyObject private constructor(
             Errors.Proxy.Construct.NonObject.throwTypeError()
         return newObj
     }
-    
-    override fun evaluate(arguments: JSArguments) = unreachable()
 
     companion object {
         fun create(target: JSObject, handler: JSObject, realm: Realm = Agent.activeAgent.getActiveRealm()) =

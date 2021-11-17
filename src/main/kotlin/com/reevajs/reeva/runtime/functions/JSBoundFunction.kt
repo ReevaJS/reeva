@@ -54,8 +54,6 @@ class JSBoundFunction private constructor(
         return Operations.construct(boundTargetFunction, args, newTarget)
     }
 
-    override fun evaluate(arguments: JSArguments) = unreachable()
-
     companion object {
         fun create(
             boundTargetFunction: JSFunction,

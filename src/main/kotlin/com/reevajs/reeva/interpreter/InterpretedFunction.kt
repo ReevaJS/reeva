@@ -27,6 +27,7 @@ abstract class InterpretedFunction(
     transformedSource.functionInfo.isStrict,
     prototype,
 ) {
+    protected abstract fun evaluate(arguments: JSArguments): JSValue
 
     @ECMAImpl("10.2.1", "[[Call]]")
     override fun call(arguments: JSArguments): JSValue {

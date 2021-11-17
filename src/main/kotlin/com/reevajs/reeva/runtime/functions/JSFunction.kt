@@ -27,11 +27,9 @@ abstract class JSFunction(
         return true
     }
 
-    protected abstract fun evaluate(arguments: JSArguments): JSValue
+    abstract fun call(arguments: JSArguments): JSValue
 
-    open fun call(arguments: JSArguments) = evaluate(arguments)
-
-    open fun construct(arguments: JSArguments) = evaluate(arguments)
+    abstract fun construct(arguments: JSArguments): JSValue
 
     fun call(thisValue: JSValue, arguments: List<JSValue>) = call(JSArguments(arguments, thisValue))
 

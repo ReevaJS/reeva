@@ -34,6 +34,8 @@ abstract class JSNativeFunction protected constructor(
         defineOwnProperty("name", name.toValue(), Descriptor.CONFIGURABLE)
     }
 
+    protected abstract fun evaluate(arguments: JSArguments): JSValue
+
     @ECMAImpl("10.3.1", "[[Call]]")
     override fun call(arguments: JSArguments): JSValue {
         return callConstructImpl(arguments, isConstruct = false)
