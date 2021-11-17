@@ -10,7 +10,7 @@ import com.reevajs.reeva.runtime.functions.JSNativeFunction
 data class ExecutionContext(
     val enclosingFunction: JSFunction?,
     val realm: Realm,
-    val envRecord: EnvRecord?,
+    var envRecord: EnvRecord?,
     val executable: Executable?,
     val invocationLocation: SourceLocation?,
 ) {

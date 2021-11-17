@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
-import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.transformer.*
 import com.reevajs.reeva.transformer.opcodes.*
@@ -25,21 +24,21 @@ import com.reevajs.reeva.utils.*
 class Interpreter(
     private val transformedSource: TransformedSource,
     private val arguments: List<JSValue>,
-    initialEnvRecord: EnvRecord,
 ) : OpcodeVisitor {
     private val info: FunctionInfo
         inline get() = transformedSource.functionInfo
 
+    private val agent: Agent
+        inline get() = Agent.activeAgent
+
     private val realm: Realm
-        inline get() = Agent.activeAgent.getActiveRealm()
+        inline get() = agent.getActiveRealm()
 
     private val stack = ArrayDeque<Any>()
     private val locals = Array<Any?>(info.ir.locals.size) { null }
 
-    private var moduleEnv = initialEnvRecord as? ModuleEnvRecord
+    private var moduleEnv = agent.activeEnvRecord as? ModuleEnvRecord
 
-    var activeEnvRecord = initialEnvRecord
-        private set
     private var ip = 0
     private var isDone = false
 
@@ -595,15 +594,18 @@ class Interpreter(
     }
 
     override fun visitPushDeclarativeEnvRecord(opcode: PushDeclarativeEnvRecord) {
-        activeEnvRecord = DeclarativeEnvRecord(activeEnvRecord, opcode.slotCount)
+        val runningContext = agent.runningExecutionContext
+        runningContext.envRecord = DeclarativeEnvRecord(runningContext.envRecord, opcode.slotCount)
     }
 
     override fun visitPushModuleEnvRecord() {
-        activeEnvRecord = ModuleEnvRecord(activeEnvRecord)
+        val runningContext = agent.runningExecutionContext
+        runningContext.envRecord = ModuleEnvRecord(runningContext.envRecord)
     }
 
     override fun visitPopEnvRecord() {
-        activeEnvRecord = activeEnvRecord.outer!!
+        val runningContext = agent.runningExecutionContext
+        runningContext.envRecord = runningContext.envRecord!!.outer
     }
 
     override fun visitLoadGlobal(opcode: LoadGlobal) {
@@ -617,21 +619,21 @@ class Interpreter(
     }
 
     override fun visitLoadCurrentEnvSlot(opcode: LoadCurrentEnvSlot) {
-        push(activeEnvRecord.getBinding(opcode.slot))
+        push(agent.runningExecutionContext.envRecord!!.getBinding(opcode.slot))
     }
 
     override fun visitStoreCurrentEnvSlot(opcode: StoreCurrentEnvSlot) {
-        activeEnvRecord.setBinding(opcode.slot, popValue())
+        agent.runningExecutionContext.envRecord!!.setBinding(opcode.slot, popValue())
     }
 
     override fun visitLoadEnvSlot(opcode: LoadEnvSlot) {
-        var env = activeEnvRecord
+        var env = agent.runningExecutionContext.envRecord!!
         repeat(opcode.distance) { env = env.outer!! }
         push(env.getBinding(opcode.slot))
     }
 
     override fun visitStoreEnvSlot(opcode: StoreEnvSlot) {
-        var env = activeEnvRecord
+        var env = agent.runningExecutionContext.envRecord!!
         repeat(opcode.distance) { env = env.outer!! }
         env.setBinding(opcode.slot, popValue())
     }
@@ -694,7 +696,7 @@ class Interpreter(
     }
 
     override fun visitCreateClosure(opcode: CreateClosure) {
-        val function = NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir), activeEnvRecord)
+        val function = NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir))
         Operations.setFunctionName(function, opcode.ir.name.key())
         Operations.makeConstructor(function)
         Operations.setFunctionLength(function, opcode.ir.length)
@@ -702,7 +704,7 @@ class Interpreter(
     }
 
     override fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure) {
-        val function = GeneratorInterpretedFunction.create(transformedSource.forInfo(opcode.ir), activeEnvRecord)
+        val function = GeneratorInterpretedFunction.create(transformedSource.forInfo(opcode.ir))
         Operations.setFunctionName(function, opcode.ir.name.key())
         Operations.setFunctionLength(function, opcode.ir.length)
         push(function)
@@ -877,7 +879,7 @@ class Interpreter(
     }
 
     override fun visitCreateClassConstructor(opcode: CreateMethod) {
-        push(NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir), activeEnvRecord))
+        push(NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir)))
     }
 
     override fun visitCreateClass() {
@@ -961,9 +963,9 @@ class Interpreter(
             MethodDefinitionNode.Kind.Normal,
             MethodDefinitionNode.Kind.Getter,
             MethodDefinitionNode.Kind.Setter ->
-                NormalInterpretedFunction.create(transformedSource.forInfo(info), activeEnvRecord)
+                NormalInterpretedFunction.create(transformedSource.forInfo(info))
             MethodDefinitionNode.Kind.Generator ->
-                GeneratorInterpretedFunction.create(transformedSource.forInfo(info), activeEnvRecord)
+                GeneratorInterpretedFunction.create(transformedSource.forInfo(info))
             else -> TODO()
         }
 

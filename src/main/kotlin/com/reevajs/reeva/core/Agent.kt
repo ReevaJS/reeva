@@ -29,6 +29,14 @@ class Agent {
     val runningExecutionContext: ExecutionContext
         get() = executionContextStack.last()
 
+    private var envRecordProvider: ExecutionContext? = null
+
+    var activeEnvRecord: EnvRecord
+        get() = envRecordProvider!!.envRecord!!
+        set(value) {
+            envRecordProvider!!.envRecord = value
+        }
+
     private val executionLock = ReentrantLock()
 
     @Volatile
@@ -60,10 +68,17 @@ class Agent {
 
     fun pushExecutionContext(context: ExecutionContext) {
         executionContextStack.addLast(context)
+        if (context.envRecord != null)
+            envRecordProvider = context
     }
 
     fun popExecutionContext() {
-        executionContextStack.removeLast()
+        val removed = executionContextStack.removeLast()
+        if (removed == envRecordProvider) {
+            envRecordProvider = executionContextStack.asReversed().firstOrNull {
+                it.envRecord != null
+            }
+        }
     }
 
     @ECMAImpl("9.4.1", name = "GetActiveScriptOrModule")

@@ -19,7 +19,7 @@ class ScriptRecord(val realm: Realm, val parsedSource: ParsedSource) : Executabl
 
         return Agent.activeAgent.withRealm(realm, realm.globalEnv) {
             val transformedSource = Executable.transform(parsedSource)
-            val function = NormalInterpretedFunction.create(transformedSource, realm.globalEnv)
+            val function = NormalInterpretedFunction.create(transformedSource)
             Operations.call(function, realm.globalObject, emptyList())
         }
     }

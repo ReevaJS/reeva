@@ -3,7 +3,6 @@ package com.reevajs.reeva.interpreter
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -19,7 +18,6 @@ import com.reevajs.reeva.utils.ecmaAssert
 abstract class InterpretedFunction(
     realm: Realm,
     val transformedSource: TransformedSource,
-    val outerEnvRecord: EnvRecord,
     prototype: JSValue = realm.functionProto,
 ) : JSFunction(
     realm,
@@ -27,6 +25,8 @@ abstract class InterpretedFunction(
     transformedSource.functionInfo.isStrict,
     prototype,
 ) {
+    private val outerEnvRecord = Agent.activeAgent.activeEnvRecord
+
     protected abstract fun evaluate(arguments: JSArguments): JSValue
 
     @ECMAImpl("10.2.1", "[[Call]]")
@@ -140,7 +140,6 @@ abstract class InterpretedFunction(
                         thisArgument
                     }
                 }
-
             } finally {
                 // 9.  Remove calleeContext from the execution context stack and restore callerContext as the running
                 //     execution context.
@@ -182,28 +181,25 @@ abstract class InterpretedFunction(
 class NormalInterpretedFunction private constructor(
     realm: Realm,
     transformedSource: TransformedSource,
-    outerEnvRecord: EnvRecord,
-) : InterpretedFunction(realm, transformedSource, outerEnvRecord) {
+) : InterpretedFunction(realm, transformedSource) {
     override fun evaluate(arguments: JSArguments): JSValue {
         val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
-        val result = Interpreter(transformedSource, args, outerEnvRecord).interpret()
+        val result = Interpreter(transformedSource, args).interpret()
         return result.valueOrElse { throw result.error() }
     }
 
     companion object {
         fun create(
             transformedSource: TransformedSource,
-            outerEnvRecord: EnvRecord,
             realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = NormalInterpretedFunction(realm, transformedSource, outerEnvRecord).initialize()
+        ) = NormalInterpretedFunction(realm, transformedSource).initialize()
     }
 }
 
 class GeneratorInterpretedFunction private constructor(
     realm: Realm,
     transformedSource: TransformedSource,
-    outerEnvRecord: EnvRecord,
-) : InterpretedFunction(realm, transformedSource, outerEnvRecord) {
+) : InterpretedFunction(realm, transformedSource) {
     private lateinit var generatorObject: JSGeneratorObject
 
     override fun init() {
@@ -218,7 +214,7 @@ class GeneratorInterpretedFunction private constructor(
                 arguments.thisValue,
                 arguments,
                 Interpreter.GeneratorState(),
-                outerEnvRecord,
+                Agent.activeAgent.runningExecutionContext,
             )
         }
 
@@ -228,8 +224,7 @@ class GeneratorInterpretedFunction private constructor(
     companion object {
         fun create(
             transformedSource: TransformedSource,
-            outerEnvRecord: EnvRecord,
             realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = GeneratorInterpretedFunction(realm, transformedSource, outerEnvRecord).initialize()
+        ) = GeneratorInterpretedFunction(realm, transformedSource).initialize()
     }
 }

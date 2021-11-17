@@ -1,6 +1,7 @@
 package com.reevajs.reeva.runtime.functions.generators
 
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.interpreter.Interpreter
@@ -8,7 +9,9 @@ import com.reevajs.reeva.transformer.TransformedSource
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.utils.expect
 
 class JSGeneratorObject private constructor(
     realm: Realm,
@@ -16,13 +19,20 @@ class JSGeneratorObject private constructor(
     val receiver: JSValue,
     arguments: List<JSValue>,
     val generatorState: Interpreter.GeneratorState,
-    var envRecord: EnvRecord,
+    private val context: ExecutionContext,
 ) : JSObject(realm, realm.generatorObjectProto) {
     private val arguments = listOf(receiver, JSUndefined, generatorState) + arguments
 
     fun next(value: JSValue): JSValue {
         generatorState.sentValue = value
-        return execute()
+        val agent = Agent.activeAgent
+
+        agent.pushExecutionContext(context)
+        return try {
+            execute()
+        } finally {
+            agent.popExecutionContext()
+        }
     }
 
     fun return_(value: JSValue): JSValue {
@@ -34,10 +44,9 @@ class JSGeneratorObject private constructor(
     }
 
     private fun execute(): JSValue {
-        val interpreter = Interpreter(transformedSource, arguments, envRecord)
+        val interpreter = Interpreter(transformedSource, arguments)
         val result = interpreter.interpret()
         return if (result.hasValue) {
-            envRecord = interpreter.activeEnvRecord
             Operations.createIterResultObject(
                 result.value(),
                 generatorState.phase == -1,
@@ -51,8 +60,15 @@ class JSGeneratorObject private constructor(
             receiver: JSValue,
             arguments: List<JSValue>,
             generatorState: Interpreter.GeneratorState,
-            envRecord: EnvRecord,
+            executionContext: ExecutionContext,
             realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = JSGeneratorObject(realm, transformedSource, receiver, arguments, generatorState, envRecord).initialize()
+        ) = JSGeneratorObject(
+            realm,
+            transformedSource,
+            receiver,
+            arguments,
+            generatorState,
+            executionContext,
+        ).initialize()
     }
 }

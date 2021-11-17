@@ -178,11 +178,11 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
         val transformedSource = Executable.transform(parsedSource)
 
         val agent = Agent.activeAgent
-        val context = ExecutionContext(null, realm, realm.globalEnv, this, null)
+        val context = ExecutionContext(null, realm, env, this, null)
         agent.pushExecutionContext(context)
 
         try {
-            val function = NormalInterpretedFunction.create(transformedSource, env)
+            val function = NormalInterpretedFunction.create(transformedSource)
             Operations.call(function, realm.globalObject, emptyList())
         } finally {
             agent.popExecutionContext()
