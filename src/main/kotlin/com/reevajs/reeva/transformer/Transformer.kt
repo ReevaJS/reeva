@@ -864,6 +864,10 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 when (target.type) {
                     MemberExpressionNode.Type.Computed -> {
                         visitExpression(target.rhs)
+                        val tmp = builder.newLocalSlot(LocalKind.Value)
+                        +Dup
+                        +StoreValue(tmp)
+
                         // lhs lhs rhs
                         +LoadKeyedProperty
                         // lhs value
@@ -871,7 +875,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                         // lhs value
                         execute(DupX1)
                         // value lhs value
-                        visitExpression(target.rhs)
+                        +LoadValue(tmp)
                         +Swap
                         // value lhs key value
                         +StoreKeyedProperty
