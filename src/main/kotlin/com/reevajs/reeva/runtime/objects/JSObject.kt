@@ -17,7 +17,7 @@ open class JSObject protected constructor(realm: Realm, prototype: JSValue = JSN
     private val id = Agent.activeAgent.nextObjectId()
 
     internal val storage = mutableListOf<JSValue>()
-    internal val indexedProperties = IndexedProperties()
+    val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
     internal var shape: Shape
 

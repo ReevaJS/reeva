@@ -108,7 +108,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("6.1.6.1.1")
-    fun numericUnaryMinus(value: JSValue): JSValue {
+    fun numericUnaryMinus(value: JSValue): JSNumber {
         expect(value is JSNumber)
         if (value.isNaN)
             return value
@@ -122,7 +122,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("6.1.6.1.2")
-    fun numericBitwiseNOT(value: JSValue): JSValue {
+    fun numericBitwiseNOT(value: JSValue): JSNumber {
         expect(value is JSNumber)
         val oldValue = value.toInt32()
         return JSNumber(oldValue.asDouble.toInt().inv())
@@ -1205,6 +1205,7 @@ object Operations {
         return function.call(arguments)
     }
 
+    @JvmStatic
     @JvmOverloads
     fun call(function: JSValue, thisValue: JSValue, arguments: List<JSValue> = emptyList()): JSValue {
         return call(function, JSArguments(arguments, thisValue))
@@ -1312,7 +1313,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.3.21")
-    fun ordinaryHasInstance(ctor: JSFunction, target: JSValue): JSValue {
+    fun ordinaryHasInstance(ctor: JSFunction, target: JSValue): JSBoolean {
         if (!isCallable(ctor))
             return JSFalse
 
@@ -2112,7 +2113,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("12.10.4")
-    fun instanceofOperator(target: JSValue, ctor: JSValue): JSValue {
+    fun instanceofOperator(target: JSValue, ctor: JSValue): JSBoolean {
         if (ctor !is JSObject)
             Errors.InstanceOfBadRHS.throwTypeError()
 

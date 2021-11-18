@@ -42,14 +42,7 @@ fun Char.toValue() = JSString(this.toString())
 fun Number.toValue() = JSNumber(this.toDouble())
 fun BigInteger.toValue() = JSBigInt(this)
 
-fun Any.toValue(): JSValue = when (this) {
-    is Boolean -> toValue()
-    is String -> toValue()
-    is Char -> toValue()
-    is Number -> toValue()
-    is BigInteger -> toValue()
-    else -> throw IllegalArgumentException("Cannot convert ${this::class.simpleName} to a JSValue")
-}
+fun Any.toValue() = JSValue.from(this)
 
 fun <T> KMutableProperty0<T>.temporaryChange(newValue: T): () -> Unit {
     val oldValue = this.get()

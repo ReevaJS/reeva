@@ -61,6 +61,7 @@ data class PropertyKey private constructor(internal val value: Any) {
     }
 
     companion object {
+        @JvmStatic
         fun from(value: Any): PropertyKey {
             if (value is String || value is JSString) {
                 val string = (value as? JSString)?.string ?: value as String
