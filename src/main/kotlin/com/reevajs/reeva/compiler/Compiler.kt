@@ -3,7 +3,7 @@ package com.reevajs.reeva.compiler
 import codes.som.anthony.koffee.assembleClass
 import codes.som.anthony.koffee.insns.jvm.*
 import codes.som.anthony.koffee.modifiers.public
-import com.reevajs.reeva.core.ECMAScriptFunction
+import com.reevajs.reeva.compiler.graph.GraphBuilder
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.collections.JSArguments
@@ -14,6 +14,8 @@ import java.io.File
 
 class Compiler(val transformedSource: TransformedSource) {
     fun compile(realm: Realm): JSFunction {
+        val graph = GraphBuilder(transformedSource).build()
+
         val className = "${transformedSource.functionInfo.name.replace('.', '_')}$${classCount++}"
 
         val classNode = assembleClass(public, className, superName = SUPER_CLASS) {

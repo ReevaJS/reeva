@@ -1,5 +1,5 @@
 plugins {
-    id 'org.jetbrains.kotlin.jvm' version '1.5.31'
+    id 'org.jetbrains.kotlin.jvm' version '1.6.0'
     id 'org.jetbrains.kotlin.plugin.serialization' version '1.5.31'
     id 'maven-publish'
 }
@@ -12,22 +12,35 @@ repositories {
     mavenCentral()
     mavenLocal()
     maven { url "https://jitpack.io" }
+    maven {
+        url "https://repo.mattco.me/snapshots"
+        mavenContent {
+            snapshotsOnly()
+        }
+    }
+    maven {
+        url "https://repo.mattco.me/releases"
+        mavenContent {
+            releasesOnly()
+        }
+    }
 }
 
 dependencies {
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.5.31'
-    implementation 'com.github.ReevaJS:mfbt:78080dba4e'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.6.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1'
+    implementation 'com.reevajs:kbgv:e40098e-SNAPSHOT'
+    implementation 'com.reevajs:mfbt:1.0.0'
+    implementation 'com.reevajs:koffee:8.0.2'
     implementation 'org.ow2.asm:asm:9.2'
     implementation 'org.ow2.asm:asm-tree:9.2'
     implementation 'org.ow2.asm:asm-commons:9.2'
-    implementation 'com.github.mattco98:Koffee:05c56be273'
     implementation 'org.jruby.joni:joni:2.1.41'
-    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.0'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
-    testImplementation 'com.charleskorn.kaml:kaml:0.36.0'
-    testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5:1.5.31'
+    testImplementation 'com.charleskorn.kaml:kaml:0.37.0'
+    testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5:1.6.0'
     testImplementation 'io.strikt:strikt-core:0.32.0'
 }
 

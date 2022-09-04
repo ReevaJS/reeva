@@ -1,11 +1,14 @@
 package com.reevajs.reeva.interpreter
 
+import com.reevajs.reeva.compiler.Compiler
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.ECMAScriptFunction
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObject
+import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.transformer.TransformedSource
 
 class NormalInterpretedFunction private constructor(
@@ -13,9 +16,14 @@ class NormalInterpretedFunction private constructor(
     val transformedSource: TransformedSource,
 ) : ECMAScriptFunction(realm, transformedSource.functionInfo.name, transformedSource.functionInfo.isStrict) {
     override fun evaluate(arguments: JSArguments): JSValue {
-        val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
-        val result = Interpreter(transformedSource, args).interpret()
-        return result.valueOrElse { throw result.error() }
+        val compiled = Compiler(transformedSource).compile(realm)
+        return if (arguments.newTarget != JSUndefined) {
+            Operations.construct(compiled, arguments)
+        } else Operations.call(compiled, arguments)
+
+        // val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
+        // val result = Interpreter(transformedSource, args).interpret()
+        // return result.valueOrElse { throw result.error() }
     }
 
     companion object {
