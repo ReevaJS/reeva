@@ -5,4 +5,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'reeva'
+rootProject.name = "reeva"
