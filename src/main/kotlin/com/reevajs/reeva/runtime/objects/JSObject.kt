@@ -9,29 +9,23 @@ import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
 import com.reevajs.reeva.runtime.objects.index.IndexedProperties
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.*
+import java.awt.Shape
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
-open class JSObject protected constructor(realm: Realm, prototype: JSValue = JSNull) : JSValue() {
+open class JSObject protected constructor(realm: Realm, private var prototypeBacker: JSValue = JSNull) : JSValue() {
     private val slots = mutableMapOf<Any, Any?>()
     private val id = Agent.activeAgent.nextObjectId()
 
-    internal val storage = mutableListOf<JSValue>()
+    internal val storage = mutableMapOf<StringOrSymbol, Descriptor>()
     internal val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
-    internal var shape: Shape
-
-    var transitionsEnabled: Boolean = true
 
     init {
-        expect(prototype is JSObject || prototype == JSNull)
+        expect(prototypeBacker is JSObject || prototypeBacker == JSNull)
 
-        if (prototype == JSNull) {
-            shape = Shape()
-        } else {
-            shape = realm.emptyShape
-            ordinarySetPrototype(prototype)
-        }
+        if (prototypeBacker != JSNull)
+            ordinarySetPrototype(prototypeBacker)
     }
 
     var isSealed = false
@@ -53,7 +47,6 @@ open class JSObject protected constructor(realm: Realm, prototype: JSValue = JSN
         contents("Type: Object")
         child("Class: ${this@JSObject::class.simpleName}")
         child("ID: #$id")
-        child("Shape: #${shape.id}")
         child("Prototype:") {
             child(inspect(getPrototype(), simple = true))
         }
@@ -63,11 +56,9 @@ open class JSObject protected constructor(realm: Realm, prototype: JSValue = JSN
         // objects from their base state and somehow only print those.
         if (this@JSObject::class === JSObject::class) {
             child("Properties:") {
-                val propertyTable = shape.orderedPropertyTable()
-
-                for (property in propertyTable) {
-                    child("${property.name} (attrs=${property.attributes} offset=${property.offset})") {
-                        child(inspect(storage[property.offset], simple = true))
+                for ((key, value) in storage) {
+                    child("$key (attrs=${value.attributes})") {
+                        child(inspect(value.value, simple = true))
                     }
                 }
             }
@@ -87,7 +78,7 @@ open class JSObject protected constructor(realm: Realm, prototype: JSValue = JSN
     }
 
     @ECMAImpl("9.1.1")
-    open fun getPrototype() = shape.prototype ?: JSNull
+    open fun getPrototype(): JSValue = prototypeBacker
 
     @ECMAImpl("9.1.2")
     open fun setPrototype(newPrototype: JSValue): Boolean {
@@ -97,18 +88,13 @@ open class JSObject protected constructor(realm: Realm, prototype: JSValue = JSN
     @ECMAImpl("9.1.2.1")
     fun ordinarySetPrototype(newPrototype: JSValue): Boolean {
         ecmaAssert(newPrototype is JSObject || newPrototype == JSNull)
-        if (newPrototype.sameValue(shape.prototype ?: JSNull))
+        if (newPrototype.sameValue(prototypeBacker))
             return true
 
         if (!extensible)
             return false
 
-        if (shape.isUnique) {
-            shape.setPrototypeWithoutTransition(newPrototype as? JSObject)
-            return true
-        }
-
-        shape = shape.makePrototypeTransition(newPrototype as? JSObject)
+        prototypeBacker = newPrototype
         return true
     }
 
@@ -146,8 +132,8 @@ open class JSObject protected constructor(realm: Realm, prototype: JSValue = JSN
             property.isInt -> indexedProperties.getDescriptor(property.asInt)
             property.isLong -> indexedProperties.getDescriptor(property.asLong)
             else -> {
-                val data = shape[property.toStringOrSymbol()] ?: return null
-                Descriptor(storage[data.offset], data.attributes)
+                val data = storage[property.toStringOrSymbol()] ?: return null
+                Descriptor(data.value, data.attributes)
             }
         }
     }
@@ -291,13 +277,7 @@ open class JSObject protected constructor(realm: Realm, prototype: JSValue = JSN
             property.isInt -> indexedProperties.remove(property.asInt)
             property.isLong -> indexedProperties.remove(property.asLong)
             else -> {
-                val stringOrSymbol = property.toStringOrSymbol()
-                val data = shape[stringOrSymbol] ?: return true
-                if (!shape.isUnique)
-                    shape = shape.makeUniqueClone()
-
-                shape.removeUniqueShapeProperty(stringOrSymbol, data.offset)
-                storage.removeAt(data.offset)
+                storage.remove(property.toStringOrSymbol())
                 true
             }
         }
@@ -305,9 +285,9 @@ open class JSObject protected constructor(realm: Realm, prototype: JSValue = JSN
 
     @ECMAImpl("9.1.11")
     open fun ownPropertyKeys(onlyEnumerable: Boolean = false): List<PropertyKey> {
-        return indexedProperties.indices().map(PropertyKey::from) + shape.orderedPropertyTable().filter {
+        return indexedProperties.indices().map(PropertyKey::from) + storage.filterValues {
             if (onlyEnumerable) (it.attributes and Descriptor.ENUMERABLE) != 0 else true
-        }.map { PropertyKey.from(it.name) }
+        }.map { PropertyKey.from(it.key) }
     }
 
     fun defineNativeProperty(
@@ -452,8 +432,7 @@ open class JSObject protected constructor(realm: Realm, prototype: JSValue = JSN
             else -> property.toStringOrSymbol()
         }
 
-        val data = shape[stringOrSymbol] ?: return null
-        return Descriptor(storage[data.offset], data.attributes)
+        return storage[stringOrSymbol]
     }
 
     internal fun addProperty(property: PropertyKey, descriptor: Descriptor) {
@@ -463,47 +442,7 @@ open class JSObject protected constructor(realm: Realm, prototype: JSValue = JSN
             else -> property.toStringOrSymbol()
         }
 
-        addProperty(stringOrSymbol, descriptor)
-    }
-
-    internal fun addProperty(key: StringOrSymbol, descriptor: Descriptor) {
-        if (!transitionsEnabled && !shape.isUnique) {
-            shape.addPropertyWithoutTransition(key, descriptor.attributes)
-            ensureStorageCapacity(shape.propertyCount)
-            storage[shape.propertyCount - 1] = descriptor.getRawValue()
-            return
-        }
-
-        var data = shape[key] ?: run {
-            if (!shape.isUnique && shape.propertyCount > Shape.PROPERTY_COUNT_TRANSITION_LIMIT)
-                shape = shape.makeUniqueClone()
-
-            when {
-                shape.isUnique -> shape.addUniqueShapeProperty(key, descriptor.attributes)
-                transitionsEnabled -> shape = shape.makePutTransition(key, descriptor.attributes)
-                else -> shape.addPropertyWithoutTransition(key, descriptor.attributes)
-            }
-            ensureStorageCapacity(shape.propertyCount)
-
-            shape[key]!!
-        }
-
-        if (descriptor.attributes != data.attributes) {
-            if (shape.isUnique) {
-                shape.reconfigureUniqueShapeProperty(key, descriptor.attributes)
-            } else {
-                shape = shape.makeConfigureTransition(key, descriptor.attributes)
-            }
-            data = shape[key]!!
-        }
-
-        storage[data.offset] = descriptor.getRawValue()
-    }
-
-    private fun ensureStorageCapacity(capacity: Int) {
-        repeat(capacity - storage.size) {
-            storage.add(JSEmpty)
-        }
+        storage[stringOrSymbol] = descriptor
     }
 
     enum class PropertyKind {

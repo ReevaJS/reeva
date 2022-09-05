@@ -1,6 +1,5 @@
 package com.reevajs.reeva.runtime.objects
 
-import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -15,23 +14,26 @@ import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.toValue
 
 data class Descriptor constructor(
-    private var value: JSValue,
+    private var valueBacker: JSValue,
     var attributes: Int,
 ) {
+    // To enforce a private setter
+    val value: JSValue get() = valueBacker
+
     @ECMAImpl("6.2.5.1")
     val isAccessorDescriptor: Boolean
-        get() = value is JSAccessor
+        get() = valueBacker is JSAccessor
 
     @ECMAImpl("6.2.5.2")
     val isDataDescriptor: Boolean
-        get() = (!value.isEmpty && !isAccessorDescriptor) || hasWritable
+        get() = (!valueBacker.isEmpty && !isAccessorDescriptor) || hasWritable
 
     @ECMAImpl("6.2.5.3")
     val isGenericDescriptor: Boolean
         get() = !isAccessorDescriptor && !isDataDescriptor
 
     val isEmpty: Boolean
-        get() = value == JSUndefined && attributes == 0 && !hasGetterFunction && !hasSetterFunction
+        get() = valueBacker == JSUndefined && attributes == 0 && !hasGetterFunction && !hasSetterFunction
 
     val hasConfigurable: Boolean
         get() = attributes and HAS_CONFIGURABLE != 0
@@ -49,10 +51,10 @@ data class Descriptor constructor(
         get() = attributes and HAS_SETTER != 0
 
     val hasGetterFunction: Boolean
-        get() = value.let { it is JSAccessor && it.getter != null }
+        get() = valueBacker.let { it is JSAccessor && it.getter != null }
 
     val hasSetterFunction: Boolean
-        get() = value.let { it is JSAccessor && it.setter != null }
+        get() = valueBacker.let { it is JSAccessor && it.setter != null }
 
     val isConfigurable: Boolean
         get() = attributes and CONFIGURABLE != 0
@@ -66,21 +68,21 @@ data class Descriptor constructor(
     var getter: JSFunction?
         get() {
             expect(isAccessorDescriptor)
-            return (value as JSAccessor).getter
+            return (valueBacker as JSAccessor).getter
         }
         set(newGetter) {
             expect(isAccessorDescriptor)
-            (value as JSAccessor).getter = newGetter
+            (valueBacker as JSAccessor).getter = newGetter
         }
 
     var setter: JSFunction?
         get() {
             expect(isAccessorDescriptor)
-            return (value as JSAccessor).setter
+            return (valueBacker as JSAccessor).setter
         }
         set(newSetter) {
             expect(isAccessorDescriptor)
-            (value as JSAccessor).setter = newSetter
+            (valueBacker as JSAccessor).setter = newSetter
         }
 
     init {
@@ -90,9 +92,9 @@ data class Descriptor constructor(
             attributes = attributes or HAS_ENUMERABLE
         if (attributes and WRITABLE != 0)
             attributes = attributes or HAS_WRITABLE
-        if (value.let { it is JSAccessor && it.getter != null })
+        if (valueBacker.let { it is JSAccessor && it.getter != null })
             attributes = attributes or HAS_GETTER
-        if (value.let { it is JSAccessor && it.setter != null })
+        if (valueBacker.let { it is JSAccessor && it.setter != null })
             attributes = attributes or HAS_SETTER
     }
 
@@ -133,7 +135,7 @@ data class Descriptor constructor(
     }
 
     fun getActualValue(thisValue: JSValue?): JSValue {
-        return when (val v = value) {
+        return when (val v = valueBacker) {
             is JSNativeProperty -> v.get(thisValue!!)
             is JSAccessor -> v.callGetter(thisValue!!)
             else -> v.ifEmpty(JSUndefined)
@@ -141,25 +143,25 @@ data class Descriptor constructor(
     }
 
     fun setActualValue(thisValue: JSValue?, newValue: JSValue) {
-        when (val v = value) {
+        when (val v = valueBacker) {
             is JSNativeProperty -> v.set(thisValue!!, newValue)
             is JSAccessor -> v.callSetter(thisValue!!, newValue)
-            else -> value = newValue
+            else -> valueBacker = newValue
         }
     }
 
-    fun getRawValue(): JSValue = value
+    fun getRawValue(): JSValue = valueBacker
 
     fun setRawValue(value: JSValue) {
-        this.value = value
+        this.valueBacker = value
     }
 
     @ECMAImpl("6.2.5.4", "FromPropertyDescriptor")
     fun toObject(thisValue: JSValue): JSObject {
         val obj = JSObject.create()
         if (isAccessorDescriptor) {
-            obj.set("get", (value as JSAccessor).getter ?: JSUndefined)
-            obj.set("set", (value as JSAccessor).setter ?: JSUndefined)
+            obj.set("get", (valueBacker as JSAccessor).getter ?: JSUndefined)
+            obj.set("set", (valueBacker as JSAccessor).setter ?: JSUndefined)
         } else if (isDataDescriptor) {
             obj.set("value", getActualValue(thisValue))
         }
@@ -177,8 +179,8 @@ data class Descriptor constructor(
     @ECMAImpl("6.2.5.6")
     fun complete() = apply {
         if (isGenericDescriptor) {
-            if (value == JSEmpty)
-                value = JSUndefined
+            if (valueBacker == JSEmpty)
+                valueBacker = JSUndefined
             if (!hasWritable)
                 attributes = attributes or HAS_WRITABLE
         }
@@ -276,7 +278,7 @@ data class Descriptor constructor(
             }
 
             if (hasGetterOrSetter) {
-                if (descriptor.value != JSEmpty || descriptor.hasWritable)
+                if (descriptor.valueBacker != JSEmpty || descriptor.hasWritable)
                     Errors.DescriptorPropType.throwTypeError()
                 descriptor.setRawValue(JSAccessor(getter, setter))
             }

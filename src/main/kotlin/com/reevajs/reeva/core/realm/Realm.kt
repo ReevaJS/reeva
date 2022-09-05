@@ -175,8 +175,6 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val classProto by lazy { JSClassProto.create(this) }
     val packageObj by lazy { JSPackageObject.create(null, this) }
 
-    val emptyShape = Shape()
-
     // TODO: Make these locking functions internal?
     fun hasLock() = executionLock.isHeldByCurrentThread
 

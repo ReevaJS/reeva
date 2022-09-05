@@ -106,9 +106,9 @@ class JSIntegerIndexedObject private constructor(
             (0..arrayLength).map(PropertyKey::from).toMutableList()
         } else mutableListOf()
 
-        return properties + shape.orderedPropertyTable().filter {
+        return properties + storage.filterValues {
             if (onlyEnumerable) (it.attributes and Descriptor.ENUMERABLE) != 0 else true
-        }.map { PropertyKey.from(it.name) }
+        }.map { PropertyKey.from(it.key) }
     }
 
     companion object {

@@ -42,9 +42,6 @@ class Agent {
     @Volatile
     private var objectId = 0
 
-    @Volatile
-    private var shapeId = 0
-
     var printAST = false
     var printIR = false
 
@@ -117,8 +114,6 @@ class Agent {
     }
 
     fun nextObjectId() = objectId++
-
-    fun nextShapeId() = shapeId++
 
     fun hasLock() = executionLock.isHeldByCurrentThread
 
