@@ -1,7 +1,6 @@
 package com.reevajs.reeva.core.lifecycle
 
 import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.interpreter.NormalInterpretedFunction
 import com.reevajs.reeva.parsing.ParsedSource

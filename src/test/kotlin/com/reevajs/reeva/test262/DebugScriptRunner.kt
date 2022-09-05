@@ -15,35 +15,28 @@ val test262Helpers = listOf(
 fun main() {
     Reeva.setup()
 
-    val agent = Agent().also(Agent::setAgent)
-    val realm = agent.makeRealm()
+    Agent.build {
+        printIR = true
+    }.withActiveScope {
+        val realm = makeRealm()
 
-//     val test262Script = collectTest262Script()
-//     val test262Result = agent.run(test262Script, realm)
-//     if (test262Result.isError) {
-//         println(test262Result)
-//         return
-//     }
-
-    agent.printIR = true
-
-    val sourceInfo = FileSourceInfo(File("./demo/index.mjs"))
-    val executable = Reeva.compile(realm, sourceInfo)
-
-    if (executable.hasError) {
-        agent.errorReporter.reportParseError(sourceInfo, executable.error())
-    } else {
-        try {
-            val result = executable.value().execute()
-            println("Executable result: $result")
-        } catch (e: ThrowException) {
-            agent.errorReporter.reportRuntimeError(sourceInfo, e)
-        } catch (e: Throwable) {
-            agent.errorReporter.reportInternalError(sourceInfo, e)
+        val sourceInfo = FileSourceInfo(File("./demo/index.mjs"))
+        val executable = Reeva.compile(realm, sourceInfo)
+        if (executable.hasError) {
+            errorReporter.reportParseError(sourceInfo, executable.error())
+        } else {
+            try {
+                val result = executable.value().execute()
+                println("Executable result: $result")
+            } catch (e: ThrowException) {
+                errorReporter.reportRuntimeError(sourceInfo, e)
+            } catch (e: Throwable) {
+                errorReporter.reportInternalError(sourceInfo, e)
+            }
         }
-    }
 
-    agent.microtaskQueue.checkpoint()
+        microtaskQueue.checkpoint()
+    }
 }
 
 private fun collectTest262Script(): String {

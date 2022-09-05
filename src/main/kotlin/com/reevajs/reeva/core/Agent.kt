@@ -5,16 +5,12 @@ import com.reevajs.reeva.core.errors.DefaultErrorReporter
 import com.reevajs.reeva.core.lifecycle.*
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.realm.RealmExtension
-import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.parsing.lexer.SourceLocation
-import com.reevajs.reeva.runtime.JSGlobalObject
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.functions.JSFunction
-import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.utils.Result
+import java.io.Closeable
 import java.nio.ByteOrder
-import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Function
 import kotlin.concurrent.withLock
 import kotlin.contracts.ExperimentalContracts
@@ -22,7 +18,11 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
 @OptIn(ExperimentalContracts::class)
-class Agent {
+class Agent(
+    var printIR: Boolean,
+    var printAST: Boolean,
+    var hostHooks: HostHooks,
+) {
     private val executionContextStack = ArrayDeque<ExecutionContext>()
     private var pendingSourceLocation: SourceLocation? = null
 
@@ -37,17 +37,10 @@ class Agent {
             envRecordProvider!!.envRecord = value
         }
 
-    private val executionLock = ReentrantLock()
-
     @Volatile
     private var objectId = 0
 
-    var printAST = false
-    var printIR = false
-
     var errorReporter = DefaultErrorReporter(System.out)
-
-    var hostHooks = HostHooks()
 
     val byteOrder: ByteOrder = ByteOrder.nativeOrder()
     val isLittleEndian: Boolean
@@ -99,8 +92,7 @@ class Agent {
         extensions: Map<Any, RealmExtension> = emptyMap(),
         globalObjProducer: Function<Realm, JSObject> = Function { hostHooks.initializeHostDefinedGlobalObject(it) },
     ): Realm {
-        val realm = hostHooks.initializeHostDefinedRealm(extensions, globalObjProducer)
-        return realm
+        return hostHooks.initializeHostDefinedRealm(extensions, globalObjProducer)
     }
 
     fun <T> withRealm(realm: Realm, env: EnvRecord? = null, block: () -> T): T {
@@ -115,19 +107,32 @@ class Agent {
 
     fun nextObjectId() = objectId++
 
-    fun hasLock() = executionLock.isHeldByCurrentThread
-
-    fun lock() {
-        executionLock.lock()
+    fun setActive(active: Boolean) {
+        val currentlyActiveAgent = agents.get()
+        if (active) {
+            require(currentlyActiveAgent == null || currentlyActiveAgent == this) {
+                "There is another agent active on this thread"
+            }
+            agents.set(this)
+        } else if (currentlyActiveAgent == this) {
+            agents.set(null)
+        }
     }
 
-    fun unlock() {
-        executionLock.unlock()
+    fun <T> withActiveScope(block: Agent.() -> T): T {
+        setActive(true)
+        return try {
+            this.block()
+        } finally {
+            setActive(false)
+        }
     }
 
-    fun <T> withLock(action: () -> T): T {
-        contract { callsInPlace(action, InvocationKind.EXACTLY_ONCE) }
-        return executionLock.withLock(action)
+    class Builder {
+        var printIR = false
+        var printAST = false
+        var alive = true
+        var hostHooks = HostHooks()
     }
 
     companion object {
@@ -137,9 +142,9 @@ class Agent {
         val activeAgent: Agent
             get() = agents.get()
 
-        @JvmStatic
-        fun setAgent(agent: Agent) {
-            agents.set(agent)
+        fun build(block: Builder.() -> Unit): Agent {
+            val builder = Builder().apply(block)
+            return Agent(builder.printIR, builder.printAST, builder.hostHooks)
         }
     }
 }

@@ -86,7 +86,7 @@ class Test262Runner {
 
             Reeva.setup()
 
-            val agent = Agent().apply {
+            val agent = Agent.build {
                 hostHooks = object : HostHooks() {
                     override fun initializeHostDefinedGlobalObject(realm: Realm): JSObject {
                         return Test262GlobalObject.create(realm)
@@ -94,10 +94,9 @@ class Test262Runner {
                 }
             }
 
-            Agent.setAgent(agent)
+            agent.setActive(true)
         }
 
-        @OptIn(ExperimentalSerializationApi::class)
         @AfterAll
         @JvmStatic
         fun teardown() {

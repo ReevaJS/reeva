@@ -1,9 +1,6 @@
 package com.reevajs.reeva.core.lifecycle
 
 import com.reevajs.reeva.ast.*
-import com.reevajs.reeva.ast.statements.DeclarationNode
-import com.reevajs.reeva.ast.statements.DestructuringDeclaration
-import com.reevajs.reeva.ast.statements.NamedDeclaration
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.realm.Realm

@@ -14,6 +14,7 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.expect
 import java.io.File
 import java.util.function.Function
+import javax.swing.text.html.HTML.Tag.P
 
 open class HostHooks {
     @ECMAImpl("9.5.2")
@@ -28,7 +29,32 @@ open class HostHooks {
 
     @ECMAImpl("9.5.4")
     open fun enqueuePromiseJob(realm: Realm?, job: () -> Unit) {
-        Agent.activeAgent.microtaskQueue.addMicrotask(job)
+        // There are three requirements for the job that is enqueued here:
+        //   1. If realm is not null, each time job is invoked the implementation must perform implementation-defined
+        //      steps such that execution is prepared to evaluate ECMAScript code at the time of job's invocation
+        //   2. Let scriptOrModule be GetActiveScriptOrModule() at the time HostEnqueuePromiseJob is invoked. If realm
+        //      is not null, each time job is invoked the implementation must perform implementation-defined steps such
+        //      that scriptOrModule is the active script or module at the time of job's invocation
+        //   3. Jobs must run in the same order as the HostEnqueuePromiseJob invocations that scheduled them.
+
+        val agent = Agent.activeAgent
+
+        // Same the active executable at the time of invocation to be used in the created ExecutionContext
+        val scriptOrModule = agent.getActiveExecutable()
+
+        agent.microtaskQueue.addMicrotask {
+            expect(Agent.activeAgent == agent)
+
+            if (realm != null)
+                agent.pushExecutionContext(ExecutionContext(null, realm, null, scriptOrModule, null))
+
+            try {
+                job()
+            } finally {
+                if (realm != null)
+                    agent.popExecutionContext()
+            }
+        }
     }
 
     @ECMAImpl("9.6")
@@ -75,12 +101,26 @@ open class HostHooks {
     @ECMAImpl("27.2.1.9")
     open fun promiseRejectionTracker(promise: JSObject, operation: String) {
         if (operation == "reject") {
+            // Do essentially the same thing that we do in enqueuePromiseJob
+            val agent = Agent.activeAgent
+            val realm = agent.getActiveRealm()
+
+            // Same the active executable at the time of invocation to be used in the created ExecutionContext
+            val scriptOrModule = agent.getActiveExecutable()
+
             Agent.activeAgent.microtaskQueue.addMicrotask {
-                // If promise does not have any handlers by the time this microtask is ran, it
-                // will not have any handlers, and we can print a warning
-                if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled)) {
-                    val result = promise.getSlotAs<JSValue>(SlotName.PromiseResult)
-                    println("\u001b[31mUnhandled promise rejection: ${result.toJSString()}\u001B[0m")
+                expect(Agent.activeAgent == agent)
+                agent.pushExecutionContext(ExecutionContext(null, realm, null, scriptOrModule, null))
+
+                try {
+                    // If promise does not have any handlers by the time this microtask is ran, it
+                    // will not have any handlers, and we can print a warning
+                    if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled)) {
+                        val result = promise.getSlotAs<JSValue>(SlotName.PromiseResult)
+                        println("\u001b[31mUnhandled promise rejection: ${result.toJSString()}\u001B[0m")
+                    }
+                } finally {
+                    agent.popExecutionContext()
                 }
             }
         }

@@ -56,8 +56,6 @@ import kotlin.contracts.contract
 
 @OptIn(ExperimentalContracts::class)
 class Realm(private val extensions: Map<Any, RealmExtension>) {
-    private val executionLock = ReentrantLock()
-
     lateinit var globalObject: JSObject
         private set
 
@@ -174,22 +172,6 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val packageProto by lazy { JSPackageProto.create(this) }
     val classProto by lazy { JSClassProto.create(this) }
     val packageObj by lazy { JSPackageObject.create(null, this) }
-
-    // TODO: Make these locking functions internal?
-    fun hasLock() = executionLock.isHeldByCurrentThread
-
-    fun lock() {
-        executionLock.lock()
-    }
-
-    fun unlock() {
-        executionLock.unlock()
-    }
-
-    fun <T> withLock(action: () -> T): T {
-        contract { callsInPlace(action, InvocationKind.EXACTLY_ONCE) }
-        return executionLock.withLock(action)
-    }
 
     @ECMAImpl("9.3.3")
     internal fun setGlobalObject(globalObject: JSValue, thisValue: JSValue) {

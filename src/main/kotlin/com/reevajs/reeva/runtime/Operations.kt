@@ -44,6 +44,7 @@ import java.time.*
 import java.time.format.TextStyle
 import java.util.*
 import java.util.function.Function
+import javax.swing.text.html.HTML.Tag.P
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 import kotlin.math.*
@@ -2999,9 +3000,7 @@ object Operations {
     @JvmStatic
     @ECMAImpl("26.6.2.1")
     fun newPromiseReactionJob(reaction: PromiseReaction, argument: JSValue): PromiseReactionJob {
-        val handlerRealm = if (reaction.handler != null) reaction.handler.callback.realm else null
-
-        return PromiseReactionJob(handlerRealm) job@{
+        val job = job@ {
             val handlerResult: Any = if (reaction.handler == null) {
                 if (reaction.type == PromiseReaction.Type.Fulfill) {
                     argument
@@ -3023,13 +3022,21 @@ object Operations {
             }
 
             if (handlerResult is ThrowException) {
-                val rejectFunc = reaction.capability.reject!!
-                call(rejectFunc, JSUndefined, listOf(handlerResult.value))
+                call(reaction.capability.reject!!, JSUndefined, listOf(handlerResult.value))
             } else {
-                val resolveFunc = reaction.capability.resolve!!
-                call(resolveFunc, JSUndefined, listOf(handlerResult as JSValue))
+                call(reaction.capability.resolve!!, JSUndefined, listOf(handlerResult as JSValue))
             }
         }
+
+        val handlerRealm = if (reaction.handler != null) {
+            try {
+                getFunctionRealm(reaction.handler.callback)
+            } catch (e: ThrowException) {
+                Agent.activeAgent.getActiveRealm()
+            }
+        } else null
+
+        return PromiseReactionJob(handlerRealm, job)
     }
 
     @JvmStatic
@@ -3039,7 +3046,7 @@ object Operations {
         thenable: JSValue,
         then: JobCallback
     ): PromiseReactionJob {
-        return PromiseReactionJob(then.callback.realm) {
+        val job = {
             val (resolveFunction, rejectFunction) = createResolvingFunctions(promise)
             try {
                 Agent.activeAgent.hostHooks.callJobCallback(
@@ -3049,7 +3056,16 @@ object Operations {
             } catch (e: ThrowException) {
                 call(rejectFunction, JSUndefined, listOf(e.value))
             }
+            Unit
         }
+
+        val thenRealm = try {
+            getFunctionRealm(then.callback)
+        } catch (e: ThrowException) {
+            Agent.activeAgent.getActiveRealm()
+        }
+
+        return PromiseReactionJob(thenRealm, job)
     }
 
     @JvmStatic
