@@ -11,7 +11,7 @@ import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.utils.Result
 import com.reevajs.reeva.utils.expect
 
-class ScriptRecord(val realm: Realm, val parsedSource: ParsedSource) : Executable {
+class Script(val realm: Realm, val parsedSource: ParsedSource) : Executable {
     override fun execute(): JSValue {
         val sourceInfo = parsedSource.sourceInfo
         expect(!sourceInfo.isModule)
@@ -24,9 +24,9 @@ class ScriptRecord(val realm: Realm, val parsedSource: ParsedSource) : Executabl
     }
 
     companion object {
-        fun parseScript(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, ScriptRecord> {
+        fun parseScript(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, Script> {
             return Parser(sourceInfo).parseScript().mapValue { result ->
-                ScriptRecord(realm, result)
+                Script(realm, result)
             }
         }
     }

@@ -17,8 +17,8 @@ object Reeva {
         } else compileScript(realm, sourceInfo).cast()
     }
 
-    fun compileScript(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, ScriptRecord> {
-        return ScriptRecord.parseScript(realm, sourceInfo)
+    fun compileScript(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, Script> {
+        return Script.parseScript(realm, sourceInfo)
     }
 
     fun compileModule(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, ModuleRecord> {
