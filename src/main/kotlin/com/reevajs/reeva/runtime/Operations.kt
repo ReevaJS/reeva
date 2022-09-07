@@ -1184,15 +1184,13 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("7.3.11")
-    fun hasProperty(value: JSValue, property: PropertyKey): Boolean {
-        ecmaAssert(value is JSObject)
+    fun hasProperty(value: JSObject, property: PropertyKey): Boolean {
         return value.hasProperty(property)
     }
 
     @JvmStatic
     @ECMAImpl("7.3.12")
-    fun hasOwnProperty(value: JSValue, property: PropertyKey): Boolean {
-        ecmaAssert(value is JSObject)
+    fun hasOwnProperty(value: JSObject, property: PropertyKey): Boolean {
         val desc = value.getOwnProperty(property)
         return desc != JSUndefined
     }

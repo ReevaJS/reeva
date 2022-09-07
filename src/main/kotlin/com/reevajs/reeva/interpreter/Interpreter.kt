@@ -318,6 +318,8 @@ class Interpreter(
 
     override fun visitTestIn() {
         val rhs = popValue()
+        if (rhs !is JSObject)
+            Errors.InBadRHS.throwTypeError(realm)
         val lhs = popValue().toPropertyKey()
         push(Operations.hasProperty(rhs, lhs).toValue())
     }
