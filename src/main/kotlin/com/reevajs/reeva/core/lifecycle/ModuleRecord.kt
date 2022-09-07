@@ -36,16 +36,16 @@ import java.net.URI
  * their ModuleEnvRecord during link time. This is possible because the bindings are
  * all simply initialized with JSEmpty, so no runtime evaluation is necessary.
  */
-@ECMAImpl("16.2.1.4", name = "Abstract Module Records")
+@ECMAImpl("16.2.1.4")
 abstract class ModuleRecord(val realm: Realm) : Executable {
     // Serves as a unique module identifier across a given Realm.
     abstract val uri: URI
 
-    @ECMAImpl("16.2.1.4", name = "[[Environment]]")
+    @ECMAImpl("16.2.1.4")
     lateinit var env: ModuleEnvRecord
         protected set
 
-    @ECMAImpl("16.2.1.4", name = "[[Namespace]]")
+    @ECMAImpl("16.2.1.4")
     private var namespace: JSObject? = null
 
     abstract fun link()

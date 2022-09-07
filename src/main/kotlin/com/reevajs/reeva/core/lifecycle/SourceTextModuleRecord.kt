@@ -17,7 +17,7 @@ import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.utils.Result
 import com.reevajs.reeva.utils.expect
 
-@ECMAImpl("16.2.1.6", name = "Source Text Module Records")
+@ECMAImpl("16.2.1.6")
 class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : CyclicModuleRecord(realm) {
     override val uri by parsedSource.sourceInfo::uri
 

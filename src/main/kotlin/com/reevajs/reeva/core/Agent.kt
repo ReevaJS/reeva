@@ -71,7 +71,7 @@ class Agent(
         }
     }
 
-    @ECMAImpl("9.4.1", name = "GetActiveScriptOrModule")
+    @ECMAImpl("9.4.1")
     fun getActiveExecutable(): Executable? {
         if (executionContextStack.isEmpty())
             return null

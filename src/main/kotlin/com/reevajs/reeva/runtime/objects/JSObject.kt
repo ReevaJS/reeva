@@ -154,6 +154,7 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
         value: JSValue,
         attributes: Int = Descriptor.DEFAULT_ATTRIBUTES
     ) = defineOwnProperty(property.key(), Descriptor(value, attributes))
+
     @JvmOverloads
     fun defineOwnProperty(
         property: JSSymbol,

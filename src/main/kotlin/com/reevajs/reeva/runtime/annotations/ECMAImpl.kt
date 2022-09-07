@@ -17,7 +17,6 @@ package com.reevajs.reeva.runtime.annotations
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY, AnnotationTarget.CLASS, AnnotationTarget.VALUE_PARAMETER)
 @Repeatable
 annotation class ECMAImpl(
-    val section: String,
-    val name: String = "",
-    val spec: String = "https://tc39.es/ecma262/",
+    vararg val section: String,
+    val spec: String = "https://262.ecma-international.org/13.0/",
 )

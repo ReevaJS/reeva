@@ -87,7 +87,6 @@ class JSRegExpObject private constructor(
             return Syntax("Reeva RegExp", op, op2, behavior, 0, 0, metaCharTable)
         }
 
-        @ECMAImpl("N/A", name = "The [[RegExpMatcher]] Abstract Closure")
         fun makeClosure(source: String, flags: String, realm: Realm = Agent.activeAgent.getActiveRealm()): Regex {
             var options = 0
             if (Flag.IgnoreCase.char in flags)

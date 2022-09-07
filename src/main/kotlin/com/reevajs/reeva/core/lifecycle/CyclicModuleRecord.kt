@@ -15,12 +15,12 @@ import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
 import kotlin.math.min
 
-@ECMAImpl("16.2.1.5", name = "Cyclic Module Records")
+@ECMAImpl("16.2.1.5")
 abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
-    @ECMAImpl("16.2.1.5", name = "[[Status]]")
+    @ECMAImpl("16.2.1.5")
     protected var status = Status.Unlinked
 
-    @ECMAImpl("16.2.1.5", name = "[[EvaluationError]]")
+    @ECMAImpl("16.2.1.5")
     var evaluationError: ThrowException? = null
         protected set
 
@@ -28,7 +28,7 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
      * Tracks in what order this module was visited in the DFS module search,
      * both during linking and evaluation.
      */
-    @ECMAImpl("16.2.1.5", name = "[[DFSIndex]]")
+    @ECMAImpl("16.2.1.5")
     protected var dfsIndex = 0
 
     /**
@@ -36,27 +36,27 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
      * cycle. If there is no cycle in the module tree involving this module,
      * then this is equal to dfsIndex.
      */
-    @ECMAImpl("16.2.1.5", name = "[[DFSAncestorIndex]]")
+    @ECMAImpl("16.2.1.5")
     protected var dfsAncestorIndex = 0
 
     /**
      * A list of all modules requested in import statements.
      */
-    @ECMAImpl("16.2.1.5", name = "[[RequestedModules]]")
+    @ECMAImpl("16.2.1.5")
     abstract val requestedModules: List<String>
 
     /**
      * The module in this module's cycle which was visited first in the DFS
      * module search. For a module not in a cycle, it is simply this module.
      */
-    @ECMAImpl("16.2.1.5", name = "[[CycleRoot]]")
+    @ECMAImpl("16.2.1.5")
     protected var cycleRoot: CyclicModuleRecord? = null
 
     /**
      * A promise which, when resolved, will indicate that both this module
      * and any child module in the module tree are done executing.
      */
-    @ECMAImpl("16.2.1.5", name = "[[TopLevelCapability]]")
+    @ECMAImpl("16.2.1.5")
     protected var topLevelCapability: Operations.PromiseCapability? = null
 
     /**

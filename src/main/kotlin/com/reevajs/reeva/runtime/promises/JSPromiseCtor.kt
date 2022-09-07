@@ -70,8 +70,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSPromiseCtor(realm).initialize()
 
-        @ECMAImpl("26.6.4.1")
-        @ECMAImpl("26.6.4.1.2", name = "PerformPromiseAll")
+        @ECMAImpl("26.6.4.1", "26.6.4.1.2")
         @JvmStatic
         fun all(arguments: JSArguments): JSValue {
             val capability = Operations.newPromiseCapability(arguments.thisValue)
