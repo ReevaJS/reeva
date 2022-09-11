@@ -1,8 +1,7 @@
 package com.reevajs.reeva.core.errors
 
-import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.utils.Result
 
 class ThrowException(val value: JSValue) : Exception() {
     // val stackFrames: List<ExecutionContext>
@@ -14,4 +13,12 @@ class ThrowException(val value: JSValue) : Exception() {
     //         popActiveFunction()
     //     }
     // }
+}
+
+typealias Completion<T> = Result<ThrowException, T>
+
+fun <T : Any?> completion(block: () -> T): Completion<T> = try {
+    Completion.success(block())
+} catch (e: ThrowException) {
+    Completion.error(e)
 }

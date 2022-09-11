@@ -6,12 +6,12 @@ import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
 import com.reevajs.reeva.core.lifecycle.ModuleRecord
 import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.parsing.HoistingScope
 import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.functions.JSFunction
+import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.unreachable
 import java.math.BigInteger
@@ -124,7 +124,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         for (func in functionsToInitialize) {
             visitFunctionHelper(
-                func.identifier.processedName,
+                func.identifier!!.processedName,
                 func.parameters,
                 func.body,
                 func.functionScope,
@@ -339,10 +339,12 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         when (functionScope.argumentsMode) {
             HoistingScope.ArgumentsMode.None -> {
             }
+
             HoistingScope.ArgumentsMode.Unmapped -> {
                 +CreateUnmappedArgumentsObject
                 storeToSource(functionScope.argumentsSource)
             }
+
             HoistingScope.ArgumentsMode.Mapped -> {
                 +CreateMappedArgumentsObject
                 storeToSource(functionScope.argumentsSource)
@@ -379,6 +381,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                         storeToSource(param)
                     }
                 }
+
                 is BindingParameter -> {
                     if (param.initializer != null) {
                         +LoadValue(local)
@@ -389,6 +392,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     }
                     assign(param.pattern, local)
                 }
+
                 is RestParameter -> {
                     +CollectRestArgs
                     assign(param.declaration.node)
@@ -398,7 +402,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         for (func in functionsToInitialize) {
             visitFunctionHelper(
-                func.identifier.processedName,
+                func.identifier!!.processedName,
                 func.parameters,
                 func.body,
                 func.functionScope,
@@ -765,6 +769,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 }
                 return
             }
+
             BinaryOperator.Or -> {
                 visit(node.lhs)
                 +Dup
@@ -774,6 +779,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 }
                 return
             }
+
             BinaryOperator.Coalesce -> {
                 visit(node.lhs)
                 +Dup
@@ -827,6 +833,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 +Pop
                 +PushUndefined
             }
+
             UnaryOperator.Typeof -> +TypeOf
             UnaryOperator.Plus -> +ToNumber
             UnaryOperator.Minus -> +Negate
@@ -856,6 +863,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 execute(Dup)
                 storeToSource(target.source)
             }
+
             is MemberExpressionNode -> {
                 visitExpression(target.lhs)
                 +Dup
@@ -880,15 +888,18 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                         // value lhs key value
                         +StoreKeyedProperty
                     }
+
                     MemberExpressionNode.Type.NonComputed -> {
                         val name = (target.rhs as IdentifierNode).processedName
                         +LoadNamedProperty(name)
                         execute(DupX1)
                         +StoreNamedProperty(name)
                     }
+
                     MemberExpressionNode.Type.Tagged -> TODO()
                 }
             }
+
             else -> TODO()
         }
     }
@@ -923,6 +934,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     +StoreValue(valueLocal)
                 assignToBindingPattern(node, valueLocal)
             }
+
             is DestructuringDeclaration -> assign(node.pattern)
             is IdentifierReferenceNode -> storeToSource(node.source)
             else -> TODO()
@@ -954,6 +966,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     storeToSource(property.declaration)
                     return
                 }
+
                 is SimpleBindingProperty -> {
                     val name = property.declaration.identifier.processedName
                     +LoadValue(valueLocal)
@@ -972,6 +985,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
                     property.alias ?: BindingDeclarationOrPattern(property.declaration)
                 }
+
                 is ComputedBindingProperty -> {
                     expect(property.name.type != PropertyName.Type.Identifier)
 
@@ -1128,6 +1142,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 +Dup
                 storeToSource(lhs.source)
             }
+
             is MemberExpressionNode -> {
                 visitExpression(lhs.lhs)
 
@@ -1140,14 +1155,17 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                         // value lhs rhs value
                         +StoreKeyedProperty
                     }
+
                     MemberExpressionNode.Type.NonComputed -> {
                         pushRhs()
                         +DupX1
                         +StoreNamedProperty((lhs.rhs as IdentifierNode).processedName)
                     }
+
                     MemberExpressionNode.Type.Tagged -> TODO()
                 }
             }
+
             else -> TODO()
         }
     }
@@ -1175,9 +1193,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 visitExpression(node.rhs)
                 +LoadKeyedProperty
             }
+
             MemberExpressionNode.Type.NonComputed -> {
                 +LoadNamedProperty((node.rhs as IdentifierNode).processedName)
             }
+
             MemberExpressionNode.Type.Tagged -> TODO()
         }
 
@@ -1237,6 +1257,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     }
                     builder.setLastOpcodeLocation(part.sourceLocation)
                 }
+
                 is OptionalComputedAccessChain -> {
                     visitExpression(part.expr)
                     +LoadKeyedProperty
@@ -1327,6 +1348,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     }
                 }
             }
+
             ArgumentsMode.Normal -> {
                 for (argument in arguments)
                     visitExpression(argument)
@@ -1432,41 +1454,62 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         TODO()
     }
 
-    override fun visitImportDeclaration(node: ImportDeclarationNode) {
+    override fun visitImportNode(node: ImportNode) {
         // nop
     }
 
-    override fun visitExport(node: ExportNode) {
-        when (node) {
-            is DefaultClassExportNode -> {
-                visit(node.classNode)
-                loadFromSource(node.classNode)
-                +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
-            }
-            is DefaultExpressionExportNode -> {
-                visit(node.expression)
-                +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
-            }
-            is DefaultFunctionExportNode -> {
-                // The function has been created in the prologue of this IR
-                loadFromSource(node.declaration)
-                +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
-            }
-            is DeclarationExportNode -> {
-                visit(node.declaration)
-                node.declaration.declarations.flatMap { it.sources() }.forEach {
-                    loadFromSource(it)
-                    +StoreModuleVar(it.name())
+    override fun visitExportNode(node: ExportNode) {
+        for (export in node.exports) {
+            when (export) {
+                is Export.Expr -> {
+                    visit(export.expr)
+                    +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
                 }
-            }
-            is NamedExport -> {
-                visit(node.identifierNode)
-                +StoreModuleVar(node.alias?.processedName ?: node.identifierNode.processedName)
-            }
-            is NamedExports -> node.exports.forEach(::visit)
-            is ExportFromNode -> {
-                // These are treated mostly like imports, so all of the work is done
-                // in SourceTextModuleRecord
+
+                is Export.Named -> {
+                    visit(export.exportIdent)
+                    +StoreModuleVar(export.localIdent.processedName)
+                }
+
+                is Export.Node -> {
+                    when (val decl = export.node) {
+                        is ClassDeclarationNode -> {
+                            visit(decl)
+                            loadFromSource(decl)
+                            if (export.default) {
+                                +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
+                            } else {
+                                expect(decl.identifier != null)
+                                +StoreModuleVar(decl.identifier.processedName)
+                            }
+                        }
+
+                        is FunctionDeclarationNode -> {
+                            // The function has been created in the prologue of this IR
+                            loadFromSource(decl)
+                            if (export.default) {
+                                +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
+                            } else {
+                                expect(decl.identifier != null)
+                                +StoreModuleVar(decl.identifier.processedName)
+                            }
+                        }
+
+                        is LexicalDeclarationNode, is VariableSourceNode -> {
+                            visit(decl)
+                            decl.declarations.flatMap { it.sources() }.forEach {
+                                loadFromSource(it)
+                                +StoreModuleVar(it.name())
+                            }
+                        }
+
+                        else -> TODO()
+                    }
+                }
+                is Export.Namespace -> {
+                    // These are treated mostly like imports, so all of the work is done
+                    // in SourceTextModuleRecord
+                }
             }
         }
     }
@@ -1870,6 +1913,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                         +IncInt(indexLocal!!)
                     }
                 }
+
                 ArrayElementNode.Type.Spread -> {
                     if (indexLocal == null) {
                         indexLocal = builder.newLocalSlot(LocalKind.Int)
@@ -1889,6 +1933,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                         +StoreArray(arrayLocal, indexLocal)
                     }
                 }
+
                 ArrayElementNode.Type.Normal -> {
                     visitExpression(element.expression!!)
                     if (index != null) {
@@ -1915,10 +1960,12 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                         visitExpression(property.value)
                     }
                 }
+
                 is ShorthandProperty -> {
                     visitExpression(property.key)
                     +StoreNamedProperty(property.key.processedName)
                 }
+
                 is MethodProperty -> {
                     val method = property.method
 
@@ -1941,6 +1988,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                             method.propName,
                             ::makeFunction,
                         )
+
                         MethodDefinitionNode.Kind.Getter, MethodDefinitionNode.Kind.Setter -> {
                             visitPropertyName(method.propName)
                             makeFunction()
@@ -1948,9 +1996,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                                 +DefineGetterProperty
                             } else +DefineSetterProperty
                         }
+
                         else -> TODO()
                     }
                 }
+
                 is SpreadProperty -> TODO()
             }
         }

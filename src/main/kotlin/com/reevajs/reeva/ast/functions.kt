@@ -73,7 +73,7 @@ class BindingParameter(
 }
 
 class FunctionDeclarationNode(
-    val identifier: IdentifierNode,
+    val identifier: IdentifierNode?, // can be omitted in default exports
     val parameters: ParameterList,
     val body: BlockNode,
     val kind: Operations.FunctionKind,
@@ -81,7 +81,7 @@ class FunctionDeclarationNode(
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
 
-    override fun name() = identifier.processedName
+    override fun name() = identifier?.processedName ?: TODO()
 
     override val declarations = listOf(this)
 

@@ -340,47 +340,39 @@ class Parser(val sourceInfo: SourceInfo) {
      * ModuleSpecifier :
      *     StringLiteral
      */
-    private fun parseImportDeclaration(): ImportDeclarationNode = nps {
+    private fun parseImportDeclaration(): ImportNode = nps {
         consume(TokenType.Import)
 
         if (tokenType == TokenType.StringLiteral) {
-            return@nps ImportDeclarationNode(null, parseStringLiteral().value)
-                .also { asi() }
+            return@nps ImportNode(parseStringLiteral().value).also { asi() }
         }
 
         val defaultImport = parseDefaultImport()
 
         if (defaultImport != null) {
             if (!match(TokenType.Comma))
-                return@nps ImportDeclarationNode(ImportList(listOf(defaultImport)), parseImportExportFrom())
+                return@nps ImportNode(defaultImport, parseImportExportFrom())
 
             consume()
 
-            val namespaceImport = parseNameSpaceImport()
+            val namespaceImport = parseNamespaceImport()
             if (namespaceImport != null)
-                return@nps ImportDeclarationNode(
-                    ImportList(listOf(defaultImport, namespaceImport)),
-                    parseImportExportFrom()
-                )
+                return@nps ImportNode(namespaceImport, parseImportExportFrom())
 
             val namedImports = parseNamedImports()
-            if (namedImports != null) {
-                return@nps ImportDeclarationNode(
-                    ImportList(listOf(defaultImport, *namedImports.toTypedArray())),
-                    parseImportExportFrom()
-                )
-            }
+            if (namedImports != null)
+                return@nps ImportNode(namedImports, parseImportExportFrom())
 
-            reporter.at(token).expected("namespace import or named import list")
+            reporter.at(token).expected("named import list")
         }
 
-        val namespaceImport = parseNameSpaceImport()
+        val namespaceImport = parseNamespaceImport()
         if (namespaceImport != null)
-            return@nps ImportDeclarationNode(ImportList(listOf(namespaceImport)), parseImportExportFrom())
+            return@nps ImportNode(namespaceImport, parseImportExportFrom())
 
         val namedImports = parseNamedImports()
         if (namedImports != null)
-            return@nps ImportDeclarationNode(namedImports, parseImportExportFrom())
+            return@nps ImportNode(namedImports, parseImportExportFrom())
 
         reporter.at(token).expected("namespace import or named import list")
     }
@@ -392,9 +384,9 @@ class Parser(val sourceInfo: SourceInfo) {
      * ImportedBinding :
      *     BindingIdentifier
      */
-    private fun parseDefaultImport(): DefaultImport? = nps {
-        if (matchIdentifierName()) {
-            DefaultImport(parseBindingIdentifier())
+    private fun parseDefaultImport(): Import.Default? {
+        return if (matchIdentifierName()) {
+            Import.Default(parseBindingIdentifier())
         } else null
     }
 
@@ -405,15 +397,16 @@ class Parser(val sourceInfo: SourceInfo) {
      * ImportedBinding :
      *     BindingIdentifier
      */
-    private fun parseNameSpaceImport(): NamespaceImport? = nps {
+    private fun parseNamespaceImport(): Import.Namespace? {
         if (!match(TokenType.Mul))
-            return@nps null
+            return null
 
         consume()
         if (!match(TokenType.Identifier) || token.rawLiterals != "as")
             reporter.at(token).expected("\"as\"")
         consume()
-        NamespaceImport(parseBindingIdentifier())
+
+        return Import.Namespace(parseBindingIdentifier())
     }
 
     /*
@@ -433,13 +426,13 @@ class Parser(val sourceInfo: SourceInfo) {
      * ImportedBinding :
      *     BindingIdentifier
      */
-    private fun parseNamedImports(): ImportList? = nps {
+    private fun parseNamedImports(): List<Import.Named>? {
         if (!match(TokenType.OpenCurly))
-            return@nps null
+            return null
 
         consume()
 
-        val imports = mutableListOf<Import>()
+        val imports = mutableListOf<Import.Named>()
 
         while (!match(TokenType.CloseCurly)) {
             val peeked = peek(1) ?: reporter.at(token).error("unexpected eol")
@@ -449,7 +442,7 @@ class Parser(val sourceInfo: SourceInfo) {
                 parseBindingIdentifier()
             } else identifier
 
-            imports.add(NormalImport(identifier, alias).withPosition(identifier, alias))
+            imports.add(Import.Named(identifier, alias))
 
             if (!match(TokenType.Comma))
                 break
@@ -459,7 +452,7 @@ class Parser(val sourceInfo: SourceInfo) {
 
         consume(TokenType.CloseCurly)
 
-        ImportList(imports)
+        return imports
     }
 
     /*
@@ -479,13 +472,13 @@ class Parser(val sourceInfo: SourceInfo) {
         parseExportFromOrNamedExportsClause()?.let { return@nps it }
 
         if (match(TokenType.Var) || match(TokenType.Let) || match(TokenType.Const))
-            return@nps DeclarationExportNode(parseVariableDeclaration())
+            return@nps ExportNode(Export.Node(parseVariableDeclaration(), default = false))
 
         if (match(TokenType.Function) || match(TokenType.Async))
-            return@nps DeclarationExportNode(parseFunctionDeclaration())
+            return@nps ExportNode(Export.Node(parseFunctionDeclaration(), default = false))
 
         if (match(TokenType.Class))
-            return@nps DeclarationExportNode(parseClassDeclaration())
+            return@nps ExportNode(Export.Node(parseClassDeclaration(), default = false))
 
         if (!match(TokenType.Default))
             reporter.at(token).expected("\"default\"")
@@ -495,13 +488,13 @@ class Parser(val sourceInfo: SourceInfo) {
         inDefaultContext = true
 
         if (match(TokenType.Function) || match(TokenType.Async))
-            return@nps DefaultFunctionExportNode(parseFunctionDeclaration())
+            return@nps ExportNode(Export.Node(parseFunctionDeclaration(), default = true))
 
         if (match(TokenType.Class))
-            return@nps DefaultClassExportNode(parseClassDeclaration())
+            return@nps ExportNode(Export.Node(parseClassDeclaration(), default = true))
 
         // TODO: AssignmentExpression, not Expression
-        DefaultExpressionExportNode(parseExpression()).also {
+        ExportNode(Export.Expr(parseExpression())).also {
             inDefaultContext = false
         }
     }
@@ -526,17 +519,19 @@ class Parser(val sourceInfo: SourceInfo) {
             consume()
             if (match(TokenType.Identifier) && token.rawLiterals == "as") {
                 consume()
-                return@nps ExportAllAsFromNode(parseIdentifier(), parseImportExportFrom())
+                val export = Export.Namespace(parseIdentifier(), parseImportExportFrom())
+                return@nps ExportNode(listOf(export))
             }
 
-            return@nps ExportAllFromNode(parseImportExportFrom())
+            val export = Export.Namespace(null, parseImportExportFrom())
+            return@nps ExportNode(listOf(export))
         }
 
-        parseNamedExports()?.let {
+        parseNamedExports()?.let { exports ->
             val from = maybeParseImportExportFrom()
             if (from != null) {
-                ExportNamedFromNode(it, from)
-            } else it
+                ExportNode(exports.map { it.copy(moduleName = from) })
+            } else ExportNode(exports)
         }
     }
 
@@ -554,17 +549,16 @@ class Parser(val sourceInfo: SourceInfo) {
      *     IdentifierName
      *     IdentifierName as IdentifierName
      */
-    private fun parseNamedExports(): NamedExports? = nps {
+    private fun parseNamedExports(): List<Export.Named>? {
         if (!match(TokenType.OpenCurly))
-            return@nps null
+            return null
 
         consume()
 
-        val start = token.start
-        val list = mutableListOf<NamedExport>()
+        val list = mutableListOf<Export.Named>()
 
         while (!match(TokenType.CloseCurly)) {
-            val name = parseIdentifierReference()
+            val name = parseIdentifierReference().identifierNode
             if (tokenType == TokenType.Identifier && token.rawLiterals == "as") {
                 consume()
                 val ident = parseIdentifier().let {
@@ -572,9 +566,9 @@ class Parser(val sourceInfo: SourceInfo) {
                         IdentifierNode(ModuleRecord.DEFAULT_SPECIFIER).withPosition(it)
                     } else it
                 }
-                list.add(NamedExport(name, ident).withPosition(name, ident))
+                list.add(Export.Named(name, ident))
             } else {
-                list.add(NamedExport(name, null).withPosition(name))
+                list.add(Export.Named(name))
             }
 
             if (!match(TokenType.Comma))
@@ -582,11 +576,10 @@ class Parser(val sourceInfo: SourceInfo) {
 
             consume()
         }
-        val end = token.end
 
         consume(TokenType.CloseCurly)
 
-        NamedExports(ExportList(list).withPosition(start, end))
+        return list
     }
 
     private fun parseImportExportFrom(): String =

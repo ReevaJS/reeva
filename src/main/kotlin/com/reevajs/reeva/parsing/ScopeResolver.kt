@@ -54,29 +54,27 @@ class ScopeResolver : ASTVisitor {
             scope = scope.outer!!
     }
 
-    override fun visitImport(node: Import) {
-        // Import vars never take a local slot, as they are always access by
+    override fun visitImport(import: Import) {
+        // Import vars never take a local slot, as they are always accessed by
         // name with LoadModuleVar
-        node.isInlineable = false
+        import.isInlineable = false
 
-        scope.addVariableSource(node)
-        node.type = VariableType.Let
-        node.mode = VariableMode.Import
-        super.visitImport(node)
+        scope.addVariableSource(import)
+        import.type = VariableType.Let
+        import.mode = VariableMode.Import
+
+        super.visitImport(import)
     }
 
-    override fun visitExport(node: ExportNode) {
-        super.visitExport(node)
+    override fun visitExport(export: Export) {
+        super.visitExport(export)
 
-        when (node) {
-            is DefaultClassExportNode -> node.classNode.mode = VariableMode.Export
-            is DefaultFunctionExportNode -> node.declaration.mode = VariableMode.Export
-            is DeclarationExportNode -> node.declaration.declarations.forEach {
+        if (export is Export.Node) {
+            export.node.declarations.forEach {
                 it.sources().forEach { source ->
                     source.mode = VariableMode.Export
                 }
             }
-            else -> {}
         }
     }
 

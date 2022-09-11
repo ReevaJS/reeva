@@ -1,7 +1,7 @@
 package com.reevajs.reeva.core.lifecycle
 
-import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.core.realm.Realm
+import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.jvmcompat.JSPackageObject
 import com.reevajs.reeva.runtime.JSValue
@@ -41,15 +41,13 @@ class JVMModuleRecord(realm: Realm, val specifier: String) : ModuleRecord(realm)
 
     override fun evaluate(): JSValue {
         for (requiredName in requiredNames) {
+            environment!!.createImmutableBinding(requiredName, isStrict = true)
+
             when (requiredName) {
-                DEFAULT_SPECIFIER, NAMESPACE_SPECIFIER -> environment.setMutableBinding(
-                    requiredName,
-                    jvmObj,
-                    isStrict = true
-                )
+                DEFAULT_SPECIFIER, NAMESPACE_SPECIFIER -> environment!!.setMutableBinding(requiredName, jvmObj, true)
                 else -> {
                     // TODO: This will not work for classes, as JSClassObject doesn't override get
-                    environment.setMutableBinding(requiredName, jvmObj.get(requiredName), isStrict = true)
+                    environment!!.setMutableBinding(requiredName, jvmObj.get(requiredName), true)
                 }
             }
         }
@@ -57,12 +55,16 @@ class JVMModuleRecord(realm: Realm, val specifier: String) : ModuleRecord(realm)
         return Operations.promiseResolve(realm.promiseCtor, JSUndefined)
     }
 
-    override fun makeNamespaceImport(): JSObject {
+    override fun makeNamespaceImport(exports: List<String>): JSObject {
         expect(jvmObj is JSPackageObject)
         return jvmObj
     }
 
     override fun getExportedNames(exportStarSet: MutableSet<SourceTextModuleRecord>) = emptyList<String>()
+
+    override fun resolveExport(exportName: String, resolveSet: MutableList<ResolvedBinding>): ResolvedBinding {
+        TODO("Not yet implemented")
+    }
 
     override fun notifyImportedNames(names: Set<String>) {
         expect(status == CyclicModuleRecord.Status.Linked || status == CyclicModuleRecord.Status.Unlinked)

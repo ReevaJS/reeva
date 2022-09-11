@@ -34,8 +34,10 @@ interface ASTVisitor {
             is LexicalDeclarationNode -> visitLexicalDeclaration(node)
             is VariableDeclarationNode -> visitVariableDeclaration(node)
             is DebuggerStatementNode -> visitDebuggerStatement()
-            is ImportDeclarationNode -> visitImportDeclaration(node)
-            is ExportNode -> visitExport(node)
+            is ImportNode -> visitImportNode(node)
+            is Import -> visitImport(node)
+            is ExportNode -> visitExportNode(node)
+            is Export -> visitExport(node)
             is FunctionDeclarationNode -> visitFunctionDeclaration(node)
             is ClassDeclarationNode -> visitClassDeclaration(node)
             is EmptyStatementNode -> {
@@ -275,36 +277,36 @@ interface ASTVisitor {
 
     fun visitDebuggerStatement() {}
 
-    fun visitImportDeclaration(node: ImportDeclarationNode) {
-        node.imports?.forEach(::visit)
+    fun visitImportNode(node: ImportNode) {
+        node.imports.forEach(::visit)
     }
 
-    fun visitImport(node: Import) {
-        when (node) {
-            is DefaultImport -> visit(node.identifierNode)
-            is NamespaceImport -> visit(node.identifierNode)
-            is NormalImport -> {
-                visit(node.identifierNode)
-                if (node.identifierNode != node.alias)
-                    visit(node.alias)
+    fun visitImport(import: Import) {
+        when (import) {
+            is Import.Default -> visit(import.identifier)
+            is Import.Named -> {
+                visit(import.importIdent)
+                if (import.importIdent != import.localIdent)
+                    visit(import.localIdent)
             }
+            is Import.Namespace -> visit(import.identifier)
         }
     }
 
-    fun visitExport(node: ExportNode) {
-        when (node) {
-            is DeclarationExportNode -> visit(node.declaration)
-            is DefaultClassExportNode -> visit(node.classNode)
-            is DefaultExpressionExportNode -> visit(node.expression)
-            is DefaultFunctionExportNode -> visit(node.declaration)
-            is ExportAllAsFromNode -> visit(node.identifierNode)
-            is ExportAllFromNode -> {}
-            is ExportNamedFromNode -> node.exports.exports.forEach(::visit)
-            is NamedExport -> {
-                visit(node.identifierNode)
-                node.alias?.let(::visit)
+    fun visitExportNode(node: ExportNode) {
+        node.exports.forEach(::visit)
+    }
+
+    fun visitExport(export: Export) {
+        when (export) {
+            is Export.Expr -> visit(export.expr)
+            is Export.Named -> {
+                visit(export.exportIdent)
+                if (export.exportIdent != export.localIdent)
+                    visit(export.localIdent)
             }
-            is NamedExports -> visit(node.exports)
+            is Export.Namespace -> export.alias?.let(::visit)
+            is Export.Node -> visit(export.node)
         }
     }
 
