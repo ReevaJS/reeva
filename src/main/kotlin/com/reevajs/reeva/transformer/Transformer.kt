@@ -120,7 +120,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         }
 
         if (declaredVarNames.isNotEmpty() || lexNames.isNotEmpty() || functionNames.isNotEmpty())
-            +DeclareGlobals(declaredVarNames, lexNames, functionNames)
+            +DeclareGlobalVars(declaredVarNames, lexNames)
 
         for (func in functionsToInitialize) {
             visitFunctionHelper(
@@ -133,7 +133,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 func.kind,
             )
 
-            storeToSource(func)
+            +DeclareGlobalFunc(func.identifier.processedName)
         }
 
         block()

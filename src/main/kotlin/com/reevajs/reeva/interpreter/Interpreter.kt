@@ -547,7 +547,7 @@ class Interpreter(
         )
     }
 
-    override fun visitDeclareGlobals(opcode: DeclareGlobals) {
+    override fun visitDeclareGlobalVars(opcode: DeclareGlobalVars) {
         val env = realm.globalEnv
 
         for ((name, _) in opcode.lexs) {
@@ -566,11 +566,6 @@ class Interpreter(
                 Errors.InvalidGlobalVar(name).throwSyntaxError(realm)
         }
 
-        for (name in opcode.funcs) {
-            if (!env.canDeclareGlobalFunction(name))
-                Errors.InvalidGlobalFunction(name).throwSyntaxError(realm)
-        }
-
         for ((name, _) in opcode.lexs) {
             if (!realm.globalEnv.canDeclareGlobalVar(name))
                 Errors.RestrictedGlobalPropertyName(name).throwSyntaxError(realm)
@@ -586,6 +581,16 @@ class Interpreter(
 
         for (name in opcode.vars)
             env.createGlobalVarBinding(name, false)
+    }
+
+    override fun visitDeclareGlobalFunc(opcode: DeclareGlobalFunc) {
+        val env = realm.globalEnv
+
+        if (!env.canDeclareGlobalFunction(opcode.name))
+            Errors.InvalidGlobalFunction(opcode.name).throwSyntaxError(realm)
+
+        val func = popValue()
+        env.createGlobalFunctionBinding(opcode.name, func, deletable = false)
     }
 
     override fun visitPushDeclarativeEnvRecord(opcode: PushDeclarativeEnvRecord) {

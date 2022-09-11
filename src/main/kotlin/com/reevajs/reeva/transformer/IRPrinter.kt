@@ -31,7 +31,7 @@ class IRPrinter(private val transformedSource: TransformedSource) {
                 is CreateMethod -> println(" <FunctionInfo ${opcode.ir.name}>")
                 is CreateClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
                 is CreateGeneratorClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
-                is DeclareGlobals -> {
+                is DeclareGlobalVars -> {
                     print(" ")
                     if (opcode.vars.isNotEmpty()) {
                         print("var={")
@@ -43,13 +43,9 @@ class IRPrinter(private val transformedSource: TransformedSource) {
                         print(opcode.lexs.joinToString(separator = " "))
                         print("} ")
                     }
-                    if (opcode.funcs.isNotEmpty()) {
-                        print("func={")
-                        print(opcode.funcs.joinToString(separator = " "))
-                        print("} ")
-                    }
                     println()
                 }
+                is DeclareGlobalFunc -> print(" ${opcode.name}")
                 is LoadNamedProperty -> println(" \"${opcode.name}\"")
                 is IncInt -> println(" [${opcode.local}]")
                 is JumpTable -> {

@@ -448,11 +448,15 @@ object ConstructArray : Opcode(-2)
  * Declares global variables. This is required to prevent global variable
  * collision.
  */
-class DeclareGlobals(
+class DeclareGlobalVars(
     val vars: List<String>,
     val lexs: List<Pair<String, /* isConstant: */ Boolean>>,
-    val funcs: List<String>,
 ) : Opcode(0)
+
+/**
+ * Declare a global function. Takes a function off the stack
+ */
+class DeclareGlobalFunc(val name: String) : Opcode(-1)
 
 /**
  * Creates a new DeclarativeEnvRecord with the current EnvRecord as its parent,

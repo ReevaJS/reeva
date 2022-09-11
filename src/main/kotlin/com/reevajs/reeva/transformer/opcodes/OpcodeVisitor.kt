@@ -66,7 +66,8 @@ interface OpcodeVisitor {
             CallArray -> visitCallArray()
             is Construct -> visitConstruct(opcode)
             ConstructArray -> visitConstructArray()
-            is DeclareGlobals -> visitDeclareGlobals(opcode)
+            is DeclareGlobalVars -> visitDeclareGlobalVars(opcode)
+            is DeclareGlobalFunc -> visitDeclareGlobalFunc(opcode)
             is PushDeclarativeEnvRecord -> visitPushDeclarativeEnvRecord(opcode)
             is PushModuleEnvRecord -> visitPushModuleEnvRecord()
             PopEnvRecord -> visitPopEnvRecord()
@@ -256,7 +257,9 @@ interface OpcodeVisitor {
 
     fun visitConstructArray()
 
-    fun visitDeclareGlobals(opcode: DeclareGlobals)
+    fun visitDeclareGlobalVars(opcode: DeclareGlobalVars)
+
+    fun visitDeclareGlobalFunc(opcode: DeclareGlobalFunc)
 
     fun visitPushDeclarativeEnvRecord(opcode: PushDeclarativeEnvRecord)
 
