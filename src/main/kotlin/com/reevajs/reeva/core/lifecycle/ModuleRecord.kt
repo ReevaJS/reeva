@@ -42,7 +42,7 @@ abstract class ModuleRecord(val realm: Realm) : Executable {
     abstract val uri: URI
 
     @ECMAImpl("16.2.1.4")
-    lateinit var env: ModuleEnvRecord
+    lateinit var environment: ModuleEnvRecord
         protected set
 
     @ECMAImpl("16.2.1.4")

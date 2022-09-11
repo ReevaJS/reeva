@@ -15,7 +15,7 @@ import com.reevajs.reeva.utils.toValue
 
 data class Descriptor constructor(
     private var valueBacker: JSValue,
-    var attributes: Int,
+    var attributes: Int = 0,
 ) {
     // To enforce a private setter
     val value: JSValue get() = valueBacker

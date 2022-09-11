@@ -82,7 +82,7 @@ class JSModuleNamespaceObject private constructor(
         if (stringProp !in exports)
             return JSUndefined
 
-        val binding = moduleRecord.env.getBinding(stringProp)
+        val binding = moduleRecord.environment.getBindingValue(stringProp, isStrict = false)
         if (binding == JSEmpty)
             Errors.CircularImport(stringProp).throwReferenceError()
         return binding

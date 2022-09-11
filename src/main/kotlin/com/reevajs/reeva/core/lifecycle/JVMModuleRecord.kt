@@ -1,7 +1,7 @@
 package com.reevajs.reeva.core.lifecycle
 
-import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.jvmcompat.JSPackageObject
 import com.reevajs.reeva.runtime.JSValue
@@ -36,16 +36,20 @@ class JVMModuleRecord(realm: Realm, val specifier: String) : ModuleRecord(realm)
         status = CyclicModuleRecord.Status.Linked
 
         // We don't care about the outer env, as this module is never actually executed
-        env = ModuleEnvRecord(null)
+        environment = ModuleEnvRecord(realm, null)
     }
 
     override fun evaluate(): JSValue {
         for (requiredName in requiredNames) {
             when (requiredName) {
-                DEFAULT_SPECIFIER, NAMESPACE_SPECIFIER -> env.setBinding(requiredName, jvmObj)
+                DEFAULT_SPECIFIER, NAMESPACE_SPECIFIER -> environment.setMutableBinding(
+                    requiredName,
+                    jvmObj,
+                    isStrict = true
+                )
                 else -> {
                     // TODO: This will not work for classes, as JSClassObject doesn't override get
-                    env.setBinding(requiredName, jvmObj.get(requiredName))
+                    environment.setMutableBinding(requiredName, jvmObj.get(requiredName), isStrict = true)
                 }
             }
         }

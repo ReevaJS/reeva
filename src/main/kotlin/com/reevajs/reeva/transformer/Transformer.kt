@@ -85,7 +85,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         val lexVariables = variables.filter { it.type != VariableType.Var }
 
         val varNames = varVariables.map { it.name() }
-        val lexNames = lexVariables.map { it.name() }
+        val lexNames = lexVariables.map { it.name() to (it.type == VariableType.Const) }
 
         val functionNames = mutableListOf<String>()
         val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
@@ -433,7 +433,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 +PushUndefined
             } else {
                 expect(source.type == VariableType.Var)
-                +LoadGlobal(source.name())
+                +LoadGlobal(source.name(), source.scope.isStrict)
             }
 
             return
@@ -446,9 +446,9 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         } else {
             val distance = currentScope!!.envDistanceFrom(source.scope)
             if (distance == 0) {
-                +LoadCurrentEnvSlot(source.index)
+                +LoadCurrentEnvSlot(source.index, source.scope.isStrict)
             } else {
-                +LoadEnvSlot(source.index, distance)
+                +LoadEnvSlot(source.index, distance, source.scope.isStrict)
             }
         }
     }
@@ -462,7 +462,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 } else return
             } else {
                 expect(source.type == VariableType.Var)
-                +StoreGlobal(source.name())
+                +StoreGlobal(source.name(), source.scope.isStrict)
             }
 
             return
@@ -475,9 +475,9 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         } else {
             val distance = currentScope!!.envDistanceFrom(source.scope)
             if (distance == 0) {
-                +StoreCurrentEnvSlot(source.index)
+                +StoreCurrentEnvSlot(source.index, source.scope.isStrict)
             } else {
-                +StoreEnvSlot(source.index, distance)
+                +StoreEnvSlot(source.index, distance, source.scope.isStrict)
             }
         }
     }
@@ -816,7 +816,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         if (node.expression is IdentifierReferenceNode && node.op == UnaryOperator.Typeof &&
             node.expression.source.mode == VariableMode.Global
         ) {
-            +TypeOfGlobal(node.expression.processedName)
+            +TypeOfGlobal(node.expression.processedName, node.scope.isStrict)
             return
         }
 

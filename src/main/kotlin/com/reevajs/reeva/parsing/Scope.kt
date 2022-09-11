@@ -52,7 +52,9 @@ open class Scope(val outer: Scope? = null, val allowVarInlining: Boolean = true)
             if (sourceVariable.scope.outerHoistingScope != outerHoistingScope)
                 sourceVariable.isInlineable = false
         } else {
-            reference.source = GlobalSourceNode(reference.name())
+            reference.source = GlobalSourceNode(reference.name()).apply {
+                scope = this@Scope
+            }
             pendingVariableReferences.add(reference)
         }
     }

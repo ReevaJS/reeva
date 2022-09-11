@@ -195,7 +195,7 @@ object TypeOf : Opcode(0)
  * required in order to avoid a ReferenceError being thrown if given an
  * undefined global identifier.
  */
-class TypeOfGlobal(val name: String) : Opcode(1)
+class TypeOfGlobal(val name: String, val isStrict: Boolean) : Opcode(1)
 
 /**
  * Performs the generic ToNumber algorithm to the value at the top of the stack.
@@ -448,7 +448,11 @@ object ConstructArray : Opcode(-2)
  * Declares global variables. This is required to prevent global variable
  * collision.
  */
-class DeclareGlobals(val vars: List<String>, val lexs: List<String>, val funcs: List<String>) : Opcode(0)
+class DeclareGlobals(
+    val vars: List<String>,
+    val lexs: List<Pair<String, /* isConstant: */ Boolean>>,
+    val funcs: List<String>,
+) : Opcode(0)
 
 /**
  * Creates a new DeclarativeEnvRecord with the current EnvRecord as its parent,
@@ -471,36 +475,36 @@ object PopEnvRecord : Opcode(0)
  * Loads a global variable by name. Throws a ReferenceError if there is no
  * global variable bound to [name].
  */
-class LoadGlobal(val name: String) : Opcode(1)
+class LoadGlobal(val name: String, val isStrict: Boolean) : Opcode(1)
 
 /**
  * Stores a value into a global variable by name.
  */
-class StoreGlobal(val name: String) : Opcode(-1)
+class StoreGlobal(val name: String, val isStrict: Boolean) : Opcode(-1)
 
 /**
  * Loads a value from the current EnvRecord at the specified [slot].
  */
-class LoadCurrentEnvSlot(val slot: Int) : Opcode(1)
+class LoadCurrentEnvSlot(val slot: Int, val isStrict: Boolean) : Opcode(1)
 
 /**
  * Stores a value into the current EnvRecord at the specified [slot].
  */
-class StoreCurrentEnvSlot(val slot: Int) : Opcode(-1)
+class StoreCurrentEnvSlot(val slot: Int, val isStrict: Boolean) : Opcode(-1)
 
 /**
  * Loads a value from a parent EnvRecord at the specified [slot]. The EnvRecord
  * is chosen via [distance], where a distance of zero implies the current
  * EnvRecord (though [distance] will always be greater than zero).
  */
-class LoadEnvSlot(val slot: Int, val distance: Int) : Opcode(1)
+class LoadEnvSlot(val slot: Int, val distance: Int, val isStrict: Boolean) : Opcode(1)
 
 /**
  * Stores a value to a parent EnvRecord at the specified [slot]. The EnvRecord
  * is chosen via [distance], where a distance of zero implies the current
  * EnvRecord (though [distance] will always be greater than zero).
  */
-class StoreEnvSlot(val slot: Int, val distance: Int) : Opcode(-1)
+class StoreEnvSlot(val slot: Int, val distance: Int, val isStrict: Boolean) : Opcode(-1)
 
 /**
  * Loads a named variable from the outer ModuleEnvRecord.

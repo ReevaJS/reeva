@@ -7,6 +7,7 @@ import com.reevajs.reeva.jvmcompat.JSClassProto
 import com.reevajs.reeva.jvmcompat.JSPackageObject
 import com.reevajs.reeva.jvmcompat.JSPackageProto
 import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayCtor
 import com.reevajs.reeva.runtime.arrays.JSArrayProto
@@ -32,6 +33,7 @@ import com.reevajs.reeva.runtime.other.JSDateCtor
 import com.reevajs.reeva.runtime.other.JSDateProto
 import com.reevajs.reeva.runtime.other.JSProxyCtor
 import com.reevajs.reeva.runtime.primitives.JSSymbol
+import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.promises.JSPromiseCtor
 import com.reevajs.reeva.runtime.promises.JSPromiseProto
 import com.reevajs.reeva.runtime.regexp.JSRegExpCtor
@@ -174,12 +176,33 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     val packageObj by lazy { JSPackageObject.create(null, this) }
 
     @ECMAImpl("9.3.3")
-    internal fun setGlobalObject(globalObject: JSValue, thisValue: JSValue) {
+    internal fun setGlobalObject(globalObject_: JSValue, thisValue_: JSValue) {
+        var globalObject = globalObject_
+        var thisValue = thisValue_
+
+        // 1. If globalObj is undefined, then
+        if (globalObject == JSUndefined) {
+            // a. Let intrinsics be realmRec.[[Intrinsics]].
+            // b. Set globalObj to OrdinaryObjectCreate(intrinsics.[[%Object.prototype%]]).
+            globalObject = JSObject.create(this)
+        }
+
+        // 2. Assert: Type(globalObj) is Object.
         ecmaAssert(globalObject is JSObject)
-        val actualThisValue = thisValue.ifUndefined(globalObject)
-        expect(actualThisValue is JSObject)
+
+        // 3. If thisValue is undefined, set thisValue to globalObj.
+        if (thisValue == JSUndefined)
+            thisValue = globalObject
+
+        // 4. Set realmRec.[[GlobalObject]] to globalObj.
         this.globalObject = globalObject
-        globalEnv = GlobalEnvRecord(actualThisValue)
+
+        // 5. Let newGlobalEnv be NewGlobalEnvironment(globalObj, thisValue).
+        // 6. Set realmRec.[[GlobalEnv]] to newGlobalEnv.
+        expect(thisValue is JSObject)
+        globalEnv = Operations.newGlobalEnvironment(this, globalObject, thisValue)
+
+        // 7. Return unused.
     }
 
     fun initObjects() {

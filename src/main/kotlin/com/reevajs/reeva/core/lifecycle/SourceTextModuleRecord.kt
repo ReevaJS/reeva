@@ -37,7 +37,7 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
     }
 
     override fun initializeEnvironment() {
-        env = ModuleEnvRecord(realm.globalEnv)
+        environment = ModuleEnvRecord(realm, realm.globalEnv)
 
         val node = parsedSource.node as ModuleNode
 
@@ -48,18 +48,23 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
 
             // Note that we have to store the ModuleRecord in the indirect binding
             // instead of directly storing the ModuleEnvRecord. This is because the
-            // requestedModules' env field may not have been initialized due to
+            // requestedModule's env field may not have been initialized due to
             // circular (but legal) imports.
             decl.imports?.forEach {
                 when (it) {
                     is DefaultImport ->
-                        env.setIndirectBinding(DEFAULT_SPECIFIER, DEFAULT_SPECIFIER, requestedModule)
-                    is NamespaceImport ->
-                        env.setBinding(NAMESPACE_SPECIFIER, requestedModule.getNamespaceObject())
-                    is NormalImport -> env.setIndirectBinding(
+                        environment.createImportBinding(DEFAULT_SPECIFIER, requestedModule, DEFAULT_SPECIFIER)
+                    is NamespaceImport -> {
+                        environment.createImmutableBinding(NAMESPACE_SPECIFIER, isStrict = true)
+                        environment.initializeBinding(
+                            NAMESPACE_SPECIFIER,
+                            requestedModule.getNamespaceObject(),
+                        )
+                    }
+                    is NormalImport -> environment.createImportBinding(
                         it.identifierNode.processedName,
-                        it.alias.processedName,
                         requestedModule,
+                        it.alias.processedName,
                     )
                 }
             }
@@ -74,14 +79,23 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
             when (export) {
                 is DefaultClassExportNode,
                 is DefaultExpressionExportNode,
-                is DefaultFunctionExportNode -> env.setBinding(DEFAULT_SPECIFIER, JSEmpty)
-                is NamedExport ->
-                    env.setBinding(export.alias?.processedName ?: export.identifierNode.processedName, JSEmpty)
+                is DefaultFunctionExportNode -> {
+                    environment.createImmutableBinding(DEFAULT_SPECIFIER, isStrict = true)
+                    environment.initializeBinding(DEFAULT_SPECIFIER, JSEmpty)
+                }
+                is NamedExport -> {
+                    val name = export.alias?.processedName ?: export.identifierNode.processedName
+                    environment.createImmutableBinding(name, isStrict = true)
+                    environment.initializeBinding(name, JSEmpty)
+                }
                 is NamedExports -> export.exports.forEach {
-                    env.setBinding(it.alias?.processedName ?: it.identifierNode.processedName, JSEmpty)
+                    val name = it.alias?.processedName ?: it.identifierNode.processedName
+                    environment.createImmutableBinding(name, isStrict = true)
+                    environment.initializeBinding(name, JSEmpty)
                 }
                 is DeclarationExportNode -> export.declaration.declarations.flatMap { it.names() }.forEach {
-                    env.setBinding(it, JSEmpty)
+                    environment.createImmutableBinding(it, isStrict = true)
+                    environment.initializeBinding(it, JSEmpty)
                 }
                 is ExportFromNode -> { /* handled in next loop */ }
             }
@@ -94,18 +108,19 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
             val requestedModule = Agent.activeAgent.hostHooks.resolveImportedModule(this, export.moduleName)
 
             when (export) {
-                is ExportAllAsFromNode -> env.setBinding(
+                is ExportAllAsFromNode -> environment.setMutableBinding(
                     export.identifierNode.processedName,
                     requestedModule.getNamespaceObject(),
+                    isStrict = true,
                 )
                 is ExportAllFromNode -> requestedModule.getExportedNames().forEach {
-                    env.setIndirectBinding(it, it, requestedModule)
+                    environment.createImportBinding(it, requestedModule, it)
                 }
                 is ExportNamedFromNode -> export.exports.exports.forEach {
-                    env.setIndirectBinding(
+                    environment.createImportBinding(
                         it.alias?.processedName ?: it.identifierNode.processedName,
+                        requestedModule,
                         it.identifierNode.processedName,
-                        requestedModule
                     )
                 }
             }
@@ -175,7 +190,7 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
         val transformedSource = Executable.transform(parsedSource)
 
         val agent = Agent.activeAgent
-        val context = ExecutionContext(null, realm, env, this, null)
+        val context = ExecutionContext(null, realm, environment, this, null)
         agent.pushExecutionContext(context)
 
         try {

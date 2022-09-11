@@ -4,12 +4,11 @@ import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
-import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
+import com.reevajs.reeva.core.environment.StaticDeclarativeEnvRecord
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.transformer.*
 import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.runtime.*
-import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.collections.JSUnmappedArgumentsObject
 import com.reevajs.reeva.runtime.functions.JSFunction
@@ -332,7 +331,7 @@ class Interpreter(
         if (!realm.globalEnv.hasBinding(opcode.name)) {
             push(JSString("undefined"))
         } else {
-            visitLoadGlobal(LoadGlobal(opcode.name))
+            visitLoadGlobal(LoadGlobal(opcode.name, opcode.isStrict))
             visitTypeOf()
         }
     }
@@ -549,60 +548,54 @@ class Interpreter(
     }
 
     override fun visitDeclareGlobals(opcode: DeclareGlobals) {
-        if (moduleEnv != null)
-            return
+        val env = realm.globalEnv
 
-        for (name in opcode.lexs) {
-            if (hasRestrictedGlobalProperty(name))
+        for ((name, _) in opcode.lexs) {
+            if (env.hasVarDeclaration(name))
+                Errors.InvalidGlobalVar(name).throwSyntaxError(realm)
+
+            if (env.hasLexicalDeclaration(name))
+                Errors.InvalidGlobalVar(name).throwSyntaxError(realm)
+
+            if (env.hasRestrictedGlobalProperty(name))
                 Errors.RestrictedGlobalPropertyName(name).throwSyntaxError(realm)
         }
 
-        for (name in opcode.funcs) {
-            if (!canDeclareGlobalFunction(name))
-                Errors.InvalidGlobalFunction(name).throwSyntaxError(realm)
-        }
-
         for (name in opcode.vars) {
-            if (!canDeclareGlobalVar(name))
+            if (env.hasLexicalDeclaration(name))
                 Errors.InvalidGlobalVar(name).throwSyntaxError(realm)
         }
 
-        for (name in opcode.vars)
-            realm.globalEnv.setBinding(name, JSUndefined)
-        for (name in opcode.funcs)
-            realm.globalEnv.setBinding(name, JSUndefined)
-    }
-
-    @ECMAImpl("9.1.1.4.14")
-    private fun hasRestrictedGlobalProperty(name: String): Boolean {
-        return realm.globalObject.getOwnPropertyDescriptor(name)?.isConfigurable?.not() ?: false
-    }
-
-    @ECMAImpl("9.1.1.4.15")
-    private fun canDeclareGlobalVar(name: String): Boolean {
-        return Operations.hasOwnProperty(realm.globalObject, name.key()) || realm.globalObject.isExtensible()
-    }
-
-    @ECMAImpl("9.1.1.4.16")
-    private fun canDeclareGlobalFunction(name: String): Boolean {
-        val existingProp = realm.globalObject.getOwnPropertyDescriptor(name)
-            ?: return realm.globalObject.isExtensible()
-
-        return when {
-            existingProp.isConfigurable -> true
-            existingProp.isDataDescriptor && existingProp.isWritable && existingProp.isEnumerable -> true
-            else -> false
+        for (name in opcode.funcs) {
+            if (!env.canDeclareGlobalFunction(name))
+                Errors.InvalidGlobalFunction(name).throwSyntaxError(realm)
         }
+
+        for ((name, _) in opcode.lexs) {
+            if (!realm.globalEnv.canDeclareGlobalVar(name))
+                Errors.RestrictedGlobalPropertyName(name).throwSyntaxError(realm)
+        }
+
+        for ((name, isConstant) in opcode.lexs) {
+            if (isConstant) {
+                env.createImmutableBinding(name, true)
+            } else {
+                env.createMutableBinding(name, false)
+            }
+        }
+
+        for (name in opcode.vars)
+            env.createGlobalVarBinding(name, false)
     }
 
     override fun visitPushDeclarativeEnvRecord(opcode: PushDeclarativeEnvRecord) {
         val runningContext = agent.runningExecutionContext
-        runningContext.envRecord = DeclarativeEnvRecord(runningContext.envRecord, opcode.slotCount)
+        runningContext.envRecord = StaticDeclarativeEnvRecord(realm, opcode.slotCount, runningContext.envRecord)
     }
 
     override fun visitPushModuleEnvRecord() {
         val runningContext = agent.runningExecutionContext
-        runningContext.envRecord = ModuleEnvRecord(runningContext.envRecord)
+        runningContext.envRecord = ModuleEnvRecord(realm, runningContext.envRecord)
     }
 
     override fun visitPopEnvRecord() {
@@ -613,31 +606,31 @@ class Interpreter(
     override fun visitLoadGlobal(opcode: LoadGlobal) {
         if (!realm.globalEnv.hasBinding(opcode.name))
             Errors.NotDefined(opcode.name).throwReferenceError(realm)
-        push(realm.globalEnv.getBinding(opcode.name))
+        push(realm.globalEnv.getBindingValue(opcode.name, opcode.isStrict))
     }
 
     override fun visitStoreGlobal(opcode: StoreGlobal) {
-        realm.globalEnv.setBinding(opcode.name, popValue())
+        realm.globalEnv.setMutableBinding(opcode.name, popValue(), opcode.isStrict)
     }
 
     override fun visitLoadCurrentEnvSlot(opcode: LoadCurrentEnvSlot) {
-        push(agent.runningExecutionContext.envRecord!!.getBinding(opcode.slot))
+        push(agent.runningExecutionContext.envRecord!!.getBindingValue(opcode.slot, opcode.isStrict))
     }
 
     override fun visitStoreCurrentEnvSlot(opcode: StoreCurrentEnvSlot) {
-        agent.runningExecutionContext.envRecord!!.setBinding(opcode.slot, popValue())
+        agent.runningExecutionContext.envRecord!!.setMutableBinding(opcode.slot, popValue(), opcode.isStrict)
     }
 
     override fun visitLoadEnvSlot(opcode: LoadEnvSlot) {
         var env = agent.runningExecutionContext.envRecord!!
         repeat(opcode.distance) { env = env.outer!! }
-        push(env.getBinding(opcode.slot))
+        push(env.getBindingValue(opcode.slot, opcode.isStrict))
     }
 
     override fun visitStoreEnvSlot(opcode: StoreEnvSlot) {
         var env = agent.runningExecutionContext.envRecord!!
         repeat(opcode.distance) { env = env.outer!! }
-        env.setBinding(opcode.slot, popValue())
+        env.setMutableBinding(opcode.slot, popValue(), opcode.isStrict)
     }
 
     override fun visitJump(opcode: Jump) {
@@ -1008,14 +1001,14 @@ class Interpreter(
     }
 
     override fun visitLoadModuleVar(opcode: LoadModuleVar) {
-        val value = moduleEnv!!.getBinding(opcode.name)
+        val value = moduleEnv!!.getBindingValue(opcode.name, isStrict = true)
         if (value == JSEmpty)
             Errors.CircularImport(opcode.name).throwReferenceError(realm)
         push(value)
     }
 
     override fun visitStoreModuleVar(opcode: StoreModuleVar) {
-        moduleEnv!!.setBinding(opcode.name, popValue())
+        moduleEnv!!.setMutableBinding(opcode.name, popValue(), isStrict = true)
     }
 
     private fun pop(): Any = stack.removeLast()

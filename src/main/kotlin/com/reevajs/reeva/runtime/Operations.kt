@@ -4,6 +4,9 @@ package com.reevajs.reeva.runtime
 
 import com.reevajs.reeva.ast.ASTNode
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.environment.DynamicDeclarativeEnvRecord
+import com.reevajs.reeva.core.environment.GlobalEnvRecord
+import com.reevajs.reeva.core.environment.ObjectEnvRecord
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.jvmcompat.JSClassInstanceObject
@@ -1508,6 +1511,25 @@ object Operations {
     @ECMAImpl("8.3.6")
     fun getGlobalObject(): JSObject {
         return realm.globalObject
+    }
+
+    @JvmStatic
+    @ECMAImpl("9.1.2.5")
+    fun newGlobalEnvironment(realm: Realm, globalObject: JSObject, thisValue: JSObject): GlobalEnvRecord {
+        // 1. Let objRec be NewObjectEnvironment(G, false, null).
+        val objectRecord = ObjectEnvRecord(realm, globalObject, false, null)
+
+        // 2. Let dclRec be a new declarative Environment Record containing no bindings.
+        val declarativeRecord = DynamicDeclarativeEnvRecord(realm, null)
+
+        // 3. Let env be a new global Environment Record.
+        // 4. Set env.[[ObjectRecord]] to objRec.
+        // 5. Set env.[[GlobalThisValue]] to thisValue.
+        // 6. Set env.[[DeclarativeRecord]] to dclRec.
+        // 7. Set env.[[VarNames]] to a new empty List.
+        // 8. Set env.[[OuterEnv]] to null.
+        // 9. Return env.
+        return GlobalEnvRecord(realm, objectRecord, declarativeRecord, thisValue)
     }
 
     @JvmStatic
