@@ -16,7 +16,7 @@ import com.reevajs.reeva.utils.key
 class GlobalEnvRecord(
     private val realm: Realm,
     private val objectRecord: ObjectEnvRecord,
-    private val declarativeRecord: DynamicDeclarativeEnvRecord,
+    private val declarativeRecord: DeclarativeEnvRecord,
     private val globalThisValue: JSObject,
 ) : EnvRecord(null) {
     private val varNames = mutableSetOf<String>()

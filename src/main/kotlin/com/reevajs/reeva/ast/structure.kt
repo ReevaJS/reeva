@@ -5,9 +5,7 @@ import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.parsing.lexer.Token
 import com.reevajs.reeva.parsing.lexer.TokenLocation
-import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.newline
-import com.reevajs.reeva.utils.unreachable
 import kotlin.reflect.KClass
 
 open class ASTNodeBase(children: List<ASTNode> = emptyList()) : ASTNode {
@@ -62,17 +60,27 @@ abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeW
 
     var isInlineable = true
 
-    /**
-     * Refers to the variable's slot in the EnvRecord if
-     * isInlineable == false, otherwise refers to the variable's
-     * local index
-     */
-    var index: Int = -1
+    lateinit var key: VariableKey
 
     lateinit var type: VariableType
     lateinit var mode: VariableMode
 
     abstract fun name(): String
+}
+
+// Represents the way a variable is stored during execution
+sealed interface VariableKey {
+    // The variable is stored in an optimized DeclarativeEnvRecord and accessed
+    // by the specified slot in the bindings array
+    class EnvRecordSlot(val slot: Int) : VariableKey
+
+    // The variable is stored directly in the interpreter's locals list, and
+    // accessed directly by the given index
+    class InlineIndex(val index: Int) : VariableKey
+
+    // The variable is stored in a non-optimized DeclarativeEnvRecord and
+    // accessed by its name
+    object Named : VariableKey
 }
 
 // Variable not declared by the user, created at scope resolution time.

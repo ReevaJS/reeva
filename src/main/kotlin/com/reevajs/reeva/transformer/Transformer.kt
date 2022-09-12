@@ -65,8 +65,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     private fun enterScope(scope: Scope) {
         currentScope = scope
 
-        if (scope.requiresEnv())
-            +PushDeclarativeEnvRecord(scope.slotCount)
+        if (scope.requiresEnv()) {
+            // If we are in an eval-scope, all slot optimizations get thrown out the window,
+            // and everything is stored in the EnvRecord by name
+            +PushDeclarativeEnvRecord(scope.slotCount.takeIf { !scope.isTaintedByEval })
+        }
     }
 
     private fun exitScope(scope: Scope) {
@@ -443,16 +446,20 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             return
         }
 
-        expect(source.index != -1)
+        val key = source.key
 
-        if (source.isInlineable) {
-            +LoadValue(Local(source.index))
+        if (key is VariableKey.InlineIndex) {
+            +LoadValue(Local(key.index))
         } else {
             val distance = currentScope!!.envDistanceFrom(source.scope)
-            if (distance == 0) {
-                +LoadCurrentEnvSlot(source.index, source.scope.isStrict)
-            } else {
-                +LoadEnvSlot(source.index, distance, source.scope.isStrict)
+            val name = if (key is VariableKey.Named) source.name() else null
+            val index = if (key is VariableKey.EnvRecordSlot) key.slot else null
+
+            when {
+                distance == 0 && name == null -> +LoadCurrentEnvSlot(index!!, source.scope.isStrict)
+                distance == 0 && name != null -> +LoadCurrentEnvName(name, source.scope.isStrict)
+                name == null -> +LoadEnvSlot(index!!, distance, source.scope.isStrict)
+                else -> +LoadEnvName(name, distance, source.scope.isStrict)
             }
         }
     }
@@ -472,16 +479,20 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             return
         }
 
-        expect(source.index != -1)
+        val key = source.key
 
-        if (source.isInlineable) {
-            +StoreValue(Local(source.index))
+        if (key is VariableKey.InlineIndex) {
+            +StoreValue(Local(key.index))
         } else {
             val distance = currentScope!!.envDistanceFrom(source.scope)
-            if (distance == 0) {
-                +StoreCurrentEnvSlot(source.index, source.scope.isStrict)
-            } else {
-                +StoreEnvSlot(source.index, distance, source.scope.isStrict)
+            val name = if (key is VariableKey.Named) source.name() else null
+            val index = if (key is VariableKey.EnvRecordSlot) key.slot else null
+
+            when {
+                distance == 0 && name == null -> +StoreCurrentEnvSlot(index!!, source.scope.isStrict)
+                distance == 0 && name != null -> +StoreCurrentEnvName(name, source.scope.isStrict)
+                name == null -> +StoreEnvSlot(index!!, distance, source.scope.isStrict)
+                else -> +StoreEnvName(name, distance, source.scope.isStrict)
             }
         }
     }

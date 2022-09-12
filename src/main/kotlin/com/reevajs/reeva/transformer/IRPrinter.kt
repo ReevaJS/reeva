@@ -45,7 +45,7 @@ class IRPrinter(private val transformedSource: TransformedSource) {
                     }
                     println()
                 }
-                is DeclareGlobalFunc -> print(" ${opcode.name}")
+                is DeclareGlobalFunc -> println(" ${opcode.name}")
                 is LoadNamedProperty -> println(" \"${opcode.name}\"")
                 is IncInt -> println(" [${opcode.local}]")
                 is JumpTable -> {
@@ -55,7 +55,9 @@ class IRPrinter(private val transformedSource: TransformedSource) {
                     println(" { $entries }")
                 }
                 is JumpInstr -> println(" @${opcode.to}")
+                is LoadCurrentEnvName -> println(" \"${opcode.name}\"")
                 is LoadCurrentEnvSlot -> println(" [${opcode.slot}]")
+                is LoadEnvName -> println(" \"${opcode.name}\" #${opcode.distance}")
                 is LoadEnvSlot -> println(" [${opcode.slot}] #${opcode.distance}")
                 is LoadGlobal -> println(" \"${opcode.name}\"")
                 is LoadInt -> println(" [${opcode.local}]")
@@ -68,7 +70,9 @@ class IRPrinter(private val transformedSource: TransformedSource) {
                 is PushDeclarativeEnvRecord -> println(" #${opcode.slotCount}")
                 is SetGeneratorPhase -> println(" #${opcode.phase}")
                 is StoreNamedProperty -> println(" \"${opcode.name}\"")
+                is StoreCurrentEnvName -> println(" \"${opcode.name}\"")
                 is StoreCurrentEnvSlot -> println(" [${opcode.slot}]")
+                is StoreEnvName -> println(" \"${opcode.name}\" #${opcode.distance}")
                 is StoreEnvSlot -> println(" [${opcode.slot}] #${opcode.distance}")
                 is StoreGlobal -> println(" \"${opcode.name}\"")
                 is StoreInt -> println(" [${opcode.local}]")

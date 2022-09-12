@@ -77,6 +77,10 @@ interface OpcodeVisitor {
             is StoreCurrentEnvSlot -> visitStoreCurrentEnvSlot(opcode)
             is LoadEnvSlot -> visitLoadEnvSlot(opcode)
             is StoreEnvSlot -> visitStoreEnvSlot(opcode)
+            is LoadCurrentEnvName -> visitLoadCurrentEnvName(opcode)
+            is StoreCurrentEnvName -> visitStoreCurrentEnvName(opcode)
+            is LoadEnvName -> visitLoadEnvName(opcode)
+            is StoreEnvName -> visitStoreEnvName(opcode)
             is Jump -> visitJump(opcode)
             is JumpIfTrue -> visitJumpIfTrue(opcode)
             is JumpIfFalse -> visitJumpIfFalse(opcode)
@@ -278,6 +282,14 @@ interface OpcodeVisitor {
     fun visitLoadEnvSlot(opcode: LoadEnvSlot)
 
     fun visitStoreEnvSlot(opcode: StoreEnvSlot)
+
+    fun visitLoadCurrentEnvName(opcode: LoadCurrentEnvName)
+
+    fun visitStoreCurrentEnvName(opcode: StoreCurrentEnvName)
+
+    fun visitLoadEnvName(opcode: LoadEnvName)
+
+    fun visitStoreEnvName(opcode: StoreEnvName)
 
     fun visitJump(opcode: Jump)
 

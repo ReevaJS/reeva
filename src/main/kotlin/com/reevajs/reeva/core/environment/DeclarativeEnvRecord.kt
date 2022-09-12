@@ -8,11 +8,13 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 
-open class DynamicDeclarativeEnvRecord(protected val realm: Realm, outer: EnvRecord?) : EnvRecord(outer) {
-    private val bindings = mutableMapOf<String, Binding>()
-
+open class DeclarativeEnvRecord(
+    protected val realm: Realm,
+    protected val bindings: Bindings,
+    outer: EnvRecord?,
+) : EnvRecord(outer) {
     @ECMAImpl("9.1.1.1.1")
-    override fun hasBinding(name: EnvRecordKey) = (name as String) in bindings
+    override fun hasBinding(name: EnvRecordKey) = name in bindings
 
     @ECMAImpl("9.1.1.1.2")
     override fun createMutableBinding(name: EnvRecordKey, deletable: Boolean) {
@@ -21,7 +23,7 @@ open class DynamicDeclarativeEnvRecord(protected val realm: Realm, outer: EnvRec
 
         // 2. Create a mutable binding in envRec for N and record that it is uninitialized. If D is true, record that
         //    the newly created binding may be deleted by a subsequent DeleteBinding call.
-        bindings[name as String] = Binding().apply { isDeletable = true }
+        bindings[name] = Binding().apply { isDeletable = true }
 
         // 3. Return unused.
     }
@@ -33,14 +35,14 @@ open class DynamicDeclarativeEnvRecord(protected val realm: Realm, outer: EnvRec
 
         // 2. Create an immutable binding in envRec for N and record that it is uninitialized. If S is true, record that
         //    the newly created binding is a strict binding.
-        bindings[name as String] = Binding().apply { this.isStrict = isStrict }
+        bindings[name] = Binding().apply { this.isStrict = isStrict }
 
         // 3. Return unused.
     }
 
     @ECMAImpl("9.1.1.1.4")
     override fun initializeBinding(name: EnvRecordKey, value: JSValue) {
-        val binding = bindings[name as String]
+        val binding = bindings[name]
 
         // 1. Assert: envRec must have an uninitialized binding for N.
         ecmaAssert(binding != null && binding.value == null)
@@ -99,7 +101,7 @@ open class DynamicDeclarativeEnvRecord(protected val realm: Realm, outer: EnvRec
 
     @ECMAImpl("9.1.1.1.6")
     override fun getBindingValue(name: EnvRecordKey, isStrict: Boolean): JSValue {
-        val binding = bindings[name as String]
+        val binding = bindings[name]
 
         // 1. Assert: envRec has a binding for N.
         ecmaAssert(binding != null)
@@ -114,7 +116,7 @@ open class DynamicDeclarativeEnvRecord(protected val realm: Realm, outer: EnvRec
 
     @ECMAImpl("9.1.1.1.7")
     override fun deleteBinding(name: EnvRecordKey): Boolean {
-        val binding = bindings[name as String]
+        val binding = bindings[name]
 
         // 1. Assert: envRec has a binding for the name that is the value of N.
         ecmaAssert(binding != null)
@@ -148,7 +150,55 @@ open class DynamicDeclarativeEnvRecord(protected val realm: Realm, outer: EnvRec
         return null
     }
 
-    protected open class Binding private constructor(var value: JSValue?, private var flags: Int) {
+    interface Bindings {
+        operator fun contains(key: Any): Boolean
+
+        operator fun get(key: Any): Binding?
+
+        operator fun set(key: Any, value: Binding)
+
+        fun remove(key: Any)
+
+        companion object {
+            fun fromSlotCount(slotCount: Int?) = if (slotCount != null) {
+                OptimizedBindings(slotCount)
+            } else UnoptimizedBindings()
+        }
+    }
+
+    class OptimizedBindings(slotCount: Int) : Bindings {
+        private val bindings = Array<Binding?>(slotCount) { null }
+
+        override fun contains(key: Any) = bindings.getOrNull(key as Int) != null
+
+        override fun get(key: Any) = bindings[key as Int]
+
+        override fun set(key: Any, value: Binding) {
+            bindings[key as Int] = value
+        }
+
+        override fun remove(key: Any) {
+            bindings[key as Int] = null
+        }
+    }
+
+    class UnoptimizedBindings : Bindings {
+        private val bindings = mutableMapOf<String, Binding>()
+
+        override fun contains(key: Any) = (key as String) in bindings
+
+        override fun get(key: Any) = bindings[key as String]
+
+        override fun set(key: Any, value: Binding) {
+            bindings[key as String] = value
+        }
+
+        override fun remove(key: Any) {
+            bindings.remove(key as String)
+        }
+    }
+
+    open class Binding private constructor(var value: JSValue?, private var flags: Int) {
         open val isInitialized: Boolean
             get() = value == null
 
@@ -179,7 +229,7 @@ open class DynamicDeclarativeEnvRecord(protected val realm: Realm, outer: EnvRec
         }
     }
 
-    protected class IndirectBinding(
+    class IndirectBinding(
         val sourceName: String,
         val sourceModule: ModuleRecord,
     ) : Binding(null) {

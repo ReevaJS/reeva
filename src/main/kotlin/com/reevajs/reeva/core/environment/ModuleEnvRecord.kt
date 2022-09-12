@@ -9,16 +9,17 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.unreachable
 
-class ModuleEnvRecord(realm: Realm, outer: EnvRecord?) : DynamicDeclarativeEnvRecord(realm, outer) {
-    private val bindings = mutableMapOf<String, Binding>()
-
+class ModuleEnvRecord(
+    realm: Realm,
+    outer: EnvRecord?,
+) : DeclarativeEnvRecord(realm, UnoptimizedBindings(), outer) {
     @ECMAImpl("9.1.1.5.1")
     override fun getBindingValue(name: EnvRecordKey, isStrict: Boolean): JSValue {
         // 1. Assert: S is true.
         ecmaAssert(isStrict)
 
         // 2. Assert: envRec has a binding for N.
-        val binding = bindings[name as String]
+        val binding = bindings[name]
         ecmaAssert(binding != null)
 
         // 3. If the binding for N is an indirect binding, then

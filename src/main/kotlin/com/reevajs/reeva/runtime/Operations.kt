@@ -4,7 +4,8 @@ package com.reevajs.reeva.runtime
 
 import com.reevajs.reeva.ast.ASTNode
 import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.environment.DynamicDeclarativeEnvRecord
+import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
+import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.core.environment.ObjectEnvRecord
 import com.reevajs.reeva.core.realm.Realm
@@ -1520,7 +1521,7 @@ object Operations {
         val objectRecord = ObjectEnvRecord(realm, globalObject, false, null)
 
         // 2. Let dclRec be a new declarative Environment Record containing no bindings.
-        val declarativeRecord = DynamicDeclarativeEnvRecord(realm, null)
+        val declarativeRecord = DeclarativeEnvRecord(realm, DeclarativeEnvRecord.UnoptimizedBindings(), null)
 
         // 3. Let env be a new global Environment Record.
         // 4. Set env.[[ObjectRecord]] to objRec.

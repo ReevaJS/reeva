@@ -3,7 +3,10 @@ package com.reevajs.reeva.parsing
 import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.transformer.Transformer
 
-open class Scope(val outer: Scope? = null, val allowVarInlining: Boolean = true) {
+open class Scope(
+    val outer: Scope? = null,
+    var allowVarInlining: Boolean = true,
+) {
     val outerHoistingScope = outerScopeOfType<HoistingScope>()
     val outerGlobalScope = outerScopeOfType<GlobalScope>()
 
@@ -25,6 +28,9 @@ open class Scope(val outer: Scope? = null, val allowVarInlining: Boolean = true)
 
     val inlineableLocalCount: Int get() = nextInlineableLocal
     val slotCount: Int get() = nextSlot
+
+    var isTaintedByEval = false
+        private set
 
     init {
         @Suppress("LeakingThis")
@@ -80,6 +86,16 @@ open class Scope(val outer: Scope? = null, val allowVarInlining: Boolean = true)
         return i
     }
 
+    fun markEvalScope() {
+        allowVarInlining = false
+        isTaintedByEval = true
+
+        for (source in variableSources)
+            source.isInlineable = false
+
+        outer?.markEvalScope()
+    }
+
     open fun finish() {
         allocateLocals()
         pendingVariableReferences.clear()
@@ -88,9 +104,11 @@ open class Scope(val outer: Scope? = null, val allowVarInlining: Boolean = true)
 
     protected open fun allocateLocals() {
         variableSources.forEach {
-            it.index = if (it.isInlineable) {
-                nextInlineableLocal++
-            } else nextSlot++
+            it.key = when {
+                isTaintedByEval -> VariableKey.Named
+                it.isInlineable -> VariableKey.InlineIndex(nextInlineableLocal++)
+                else -> VariableKey.EnvRecordSlot(nextSlot++)
+            }
         }
     }
 
@@ -209,22 +227,28 @@ open class HoistingScope(
 
         nextInlineableLocal = reservedLocals + parameters.size
 
-        when (receiverVariable?.isInlineable) {
-            true -> receiverVariable!!.index = 0
-            false -> receiverVariable!!.index = nextSlot++
-            else -> {}
+        if (receiverVariable != null) {
+            receiverVariable!!.key = when {
+                isTaintedByEval -> VariableKey.Named
+                receiverVariable!!.isInlineable -> VariableKey.InlineIndex(0)
+                else -> VariableKey.EnvRecordSlot(nextSlot++)
+            }
         }
 
         parameters.forEachIndexed { index, source ->
-            source.index = if (source.isInlineable) {
-                reservedLocals + index
-            } else nextSlot++
+            source.key = when {
+                isTaintedByEval -> VariableKey.Named
+                source.isInlineable -> VariableKey.InlineIndex(reservedLocals + index)
+                else -> VariableKey.EnvRecordSlot(nextSlot++)
+            }
         }
 
         locals.forEach {
-            it.index = if (it.isInlineable) {
-                nextInlineableLocal++
-            } else nextSlot++
+            it.key = when {
+                isTaintedByEval -> VariableKey.Named
+                it.isInlineable -> VariableKey.InlineIndex(nextInlineableLocal++)
+                else -> VariableKey.EnvRecordSlot(nextSlot++)
+            }
         }
     }
 

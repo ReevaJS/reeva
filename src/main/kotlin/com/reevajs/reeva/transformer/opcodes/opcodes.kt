@@ -460,9 +460,11 @@ class DeclareGlobalFunc(val name: String) : Opcode(-1)
 
 /**
  * Creates a new DeclarativeEnvRecord with the current EnvRecord as its parent,
- * and sets the new record as the active EnvRecord.
+ * and sets the new record as the active EnvRecord. If slotCount is null, this
+ * should be a non-optimized declarative env record. This can happen in scopes
+ * where eval is present, for example.
  */
-class PushDeclarativeEnvRecord(val slotCount: Int) : Opcode(0)
+class PushDeclarativeEnvRecord(val slotCount: Int?) : Opcode(0)
 
 /**
  * Creates a new ModuleEnvRecord with the current EnvRecord as its parent,
@@ -509,6 +511,27 @@ class LoadEnvSlot(val slot: Int, val distance: Int, val isStrict: Boolean) : Opc
  * EnvRecord (though [distance] will always be greater than zero).
  */
 class StoreEnvSlot(val slot: Int, val distance: Int, val isStrict: Boolean) : Opcode(-1)
+
+/**
+ * Like [LoadCurrentEnvSlot], but for unoptimized environments which use variable names
+ */
+class LoadCurrentEnvName(val name: String, val isStrict: Boolean) : Opcode(1)
+
+/**
+ * Like [StoreCurrentEnvSlot], but for unoptimized environments which use variable names
+ */
+class StoreCurrentEnvName(val name: String, val isStrict: Boolean) : Opcode(-1)
+
+/**
+ * Like [LoadEnvSlot], but for unoptimized environments which use variable names
+ */
+class LoadEnvName(val name: String, val distance: Int, val isStrict: Boolean) : Opcode(1)
+
+/**
+ * Like [StoreEnvSlot], but for unoptimized environments which use variable names
+ */
+
+class StoreEnvName(val name: String, val distance: Int, val isStrict: Boolean) : Opcode(-1)
 
 /**
  * Loads a named variable from the outer ModuleEnvRecord.

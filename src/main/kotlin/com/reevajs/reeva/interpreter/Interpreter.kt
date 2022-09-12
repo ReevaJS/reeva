@@ -2,9 +2,9 @@ package com.reevajs.reeva.interpreter
 
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
-import com.reevajs.reeva.core.environment.StaticDeclarativeEnvRecord
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.transformer.*
 import com.reevajs.reeva.transformer.opcodes.*
@@ -595,7 +595,11 @@ class Interpreter(
 
     override fun visitPushDeclarativeEnvRecord(opcode: PushDeclarativeEnvRecord) {
         val runningContext = agent.runningExecutionContext
-        runningContext.envRecord = StaticDeclarativeEnvRecord(realm, opcode.slotCount, runningContext.envRecord)
+        runningContext.envRecord = DeclarativeEnvRecord(
+            realm,
+            DeclarativeEnvRecord.Bindings.fromSlotCount(opcode.slotCount),
+            runningContext.envRecord,
+        )
     }
 
     override fun visitPushModuleEnvRecord() {
@@ -626,6 +630,14 @@ class Interpreter(
         agent.runningExecutionContext.envRecord!!.setMutableBinding(opcode.slot, popValue(), opcode.isStrict)
     }
 
+    override fun visitLoadCurrentEnvName(opcode: LoadCurrentEnvName) {
+        push(agent.runningExecutionContext.envRecord!!.getBindingValue(opcode.name, opcode.isStrict))
+    }
+
+    override fun visitStoreCurrentEnvName(opcode: StoreCurrentEnvName) {
+        agent.runningExecutionContext.envRecord!!.setMutableBinding(opcode.name, popValue(), opcode.isStrict)
+    }
+
     override fun visitLoadEnvSlot(opcode: LoadEnvSlot) {
         var env = agent.runningExecutionContext.envRecord!!
         repeat(opcode.distance) { env = env.outer!! }
@@ -636,6 +648,18 @@ class Interpreter(
         var env = agent.runningExecutionContext.envRecord!!
         repeat(opcode.distance) { env = env.outer!! }
         env.setMutableBinding(opcode.slot, popValue(), opcode.isStrict)
+    }
+
+    override fun visitLoadEnvName(opcode: LoadEnvName) {
+        var env = agent.runningExecutionContext.envRecord!!
+        repeat(opcode.distance) { env = env.outer!! }
+        push(env.getBindingValue(opcode.name, opcode.isStrict))
+    }
+
+    override fun visitStoreEnvName(opcode: StoreEnvName) {
+        var env = agent.runningExecutionContext.envRecord!!
+        repeat(opcode.distance) { env = env.outer!! }
+        env.setMutableBinding(opcode.name, popValue(), opcode.isStrict)
     }
 
     override fun visitJump(opcode: Jump) {

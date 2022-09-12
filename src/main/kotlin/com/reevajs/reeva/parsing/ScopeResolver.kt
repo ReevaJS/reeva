@@ -1,6 +1,7 @@
 package com.reevajs.reeva.parsing
 
 import com.reevajs.reeva.ast.*
+import com.reevajs.reeva.ast.expressions.CallExpressionNode
 import com.reevajs.reeva.ast.expressions.NewTargetNode
 import com.reevajs.reeva.ast.expressions.UnaryExpressionNode
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
@@ -379,6 +380,13 @@ class ScopeResolver : ASTVisitor {
 
     override fun visitBindingParameter(node: BindingParameter) {
         visitBindingPattern(node.pattern, VariableMode.Parameter, VariableType.Var)
+    }
+
+    override fun visitCallExpression(node: CallExpressionNode) {
+        if (node.target is IdentifierReferenceNode && node.target.rawName == "eval")
+            scope.markEvalScope()
+
+        super.visitCallExpression(node)
     }
 
     override fun visitTryStatement(node: TryStatementNode) {
