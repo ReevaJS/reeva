@@ -1689,65 +1689,6 @@ object Operations {
         return obj is JSObject && obj.hasSlot(slot)
     }
 
-//    @JvmStatic @ECMAImpl("9.2.1.1")
-//    fun prepareForOrdinaryCall(function: JSFunction, newTarget: JSValue): ExecutionContext {
-//        ecmaAssert(newTarget is JSUndefined || newTarget is JSObject)
-//        val calleeContext = ExecutionContext(function.realm, function)
-//        val localEnv = FunctionEnvRecord.create(function, newTarget)
-//        calleeContext.lexicalEnv = localEnv
-//        calleeContext.variableEnv = localEnv
-//        Agent.pushContext(calleeContext)
-//        return calleeContext
-//    }
-
-    // TODO: Do we really need the calleeContext here?
-    // prepareForOrdinaryCall will have just set it as the running
-    // execution context
-//    @JvmStatic @ECMAImpl("9.2.1.2")
-//    fun ordinaryCallBindThis(function: JSFunction, calleeContext: ExecutionContext, thisArgument: JSValue): JSValue {
-//        if (function.thisMode == JSFunction.ThisMode.Lexical)
-//            return JSUndefined
-//        val thisValue = if (function.thisMode == JSFunction.ThisMode.Strict) {
-//            thisArgument
-//        } else if (thisArgument == JSUndefined || thisArgument == JSNull) {
-//            function.realm.globalEnv.globalThis
-//        } else toObject(thisArgument)
-//
-//        val localEnv = calleeContext.lexicalEnv
-//        ecmaAssert(localEnv is FunctionEnvRecord)
-//        return localEnv.bindThisValue(thisValue)
-//    }
-
-//    @JvmStatic @JvmOverloads
-//    @ECMAImpl("9.2.5")
-//    fun makeConstructor(function: JSFunction, writablePrototype: Boolean = true, prototype: JSObject? = null) {
-//        ecmaAssert(!hasOwnProperty(function, "prototype".key()))
-//        ecmaAssert(!function.isConstructable)
-//        ecmaAssert(function.isExtensible())
-//
-//        function.constructorKind = JSFunction.ConstructorKind.Base
-//        function.isConstructable = true
-//
-//        val realProto = prototype ?: run {
-//            val proto = JSObject.create(function.realm)
-//            var attrs = Descriptor.HAS_BASIC or Descriptor.CONFIGURABLE
-//            if (writablePrototype)
-//                attrs = attrs or Descriptor.WRITABLE
-//            definePropertyOrThrow(proto, "constructor".key(), Descriptor(function, attrs))
-//            proto
-//        }
-//        var attrs = Descriptor.HAS_BASIC
-//        if (writablePrototype)
-//            attrs = attrs or Descriptor.WRITABLE
-//        definePropertyOrThrow(function, "prototype".key(), Descriptor(realProto, attrs))
-//    }
-
-//    @JvmStatic @ECMAImpl("9.2.7")
-//    fun makeMethod(function: JSFunction, homeObject: JSObject): JSValue {
-//        function.homeObject = homeObject
-//        return JSUndefined
-//    }
-
     @JvmStatic
     @ECMAImpl("9.4.1.3")
     fun boundFunctionCreate(targetFunction: JSFunction, arguments: JSArguments): JSFunction {
@@ -1884,24 +1825,6 @@ object Operations {
         )
     }
 
-//    @JvmStatic @ECMAImpl("9.4.4.7.1")
-//    fun makeArgGetter(name: String, env: EnvRecord): NativeGetterSignature {
-//        return { _ ->
-//            val function = Agent.activeAgent.runningContext.function
-//            expect(function != null)
-//            env.getBindingValue(name, false)
-//        }
-//    }
-
-//    @JvmStatic @ECMAImpl("9.4.4.7.2")
-//    fun makeArgSetter(name: String, env: EnvRecord): NativeSetterSignature {
-//        return { _, newValue ->
-//            val function = Agent.activeAgent.runningContext.function
-//            expect(function != null)
-//            env.setBinding(name, newValue, false)
-//        }
-//    }
-
     @JvmStatic
     @ECMAImpl("9.4.7.2")
     fun setImmutablePrototype(obj: JSObject, proto: JSValue): Boolean {
@@ -2030,87 +1953,6 @@ object Operations {
             Descriptor(length.toValue(), attrs { +conf; -enum; -writ }),
         )
     }
-
-//    @JvmStatic @ECMAImpl("12.3.3")
-//    fun evaluatePropertyAccessWithExpressionKey(baseValue: JSValue, property: JSValue, isStrict: Boolean): JSValue {
-//        val propertyValue = getValue(property)
-//        val bv = requireObjectCoercible(baseValue)
-//        val propertyKey = toPropertyKey(propertyValue)
-//        return JSReference(bv, propertyKey, isStrict)
-//    }
-
-//    @JvmStatic @ECMAImpl("12.3.4")
-//    fun evaluatePropertyAccessWithIdentifierKey(baseValue: JSValue, property: String, isStrict: Boolean): JSValue {
-//        val bv = requireObjectCoercible(baseValue)
-//        return JSReference(bv, PropertyKey(property), isStrict)
-//    }
-
-//    @JvmStatic @ECMAImpl("12.3.5.1.1")
-//    fun evaluateNew(target: JSValue, arguments: Array<JSValue>): JSValue {
-//        val constructor = getValue(target)
-//        if (!isConstructor(constructor))
-//            Errors.NotACtor(target.toString()).throwTypeError()
-//        return construct(constructor, arguments.toList())
-//    }
-
-//    @JvmStatic @ECMAImpl("12.3.6.2")
-//    fun evaluateCall(target: JSValue, reference: JSValue, arguments: List<JSValue>, tailPosition: Boolean): JSValue {
-//        val thisValue = if (reference is JSReference) {
-//            if (reference.isPropertyReference) {
-//                reference.getThisValue()
-//            } else {
-//                ecmaAssert(reference.baseValue is EnvRecord)
-//                reference.baseValue.withBaseObject()
-//            }
-//        } else JSUndefined
-//
-//        if (!isCallable(target))
-//            Errors.NotCallable(target.toString()).throwTypeError()
-//        if (tailPosition)
-//            TODO()
-//        return call(target, thisValue, arguments.toList())
-//    }
-//
-//    @JvmStatic @ECMAImpl("12.3.7.2")
-//    fun getSuperConstructor(): JSValue {
-//        val env = getThisEnvironment()
-//        ecmaAssert(env is FunctionEnvRecord)
-//        val activeFunction = env.function
-//        return activeFunction.getPrototype()
-//    }
-//
-//    @JvmStatic @ECMAImpl("12.3.7.3")
-//    fun makeSuperPropertyReference(thisValue: JSValue, key: PropertyKey, isStrict: Boolean): JSReference {
-//        val env = getThisEnvironment()
-//        ecmaAssert(env.hasSuperBinding())
-//        val baseValue = (env as FunctionEnvRecord).getSuperBase()
-//        requireObjectCoercible(baseValue)
-//        return JSSuperReference(baseValue, key, isStrict, thisValue)
-//    }
-
-//    @JvmStatic @ECMAImpl("12.5.3")
-//    fun deleteOperator(value: JSValue): JSValue {
-//        if (value !is JSReference)
-//            return JSTrue
-//        if (value.isUnresolvableReference) {
-//            ecmaAssert(!value.isStrict)
-//            return JSTrue
-//        }
-//        return if (value.isPropertyReference) {
-//            if (value.isSuperReference)
-//                TODO()
-//            expect(value.baseValue is JSValue)
-//            val baseObj = toObject(value.baseValue)
-//            val deleteStatus = baseObj.delete(value.name)
-//            if (!deleteStatus && value.isStrict)
-//                TODO()
-//            deleteStatus.toValue()
-//        } else {
-//            ecmaAssert(value.baseValue is EnvRecord)
-//            expect(value.name.isString)
-//            value.baseValue.deleteBinding(value.name.asString).toValue()
-//        }
-//    }
 
     @JvmStatic
     @ECMAImpl("12.5.5")
