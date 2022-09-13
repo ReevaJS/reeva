@@ -18,6 +18,7 @@ class JSBoundFunction private constructor(
 ) : JSFunction(
     realm,
     boundTargetFunction.debugName,
+    boundTargetFunction.thisMode,
     boundTargetFunction.isStrict,
     prototype,
 ) {

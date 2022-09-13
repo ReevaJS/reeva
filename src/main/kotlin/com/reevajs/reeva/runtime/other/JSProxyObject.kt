@@ -24,6 +24,7 @@ class JSProxyObject private constructor(
 ) : JSFunction(
     realm,
     if (target is JSFunction) target.debugName else "",
+    if (target is JSFunction) target.thisMode else ThisMode.Lexical, // TODO: ???
     if (target is JSFunction) target.isStrict else false,
     if (target is JSFunction) realm.functionProto else realm.objectProto,
 ) {

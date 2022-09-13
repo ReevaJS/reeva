@@ -58,6 +58,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 0,
                 isTopLevel = true,
                 isGenerator = false,
+                isArrow = false,
             )
         )
     }
@@ -133,6 +134,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 func.functionScope,
                 func.body.scope,
                 func.body.scope.isStrict,
+                isArrow = false,
                 func.kind,
             )
 
@@ -166,6 +168,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         functionScope: Scope,
         bodyScope: Scope,
         isStrict: Boolean,
+        isArrow: Boolean,
         kind: Operations.FunctionKind,
         classConstructorKind: JSFunction.ConstructorKind? = null,
         instantiateFunction: Boolean = true,
@@ -188,6 +191,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             functionScope,
             bodyScope,
             isStrict,
+            isArrow,
             kind,
             classConstructorKind,
         )
@@ -232,6 +236,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     it.functionScope,
                     it.body.scope,
                     it.body.scope.isStrict,
+                    isArrow = false,
                     it.kind,
                 )
 
@@ -255,6 +260,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         functionScope: Scope,
         bodyScope: Scope,
         isStrict: Boolean,
+        isArrow: Boolean,
         kind: Operations.FunctionKind,
         classConstructorKind: JSFunction.ConstructorKind?,
         hasClassFields: Boolean = false,
@@ -304,6 +310,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             parameters.expectedArgumentCount(),
             isTopLevel = false,
             isGenerator = kind.isGenerator,
+            isArrow = isArrow,
         )
     }
 
@@ -411,6 +418,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 func.functionScope,
                 func.body.scope,
                 isStrict,
+                isArrow = false,
                 func.kind,
             )
 
@@ -1539,6 +1547,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             node.functionScope,
             node.body.scope,
             node.functionScope.isStrict,
+            isArrow = false,
             node.kind,
         )
 
@@ -1558,6 +1567,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             node.functionScope,
             if (node.body is BlockNode) node.body.scope else node.functionScope,
             node.functionScope.isStrict,
+            isArrow = true,
             node.kind,
         )
     }
@@ -1610,6 +1620,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 method.functionScope,
                 method.body.scope,
                 isStrict = true,
+                isArrow = false,
                 Operations.FunctionKind.Normal,
                 classConstructorKind = constructorKind,
             )
@@ -1648,6 +1659,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 method.functionScope,
                 method.body.scope,
                 isStrict = true,
+                isArrow = false,
                 method.kind.toFunctionKind(),
                 constructorKind,
                 instantiateFunction = false,
@@ -1709,6 +1721,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             0,
             isTopLevel = false,
             isGenerator = false,
+            isArrow = false,
         ).also {
             builder = prevBuilder
             builder.addNestedFunction(it)
@@ -1766,6 +1779,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             0,
             isTopLevel = false,
             isGenerator = false,
+            isArrow = false,
         ).also {
             builder = prevBuilder
             builder.addNestedFunction(it)

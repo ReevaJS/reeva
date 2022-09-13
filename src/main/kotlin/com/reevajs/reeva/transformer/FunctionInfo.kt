@@ -7,6 +7,7 @@ data class FunctionInfo(
     val length: Int,
     val isTopLevel: Boolean,
     val isGenerator: Boolean,
+    val isArrow: Boolean,
 )
 
 enum class LocalKind {

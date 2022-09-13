@@ -22,6 +22,11 @@ abstract class InterpretedFunction(
 ) : JSFunction(
     realm,
     transformedSource.functionInfo.name,
+    when {
+        transformedSource.functionInfo.isArrow -> ThisMode.Lexical
+        transformedSource.functionInfo.isStrict -> ThisMode.Strict
+        else -> ThisMode.Global
+    },
     transformedSource.functionInfo.isStrict,
     prototype,
 ) {

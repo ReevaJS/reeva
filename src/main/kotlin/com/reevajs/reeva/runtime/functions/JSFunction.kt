@@ -1,18 +1,15 @@
 package com.reevajs.reeva.runtime.functions
 
-import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSEmpty
-import com.reevajs.reeva.utils.Errors
-import com.reevajs.reeva.utils.ecmaAssert
-import com.reevajs.reeva.utils.expect
 
 abstract class JSFunction(
     val realm: Realm,
     val debugName: String,
+    var thisMode: ThisMode,
     var isStrict: Boolean = false,
     prototype: JSValue = realm.functionProto,
 ) : JSObject(realm, prototype) {
