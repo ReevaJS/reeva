@@ -4,6 +4,7 @@ import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.FileSourceInfo
+import com.reevajs.reeva.runtime.Operations
 import java.io.File
 
 val test262Helpers = listOf(
@@ -26,7 +27,7 @@ fun main() {
             errorReporter.reportParseError(sourceInfo, executable.error())
         } else {
             try {
-                val result = executable.value().execute()
+                val result = Operations.unwrapPromise(executable.value().execute())
                 println("Executable result: $result")
             } catch (e: ThrowException) {
                 errorReporter.reportRuntimeError(sourceInfo, e)

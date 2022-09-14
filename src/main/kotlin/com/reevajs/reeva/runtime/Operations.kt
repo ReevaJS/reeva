@@ -40,6 +40,7 @@ import com.reevajs.reeva.runtime.regexp.JSRegExpProto
 import com.reevajs.reeva.runtime.wrappers.*
 import com.reevajs.reeva.runtime.wrappers.strings.JSStringObject
 import com.reevajs.reeva.utils.*
+import com.reevajs.reeva.utils.Result
 import org.joni.Matcher
 import org.joni.Option
 import java.math.BigInteger
@@ -2831,6 +2832,29 @@ object Operations {
         if (value is JSProxyObject)
             return isPromise(value.target)
         return value.hasSlot(SlotName.PromiseState)
+    }
+
+    @JvmStatic
+    fun unwrapPromise(value: JSValue): JSValue {
+        if (Agent.activeAgent.contextStack().isNotEmpty()) {
+            throw IllegalStateException(
+                "Operations.unwrapPromise is a helper method and cannot be called during JS execution, " +
+                    "as it must arbitrarily spin the microtask queue"
+            )
+        }
+
+        if (!isPromise(value))
+            return value
+
+        while (value.getSlotAs<PromiseState>(SlotName.PromiseState) == PromiseState.Pending)
+            Agent.activeAgent.microtaskQueue.checkpoint()
+
+        val result = value.getSlotAs<JSValue>(SlotName.PromiseResult)
+
+        if (value.getSlotAs<PromiseState>(SlotName.PromiseState) == PromiseState.Fulfilled)
+            return result
+
+        throw ThrowException(result)
     }
 
     @JvmStatic
