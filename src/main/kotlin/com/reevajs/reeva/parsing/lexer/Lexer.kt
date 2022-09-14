@@ -77,7 +77,7 @@ class Lexer(private val source: String, private val isModule: Boolean) {
                     templateStates.last().inExpr = true
                 }
                 else -> {
-                    while (has(2) && !match(templateExprStart) && char != '`') {
+                    while (!match(templateExprStart) && char != '`') {
                         if (match(escapedDollar) || match(escapedGrave))
                             consume()
                         consume()
@@ -526,6 +526,9 @@ class Lexer(private val source: String, private val isModule: Boolean) {
     private fun has(n: Int): Boolean = cursor + n < source.length
 
     private fun match(chars: CharArray): Boolean {
+        if (!has(chars.size))
+            return false
+
         for ((i, char) in chars.withIndex()) {
             if (source[cursor + i] != char)
                 return false
