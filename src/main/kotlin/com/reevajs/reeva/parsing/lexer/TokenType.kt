@@ -113,17 +113,17 @@ enum class TokenType(val string: String, val category: Category = Category.None)
     BigIntLiteral("BigInt literal"),
 
     TemplateLiteralStart("template literal"),
-    TemplateLiteralEnd("THIS SHOULD NEVER BE USED"),
-    TemplateLiteralExprStart("template literal expression"),
-    TemplateLiteralExprEnd("THIS SHOULD NEVER BE USED"),
-    TemplateLiteralString("THIS SHOULD NEVER BE USED"),
+    TemplateLiteralEnd("Debug:TemplateLiteralEnd"),
+    TemplateLiteralExprStart("Debug:TemplateLiteralExprStart"),
+    TemplateLiteralExprEnd("Debug:TemplateLiteralExprEnd"),
+    TemplateLiteralString("Debug:TemplateLiteralString"),
 
-    RegexFlags("THIS SHOULD NEVER BE USED"),
+    RegexFlags("Debug:RegexFlags"),
     RegExpLiteral("regex literal"),
     StringLiteral("string literal"),
-    UnterminatedStringLiteral("THIS SHOULD NEVER BE USED"),
-    UnterminatedTemplateLiteral("THIS SHOULD NEVER BE USED"),
-    UnterminatedRegexLiteral("THIS SHOULD NEVER BE USED"),
+    UnterminatedStringLiteral("Debug:UnterminatedStringLiteral"),
+    UnterminatedTemplateLiteral("Debug:UnterminatedTemplateLiteral"),
+    UnterminatedRegexLiteral("Debug:UnterminatedRegexLiteral"),
 
     Identifier("identifier"),
 

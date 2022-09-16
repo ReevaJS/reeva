@@ -64,6 +64,7 @@ interface OpcodeVisitor {
             IteratorResultValue -> visitIteratorResultValue()
             is Call -> visitCall(opcode)
             CallArray -> visitCallArray()
+            is CallWithDirectEvalCheck -> visitCallWithDirectEvalCheck(opcode)
             is Construct -> visitConstruct(opcode)
             ConstructArray -> visitConstructArray()
             is DeclareGlobalVars -> visitDeclareGlobalVars(opcode)
@@ -256,6 +257,8 @@ interface OpcodeVisitor {
     fun visitCall(opcode: Call)
 
     fun visitCallArray()
+
+    fun visitCallWithDirectEvalCheck(opcode: CallWithDirectEvalCheck)
 
     fun visitConstruct(opcode: Construct)
 

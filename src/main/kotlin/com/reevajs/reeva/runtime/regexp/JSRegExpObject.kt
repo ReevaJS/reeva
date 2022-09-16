@@ -80,7 +80,8 @@ class JSRegExpObject private constructor(
                     BACKSLASH_ESCAPE_IN_CC or
                     ALLOW_DOUBLE_RANGE_OP_IN_CC or
                     DIFFERENT_LEN_ALT_LOOK_BEHIND or
-                    OP2_QMARK_LT_NAMED_GROUP
+                    OP2_QMARK_LT_NAMED_GROUP or
+                    OP2_ESC_U_HEX4
 
             val behavior = DIFFERENT_LEN_ALT_LOOK_BEHIND
 
@@ -114,6 +115,22 @@ class JSRegExpObject private constructor(
         }
 
         @JvmStatic
-        fun create(source: String, flags: String, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSRegExpObject(realm, source, flags).initialize()
+        fun create(source: String, flags: String, realm: Realm = Agent.activeAgent.getActiveRealm()): JSRegExpObject {
+            // Joni can't handle large code points (>= 2048, from experimentation) in the source string,
+            // but it _can_ handle unicode escape sequences. So we convert codepoints to unicode escape sequences
+
+            val modifiedSource = buildString {
+                for (char in source) {
+                    if (char.code >= 2048) {
+                        append("\\u")
+                        append(char.code.toString(radix = 16))
+                    } else {
+                        append(char)
+                    }
+                }
+            }
+
+            return JSRegExpObject(realm, modifiedSource, flags).initialize()
+        }
     }
 }

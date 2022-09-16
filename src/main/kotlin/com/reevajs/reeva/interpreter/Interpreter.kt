@@ -510,6 +510,29 @@ class Interpreter(
         )
     }
 
+    override fun visitCallWithDirectEvalCheck(opcode: CallWithDirectEvalCheck) {
+        val args = mutableListOf<JSValue>()
+
+        repeat(opcode.argCount) {
+            args.add(popValue())
+        }
+
+        val receiver = popValue()
+        val target = popValue()
+
+        val result = if (target == realm.globalObject.get("eval")) {
+            Operations.performEval(args.first(), realm, opcode.isStrict, direct = true)
+        } else {
+            Operations.call(
+                target,
+                receiver,
+                args.asReversed(),
+            )
+        }
+
+        push(result)
+    }
+
     override fun visitConstruct(opcode: Construct) {
         val args = mutableListOf<JSValue>()
 

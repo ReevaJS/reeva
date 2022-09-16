@@ -43,32 +43,32 @@ abstract class InterpretedFunction(
         // 2.  Let calleeContext be PrepareForOrdinaryCall(F, undefined).
         val calleeContext = prepareForOrdinaryCall()
 
-        // 3.  Assert: calleeContext is now the running execution context.
-        ecmaAssert(calleeContext == agent.runningExecutionContext)
+        try {
+            // 3.  Assert: calleeContext is now the running execution context.
+            ecmaAssert(calleeContext == agent.runningExecutionContext)
 
-        // 4.  If F.[[IsClassConstructor]] is true, then
-        if (isClassConstructor) {
-            // a.  Let error be a newly created TypeError object.
-            // b.  NOTE: error is created in calleeContext with F's associated Realm Record.
-            // c.  Remove calleeContext from the execution context stack and restore callerContext as the running
-            //     execution context.
-            // d.  Return ThrowCompletion(error).
+            // 4.  If F.[[IsClassConstructor]] is true, then
+            if (isClassConstructor) {
+                // a.  Let error be a newly created TypeError object.
+                // b.  NOTE: error is created in calleeContext with F's associated Realm Record.
+                // c.  Remove calleeContext from the execution context stack and restore callerContext as the running
+                //     execution context.
+                // d.  Return ThrowCompletion(error).
 
-            agent.popExecutionContext()
-            Errors.Class.CtorRequiresNew.throwTypeError(calleeContext.realm)
-        }
+                agent.popExecutionContext()
+                Errors.Class.CtorRequiresNew.throwTypeError(calleeContext.realm)
+            }
 
-        // 5.  Perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
-        // Note: This return value is non-spec. The spec simply binds it to the current environment, so it doesn't need
-        //       to return it. We need to pass it into the interpreter manually.
-        val thisArgument = ordinaryCallBindThis(calleeContext, arguments.thisValue)
+            // 5.  Perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
+            // Note: This return value is non-spec. The spec simply binds it to the current environment, so it doesn't need
+            //       to return it. We need to pass it into the interpreter manually.
+            val thisArgument = ordinaryCallBindThis(calleeContext, arguments.thisValue)
 
-        return try {
             // 6.  Let result be OrdinaryCallEvaluateBody(F, argumentsList).
             // 8.  If result.[[Type]] is return, return NormalCompletion(result.[[Value]]).
             // 9.  ReturnIfAbrupt(result).
             // 10. Return NormalCompletion(undefined).
-            evaluate(arguments.withThisValue(thisArgument))
+            return evaluate(arguments.withThisValue(thisArgument))
         } finally {
             // 7.  Remove calleeContext from the execution context stack and restore callerContext as the running
             //     execution context.

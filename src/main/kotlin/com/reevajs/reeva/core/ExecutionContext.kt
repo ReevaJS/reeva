@@ -7,7 +7,7 @@ import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 
-data class ExecutionContext(
+class ExecutionContext(
     val enclosingFunction: JSFunction?,
     val realm: Realm,
     var envRecord: EnvRecord?,

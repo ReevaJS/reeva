@@ -29,7 +29,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     private val breakableScopes = mutableListOf<LabelledSection>()
     private val continuableScopes = mutableListOf<LabelledSection>()
 
-    fun transform(): TransformedSource {
+    fun transform(isEval: Boolean): TransformedSource {
         expect(!::builder.isInitialized, "Cannot reuse a Transformer")
 
         val rootNode = parsedSource.node
@@ -41,10 +41,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             isGenerator = false,
         )
 
-        globalDeclarationInstantiation(rootNode.scope.outerGlobalScope as HoistingScope) {
+        globalDeclarationInstantiation(rootNode.scope.outerGlobalScope as HoistingScope, isEval) {
             rootNode.children.forEach(::visit)
             if (!builder.isDone) {
-                +PushUndefined
+                if (!builder.removeLastOpcodeIfPop())
+                    +PushUndefined
                 +Return
             }
         }
@@ -80,7 +81,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             +PopEnvRecord
     }
 
-    private fun globalDeclarationInstantiation(scope: HoistingScope, block: () -> Unit) {
+    private fun globalDeclarationInstantiation(scope: HoistingScope, isEval: Boolean, block: () -> Unit) {
         enterScope(scope)
 
         val variables = scope.variableSources.filter { it.mode != VariableMode.Import }
@@ -123,8 +124,15 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             declaredVarNames.add(name)
         }
 
-        if (declaredVarNames.isNotEmpty() || lexNames.isNotEmpty() || functionNames.isNotEmpty())
-            +DeclareGlobalVars(declaredVarNames, lexNames)
+        if (declaredVarNames.isNotEmpty() || lexNames.isNotEmpty()) {
+            var flags = 0
+            if (scope.isStrict)
+                flags = flags or DeclareGlobalVars.IS_STRICT
+            if (isEval)
+                flags = flags or DeclareGlobalVars.IS_EVAL
+
+            +DeclareGlobalVars(declaredVarNames, lexNames, flags)
+        }
 
         for (func in functionsToInitialize) {
             visitFunctionHelper(
@@ -1688,6 +1696,9 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             +Dup
             val instanceFieldInitializerMethod = makeClassFieldInitializerMethod(instanceFields)
             +CreateClosure(instanceFieldInitializerMethod)
+            +Dup
+            +PushEmpty // Value doesn't matter, just needs to not be undefined
+            +StoreNamedProperty(Realm.isClassInstanceFieldInitializer)
             +StoreNamedProperty(Realm.classInstanceFields)
         }
 

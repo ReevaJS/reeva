@@ -80,6 +80,7 @@ object Errors {
     object NewTargetOutsideFunc : Error("new.target accessed outside of a function")
     object SuperOutsideMethod : Error("super property accessed outside of a method")
     object SuperCallOutsideCtor : Error("super call outside of a constructor")
+    object InvalidArgumentsAccess : Error("invalid \"arguments\" access")
     class IncompatibleMethodCall(method: String) : Error("$method called on incompatible object")
     class InvalidToPrimitiveHint(hint: String) :
         Error("invalid @@toPrimitive hint \"$hint\". Valid values are \"string\", \"number\", and \"default\"")

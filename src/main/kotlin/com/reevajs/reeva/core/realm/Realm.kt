@@ -289,6 +289,7 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
 
         // Reeva-internal symbols
         internal lateinit var classInstanceFields: JSSymbol private set
+        internal lateinit var isClassInstanceFieldInitializer: JSSymbol private set
 
         fun setupSymbols() {
             if (symbolsInitialized)
@@ -309,7 +310,9 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
             WellKnownSymbols.toStringTag = JSSymbol("Symbol.toStringTag")
             WellKnownSymbols.unscopables = JSSymbol("Symbol.unscopables")
             WellKnownSymbols.isConcatSpreadable = JSSymbol("Symbol.isConcatSpreadable")
+
             classInstanceFields = JSSymbol("Symbol.classInstanceFields")
+            isClassInstanceFieldInitializer = JSSymbol("Symbol.isClassInstanceFieldInitializer")
         }
     }
 }

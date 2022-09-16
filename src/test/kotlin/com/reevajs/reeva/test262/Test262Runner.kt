@@ -25,9 +25,8 @@ class Test262Runner {
         val files = if (!target.isDirectory) listOf(target) else target.walkTopDown().onEnter {
             it.name != "intl402" && it.name != "annexB"
         }.filter {
-            !it.isDirectory && !(it.name.endsWith("_FIXTURE.js") || it.name.endsWith("_FIXTURE.json")) &&
-                "S13.2.1_A1_T1.js" !in it.name && // the nested function call test
-                "S7.8.5_A2.1_T2.js" !in it.name // a regexp test that hangs
+            val isFixture = it.name.endsWith("_FIXTURE.js") || it.name.endsWith("_FIXTURE.json")
+            !it.isDirectory && !isFixture && IGNORED_TESTS.none { test -> it.name in test }
         }.toList().sortedBy { it.absolutePath }
 
         return files.map { file ->
@@ -73,6 +72,11 @@ class Test262Runner {
 
         val testResults = mutableListOf<TestResult>()
         private val json = Json { prettyPrint = true }
+
+        private val IGNORED_TESTS = listOf(
+            "S13.2.1_A1_T1.js", // Deeply nested function call test
+            "S7.8.5_A2.1_T2.js", // A RegExp test that hangs
+        )
 
         @BeforeAll
         @JvmStatic

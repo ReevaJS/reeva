@@ -422,6 +422,14 @@ class Call(val argCount: Int) : Opcode(-1 - argCount)
 object CallArray : Opcode(-2)
 
 /**
+ * The same as [Call], but for an identifier which was named "eval". Has a bit
+ * more overhead since it must compare the calling target to the %eval% intrinsic,
+ * so it gets its own opcode. It also must be concerned with the strictness of its
+ * environment.
+ */
+class CallWithDirectEvalCheck(val argCount: Int, val isStrict: Boolean) : Opcode(-1 - argCount)
+
+/**
  * Constructs a JSValue with a variable number of arguments. The arguments are
  * a variable number of JSValues on the stack dictated by [argCount]. The first
  * arguments is the new.target.
@@ -451,7 +459,19 @@ object ConstructArray : Opcode(-2)
 class DeclareGlobalVars(
     val vars: List<String>,
     val lexs: List<Pair<String, /* isConstant: */ Boolean>>,
-) : Opcode(0)
+    private val flags: Int,
+) : Opcode(0) {
+    val isEval: Boolean
+        get() = (flags and IS_EVAL) == IS_EVAL
+
+    val isStrict: Boolean
+        get() = (flags and IS_STRICT) == IS_STRICT
+
+    companion object {
+        const val IS_EVAL = 1 shl 0
+        const val IS_STRICT = 1 shl 1
+    }
+}
 
 /**
  * Declare a global function. Takes a function off the stack

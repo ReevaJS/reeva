@@ -25,6 +25,7 @@ class IRPrinter(private val transformedSource: TransformedSource) {
 
             when (opcode) {
                 is Call -> println(" ${opcode.argCount}")
+                is CallWithDirectEvalCheck -> println(" argCount=${opcode.argCount} isStrict=${opcode.isStrict}")
                 is Construct -> println(" ${opcode.argCount}")
                 is CreateAsyncClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
                 is CreateAsyncGeneratorClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
@@ -85,6 +86,7 @@ class IRPrinter(private val transformedSource: TransformedSource) {
                 is PushJVMInt -> println(" #${opcode.int}")
                 is LoadModuleVar -> println(" \"${opcode.name}\"")
                 is StoreModuleVar -> println(" \"${opcode.name}\"")
+                is CreateRegExpObject -> println(" \"${opcode.source}\" ${opcode.flags}")
                 is CreateTemplateLiteral -> println(" #${opcode.numberOfParts}")
                 else -> println()
             }

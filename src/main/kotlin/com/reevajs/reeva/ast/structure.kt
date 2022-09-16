@@ -1,5 +1,6 @@
 package com.reevajs.reeva.ast
 
+import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.ast.statements.StatementList
 import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.parsing.lexer.SourceLocation
@@ -204,6 +205,26 @@ inline fun <reified T : Any> ASTNode.childrenOfType(): List<T> {
 }
 
 inline fun <reified T : Any> ASTNode.containsAny() = childrenOfType<T>().isNotEmpty()
+
+fun ASTNode.containsArguments(): Boolean {
+    val idents = childrenOfType<IdentifierReferenceNode>()
+    if (idents.any { it.rawName == "arguments" })
+        return true
+
+    for (node in children) {
+        when (node) {
+            is FunctionDeclarationNode -> return false
+            is MethodDefinitionNode -> if (node.propName.containsArguments()) {
+                return true
+            }
+            else -> if (node.containsArguments()) {
+                return true
+            }
+        }
+    }
+
+    return false
+}
 
 sealed class RootNode(children: List<ASTNode>) : NodeWithScope(children)
 

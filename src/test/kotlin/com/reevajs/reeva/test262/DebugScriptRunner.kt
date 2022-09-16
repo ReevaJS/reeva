@@ -21,7 +21,7 @@ fun main() {
     }.withActiveScope {
         val realm = makeRealm()
 
-        val sourceInfo = FileSourceInfo(File("./demo/index.mjs"))
+        val sourceInfo = FileSourceInfo(File("./demo/index.js"))
         val executable = Reeva.compile(realm, sourceInfo)
         if (executable.hasError) {
             errorReporter.reportParseError(sourceInfo, executable.error())

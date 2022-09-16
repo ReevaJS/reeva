@@ -12,15 +12,19 @@ import com.reevajs.reeva.utils.Result
 import com.reevajs.reeva.utils.expect
 
 class Script(val realm: Realm, val parsedSource: ParsedSource) : Executable {
+    var isEval: Boolean = false
+
     override fun execute(): JSValue {
         val sourceInfo = parsedSource.sourceInfo
         expect(!sourceInfo.isModule)
 
         return Agent.activeAgent.withRealm(realm, realm.globalEnv) {
-            val transformedSource = Executable.transform(parsedSource)
+            val transformedSource = Executable.transform(parsedSource, isEval)
             val function = NormalInterpretedFunction.create(transformedSource)
-            Operations.call(function, realm.globalObject, emptyList())
+            val r = Operations.call(function, realm.globalObject, emptyList())
+            r
         }
+
     }
 
     companion object {

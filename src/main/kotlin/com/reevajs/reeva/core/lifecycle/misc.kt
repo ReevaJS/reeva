@@ -94,8 +94,9 @@ interface Executable {
     fun execute(): JSValue
 
     companion object {
-        fun transform(parsedSource: ParsedSource): TransformedSource {
-            return Transformer(parsedSource).transform().also {
+        // TODO: Remove this gross isEval hack, here and in Script.kt
+        fun transform(parsedSource: ParsedSource, isEval: Boolean = false): TransformedSource {
+            return Transformer(parsedSource).transform(isEval).also {
                 if (Agent.activeAgent.printIR) {
                     IRPrinter(it).print()
                     println('\n')

@@ -89,6 +89,13 @@ class IRBuilder(
         stackHeight += opcode.stackHeightModifier
     }
 
+    fun removeLastOpcodeIfPop(): Boolean {
+        return if (opcodes.lastOrNull() == Pop) {
+            opcodes.removeLast()
+            true
+        } else false
+    }
+
     fun setLastOpcodeLocation(location: SourceLocation) {
         locationTable[opcodes.lastIndex] = location
     }
