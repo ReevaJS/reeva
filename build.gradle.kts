@@ -20,11 +20,11 @@ repositories {
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.7.10")
     implementation("com.github.ReevaJS:mfbt:78080dba4e")
+    implementation("com.github.ReevaJS:regexp:f38cb49fe1")
     implementation("org.ow2.asm:asm:9.3")
     implementation("org.ow2.asm:asm-tree:9.3")
     implementation("org.ow2.asm:asm-commons:9.3")
     implementation("com.github.mattco98:Koffee:3b4b48e9ff")
-    implementation("org.jruby.joni:joni:2.1.43")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
@@ -42,7 +42,7 @@ tasks {
     compileKotlin {
         kotlinOptions {
             jvmTarget = "1.8"
-            freeCompilerArgs = listOf("-Xinline-classes", "-Xopt-in=kotlin.RequiresOptIn")
+            freeCompilerArgs = listOf("-Xinline-classes", "-opt-in=kotlin.RequiresOptIn")
         }
     }
 

@@ -1888,7 +1888,7 @@ class Parser(val sourceInfo: SourceInfo) {
             token.literals.also { consume() }
         } else ""
 
-        RegExpLiteralNode(source, flags)
+        RegExpLiteralNode(source.drop(1).dropLast(1), flags)
     }
 
     private fun parseAwaitExpression(): ExpressionNode = nps {

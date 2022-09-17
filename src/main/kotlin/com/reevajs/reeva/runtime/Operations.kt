@@ -5,11 +5,10 @@ package com.reevajs.reeva.runtime
 import com.reevajs.reeva.ast.ASTNode
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
-import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.core.environment.ObjectEnvRecord
-import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
+import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.jvmcompat.JSClassInstanceObject
 import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.mfbt.Dtoa
@@ -37,12 +36,13 @@ import com.reevajs.reeva.runtime.promises.JSRejectFunction
 import com.reevajs.reeva.runtime.promises.JSResolveFunction
 import com.reevajs.reeva.runtime.regexp.JSRegExpObject
 import com.reevajs.reeva.runtime.regexp.JSRegExpProto
-import com.reevajs.reeva.runtime.wrappers.*
+import com.reevajs.reeva.runtime.wrappers.JSBigIntObject
+import com.reevajs.reeva.runtime.wrappers.JSBooleanObject
+import com.reevajs.reeva.runtime.wrappers.JSNumberObject
+import com.reevajs.reeva.runtime.wrappers.JSSymbolObject
 import com.reevajs.reeva.runtime.wrappers.strings.JSStringObject
 import com.reevajs.reeva.utils.*
-import com.reevajs.reeva.utils.Result
-import org.joni.Matcher
-import org.joni.Option
+import com.reevajs.regexp.RegExp
 import java.math.BigInteger
 import java.nio.ByteBuffer
 import java.time.*
@@ -2342,73 +2342,45 @@ object Operations {
         ecmaAssert(string is JSString)
         requireInternalSlot(thisValue, SlotName.RegExpMatcher)
 
-        val length = string.string.length
-        val bytes = string.string.toByteArray()
+        val text = string.string
         val flags = thisValue.getSlotAs<String>(SlotName.OriginalFlags)
         val global = JSRegExpObject.Flag.Global.char in flags
         val sticky = JSRegExpObject.Flag.Sticky.char in flags
-        val fullUnicode = JSRegExpObject.Flag.Unicode.char in flags
-        var lastIndex = if (global || sticky) {
+        val lastIndex = if (global || sticky) {
             thisValue.get("lastIndex").toLength().asInt
         } else 0
 
-        val regex = thisValue.getSlotAs<org.joni.Regex>(SlotName.RegExpMatcher)
-        val matcher = regex.matcher(bytes, 0, length)
+        val regex = thisValue.getSlotAs<RegExp>(SlotName.RegExpMatcher)
+        val match = regex.matcher(text).match(lastIndex)
 
-        var matchSucceeded = false
-        while (!matchSucceeded) {
-            if (lastIndex > length) {
-                if (global || sticky)
-                    set(thisValue, "lastIndex".key(), 0.toValue(), true)
-                return JSNull
-            }
-            val result = matcher.search(lastIndex, length - lastIndex, Option.DEFAULT)
-            if (result == Matcher.FAILED || result == Matcher.INTERRUPTED) {
-                if (sticky) {
-                    set(thisValue, "lastIndex".key(), 0.toValue(), true)
-                    return JSNull
-                }
-                if (fullUnicode)
-                    TODO()
-                lastIndex++
-            } else {
-                matchSucceeded = true
-            }
+        if (match == null) {
+            if ((global || sticky))
+                set(thisValue, "lastIndex".key(), 0.toValue(), true)
+            return JSNull
         }
 
-        val eagerRegion = matcher.eagerRegion
+        if (global || sticky)
+            set(thisValue, "lastIndex".key(), (match.range.last + 1).toValue(), true)
 
-        val arr = arrayCreate(eagerRegion.numRegs)
+        val arr = arrayCreate(match.indexedGroups.size)
         createDataPropertyOrThrow(arr, "index".key(), lastIndex.toValue())
         createDataPropertyOrThrow(arr, "input".key(), string)
 
-        val matchedSubstr = string.string.substring(lastIndex, eagerRegion.end[0])
-        createDataPropertyOrThrow(arr, 0.key(), matchedSubstr.toValue())
+        if (match.indexedGroups.isNotEmpty()) {
+            (0..match.indexedGroups.lastKey()).forEach {
+                val value = match.indexedGroups[it]?.value?.toValue() ?: JSUndefined
+                createDataProperty(arr, it.key(), value)
+            }
+        }
 
-        val groupNames = regex.namedBackrefIterator().asSequence().toList()
-        val groups = if (groupNames.isNotEmpty()) {
+        val groups = if (match.namedGroups.isNotEmpty()) {
             JSObject.create(proto = JSNull)
         } else JSUndefined
 
         createDataPropertyOrThrow(arr, "groups".key(), groups)
 
-        for (i in 1 until eagerRegion.numRegs) {
-            val capturedValue = if (fullUnicode) {
-                TODO()
-            } else {
-                string.string.substring(eagerRegion.beg[i], eagerRegion.end[i])
-            }.toValue()
-            createDataPropertyOrThrow(arr, i.key(), capturedValue)
-            val namedGroup = groupNames.firstOrNull { i in it.backRefs }
-            if (namedGroup != null) {
-                createDataPropertyOrThrow(
-                    groups,
-                    thisValue.getSlotAs<String>(SlotName.OriginalSource).substring(namedGroup.nameP, namedGroup.nameEnd)
-                        .key(),
-                    capturedValue
-                )
-            }
-        }
+        for ((name, group) in match.namedGroups)
+            createDataPropertyOrThrow(groups, name.key(), group.value.toValue())
 
         return arr
     }
@@ -2886,7 +2858,7 @@ object Operations {
     @JvmStatic
     @ECMAImpl("26.6.2.1")
     fun newPromiseReactionJob(reaction: PromiseReaction, argument: JSValue): PromiseReactionJob {
-        val job = job@ {
+        val job = job@{
             val handlerResult: Any = if (reaction.handler == null) {
                 if (reaction.type == PromiseReaction.Type.Fulfill) {
                     argument
