@@ -10,6 +10,7 @@ import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.lexer.*
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.utils.*
+import com.reevajs.regexp.RegexSyntaxError
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -1881,14 +1882,18 @@ class Parser(val sourceInfo: SourceInfo) {
     }
 
     private fun parseRegExpLiteral(): RegExpLiteralNode = nps {
-        val source = token.literals
+        val source = token.literals.drop(1).dropLast(1)
         consume(TokenType.RegExpLiteral)
 
         val flags = if (match(TokenType.RegexFlags)) {
             token.literals.also { consume() }
         } else ""
 
-        RegExpLiteralNode(source.drop(1).dropLast(1), flags)
+        try {
+            RegExpLiteralNode(source, flags, Operations.makeRegExp(source, flags))
+        } catch (e: RegexSyntaxError) {
+            reporter.at(token).error(e.message!!)
+        }
     }
 
     private fun parseAwaitExpression(): ExpressionNode = nps {

@@ -814,7 +814,7 @@ class Interpreter(
     }
 
     override fun visitCreateRegExpObject(opcode: CreateRegExpObject) {
-        push(JSRegExpObject.create(opcode.source, opcode.flags))
+        push(JSRegExpObject.create(opcode.source, opcode.flags, opcode.regexp))
     }
 
     override fun visitCreateTemplateLiteral(opcode: CreateTemplateLiteral) {

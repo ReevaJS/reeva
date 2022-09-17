@@ -4,6 +4,7 @@ import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.transformer.FunctionInfo
 import com.reevajs.reeva.transformer.Local
 import com.reevajs.reeva.runtime.Operations
+import com.reevajs.regexp.RegExp
 import java.math.BigInteger
 
 /**
@@ -794,9 +795,14 @@ object CreateMappedArgumentsObject : Opcode(0)
 //////////
 
 /**
- * Creates a new JSRegExpObject from [source] and [flags]
+ * Creates a new JSRegExpObject from [source], [flags], [regexp]
+ *
+ * TODO: Can we store only the source/flags or RegExp? We need to throw syntax error
+ *       before this opcode is created, but we also need to preserve the original
+ *       source/flags exactly as they appear in the source code. Maybe add that
+ *       functionality to RegExp/
  */
-class CreateRegExpObject(val source: String, val flags: String) : Opcode(1)
+class CreateRegExpObject(val source: String, val flags: String, val regexp: RegExp) : Opcode(1)
 
 /**
  * Creates a string from a variable number of string values on the stack.

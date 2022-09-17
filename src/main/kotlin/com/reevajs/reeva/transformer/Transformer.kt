@@ -1912,7 +1912,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     override fun visitRegExpLiteral(node: RegExpLiteralNode) {
-        +CreateRegExpObject(node.source, node.flags)
+        +CreateRegExpObject(node.source, node.flags, node.regexp)
     }
 
     override fun visitNewTargetExpression(node: NewTargetNode) {

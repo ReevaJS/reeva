@@ -43,6 +43,7 @@ import com.reevajs.reeva.runtime.wrappers.JSSymbolObject
 import com.reevajs.reeva.runtime.wrappers.strings.JSStringObject
 import com.reevajs.reeva.utils.*
 import com.reevajs.regexp.RegExp
+import com.reevajs.regexp.RegexSyntaxError
 import java.math.BigInteger
 import java.nio.ByteBuffer
 import java.time.*
@@ -2292,6 +2293,29 @@ object Operations {
         return obj
     }
 
+    fun makeRegExp(source: String, flags: String): RegExp {
+        val options = mutableSetOf<RegExp.Flag>()
+
+        if (JSRegExpObject.Flag.IgnoreCase.char in flags)
+            options.add(RegExp.Flag.Insensitive)
+        if (JSRegExpObject.Flag.Multiline.char in flags)
+            options.add(RegExp.Flag.MultiLine)
+        if (JSRegExpObject.Flag.DotAll.char in flags)
+            options.add(RegExp.Flag.DotMatchesNewlines)
+        if (JSRegExpObject.Flag.Unicode.char in flags)
+            options.add(RegExp.Flag.Unicode)
+
+        return RegExp(source, *options.toTypedArray())
+    }
+
+    fun makeRegExpOrThrow(source: String, flags: String): RegExp {
+        try {
+            return makeRegExp(source, flags)
+        } catch (e: RegexSyntaxError) {
+            Errors.Custom("Bad RegExp pattern at offset ${e.offset}: ${e.message}").throwSyntaxError(realm)
+        }
+    }
+
     @JvmStatic
     @ECMAImpl("21.2.3.2.2")
     fun regExpInitialize(obj: JSObject, patternArg: JSValue, flagsArg: JSValue): JSObject {
@@ -2306,7 +2330,8 @@ object Operations {
 
         obj.setSlot(SlotName.OriginalSource, pattern)
         obj.setSlot(SlotName.OriginalFlags, flags)
-        obj.setSlot(SlotName.RegExpMatcher, JSRegExpObject.makeClosure(pattern, flags))
+        obj.setSlot(SlotName.RegExpMatcher, makeRegExpOrThrow(pattern, flags))
+
         set(obj, "lastIndex".key(), 0.toValue(), true)
 
         return obj

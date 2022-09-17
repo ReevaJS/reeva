@@ -4,6 +4,7 @@ import com.reevajs.reeva.ast.ASTNode.Companion.appendIndent
 import com.reevajs.reeva.ast.ASTNodeBase
 import com.reevajs.reeva.ast.ArgumentList
 import com.reevajs.reeva.ast.ExpressionNode
+import com.reevajs.regexp.RegExp
 
 class AssignmentExpressionNode(
     val lhs: ExpressionNode,
@@ -114,4 +115,8 @@ class ParenthesizedExpressionNode(val expression: ExpressionNode) : ASTNodeBase(
 
 class TemplateLiteralNode(val parts: List<ExpressionNode>) : ASTNodeBase(parts), ExpressionNode
 
-class RegExpLiteralNode(val source: String, val flags: String) : ASTNodeBase(listOf()), ExpressionNode
+class RegExpLiteralNode(
+    val source: String,
+    val flags: String,
+    val regexp: RegExp,
+) : ASTNodeBase(listOf()), ExpressionNode
