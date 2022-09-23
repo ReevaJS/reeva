@@ -10,7 +10,7 @@ import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.lexer.*
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.utils.*
-import com.reevajs.regexp.RegexSyntaxError
+import com.reevajs.regexp.parser.RegExpSyntaxError
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -1891,7 +1891,7 @@ class Parser(val sourceInfo: SourceInfo) {
 
         try {
             RegExpLiteralNode(source, flags, Operations.makeRegExp(source, flags))
-        } catch (e: RegexSyntaxError) {
+        } catch (e: RegExpSyntaxError) {
             reporter.at(token).error(e.message!!)
         }
     }

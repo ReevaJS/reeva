@@ -2,12 +2,10 @@ package com.reevajs.reeva.runtime.regexp
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.regexp.RegExp
-import com.reevajs.regexp.RegexSyntaxError
 
 class JSRegExpObject private constructor(
     realm: Realm,

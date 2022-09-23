@@ -20,7 +20,7 @@ repositories {
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.7.10")
     implementation("com.github.ReevaJS:mfbt:78080dba4e")
-    implementation("com.github.ReevaJS:regexp:f38cb49fe1")
+    implementation("com.github.ReevaJS:regexp:f406993cfb")
     implementation("org.ow2.asm:asm:9.3")
     implementation("org.ow2.asm:asm-tree:9.3")
     implementation("org.ow2.asm:asm-commons:9.3")

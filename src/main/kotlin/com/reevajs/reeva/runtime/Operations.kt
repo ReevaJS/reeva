@@ -42,8 +42,8 @@ import com.reevajs.reeva.runtime.wrappers.JSNumberObject
 import com.reevajs.reeva.runtime.wrappers.JSSymbolObject
 import com.reevajs.reeva.runtime.wrappers.strings.JSStringObject
 import com.reevajs.reeva.utils.*
+import com.reevajs.regexp.parser.RegExpSyntaxError
 import com.reevajs.regexp.RegExp
-import com.reevajs.regexp.RegexSyntaxError
 import java.math.BigInteger
 import java.nio.ByteBuffer
 import java.time.*
@@ -2311,7 +2311,7 @@ object Operations {
     fun makeRegExpOrThrow(source: String, flags: String): RegExp {
         try {
             return makeRegExp(source, flags)
-        } catch (e: RegexSyntaxError) {
+        } catch (e: RegExpSyntaxError) {
             Errors.Custom("Bad RegExp pattern at offset ${e.offset}: ${e.message}").throwSyntaxError(realm)
         }
     }
@@ -2387,13 +2387,13 @@ object Operations {
         if (global || sticky)
             set(thisValue, "lastIndex".key(), (match.range.last + 1).toValue(), true)
 
-        val arr = arrayCreate(match.indexedGroups.size)
+        val arr = arrayCreate(match.groups.size)
         createDataPropertyOrThrow(arr, "index".key(), lastIndex.toValue())
         createDataPropertyOrThrow(arr, "input".key(), string)
 
-        if (match.indexedGroups.isNotEmpty()) {
-            (0..match.indexedGroups.lastKey()).forEach {
-                val value = match.indexedGroups[it]?.value?.toValue() ?: JSUndefined
+        if (match.groups.isNotEmpty()) {
+            (0..match.groups.lastKey()).forEach {
+                val value = match.groups[it]?.value?.toValue() ?: JSUndefined
                 createDataProperty(arr, it.key(), value)
             }
         }
