@@ -142,6 +142,10 @@ class Agent(
         val activeAgent: Agent
             get() = agents.get()
 
+        @JvmStatic
+        val hasActiveAgent: Boolean
+            get() = agents.get() != null
+
         fun build(block: Builder.() -> Unit): Agent {
             val builder = Builder().apply(block)
             return Agent(builder.printIR, builder.printAST, builder.hostHooks)

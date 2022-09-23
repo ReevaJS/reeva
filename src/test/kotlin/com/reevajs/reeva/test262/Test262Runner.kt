@@ -7,7 +7,6 @@ import com.reevajs.reeva.core.HostHooks
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.expect
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -17,6 +16,7 @@ import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.TestFactory
 import java.io.File
 import java.time.LocalDateTime
+import java.util.concurrent.ConcurrentLinkedQueue
 
 class Test262Runner {
     @TestFactory
@@ -71,7 +71,7 @@ class Test262Runner {
         val target: File? = null
         lateinit var pretestScript: String
 
-        val testResults = mutableListOf<TestResult>()
+        val testResults = ConcurrentLinkedQueue<TestResult>()
         private val json = Json { prettyPrint = true }
 
         @BeforeAll
@@ -85,16 +85,6 @@ class Test262Runner {
             pretestScript = "$assertText\n$staText\n"
 
             Reeva.setup()
-
-            val agent = Agent.build {
-                hostHooks = object : HostHooks() {
-                    override fun initializeHostDefinedGlobalObject(realm: Realm): JSObject {
-                        return Test262GlobalObject.create(realm)
-                    }
-                }
-            }
-
-            agent.setActive(true)
         }
 
         @AfterAll

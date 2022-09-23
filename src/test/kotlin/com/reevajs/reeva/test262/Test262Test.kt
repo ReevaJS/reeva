@@ -2,6 +2,7 @@ package com.reevajs.reeva.test262
 
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.HostHooks
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.FileSourceInfo
@@ -9,6 +10,7 @@ import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.*
+import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.transformer.opcodes.Throw
 import com.reevajs.reeva.utils.Result
 import com.reevajs.reeva.utils.unreachable
@@ -36,7 +38,18 @@ class Test262Test(
     }
 
     fun test() {
-        val agent = Agent.activeAgent
+        val agent = if (!Agent.hasActiveAgent) {
+            val agent = Agent.build {
+                hostHooks = object : HostHooks() {
+                    override fun initializeHostDefinedGlobalObject(realm: Realm): JSObject {
+                        return Test262GlobalObject.create(realm)
+                    }
+                }
+            }
+
+            agent.setActive(true)
+            agent
+        } else Agent.activeAgent
 
         try {
             Assumptions.assumeTrue(metadata.features?.any { "intl" in it.lowercase() } != true)
