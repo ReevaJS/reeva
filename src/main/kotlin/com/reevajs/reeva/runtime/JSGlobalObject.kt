@@ -1,9 +1,8 @@
 package com.reevajs.reeva.runtime
 
-import com.reevajs.reeva.ast.statements.StatementList
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.core.environment.EnvRecord
+import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor

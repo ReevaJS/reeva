@@ -24,7 +24,6 @@ class Agent(
     var hostHooks: HostHooks,
 ) {
     private val executionContextStack = ArrayDeque<ExecutionContext>()
-    private var pendingSourceLocation: SourceLocation? = null
 
     val runningExecutionContext: ExecutionContext
         get() = executionContextStack.last()
@@ -49,10 +48,6 @@ class Agent(
         get() = byteOrder == ByteOrder.BIG_ENDIAN
 
     val microtaskQueue = MicrotaskQueue()
-
-    fun setPendingSourceLocation(location: SourceLocation?) {
-        pendingSourceLocation = location
-    }
 
     fun contextStack(): List<ExecutionContext> = executionContextStack.toList()
 

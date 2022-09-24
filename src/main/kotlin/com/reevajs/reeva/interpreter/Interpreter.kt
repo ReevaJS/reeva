@@ -73,7 +73,6 @@ class Interpreter(
                         savedStackHeights.removeLast()
                 }
 
-                Agent.activeAgent.setPendingSourceLocation(info.ir.locationTable[ip])
                 visit(info.ir.opcodes[ip++])
             } catch (e: ThrowException) {
                 // TODO: Can we optimize this lookup?
