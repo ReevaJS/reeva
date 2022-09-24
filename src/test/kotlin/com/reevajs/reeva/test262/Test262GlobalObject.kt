@@ -39,7 +39,7 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
 
             @JvmStatic
             fun createRealm(arguments: JSArguments): JSValue {
-                val newRealm = Agent.activeAgent.makeRealm()
+                val newRealm = Agent.activeAgent.makeRealmAndPushExecutionEnvironment()
                 return newRealm.globalObject.get("$262")
             }
 

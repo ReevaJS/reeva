@@ -67,7 +67,7 @@ class Test262Test(
                 }
             } else ""
 
-            val realm = agent.makeRealm()
+            val realm = agent.makeRealmAndPushExecutionEnvironment()
             val isModule = if (metadata.flags != null) Flag.Module in metadata.flags else false
 
             val pretestSourceInfo = LiteralSourceInfo("pretest", requiredScript, isModule = false)

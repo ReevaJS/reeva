@@ -42,7 +42,7 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
             1 -> {
                 val arg = arguments.argument(0)
                 if (arg is JSObject && arg.hasSlot(SlotName.DateValue)) {
-                    arg.getSlot(SlotName.DateValue) ?: return JSDateObject.create(null)
+                    arg.getSlot(SlotName.DateValue) ?: return JSDateObject.create(realm, null)
                 } else {
                     val prim = arg.toPrimitive()
                     if (prim is JSString) {
@@ -92,7 +92,7 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
                         .plus(millis, ChronoUnit.MILLIS)
                 }
 
-                return JSDateObject.create(Operations.timeClip(ZonedDateTime.of(date, Operations.defaultZone)))
+                return JSDateObject.create(realm, Operations.timeClip(ZonedDateTime.of(date, Operations.defaultZone)))
             }
         }
 
@@ -115,7 +115,10 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
         @ECMAImpl("21.4.3.2")
         @JvmStatic
         fun parse(arguments: JSArguments): JSValue {
-            return JSDateObject.create(parseHelper(arguments) ?: return JSNumber.NaN)
+            return JSDateObject.create(
+                Agent.activeAgent.getActiveRealm(),
+                parseHelper(arguments) ?: return JSNumber.NaN
+            )
         }
 
         private fun parseHelper(arguments: JSArguments): ZonedDateTime? {

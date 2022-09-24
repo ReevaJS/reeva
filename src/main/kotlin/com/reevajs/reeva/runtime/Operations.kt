@@ -1737,7 +1737,7 @@ object Operations {
     fun arrayCreate(length: Long, proto: JSValue = realm.arrayProto): JSObject {
         if (length >= MAX_32BIT_INT - 1)
             Errors.InvalidArrayLength(length).throwRangeError()
-        val array = JSArrayObject.create(proto = proto)
+        val array = JSArrayObject.create(Agent.activeAgent.getActiveRealm(), proto = proto)
         array.indexedProperties.setArrayLikeSize(length)
         return array
     }
@@ -2413,7 +2413,7 @@ object Operations {
 
     @ECMAImpl("22.1.5.1")
     fun createArrayIterator(array: JSObject, kind: JSObject.PropertyKind): JSValue {
-        return JSArrayIterator.create(array, 0, kind)
+        return JSArrayIterator.create(Agent.activeAgent.getActiveRealm(), array, 0, kind)
     }
 
     @JvmStatic
@@ -2787,9 +2787,10 @@ object Operations {
     @JvmStatic
     @ECMAImpl("26.6.1.3")
     fun createResolvingFunctions(promise: JSObject): Pair<JSFunction, JSFunction> {
+        val realm = Agent.activeAgent.getActiveRealm()
         val resolvedStatus = Wrapper(false)
-        val resolve = JSResolveFunction.create(promise, resolvedStatus)
-        val reject = JSRejectFunction.create(promise, resolvedStatus)
+        val resolve = JSResolveFunction.create(realm, promise, resolvedStatus)
+        val reject = JSRejectFunction.create(realm, promise, resolvedStatus)
         return resolve to reject
     }
 
@@ -2811,7 +2812,7 @@ object Operations {
         if (!isConstructor(ctor))
             Errors.TODO("newPromiseCapability").throwTypeError()
         val capability = PromiseCapability(JSEmpty, null, null)
-        val executor = JSCapabilitiesExecutor.create(capability)
+        val executor = JSCapabilitiesExecutor.create(Agent.activeAgent.getActiveRealm(), capability)
         val promise = construct(ctor, listOf(executor))
         capability.promise = promise
         return capability

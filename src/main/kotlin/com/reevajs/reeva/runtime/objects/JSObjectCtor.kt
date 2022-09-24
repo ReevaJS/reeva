@@ -141,7 +141,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         fun fromEntries(arguments: JSArguments): JSValue {
             val iterable = arguments.argument(0).requireObjectCoercible()
             val obj = JSObject.create(Agent.activeAgent.getActiveRealm())
-            val adder = JSRunnableFunction.create("", 0) { args ->
+            val adder = JSRunnableFunction.create(Agent.activeAgent.getActiveRealm(), "", 0) { args ->
                 val key = args.argument(0)
                 val value = args.argument(1)
                 ecmaAssert(args.thisValue is JSObject)

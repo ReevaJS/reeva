@@ -103,6 +103,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             ecmaAssert(Operations.isConstructor(constructor))
             ecmaAssert(Operations.isCallable(promiseResolve))
 
+            val realm = Agent.activeAgent.getActiveRealm()
             val values = mutableListOf<JSValue>()
             val remainingElementCount = Operations.Wrapper(1)
             var index = 0
@@ -135,6 +136,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                 values.add(JSUndefined)
                 val nextPromise = Operations.call(promiseResolve, constructor, listOf(nextValue))
                 val resolveElement = JSPromiseAllSettledResolver.create(
+                    realm,
                     index,
                     values,
                     resultCapability,
@@ -142,6 +144,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                     false
                 )
                 val rejectElement = JSPromiseAllSettledResolver.create(
+                    realm,
                     index,
                     values,
                     resultCapability,
@@ -220,7 +223,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                 values.add(JSUndefined)
                 val nextPromise = Operations.call(promiseResolve, constructor, listOf(nextValue))
                 val resolveElement =
-                    JSPromiseAllResolver.create(index, values, resultCapability, remainingElementCount)
+                    JSPromiseAllResolver.create(Agent.activeAgent.getActiveRealm(), index, values, resultCapability, remainingElementCount)
                 remainingElementCount.value++
                 Operations.invoke(
                     nextPromise,

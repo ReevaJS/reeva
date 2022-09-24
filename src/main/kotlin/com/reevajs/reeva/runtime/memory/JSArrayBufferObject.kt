@@ -12,6 +12,6 @@ class JSArrayBufferObject private constructor(realm: Realm) : JSObject(realm.arr
     val detachKey by slot(SlotName.ArrayBufferDetachKey, JSUndefined)
 
     companion object {
-        fun create(realm: Realm) = JSArrayBufferObject(realm).initialize()
+        fun create(realm: Realm) = JSArrayBufferObject(realm).initialize(realm)
     }
 }

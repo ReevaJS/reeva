@@ -28,7 +28,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         // Inherit length getter/setter
         defineNativeProperty("length".key(), Descriptor.WRITABLE, ::getLength, ::setLength)
 
-        val unscopables = create(proto = JSNull)
+        val unscopables = create(realm, JSNull)
         Operations.createDataPropertyOrThrow(unscopables, "at".key(), JSTrue)
         Operations.createDataPropertyOrThrow(unscopables, "copyWithin".key(), JSTrue)
         Operations.createDataPropertyOrThrow(unscopables, "entries".key(), JSTrue)

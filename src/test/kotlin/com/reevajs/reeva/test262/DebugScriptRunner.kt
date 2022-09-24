@@ -17,7 +17,7 @@ fun main() {
     Agent.build {
         printIR = true
     }.withActiveScope {
-        val realm = makeRealm()
+        val realm = makeRealmAndPushExecutionEnvironment()
 
         val sourceInfo = FileSourceInfo(File("./demo/index.mjs"))
         val executable = Reeva.compile(realm, sourceInfo)

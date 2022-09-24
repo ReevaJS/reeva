@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.collections
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -76,7 +77,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm.objectProto)
         @JvmStatic
         fun entries(arguments: JSArguments): JSValue {
             val data = thisMapData(arguments.thisValue, "entries")
-            return JSMapIterator.create(data, PropertyKind.KeyValue)
+            return JSMapIterator.create(Agent.activeAgent.getActiveRealm(), data, PropertyKind.KeyValue)
         }
 
         @ECMAImpl("24.1.3.5")
@@ -121,7 +122,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm.objectProto)
         @JvmStatic
         fun keys(arguments: JSArguments): JSValue {
             val map = thisMapData(arguments.thisValue, "keys")
-            return JSMapIterator.create(map, PropertyKind.Key)
+            return JSMapIterator.create(Agent.activeAgent.getActiveRealm(), map, PropertyKind.Key)
         }
 
         @ECMAImpl("24.1.3.9")
@@ -144,7 +145,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm.objectProto)
         @JvmStatic
         fun values(arguments: JSArguments): JSValue {
             val map = thisMapData(arguments.thisValue, "values")
-            return JSMapIterator.create(map, PropertyKind.Value)
+            return JSMapIterator.create(Agent.activeAgent.getActiveRealm(), map, PropertyKind.Value)
         }
 
         private fun thisMapData(thisValue: JSValue, method: String): JSMapObject.MapData {

@@ -24,7 +24,7 @@ class JVMValueMapperTests {
 
     @BeforeAll
     fun setup() {
-        realm = Agent.activeAgent.makeRealm().also { it.createIntrinsics() }
+        realm = Agent.activeAgent.makeRealmAndPushExecutionEnvironment().also { it.createIntrinsics() }
     }
 
     @Test

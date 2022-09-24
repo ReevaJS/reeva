@@ -5,9 +5,8 @@ import com.reevajs.reeva.core.errors.DefaultErrorReporter
 import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.functions.JSFunction
-import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.utils.expect
 import java.nio.ByteOrder
-import java.util.function.Function
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -77,54 +76,52 @@ class Agent(
         return executionContextStack.last().realm
     }
 
-    fun makeRealm() = hostHooks.initializeHostDefinedRealm()
-
-    fun <T> withRealm(realm: Realm, env: EnvRecord? = null, block: () -> T): T {
-        contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-        pushExecutionContext(ExecutionContext(realm, envRecord = env))
-        return try {
-            block()
-        } finally {
-            popExecutionContext()
-        }
-    }
+    fun makeRealmAndPushExecutionEnvironment() = hostHooks.initializeHostDefinedRealm()
 
     fun nextObjectId() = objectId++
 
-    fun setActive(active: Boolean) {
-        val currentlyActiveAgent = agents.get()
-        if (active) {
-            require(currentlyActiveAgent == null || currentlyActiveAgent == this) {
-                "There is another agent active on this thread"
-            }
+    fun enter() {
+        if (!hasActiveAgent)
             agents.set(this)
-        } else if (currentlyActiveAgent == this) {
+
+        enterCounts.set(enterCounts.get() + 1)
+    }
+
+    fun exit() {
+        expect(hasActiveAgent) { "Attempt to exit agent without a corresponding enter" }
+
+        val newCount = enterCounts.get() - 1
+        expect(newCount >= 0)
+        enterCounts.set(newCount)
+
+        if (newCount == 0)
             agents.set(null)
-        }
     }
 
     fun <T> withActiveScope(block: Agent.() -> T): T {
-        setActive(true)
+        enter()
         return try {
             this.block()
         } finally {
-            setActive(false)
+            exit()
         }
     }
 
     class Builder {
         var printIR = false
         var printAST = false
-        var alive = true
         var hostHooks = HostHooks()
     }
 
     companion object {
-        private val agents = ThreadLocal<Agent>()
+        private val agents = ThreadLocal<Agent?>()
+        private val enterCounts = object : ThreadLocal<Int>() {
+            override fun initialValue() = 0
+        }
 
         @JvmStatic
         val activeAgent: Agent
-            get() = agents.get()
+            get() = agents.get()!!
 
         @JvmStatic
         val hasActiveAgent: Boolean

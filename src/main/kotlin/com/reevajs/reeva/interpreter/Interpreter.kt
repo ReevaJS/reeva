@@ -113,7 +113,7 @@ class Interpreter(
             excludedProperties.indexedProperties.get(excludedProperties, it.toInt()).toPropertyKey()
         }.toSet()
 
-        val newObj = JSObject.create()
+        val newObj = JSObject.create(realm, )
 
         for (name in obj.ownPropertyKeys()) {
             if (name !in excludedNames)
@@ -406,11 +406,11 @@ class Interpreter(
     }
 
     override fun visitCreateObject() {
-        push(JSObject.create())
+        push(JSObject.create(realm, ))
     }
 
     override fun visitCreateArray() {
-        push(JSArrayObject.create())
+        push(JSArrayObject.create(realm, ))
     }
 
     override fun visitStoreArray(opcode: StoreArray) {
@@ -712,14 +712,14 @@ class Interpreter(
 
     override fun visitForInEnumerate() {
         val target = popValue().toObject()
-        val iterator = JSObjectPropertyIterator.create(target)
+        val iterator = JSObjectPropertyIterator.create(realm, target)
         val nextMethod = Operations.getV(iterator, "next".key())
         val iteratorRecord = Operations.IteratorRecord(iterator, nextMethod, false)
         push(iteratorRecord)
     }
 
     override fun visitCreateClosure(opcode: CreateClosure) {
-        val function = NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir))
+        val function = NormalInterpretedFunction.create(realm, transformedSource.forInfo(opcode.ir))
         Operations.setFunctionName(function, opcode.ir.name.key())
         Operations.makeConstructor(function)
         Operations.setFunctionLength(function, opcode.ir.length)
@@ -727,7 +727,7 @@ class Interpreter(
     }
 
     override fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure) {
-        val function = GeneratorInterpretedFunction.create(transformedSource.forInfo(opcode.ir))
+        val function = GeneratorInterpretedFunction.create(realm, transformedSource.forInfo(opcode.ir))
         Operations.setFunctionName(function, opcode.ir.name.key())
         Operations.setFunctionLength(function, opcode.ir.length)
         push(function)
@@ -767,7 +767,7 @@ class Interpreter(
     private fun createArgumentsObject(): JSObject {
         val arguments = this.arguments.drop(Transformer.getReservedLocalsCount(info.isGenerator))
 
-        val obj = JSUnmappedArgumentsObject.create()
+        val obj = JSUnmappedArgumentsObject.create(realm)
         Operations.definePropertyOrThrow(
             obj,
             "length".key(),
@@ -813,7 +813,7 @@ class Interpreter(
     }
 
     override fun visitCreateRegExpObject(opcode: CreateRegExpObject) {
-        push(JSRegExpObject.create(opcode.source, opcode.flags, opcode.regexp))
+        push(JSRegExpObject.create(realm, opcode.source, opcode.flags, opcode.regexp))
     }
 
     override fun visitCreateTemplateLiteral(opcode: CreateTemplateLiteral) {
@@ -902,7 +902,7 @@ class Interpreter(
     }
 
     override fun visitCreateClassConstructor(opcode: CreateMethod) {
-        push(NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir)))
+        push(NormalInterpretedFunction.create(realm, transformedSource.forInfo(opcode.ir)))
     }
 
     override fun visitCreateClass() {
@@ -933,7 +933,7 @@ class Interpreter(
             }
         }
 
-        val proto = JSObject.create(proto = protoParent)
+        val proto = JSObject.create(realm, protoParent)
         Operations.makeClassConstructor(constructor)
 
         // TODO// Operations.setFunctionName(constructor, className)
@@ -986,9 +986,9 @@ class Interpreter(
             MethodDefinitionNode.Kind.Normal,
             MethodDefinitionNode.Kind.Getter,
             MethodDefinitionNode.Kind.Setter ->
-                NormalInterpretedFunction.create(transformedSource.forInfo(info))
+                NormalInterpretedFunction.create(realm, transformedSource.forInfo(info))
             MethodDefinitionNode.Kind.Generator ->
-                GeneratorInterpretedFunction.create(transformedSource.forInfo(info))
+                GeneratorInterpretedFunction.create(realm, transformedSource.forInfo(info))
             else -> TODO()
         }
 
@@ -1011,7 +1011,7 @@ class Interpreter(
             MethodDefinitionNode.Kind.Getter,
             MethodDefinitionNode.Kind.Setter -> {}
             MethodDefinitionNode.Kind.Generator -> {
-                val prototype = JSObject.create(proto = realm.generatorObjectProto)
+                val prototype = JSObject.create(realm, realm.generatorObjectProto)
                 Operations.definePropertyOrThrow(
                     closure,
                     "prototype".key(),

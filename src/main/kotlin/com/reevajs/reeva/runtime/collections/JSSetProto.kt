@@ -92,7 +92,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm.objectProto)
         @JvmStatic
         fun entries(arguments: JSArguments): JSValue {
             val data = thisSetObject(arguments.thisValue, "entries")
-            return JSSetIterator.create(data, PropertyKind.KeyValue)
+            return JSSetIterator.create(Agent.activeAgent.getActiveRealm(), data, PropertyKind.KeyValue)
         }
 
         @ECMAImpl("24.2.3.6")
@@ -136,7 +136,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm.objectProto)
         @JvmStatic
         fun values(arguments: JSArguments): JSValue {
             val data = thisSetObject(arguments.thisValue, "values")
-            return JSSetIterator.create(data, PropertyKind.Value)
+            return JSSetIterator.create(Agent.activeAgent.getActiveRealm(), data, PropertyKind.Value)
         }
     }
 }

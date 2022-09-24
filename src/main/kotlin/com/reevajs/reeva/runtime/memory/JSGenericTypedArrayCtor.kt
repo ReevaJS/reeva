@@ -70,7 +70,7 @@ open class JSGenericTypedArrayCtor protected constructor(
         length: Int? = null,
     ): JSValue {
         val proto = Operations.getPrototypeFromConstructor(newTarget, defaultProtoProducer)
-        val obj = JSIntegerIndexedObject.create(kind, proto = proto)
+        val obj = JSIntegerIndexedObject.create(realm, kind, proto = proto)
         if (length == null) {
             obj.setSlot(SlotName.ByteLength, 0)
             obj.setSlot(SlotName.ByteOffset, 0)
