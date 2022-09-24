@@ -12,6 +12,7 @@ import java.util.concurrent.locks.ReentrantLock
 class Agent(
     var printIR: Boolean,
     var printAST: Boolean,
+    var canBlock: Boolean,
     var hostHooks: HostHooks,
 ) {
     private val executionContextStack = ArrayDeque<ExecutionContext>()
@@ -81,7 +82,13 @@ class Agent(
         if (!hasActiveAgent)
             agents.set(this)
 
-        threadLocks.get().lock()
+        if (canBlock) {
+            threadLocks.get().lock()
+        } else {
+            expect(threadLocks.get().tryLock()) {
+                "Non-blocking agent failed to acquire thread lock"
+            }
+        }
     }
 
     fun exit() {
@@ -106,7 +113,7 @@ class Agent(
     class Builder {
         var printIR = false
         var printAST = false
-        var alive = true
+        var canBlock = true
         var hostHooks = HostHooks()
     }
 
@@ -126,7 +133,7 @@ class Agent(
 
         fun build(block: Builder.() -> Unit): Agent {
             val builder = Builder().apply(block)
-            return Agent(builder.printIR, builder.printAST, builder.hostHooks)
+            return Agent(builder.printIR, builder.printAST, builder.canBlock, builder.hostHooks)
         }
     }
 }
