@@ -17,20 +17,20 @@ import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.key
 import com.reevajs.reeva.utils.toValue
 
-class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
-    override fun init() {
-        super.init()
+class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(realm.iteratorProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty(
             Realm.WellKnownSymbols.toStringTag,
             "RegExp String Iterator".toValue(),
             Descriptor.CONFIGURABLE or Descriptor.HAS_BASIC
         )
-        defineBuiltin("next", 0, ::next)
+        defineBuiltin(realm, "next", 0, ::next)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSRegExpStringIteratorProto(realm).initialize()
+        fun create(realm: Realm) = JSRegExpStringIteratorProto(realm).initialize(realm)
 
         @ECMAImpl("22.2.7.2.1")
         @JvmStatic

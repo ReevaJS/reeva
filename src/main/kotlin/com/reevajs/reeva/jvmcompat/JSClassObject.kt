@@ -20,11 +20,11 @@ class JSClassObject private constructor(
     val clazzProto = classProtoCache.getOrPut(clazz) { makeClassProto(clazz) }
     val className = clazz.name.replace('/', '.').replace("L", "").replace(";", "")
 
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty("prototype", clazzProto, Descriptor.HAS_BASIC)
-        defineBuiltin("toString", 0, ::toString)
+        defineBuiltin(realm, "toString", 0, ::toString)
     }
 
     override fun evaluate(_arguments: JSArguments): JSValue {
@@ -51,13 +51,14 @@ class JSClassObject private constructor(
         val mappedArguments = JVMValueMapper.coerceArgumentsToSignature(realm, targetCtor, arguments).toTypedArray()
 
         return JSClassInstanceObject.create(
+            realm,
             clazzProto,
             targetCtor.newInstance(*mappedArguments)
         )
     }
 
     private fun makeClassProto(clazz: Class<*>): JSObject {
-        val obj = create(proto = realm.functionProto)
+        val obj = create(realm, proto = realm.functionProto)
 
         obj.defineOwnProperty("constructor", this, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
 
@@ -153,6 +154,7 @@ class JSClassObject private constructor(
             }
 
             val function = JSRunnableFunction.create(
+                Agent.activeAgent.getActiveRealm(),
                 name,
                 availableMethods.minOf { it.parameterCount },
                 function = nativeMethod,
@@ -173,7 +175,7 @@ class JSClassObject private constructor(
         private val classCache = mutableMapOf<Class<*>, JSClassObject>()
         private val classProtoCache = mutableMapOf<Class<*>, JSObject>()
 
-        fun create(clazz: Class<*>, realm: Realm = Agent.activeAgent.getActiveRealm()) = classCache.getOrPut(clazz) {
+        fun create(realm: Realm, clazz: Class<*>) = classCache.getOrPut(clazz) {
             JSClassObject(realm, clazz).initialize()
         }
 

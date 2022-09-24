@@ -18,6 +18,6 @@ class JSGeneratorFunctionCtor(realm: Realm) : JSNativeFunction(realm, "Generator
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSGeneratorFunctionCtor(realm).initialize()
+        fun create(realm: Realm) = JSGeneratorFunctionCtor(realm).initialize()
     }
 }

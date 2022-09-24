@@ -1,5 +1,6 @@
 package com.reevajs.reeva.runtime.singletons
 
+import codes.som.anthony.koffee.modifiers.enum
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
@@ -15,13 +16,13 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.*
 import kotlin.math.min
 
-class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
+class JSONObject private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        defineBuiltinGetter(Realm.WellKnownSymbols.toStringTag, ::getSymbolToStringTag, attrs { +conf; -enum; -writ })
-        defineBuiltin("parse", 2, ::parse)
-        defineBuiltin("stringify", 3, ::stringify)
+        defineBuiltinGetter(realm, Realm.WellKnownSymbols.toStringTag, ::getSymbolToStringTag, attrs { +conf; -enum; -writ })
+        defineBuiltin(realm, "parse", 2, ::parse)
+        defineBuiltin(realm, "stringify", 3, ::stringify)
     }
 
     private data class SerializeState(
@@ -32,7 +33,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     )
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSONObject(realm).initialize()
+        fun create(realm: Realm) = JSONObject(realm).initialize(realm)
 
         @ECMAImpl("24.5.1")
         @JvmStatic
@@ -73,13 +74,13 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                     JSString(element.content)
                 } else JSNumber(element.content.toDouble())
                 is JsonObject -> {
-                    val obj = JSObject.create()
+                    val obj = JSObject.create(Agent.activeAgent.getActiveRealm())
                     for ((key, value) in element)
                         defineKeyValueProperty(key.toValue(), value, obj, reviver)
                     obj
                 }
                 is JsonArray -> {
-                    val arr = JSArrayObject.create()
+                    val arr = JSArrayObject.create(Agent.activeAgent.getActiveRealm())
                     for ((index, value) in element.withIndex())
                         defineKeyValueProperty(index.toString().toValue(), value, arr, reviver)
                     arr
@@ -119,7 +120,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                 gap = if (str.length <= 10) str else str.substring(0, 10)
             }
 
-            val wrapper = JSObject.create()
+            val wrapper = JSObject.create(Agent.activeAgent.getActiveRealm())
             Operations.createDataPropertyOrThrow(wrapper, "".toValue(), value)
             val state = SerializeState(
                 mutableListOf(),

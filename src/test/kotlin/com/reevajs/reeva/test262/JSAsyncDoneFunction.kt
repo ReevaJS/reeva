@@ -23,6 +23,6 @@ class JSAsyncDoneFunction private constructor(realm: Realm) : JSNativeFunction(r
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSAsyncDoneFunction(realm).initialize()
+        fun create(realm: Realm) = JSAsyncDoneFunction(realm).initialize()
     }
 }

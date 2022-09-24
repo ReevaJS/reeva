@@ -7,12 +7,12 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 
 abstract class JSFunction(
-    realm: Realm,
+    val realm: Realm,
     val debugName: String,
     var thisMode: ThisMode,
     var isStrict: Boolean = false,
     prototype: JSValue = realm.functionProto,
-) : JSObject(realm, prototype) {
+) : JSObject(prototype) {
     open val isCallable: Boolean = true
 
     var isClassConstructor: Boolean = false
@@ -42,5 +42,9 @@ abstract class JSFunction(
         Lexical,
         Strict,
         Global
+    }
+
+    companion object {
+        fun <T : JSFunction> T.initialize() = apply { init(realm) }
     }
 }

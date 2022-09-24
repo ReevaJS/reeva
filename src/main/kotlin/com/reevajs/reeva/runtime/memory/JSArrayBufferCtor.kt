@@ -16,11 +16,11 @@ import com.reevajs.reeva.utils.attrs
 import com.reevajs.reeva.utils.toValue
 
 class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ArrayBuffer", 1) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        defineBuiltinGetter(Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum })
-        defineBuiltin("isView", 1, ::isView)
+        defineBuiltinGetter(realm, Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum })
+        defineBuiltin(realm, "isView", 1, ::isView)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -35,7 +35,7 @@ class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(rea
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSArrayBufferCtor(realm).initialize()
+        fun create(realm: Realm) = JSArrayBufferCtor(realm).initialize()
 
         @ECMAImpl("25.1.4.1")
         @JvmStatic

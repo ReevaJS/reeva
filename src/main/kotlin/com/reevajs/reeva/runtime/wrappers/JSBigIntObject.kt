@@ -6,11 +6,11 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSBigInt
 
-class JSBigIntObject private constructor(realm: Realm, bigint: JSBigInt) : JSObject(realm, realm.bigIntProto) {
+class JSBigIntObject private constructor(realm: Realm, bigint: JSBigInt) : JSObject(realm.bigIntProto) {
     val bigint by slot(SlotName.BigIntData, bigint)
 
     companion object {
-        fun create(value: JSBigInt, realm: Realm = Agent.activeAgent.getActiveRealm()) =
-            JSBigIntObject(realm, value).initialize()
+        fun create(realm: Realm, value: JSBigInt) =
+            JSBigIntObject(realm, value).initialize(realm)
     }
 }

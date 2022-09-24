@@ -6,16 +6,15 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSNumber
 
-open class JSNumberObject protected constructor(realm: Realm, number: JSNumber) : JSObject(realm) {
+open class JSNumberObject protected constructor(number: JSNumber) : JSObject() {
     val number by slot(SlotName.NumberData, number)
 
-    override fun init() {
-        val realm = Agent.activeAgent.getActiveRealm()
+    override fun init(realm: Realm) {
         setPrototype(realm.numberProto)
-        super.init()
+        super.init(realm)
     }
 
     companion object {
-        fun create(number: JSNumber, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSNumberObject(realm, number).initialize()
+        fun create(realm: Realm, number: JSNumber) = JSNumberObject(number).initialize(realm)
     }
 }

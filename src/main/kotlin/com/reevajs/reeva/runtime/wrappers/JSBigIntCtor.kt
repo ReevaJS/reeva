@@ -14,11 +14,11 @@ import com.reevajs.reeva.utils.toValue
 import java.math.BigInteger
 
 class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "BigInt", 1) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        defineBuiltin("asIntN", 2, ::asIntN)
-        defineBuiltin("asUintN", 2, ::asUintN)
+        defineBuiltin(realm, "asIntN", 2, ::asIntN)
+        defineBuiltin(realm, "asUintN", 2, ::asUintN)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -34,7 +34,7 @@ class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSBigIntCtor(realm).initialize()
+        fun create(realm: Realm) = JSBigIntCtor(realm).initialize()
 
         @ECMAImpl("21.2.2.1")
         @JvmStatic

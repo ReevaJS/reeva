@@ -21,12 +21,12 @@ open class JSGenericTypedArrayCtor protected constructor(
     realm: Realm,
     private val kind: Operations.TypedArrayKind,
 ) : JSNativeFunction(realm, "${kind.name}Array", 3, prototype = realm.typedArrayCtor) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty("BYTES_PER_ELEMENT", kind.size.toValue(), 0)
-        defineBuiltin("from", 1, JSTypedArrayCtor::from)
-        defineBuiltin("of", 0, JSTypedArrayCtor::of)
+        defineBuiltin(realm, "from", 1, JSTypedArrayCtor::from)
+        defineBuiltin(realm, "of", 0, JSTypedArrayCtor::of)
     }
 
     @ECMAImpl("22.2.5.1")
@@ -211,66 +211,66 @@ open class JSGenericTypedArrayCtor protected constructor(
 
 class JSInt8ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Int8) {
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSInt8ArrayCtor(realm).initialize()
+        fun create(realm: Realm) = JSInt8ArrayCtor(realm).initialize()
     }
 }
 
 class JSUint8ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Uint8) {
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSUint8ArrayCtor(realm).initialize()
+        fun create(realm: Realm) = JSUint8ArrayCtor(realm).initialize()
     }
 }
 
 class JSUint8CArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Uint8C) {
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSUint8CArrayCtor(realm).initialize()
+        fun create(realm: Realm) = JSUint8CArrayCtor(realm).initialize()
     }
 }
 
 class JSInt16ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Int16) {
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSInt16ArrayCtor(realm).initialize()
+        fun create(realm: Realm) = JSInt16ArrayCtor(realm).initialize()
     }
 }
 
 class JSUint16ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Uint16) {
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSUint16ArrayCtor(realm).initialize()
+        fun create(realm: Realm) = JSUint16ArrayCtor(realm).initialize()
     }
 }
 
 class JSInt32ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Int32) {
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSInt32ArrayCtor(realm).initialize()
+        fun create(realm: Realm) = JSInt32ArrayCtor(realm).initialize()
     }
 }
 
 class JSUint32ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Uint32) {
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSUint32ArrayCtor(realm).initialize()
+        fun create(realm: Realm) = JSUint32ArrayCtor(realm).initialize()
     }
 }
 
 class JSFloat32ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Float32) {
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSFloat32ArrayCtor(realm).initialize()
+        fun create(realm: Realm) = JSFloat32ArrayCtor(realm).initialize()
     }
 }
 
 class JSFloat64ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Float64) {
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSFloat64ArrayCtor(realm).initialize()
+        fun create(realm: Realm) = JSFloat64ArrayCtor(realm).initialize()
     }
 }
 
 class JSBigInt64ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.BigInt64) {
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSBigInt64ArrayCtor(realm).initialize()
+        fun create(realm: Realm) = JSBigInt64ArrayCtor(realm).initialize()
     }
 }
 
 class JSBigUint64ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.BigUint64) {
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSBigUint64ArrayCtor(realm).initialize()
+        fun create(realm: Realm) = JSBigUint64ArrayCtor(realm).initialize()
     }
 }

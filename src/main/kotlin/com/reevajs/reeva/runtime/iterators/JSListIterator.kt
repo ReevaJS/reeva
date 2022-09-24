@@ -8,11 +8,10 @@ import com.reevajs.reeva.runtime.objects.JSObject
 class JSListIterator private constructor(
     realm: Realm,
     val iteratorList: List<JSValue>,
-) : JSObject(realm, realm.listIteratorProto) {
+) : JSObject(realm.listIteratorProto) {
     var nextIndex: Int = 0
 
     companion object {
-        fun create(iteratorList: List<JSValue>, realm: Realm = Agent.activeAgent.getActiveRealm()) =
-            JSListIterator(realm, iteratorList)
+        fun create(realm: Realm, iteratorList: List<JSValue>) = JSListIterator(realm, iteratorList).initialize(realm)
     }
 }

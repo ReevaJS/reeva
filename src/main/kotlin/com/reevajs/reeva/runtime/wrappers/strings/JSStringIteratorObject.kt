@@ -8,11 +8,8 @@ class JSStringIteratorObject private constructor(
     realm: Realm,
     internal var string: String?,
     internal var nextIndex: Int,
-) : JSObject(realm, realm.stringIteratorProto) {
+) : JSObject(realm.stringIteratorProto) {
     companion object {
-        fun create(
-            string: String,
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = JSStringIteratorObject(realm, string, 0).initialize()
+        fun create(realm: Realm, string: String) = JSStringIteratorObject(realm, string, 0).initialize(realm)
     }
 }

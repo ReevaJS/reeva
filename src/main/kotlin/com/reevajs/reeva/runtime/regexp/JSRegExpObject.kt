@@ -12,7 +12,7 @@ class JSRegExpObject private constructor(
     source: String,
     flags: String,
     regex: RegExp,
-) : JSObject(realm, realm.regExpProto) {
+) : JSObject(realm.regExpProto) {
     val source by slot(SlotName.OriginalSource, source)
     val flags by slot(SlotName.OriginalFlags, flags)
     var regex by slot(SlotName.RegExpMatcher, regex)
@@ -38,7 +38,7 @@ class JSRegExpObject private constructor(
 
     companion object {
         @JvmStatic
-        fun create(source: String, flags: String, regexp: RegExp, realm: Realm = Agent.activeAgent.getActiveRealm()) =
-            JSRegExpObject(realm, source, flags, regexp).initialize()
+        fun create(realm: Realm, source: String, flags: String, regexp: RegExp) =
+            JSRegExpObject(realm, source, flags, regexp).initialize(realm)
     }
 }

@@ -1,6 +1,5 @@
 package com.reevajs.reeva.runtime.memory
 
-import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -15,42 +14,41 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.attrs
 import com.reevajs.reeva.utils.toValue
 
-class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
+class JSDataViewProto private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.dataViewCtor, attrs { +conf; -enum; +writ })
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "DataView".toValue(), attrs { +conf; -enum; -writ })
 
-        defineBuiltinGetter("buffer", ::getBuffer, attrs { +conf; -enum })
-        defineBuiltinGetter("byteLength", ::getByteLength, attrs { +conf; -enum })
-        defineBuiltinGetter("byteOffset", ::getByteOffset, attrs { +conf; -enum })
+        defineBuiltinGetter(realm, "buffer", ::getBuffer, attrs { +conf; -enum })
+        defineBuiltinGetter(realm, "byteLength", ::getByteLength, attrs { +conf; -enum })
+        defineBuiltinGetter(realm, "byteOffset", ::getByteOffset, attrs { +conf; -enum })
 
-        defineBuiltin("getBigInt64", 1, ::getBigInt64)
-        defineBuiltin("getBigUint64", 1, ::getBigUint64)
-        defineBuiltin("getFloat32", 1, ::getFloat32)
-        defineBuiltin("getFloat64", 1, ::getFloat64)
-        defineBuiltin("getInt8", 1, ::getInt8)
-        defineBuiltin("getInt16", 1, ::getInt16)
-        defineBuiltin("getInt32", 1, ::getInt32)
-        defineBuiltin("getUint8", 1, ::getUint8)
-        defineBuiltin("getUint16", 1, ::getUint16)
-        defineBuiltin("getUint32", 1, ::getUint32)
-        defineBuiltin("setBigInt64", 2, ::setBigInt64)
-        defineBuiltin("setBigUint64", 2, ::setBigUint64)
-        defineBuiltin("setFloat32", 2, ::setFloat32)
-        defineBuiltin("setFloat64", 2, ::setFloat64)
-        defineBuiltin("setInt8", 2, ::setInt8)
-        defineBuiltin("setInt16", 2, ::setInt16)
-        defineBuiltin("setInt32", 2, ::setInt32)
-        defineBuiltin("setUint8", 2, ::setUint8)
-        defineBuiltin("setUint16", 2, ::setUint16)
-        defineBuiltin("setUint32", 2, ::setUint32)
+        defineBuiltin(realm, "getBigInt64", 1, ::getBigInt64)
+        defineBuiltin(realm, "getBigUint64", 1, ::getBigUint64)
+        defineBuiltin(realm, "getFloat32", 1, ::getFloat32)
+        defineBuiltin(realm, "getFloat64", 1, ::getFloat64)
+        defineBuiltin(realm, "getInt8", 1, ::getInt8)
+        defineBuiltin(realm, "getInt16", 1, ::getInt16)
+        defineBuiltin(realm, "getInt32", 1, ::getInt32)
+        defineBuiltin(realm, "getUint8", 1, ::getUint8)
+        defineBuiltin(realm, "getUint16", 1, ::getUint16)
+        defineBuiltin(realm, "getUint32", 1, ::getUint32)
+        defineBuiltin(realm, "setBigInt64", 2, ::setBigInt64)
+        defineBuiltin(realm, "setBigUint64", 2, ::setBigUint64)
+        defineBuiltin(realm, "setFloat32", 2, ::setFloat32)
+        defineBuiltin(realm, "setFloat64", 2, ::setFloat64)
+        defineBuiltin(realm, "setInt8", 2, ::setInt8)
+        defineBuiltin(realm, "setInt16", 2, ::setInt16)
+        defineBuiltin(realm, "setInt32", 2, ::setInt32)
+        defineBuiltin(realm, "setUint8", 2, ::setUint8)
+        defineBuiltin(realm, "setUint16", 2, ::setUint16)
+        defineBuiltin(realm, "setUint32", 2, ::setUint32)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSDataViewProto(realm).initialize()
+        fun create(realm: Realm) = JSDataViewProto(realm).initialize(realm)
 
         @ECMAImpl("25.3.4.1")
         @JvmStatic

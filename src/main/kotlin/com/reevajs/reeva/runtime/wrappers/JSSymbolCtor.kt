@@ -13,8 +13,8 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
 class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Symbol", 0) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty("asyncIterator", Realm.WellKnownSymbols.asyncIterator, 0)
         defineOwnProperty("hasInstance", Realm.WellKnownSymbols.hasInstance, 0)
@@ -30,8 +30,8 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineOwnProperty("toStringTag", Realm.WellKnownSymbols.toStringTag, 0)
         defineOwnProperty("unscopables", Realm.WellKnownSymbols.unscopables, 0)
 
-        defineBuiltin("for", 1, ::for_)
-        defineBuiltin("keyFor", 1, ::keyFor)
+        defineBuiltin(realm, "for", 1, ::for_)
+        defineBuiltin(realm, "keyFor", 1, ::keyFor)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -45,7 +45,7 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSymbolCtor(realm).initialize()
+        fun create(realm: Realm) = JSSymbolCtor(realm).initialize()
 
         @ECMAImpl("20.4.2.2")
         @JvmStatic

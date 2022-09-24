@@ -13,10 +13,10 @@ import com.reevajs.reeva.utils.attrs
 import com.reevajs.reeva.utils.toValue
 
 class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "RegExp", 2) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        defineBuiltinGetter(Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum })
+        defineBuiltinGetter(realm, Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -51,7 +51,7 @@ class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSRegExpCtor(realm).initialize()
+        fun create(realm: Realm) = JSRegExpCtor(realm).initialize()
 
         @ECMAImpl("22.2.4.2")
         @JvmStatic

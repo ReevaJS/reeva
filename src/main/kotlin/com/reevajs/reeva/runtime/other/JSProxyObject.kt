@@ -307,7 +307,7 @@ class JSProxyObject private constructor(
     }
 
     companion object {
-        fun create(target: JSObject, handler: JSObject, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+        fun create(realm: Realm, target: JSObject, handler: JSObject) =
             JSProxyObject(realm, target, handler).initialize()
     }
 }

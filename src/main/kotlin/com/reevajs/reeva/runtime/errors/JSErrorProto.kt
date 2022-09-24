@@ -1,6 +1,5 @@
 package com.reevajs.reeva.runtime.errors
 
-import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -13,21 +12,20 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
 open class JSErrorProto protected constructor(
-    realm: Realm,
     val errorCtor: JSObject,
     val proto: JSObject,
     val name: String = "Error"
-) : JSObject(realm, proto) {
-    override fun init() {
-        super.init()
+) : JSObject(proto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty("constructor", errorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty("name", name.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineBuiltin("toString", 0, ::toString)
+        defineBuiltin(realm, "toString", 0, ::toString)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSErrorProto(realm, realm.errorCtor, realm.objectProto).initialize()
+        fun create(realm: Realm) = JSErrorProto(realm.errorCtor, realm.objectProto).initialize(realm)
 
         @ECMAImpl("20.5.3.4")
         @JvmStatic

@@ -11,24 +11,23 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.attrs
 import com.reevajs.reeva.utils.toValue
 
-class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) {
-    override fun init() {
-        super.init()
+class JSObjectProto private constructor() : JSObject(JSNull) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.objectCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineBuiltinGetter("__proto__", ::getProto, attrs { +conf; -enum })
-        defineBuiltinSetter("__proto__", ::setProto, attrs { +conf; -enum })
-        defineBuiltin("__defineGetter__", 2, ::defineGetter)
-        defineBuiltin("__defineSetter__", 2, ::defineSetter)
-        defineBuiltin("__lookupGetter__", 1, ::lookupGetter)
-        defineBuiltin("__lookupSetter__", 1, ::lookupSetter)
-        defineBuiltin("hasOwnProperty", 1, ::hasOwnProperty)
-        defineBuiltin("isPrototypeOf", 1, ::isPrototypeOf)
-        defineBuiltin("propertyIsEnumerable", 1, ::propertyIsEnumerable)
-        defineBuiltin("toLocaleString", 0, ::toLocaleString)
-        defineBuiltin("toString", 0, ::toString)
-        defineBuiltin("valueOf", 0, ::valueOf)
+        defineBuiltinGetter(realm, "__proto__", ::getProto, attrs { +conf; -enum })
+        defineBuiltinSetter(realm, "__proto__", ::setProto, attrs { +conf; -enum })
+        defineBuiltin(realm, "__defineGetter__", 2, ::defineGetter)
+        defineBuiltin(realm, "__defineSetter__", 2, ::defineSetter)
+        defineBuiltin(realm, "__lookupGetter__", 1, ::lookupGetter)
+        defineBuiltin(realm, "__lookupSetter__", 1, ::lookupSetter)
+        defineBuiltin(realm, "hasOwnProperty", 1, ::hasOwnProperty)
+        defineBuiltin(realm, "isPrototypeOf", 1, ::isPrototypeOf)
+        defineBuiltin(realm, "propertyIsEnumerable", 1, ::propertyIsEnumerable)
+        defineBuiltin(realm, "toLocaleString", 0, ::toLocaleString)
+        defineBuiltin(realm, "toString", 0, ::toString)
+        defineBuiltin(realm, "valueOf", 0, ::valueOf)
     }
 
     @ECMAImpl("10.4.7.1")
@@ -38,7 +37,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
 
     companion object {
         // Special object: do not initialize
-        fun create(realm: Realm) = JSObjectProto(realm)
+        fun create() = JSObjectProto()
 
         @ECMAImpl("B.2.2.1.1")
         @JvmStatic

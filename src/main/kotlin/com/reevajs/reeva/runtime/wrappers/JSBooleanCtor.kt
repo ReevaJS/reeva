@@ -18,7 +18,7 @@ class JSBooleanCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         if (newTarget == JSUndefined)
             return bool
         if (newTarget == realm.booleanCtor)
-            return JSBooleanObject.create(arguments.argument(0).toBoolean().toValue())
+            return JSBooleanObject.create(realm, arguments.argument(0).toBoolean().toValue())
         return Operations.ordinaryCreateFromConstructor(
             newTarget,
             listOf(SlotName.BooleanData),
@@ -29,6 +29,6 @@ class JSBooleanCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSBooleanCtor(realm).initialize()
+        fun create(realm: Realm) = JSBooleanCtor(realm).initialize()
     }
 }

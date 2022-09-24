@@ -18,10 +18,9 @@ import kotlin.math.max
 import kotlin.math.min
 
 class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, realm.objectProto) {
-    override fun init() {
+    override fun init(realm: Realm) {
         // No super call to avoid prototype complications
 
-        val realm = Agent.activeAgent.getActiveRealm()
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.arrayCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
@@ -43,36 +42,36 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
         Operations.createDataPropertyOrThrow(unscopables, "values".key(), JSTrue)
         defineOwnProperty(Realm.WellKnownSymbols.unscopables, unscopables, Descriptor.CONFIGURABLE)
 
-        defineBuiltin("at", 1, ::at)
-        defineBuiltin("concat", 1, ::concat)
-        defineBuiltin("copyWithin", 2, ::copyWithin)
-        defineBuiltin("entries", 0, ::entries)
-        defineBuiltin("every", 1, ::every)
-        defineBuiltin("fill", 1, ::fill)
-        defineBuiltin("filter", 1, ::filter)
-        defineBuiltin("find", 1, ::find)
-        defineBuiltin("findIndex", 1, ::findIndex)
-        defineBuiltin("flat", 0, ::flat)
-        defineBuiltin("flatMap", 1, ::flatMap)
-        defineBuiltin("forEach", 1, ::forEach)
-        defineBuiltin("includes", 1, ::includes)
-        defineBuiltin("indexOf", 1, ::indexOf)
-        defineBuiltin("join", 1, ::join)
-        defineBuiltin("keys", 1, ::keys)
-        defineBuiltin("lastIndexOf", 1, ::lastIndexOf)
-        defineBuiltin("map", 1, ::map)
-        defineBuiltin("pop", 1, ::pop)
-        defineBuiltin("push", 1, ::push)
-        defineBuiltin("reduce", 1, ::reduce)
-        defineBuiltin("reduceRight", 1, ::reduceRight)
-        defineBuiltin("reverse", 1, ::reverse)
-        defineBuiltin("shift", 1, ::shift)
-        defineBuiltin("slice", 1, ::slice)
-        defineBuiltin("some", 1, ::some)
-        defineBuiltin("splice", 1, ::splice)
-        defineBuiltin("toString", 1, ::toString)
-        defineBuiltin("unshift", 1, ::unshift)
-        defineBuiltin("values", 1, ::values)
+        defineBuiltin(realm, "at", 1, ::at)
+        defineBuiltin(realm, "concat", 1, ::concat)
+        defineBuiltin(realm, "copyWithin", 2, ::copyWithin)
+        defineBuiltin(realm, "entries", 0, ::entries)
+        defineBuiltin(realm, "every", 1, ::every)
+        defineBuiltin(realm, "fill", 1, ::fill)
+        defineBuiltin(realm, "filter", 1, ::filter)
+        defineBuiltin(realm, "find", 1, ::find)
+        defineBuiltin(realm, "findIndex", 1, ::findIndex)
+        defineBuiltin(realm, "flat", 0, ::flat)
+        defineBuiltin(realm, "flatMap", 1, ::flatMap)
+        defineBuiltin(realm, "forEach", 1, ::forEach)
+        defineBuiltin(realm, "includes", 1, ::includes)
+        defineBuiltin(realm, "indexOf", 1, ::indexOf)
+        defineBuiltin(realm, "join", 1, ::join)
+        defineBuiltin(realm, "keys", 1, ::keys)
+        defineBuiltin(realm, "lastIndexOf", 1, ::lastIndexOf)
+        defineBuiltin(realm, "map", 1, ::map)
+        defineBuiltin(realm, "pop", 1, ::pop)
+        defineBuiltin(realm, "push", 1, ::push)
+        defineBuiltin(realm, "reduce", 1, ::reduce)
+        defineBuiltin(realm, "reduceRight", 1, ::reduceRight)
+        defineBuiltin(realm, "reverse", 1, ::reverse)
+        defineBuiltin(realm, "shift", 1, ::shift)
+        defineBuiltin(realm, "slice", 1, ::slice)
+        defineBuiltin(realm, "some", 1, ::some)
+        defineBuiltin(realm, "splice", 1, ::splice)
+        defineBuiltin(realm, "toString", 1, ::toString)
+        defineBuiltin(realm, "unshift", 1, ::unshift)
+        defineBuiltin(realm, "values", 1, ::values)
 
         // "The initial values of the @@iterator property is the same function object as the initial
         // value of the Array.prototype.values property."
@@ -81,7 +80,7 @@ class JSArrayProto private constructor(realm: Realm) : JSArrayObject(realm, real
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSArrayProto(realm).initialize()
+        fun create(realm: Realm) = JSArrayProto(realm).initialize(realm)
 
         @JvmStatic
         fun at(arguments: JSArguments): JSValue {

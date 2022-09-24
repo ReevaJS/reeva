@@ -10,7 +10,7 @@ class JSPromiseObject private constructor(
     state: Operations.PromiseState,
     result: JSValue,
     realm: Realm
-) : JSObject(realm, realm.promiseProto) {
+) : JSObject(realm.promiseProto) {
     var state by slot(SlotName.PromiseState, state)
     var result by slot(SlotName.PromiseResult, result)
 

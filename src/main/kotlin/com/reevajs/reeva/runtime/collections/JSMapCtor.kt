@@ -13,10 +13,10 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.attrs
 
 class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map", 0) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        defineBuiltinGetter(Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum })
+        defineBuiltinGetter(realm, Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -38,7 +38,7 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSMapCtor(realm).initialize()
+        fun create(realm: Realm) = JSMapCtor(realm).initialize()
 
         @ECMAImpl("24.1.2.2")
         @JvmStatic

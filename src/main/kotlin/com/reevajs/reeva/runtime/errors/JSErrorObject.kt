@@ -11,18 +11,18 @@ open class JSErrorObject protected constructor(
     realm: Realm,
     val message: String? = null,
     errorProto: JSObject = realm.errorProto
-) : JSObject(realm, errorProto) {
+) : JSObject(errorProto) {
     init {
         addSlot(SlotName.ErrorData, Unit)
     }
 
-    override fun init() {
+    override fun init(realm: Realm) {
         if (message != null)
             defineOwnProperty("message", message.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     companion object {
         @JvmStatic
-        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSErrorObject(realm, message).initialize()
+        fun create(realm: Realm, message: String? = null) = JSErrorObject(realm, message).initialize(realm)
     }
 }

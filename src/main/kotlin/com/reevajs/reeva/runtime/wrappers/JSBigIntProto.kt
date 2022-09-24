@@ -14,19 +14,18 @@ import com.reevajs.reeva.runtime.toIntegerOrInfinity
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
-class JSBigIntProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
+class JSBigIntProto private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.bigIntCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "BigInt".toValue(), Descriptor.CONFIGURABLE or Descriptor.HAS_BASIC)
-        defineBuiltin("toString", 0, ::toString)
-        defineBuiltin("valueOf", 0, ::valueOf)
+        defineBuiltin(realm, "toString", 0, ::toString)
+        defineBuiltin(realm, "valueOf", 0, ::valueOf)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSBigIntProto(realm).initialize()
+        fun create(realm: Realm) = JSBigIntProto(realm).initialize(realm)
 
         private fun thisBigIntValue(thisValue: JSValue, methodName: String): JSBigInt {
             if (thisValue is JSBigInt)

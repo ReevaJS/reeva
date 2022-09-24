@@ -10,14 +10,14 @@ import com.reevajs.reeva.runtime.primitives.JSSymbol
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toJSString
 
-class JSConsoleProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
-        defineBuiltin("log", 0, ::log)
+class JSConsoleProto private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
+        defineBuiltin(realm, "log", 0, ::log)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSConsoleProto(realm).initialize()
+        fun create(realm: Realm) = JSConsoleProto(realm).initialize(realm)
 
         @JvmStatic
         fun log(arguments: JSArguments): JSValue {

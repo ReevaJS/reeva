@@ -14,27 +14,27 @@ import com.reevajs.reeva.runtime.toPropertyKey
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
-class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
+class JSReflectObject private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Reflect".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("apply", 3, ::apply)
-        defineBuiltin("construct", 2, ::construct)
-        defineBuiltin("defineProperty", 3, ::defineProperty)
-        defineBuiltin("deleteProperty", 2, ::deleteProperty)
-        defineBuiltin("get", 2, ::get)
-        defineBuiltin("getOwnPropertyDescriptor", 2, ::getOwnPropertyDescriptor)
-        defineBuiltin("has", 2, ::has)
-        defineBuiltin("isExtensible", 1, ::isExtensible)
-        defineBuiltin("ownKeys", 1, ::ownKeys)
-        defineBuiltin("preventExtensions", 1, ::preventExtensions)
-        defineBuiltin("set", 2, ::set)
-        defineBuiltin("setPrototypeOf", 2, ::setPrototypeOf)
+        defineBuiltin(realm, "apply", 3, ::apply)
+        defineBuiltin(realm, "construct", 2, ::construct)
+        defineBuiltin(realm, "defineProperty", 3, ::defineProperty)
+        defineBuiltin(realm, "deleteProperty", 2, ::deleteProperty)
+        defineBuiltin(realm, "get", 2, ::get)
+        defineBuiltin(realm, "getOwnPropertyDescriptor", 2, ::getOwnPropertyDescriptor)
+        defineBuiltin(realm, "has", 2, ::has)
+        defineBuiltin(realm, "isExtensible", 1, ::isExtensible)
+        defineBuiltin(realm, "ownKeys", 1, ::ownKeys)
+        defineBuiltin(realm, "preventExtensions", 1, ::preventExtensions)
+        defineBuiltin(realm, "set", 2, ::set)
+        defineBuiltin(realm, "setPrototypeOf", 2, ::setPrototypeOf)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSReflectObject(realm).initialize()
+        fun create(realm: Realm) = JSReflectObject(realm).initialize(realm)
 
         @ECMAImpl("28.1.1")
         @JvmStatic

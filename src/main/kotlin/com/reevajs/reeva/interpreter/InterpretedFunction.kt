@@ -188,10 +188,8 @@ class NormalInterpretedFunction private constructor(
     }
 
     companion object {
-        fun create(
-            transformedSource: TransformedSource,
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = NormalInterpretedFunction(realm, transformedSource).initialize()
+        fun create(realm: Realm, transformedSource: TransformedSource) =
+            NormalInterpretedFunction(realm, transformedSource).initialize(realm)
     }
 }
 
@@ -201,14 +199,15 @@ class GeneratorInterpretedFunction private constructor(
 ) : InterpretedFunction(realm, transformedSource) {
     private lateinit var generatorObject: JSGeneratorObject
 
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
         defineOwnProperty("prototype", realm.functionProto)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
         if (!::generatorObject.isInitialized) {
             generatorObject = JSGeneratorObject.create(
+                realm,
                 transformedSource,
                 arguments.thisValue,
                 arguments,
@@ -221,9 +220,7 @@ class GeneratorInterpretedFunction private constructor(
     }
 
     companion object {
-        fun create(
-            transformedSource: TransformedSource,
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = GeneratorInterpretedFunction(realm, transformedSource).initialize()
+        fun create(realm: Realm, transformedSource: TransformedSource) =
+            GeneratorInterpretedFunction(realm, transformedSource).initialize(realm)
     }
 }

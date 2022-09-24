@@ -11,21 +11,20 @@ class JSInternalErrorObject private constructor(
 ) : JSErrorObject(realm, message, realm.internalErrorProto) {
     companion object {
         @JvmStatic
-        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSInternalErrorObject(realm, message).initialize()
+        fun create(realm: Realm, message: String? = null) = JSInternalErrorObject(realm, message).initialize(realm)
     }
 }
 
 class JSInternalErrorProto private constructor(realm: Realm) : JSErrorProto(
-    realm, realm.internalErrorCtor, realm.errorProto, "InternalError"
+    realm.internalErrorCtor, realm.errorProto, "InternalError"
 ) {
-    override fun init() {
-        super.init()
-        val realm = Agent.activeAgent.getActiveRealm()
+    override fun init(realm: Realm) {
+        super.init(realm)
         defineOwnProperty("constructor", realm.internalErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSInternalErrorProto(realm).initialize()
+        fun create(realm: Realm) = JSInternalErrorProto(realm).initialize(realm)
     }
 }
 
@@ -33,6 +32,6 @@ class JSInternalErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm,
     override fun errorProto(realm: Realm): JSObject = realm.internalErrorProto
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSInternalErrorCtor(realm).initialize()
+        fun create(realm: Realm) = JSInternalErrorCtor(realm).initialize()
     }
 }

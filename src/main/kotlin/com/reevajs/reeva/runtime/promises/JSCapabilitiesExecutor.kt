@@ -37,7 +37,7 @@ class JSCapabilitiesExecutor private constructor(
     }
 
     companion object {
-        fun create(capability: Operations.PromiseCapability, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+        fun create(realm: Realm, capability: Operations.PromiseCapability) =
             JSCapabilitiesExecutor(realm, capability).initialize()
     }
 }

@@ -26,7 +26,7 @@ class JSPromiseAllSettledResolver private constructor(
             return JSUndefined
         alreadyCalled = true
 
-        val obj = create()
+        val obj = create(realm)
         val status = if (isRejector) "rejected" else "fulfilled"
         val valKey = if (isRejector) "reason" else "value"
         Operations.createDataPropertyOrThrow(obj, "status".toValue(), status.toValue())
@@ -42,12 +42,12 @@ class JSPromiseAllSettledResolver private constructor(
 
     companion object {
         fun create(
+            realm: Realm,
             index: Int,
             values: MutableList<JSValue>,
             capability: Operations.PromiseCapability,
             remainingElements: Operations.Wrapper<Int>,
             isRejector: Boolean,
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = JSPromiseAllSettledResolver(realm, index, values, capability, remainingElements, isRejector).initialize()
     }
 }

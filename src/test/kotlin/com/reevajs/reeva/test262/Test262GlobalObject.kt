@@ -12,8 +12,8 @@ import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Error
 
 class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(realm) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("$262", JS262Object.create(this, realm), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
@@ -22,16 +22,16 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
     class JS262Object private constructor(
         private val globalObject: JSObject,
         realm: Realm,
-    ) : JSObject(realm, realm.objectProto) {
-        override fun init() {
-            super.init()
+    ) : JSObject(realm.objectProto) {
+        override fun init(realm: Realm) {
+            super.init(realm)
 
             val realm = Agent.activeAgent.getActiveRealm()
             defineOwnProperty("global", globalObject, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
             defineOwnProperty("agent", JS262AgentObject.create(realm), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-            defineBuiltin("createRealm", 0, ::createRealm)
-            defineBuiltin("detachArrayBuffer", 1, ::detachArrayBuffer)
-            defineBuiltin("gc", 0, ::gc)
+            defineBuiltin(realm, "createRealm", 0, ::createRealm)
+            defineBuiltin(realm, "detachArrayBuffer", 1, ::detachArrayBuffer)
+            defineBuiltin(realm, "gc", 0, ::gc)
         }
 
         companion object {
@@ -56,13 +56,13 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
         }
     }
 
-    class JS262AgentObject(realm: Realm) : JSObject(realm, realm.objectProto) {
+    class JS262AgentObject(realm: Realm) : JSObject(realm.objectProto) {
         companion object {
-            fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JS262AgentObject(realm).initialize()
+            fun create(realm: Realm) = JS262AgentObject(realm).initialize()
         }
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = Test262GlobalObject(realm).initialize()
+        fun create(realm: Realm) = Test262GlobalObject(realm).initialize()
     }
 }

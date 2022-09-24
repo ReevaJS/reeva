@@ -22,7 +22,7 @@ class JSTypedArrayCtor private constructor(realm: Realm) : JSNativeFunction(real
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSTypedArrayCtor(realm).initialize()
+        fun create(realm: Realm) = JSTypedArrayCtor(realm).initialize()
 
         @ECMAImpl("23.2.2.1")
         @JvmStatic

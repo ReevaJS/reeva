@@ -1,5 +1,6 @@
 package com.reevajs.reeva.jvmcompat
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
@@ -288,6 +289,8 @@ object JVMValueMapper {
 
     @JvmStatic
     fun jvmToJS(instance: Any?): JSValue {
+        val realm = Agent.activeAgent.getActiveRealm()
+
         return when (instance) {
             null -> JSUndefined
             is Boolean -> if (instance) JSTrue else JSFalse
@@ -297,7 +300,7 @@ object JVMValueMapper {
             is Number -> JSNumber(instance)
             is BigInteger -> JSBigInt(instance)
             is Map<*, *> -> {
-                val jsMap = JSMapObject.create()
+                val jsMap = JSMapObject.create(realm, )
                 instance.forEach { (key, value) ->
                     val jsKey = jvmToJS(key)
                     jsMap.mapData.map[jsKey] = jvmToJS(value)
@@ -306,7 +309,7 @@ object JVMValueMapper {
                 jsMap
             }
             is Set<*> -> {
-                val jsSet = JSSetObject.create()
+                val jsSet = JSSetObject.create(realm, )
                 instance.forEach { key ->
                     val jsKey = jvmToJS(key)
                     jsSet.setData.set.add(jsKey)
@@ -315,22 +318,22 @@ object JVMValueMapper {
                 jsSet
             }
             is Collection<*> -> {
-                val jsArray = JSArrayObject.create()
+                val jsArray = JSArrayObject.create(realm, )
                 instance.forEachIndexed { index, value ->
                     jsArray.set(index, jvmToJS(value))
                 }
                 jsArray
             }
             is Array<*> -> {
-                val jsArray = JSArrayObject.create()
+                val jsArray = JSArrayObject.create(realm, )
                 instance.forEachIndexed { index, value ->
                     jsArray.set(index, jvmToJS(value))
                 }
                 jsArray
             }
-            is Package -> JSPackageObject.create(instance.name)
-            is Class<*> -> JSClassObject.create(instance)
-            else -> JSClassInstanceObject.wrap(instance)
+            is Package -> JSPackageObject.create(realm, instance.name)
+            is Class<*> -> JSClassObject.create(realm, instance)
+            else -> JSClassInstanceObject.wrap(realm, instance)
         }
     }
 }

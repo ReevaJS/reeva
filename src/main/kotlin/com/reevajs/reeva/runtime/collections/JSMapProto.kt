@@ -1,6 +1,5 @@
 package com.reevajs.reeva.runtime.collections
 
-import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -16,22 +15,22 @@ import com.reevajs.reeva.utils.attrs
 import com.reevajs.reeva.utils.key
 import com.reevajs.reeva.utils.toValue
 
-class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
+class JSMapProto private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Map".toValue(), Descriptor.CONFIGURABLE)
 
-        defineBuiltinGetter("size", ::getSize, attrs { +conf; -enum })
-        defineBuiltin("clear", 0, ::clear)
-        defineBuiltin("delete", 1, ::delete)
-        defineBuiltin("entries", 0, ::entries)
-        defineBuiltin("forEach", 1, ::forEach)
-        defineBuiltin("get", 1, ::get)
-        defineBuiltin("has", 1, ::has)
-        defineBuiltin("keys", 1, ::keys)
-        defineBuiltin("set", 2, ::set)
-        defineBuiltin("values", 2, ::values)
+        defineBuiltinGetter(realm, "size", ::getSize, attrs { +conf; -enum })
+        defineBuiltin(realm, "clear", 0, ::clear)
+        defineBuiltin(realm, "delete", 1, ::delete)
+        defineBuiltin(realm, "entries", 0, ::entries)
+        defineBuiltin(realm, "forEach", 1, ::forEach)
+        defineBuiltin(realm, "get", 1, ::get)
+        defineBuiltin(realm, "has", 1, ::has)
+        defineBuiltin(realm, "keys", 1, ::keys)
+        defineBuiltin(realm, "set", 2, ::set)
+        defineBuiltin(realm, "values", 2, ::values)
 
         // "The initial value of the @@iterator property is the same function object
         // as the initial value of the 'entries' property."
@@ -39,7 +38,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSMapProto(realm).initialize()
+        fun create(realm: Realm) = JSMapProto(realm).initialize(realm)
 
         @ECMAImpl("24.1.3.1")
         @JvmStatic

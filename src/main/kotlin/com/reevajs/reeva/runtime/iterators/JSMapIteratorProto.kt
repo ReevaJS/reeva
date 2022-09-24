@@ -13,16 +13,16 @@ import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
-class JSMapIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
-    override fun init() {
-        super.init()
+class JSMapIteratorProto private constructor(realm: Realm) : JSObject(realm.iteratorProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Map Iterator".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("next", 0, ::next)
+        defineBuiltin(realm, "next", 0, ::next)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSMapIteratorProto(realm).initialize()
+        fun create(realm: Realm) = JSMapIteratorProto(realm).initialize(realm)
 
         @ECMAImpl("24.1.5.2")
         @JvmStatic

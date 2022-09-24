@@ -12,21 +12,21 @@ class JSTypeErrorObject private constructor(
     companion object {
         @JvmStatic
         @JvmOverloads
-        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSTypeErrorObject(realm, message).initialize()
+        fun create(realm: Realm, message: String? = null) =
+            JSTypeErrorObject(realm, message).initialize(realm)
     }
 }
 
 class JSTypeErrorProto private constructor(realm: Realm) : JSErrorProto(
-    realm, realm.typeErrorCtor, realm.errorProto, "TypeError"
+    realm.typeErrorCtor, realm.errorProto, "TypeError"
 ) {
-    override fun init() {
-        super.init()
-        val realm = Agent.activeAgent.getActiveRealm()
+    override fun init(realm: Realm) {
+        super.init(realm)
         defineOwnProperty("constructor", realm.typeErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSTypeErrorProto(realm).initialize()
+        fun create(realm: Realm) = JSTypeErrorProto(realm).initialize(realm)
     }
 }
 
@@ -34,6 +34,6 @@ class JSTypeErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "Ty
     override fun errorProto(realm: Realm): JSObject = realm.typeErrorProto
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSTypeErrorCtor(realm).initialize()
+        fun create(realm: Realm) = JSTypeErrorCtor(realm).initialize()
     }
 }

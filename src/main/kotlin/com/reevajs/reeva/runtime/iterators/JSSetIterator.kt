@@ -10,7 +10,7 @@ class JSSetIterator private constructor(
     realm: Realm,
     data: JSSetObject.SetData,
     val iterationKind: PropertyKind
-) : JSObject(realm, realm.setIteratorProto) {
+) : JSObject(realm.setIteratorProto) {
     var iteratedSet: JSSetObject.SetData? = data
     var nextIndex = 0
 
@@ -20,7 +20,7 @@ class JSSetIterator private constructor(
     }
 
     companion object {
-        fun create(data: JSSetObject.SetData, kind: PropertyKind, realm: Realm = Agent.activeAgent.getActiveRealm()) =
-            JSSetIterator(realm, data, kind).initialize()
+        fun create(realm: Realm, data: JSSetObject.SetData, kind: PropertyKind) =
+            JSSetIterator(realm, data, kind).initialize(realm)
     }
 }

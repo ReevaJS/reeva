@@ -15,32 +15,31 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.toValue
 
-@Suppress("UNUSED_PARAMETER")
 class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ObjectConstructor", 1) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        defineBuiltin("assign", 2, ::assign)
-        defineBuiltin("create", 2, ::create_)
-        defineBuiltin("defineProperties", 2, ::defineProperties)
-        defineBuiltin("defineProperty", 3, ::defineProperty)
-        defineBuiltin("entries", 1, ::entries)
-        defineBuiltin("freeze", 1, ::freeze)
-        defineBuiltin("fromEntries", 1, ::fromEntries)
-        defineBuiltin("getOwnPropertyDescriptor", 2, ::getOwnPropertyDescriptor)
-        defineBuiltin("getOwnPropertyDescriptors", 1, ::getOwnPropertyDescriptors)
-        defineBuiltin("getOwnPropertyNames", 1, ::getOwnPropertyNames)
-        defineBuiltin("getOwnPropertySymbols", 1, ::getOwnPropertySymbols)
-        defineBuiltin("getPrototypeOf", 1, ::getPrototypeOf)
-        defineBuiltin("is", 2, ::is_)
-        defineBuiltin("isExtensible", 1, ::isExtensible)
-        defineBuiltin("isFrozen", 1, ::isFrozen)
-        defineBuiltin("isSealed", 1, ::isSealed)
-        defineBuiltin("keys", 1, ::keys)
-        defineBuiltin("preventExtensions", 1, ::preventExtensions)
-        defineBuiltin("seal", 1, ::seal)
-        defineBuiltin("setPrototypeOf", 2, ::setPrototypeOf)
-        defineBuiltin("values", 1, ::values)
+        defineBuiltin(realm, "assign", 2, ::assign)
+        defineBuiltin(realm, "create", 2, ::create_)
+        defineBuiltin(realm, "defineProperties", 2, ::defineProperties)
+        defineBuiltin(realm, "defineProperty", 3, ::defineProperty)
+        defineBuiltin(realm, "entries", 1, ::entries)
+        defineBuiltin(realm, "freeze", 1, ::freeze)
+        defineBuiltin(realm, "fromEntries", 1, ::fromEntries)
+        defineBuiltin(realm, "getOwnPropertyDescriptor", 2, ::getOwnPropertyDescriptor)
+        defineBuiltin(realm, "getOwnPropertyDescriptors", 1, ::getOwnPropertyDescriptors)
+        defineBuiltin(realm, "getOwnPropertyNames", 1, ::getOwnPropertyNames)
+        defineBuiltin(realm, "getOwnPropertySymbols", 1, ::getOwnPropertySymbols)
+        defineBuiltin(realm, "getPrototypeOf", 1, ::getPrototypeOf)
+        defineBuiltin(realm, "is", 2, ::is_)
+        defineBuiltin(realm, "isExtensible", 1, ::isExtensible)
+        defineBuiltin(realm, "isFrozen", 1, ::isFrozen)
+        defineBuiltin(realm, "isSealed", 1, ::isSealed)
+        defineBuiltin(realm, "keys", 1, ::keys)
+        defineBuiltin(realm, "preventExtensions", 1, ::preventExtensions)
+        defineBuiltin(realm, "seal", 1, ::seal)
+        defineBuiltin(realm, "setPrototypeOf", 2, ::setPrototypeOf)
+        defineBuiltin(realm, "values", 1, ::values)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -52,12 +51,12 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         if (newTarget != JSUndefined && newTarget != agent.getActiveFunction())
             return Operations.ordinaryCreateFromConstructor(newTarget, defaultProto = Realm::objectProto)
         if (value.isUndefined || value.isNull)
-            return JSObject.create()
+            return JSObject.create(realm)
         return value.toObject()
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSObjectCtor(realm).initialize()
+        fun create(realm: Realm) = JSObjectCtor(realm).initialize()
 
         @ECMAImpl("20.1.2.1")
         @JvmStatic
@@ -88,7 +87,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             val obj = arguments.argument(0)
             if (obj !is JSObject && obj != JSNull)
                 Errors.Object.CreateBadArgType.throwTypeError()
-            val newObj = create(proto = obj)
+            val newObj = create(Agent.activeAgent.getActiveRealm(), proto = obj)
             val properties = arguments.argument(1)
             if (properties != JSUndefined)
                 objectDefineProperties(newObj, properties)
@@ -141,7 +140,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @JvmStatic
         fun fromEntries(arguments: JSArguments): JSValue {
             val iterable = arguments.argument(0).requireObjectCoercible()
-            val obj = JSObject.create()
+            val obj = JSObject.create(Agent.activeAgent.getActiveRealm())
             val adder = JSRunnableFunction.create("", 0) { args ->
                 val key = args.argument(0)
                 val value = args.argument(1)
@@ -165,7 +164,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @JvmStatic
         fun getOwnPropertyDescriptors(arguments: JSArguments): JSValue {
             val obj = arguments.argument(0).toObject()
-            val descriptors = JSObject.create()
+            val descriptors = JSObject.create(Agent.activeAgent.getActiveRealm())
             obj.ownPropertyKeys().forEach { key ->
                 val desc = obj.getOwnPropertyDescriptor(key)!!
                 val descObj = desc.toObject(obj)

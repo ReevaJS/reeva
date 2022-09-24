@@ -35,11 +35,11 @@ class JSPromiseAllResolver private constructor(
 
     companion object {
         fun create(
+            realm: Realm,
             index: Int,
             values: MutableList<JSValue>,
             capability: Operations.PromiseCapability,
             remainingElements: Operations.Wrapper<Int>,
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = JSPromiseAllResolver(realm, index, values, capability, remainingElements).initialize()
     }
 }

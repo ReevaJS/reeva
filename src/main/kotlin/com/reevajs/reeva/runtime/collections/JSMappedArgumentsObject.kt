@@ -11,7 +11,7 @@ import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.utils.ecmaAssert
 
-class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
+class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm.objectProto) {
     var parameterMap by lateinitSlot(SlotName.MappedParameterMap)
 
     override fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
@@ -80,6 +80,6 @@ class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSMappedArgumentsObject(realm).initialize()
+        fun create(realm: Realm) = JSMappedArgumentsObject(realm).initialize()
     }
 }

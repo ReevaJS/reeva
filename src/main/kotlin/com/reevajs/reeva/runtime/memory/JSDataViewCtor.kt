@@ -53,6 +53,6 @@ class JSDataViewCtor private constructor(realm: Realm) : JSNativeFunction(realm,
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSDataViewCtor(realm).initialize()
+        fun create(realm: Realm) = JSDataViewCtor(realm).initialize()
     }
 }

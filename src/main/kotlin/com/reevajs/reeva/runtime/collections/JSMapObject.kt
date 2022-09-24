@@ -7,7 +7,7 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 
-class JSMapObject private constructor(realm: Realm) : JSObject(realm, realm.mapProto) {
+class JSMapObject private constructor(realm: Realm) : JSObject(realm.mapProto) {
     val mapData by slot(SlotName.MapData, MapData())
 
     data class MapData(
@@ -23,6 +23,6 @@ class JSMapObject private constructor(realm: Realm) : JSObject(realm, realm.mapP
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSMapObject(realm).initialize()
+        fun create(realm: Realm) = JSMapObject(realm).initialize()
     }
 }

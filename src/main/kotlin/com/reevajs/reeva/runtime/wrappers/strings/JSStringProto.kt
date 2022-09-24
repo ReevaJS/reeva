@@ -1,6 +1,5 @@
 package com.reevajs.reeva.runtime.wrappers.strings
 
-import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -14,42 +13,41 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.streams.toList
 
-class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JSString("")) {
-    override fun init() {
-        val realm = Agent.activeAgent.getActiveRealm()
+class JSStringProto private constructor() : JSStringObject(JSString("")) {
+    override fun init(realm: Realm) {
         // No super call to avoid prototype complications
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.stringCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineBuiltin("at", 1, ::at)
-        defineBuiltin("charAt", 1, ::charAt)
-        defineBuiltin("charCodeAt", 1, ::charCodeAt)
-        defineBuiltin("codePointAt", 1, ::codePointAt)
-        defineBuiltin("concat", 1, ::concat)
-        defineBuiltin("endsWith", 1, ::endsWith)
-        defineBuiltin("includes", 1, ::includes)
-        defineBuiltin("indexOf", 1, ::indexOf)
-        defineBuiltin("lastIndexOf", 1, ::lastIndexOf)
-        defineBuiltin("padEnd", 1, ::padEnd)
-        defineBuiltin("padStart", 1, ::padStart)
-        defineBuiltin("repeat", 1, ::repeat)
-        defineBuiltin("replace", 1, ::replace)
-        defineBuiltin("slice", 2, ::slice)
-        defineBuiltin("split", 2, ::split)
-        defineBuiltin("startsWith", 1, ::startsWith)
-        defineBuiltin("substring", 2, ::substring)
-        defineBuiltin("toLowerCase", 0, ::toLowerCase)
-        defineBuiltin("toString", 0, ::toString)
-        defineBuiltin("toUpperCase", 0, ::toUpperCase)
-        defineBuiltin("trim", 0, ::trim)
-        defineBuiltin("trimEnd", 0, ::trimEnd)
-        defineBuiltin("trimStart", 0, ::trimStart)
-        defineBuiltin("valueOf", 0, ::valueOf)
-        defineBuiltin(Realm.WellKnownSymbols.iterator, 0, ::symbolIterator)
+        defineBuiltin(realm, "at", 1, ::at)
+        defineBuiltin(realm, "charAt", 1, ::charAt)
+        defineBuiltin(realm, "charCodeAt", 1, ::charCodeAt)
+        defineBuiltin(realm, "codePointAt", 1, ::codePointAt)
+        defineBuiltin(realm, "concat", 1, ::concat)
+        defineBuiltin(realm, "endsWith", 1, ::endsWith)
+        defineBuiltin(realm, "includes", 1, ::includes)
+        defineBuiltin(realm, "indexOf", 1, ::indexOf)
+        defineBuiltin(realm, "lastIndexOf", 1, ::lastIndexOf)
+        defineBuiltin(realm, "padEnd", 1, ::padEnd)
+        defineBuiltin(realm, "padStart", 1, ::padStart)
+        defineBuiltin(realm, "repeat", 1, ::repeat)
+        defineBuiltin(realm, "replace", 1, ::replace)
+        defineBuiltin(realm, "slice", 2, ::slice)
+        defineBuiltin(realm, "split", 2, ::split)
+        defineBuiltin(realm, "startsWith", 1, ::startsWith)
+        defineBuiltin(realm, "substring", 2, ::substring)
+        defineBuiltin(realm, "toLowerCase", 0, ::toLowerCase)
+        defineBuiltin(realm, "toString", 0, ::toString)
+        defineBuiltin(realm, "toUpperCase", 0, ::toUpperCase)
+        defineBuiltin(realm, "trim", 0, ::trim)
+        defineBuiltin(realm, "trimEnd", 0, ::trimEnd)
+        defineBuiltin(realm, "trimStart", 0, ::trimStart)
+        defineBuiltin(realm, "valueOf", 0, ::valueOf)
+        defineBuiltin(realm, Realm.WellKnownSymbols.iterator, 0, ::symbolIterator)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSStringProto(realm).initialize()
+        fun create(realm: Realm) = JSStringProto().initialize(realm)
 
         private fun thisStringValue(thisValue: JSValue, methodName: String): JSString {
             if (thisValue is JSString)

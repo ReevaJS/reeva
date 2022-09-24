@@ -11,21 +11,21 @@ class JSRangeErrorObject private constructor(
 ) : JSErrorObject(realm, message, realm.rangeErrorProto) {
     companion object {
         @JvmStatic
-        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSRangeErrorObject(realm, message).initialize()
+        fun create(realm: Realm, message: String? = null) =
+            JSRangeErrorObject(realm, message).initialize(realm)
     }
 }
 
 class JSRangeErrorProto private constructor(realm: Realm) : JSErrorProto(
-    realm, realm.rangeErrorCtor, realm.errorProto, "RangeError"
+    realm.rangeErrorCtor, realm.errorProto, "RangeError"
 ) {
-    override fun init() {
-        super.init()
-        val realm = Agent.activeAgent.getActiveRealm()
+    override fun init(realm: Realm) {
+        super.init(realm)
         defineOwnProperty("constructor", realm.rangeErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSRangeErrorProto(realm).initialize()
+        fun create(realm: Realm) = JSRangeErrorProto(realm).initialize(realm)
     }
 }
 
@@ -33,6 +33,6 @@ class JSRangeErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "R
     override fun errorProto(realm: Realm): JSObject = realm.rangeErrorProto
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSRangeErrorCtor(realm).initialize()
+        fun create(realm: Realm) = JSRangeErrorCtor(realm).initialize()
     }
 }

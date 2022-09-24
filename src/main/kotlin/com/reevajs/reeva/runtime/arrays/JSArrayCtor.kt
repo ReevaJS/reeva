@@ -18,14 +18,14 @@ import com.reevajs.reeva.runtime.toUint32
 import com.reevajs.reeva.utils.*
 
 class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Array", 1) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        defineBuiltinGetter(Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum; -writ })
+        defineBuiltinGetter(realm, Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum; -writ })
 
-        defineBuiltin("isArray", 1, ::isArray)
-        defineBuiltin("from", 1, ::from)
-        defineBuiltin("of", 0, ::of)
+        defineBuiltin(realm, "isArray", 1, ::isArray)
+        defineBuiltin(realm, "from", 1, ::from)
+        defineBuiltin(realm, "of", 0, ::of)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -34,9 +34,9 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
         val proto = Operations.getPrototypeFromConstructor(realNewTarget, Realm::arrayProto)
 
         return when (arguments.size) {
-            0 -> JSArrayObject.create(proto = proto)
+            0 -> JSArrayObject.create(realm, proto = proto)
             1 -> {
-                val array = JSArrayObject.create(proto = proto)
+                val array = JSArrayObject.create(realm, proto = proto)
                 val lengthArg = arguments[0]
                 val length = if (lengthArg.isNumber) {
                     val intLen = lengthArg.toUint32()
@@ -65,17 +65,15 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSArrayCtor(realm).initialize()
+        fun create(realm: Realm) = JSArrayCtor(realm).initialize()
 
-        fun create(length: Int, realm: Realm = Agent.activeAgent.getActiveRealm()) =
-            JSArrayCtor(realm).initialize().also {
-                it.indexedProperties.setArrayLikeSize(length.toLong())
-            }
+        fun create(realm: Realm, length: Int) = JSArrayCtor(realm).initialize().also {
+            it.indexedProperties.setArrayLikeSize(length.toLong())
+        }
 
-        fun create(length: Long, realm: Realm = Agent.activeAgent.getActiveRealm()) =
-            JSArrayCtor(realm).initialize().also {
-                it.indexedProperties.setArrayLikeSize(length)
-            }
+        fun create(realm: Realm, length: Long) = JSArrayCtor(realm).initialize().also {
+            it.indexedProperties.setArrayLikeSize(length)
+        }
 
         @ECMAImpl("23.1.2.1")
         @JvmStatic
@@ -101,7 +99,10 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                 var k = 0L
                 while (true) {
                     if (k == Operations.MAX_SAFE_INTEGER) {
-                        val error = JSTypeErrorObject.create("array length ${Long.MAX_VALUE} is too large")
+                        val error = JSTypeErrorObject.create(
+                            Agent.activeAgent.getActiveRealm(),
+                            "array length ${Long.MAX_VALUE} is too large",
+                        )
                         Operations.iteratorClose(iteratorRecord, error)
                         throw ThrowException(error)
                     }

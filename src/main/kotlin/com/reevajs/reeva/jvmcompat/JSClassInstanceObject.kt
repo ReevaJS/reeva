@@ -6,17 +6,15 @@ import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.JSObject
 
 class JSClassInstanceObject private constructor(
-    realm: Realm,
     prototype: JSValue,
     val obj: Any,
-) : JSObject(realm, prototype) {
+) : JSObject(prototype) {
     companion object {
-        fun create(prototype: JSValue, obj: Any, realm: Realm = Agent.activeAgent.getActiveRealm()) =
-            JSClassInstanceObject(realm, prototype, obj).initialize()
+        fun create(realm: Realm, prototype: JSValue, obj: Any) = JSClassInstanceObject(prototype, obj).initialize(realm)
 
-        fun wrap(obj: Any): JSClassInstanceObject {
-            val clazz = JSClassObject.create(obj::class.java)
-            return create(clazz.clazzProto, obj)
+        fun wrap(realm: Realm, obj: Any): JSClassInstanceObject {
+            val clazz = JSClassObject.create(realm, obj::class.java)
+            return create(realm, clazz.clazzProto, obj)
         }
     }
 }

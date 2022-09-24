@@ -12,21 +12,20 @@ import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
-class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
+class JSPromiseProto private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.promiseCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Promise".toValue(), Descriptor.CONFIGURABLE)
 
-        defineBuiltin("catch", 1, ::catch)
-        defineBuiltin("finally", 1, ::finally)
-        defineBuiltin("then", 1, ::then)
+        defineBuiltin(realm, "catch", 1, ::catch)
+        defineBuiltin(realm, "finally", 1, ::finally)
+        defineBuiltin(realm, "then", 1, ::then)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSPromiseProto(realm).initialize()
+        fun create(realm: Realm) = JSPromiseProto(realm).initialize(realm)
 
         @ECMAImpl("27.2.5.1")
         @JvmStatic

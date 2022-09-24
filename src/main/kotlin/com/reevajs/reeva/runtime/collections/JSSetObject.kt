@@ -7,7 +7,7 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 
-class JSSetObject private constructor(realm: Realm) : JSObject(realm, realm.setProto) {
+class JSSetObject private constructor(realm: Realm) : JSObject(realm.setProto) {
     val setData by slot(SlotName.SetData, SetData())
 
     data class SetData(
@@ -23,6 +23,6 @@ class JSSetObject private constructor(realm: Realm) : JSObject(realm, realm.setP
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSetObject(realm).initialize()
+        fun create(realm: Realm) = JSSetObject(realm).initialize()
     }
 }

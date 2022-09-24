@@ -11,13 +11,12 @@ import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSString
 import com.reevajs.reeva.utils.toValue
 
-open class JSStringObject protected constructor(realm: Realm, string: JSString) : JSObject(realm) {
+open class JSStringObject protected constructor(string: JSString) : JSObject() {
     val string by slot(SlotName.StringData, string)
 
-    override fun init() {
-        val realm = Agent.activeAgent.getActiveRealm()
+    override fun init(realm: Realm) {
         setPrototype(realm.stringProto)
-        super.init()
+        super.init(realm)
 
         defineOwnProperty("length", string.string.length.toValue(), 0)
     }
@@ -58,7 +57,7 @@ open class JSStringObject protected constructor(realm: Realm, string: JSString) 
     }
 
     companion object {
-        fun create(string: JSString, realm: Realm = Agent.activeAgent.getActiveRealm()) =
-            JSStringObject(realm, string).initialize()
+        fun create(realm: Realm, string: JSString) =
+            JSStringObject(string).initialize(realm)
     }
 }

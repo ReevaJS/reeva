@@ -15,7 +15,7 @@ import com.reevajs.reeva.utils.*
 open class JSGlobalObject protected constructor(
     realm: Realm,
     proto: JSObject = realm.objectProto
-) : JSObject(realm, proto) {
+) : JSObject(proto) {
     companion object {
         private val reservedURISet = setOf(';', '/', '?', ':', '@', '&', '=', '+', '$', ',', '#')
         private val uriUnescaped = mutableSetOf<Char>().also {
@@ -35,7 +35,7 @@ open class JSGlobalObject protected constructor(
 
         private val uriUnescapedExtended = uriUnescaped + reservedURISet + listOf('#')
 
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSGlobalObject(realm).initialize()
+        fun create(realm: Realm) = JSGlobalObject(realm).initialize(realm)
 
         @JvmStatic
         @ECMAImpl("9.3.4")
@@ -64,23 +64,23 @@ open class JSGlobalObject protected constructor(
             val attr = attrs { +conf; +writ }
 
             val builtinFunctions = listOf(
-                JSBuiltinFunction.create("eval", 1, ::eval, realm),
-                JSBuiltinFunction.create("isFinite", 1, ::isFinite, realm),
-                JSBuiltinFunction.create("isNaN", 1, ::isNaN, realm),
+                JSBuiltinFunction.create(realm, "eval", 1, ::eval),
+                JSBuiltinFunction.create(realm, "isFinite", 1, ::isFinite),
+                JSBuiltinFunction.create(realm, "isNaN", 1, ::isNaN),
                 // TODO
                 // JSBuiltinFunction.create("parseFloat", 1, ::parseFloat, realm),
-                JSBuiltinFunction.create("parseInt", 1, ::parseInt, realm),
-                JSBuiltinFunction.create("id", 1, ::id, realm),
-                JSBuiltinFunction.create("jvm", 1, ::jvm, realm),
-                JSBuiltinFunction.create("inspect", 1, ::inspect, realm),
+                JSBuiltinFunction.create(realm, "parseInt", 1, ::parseInt),
+                JSBuiltinFunction.create(realm, "id", 1, ::id),
+                JSBuiltinFunction.create(realm, "jvm", 1, ::jvm),
+                JSBuiltinFunction.create(realm, "inspect", 1, ::inspect),
 
                 // TODO: The tests involving these functions have some pretty intense for loops which increase
                 //       the test suite time significantly (~40%). These tests fail-fast when the functions
                 //       don't exist. These can be uncommented when Reeva's performance improves.
-                // defineBuiltin("decodeURI", 1, ReevaBuiltin.GlobalDecodeURI)
-                // defineBuiltin("decodeURIComponent", 1, ReevaBuiltin.GlobalDecodeURIComponent)
-                // defineBuiltin("encodeURI", 1, ReevaBuiltin.GlobalEncodeURI)
-                // defineBuiltin("encodeURIComponent", 1, ReevaBuiltin.GlobalEncodeURIComponent)
+                // defineBuiltin(realm, "decodeURI", 1, ReevaBuiltin.GlobalDecodeURI)
+                // defineBuiltin(realm, "decodeURIComponent", 1, ReevaBuiltin.GlobalDecodeURIComponent)
+                // defineBuiltin(realm, "encodeURI", 1, ReevaBuiltin.GlobalEncodeURI)
+                // defineBuiltin(realm, "encodeURIComponent", 1, ReevaBuiltin.GlobalEncodeURIComponent)
             )
 
             for (function in builtinFunctions)

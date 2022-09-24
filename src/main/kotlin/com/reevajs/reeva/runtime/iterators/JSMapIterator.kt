@@ -9,7 +9,7 @@ class JSMapIterator private constructor(
     realm: Realm,
     data: JSMapObject.MapData,
     val iterationKind: PropertyKind,
-) : JSObject(realm, realm.mapIteratorProto) {
+) : JSObject(realm.mapIteratorProto) {
     var iteratedMap: JSMapObject.MapData? = data
     var nextIndex = 0
 
@@ -18,7 +18,7 @@ class JSMapIterator private constructor(
     }
 
     companion object {
-        fun create(data: JSMapObject.MapData, kind: PropertyKind, realm: Realm = Agent.activeAgent.getActiveRealm()) =
-            JSMapIterator(realm, data, kind).initialize()
+        fun create(realm: Realm, data: JSMapObject.MapData, kind: PropertyKind) =
+            JSMapIterator(realm, data, kind).initialize(realm)
     }
 }

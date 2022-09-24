@@ -10,31 +10,31 @@ import com.reevajs.reeva.runtime.objects.PropertyKey
 
 open class Error(private val message: String) {
     fun throwEvalError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
-        throw ThrowException(JSEvalErrorObject.create(message, realm))
+        throw ThrowException(JSEvalErrorObject.create(realm, message))
     }
 
     fun throwInternalError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
-        throw ThrowException(JSInternalErrorObject.create(message, realm))
+        throw ThrowException(JSInternalErrorObject.create(realm, message))
     }
 
     fun throwTypeError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
-        throw ThrowException(JSTypeErrorObject.create(message, realm))
+        throw ThrowException(JSTypeErrorObject.create(realm, message))
     }
 
     fun throwRangeError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
-        throw ThrowException(JSRangeErrorObject.create(message, realm))
+        throw ThrowException(JSRangeErrorObject.create(realm, message))
     }
 
     fun throwReferenceError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
-        throw ThrowException(JSReferenceErrorObject.create(message, realm))
+        throw ThrowException(JSReferenceErrorObject.create(realm, message))
     }
 
     fun throwSyntaxError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
-        throw ThrowException(JSSyntaxErrorObject.create(message, realm))
+        throw ThrowException(JSSyntaxErrorObject.create(realm, message))
     }
 
     fun throwURIError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
-        throw ThrowException(JSURIErrorObject.create(message, realm))
+        throw ThrowException(JSURIErrorObject.create(realm, message))
     }
 }
 

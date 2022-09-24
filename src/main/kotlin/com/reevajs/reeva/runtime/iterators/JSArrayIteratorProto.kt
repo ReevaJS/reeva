@@ -12,16 +12,16 @@ import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
-class JSArrayIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
-    override fun init() {
-        super.init()
+class JSArrayIteratorProto private constructor(realm: Realm) : JSObject(realm.iteratorProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Array Iterator".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("next", 0, ::next)
+        defineBuiltin(realm, "next", 0, ::next)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSArrayIteratorProto(realm).initialize()
+        fun create(realm: Realm) = JSArrayIteratorProto(realm).initialize(realm)
 
         @ECMAImpl("23.1.5.2.1")
         @JvmStatic

@@ -13,16 +13,16 @@ import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
-class JSSetIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
-    override fun init() {
-        super.init()
+class JSSetIteratorProto private constructor(realm: Realm) : JSObject(realm.iteratorProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Set Iterator".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("next", 0, ::next)
+        defineBuiltin(realm, "next", 0, ::next)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSetIteratorProto(realm).initialize()
+        fun create(realm: Realm) = JSSetIteratorProto(realm).initialize(realm)
 
         @ECMAImpl("24.2.5.2.1")
         @JvmStatic

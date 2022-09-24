@@ -11,16 +11,16 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.attrs
 import com.reevajs.reeva.utils.toValue
 
-class JSStringIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
-    override fun init() {
-        super.init()
+class JSStringIteratorProto private constructor(realm: Realm) : JSObject(realm.iteratorProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "String Iterator".toValue(), attrs { +conf; -enum; -writ })
-        defineBuiltin("next", 0, ::next)
+        defineBuiltin(realm, "next", 0, ::next)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSStringIteratorProto(realm).initialize()
+        fun create(realm: Realm) = JSStringIteratorProto(realm).initialize(realm)
 
         @JvmStatic
         fun next(arguments: JSArguments): JSValue {

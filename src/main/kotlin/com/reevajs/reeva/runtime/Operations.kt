@@ -825,14 +825,15 @@ object Operations {
     @JvmStatic
     @ECMAImpl("7.1.18")
     fun toObject(value: JSValue): JSObject {
+        val realm = Agent.activeAgent.getActiveRealm()
         return when (value) {
             is JSObject -> value
             is JSUndefined, JSNull -> Errors.FailedToObject(value.type).throwTypeError()
-            is JSBoolean -> JSBooleanObject.create(value)
-            is JSNumber -> JSNumberObject.create(value)
-            is JSString -> JSStringObject.create(value)
-            is JSSymbol -> JSSymbolObject.create(value)
-            is JSBigInt -> JSBigIntObject.create(value)
+            is JSBoolean -> JSBooleanObject.create(realm, value)
+            is JSNumber -> JSNumberObject.create(realm, value)
+            is JSString -> JSStringObject.create(realm, value)
+            is JSSymbol -> JSSymbolObject.create(realm, value)
+            is JSBigInt -> JSBigIntObject.create(realm, value)
             else -> TODO()
         }
     }
@@ -1490,7 +1491,7 @@ object Operations {
     @JvmStatic
     @ECMAImpl("7.4.8")
     fun createIterResultObject(value: JSValue, done: Boolean): JSValue {
-        val obj = JSObject.create()
+        val obj = JSObject.create(Agent.activeAgent.getActiveRealm())
         createDataPropertyOrThrow(obj, "value".toValue(), value)
         createDataPropertyOrThrow(obj, "done".toValue(), done.toValue())
         return obj
@@ -1885,7 +1886,7 @@ object Operations {
         function.constructorKind = JSFunction.ConstructorKind.Base
 
         val actualPrototype = prototype ?: let {
-            JSObject.create().also {
+            JSObject.create(function.realm).also {
                 definePropertyOrThrow(
                     it,
                     "constructor".key(),
@@ -2399,7 +2400,7 @@ object Operations {
         }
 
         val groups = if (match.namedGroups.isNotEmpty()) {
-            JSObject.create(proto = JSNull)
+            JSObject.create(Agent.activeAgent.getActiveRealm(), proto = JSNull)
         } else JSUndefined
 
         createDataPropertyOrThrow(arr, "groups".key(), groups)

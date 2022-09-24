@@ -11,18 +11,18 @@ import com.reevajs.reeva.runtime.toObject
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
-class JSGeneratorObjectProto(realm: Realm) : JSObject(realm, realm.iteratorProto) {
-    override fun init() {
-        super.init()
+class JSGeneratorObjectProto(realm: Realm) : JSObject(realm.iteratorProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Generator".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("next", 1, ::next)
-        defineBuiltin("return", 1, ::return_)
-        defineBuiltin("throw", 1, ::throw_)
+        defineBuiltin(realm, "next", 1, ::next)
+        defineBuiltin(realm, "return", 1, ::return_)
+        defineBuiltin(realm, "throw", 1, ::throw_)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSGeneratorObjectProto(realm).initialize()
+        fun create(realm: Realm) = JSGeneratorObjectProto(realm).initialize(realm)
 
         private fun thisGeneratorObject(value: JSValue, method: String): JSGeneratorObject {
             val obj = value.toObject()

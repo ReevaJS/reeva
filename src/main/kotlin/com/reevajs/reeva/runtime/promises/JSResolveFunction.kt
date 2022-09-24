@@ -25,7 +25,7 @@ class JSResolveFunction private constructor(
 
         val resolution = arguments.argument(0)
         if (resolution.sameValue(promise)) {
-            val selfResolutionError = JSTypeErrorObject.create("TODO: message (promise self resolution)")
+            val selfResolutionError = JSTypeErrorObject.create(realm, "TODO: message (promise self resolution)")
             return Operations.rejectPromise(promise, selfResolutionError)
         }
 
@@ -49,10 +49,7 @@ class JSResolveFunction private constructor(
     }
 
     companion object {
-        fun create(
-            promise: JSObject,
-            alreadyResolved: Operations.Wrapper<Boolean>,
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = JSResolveFunction(promise, alreadyResolved, realm).initialize()
+        fun create(realm: Realm, promise: JSObject, alreadyResolved: Operations.Wrapper<Boolean>) =
+            JSResolveFunction(promise, alreadyResolved, realm).initialize(realm)
     }
 }

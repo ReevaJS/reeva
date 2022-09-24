@@ -15,9 +15,9 @@ import com.reevajs.reeva.utils.*
 open class JSArrayObject protected constructor(
     realm: Realm,
     proto: JSValue = realm.arrayProto,
-) : JSObject(realm, proto) {
-    override fun init() {
-        super.init()
+) : JSObject(proto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineNativeProperty("length", attrs { -conf; -enum; +writ }, ::getLength, ::setLength)
     }
@@ -116,10 +116,7 @@ open class JSArrayObject protected constructor(
     }
 
     companion object {
-        fun create(
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
-            proto: JSValue = realm.arrayProto,
-        ) = JSArrayObject(realm, proto).initialize()
+        fun create(realm: Realm, proto: JSValue = realm.arrayProto) = JSArrayObject(realm, proto).initialize(realm)
 
         fun getLength(thisValue: JSValue): JSValue {
             expect(thisValue is JSObject)

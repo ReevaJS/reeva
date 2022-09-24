@@ -13,14 +13,14 @@ import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toJSString
 import com.reevajs.reeva.utils.ecmaAssert
 
-class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
-    override fun init() {
-        super.init()
-        defineBuiltin("next", 0, ::next)
+class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject(realm.iteratorProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
+        defineBuiltin(realm, "next", 0, ::next)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSObjectPropertyIteratorProto(realm).initialize()
+        fun create(realm: Realm) = JSObjectPropertyIteratorProto(realm).initialize(realm)
 
         @ECMAImpl("14.7.5.10.2.1")
         @JvmStatic

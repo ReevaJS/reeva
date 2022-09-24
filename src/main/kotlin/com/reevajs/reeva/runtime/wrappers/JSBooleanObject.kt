@@ -6,20 +6,15 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSBoolean
 
-open class JSBooleanObject protected constructor(
-    realm: Realm,
-    value: JSBoolean,
-) : JSObject(realm) {
+open class JSBooleanObject protected constructor(value: JSBoolean) : JSObject() {
     val value by slot(SlotName.BooleanData, value)
 
-    override fun init() {
-        val realm = Agent.activeAgent.getActiveRealm()
+    override fun init(realm: Realm) {
         setPrototype(realm.booleanProto)
-        super.init()
+        super.init(realm)
     }
 
     companion object {
-        fun create(value: JSBoolean, realm: Realm = Agent.activeAgent.getActiveRealm()) =
-            JSBooleanObject(realm, value).initialize()
+        fun create(realm: Realm, value: JSBoolean) = JSBooleanObject(value).initialize(realm)
     }
 }

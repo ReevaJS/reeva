@@ -15,7 +15,7 @@ class JSIntegerIndexedObject private constructor(
     realm: Realm,
     private val kind: Operations.TypedArrayKind,
     proto: JSValue = kind.getProto(realm),
-) : JSObject(realm, proto) {
+) : JSObject(proto) {
     // ContentType slot is just kind.isBigInt, so we don't store that
 
     val typedArrayKind by slot(SlotName.TypedArrayKind, kind)
@@ -112,10 +112,7 @@ class JSIntegerIndexedObject private constructor(
     }
 
     companion object {
-        fun create(
-            kind: Operations.TypedArrayKind,
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
-            proto: JSValue = kind.getProto(realm),
-        ) = JSIntegerIndexedObject(realm, kind, proto).initialize()
+        fun create(realm: Realm, kind: Operations.TypedArrayKind, proto: JSValue = kind.getProto(realm)) =
+            JSIntegerIndexedObject(realm, kind, proto).initialize(realm)
     }
 }

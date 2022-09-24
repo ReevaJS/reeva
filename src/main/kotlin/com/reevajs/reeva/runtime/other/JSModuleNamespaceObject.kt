@@ -18,12 +18,11 @@ import com.reevajs.reeva.utils.toValue
 
 @ECMAImpl("10.4.6")
 class JSModuleNamespaceObject private constructor(
-    realm: Realm,
     val moduleRecord: ModuleRecord,
     val exports: List<String>
-) : JSObject(realm) {
-    override fun init() {
-        super.init()
+) : JSObject() {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Module".toValue(), Descriptor.HAS_BASIC)
     }
@@ -176,7 +175,7 @@ class JSModuleNamespaceObject private constructor(
 
     companion object {
         @ECMAImpl("10.4.6.12")
-        fun create(module: ModuleRecord, exports: List<String>, realm: Realm = Agent.activeAgent.getActiveRealm()) =
-            JSModuleNamespaceObject(realm, module, exports.sorted()).initialize()
+        fun create(realm: Realm, module: ModuleRecord, exports: List<String>) =
+            JSModuleNamespaceObject(module, exports.sorted()).initialize(realm)
     }
 }

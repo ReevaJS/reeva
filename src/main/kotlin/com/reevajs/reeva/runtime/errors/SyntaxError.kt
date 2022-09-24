@@ -11,21 +11,20 @@ class JSSyntaxErrorObject private constructor(
 ) : JSErrorObject(realm, message, realm.syntaxErrorProto) {
     companion object {
         @JvmStatic
-        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSyntaxErrorObject(realm, message).initialize()
+        fun create(realm: Realm, message: String? = null) = JSSyntaxErrorObject(realm, message).initialize(realm)
     }
 }
 
 class JSSyntaxErrorProto private constructor(realm: Realm) : JSErrorProto(
-    realm, realm.syntaxErrorCtor, realm.errorProto, "SyntaxError"
+    realm.syntaxErrorCtor, realm.errorProto, "SyntaxError"
 ) {
-    override fun init() {
-        super.init()
-        val realm = Agent.activeAgent.getActiveRealm()
+    override fun init(realm: Realm) {
+        super.init(realm)
         defineOwnProperty("constructor", realm.syntaxErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSyntaxErrorProto(realm).initialize()
+        fun create(realm: Realm) = JSSyntaxErrorProto(realm).initialize(realm)
     }
 }
 
@@ -33,6 +32,6 @@ class JSSyntaxErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "
     override fun errorProto(realm: Realm): JSObject = realm.syntaxErrorProto
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSyntaxErrorCtor(realm).initialize()
+        fun create(realm: Realm) = JSSyntaxErrorCtor(realm).initialize()
     }
 }

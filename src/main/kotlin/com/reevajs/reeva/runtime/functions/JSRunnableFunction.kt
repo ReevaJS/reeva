@@ -25,9 +25,9 @@ class JSRunnableFunction(
     companion object {
         @JvmOverloads
         fun create(
+            realm: Realm,
             name: String,
             length: Int,
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
             prototype: JSValue = realm.functionProto,
             function: Function<JSArguments, JSValue>,
         ) = JSRunnableFunction(realm, name, length, prototype, function).initialize()

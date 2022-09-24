@@ -11,21 +11,20 @@ class JSEvalErrorObject private constructor(
 ) : JSErrorObject(realm, message, realm.evalErrorProto) {
     companion object {
         @JvmStatic
-        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSEvalErrorObject(realm, message).initialize()
+        fun create(realm: Realm, message: String? = null) = JSEvalErrorObject(realm, message).initialize(realm)
     }
 }
 
 class JSEvalErrorProto private constructor(realm: Realm) : JSErrorProto(
-    realm, realm.evalErrorCtor, realm.errorProto, "EvalError"
+    realm.evalErrorCtor, realm.errorProto, "EvalError"
 ) {
-    override fun init() {
-        super.init()
-        val realm = Agent.activeAgent.getActiveRealm()
+    override fun init(realm: Realm) {
+        super.init(realm)
         defineOwnProperty("constructor", realm.evalErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSEvalErrorProto(realm).initialize()
+        fun create(realm: Realm) = JSEvalErrorProto(realm).initialize(realm)
     }
 }
 
@@ -33,6 +32,6 @@ class JSEvalErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "Ev
     override fun errorProto(realm: Realm): JSObject = realm.evalErrorProto
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSEvalErrorCtor(realm).initialize()
+        fun create(realm: Realm) = JSEvalErrorCtor(realm).initialize()
     }
 }

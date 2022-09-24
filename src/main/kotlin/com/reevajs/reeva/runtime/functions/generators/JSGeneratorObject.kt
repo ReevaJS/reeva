@@ -17,7 +17,7 @@ class JSGeneratorObject private constructor(
     arguments: List<JSValue>,
     val generatorState: Interpreter.GeneratorState,
     private val context: ExecutionContext,
-) : JSObject(realm, realm.generatorObjectProto) {
+) : JSObject(realm.generatorObjectProto) {
     private val arguments = listOf(receiver, JSUndefined, generatorState) + arguments
 
     fun next(value: JSValue): JSValue {
@@ -53,12 +53,12 @@ class JSGeneratorObject private constructor(
 
     companion object {
         fun create(
+            realm: Realm,
             transformedSource: TransformedSource,
             receiver: JSValue,
             arguments: List<JSValue>,
             generatorState: Interpreter.GeneratorState,
             executionContext: ExecutionContext,
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = JSGeneratorObject(
             realm,
             transformedSource,
@@ -66,6 +66,6 @@ class JSGeneratorObject private constructor(
             arguments,
             generatorState,
             executionContext,
-        ).initialize()
+        ).initialize(realm)
     }
 }

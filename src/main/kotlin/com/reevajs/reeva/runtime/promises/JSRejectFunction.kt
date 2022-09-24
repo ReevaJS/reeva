@@ -24,10 +24,7 @@ class JSRejectFunction private constructor(
     }
 
     companion object {
-        fun create(
-            promise: JSObject,
-            alreadyResolved: Operations.Wrapper<Boolean>,
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = JSRejectFunction(promise, alreadyResolved, realm).initialize()
+        fun create(realm: Realm, promise: JSObject, alreadyResolved: Operations.Wrapper<Boolean>) =
+            JSRejectFunction(promise, alreadyResolved, realm).initialize()
     }
 }

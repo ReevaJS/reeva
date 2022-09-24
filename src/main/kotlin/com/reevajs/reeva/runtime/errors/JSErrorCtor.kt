@@ -45,6 +45,6 @@ open class JSErrorCtor protected constructor(
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSErrorCtor(realm).initialize()
+        fun create(realm: Realm) = JSErrorCtor(realm).initialize()
     }
 }

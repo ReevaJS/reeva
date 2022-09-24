@@ -8,15 +8,15 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.toValue
 
-class JSClassProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
+class JSClassProto private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        defineBuiltin("toString", 0, ::toString)
+        defineBuiltin(realm, "toString", 0, ::toString)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSClassProto(realm).initialize()
+        fun create(realm: Realm) = JSClassProto(realm).initialize(realm)
 
         @JvmStatic
         fun toString(arguments: JSArguments): JSValue {

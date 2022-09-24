@@ -11,31 +11,31 @@ import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.*
 
-class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
+class JSRegExpProto private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         val attrs = attrs { +conf; -enum }
-        defineBuiltinGetter("dotAll", ::getDotAll, attributes = attrs)
-        defineBuiltinGetter("flags", ::getFlags, attributes = attrs)
-        defineBuiltinGetter("global", ::getGlobal, attributes = attrs)
-        defineBuiltinGetter("ignoreCase", ::getIgnoreCase, attributes = attrs)
-        defineBuiltinGetter("multiline", ::getMultiline, attributes = attrs)
-        defineBuiltinGetter("source", ::getSource, attributes = attrs)
-        defineBuiltinGetter("sticky", ::getSticky, attributes = attrs)
-        defineBuiltinGetter("unicode", ::getUnicode, attributes = attrs)
-        defineBuiltin(Realm.WellKnownSymbols.match, 1, ::symbolMatch)
-        defineBuiltin(Realm.WellKnownSymbols.matchAll, 1, ::symbolMatchAll)
-        defineBuiltin(Realm.WellKnownSymbols.replace, 2, ::symbolReplace)
-        defineBuiltin(Realm.WellKnownSymbols.search, 1, ::symbolSearch)
-        defineBuiltin(Realm.WellKnownSymbols.split, 2, ::symbolSplit)
-        defineBuiltin("exec", 1, ::exec)
-        defineBuiltin("test", 1, ::test)
-        defineBuiltin("toString", 0, ::toString)
+        defineBuiltinGetter(realm, "dotAll", ::getDotAll, attributes = attrs)
+        defineBuiltinGetter(realm, "flags", ::getFlags, attributes = attrs)
+        defineBuiltinGetter(realm, "global", ::getGlobal, attributes = attrs)
+        defineBuiltinGetter(realm, "ignoreCase", ::getIgnoreCase, attributes = attrs)
+        defineBuiltinGetter(realm, "multiline", ::getMultiline, attributes = attrs)
+        defineBuiltinGetter(realm, "source", ::getSource, attributes = attrs)
+        defineBuiltinGetter(realm, "sticky", ::getSticky, attributes = attrs)
+        defineBuiltinGetter(realm, "unicode", ::getUnicode, attributes = attrs)
+        defineBuiltin(realm, Realm.WellKnownSymbols.match, 1, ::symbolMatch)
+        defineBuiltin(realm, Realm.WellKnownSymbols.matchAll, 1, ::symbolMatchAll)
+        defineBuiltin(realm, Realm.WellKnownSymbols.replace, 2, ::symbolReplace)
+        defineBuiltin(realm, Realm.WellKnownSymbols.search, 1, ::symbolSearch)
+        defineBuiltin(realm, Realm.WellKnownSymbols.split, 2, ::symbolSplit)
+        defineBuiltin(realm, "exec", 1, ::exec)
+        defineBuiltin(realm, "test", 1, ::test)
+        defineBuiltin(realm, "toString", 0, ::toString)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSRegExpProto(realm).initialize()
+        fun create(realm: Realm) = JSRegExpProto(realm).initialize(realm)
 
         @ECMAImpl("22.2.5.2")
         @JvmStatic

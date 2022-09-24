@@ -9,14 +9,14 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.ecmaAssert
 
-class JSListIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
-    override fun init() {
-        super.init()
-        defineBuiltin("next", 0, ::next)
+class JSListIteratorProto private constructor(realm: Realm) : JSObject(realm.iteratorProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
+        defineBuiltin(realm, "next", 0, ::next)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSListIteratorProto(realm).initialize()
+        fun create(realm: Realm) = JSListIteratorProto(realm).initialize(realm)
 
         // TODO: Spec doesn't say this is an actual method
         @JvmStatic

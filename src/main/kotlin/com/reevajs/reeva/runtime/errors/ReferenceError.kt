@@ -11,21 +11,20 @@ class JSReferenceErrorObject private constructor(
 ) : JSErrorObject(realm, message, realm.referenceErrorProto) {
     companion object {
         @JvmStatic
-        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSReferenceErrorObject(realm, message).initialize()
+        fun create(realm: Realm, message: String? = null) = JSReferenceErrorObject(realm, message).initialize(realm)
     }
 }
 
 class JSReferenceErrorProto private constructor(realm: Realm) : JSErrorProto(
-    realm, realm.referenceErrorCtor, realm.errorProto, "ReferenceError"
+    realm.referenceErrorCtor, realm.errorProto, "ReferenceError"
 ) {
-    override fun init() {
-        super.init()
-        val realm = Agent.activeAgent.getActiveRealm()
+    override fun init(realm: Realm) {
+        super.init(realm)
         defineOwnProperty("constructor", realm.referenceErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSReferenceErrorProto(realm).initialize()
+        fun create(realm: Realm) = JSReferenceErrorProto(realm).initialize(realm)
     }
 }
 
@@ -33,6 +32,6 @@ class JSReferenceErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm
     override fun errorProto(realm: Realm): JSObject = realm.referenceErrorProto
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSReferenceErrorCtor(realm).initialize()
+        fun create(realm: Realm) = JSReferenceErrorCtor(realm).initialize()
     }
 }

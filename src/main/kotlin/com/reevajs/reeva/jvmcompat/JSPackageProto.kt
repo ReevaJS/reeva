@@ -8,15 +8,15 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
-class JSPackageProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
+class JSPackageProto private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        defineBuiltin("toString", 0, ::toString)
+        defineBuiltin(realm, "toString", 0, ::toString)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSPackageProto(realm).initialize()
+        fun create(realm: Realm) = JSPackageProto(realm).initialize(realm)
 
         private fun thisPackageObject(thisValue: JSValue, methodName: String): JSPackageObject {
             if (thisValue !is JSPackageObject)

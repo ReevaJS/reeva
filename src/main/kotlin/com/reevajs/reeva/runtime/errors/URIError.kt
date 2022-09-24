@@ -11,21 +11,20 @@ class JSURIErrorObject private constructor(
 ) : JSErrorObject(realm, message, realm.uriErrorProto) {
     companion object {
         @JvmStatic
-        fun create(message: String? = null, realm: Realm = Agent.activeAgent.getActiveRealm()) = JSURIErrorObject(realm, message).initialize()
+        fun create(realm: Realm, message: String? = null) = JSURIErrorObject(realm, message).initialize(realm)
     }
 }
 
 class JSURIErrorProto private constructor(realm: Realm) : JSErrorProto(
-    realm, realm.uriErrorCtor, realm.errorProto, "URIError"
+    realm.uriErrorCtor, realm.errorProto, "URIError"
 ) {
-    override fun init() {
-        super.init()
-        val realm = Agent.activeAgent.getActiveRealm()
+    override fun init(realm: Realm) {
+        super.init(realm)
         defineOwnProperty("constructor", realm.uriErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSURIErrorProto(realm).initialize()
+        fun create(realm: Realm) = JSURIErrorProto(realm).initialize(realm)
     }
 }
 
@@ -33,6 +32,6 @@ class JSURIErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "URI
     override fun errorProto(realm: Realm): JSObject = realm.uriErrorProto
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSURIErrorCtor(realm).initialize()
+        fun create(realm: Realm) = JSURIErrorCtor(realm).initialize()
     }
 }

@@ -21,12 +21,12 @@ class JSThenFinallyFunction private constructor(
             throw IllegalStateException("Unexpected construction of JSThenFinallyFunction")
         val result = Operations.call(onFinally, JSUndefined)
         val promise = Operations.promiseResolve(ctor, result)
-        val valueThunk = JSRunnableFunction.create("", 0) { arguments.argument(0) }
+        val valueThunk = JSRunnableFunction.create(realm, "", 0) { arguments.argument(0) }
         return Operations.invoke(promise, "then".toValue(), listOf(valueThunk))
     }
 
     companion object {
-        fun create(ctor: JSFunction, onFinally: JSFunction, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+        fun create(realm: Realm, ctor: JSFunction, onFinally: JSFunction) =
             JSThenFinallyFunction(realm, ctor, onFinally).initialize()
     }
 }

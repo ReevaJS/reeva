@@ -13,45 +13,46 @@ import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.*
 import kotlin.math.min
 
-class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
+class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineBuiltinGetter(
+            realm,
             Realm.WellKnownSymbols.toStringTag,
             ::getSymbolToStringTag,
             attrs { +conf; -enum },
         )
-        defineBuiltinGetter("buffer", ::getBuffer, attrs { +conf; -enum })
-        defineBuiltinGetter("byteLength", ::getByteLength, attrs { +conf; -enum })
-        defineBuiltinGetter("byteOffset", ::getByteOffset, attrs { +conf; -enum })
-        defineBuiltinGetter("length", ::getLength, attrs { +conf; -enum })
+        defineBuiltinGetter(realm, "buffer", ::getBuffer, attrs { +conf; -enum })
+        defineBuiltinGetter(realm, "byteLength", ::getByteLength, attrs { +conf; -enum })
+        defineBuiltinGetter(realm, "byteOffset", ::getByteOffset, attrs { +conf; -enum })
+        defineBuiltinGetter(realm, "length", ::getLength, attrs { +conf; -enum })
 
-        defineBuiltin("at", 1, ::at)
-        defineBuiltin("copyWithin", 2, ::copyWithin)
-        defineBuiltin("entries", 0, ::entries)
-        defineBuiltin("every", 1, ::every)
-        defineBuiltin("fill", 1, ::fill)
-        defineBuiltin("filter", 1, ::filter)
-        defineBuiltin("find", 1, ::find)
-        defineBuiltin("findIndex", 1, ::findIndex)
-        defineBuiltin("forEach", 1, ::forEach)
-        defineBuiltin("includes", 1, ::includes)
-        defineBuiltin("indexOf", 1, ::indexOf)
-        defineBuiltin("join", 1, ::join)
-//        defineBuiltin("keys", 0, ::keys)
-        defineBuiltin("lastIndexOf", 1, ::lastIndexOf)
-//        defineBuiltin("map", 1, ::map)
-        defineBuiltin("reduce", 1, ::reduce)
-        defineBuiltin("reduceRight", 1, ::reduceRight)
-        defineBuiltin("reverse", 0, ::reverse)
-//        defineBuiltin("set", 1, ::set)
-//        defineBuiltin("slice", 2, ::slice)
-        defineBuiltin("some", 1, ::some)
-//        defineBuiltin("sort", 1, ::sort)
-//        defineBuiltin("subarray", 2, ::subarray)
-//        defineBuiltin("toString", 0, ::toString)
-//        defineBuiltin("values", 0, ::values)
+        defineBuiltin(realm, "at", 1, ::at)
+        defineBuiltin(realm, "copyWithin", 2, ::copyWithin)
+        defineBuiltin(realm, "entries", 0, ::entries)
+        defineBuiltin(realm, "every", 1, ::every)
+        defineBuiltin(realm, "fill", 1, ::fill)
+        defineBuiltin(realm, "filter", 1, ::filter)
+        defineBuiltin(realm, "find", 1, ::find)
+        defineBuiltin(realm, "findIndex", 1, ::findIndex)
+        defineBuiltin(realm, "forEach", 1, ::forEach)
+        defineBuiltin(realm, "includes", 1, ::includes)
+        defineBuiltin(realm, "indexOf", 1, ::indexOf)
+        defineBuiltin(realm, "join", 1, ::join)
+//        defineBuiltin(realm, "keys", 0, ::keys)
+        defineBuiltin(realm, "lastIndexOf", 1, ::lastIndexOf)
+//        defineBuiltin(realm, "map", 1, ::map)
+        defineBuiltin(realm, "reduce", 1, ::reduce)
+        defineBuiltin(realm, "reduceRight", 1, ::reduceRight)
+        defineBuiltin(realm, "reverse", 0, ::reverse)
+//        defineBuiltin(realm, "set", 1, ::set)
+//        defineBuiltin(realm, "slice", 2, ::slice)
+        defineBuiltin(realm, "some", 1, ::some)
+//        defineBuiltin(realm, "sort", 1, ::sort)
+//        defineBuiltin(realm, "subarray", 2, ::subarray)
+//        defineBuiltin(realm, "toString", 0, ::toString)
+//        defineBuiltin(realm, "values", 0, ::values)
     }
 
     companion object {
@@ -67,7 +68,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             }
         }
 
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSTypedArrayProto(realm).initialize()
+        fun create(realm: Realm) = JSTypedArrayProto(realm).initialize(realm)
 
         @ECMAImpl("23.2.3.")
         @JvmStatic

@@ -11,16 +11,16 @@ class JSRegExpStringIterator private constructor(
     val iteratedString: JSString,
     val global: Boolean,
     val unicode: Boolean,
-) : JSObject(realm, realm.regExpStringIteratorProto) {
+) : JSObject(realm.regExpStringIteratorProto) {
     var done = false
 
     companion object {
         fun create(
+            realm: Realm,
             regexp: JSRegExpObject,
             string: JSString,
             global: Boolean,
             unicode: Boolean,
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = JSRegExpStringIterator(realm, regexp, string, global, unicode).initialize()
+        ) = JSRegExpStringIterator(realm, regexp, string, global, unicode).initialize(realm)
     }
 }

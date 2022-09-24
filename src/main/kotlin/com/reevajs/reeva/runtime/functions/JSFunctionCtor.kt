@@ -9,8 +9,8 @@ import com.reevajs.reeva.utils.attrs
 import com.reevajs.reeva.utils.toValue
 
 class JSFunctionCtor private constructor(realm: Realm) : JSNativeFunction(realm, "FunctionConstructor", 1) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty("length", 1.toValue(), attrs { +conf; -enum; -writ })
     }
@@ -25,6 +25,6 @@ class JSFunctionCtor private constructor(realm: Realm) : JSNativeFunction(realm,
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSFunctionCtor(realm).initialize()
+        fun create(realm: Realm) = JSFunctionCtor(realm).initialize()
     }
 }

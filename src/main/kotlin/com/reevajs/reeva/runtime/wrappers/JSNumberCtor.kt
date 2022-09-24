@@ -14,8 +14,8 @@ import com.reevajs.reeva.utils.toValue
 import kotlin.math.abs
 
 class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Number", 1) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty("EPSILON", Math.ulp(1.0).toValue(), 0)
         defineOwnProperty("MAX_SAFE_INTEGER", Operations.MAX_SAFE_INTEGER.toValue(), 0)
@@ -25,12 +25,12 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineOwnProperty("NaN", Double.NaN.toValue(), 0)
         defineOwnProperty("NEGATIVE_INFINITY", Double.NEGATIVE_INFINITY.toValue(), 0)
         defineOwnProperty("POSITIVE_INFINITY", Double.POSITIVE_INFINITY.toValue(), 0)
-        defineBuiltin("isFinite", 1, ::isFinite)
-        defineBuiltin("isInteger", 1, ::isInteger)
-        defineBuiltin("isNaN", 1, ::isNaN)
-        defineBuiltin("isSafeInteger", 1, ::isSafeInteger)
-        defineBuiltin("parseFloat", 1, ::parseFloat)
-        defineBuiltin("parseInt", 1, ::parseInt)
+        defineBuiltin(realm, "isFinite", 1, ::isFinite)
+        defineBuiltin(realm, "isInteger", 1, ::isInteger)
+        defineBuiltin(realm, "isNaN", 1, ::isNaN)
+        defineBuiltin(realm, "isSafeInteger", 1, ::isSafeInteger)
+        defineBuiltin(realm, "parseFloat", 1, ::parseFloat)
+        defineBuiltin(realm, "parseInt", 1, ::parseInt)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -62,7 +62,7 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSNumberCtor(realm).initialize()
+        fun create(realm: Realm) = JSNumberCtor(realm).initialize()
 
         @ECMAImpl("20.1.2.2")
         @JvmStatic

@@ -12,11 +12,11 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
 class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "String", 1) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        defineBuiltin("fromCharCode", 1, ::fromCharCode)
-        defineBuiltin("fromCodePoint", 1, ::fromCodePoint)
+        defineBuiltin(realm, "fromCharCode", 1, ::fromCharCode)
+        defineBuiltin(realm, "fromCodePoint", 1, ::fromCodePoint)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -34,7 +34,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         if (newTarget == JSUndefined)
             return theString
 
-        return JSStringObject.create(theString).also {
+        return JSStringObject.create(realm, theString).also {
             it.setPrototype(
                 Operations.getPrototypeFromConstructor(newTarget, Realm::stringProto),
             )
@@ -42,7 +42,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSStringCtor(realm).initialize()
+        fun create(realm: Realm) = JSStringCtor(realm).initialize()
 
         @ECMAImpl("22.1.2.1")
         @JvmStatic

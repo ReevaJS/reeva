@@ -7,15 +7,14 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 
-class JSIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
-
-        defineBuiltin(Realm.WellKnownSymbols.iterator, 0, ::symbolIterator)
+class JSIteratorProto private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
+        defineBuiltin(realm, Realm.WellKnownSymbols.iterator, 0, ::symbolIterator)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSIteratorProto(realm).initialize()
+        fun create(realm: Realm) = JSIteratorProto(realm).initialize(realm)
 
         @ECMAImpl("27.1.2.1")
         @JvmStatic

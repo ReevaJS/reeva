@@ -1,6 +1,5 @@
 package com.reevajs.reeva.runtime.wrappers
 
-import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.mfbt.Dtoa
 import com.reevajs.reeva.runtime.JSValue
@@ -18,23 +17,22 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
 class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JSNumber.ZERO) {
-    override fun init() {
-        val realm = Agent.activeAgent.getActiveRealm()
+    override fun init(realm: Realm) {
         // No super call to avoid prototype complications
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.numberCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineBuiltin("valueOf", 0, ::valueOf)
-        defineBuiltin("toExponential", 1, ::toExponential)
-        defineBuiltin("toFixed", 1, ::toFixed)
-        defineBuiltin("toLocaleString", 0, ::toLocaleString)
-        defineBuiltin("toPrecision", 1, ::toPrecision)
-        defineBuiltin("toString", 1, ::toString)
-        defineBuiltin("valueOf", 0, ::valueOf)
+        defineBuiltin(realm, "valueOf", 0, ::valueOf)
+        defineBuiltin(realm, "toExponential", 1, ::toExponential)
+        defineBuiltin(realm, "toFixed", 1, ::toFixed)
+        defineBuiltin(realm, "toLocaleString", 0, ::toLocaleString)
+        defineBuiltin(realm, "toPrecision", 1, ::toPrecision)
+        defineBuiltin(realm, "toString", 1, ::toString)
+        defineBuiltin(realm, "valueOf", 0, ::valueOf)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSNumberProto(realm).initialize()
+        fun create(realm: Realm) = JSNumberProto(realm).initialize(realm)
 
         @ECMAImpl("20.1.3")
         private fun thisNumberValue(value: JSValue, methodName: String): JSNumber {

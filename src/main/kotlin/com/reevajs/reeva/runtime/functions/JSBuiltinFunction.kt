@@ -26,10 +26,10 @@ class JSBuiltinFunction private constructor(
 
     companion object {
         fun create(
+            realm: Realm,
             name: String,
             length: Int,
             builtin: BuiltinFunction,
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
             prototype: JSValue = realm.functionProto,
         ) = JSBuiltinFunction(realm, name, length, builtin, prototype).initialize()
     }

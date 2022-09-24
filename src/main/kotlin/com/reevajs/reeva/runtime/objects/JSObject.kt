@@ -12,10 +12,7 @@ import com.reevajs.reeva.utils.*
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
-open class JSObject protected constructor(
-    val realm: Realm,
-    private var prototypeBacker: JSValue = JSNull,
-) : JSValue() {
+open class JSObject protected constructor(private var prototypeBacker: JSValue = JSNull) : JSValue() {
     private val slots = mutableMapOf<SlotName<*>, Any?>()
     private val id = Agent.activeAgent.nextObjectId()
 
@@ -43,7 +40,7 @@ open class JSObject protected constructor(
             field = value
         }
 
-    open fun init() { }
+    open fun init(realm: Realm) { }
 
     fun inspect(): Inspection = buildInspection {
         contents("Type: Object")
@@ -313,38 +310,43 @@ open class JSObject protected constructor(
     }
 
     fun defineBuiltinGetter(
+        realm: Realm,
         name: String,
         builtin: BuiltinFunction,
         attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
     ) {
-        defineBuiltinAccessor(name.key(), name, attributes, builtin, isGetter = true)
+        defineBuiltinAccessor(realm, name.key(), name, attributes, builtin, isGetter = true)
     }
 
     fun defineBuiltinGetter(
+        realm: Realm,
         name: JSSymbol,
         builtin: BuiltinFunction,
         attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
     ) {
-        defineBuiltinAccessor(name.key(), "get [${name.description}]", attributes, builtin, isGetter = true)
+        defineBuiltinAccessor(realm, name.key(), "get [${name.description}]", attributes, builtin, isGetter = true)
     }
 
     fun defineBuiltinSetter(
+        realm: Realm,
         name: String,
         builtin: BuiltinFunction,
         attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
     ) {
-        defineBuiltinAccessor(name.key(), name, attributes, builtin, isGetter = false)
+        defineBuiltinAccessor(realm, name.key(), name, attributes, builtin, isGetter = false)
     }
 
     fun defineBuiltinSetter(
+        realm: Realm,
         name: JSSymbol,
         builtin: BuiltinFunction,
         attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
     ) {
-        defineBuiltinAccessor(name.key(), "set [${name.description}]", attributes, builtin, isGetter = false)
+        defineBuiltinAccessor(realm, name.key(), "set [${name.description}]", attributes, builtin, isGetter = false)
     }
 
     private fun defineBuiltinAccessor(
+        realm: Realm,
         key: PropertyKey,
         jsName: String,
         attributes: Int,
@@ -352,7 +354,7 @@ open class JSObject protected constructor(
         isGetter: Boolean,
     ) {
         val length = if (isGetter) 0 else 1
-        val function = JSBuiltinFunction.create(jsName, length, builtin)
+        val function = JSBuiltinFunction.create(realm, jsName, length, builtin)
 
         val existingProperty = internalGet(key)
         if (existingProperty != null) {
@@ -384,34 +386,34 @@ open class JSObject protected constructor(
     }
 
     fun defineBuiltin(
+        realm: Realm,
         name: String,
         length: Int,
         builtin: BuiltinFunction,
         attributes: Int = attrs { +conf; -enum; +writ },
-        realm: Realm = Agent.activeAgent.getActiveRealm(),
     ) {
-        defineBuiltin(name.key(), name, length, builtin, attributes, realm)
+        defineBuiltin(realm, name.key(), name, length, builtin, attributes)
     }
 
     fun defineBuiltin(
+        realm: Realm,
         name: JSSymbol,
         length: Int,
         builtin: BuiltinFunction,
         attributes: Int = attrs { +conf; -enum; +writ },
-        realm: Realm = Agent.activeAgent.getActiveRealm(),
     ) {
-        defineBuiltin(name.key(), "[${name.description}]", length, builtin, attributes, realm)
+        defineBuiltin(realm, name.key(), "[${name.description}]", length, builtin, attributes)
     }
 
     private fun defineBuiltin(
+        realm: Realm,
         key: PropertyKey,
         jsName: String,
         length: Int,
         builtin: BuiltinFunction,
         attributes: Int = attrs { +conf; -enum; +writ },
-        realm: Realm = Agent.activeAgent.getActiveRealm(),
     ) {
-        val function = JSBuiltinFunction.create(jsName, length, builtin, realm)
+        val function = JSBuiltinFunction.create(realm, jsName, length, builtin)
         addProperty(key, Descriptor(function, attributes))
     }
 
@@ -524,13 +526,10 @@ open class JSObject protected constructor(
     companion object {
         @JvmStatic
         @JvmOverloads
-        fun create(
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
-            proto: JSValue = realm.objectProto,
-        ) = JSObject(realm, proto).initialize()
+        fun create(realm: Realm, proto: JSValue = realm.objectProto) = JSObject(proto).initialize(realm)
 
-        fun <T : JSObject> T.initialize() = apply {
-            init()
+        fun <T : JSObject> T.initialize(realm: Realm) = apply {
+            init(realm)
         }
     }
 }

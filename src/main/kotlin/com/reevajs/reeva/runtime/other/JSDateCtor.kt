@@ -25,12 +25,12 @@ import java.time.temporal.TemporalField
 
 // TODO: Code deduplication
 class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Date", 7) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        defineBuiltin("now", 0, ::now)
-        defineBuiltin("parse", 0, ::parse)
-        defineBuiltin("UTC", 0, ::utc)
+        defineBuiltin(realm, "now", 0, ::now)
+        defineBuiltin(realm, "parse", 0, ::parse)
+        defineBuiltin(realm, "UTC", 0, ::utc)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -104,7 +104,7 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSDateCtor(realm).initialize()
+        fun create(realm: Realm) = JSDateCtor(realm).initialize()
 
         @ECMAImpl("21.4.3.1")
         @JvmStatic

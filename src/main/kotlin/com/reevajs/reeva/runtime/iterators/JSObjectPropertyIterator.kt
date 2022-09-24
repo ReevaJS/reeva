@@ -12,15 +12,14 @@ class JSObjectPropertyIterator private constructor(
     var objWasVisited: Boolean,
     var visitedKeys: MutableList<PropertyKey>,
     var remainingKeys: MutableList<PropertyKey>,
-) : JSObject(realm, realm.objectPropertyIteratorProto) {
+) : JSObject(realm.objectPropertyIteratorProto) {
     companion object {
         @JvmStatic @JvmOverloads
-        fun create(
+        fun create(realm: Realm,
             obj: JSObject,
             objWasVisited: Boolean = false,
             visitedKeys: MutableList<PropertyKey> = ArrayList(),
             remainingKeys: MutableList<PropertyKey> = ArrayList(),
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = JSObjectPropertyIterator(realm, obj, objWasVisited, visitedKeys, remainingKeys).initialize()
+        ) = JSObjectPropertyIterator(realm, obj, objWasVisited, visitedKeys, remainingKeys).initialize(realm)
     }
 }

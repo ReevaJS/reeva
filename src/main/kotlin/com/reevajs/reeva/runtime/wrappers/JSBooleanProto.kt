@@ -13,18 +13,17 @@ import com.reevajs.reeva.runtime.primitives.JSFalse
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 
-class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, JSFalse) {
-    override fun init() {
-        val realm = Agent.activeAgent.getActiveRealm()
+class JSBooleanProto private constructor() : JSBooleanObject(JSFalse) {
+    override fun init(realm: Realm) {
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.booleanCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineBuiltin("toString", 0, ::toString)
-        defineBuiltin("valueOf", 0, ::valueOf)
+        defineBuiltin(realm, "toString", 0, ::toString)
+        defineBuiltin(realm, "valueOf", 0, ::valueOf)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSBooleanProto(realm).initialize()
+        fun create(realm: Realm) = JSBooleanProto().initialize(realm)
 
         private fun thisBooleanValue(value: JSValue, methodName: String): JSBoolean {
             if (value.isBoolean)

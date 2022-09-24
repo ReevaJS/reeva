@@ -209,10 +209,10 @@ class Realm {
         //    ordered to avoid any dependencies upon objects that have not yet been created.
 
         // Special objects: Create and initialize separately
-        objectProto = JSObjectProto.create(this)
+        objectProto = JSObjectProto.create()
         functionProto = JSFunctionProto.create(this)
-        functionProto.initialize()
-        objectProto.initialize()
+        functionProto.initialize(this)
+        objectProto.initialize(this)
 
         symbolCtor = JSSymbolCtor.create(this)
         symbolProto = JSSymbolProto.create(this)
@@ -302,7 +302,7 @@ class Realm {
         syntaxErrorCtor = JSSyntaxErrorCtor.create(this)
         uriErrorCtor = JSURIErrorCtor.create(this)
 
-        throwTypeError = JSRunnableFunction.create("", 0, this) {
+        throwTypeError = JSRunnableFunction.create(this, "", 0) {
             Errors.CalleePropertyAccess.throwTypeError(Agent.activeAgent.getActiveRealm())
         }
 
@@ -313,7 +313,7 @@ class Realm {
 
         packageProto = JSPackageProto.create(this)
         classProto = JSClassProto.create(this)
-        packageObj = JSPackageObject.create(null, this)
+        packageObj = JSPackageObject.create(this, null)
 
         // These can't be in the init method of the objects due to circularity
         objectCtor.defineOwnProperty("prototype", objectProto, Descriptor.HAS_BASIC)

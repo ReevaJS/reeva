@@ -15,9 +15,9 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.attrs
 
 class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set", 0) {
-    override fun init() {
-        super.init()
-        defineBuiltinGetter(Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum })
+    override fun init(realm: Realm) {
+        super.init(realm)
+        defineBuiltinGetter(realm, Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -54,7 +54,7 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSetCtor(realm).initialize()
+        fun create(realm: Realm) = JSSetCtor(realm).initialize()
 
         @ECMAImpl("24.2.2.2")
         @JvmStatic

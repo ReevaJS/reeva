@@ -54,11 +54,7 @@ class JSBoundFunction private constructor(
     }
 
     companion object {
-        fun create(
-            boundTargetFunction: JSFunction,
-            arguments: JSArguments,
-            prototype: JSValue,
-            realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = JSBoundFunction(realm, boundTargetFunction, arguments, prototype).initialize()
+        fun create(boundTargetFunction: JSFunction, arguments: JSArguments, prototype: JSValue) =
+            JSBoundFunction(boundTargetFunction.realm, boundTargetFunction, arguments, prototype).initialize()
     }
 }

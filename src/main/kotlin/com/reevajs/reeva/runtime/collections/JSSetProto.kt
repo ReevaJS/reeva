@@ -16,19 +16,19 @@ import com.reevajs.reeva.utils.attrs
 import com.reevajs.reeva.utils.key
 import com.reevajs.reeva.utils.toValue
 
-class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
+class JSSetProto private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        defineBuiltinGetter("size", ::getSize, attrs { +conf; -enum })
+        defineBuiltinGetter(realm, "size", ::getSize, attrs { +conf; -enum })
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Set".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("add", 1, ::add)
-        defineBuiltin("clear", 1, ::clear)
-        defineBuiltin("delete", 1, ::delete)
-        defineBuiltin("entries", 1, ::entries)
-        defineBuiltin("forEach", 1, ::forEach)
-        defineBuiltin("has", 1, ::has)
-        defineBuiltin("values", 1, ::values)
+        defineBuiltin(realm, "add", 1, ::add)
+        defineBuiltin(realm, "clear", 1, ::clear)
+        defineBuiltin(realm, "delete", 1, ::delete)
+        defineBuiltin(realm, "entries", 1, ::entries)
+        defineBuiltin(realm, "forEach", 1, ::forEach)
+        defineBuiltin(realm, "has", 1, ::has)
+        defineBuiltin(realm, "values", 1, ::values)
 
         // "The initial value of the 'keys' property is the same function object as the initial value
         // of the 'values' property"
@@ -40,7 +40,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSetProto(realm).initialize()
+        fun create(realm: Realm) = JSSetProto(realm).initialize(realm)
 
         private fun thisSetObject(thisValue: JSValue, method: String): JSSetObject.SetData {
             if (!Operations.requireInternalSlot(thisValue, SlotName.SetData))

@@ -22,12 +22,12 @@ class JSCatchFinallyFunction private constructor(
             throw IllegalStateException("Unexpected construction of JSCatchFinallyFunction")
         val result = Operations.call(onFinally, JSUndefined)
         val promise = Operations.promiseResolve(ctor, result)
-        val valueThunk = JSRunnableFunction.create("", 0) { throw ThrowException(arguments.argument(0)) }
+        val valueThunk = JSRunnableFunction.create(realm, "", 0) { throw ThrowException(arguments.argument(0)) }
         return Operations.invoke(promise, "then".toValue(), listOf(valueThunk))
     }
 
     companion object {
-        fun create(ctor: JSFunction, onFinally: JSFunction, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+        fun create(realm: Realm, ctor: JSFunction, onFinally: JSFunction) =
             JSCatchFinallyFunction(realm, ctor, onFinally).initialize()
     }
 }

@@ -1,6 +1,5 @@
 package com.reevajs.reeva.runtime.functions
 
-import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
@@ -13,21 +12,21 @@ import com.reevajs.reeva.runtime.toIntegerOrInfinity
 import com.reevajs.reeva.utils.*
 import kotlin.math.max
 
-class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
+class JSFunctionProto private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
         defineOwnProperty("name", "".toValue(), attrs { +conf; -enum; -writ })
         defineOwnProperty("length", 0.toValue(), attrs { +conf; -enum; -writ })
 
-        defineBuiltin("apply", 2, ::apply, realm = realm)
-        defineBuiltin("bind", 1, ::bind, realm = realm)
-        defineBuiltin("call", 1, ::call, realm = realm)
+        defineBuiltin(realm, "apply", 2, ::apply)
+        defineBuiltin(realm, "bind", 1, ::bind)
+        defineBuiltin(realm, "call", 1, ::call)
     }
 
     companion object {
         // Special object: do not initialize
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSFunctionProto(realm)
+        fun create(realm: Realm) = JSFunctionProto(realm)
 
         @ECMAImpl("20.2.3.1")
         @JvmStatic

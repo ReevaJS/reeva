@@ -17,19 +17,18 @@ import com.reevajs.reeva.utils.toValue
 import kotlin.math.max
 import kotlin.math.min
 
-class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    override fun init() {
-        super.init()
+class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm.objectProto) {
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "ArrayBuffer".toValue(), attrs { +conf })
         defineOwnProperty("constructor", realm.arrayBufferCtor, attrs { +conf; -enum; +writ })
-        defineBuiltinGetter("byteLength", ::getByteLength, attrs { +conf; -enum })
-        defineBuiltin("slice", 2, ::slice)
+        defineBuiltinGetter(realm, "byteLength", ::getByteLength, attrs { +conf; -enum })
+        defineBuiltin(realm, "slice", 2, ::slice)
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSArrayBufferProto(realm).initialize()
+        fun create(realm: Realm) = JSArrayBufferProto(realm).initialize(realm)
 
         @ECMAImpl("25.1.5.1")
         @JvmStatic

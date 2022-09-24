@@ -11,7 +11,7 @@ import com.reevajs.reeva.utils.Errors
 class JSPackageObject private constructor(
     realm: Realm,
     val packageName: String?,
-) : JSObject(realm, realm.packageProto) {
+) : JSObject(realm.packageProto) {
     private val packageObj = if (packageName == null) null else Package.getPackage(packageName)
 
     override fun get(property: PropertyKey, receiver: JSValue): JSValue {
@@ -25,18 +25,19 @@ class JSPackageObject private constructor(
             return protoProp
 
         val name = property.asString
+        val realm = Agent.activeAgent.getActiveRealm()
 
         return when {
-            packageName == null -> create(name)
-            packageObj == null -> create("$packageName.$name")
+            packageName == null -> create(realm, name)
+            packageObj == null -> create(realm, "$packageName.$name")
             else -> {
                 val className = "$packageName.$name"
                 classObjectsCache.getOrPut(className) {
                     try {
                         val clazz = Class.forName(className)
-                        JSClassObject.create(clazz)
+                        JSClassObject.create(realm, clazz)
                     } catch (e: ClassNotFoundException) {
-                        return create("$packageName.$name")
+                        return create(realm, "$packageName.$name")
                     }
                 }
             }
@@ -69,7 +70,6 @@ class JSPackageObject private constructor(
     companion object {
         private val classObjectsCache = mutableMapOf<String, JSClassObject>()
 
-        fun create(name: String?, realm: Realm = Agent.activeAgent.getActiveRealm()) =
-            JSPackageObject(realm, name).initialize()
+        fun create(realm: Realm, name: String?) = JSPackageObject(realm, name).initialize(realm)
     }
 }

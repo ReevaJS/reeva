@@ -18,13 +18,13 @@ import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.toValue
 
 class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Promise", 2) {
-    override fun init() {
-        super.init()
+    override fun init(realm: Realm) {
+        super.init(realm)
 
-        defineBuiltin("all", 1, ::all)
-        defineBuiltin("allSettled", 1, ::allSettled)
-        defineBuiltin("resolve", 1, ::resolve)
-        defineBuiltin("reject", 1, ::reject)
+        defineBuiltin(realm, "all", 1, ::all)
+        defineBuiltin(realm, "allSettled", 1, ::allSettled)
+        defineBuiltin(realm, "resolve", 1, ::resolve)
+        defineBuiltin(realm, "reject", 1, ::reject)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
@@ -51,8 +51,8 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         }
 
         promise.setSlot(SlotName.PromiseState, Operations.PromiseState.Pending)
-        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<Operations.PromiseReaction>())
-        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<Operations.PromiseReaction>())
+        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf())
+        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf())
         promise.setSlot(SlotName.PromiseIsHandled, false)
         promise.setSlot(SlotName.PromiseResult, JSUndefined)
 
@@ -67,7 +67,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSPromiseCtor(realm).initialize()
+        fun create(realm: Realm) = JSPromiseCtor(realm).initialize()
 
         @ECMAImpl("26.6.4.1", "26.6.4.1.2")
         @JvmStatic
