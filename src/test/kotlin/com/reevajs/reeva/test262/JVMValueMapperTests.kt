@@ -1,6 +1,5 @@
 package com.reevajs.reeva.test262
 
-import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.jvmcompat.JSClassObject
@@ -22,7 +21,6 @@ class JVMValueMapperTests {
 
     @BeforeAll
     fun setup() {
-        Reeva.setup()
         realm = Agent.activeAgent.makeRealm().also { it.initObjects() }
     }
 

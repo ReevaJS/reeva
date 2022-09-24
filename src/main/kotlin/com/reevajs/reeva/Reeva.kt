@@ -6,11 +6,6 @@ import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.utils.Result
 
 object Reeva {
-    @JvmStatic
-    fun setup() {
-        Realm.setupSymbols()
-    }
-
     fun compile(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, Executable> {
         return if (sourceInfo.isModule) {
             compileModule(realm, sourceInfo).cast()

@@ -91,8 +91,6 @@ class Test262Runner {
             val assertText = File(harnessDirectory, "assert.js").readText()
             val staText = File(harnessDirectory, "sta.js").readText()
             pretestScript = "$assertText\n$staText\n"
-
-            Reeva.setup()
         }
 
         @AfterAll

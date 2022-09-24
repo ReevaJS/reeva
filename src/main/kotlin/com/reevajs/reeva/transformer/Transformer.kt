@@ -1688,7 +1688,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             +Dup
             val instanceFieldInitializerMethod = makeClassFieldInitializerMethod(instanceFields)
             +CreateClosure(instanceFieldInitializerMethod)
-            +StoreNamedProperty(Realm.classInstanceFields)
+            +StoreNamedProperty(Realm.InternalSymbols.classInstanceFields)
         }
 
         for (field in staticFields) {
@@ -1730,7 +1730,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
     private fun callClassInstanceFieldInitializer() {
         +PushClosure
-        +LoadNamedProperty(Realm.classInstanceFields)
+        +LoadNamedProperty(Realm.InternalSymbols.classInstanceFields)
         +LoadValue(RECEIVER_LOCAL)
         +Call(0)
         +Pop

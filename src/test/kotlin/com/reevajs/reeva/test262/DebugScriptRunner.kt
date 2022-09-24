@@ -14,8 +14,6 @@ val test262Helpers = listOf(
 )
 
 fun main() {
-    Reeva.setup()
-
     Agent.build {
         printIR = true
     }.withActiveScope {

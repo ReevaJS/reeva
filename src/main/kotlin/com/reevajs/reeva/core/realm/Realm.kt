@@ -266,50 +266,26 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
     inline fun <reified T : RealmExtension> extAs(key: Any) = ext(key) as T
 
     object WellKnownSymbols {
-        lateinit var asyncIterator: JSSymbol internal set
-        lateinit var hasInstance: JSSymbol internal set
-        lateinit var isConcatSpreadable: JSSymbol internal set
-        lateinit var iterator: JSSymbol internal set
-        lateinit var match: JSSymbol internal set
-        lateinit var matchAll: JSSymbol internal set
-        lateinit var replace: JSSymbol internal set
-        lateinit var search: JSSymbol internal set
-        lateinit var species: JSSymbol internal set
-        lateinit var split: JSSymbol internal set
-        lateinit var toPrimitive: JSSymbol internal set
-        lateinit var toStringTag: JSSymbol internal set
-        lateinit var unscopables: JSSymbol internal set
+        val asyncIterator = JSSymbol("Symbol.asyncIterator")
+        val hasInstance = JSSymbol("Symbol.hasInstance")
+        val isConcatSpreadable = JSSymbol("Symbol.iterator")
+        val iterator = JSSymbol("Symbol.match")
+        val match = JSSymbol("Symbol.matchAll")
+        val matchAll = JSSymbol("Symbol.replace")
+        val replace = JSSymbol("Symbol.search")
+        val search = JSSymbol("Symbol.species")
+        val species = JSSymbol("Symbol.split")
+        val split = JSSymbol("Symbol.toPrimitive")
+        val toPrimitive = JSSymbol("Symbol.toStringTag")
+        val toStringTag = JSSymbol("Symbol.unscopables")
+        val unscopables = JSSymbol("Symbol.isConcatSpreadable")
     }
 
-    @Suppress("ObjectPropertyName")
+    object InternalSymbols {
+        val classInstanceFields = JSSymbol("Symbol.classInstanceFields")
+    }
+
     companion object {
-        private var symbolsInitialized = false
-
         val globalSymbolRegistry = ConcurrentHashMap<String, JSSymbol>()
-
-        // Reeva-internal symbols
-        internal lateinit var classInstanceFields: JSSymbol private set
-
-        fun setupSymbols() {
-            if (symbolsInitialized)
-                return
-
-            symbolsInitialized = true
-
-            WellKnownSymbols.asyncIterator = JSSymbol("Symbol.asyncIterator")
-            WellKnownSymbols.hasInstance = JSSymbol("Symbol.hasInstance")
-            WellKnownSymbols.iterator = JSSymbol("Symbol.iterator")
-            WellKnownSymbols.match = JSSymbol("Symbol.match")
-            WellKnownSymbols.matchAll = JSSymbol("Symbol.matchAll")
-            WellKnownSymbols.replace = JSSymbol("Symbol.replace")
-            WellKnownSymbols.search = JSSymbol("Symbol.search")
-            WellKnownSymbols.species = JSSymbol("Symbol.species")
-            WellKnownSymbols.split = JSSymbol("Symbol.split")
-            WellKnownSymbols.toPrimitive = JSSymbol("Symbol.toPrimitive")
-            WellKnownSymbols.toStringTag = JSSymbol("Symbol.toStringTag")
-            WellKnownSymbols.unscopables = JSSymbol("Symbol.unscopables")
-            WellKnownSymbols.isConcatSpreadable = JSSymbol("Symbol.isConcatSpreadable")
-            classInstanceFields = JSSymbol("Symbol.classInstanceFields")
-        }
     }
 }
