@@ -2,7 +2,8 @@ package com.reevajs.reeva.runtime.collections
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.*
+import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.iterators.JSMapIterator
 import com.reevajs.reeva.runtime.objects.Descriptor

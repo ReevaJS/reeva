@@ -1,7 +1,5 @@
 package com.reevajs.reeva.core
 
-import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.ModuleTree
 import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.jvmcompat.JSClassProto
 import com.reevajs.reeva.jvmcompat.JSPackageObject
@@ -18,7 +16,6 @@ import com.reevajs.reeva.runtime.collections.JSSetProto
 import com.reevajs.reeva.runtime.errors.*
 import com.reevajs.reeva.runtime.functions.JSFunctionCtor
 import com.reevajs.reeva.runtime.functions.JSFunctionProto
-import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.functions.JSRunnableFunction
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorFunctionCtor
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorFunctionProto
@@ -27,8 +24,11 @@ import com.reevajs.reeva.runtime.global.JSConsole
 import com.reevajs.reeva.runtime.global.JSConsoleProto
 import com.reevajs.reeva.runtime.iterators.*
 import com.reevajs.reeva.runtime.memory.*
-import com.reevajs.reeva.runtime.objects.*
+import com.reevajs.reeva.runtime.objects.Descriptor
+import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.JSObject.Companion.initialize
+import com.reevajs.reeva.runtime.objects.JSObjectCtor
+import com.reevajs.reeva.runtime.objects.JSObjectProto
 import com.reevajs.reeva.runtime.other.JSDateCtor
 import com.reevajs.reeva.runtime.other.JSDateProto
 import com.reevajs.reeva.runtime.other.JSProxyCtor
@@ -50,11 +50,6 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.withLock
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
 
 class Realm {
     lateinit var globalObject: JSObject

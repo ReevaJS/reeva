@@ -2,12 +2,10 @@ package com.reevajs.reeva.interpreter
 
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.core.errors.ThrowException
+import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
-import com.reevajs.reeva.transformer.*
-import com.reevajs.reeva.transformer.opcodes.*
+import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.collections.JSUnmappedArgumentsObject
@@ -18,6 +16,8 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.runtime.regexp.JSRegExpObject
+import com.reevajs.reeva.transformer.*
+import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.utils.*
 
 class Interpreter(

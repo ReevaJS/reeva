@@ -11,7 +11,6 @@ import com.reevajs.reeva.transformer.Transformer
 import com.reevajs.reeva.utils.unreachable
 import java.io.File
 import java.net.URI
-import kotlin.jvm.Throws
 
 abstract class SourceInfo {
     abstract val name: String

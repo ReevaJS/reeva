@@ -1,9 +1,9 @@
 package com.reevajs.reeva.core.lifecycle
 
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.core.errors.ThrowException
-import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl

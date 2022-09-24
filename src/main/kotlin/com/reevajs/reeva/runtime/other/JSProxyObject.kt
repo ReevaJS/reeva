@@ -15,7 +15,10 @@ import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toBoolean
 import com.reevajs.reeva.runtime.toJSString
-import com.reevajs.reeva.utils.*
+import com.reevajs.reeva.utils.Errors
+import com.reevajs.reeva.utils.ecmaAssert
+import com.reevajs.reeva.utils.expect
+import com.reevajs.reeva.utils.toValue
 
 class JSProxyObject private constructor(
     realm: Realm,

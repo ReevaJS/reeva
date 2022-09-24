@@ -4,8 +4,8 @@ import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
-import com.reevajs.reeva.core.lifecycle.ModuleRecord
 import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.lifecycle.ModuleRecord
 import com.reevajs.reeva.parsing.HoistingScope
 import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.parsing.Scope

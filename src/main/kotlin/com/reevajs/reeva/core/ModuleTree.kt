@@ -1,7 +1,6 @@
 package com.reevajs.reeva.core
 
 import com.reevajs.reeva.core.lifecycle.ModuleRecord
-import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.utils.expect
 import java.net.URI
 

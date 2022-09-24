@@ -3,7 +3,8 @@ package com.reevajs.reeva.runtime.wrappers
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.mfbt.Dtoa
-import com.reevajs.reeva.runtime.*
+import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -11,6 +12,8 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSNumber
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toIntegerOrInfinity
+import com.reevajs.reeva.runtime.toJSString
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
 

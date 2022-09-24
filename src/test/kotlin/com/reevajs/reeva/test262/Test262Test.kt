@@ -9,8 +9,10 @@ import com.reevajs.reeva.core.lifecycle.FileSourceInfo
 import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.ParsingError
-import com.reevajs.reeva.runtime.*
+import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.runtime.toBoolean
+import com.reevajs.reeva.runtime.toJSString
 import com.reevajs.reeva.utils.Result
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assumptions

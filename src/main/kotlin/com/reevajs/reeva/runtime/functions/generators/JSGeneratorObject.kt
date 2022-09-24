@@ -4,11 +4,11 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.interpreter.Interpreter
-import com.reevajs.reeva.transformer.TransformedSource
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.transformer.TransformedSource
 
 class JSGeneratorObject private constructor(
     realm: Realm,

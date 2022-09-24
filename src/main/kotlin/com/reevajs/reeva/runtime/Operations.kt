@@ -4,11 +4,11 @@ package com.reevajs.reeva.runtime
 
 import com.reevajs.reeva.ast.ASTNode
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
 import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.core.environment.ObjectEnvRecord
 import com.reevajs.reeva.core.errors.ThrowException
-import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.jvmcompat.JSClassInstanceObject
 import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.mfbt.Dtoa
@@ -42,8 +42,8 @@ import com.reevajs.reeva.runtime.wrappers.JSNumberObject
 import com.reevajs.reeva.runtime.wrappers.JSSymbolObject
 import com.reevajs.reeva.runtime.wrappers.strings.JSStringObject
 import com.reevajs.reeva.utils.*
-import com.reevajs.regexp.parser.RegExpSyntaxError
 import com.reevajs.regexp.RegExp
+import com.reevajs.regexp.parser.RegExpSyntaxError
 import java.math.BigInteger
 import java.nio.ByteBuffer
 import java.time.*

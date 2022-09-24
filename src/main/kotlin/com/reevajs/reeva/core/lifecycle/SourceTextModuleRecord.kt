@@ -1,6 +1,8 @@
 package com.reevajs.reeva.core.lifecycle
 
-import com.reevajs.reeva.ast.*
+import com.reevajs.reeva.ast.ExportEntry
+import com.reevajs.reeva.ast.ImportEntry
+import com.reevajs.reeva.ast.ModuleNode
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.Realm

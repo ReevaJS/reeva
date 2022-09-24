@@ -2,7 +2,7 @@ package com.reevajs.reeva.core
 
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.core.errors.DefaultErrorReporter
-import com.reevajs.reeva.core.lifecycle.*
+import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.JSObject

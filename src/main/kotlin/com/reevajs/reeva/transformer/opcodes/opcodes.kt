@@ -1,9 +1,9 @@
 package com.reevajs.reeva.transformer.opcodes
 
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
+import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.transformer.FunctionInfo
 import com.reevajs.reeva.transformer.Local
-import com.reevajs.reeva.runtime.Operations
 import com.reevajs.regexp.RegExp
 import java.math.BigInteger
 
