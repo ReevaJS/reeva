@@ -56,8 +56,7 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
-@OptIn(ExperimentalContracts::class)
-class Realm(private val extensions: Map<Any, RealmExtension>) {
+class Realm {
     lateinit var globalObject: JSObject
         private set
 
@@ -256,14 +255,7 @@ class Realm(private val extensions: Map<Any, RealmExtension>) {
         uriErrorCtor.defineOwnProperty("prototype", uriErrorProto, Descriptor.HAS_BASIC)
 
         functionProto.defineOwnProperty("constructor", functionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-
-        // Initialize extensions
-        extensions.values.forEach { it.initObjects(this) }
     }
-
-    fun ext(key: Any) = extensions[key]
-
-    inline fun <reified T : RealmExtension> extAs(key: Any) = ext(key) as T
 
     object WellKnownSymbols {
         val asyncIterator = JSSymbol("Symbol.asyncIterator")

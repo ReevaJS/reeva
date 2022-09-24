@@ -58,11 +58,8 @@ open class HostHooks {
     }
 
     @ECMAImpl("9.6")
-    open fun initializeHostDefinedRealm(
-        realmExtensions: Map<Any, RealmExtension>,
-        globalObjProducer: Function<Realm, JSObject>,
-    ): Realm {
-        val realm = Realm(realmExtensions)
+    open fun initializeHostDefinedRealm(globalObjProducer: Function<Realm, JSObject>): Realm {
+        val realm = Realm()
 
         Agent.activeAgent.withRealm(realm) {
             realm.initObjects()

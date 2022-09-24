@@ -89,10 +89,9 @@ class Agent(
 
     @JvmOverloads
     fun makeRealm(
-        extensions: Map<Any, RealmExtension> = emptyMap(),
         globalObjProducer: Function<Realm, JSObject> = Function { hostHooks.initializeHostDefinedGlobalObject(it) },
     ): Realm {
-        return hostHooks.initializeHostDefinedRealm(extensions, globalObjProducer)
+        return hostHooks.initializeHostDefinedRealm(globalObjProducer)
     }
 
     fun <T> withRealm(realm: Realm, env: EnvRecord? = null, block: () -> T): T {
