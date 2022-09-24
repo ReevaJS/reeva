@@ -17,20 +17,12 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
     override fun init() {
         super.init()
 
-        val thrower = JSRunnableFunction.create("", 0) {
-            Errors.Function.CallerArgumentsAccess.throwTypeError()
-        }
-
         defineOwnProperty("name", "".toValue(), attrs { +conf; -enum; -writ })
         defineOwnProperty("length", 0.toValue(), attrs { +conf; -enum; -writ })
 
-        val desc = Descriptor(JSAccessor(thrower, thrower), Descriptor.CONFIGURABLE)
-        defineOwnProperty("caller".key(), desc)
-        defineOwnProperty("arguments".key(), desc)
-
-        defineBuiltin("apply", 2, ::apply)
-        defineBuiltin("bind", 1, ::bind)
-        defineBuiltin("call", 1, ::call)
+        defineBuiltin("apply", 2, ::apply, realm = realm)
+        defineBuiltin("bind", 1, ::bind, realm = realm)
+        defineBuiltin("call", 1, ::call, realm = realm)
     }
 
     companion object {

@@ -70,23 +70,18 @@ class Agent(
     }
 
     fun getActiveFunction(): JSFunction? {
-        return executionContextStack.lastOrNull { it.enclosingFunction != null }?.enclosingFunction
+        return executionContextStack.lastOrNull { it.function != null }?.function
     }
 
     fun getActiveRealm(): Realm {
         return executionContextStack.last().realm
     }
 
-    @JvmOverloads
-    fun makeRealm(
-        globalObjProducer: Function<Realm, JSObject> = Function { hostHooks.initializeHostDefinedGlobalObject(it) },
-    ): Realm {
-        return hostHooks.initializeHostDefinedRealm(globalObjProducer)
-    }
+    fun makeRealm() = hostHooks.initializeHostDefinedRealm()
 
     fun <T> withRealm(realm: Realm, env: EnvRecord? = null, block: () -> T): T {
         contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-        pushExecutionContext(ExecutionContext(null, realm, env, null, null))
+        pushExecutionContext(ExecutionContext(realm, envRecord = env))
         return try {
             block()
         } finally {

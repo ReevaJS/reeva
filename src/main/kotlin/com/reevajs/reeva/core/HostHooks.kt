@@ -46,7 +46,7 @@ open class HostHooks {
             expect(Agent.activeAgent == agent)
 
             if (realm != null)
-                agent.pushExecutionContext(ExecutionContext(null, realm, null, scriptOrModule, null))
+                agent.pushExecutionContext(ExecutionContext(realm, executable = scriptOrModule))
 
             try {
                 job()
@@ -58,32 +58,60 @@ open class HostHooks {
     }
 
     @ECMAImpl("9.6")
-    open fun initializeHostDefinedRealm(globalObjProducer: Function<Realm, JSObject>): Realm {
-        val realm = Realm()
+    open fun initializeHostDefinedRealm(): Realm {
+        // 1. Let realm be CreateRealm().
+        val realm = Realm.create()
 
-        Agent.activeAgent.withRealm(realm) {
-            realm.initObjects()
-            val globalObject = globalObjProducer.apply(realm)
-            val thisValue = initializeHostDefinedGlobalThisValue(realm)
-            realm.setGlobalObject(globalObject, thisValue)
-        }
+        // 2. Let newContext be a new execution context.
+        // 3. Set the Function of newContext to null.
+        // 4. Set the Realm of newContext to realm.
+        // 5. Set the ScriptOrModule of newContext to null.
+        val newContext = ExecutionContext(realm)
 
+        // 6. Push newContext onto the execution context stack; newContext is now the running execution context.
+        Agent.activeAgent.pushExecutionContext(newContext)
+
+        // 7. If the host requires use of an exotic object to serve as realm's global object, let global be such an
+        //    object created in a host-defined manner. Otherwise, let global be undefined, indicating that an ordinary
+        //    object should be created as the global object.
+        val global = getHostDefinedGlobalObject(realm)
+
+        // 8. If the host requires that the this binding in realm's global scope return an object other than the global
+        //    object, let thisValue be such an object created in a host-defined manner. Otherwise, let thisValue be
+        //    undefined, indicating that realm's global this binding should be the global object.
+        val thisValue = getHostDefinedGlobalThisValue(realm)
+
+        // 9. Perform SetRealmGlobalObject(realm, global, thisValue).
+        realm.setGlobalObject(global, thisValue)
+
+        // 10. Let globalObj be ? SetDefaultGlobalBindings(realm).
+        val globalObj = JSGlobalObject.setDefaultGlobalBindings(realm)
+
+        // 11. Create any host-defined global object properties on globalObj.
+        createHostDefinedProperties(globalObj)
+
+        // 12. Return unused.
         return realm
     }
 
     /**
-     * Non-standard function. Used for step 7 of InitialHostDefinedRealm (9.6)
+     * Non-standard function. Used for step 7 of InitializeHostDefinedRealm (9.6)
      */
-    open fun initializeHostDefinedGlobalObject(realm: Realm): JSObject {
-        return JSGlobalObject.create(realm)
+    open fun getHostDefinedGlobalObject(realm: Realm): JSValue {
+        return JSUndefined
     }
 
     /**
-     * Non-standard function. Used for step 8 of InitialHostDefinedRealm (9.6)
+     * Non-standard function. Used for step 8 of InitializeHostDefinedRealm (9.6)
      */
-    open fun initializeHostDefinedGlobalThisValue(realm: Realm): JSValue {
+    open fun getHostDefinedGlobalThisValue(realm: Realm): JSValue {
         return JSUndefined
     }
+
+    /**
+     * Non-standard function. Used for step 11 of InitializeHostDefinedRealm (9.6)
+     */
+    open fun createHostDefinedProperties(globalObject: JSObject) {}
 
     /**
      * Used to allow the runtime-evaluation of user-provided strings. If such
@@ -107,7 +135,7 @@ open class HostHooks {
 
             Agent.activeAgent.microtaskQueue.addMicrotask {
                 expect(Agent.activeAgent == agent)
-                agent.pushExecutionContext(ExecutionContext(null, realm, null, scriptOrModule, null))
+                agent.pushExecutionContext(ExecutionContext(realm, executable = scriptOrModule))
 
                 try {
                     // If promise does not have any handlers by the time this microtask is ran, it

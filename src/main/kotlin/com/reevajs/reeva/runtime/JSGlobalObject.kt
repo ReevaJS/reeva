@@ -4,92 +4,18 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
+import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.other.URIParser
 import com.reevajs.reeva.runtime.primitives.JSNumber
 import com.reevajs.reeva.runtime.primitives.JSUndefined
-import com.reevajs.reeva.utils.Errors
-import com.reevajs.reeva.utils.isRadixDigit
-import com.reevajs.reeva.utils.toValue
+import com.reevajs.reeva.utils.*
 
 open class JSGlobalObject protected constructor(
     realm: Realm,
     proto: JSObject = realm.objectProto
 ) : JSObject(realm, proto) {
-    override fun init() {
-        super.init()
-
-        val realm = Agent.activeAgent.getActiveRealm()
-        val attrs = Descriptor.CONFIGURABLE or Descriptor.WRITABLE
-        defineOwnProperty("Array", realm.arrayCtor, attrs)
-        defineOwnProperty("ArrayBuffer", realm.arrayBufferCtor, attrs)
-        defineOwnProperty("BigInt", realm.bigIntCtor, attrs)
-        defineOwnProperty("Boolean", realm.booleanCtor, attrs)
-        defineOwnProperty("DataView", realm.dataViewCtor, attrs)
-        defineOwnProperty("Date", realm.dateCtor, attrs)
-        defineOwnProperty("Error", realm.errorCtor, attrs)
-        defineOwnProperty("EvalError", realm.evalErrorCtor, attrs)
-        defineOwnProperty("Function", realm.functionCtor, attrs)
-        defineOwnProperty("InternalError", realm.internalErrorCtor, attrs)
-        defineOwnProperty("Map", realm.mapCtor, attrs)
-        defineOwnProperty("Number", realm.numberCtor, attrs)
-        defineOwnProperty("Object", realm.objectCtor, attrs)
-        defineOwnProperty("Packages", realm.packageObj, attrs)
-        defineOwnProperty("Promise", realm.promiseCtor, attrs)
-        defineOwnProperty("Proxy", realm.proxyCtor, attrs)
-        defineOwnProperty("RangeError", realm.rangeErrorCtor, attrs)
-        defineOwnProperty("ReferenceError", realm.referenceErrorCtor, attrs)
-        defineOwnProperty("Reflect", realm.reflectObj, attrs)
-        defineOwnProperty("RegExp", realm.regExpCtor, attrs)
-        defineOwnProperty("Set", realm.setCtor, attrs)
-        defineOwnProperty("String", realm.stringCtor, attrs)
-        defineOwnProperty("Symbol", realm.symbolCtor, attrs)
-        defineOwnProperty("SyntaxError", realm.syntaxErrorCtor, attrs)
-        defineOwnProperty("TypeError", realm.typeErrorCtor, attrs)
-        defineOwnProperty("URIError", realm.uriErrorCtor, attrs)
-
-        defineOwnProperty("Math", realm.mathObj, attrs)
-        defineOwnProperty("JSON", realm.jsonObj, attrs)
-        defineOwnProperty("console", realm.consoleObj, attrs)
-
-        defineOwnProperty("Int8Array", realm.int8ArrayCtor, attrs)
-        defineOwnProperty("Uint8Array", realm.uint8ArrayCtor, attrs)
-        defineOwnProperty("Uint8ClampedArray", realm.uint8CArrayCtor, attrs)
-        defineOwnProperty("Int16Array", realm.int16ArrayCtor, attrs)
-        defineOwnProperty("Uint16Array", realm.uint16ArrayCtor, attrs)
-        defineOwnProperty("Int32Array", realm.int32ArrayCtor, attrs)
-        defineOwnProperty("Uint32Array", realm.uint32ArrayCtor, attrs)
-        defineOwnProperty("Float32Array", realm.float32ArrayCtor, attrs)
-        defineOwnProperty("Float64Array", realm.float64ArrayCtor, attrs)
-        defineOwnProperty("BigInt64Array", realm.bigInt64ArrayCtor, attrs)
-        defineOwnProperty("BigUint64Array", realm.bigUint64ArrayCtor, attrs)
-
-        defineOwnProperty("Infinity", JSNumber.POSITIVE_INFINITY, 0)
-        defineOwnProperty("NaN", JSNumber.NaN, 0)
-        defineOwnProperty("globalThis", this, Descriptor.WRITABLE or Descriptor.CONFIGURABLE)
-        defineOwnProperty("undefined", JSUndefined, 0)
-
-        defineBuiltin("isNaN", 1, ::isNaN)
-        defineBuiltin("eval", 1, ::eval)
-        defineBuiltin("parseInt", 1, ::parseInt)
-        defineBuiltin("id", 1, ::id)
-        defineBuiltin("jvm", 1, ::jvm)
-        defineBuiltin("inspect", 1, ::inspect)
-
-        // TODO: The tests involving these functions have some pretty intense for loops which increase
-        //       the test suite time significantly (~40%). These tests fail-fast when the functions
-        //       don't exist. These can be uncommented when Reeva's performance improves.
-        // defineBuiltin("decodeURI", 1, ReevaBuiltin.GlobalDecodeURI)
-        // defineBuiltin("decodeURIComponent", 1, ReevaBuiltin.GlobalDecodeURIComponent)
-        // defineBuiltin("encodeURI", 1, ReevaBuiltin.GlobalEncodeURI)
-        // defineBuiltin("encodeURIComponent", 1, ReevaBuiltin.GlobalEncodeURIComponent)
-
-        // Debug method
-        // TODO
-        // defineNativeFunction("isStrict".key(), 0, 0) { Operations.isStrict().toValue() }
-    }
-
     companion object {
         private val reservedURISet = setOf(';', '/', '?', ':', '@', '&', '=', '+', '$', ',', '#')
         private val uriUnescaped = mutableSetOf<Char>().also {
@@ -110,6 +36,124 @@ open class JSGlobalObject protected constructor(
         private val uriUnescapedExtended = uriUnescaped + reservedURISet + listOf('#')
 
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSGlobalObject(realm).initialize()
+
+        @JvmStatic
+        @ECMAImpl("9.3.4")
+        fun setDefaultGlobalBindings(realm: Realm): JSObject {
+            // 1. Let global be realmRec.[[GlobalObject]].
+            val global = realm.globalObject
+
+            // 2. For each property of the Global Object specified in clause 19, do
+            //    a. Let name be the String value of the property name.
+            //    b. Let desc be the fully populated data Property Descriptor for the property, containing the specified attributes for the property. For properties listed in 19.2, 19.3, or 19.4 the value of the [[Value]] attribute is the corresponding intrinsic object from realmRec.
+            //    c. Perform ? DefinePropertyOrThrow(global, name, desc).
+
+            Operations.definePropertyOrThrow(
+                global, "globalThis".key(), Descriptor(realm.globalEnv.globalThisValue, attrs { +conf; -enum; +writ }),
+            )
+            Operations.definePropertyOrThrow(
+                global, "Infinity".key(), Descriptor(JSNumber.POSITIVE_INFINITY, attrs { -conf; -enum; -writ }),
+            )
+            Operations.definePropertyOrThrow(
+                global, "NaN".key(), Descriptor(JSNumber.NaN, attrs { -conf; -enum; -writ })
+            )
+            Operations.definePropertyOrThrow(
+                global, "undefined".key(), Descriptor(JSUndefined, attrs { -conf; -enum; -writ })
+            )
+
+            val attr = attrs { +conf; +writ }
+
+            val builtinFunctions = listOf(
+                JSBuiltinFunction.create("eval", 1, ::eval, realm),
+                JSBuiltinFunction.create("isFinite", 1, ::isFinite, realm),
+                JSBuiltinFunction.create("isNaN", 1, ::isNaN, realm),
+                // TODO
+                // JSBuiltinFunction.create("parseFloat", 1, ::parseFloat, realm),
+                JSBuiltinFunction.create("parseInt", 1, ::parseInt, realm),
+                JSBuiltinFunction.create("id", 1, ::id, realm),
+                JSBuiltinFunction.create("jvm", 1, ::jvm, realm),
+                JSBuiltinFunction.create("inspect", 1, ::inspect, realm),
+
+                // TODO: The tests involving these functions have some pretty intense for loops which increase
+                //       the test suite time significantly (~40%). These tests fail-fast when the functions
+                //       don't exist. These can be uncommented when Reeva's performance improves.
+                // defineBuiltin("decodeURI", 1, ReevaBuiltin.GlobalDecodeURI)
+                // defineBuiltin("decodeURIComponent", 1, ReevaBuiltin.GlobalDecodeURIComponent)
+                // defineBuiltin("encodeURI", 1, ReevaBuiltin.GlobalEncodeURI)
+                // defineBuiltin("encodeURIComponent", 1, ReevaBuiltin.GlobalEncodeURIComponent)
+            )
+
+            for (function in builtinFunctions)
+                Operations.definePropertyOrThrow(global, function.debugName.key(), Descriptor(function, attr))
+
+            val bindings = mapOf(
+                "Array" to realm.arrayCtor,
+                "ArrayBuffer" to realm.arrayBufferCtor,
+                "BigInt" to realm.bigIntCtor,
+                "BigInt64Array" to realm.bigInt64ArrayCtor,
+                "BigUint64Array" to realm.bigUint64ArrayCtor,
+                "Boolean" to realm.booleanCtor,
+                "DataView" to realm.dataViewCtor,
+                "Date" to realm.dateCtor,
+                "Error" to realm.errorCtor,
+                "EvalError" to realm.evalErrorCtor,
+                "Float32Array" to realm.float32ArrayCtor,
+                "Float64Array" to realm.float64ArrayCtor,
+                "Function" to realm.functionCtor,
+                "Int8Array" to realm.int8ArrayCtor,
+                "Int16Array" to realm.int16ArrayCtor,
+                "Int32Array" to realm.int32ArrayCtor,
+                "InternalError" to realm.internalErrorCtor, // non-standard
+                "Map" to realm.mapCtor,
+                "Number" to realm.numberCtor,
+                "Object" to realm.objectCtor,
+                "Packages" to realm.packageObj, // non-standard
+                "Promise" to realm.promiseCtor,
+                "Proxy" to realm.proxyCtor,
+                "RangeError" to realm.rangeErrorCtor,
+                "ReferenceError" to realm.referenceErrorCtor,
+                "RegExp" to realm.regExpCtor,
+                "Set" to realm.setCtor,
+                // TODO
+                // "SharedArrayBuffer" to realm.sharedArrayBuffer,
+                "String" to realm.stringCtor,
+                "Symbol" to realm.symbolCtor,
+                "SyntaxError" to realm.syntaxErrorCtor,
+                "TypeError" to realm.typeErrorCtor,
+                "Uint8Array" to realm.uint8ArrayCtor,
+                // TODO
+                // "Uint8ClampedArray" to realm.uint8ClampedArray,
+                "Uint16Array" to realm.uint16ArrayCtor,
+                "Uint32Array" to realm.uint32ArrayCtor,
+                "URIError" to realm.uriErrorCtor,
+                // TODO
+                // "WeakMap" to realm.weakMapCtor,
+                // "WeakRef" to realm.weakRefCtor,
+                // "WeakSet" to realm.weakSetCtor,
+
+                // TODO
+                // "Atomics" to realm.atomicObj,
+                "JSON" to realm.jsonObj,
+                "Math" to realm.mathObj,
+                "Reflect" to realm.reflectObj,
+
+                // Not from ECMA262
+                "console" to realm.consoleObj,
+            )
+
+            for ((key, value) in bindings)
+                Operations.definePropertyOrThrow(global, key.key(), Descriptor(value, attr))
+
+            // 3. Return global.
+            return global
+        }
+
+        @JvmStatic
+        @ECMAImpl("19.2.2")
+        fun isFinite(arguments: JSArguments): JSValue {
+            val num = arguments.argument(0).toNumber()
+            return (num.isNaN || num.isInfinite).toValue()
+        }
 
         @JvmStatic
         @ECMAImpl("19.2.3")

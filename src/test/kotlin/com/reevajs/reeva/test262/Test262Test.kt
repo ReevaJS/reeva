@@ -38,7 +38,7 @@ class Test262Test(
         val agent = if (!Agent.hasActiveAgent) {
             val agent = Agent.build {
                 hostHooks = object : HostHooks() {
-                    override fun initializeHostDefinedGlobalObject(realm: Realm): JSObject {
+                    override fun getHostDefinedGlobalObject(realm: Realm): JSObject {
                         return Test262GlobalObject.create(realm)
                     }
                 }

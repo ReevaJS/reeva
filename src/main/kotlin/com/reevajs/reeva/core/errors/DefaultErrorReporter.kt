@@ -64,13 +64,13 @@ class DefaultErrorReporter(private val out: PrintStream) : ErrorReporter() {
         }
 
         for (frame in stackFrames.asReversed()) {
-            if (frame.enclosingFunction == null)
+            if (frame.function == null)
                 continue
 
             val location = frame.invocationLocation?.let {
                 "(${it.start.line + 1}:${it.start.column + 1})"
             } ?: ""
-            out.println("    at ${frame.enclosingFunction.debugName} $location")
+            out.println("    at ${frame.function.debugName} $location")
         }
 
         out.println("\u001B[0m")

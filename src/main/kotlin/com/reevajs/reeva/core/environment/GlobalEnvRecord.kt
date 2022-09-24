@@ -17,7 +17,7 @@ class GlobalEnvRecord(
     private val realm: Realm,
     private val objectRecord: ObjectEnvRecord,
     private val declarativeRecord: DeclarativeEnvRecord,
-    private val globalThisValue: JSObject,
+    val globalThisValue: JSValue,
 ) : EnvRecord(null) {
     private val varNames = mutableSetOf<String>()
 
@@ -166,7 +166,7 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.11")
-    fun getThisBinding(): JSObject {
+    fun getThisBinding(): JSValue {
         // 1. Return envRecord.[[GlobalThisValue]]
         return globalThisValue
     }

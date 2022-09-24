@@ -38,7 +38,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
 
     companion object {
         // Special object: do not initialize
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSObjectProto(realm)
+        fun create(realm: Realm) = JSObjectProto(realm)
 
         @ECMAImpl("B.2.2.1.1")
         @JvmStatic

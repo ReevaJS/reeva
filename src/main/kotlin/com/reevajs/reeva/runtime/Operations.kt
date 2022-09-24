@@ -1518,7 +1518,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("9.1.2.5")
-    fun newGlobalEnvironment(realm: Realm, globalObject: JSObject, thisValue: JSObject): GlobalEnvRecord {
+    fun newGlobalEnvironment(realm: Realm, globalObject: JSObject, thisValue: JSValue): GlobalEnvRecord {
         // 1. Let objRec be NewObjectEnvironment(G, false, null).
         val objectRecord = ObjectEnvRecord(realm, globalObject, false, null)
 

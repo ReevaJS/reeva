@@ -12,7 +12,10 @@ import com.reevajs.reeva.utils.*
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
-open class JSObject protected constructor(realm: Realm, private var prototypeBacker: JSValue = JSNull) : JSValue() {
+open class JSObject protected constructor(
+    val realm: Realm,
+    private var prototypeBacker: JSValue = JSNull,
+) : JSValue() {
     private val slots = mutableMapOf<SlotName<*>, Any?>()
     private val id = Agent.activeAgent.nextObjectId()
 
@@ -385,8 +388,9 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
         length: Int,
         builtin: BuiltinFunction,
         attributes: Int = attrs { +conf; -enum; +writ },
+        realm: Realm = Agent.activeAgent.getActiveRealm(),
     ) {
-        defineBuiltin(name.key(), name, length, builtin, attributes)
+        defineBuiltin(name.key(), name, length, builtin, attributes, realm)
     }
 
     fun defineBuiltin(
@@ -394,8 +398,9 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
         length: Int,
         builtin: BuiltinFunction,
         attributes: Int = attrs { +conf; -enum; +writ },
+        realm: Realm = Agent.activeAgent.getActiveRealm(),
     ) {
-        defineBuiltin(name.key(), "[${name.description}]", length, builtin, attributes)
+        defineBuiltin(name.key(), "[${name.description}]", length, builtin, attributes, realm)
     }
 
     private fun defineBuiltin(
@@ -404,8 +409,9 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
         length: Int,
         builtin: BuiltinFunction,
         attributes: Int = attrs { +conf; -enum; +writ },
+        realm: Realm = Agent.activeAgent.getActiveRealm(),
     ) {
-        val function = JSBuiltinFunction.create(jsName, length, builtin)
+        val function = JSBuiltinFunction.create(jsName, length, builtin, realm)
         addProperty(key, Descriptor(function, attributes))
     }
 

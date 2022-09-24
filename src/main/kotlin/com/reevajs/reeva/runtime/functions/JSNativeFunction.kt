@@ -57,8 +57,8 @@ abstract class JSNativeFunction protected constructor(
         // 7.  Set the ScriptOrModule of calleeContext to null.
         // 8.  Perform any necessary implementation-defined initialization of calleeContext.
         val calleeContext = ExecutionContext(
-            this,
             realm,
+            this,
             null,
             null,
             null,

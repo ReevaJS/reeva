@@ -332,7 +332,7 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
         val transformedSource = Executable.transform(parsedSource)
 
         val agent = Agent.activeAgent
-        val context = ExecutionContext(null, realm, environment, this, null)
+        val context = ExecutionContext(realm, null, environment, this, null)
         agent.pushExecutionContext(context)
 
         try {
