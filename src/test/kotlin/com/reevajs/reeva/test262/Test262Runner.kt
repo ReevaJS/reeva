@@ -60,10 +60,7 @@ class Test262Runner {
     }
 
     companion object {
-        val IS_CI = "true" == System.getenv("IS_CI")
-        val test262Directory = if (IS_CI) {
-            File("./test262")
-        } else File("./src/test/resources/test262/")
+        val test262Directory = File("./test262")
         val testDirectory = File(test262Directory, "test")
         val testDirectoryStr = testDirectory.absolutePath
         val harnessDirectory = File(test262Directory, "harness")
@@ -78,7 +75,7 @@ class Test262Runner {
         @JvmStatic
         fun setup() {
             if (!test262Directory.exists())
-                throw IllegalStateException("The test262 repo must be cloned into src/test/resources/test262/")
+                throw IllegalStateException("The test262 repo must be cloned into ./test262/")
 
             val assertText = File(harnessDirectory, "assert.js").readText()
             val staText = File(harnessDirectory, "sta.js").readText()
@@ -91,9 +88,7 @@ class Test262Runner {
         @JvmStatic
         fun teardown() {
             val results = testResults.sortedBy { it.name }
-            val filePath = if (IS_CI) {
-                "./test_results.json"
-            } else "./demo/test_results/${LocalDateTime.now()}.json"
+            val filePath = "./demo/test_results/${LocalDateTime.now()}.json"
 
             File(filePath).writeText(
                 json.encodeToString(results)
