@@ -12,6 +12,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.DynamicContainer
+import org.junit.jupiter.api.DynamicNode
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.TestFactory
 import java.io.File
@@ -20,28 +22,37 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 class Test262Runner {
     @TestFactory
-    fun test262testProvider(): List<DynamicTest> {
-        val target = target ?: testDirectory
-        val files = if (!target.isDirectory) listOf(target) else target.walkTopDown().onEnter {
-            it.name != "intl402" && it.name != "annexB"
-        }.filter {
-            !it.isDirectory && !(it.name.endsWith("_FIXTURE.js") || it.name.endsWith("_FIXTURE.json")) &&
-                "S13.2.1_A1_T1.js" !in it.name && // the nested function call test
-                "S7.8.5_A2.1_T2.js" !in it.name // a regexp test that hangs
-        }.toList().sortedBy { it.absolutePath }
+    fun test262testProvider(): List<DynamicNode> {
+        return getDynamicTests(target ?: testDirectory)
+    }
 
-        return files.map { file ->
-            val name = file.absolutePath.replace(testDirectory.absolutePath, "")
-            val contents = file.readText()
+    private fun getDynamicTests(folder: File): List<DynamicNode> {
+        require(folder.isDirectory)
 
-            val yamlStart = contents.indexOf("/*---")
-            val yamlEnd = contents.indexOf("---*/")
-            expect(yamlStart != -1 && yamlEnd != -1)
-            val yaml = contents.substring(yamlStart + 5, yamlEnd)
-            val metadata = Yaml.default.decodeFromString(Test262Metadata.serializer(), yaml)
+        return folder.listFiles()!!.filter {
+            when {
+                it.name == "intl402" || it.name == "annexB" -> false
+                it.name.endsWith("_FIXTURE.js") || it.name.endsWith("_FIXTURE.json") -> false
+                "S13.2.1_A1_T1.js" in it.name -> false // the nested function call test
+                "S7.8.5_A2.1_T2.js" in it.name -> false // a regexp test that hangs
+                else -> true
+            }
+        }.map {
+            if (it.isDirectory) {
+                DynamicContainer.dynamicContainer(it.name, getDynamicTests(it))
+            } else {
+                val name = it.absolutePath.replace(testDirectory.absolutePath, "")
+                val contents = it.readText()
 
-            DynamicTest.dynamicTest(name) {
-                Test262Test(name, file, contents, metadata).test()
+                val yamlStart = contents.indexOf("/*---")
+                val yamlEnd = contents.indexOf("---*/")
+                expect(yamlStart != -1 && yamlEnd != -1)
+                val yaml = contents.substring(yamlStart + 5, yamlEnd)
+                val metadata = Yaml.default.decodeFromString(Test262Metadata.serializer(), yaml)
+
+                DynamicTest.dynamicTest(it.name) {
+                    Test262Test(name, it, contents, metadata).test()
+                }
             }
         }
     }
