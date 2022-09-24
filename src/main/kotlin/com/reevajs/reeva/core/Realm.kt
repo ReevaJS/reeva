@@ -14,6 +14,7 @@ import com.reevajs.reeva.runtime.collections.JSMapProto
 import com.reevajs.reeva.runtime.collections.JSSetCtor
 import com.reevajs.reeva.runtime.collections.JSSetProto
 import com.reevajs.reeva.runtime.errors.*
+import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSFunctionCtor
 import com.reevajs.reeva.runtime.functions.JSFunctionProto
 import com.reevajs.reeva.runtime.functions.JSRunnableFunction
@@ -26,12 +27,12 @@ import com.reevajs.reeva.runtime.iterators.*
 import com.reevajs.reeva.runtime.memory.*
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.JSObject.Companion.initialize
 import com.reevajs.reeva.runtime.objects.JSObjectCtor
 import com.reevajs.reeva.runtime.objects.JSObjectProto
 import com.reevajs.reeva.runtime.other.JSDateCtor
 import com.reevajs.reeva.runtime.other.JSDateProto
 import com.reevajs.reeva.runtime.other.JSProxyCtor
+import com.reevajs.reeva.runtime.primitives.JSAccessor
 import com.reevajs.reeva.runtime.primitives.JSSymbol
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.promises.JSPromiseCtor
@@ -49,17 +50,14 @@ import com.reevajs.reeva.runtime.wrappers.strings.JSStringProto
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
+import com.reevajs.reeva.utils.key
 import java.util.concurrent.ConcurrentHashMap
 
 class Realm {
     lateinit var globalObject: JSObject
         private set
 
-    private var globalEnvBacker: GlobalEnvRecord? = null
-
-    var globalEnv: GlobalEnvRecord
-        get() = globalEnvBacker ?: throw IllegalStateException("This Realm has no global EnvRecord")
-        set(value) { globalEnvBacker = value }
+    lateinit var globalEnv: GlobalEnvRecord
 
     internal val moduleTree = ModuleTree()
 
@@ -69,145 +67,256 @@ class Realm {
     lateinit var symbolProto: JSSymbolProto private set
     lateinit var symbolCtor: JSSymbolCtor private set
 
-    val numberProto by lazy { JSNumberProto.create(this) }
-    val bigIntProto by lazy { JSBigIntProto.create(this) }
-    val booleanProto by lazy { JSBooleanProto.create(this) }
-    val stringProto by lazy { JSStringProto.create(this) }
-    val regExpProto by lazy { JSRegExpProto.create(this) }
-    val arrayProto by lazy { JSArrayProto.create(this) }
-    val setProto by lazy { JSSetProto.create(this) }
-    val mapProto by lazy { JSMapProto.create(this) }
-    val promiseProto by lazy { JSPromiseProto.create(this) }
-    val dateProto by lazy { JSDateProto.create(this) }
-    val iteratorProto by lazy { JSIteratorProto.create(this) }
-    val stringIteratorProto by lazy { JSStringIteratorProto.create(this) }
-    val arrayIteratorProto by lazy { JSArrayIteratorProto.create(this) }
-    val setIteratorProto by lazy { JSSetIteratorProto.create(this) }
-    val mapIteratorProto by lazy { JSMapIteratorProto.create(this) }
-    val objectPropertyIteratorProto by lazy { JSObjectPropertyIteratorProto.create(this) }
-    val listIteratorProto by lazy { JSListIteratorProto.create(this) }
-    val regExpStringIteratorProto by lazy { JSRegExpStringIteratorProto.create(this) }
-    val generatorObjectProto by lazy { JSGeneratorObjectProto.create(this) }
-    val generatorFunctionProto by lazy { JSGeneratorFunctionProto.create(this) }
-    val consoleProto by lazy { JSConsoleProto.create(this) }
+    lateinit var numberProto: JSNumberProto private set
+    lateinit var bigIntProto: JSBigIntProto private set
+    lateinit var booleanProto: JSBooleanProto private set
+    lateinit var stringProto: JSStringProto private set
+    lateinit var regExpProto: JSRegExpProto private set
+    lateinit var arrayProto: JSArrayProto private set
+    lateinit var setProto: JSSetProto private set
+    lateinit var mapProto: JSMapProto private set
+    lateinit var promiseProto: JSPromiseProto private set
+    lateinit var dateProto: JSDateProto private set
+    lateinit var iteratorProto: JSIteratorProto private set
+    lateinit var stringIteratorProto: JSStringIteratorProto private set
+    lateinit var arrayIteratorProto: JSArrayIteratorProto private set
+    lateinit var setIteratorProto: JSSetIteratorProto private set
+    lateinit var mapIteratorProto: JSMapIteratorProto private set
+    lateinit var objectPropertyIteratorProto: JSObjectPropertyIteratorProto private set
+    lateinit var listIteratorProto: JSListIteratorProto private set
+    lateinit var regExpStringIteratorProto: JSRegExpStringIteratorProto private set
+    lateinit var generatorObjectProto: JSGeneratorObjectProto private set
+    lateinit var generatorFunctionProto: JSGeneratorFunctionProto private set
+    lateinit var consoleProto: JSConsoleProto private set
 
-    val dataViewProto by lazy { JSDataViewProto.create(this) }
-    val arrayBufferProto by lazy { JSArrayBufferProto.create(this) }
-    val typedArrayProto by lazy { JSTypedArrayProto.create(this) }
-    val int8ArrayProto by lazy { JSInt8ArrayProto.create(this) }
-    val uint8ArrayProto by lazy { JSUint8ArrayProto.create(this) }
-    val uint8CArrayProto by lazy { JSUint8CArrayProto.create(this) }
-    val int16ArrayProto by lazy { JSInt16ArrayProto.create(this) }
-    val uint16ArrayProto by lazy { JSUint16ArrayProto.create(this) }
-    val int32ArrayProto by lazy { JSInt32ArrayProto.create(this) }
-    val uint32ArrayProto by lazy { JSUint32ArrayProto.create(this) }
-    val float32ArrayProto by lazy { JSFloat32ArrayProto.create(this) }
-    val float64ArrayProto by lazy { JSFloat64ArrayProto.create(this) }
-    val bigInt64ArrayProto by lazy { JSBigInt64ArrayProto.create(this) }
-    val bigUint64ArrayProto by lazy { JSBigUint64ArrayProto.create(this) }
+    lateinit var dataViewProto: JSDataViewProto private set
+    lateinit var arrayBufferProto: JSArrayBufferProto private set
+    lateinit var typedArrayProto: JSTypedArrayProto private set
+    lateinit var int8ArrayProto: JSInt8ArrayProto private set
+    lateinit var uint8ArrayProto: JSUint8ArrayProto private set
+    lateinit var uint8CArrayProto: JSUint8CArrayProto private set
+    lateinit var int16ArrayProto: JSInt16ArrayProto private set
+    lateinit var uint16ArrayProto: JSUint16ArrayProto private set
+    lateinit var int32ArrayProto: JSInt32ArrayProto private set
+    lateinit var uint32ArrayProto: JSUint32ArrayProto private set
+    lateinit var float32ArrayProto: JSFloat32ArrayProto private set
+    lateinit var float64ArrayProto: JSFloat64ArrayProto private set
+    lateinit var bigInt64ArrayProto: JSBigInt64ArrayProto private set
+    lateinit var bigUint64ArrayProto: JSBigUint64ArrayProto private set
 
-    val errorProto by lazy { JSErrorProto.create(this) }
-    val evalErrorProto by lazy { JSEvalErrorProto.create(this) }
-    val internalErrorProto by lazy { JSInternalErrorProto.create(this) }
-    val typeErrorProto by lazy { JSTypeErrorProto.create(this) }
-    val rangeErrorProto by lazy { JSRangeErrorProto.create(this) }
-    val referenceErrorProto by lazy { JSReferenceErrorProto.create(this) }
-    val syntaxErrorProto by lazy { JSSyntaxErrorProto.create(this) }
-    val uriErrorProto by lazy { JSURIErrorProto.create(this) }
+    lateinit var errorProto: JSErrorProto private set
+    lateinit var evalErrorProto: JSEvalErrorProto private set
+    lateinit var internalErrorProto: JSInternalErrorProto private set
+    lateinit var typeErrorProto: JSTypeErrorProto private set
+    lateinit var rangeErrorProto: JSRangeErrorProto private set
+    lateinit var referenceErrorProto: JSReferenceErrorProto private set
+    lateinit var syntaxErrorProto: JSSyntaxErrorProto private set
+    lateinit var uriErrorProto: JSURIErrorProto private set
 
-    val objectCtor by lazy { JSObjectCtor.create(this) }
-    val numberCtor by lazy { JSNumberCtor.create(this) }
-    val bigIntCtor by lazy { JSBigIntCtor.create(this) }
-    val booleanCtor by lazy { JSBooleanCtor.create(this) }
-    val stringCtor by lazy { JSStringCtor.create(this) }
-    val regExpCtor by lazy { JSRegExpCtor.create(this) }
-    val functionCtor by lazy { JSFunctionCtor.create(this) }
-    val generatorFunctionCtor by lazy { JSGeneratorFunctionCtor.create(this) }
-    val arrayCtor by lazy { JSArrayCtor.create(this) }
-    val setCtor by lazy { JSSetCtor.create(this) }
-    val mapCtor by lazy { JSMapCtor.create(this) }
-    val proxyCtor by lazy { JSProxyCtor.create(this) }
-    val promiseCtor by lazy { JSPromiseCtor.create(this) }
-    val dateCtor by lazy { JSDateCtor.create(this) }
+    lateinit var objectCtor: JSObjectCtor private set
+    lateinit var numberCtor: JSNumberCtor private set
+    lateinit var bigIntCtor: JSBigIntCtor private set
+    lateinit var booleanCtor: JSBooleanCtor private set
+    lateinit var stringCtor: JSStringCtor private set
+    lateinit var regExpCtor: JSRegExpCtor private set
+    lateinit var functionCtor: JSFunctionCtor private set
+    lateinit var generatorFunctionCtor: JSGeneratorFunctionCtor private set
+    lateinit var arrayCtor: JSArrayCtor private set
+    lateinit var setCtor: JSSetCtor private set
+    lateinit var mapCtor: JSMapCtor private set
+    lateinit var proxyCtor: JSProxyCtor private set
+    lateinit var promiseCtor: JSPromiseCtor private set
+    lateinit var dateCtor: JSDateCtor private set
 
-    val dataViewCtor by lazy { JSDataViewCtor.create(this) }
-    val arrayBufferCtor by lazy { JSArrayBufferCtor.create(this) }
-    val typedArrayCtor by lazy { JSTypedArrayCtor.create(this) }
-    val int8ArrayCtor by lazy { JSInt8ArrayCtor.create(this) }
-    val uint8ArrayCtor by lazy { JSUint8ArrayCtor.create(this) }
-    val uint8CArrayCtor by lazy { JSUint8CArrayCtor.create(this) }
-    val int16ArrayCtor by lazy { JSInt16ArrayCtor.create(this) }
-    val uint16ArrayCtor by lazy { JSUint16ArrayCtor.create(this) }
-    val int32ArrayCtor by lazy { JSInt32ArrayCtor.create(this) }
-    val uint32ArrayCtor by lazy { JSUint32ArrayCtor.create(this) }
-    val float32ArrayCtor by lazy { JSFloat32ArrayCtor.create(this) }
-    val float64ArrayCtor by lazy { JSFloat64ArrayCtor.create(this) }
-    val bigInt64ArrayCtor by lazy { JSBigInt64ArrayCtor.create(this) }
-    val bigUint64ArrayCtor by lazy { JSBigUint64ArrayCtor.create(this) }
+    lateinit var dataViewCtor: JSDataViewCtor private set
+    lateinit var arrayBufferCtor: JSArrayBufferCtor private set
+    lateinit var typedArrayCtor: JSTypedArrayCtor private set
+    lateinit var int8ArrayCtor: JSInt8ArrayCtor private set
+    lateinit var uint8ArrayCtor: JSUint8ArrayCtor private set
+    lateinit var uint8CArrayCtor: JSUint8CArrayCtor private set
+    lateinit var int16ArrayCtor: JSInt16ArrayCtor private set
+    lateinit var uint16ArrayCtor: JSUint16ArrayCtor private set
+    lateinit var int32ArrayCtor: JSInt32ArrayCtor private set
+    lateinit var uint32ArrayCtor: JSUint32ArrayCtor private set
+    lateinit var float32ArrayCtor: JSFloat32ArrayCtor private set
+    lateinit var float64ArrayCtor: JSFloat64ArrayCtor private set
+    lateinit var bigInt64ArrayCtor: JSBigInt64ArrayCtor private set
+    lateinit var bigUint64ArrayCtor: JSBigUint64ArrayCtor private set
 
-    val errorCtor by lazy { JSErrorCtor.create(this) }
-    val evalErrorCtor by lazy { JSEvalErrorCtor.create(this) }
-    val internalErrorCtor by lazy { JSInternalErrorCtor.create(this) }
-    val typeErrorCtor by lazy { JSTypeErrorCtor.create(this) }
-    val rangeErrorCtor by lazy { JSRangeErrorCtor.create(this) }
-    val referenceErrorCtor by lazy { JSReferenceErrorCtor.create(this) }
-    val syntaxErrorCtor by lazy { JSSyntaxErrorCtor.create(this) }
-    val uriErrorCtor by lazy { JSURIErrorCtor.create(this) }
+    lateinit var errorCtor: JSErrorCtor private set
+    lateinit var evalErrorCtor: JSEvalErrorCtor private set
+    lateinit var internalErrorCtor: JSInternalErrorCtor private set
+    lateinit var typeErrorCtor: JSTypeErrorCtor private set
+    lateinit var rangeErrorCtor: JSRangeErrorCtor private set
+    lateinit var referenceErrorCtor: JSReferenceErrorCtor private set
+    lateinit var syntaxErrorCtor: JSSyntaxErrorCtor private set
+    lateinit var uriErrorCtor: JSURIErrorCtor private set
 
-    val throwTypeError by lazy {
-        JSRunnableFunction.create("", 0, this) {
-            Errors.CalleePropertyAccess.throwTypeError(Agent.activeAgent.getActiveRealm())
-        }
-    }
+    lateinit var throwTypeError: JSFunction private set
 
-    val mathObj by lazy { JSMathObject.create(this) }
-    val reflectObj by lazy { JSReflectObject.create(this) }
-    val jsonObj by lazy { JSONObject.create(this) }
-    val consoleObj by lazy { JSConsole.create(this) }
+    lateinit var mathObj: JSMathObject private set
+    lateinit var reflectObj: JSReflectObject private set
+    lateinit var jsonObj: JSONObject private set
+    lateinit var consoleObj: JSConsole private set
 
-    val packageProto by lazy { JSPackageProto.create(this) }
-    val classProto by lazy { JSClassProto.create(this) }
-    val packageObj by lazy { JSPackageObject.create(null, this) }
+    lateinit var packageProto: JSPackageProto private set
+    lateinit var classProto: JSClassProto private set
+    lateinit var packageObj: JSPackageObject private set
 
     @ECMAImpl("9.3.3")
-    internal fun setGlobalObject(globalObject_: JSValue, thisValue_: JSValue) {
-        var globalObject = globalObject_
-        var thisValue = thisValue_
-
+    internal fun setGlobalObject(globalObject: JSValue, thisValue: JSValue) {
         // 1. If globalObj is undefined, then
-        if (globalObject == JSUndefined) {
+        val theGlobalObject = if (globalObject == JSUndefined) {
             // a. Let intrinsics be realmRec.[[Intrinsics]].
             // b. Set globalObj to OrdinaryObjectCreate(intrinsics.[[%Object.prototype%]]).
-            globalObject = JSObject.create(this)
-        }
+            JSObject.create(this)
+        } else globalObject
 
         // 2. Assert: Type(globalObj) is Object.
-        ecmaAssert(globalObject is JSObject)
+        ecmaAssert(theGlobalObject is JSObject)
 
         // 3. If thisValue is undefined, set thisValue to globalObj.
-        if (thisValue == JSUndefined)
-            thisValue = globalObject
+        val theThisValue = if (thisValue == JSUndefined) {
+            theGlobalObject
+        } else thisValue
 
         // 4. Set realmRec.[[GlobalObject]] to globalObj.
-        this.globalObject = globalObject
+        this.globalObject = theGlobalObject
 
         // 5. Let newGlobalEnv be NewGlobalEnvironment(globalObj, thisValue).
         // 6. Set realmRec.[[GlobalEnv]] to newGlobalEnv.
-        expect(thisValue is JSObject)
-        globalEnv = Operations.newGlobalEnvironment(this, globalObject, thisValue)
+        globalEnv = Operations.newGlobalEnvironment(this, theGlobalObject, theThisValue)
 
         // 7. Return unused.
     }
 
-    fun initObjects() {
+    @ECMAImpl("9.3.2")
+    fun createIntrinsics() {
+        // Guard against multiple initialization
+        expect(!::objectProto.isInitialized) { "Duplicate call to Realm::createIntrinsics" }
+
+        // 1. Set realmRec.[[Intrinsics]] to a new Record.
+        // Note: We do not have a separate Intrinsics objects, as it just adds an extra
+        //       property access that isn't really necessary
+
+        // 2. Set fields of realmRec.[[Intrinsics]] with the values listed in Table 6. The field names are the names
+        //    listed in column one of the table. The value of each field is a new object value fully and recursively
+        //    populated with property values as defined by the specification of each object in clauses 19 through 28.
+        //    All object property values are newly created object values. All values that are built-in function objects
+        //    are created by performing CreateBuiltinFunction(steps, length, name, slots, realmRec, prototype) where
+        //    steps is the definition of that function provided by this specification, name is the initial value of the
+        //    function's name property, length is the initial value of the function's length property, slots is a list
+        //    of the names, if any, of the function's specified internal slots, and prototype is the specified value of
+        //    the function's [[Prototype]] internal slot. The creation of the intrinsics and their properties must be
+        //    ordered to avoid any dependencies upon objects that have not yet been created.
+
+        // Special objects: Create and initialize separately
         objectProto = JSObjectProto.create(this)
         functionProto = JSFunctionProto.create(this)
-        functionProto.initialize()
-        objectProto.initialize()
+        objectCtor = JSObjectCtor.create(this)
+        objectProto.init()
+        functionProto.init()
+        objectCtor.init()
 
-        // Must be created after well-known symbols
+        numberCtor = JSNumberCtor.create(this)
+        bigIntCtor = JSBigIntCtor.create(this)
+        booleanCtor = JSBooleanCtor.create(this)
+        stringCtor = JSStringCtor.create(this)
+        regExpCtor = JSRegExpCtor.create(this)
+        functionCtor = JSFunctionCtor.create(this)
+        generatorFunctionCtor = JSGeneratorFunctionCtor.create(this)
+        arrayCtor = JSArrayCtor.create(this)
+        setCtor = JSSetCtor.create(this)
+        mapCtor = JSMapCtor.create(this)
+        proxyCtor = JSProxyCtor.create(this)
+        promiseCtor = JSPromiseCtor.create(this)
+        dateCtor = JSDateCtor.create(this)
+
+        dataViewCtor = JSDataViewCtor.create(this)
+        arrayBufferCtor = JSArrayBufferCtor.create(this)
+        typedArrayCtor = JSTypedArrayCtor.create(this)
+        int8ArrayCtor = JSInt8ArrayCtor.create(this)
+        uint8ArrayCtor = JSUint8ArrayCtor.create(this)
+        uint8CArrayCtor = JSUint8CArrayCtor.create(this)
+        int16ArrayCtor = JSInt16ArrayCtor.create(this)
+        uint16ArrayCtor = JSUint16ArrayCtor.create(this)
+        int32ArrayCtor = JSInt32ArrayCtor.create(this)
+        uint32ArrayCtor = JSUint32ArrayCtor.create(this)
+        float32ArrayCtor = JSFloat32ArrayCtor.create(this)
+        float64ArrayCtor = JSFloat64ArrayCtor.create(this)
+        bigInt64ArrayCtor = JSBigInt64ArrayCtor.create(this)
+        bigUint64ArrayCtor = JSBigUint64ArrayCtor.create(this)
+
+        errorCtor = JSErrorCtor.create(this)
+        evalErrorCtor = JSEvalErrorCtor.create(this)
+        internalErrorCtor = JSInternalErrorCtor.create(this)
+        typeErrorCtor = JSTypeErrorCtor.create(this)
+        rangeErrorCtor = JSRangeErrorCtor.create(this)
+        referenceErrorCtor = JSReferenceErrorCtor.create(this)
+        syntaxErrorCtor = JSSyntaxErrorCtor.create(this)
+        uriErrorCtor = JSURIErrorCtor.create(this)
+
         symbolCtor = JSSymbolCtor.create(this)
         symbolProto = JSSymbolProto.create(this)
+
+        numberProto = JSNumberProto.create(this)
+        bigIntProto = JSBigIntProto.create(this)
+        booleanProto = JSBooleanProto.create(this)
+        stringProto = JSStringProto.create(this)
+        regExpProto = JSRegExpProto.create(this)
+        arrayProto = JSArrayProto.create(this)
+        setProto = JSSetProto.create(this)
+        mapProto = JSMapProto.create(this)
+        promiseProto = JSPromiseProto.create(this)
+        dateProto = JSDateProto.create(this)
+        iteratorProto = JSIteratorProto.create(this)
+        stringIteratorProto = JSStringIteratorProto.create(this)
+        arrayIteratorProto = JSArrayIteratorProto.create(this)
+        setIteratorProto = JSSetIteratorProto.create(this)
+        mapIteratorProto = JSMapIteratorProto.create(this)
+        objectPropertyIteratorProto = JSObjectPropertyIteratorProto.create(this)
+        listIteratorProto = JSListIteratorProto.create(this)
+        regExpStringIteratorProto = JSRegExpStringIteratorProto.create(this)
+        generatorObjectProto = JSGeneratorObjectProto.create(this)
+        generatorFunctionProto = JSGeneratorFunctionProto.create(this)
+        consoleProto = JSConsoleProto.create(this)
+
+        dataViewProto = JSDataViewProto.create(this)
+        arrayBufferProto = JSArrayBufferProto.create(this)
+        typedArrayProto = JSTypedArrayProto.create(this)
+        int8ArrayProto = JSInt8ArrayProto.create(this)
+        uint8ArrayProto = JSUint8ArrayProto.create(this)
+        uint8CArrayProto = JSUint8CArrayProto.create(this)
+        int16ArrayProto = JSInt16ArrayProto.create(this)
+        uint16ArrayProto = JSUint16ArrayProto.create(this)
+        int32ArrayProto = JSInt32ArrayProto.create(this)
+        uint32ArrayProto = JSUint32ArrayProto.create(this)
+        float32ArrayProto = JSFloat32ArrayProto.create(this)
+        float64ArrayProto = JSFloat64ArrayProto.create(this)
+        bigInt64ArrayProto = JSBigInt64ArrayProto.create(this)
+        bigUint64ArrayProto = JSBigUint64ArrayProto.create(this)
+
+        errorProto = JSErrorProto.create(this)
+        evalErrorProto = JSEvalErrorProto.create(this)
+        internalErrorProto = JSInternalErrorProto.create(this)
+        typeErrorProto = JSTypeErrorProto.create(this)
+        rangeErrorProto = JSRangeErrorProto.create(this)
+        referenceErrorProto = JSReferenceErrorProto.create(this)
+        syntaxErrorProto = JSSyntaxErrorProto.create(this)
+        uriErrorProto = JSURIErrorProto.create(this)
+
+        throwTypeError = JSRunnableFunction.create("", 0, this) {
+            Errors.CalleePropertyAccess.throwTypeError(this)
+        }
+
+        mathObj = JSMathObject.create(this)
+        reflectObj = JSReflectObject.create(this)
+        jsonObj = JSONObject.create(this)
+        consoleObj = JSConsole.create(this)
+
+        packageProto = JSPackageProto.create(this)
+        classProto = JSClassProto.create(this)
+        packageObj = JSPackageObject.create(null, this)
 
         // These can't be in the init method of the objects due to circularity
         objectCtor.defineOwnProperty("prototype", objectProto, Descriptor.HAS_BASIC)
@@ -250,6 +359,13 @@ class Realm {
         uriErrorCtor.defineOwnProperty("prototype", uriErrorProto, Descriptor.HAS_BASIC)
 
         functionProto.defineOwnProperty("constructor", functionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+
+        // 3. Perform AddRestrictedFunctionProperties(realmRec.[[Intrinsics]].[[%Function.prototype%]], realmRec).
+        val desc = Descriptor(JSAccessor(throwTypeError, throwTypeError), Descriptor.CONFIGURABLE)
+        Operations.definePropertyOrThrow(functionProto, "caller".key(), desc)
+        Operations.definePropertyOrThrow(functionProto, "arguments".key(), desc)
+
+        // 4. Return unused.
     }
 
     object WellKnownSymbols {
@@ -274,5 +390,23 @@ class Realm {
 
     companion object {
         val globalSymbolRegistry = ConcurrentHashMap<String, JSSymbol>()
+
+        @ECMAImpl("9.3.1")
+        fun create(): Realm {
+            // 1. Let realmRec be a new Realm Record.
+            val realm = Realm()
+
+            // 2. Perform CreateIntrinsics(realmRec).
+            realm.createIntrinsics()
+
+            // 3. Set realmRec.[[GlobalObject]] to undefined.
+            // 4. Set realmRec.[[GlobalEnv]] to undefined.
+            // 5. Set realmRec.[[TemplateMap]] to a new empty List.
+            // Note: These fields are simply left as uninitialized lateinit vars instead of being
+            //       explicitly set to undefined
+
+            // 6. Return realmRec.
+            return realm
+        }
     }
 }

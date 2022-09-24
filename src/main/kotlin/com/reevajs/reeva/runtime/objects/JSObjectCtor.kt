@@ -15,7 +15,6 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.toValue
 
-@Suppress("UNUSED_PARAMETER")
 class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "ObjectConstructor", 1) {
     override fun init() {
         super.init()
@@ -57,7 +56,8 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     }
 
     companion object {
-        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSObjectCtor(realm).initialize()
+        // Special object: do not initialize
+        fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSObjectCtor(realm)
 
         @ECMAImpl("20.1.2.1")
         @JvmStatic

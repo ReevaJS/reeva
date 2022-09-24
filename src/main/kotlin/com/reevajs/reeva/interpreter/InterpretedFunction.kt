@@ -158,8 +158,8 @@ abstract class InterpretedFunction(
         val callerContext = agent.runningExecutionContext
 
         val calleeContext = ExecutionContext(
-            this,
             realm,
+            this,
             outerEnvRecord,
             callerContext.executable,
             null

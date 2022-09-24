@@ -201,7 +201,7 @@ open class JSGenericTypedArrayCtor protected constructor(
     @ECMAImpl("22.2.5.1.6")
     private fun allocateTypedArrayBuffer(obj: JSObject, length: Int) {
         val byteLength = kind.size * length
-        val data = Operations.allocateArrayBuffer(Agent.activeAgent.getActiveRealm().arrayBufferCtor, byteLength)
+        val data = Operations.allocateArrayBuffer(realm.arrayBufferCtor, byteLength)
         obj.setSlot(SlotName.ViewedArrayBuffer, data)
         obj.setSlot(SlotName.ByteLength, byteLength)
         obj.setSlot(SlotName.ByteOffset, 0)

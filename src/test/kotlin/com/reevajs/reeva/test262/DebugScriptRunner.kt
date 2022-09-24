@@ -4,6 +4,7 @@ import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.FileSourceInfo
+import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
 import com.reevajs.reeva.runtime.Operations
 import java.io.File
 
@@ -17,9 +18,10 @@ fun main() {
     Agent.build {
         printIR = true
     }.withActiveScope {
-        val realm = makeRealm()
+        val realm = makeRealmAndInitializeExecutionEnvironment()
 
-        val sourceInfo = FileSourceInfo(File("./demo/index.mjs"))
+        // val sourceInfo = FileSourceInfo(File("./demo/index.mjs"))
+        val sourceInfo = LiteralSourceInfo("e", collectTest262Script() + File("./demo/index.mjs").readText(), false)
         val executable = Reeva.compile(realm, sourceInfo)
         if (executable.hasError) {
             errorReporter.reportParseError(sourceInfo, executable.error())

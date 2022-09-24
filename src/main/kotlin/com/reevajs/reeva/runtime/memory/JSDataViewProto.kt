@@ -19,7 +19,6 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
     override fun init() {
         super.init()
 
-        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.dataViewCtor, attrs { +conf; -enum; +writ })
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "DataView".toValue(), attrs { +conf; -enum; -writ })
 

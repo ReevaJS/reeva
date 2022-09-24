@@ -15,11 +15,7 @@ open class JSGenericTypedArrayProto(
         super.init()
 
         defineOwnProperty("BYTES_PER_ELEMENT", kind.size.toValue(), 0)
-        defineOwnProperty(
-            "constructor",
-            kind.getCtor(Agent.activeAgent.getActiveRealm()),
-            attrs { +conf; -enum; +writ },
-        )
+        defineOwnProperty("constructor", kind.getCtor(realm), attrs { +conf; -enum; +writ })
     }
 }
 

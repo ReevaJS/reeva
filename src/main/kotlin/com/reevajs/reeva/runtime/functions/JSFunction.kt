@@ -7,7 +7,7 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 
 abstract class JSFunction(
-    val realm: Realm,
+    realm: Realm,
     val debugName: String,
     var thisMode: ThisMode,
     var isStrict: Boolean = false,

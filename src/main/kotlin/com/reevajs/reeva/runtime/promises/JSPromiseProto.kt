@@ -16,7 +16,6 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
     override fun init() {
         super.init()
 
-        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.promiseCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Promise".toValue(), Descriptor.CONFIGURABLE)
 

@@ -13,7 +13,6 @@ open class JSBooleanObject protected constructor(
     val value by slot(SlotName.BooleanData, value)
 
     override fun init() {
-        val realm = Agent.activeAgent.getActiveRealm()
         setPrototype(realm.booleanProto)
         super.init()
     }

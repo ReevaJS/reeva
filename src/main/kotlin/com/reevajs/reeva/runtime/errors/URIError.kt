@@ -20,7 +20,6 @@ class JSURIErrorProto private constructor(realm: Realm) : JSErrorProto(
 ) {
     override fun init() {
         super.init()
-        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.uriErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 

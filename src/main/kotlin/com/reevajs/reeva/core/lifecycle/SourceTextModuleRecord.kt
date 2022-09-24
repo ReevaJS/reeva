@@ -31,11 +31,9 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
 
     override fun execute(): JSValue {
         link()
-        return Agent.activeAgent.withRealm(realm, realm.globalEnv) {
-            evaluate().also {
-                if (evaluationError != null)
-                    throw evaluationError!!
-            }
+        return evaluate().also {
+            if (evaluationError != null)
+                throw evaluationError!!
         }
     }
 
@@ -332,7 +330,7 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
         val transformedSource = Executable.transform(parsedSource)
 
         val agent = Agent.activeAgent
-        val context = ExecutionContext(null, realm, environment, this, null)
+        val context = ExecutionContext(realm, envRecord = environment, executable = this)
         agent.pushExecutionContext(context)
 
         try {

@@ -5,14 +5,10 @@ import com.reevajs.reeva.core.errors.DefaultErrorReporter
 import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.functions.JSFunction
-import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.utils.expect
 import java.nio.ByteOrder
-import java.util.function.Function
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
+import java.util.concurrent.locks.ReentrantLock
 
-@OptIn(ExperimentalContracts::class)
 class Agent(
     var printIR: Boolean,
     var printAST: Boolean,
@@ -70,50 +66,40 @@ class Agent(
     }
 
     fun getActiveFunction(): JSFunction? {
-        return executionContextStack.lastOrNull { it.enclosingFunction != null }?.enclosingFunction
+        return executionContextStack.lastOrNull { it.function != null }?.function
     }
 
     fun getActiveRealm(): Realm {
         return executionContextStack.last().realm
     }
 
-    @JvmOverloads
-    fun makeRealm(
-        globalObjProducer: Function<Realm, JSObject> = Function { hostHooks.initializeHostDefinedGlobalObject(it) },
-    ): Realm {
-        return hostHooks.initializeHostDefinedRealm(globalObjProducer)
-    }
-
-    fun <T> withRealm(realm: Realm, env: EnvRecord? = null, block: () -> T): T {
-        contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
-        pushExecutionContext(ExecutionContext(null, realm, env, null, null))
-        return try {
-            block()
-        } finally {
-            popExecutionContext()
-        }
-    }
+    fun makeRealmAndInitializeExecutionEnvironment() = hostHooks.initializeHostDefinedRealm()
 
     fun nextObjectId() = objectId++
 
-    fun setActive(active: Boolean) {
-        val currentlyActiveAgent = agents.get()
-        if (active) {
-            require(currentlyActiveAgent == null || currentlyActiveAgent == this) {
-                "There is another agent active on this thread"
-            }
+    fun enter() {
+        if (!hasActiveAgent)
             agents.set(this)
-        } else if (currentlyActiveAgent == this) {
+
+        threadLocks.get().lock()
+    }
+
+    fun exit() {
+        expect(hasActiveAgent) { "Attempt to exit agent without a corresponding enter" }
+
+        val lock = threadLocks.get()
+        lock.unlock()
+
+        if (!lock.isHeldByCurrentThread)
             agents.set(null)
-        }
     }
 
     fun <T> withActiveScope(block: Agent.() -> T): T {
-        setActive(true)
+        enter()
         return try {
             this.block()
         } finally {
-            setActive(false)
+            exit()
         }
     }
 
@@ -125,11 +111,14 @@ class Agent(
     }
 
     companion object {
-        private val agents = ThreadLocal<Agent>()
+        private val agents = ThreadLocal<Agent?>()
+        private val threadLocks = object : ThreadLocal<ReentrantLock>() {
+            override fun initialValue() = ReentrantLock()
+        }
 
         @JvmStatic
         val activeAgent: Agent
-            get() = agents.get()
+            get() = agents.get()!!
 
         @JvmStatic
         val hasActiveAgent: Boolean

@@ -10,10 +10,15 @@ import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.toBoolean
 import com.reevajs.reeva.runtime.toJSString
 import com.reevajs.reeva.utils.Result
+import com.reevajs.reeva.utils.attrs
+import com.reevajs.reeva.utils.key
+import com.reevajs.reeva.utils.toDescriptor
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assumptions
 import org.opentest4j.TestAbortedException
@@ -35,18 +40,18 @@ class Test262Test(
     }
 
     fun test() {
-        val agent = if (!Agent.hasActiveAgent) {
-            val agent = Agent.build {
-                hostHooks = object : HostHooks() {
-                    override fun initializeHostDefinedGlobalObject(realm: Realm): JSObject {
-                        return Test262GlobalObject.create(realm)
-                    }
+        val agent = Agent.build {
+            hostHooks = object : HostHooks() {
+                override fun createHostDefinedProperties(realm: Realm, globalObject: JSObject) {
+                    super.createHostDefinedProperties(realm, globalObject)
+
+                    val descriptor = JS262Object.create(globalObject, realm).toDescriptor { +conf; -enum; +writ }
+                    Operations.definePropertyOrThrow(globalObject, "$262".key(), descriptor)
                 }
             }
+        }
 
-            agent.setActive(true)
-            agent
-        } else Agent.activeAgent
+        agent.enter()
 
         try {
             Assumptions.assumeTrue(metadata.features?.any { "intl" in it.lowercase() } != true)
@@ -67,7 +72,7 @@ class Test262Test(
                 }
             } else ""
 
-            val realm = agent.makeRealm()
+            val realm = agent.makeRealmAndInitializeExecutionEnvironment()
             val isModule = if (metadata.flags != null) Flag.Module in metadata.flags else false
 
             val pretestSourceInfo = LiteralSourceInfo("pretest", requiredScript, isModule = false)
@@ -86,6 +91,8 @@ class Test262Test(
             } else {
                 runSyncTest(agent, realm, isModule)
             }
+
+            agent.popExecutionContext()
         } catch (e: TestAbortedException) {
             Test262Runner.testResults.add(
                 Test262Runner.TestResult(
@@ -100,6 +107,8 @@ class Test262Test(
                 )
             )
             throw e
+        } finally {
+            agent.exit()
         }
 
         Test262Runner.testResults.add(

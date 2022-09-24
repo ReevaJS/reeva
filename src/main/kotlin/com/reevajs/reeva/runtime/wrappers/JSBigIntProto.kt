@@ -18,7 +18,6 @@ class JSBigIntProto private constructor(realm: Realm) : JSObject(realm, realm.ob
     override fun init() {
         super.init()
 
-        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.bigIntCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "BigInt".toValue(), Descriptor.CONFIGURABLE or Descriptor.HAS_BASIC)
         defineBuiltin("toString", 0, ::toString)

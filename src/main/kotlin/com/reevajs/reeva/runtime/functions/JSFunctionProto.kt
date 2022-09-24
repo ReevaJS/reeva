@@ -8,7 +8,10 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.primitives.*
+import com.reevajs.reeva.runtime.primitives.JSNull
+import com.reevajs.reeva.runtime.primitives.JSNumber
+import com.reevajs.reeva.runtime.primitives.JSString
+import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toIntegerOrInfinity
 import com.reevajs.reeva.utils.*
 import kotlin.math.max
@@ -17,16 +20,8 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
     override fun init() {
         super.init()
 
-        val thrower = JSRunnableFunction.create("", 0) {
-            Errors.Function.CallerArgumentsAccess.throwTypeError()
-        }
-
         defineOwnProperty("name", "".toValue(), attrs { +conf; -enum; -writ })
         defineOwnProperty("length", 0.toValue(), attrs { +conf; -enum; -writ })
-
-        val desc = Descriptor(JSAccessor(thrower, thrower), Descriptor.CONFIGURABLE)
-        defineOwnProperty("caller".key(), desc)
-        defineOwnProperty("arguments".key(), desc)
 
         defineBuiltin("apply", 2, ::apply)
         defineBuiltin("bind", 1, ::bind)

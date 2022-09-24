@@ -1,6 +1,12 @@
 package com.reevajs.reeva.utils
 
+import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.Descriptor
+
+fun JSValue.toDescriptor(block: Attrs.() -> Unit = {}): Descriptor {
+    return Descriptor(this, Attrs().apply(block).attrs)
+}
+
 fun attrs(block: Attrs.() -> Unit): Int {
     return Attrs().apply(block).attrs
 }

@@ -15,7 +15,6 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
     override fun init() {
         super.init()
 
-        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.objectCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineBuiltinGetter("__proto__", ::getProto, attrs { +conf; -enum })
         defineBuiltinSetter("__proto__", ::setProto, attrs { +conf; -enum })

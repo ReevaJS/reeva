@@ -1518,7 +1518,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("9.1.2.5")
-    fun newGlobalEnvironment(realm: Realm, globalObject: JSObject, thisValue: JSObject): GlobalEnvRecord {
+    fun newGlobalEnvironment(realm: Realm, globalObject: JSObject, thisValue: JSValue): GlobalEnvRecord {
         // 1. Let objRec be NewObjectEnvironment(G, false, null).
         val objectRecord = ObjectEnvRecord(realm, globalObject, false, null)
 
@@ -2833,13 +2833,6 @@ object Operations {
 
     @JvmStatic
     fun unwrapPromise(value: JSValue): JSValue {
-        if (Agent.activeAgent.contextStack().isNotEmpty()) {
-            throw IllegalStateException(
-                "Operations.unwrapPromise is a helper method and cannot be called during JS execution, " +
-                    "as it must arbitrarily spin the microtask queue"
-            )
-        }
-
         if (!isPromise(value))
             return value
 

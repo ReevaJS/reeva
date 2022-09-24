@@ -20,7 +20,6 @@ class JSReferenceErrorProto private constructor(realm: Realm) : JSErrorProto(
 ) {
     override fun init() {
         super.init()
-        val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.referenceErrorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 

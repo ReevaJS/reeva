@@ -16,7 +16,6 @@ import kotlin.streams.toList
 
 class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JSString("")) {
     override fun init() {
-        val realm = Agent.activeAgent.getActiveRealm()
         // No super call to avoid prototype complications
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)

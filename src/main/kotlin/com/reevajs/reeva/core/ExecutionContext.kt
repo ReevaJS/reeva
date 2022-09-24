@@ -6,12 +6,12 @@ import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 
-data class ExecutionContext(
-    val enclosingFunction: JSFunction?,
+data class ExecutionContext @JvmOverloads constructor(
     val realm: Realm,
-    var envRecord: EnvRecord?,
-    val executable: Executable?,
-    val invocationLocation: SourceLocation?,
+    val function: JSFunction? = null,
+    var envRecord: EnvRecord? = null,
+    val executable: Executable? = null,
+    val invocationLocation: SourceLocation? = null,
 ) {
-    val isNative = enclosingFunction is JSNativeFunction
+    val isNative = function is JSNativeFunction
 }

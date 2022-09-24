@@ -1,9 +1,10 @@
 package com.reevajs.reeva.core.errors
 
 import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.runtime.errors.JSErrorObject
 import com.reevajs.reeva.utils.Result
 
-class ThrowException(val value: JSValue) : Exception() {
+class ThrowException(val value: JSValue) : Exception((value as? JSErrorObject)?.message) {
     // val stackFrames: List<ExecutionContext>
     //
     // init {

@@ -28,8 +28,6 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        val realm = Agent.activeAgent.getActiveRealm()
-
         if (arguments.newTarget == JSUndefined)
             Errors.CtorCallWithoutNew("Promise").throwTypeError(realm)
 
