@@ -12,7 +12,7 @@ import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.utils.ecmaAssert
 
 class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    var parameterMap by lateinitSlot<JSObject>(SlotName.ParameterMap)
+    var parameterMap by lateinitSlot(SlotName.MappedParameterMap)
 
     override fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
         val desc = super.getOwnPropertyDescriptor(property) ?: return null

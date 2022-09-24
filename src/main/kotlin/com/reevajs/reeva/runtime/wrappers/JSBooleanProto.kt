@@ -32,7 +32,7 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
                 return value as JSBoolean
             if (value !is JSObject)
                 Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError()
-            return value.getSlotAs(SlotName.BooleanData)
+            return value.getSlotOrNull(SlotName.BooleanData)
                 ?: Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError()
         }
 

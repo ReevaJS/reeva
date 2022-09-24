@@ -20,10 +20,10 @@ class JSIntegerIndexedObject private constructor(
 
     val typedArrayKind by slot(SlotName.TypedArrayKind, kind)
     val typedArrayName by slot(SlotName.TypedArrayName, "${kind.name}Array")
-    val viewedArrayBuffer by lateinitSlot<JSObject>(SlotName.ViewedArrayBuffer)
-    val byteLength by lateinitSlot<Int>(SlotName.ByteLength)
-    val byteOffset by lateinitSlot<Int>(SlotName.ByteOffset)
-    val arrayLength by lateinitSlot<Int>(SlotName.ArrayLength)
+    val viewedArrayBuffer by lateinitSlot(SlotName.ViewedArrayBuffer)
+    val byteLength by lateinitSlot(SlotName.ByteLength)
+    val byteOffset by lateinitSlot(SlotName.ByteOffset)
+    val arrayLength by lateinitSlot(SlotName.ArrayLength)
 
     override fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
         if (property.isSymbol)

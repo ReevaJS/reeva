@@ -81,7 +81,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             }
             if (value !is JSObject || !value.hasSlot(SlotName.DateValue))
                 Errors.IncompatibleMethodCall("Date.prototype.$method").throwTypeError()
-            return value.getSlotAs(SlotName.DateValue)
+            return value.getSlot(SlotName.DateValue)
         }
 
         private fun thisUTCTimeValue(value: JSValue, method: String): ZonedDateTime? {

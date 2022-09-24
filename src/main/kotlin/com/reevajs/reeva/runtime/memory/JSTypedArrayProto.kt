@@ -76,7 +76,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             val thisValue = arguments.thisValue
             if (thisValue !is JSObject)
                 return JSUndefined
-            val kind = thisValue.getSlotAs<Operations.TypedArrayKind?>(SlotName.TypedArrayKind) ?: return JSUndefined
+            val kind = thisValue.getSlotOrNull(SlotName.TypedArrayKind) ?: return JSUndefined
             return "${kind.name}Array".toValue()
         }
 
@@ -85,7 +85,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         fun getBuffer(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             ecmaAssert(thisValue is JSObject && thisValue.hasSlot(SlotName.ViewedArrayBuffer))
-            return thisValue.getSlotAs(SlotName.ViewedArrayBuffer)
+            return thisValue.getSlot(SlotName.ViewedArrayBuffer)
         }
 
         @ECMAImpl("23.2.3.2")
@@ -94,7 +94,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             val buffer = getBuffer(arguments)
             if (Operations.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
-            return (arguments.thisValue as JSObject).getSlotAs<Int>(SlotName.ByteLength).toValue()
+            return (arguments.thisValue as JSObject).getSlot(SlotName.ByteLength).toValue()
         }
 
         @ECMAImpl("23.2.3.3")
@@ -103,7 +103,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             val buffer = getBuffer(arguments)
             if (Operations.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
-            return (arguments.thisValue as JSObject).getSlotAs<Int>(SlotName.ByteOffset).toValue()
+            return (arguments.thisValue as JSObject).getSlot(SlotName.ByteOffset).toValue()
         }
 
         @ECMAImpl("23.2.3.18")
@@ -112,7 +112,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             val buffer = getBuffer(arguments)
             if (Operations.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
-            return (arguments.thisValue as JSObject).getSlotAs<Int>(SlotName.ArrayLength).toValue()
+            return (arguments.thisValue as JSObject).getSlot(SlotName.ArrayLength).toValue()
         }
 
         @JvmStatic
@@ -120,7 +120,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             val thisValue = arguments.thisValue
             expect(thisValue is JSObject)
             Operations.validateTypedArray(thisValue)
-            val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength)
+            val len = thisValue.getSlot(SlotName.ArrayLength)
             val relativeIndex = arguments.argument(0).toIntegerOrInfinity()
 
             val k = if (relativeIndex.isPositiveInfinity || relativeIndex.asLong >= 0) {
@@ -143,7 +143,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             Operations.validateTypedArray(thisValue)
 
             val (target, start, end) = arguments.takeArgs(0..2)
-            val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength)
+            val len = thisValue.getSlot(SlotName.ArrayLength)
 
             val to = Operations.mapWrappedArrayIndex(target.toIntegerOrInfinity(), len.toLong())
             val from = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(), len.toLong())
@@ -154,13 +154,13 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             if (count <= 0)
                 return thisValue
 
-            val buffer = thisValue.getSlotAs<JSValue>(SlotName.ViewedArrayBuffer)
+            val buffer = thisValue.getSlot(SlotName.ViewedArrayBuffer)
             if (Operations.isDetachedBuffer(buffer))
                 Errors.TODO("%TypedArray%.prototype.copyWithin").throwTypeError()
 
-            val kind = thisValue.getSlotAs<Operations.TypedArrayKind>(SlotName.TypedArrayKind)
+            val kind = thisValue.getSlot(SlotName.TypedArrayKind)
             val elementSize = kind.size
-            val byteOffset = thisValue.getSlotAs<Int>(SlotName.ByteOffset)
+            val byteOffset = thisValue.getSlot(SlotName.ByteOffset)
             var toByteIndex = to * elementSize + byteOffset
             var fromByteIndex = from * elementSize + byteOffset
             var countBytes = count * elementSize
@@ -217,15 +217,15 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             expect(thisValue is JSObject)
 
             val (valueArg, start, end) = arguments.takeArgs(0..2)
-            val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength).toLong()
-            val kind = thisValue.getSlotAs<Operations.TypedArrayKind>(SlotName.TypedArrayKind)
+            val len = thisValue.getSlot(SlotName.ArrayLength).toLong()
+            val kind = thisValue.getSlot(SlotName.TypedArrayKind)
             val value = if (kind.isBigInt) valueArg.toBigInt() else valueArg.toNumber()
 
             var k = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(), len)
             val relativeEnd = if (end == JSUndefined) len.toValue() else end.toIntegerOrInfinity()
             val final = Operations.mapWrappedArrayIndex(relativeEnd, len)
 
-            if (Operations.isDetachedBuffer(thisValue.getSlotAs(SlotName.ViewedArrayBuffer)))
+            if (Operations.isDetachedBuffer(thisValue.getSlot(SlotName.ViewedArrayBuffer)))
                 Errors.TODO("%TypedArray%.prototype.fill isDetachedBuffer").throwTypeError()
 
             while (k < final) {
@@ -247,7 +247,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             if (!callbackfn.isCallable)
                 Errors.NotCallable(callbackfn.toString()).throwTypeError()
 
-            val len = thisValue.getSlotAs<Int>(SlotName.ArrayLength)
+            val len = thisValue.getSlot(SlotName.ArrayLength)
             val kept = mutableListOf<JSValue>()
             var k = 0
 

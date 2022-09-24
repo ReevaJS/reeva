@@ -58,7 +58,7 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
             val thisValue = arguments.thisValue
             if (!Operations.requireInternalSlot(thisValue, SlotName.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.buffer").throwTypeError()
-            return thisValue.getSlotAs(SlotName.ViewedArrayBuffer)
+            return thisValue.getSlot(SlotName.ViewedArrayBuffer)
         }
 
         @ECMAImpl("25.3.4.2")
@@ -67,9 +67,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
             val thisValue = arguments.thisValue
             if (!Operations.requireInternalSlot(thisValue, SlotName.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError()
-            if (Operations.isDetachedBuffer(thisValue.getSlotAs(SlotName.ViewedArrayBuffer)))
+            if (Operations.isDetachedBuffer(thisValue.getSlot(SlotName.ViewedArrayBuffer)))
                 Errors.TODO("DataView.prototype.byteLength isDetachedBuffer").throwTypeError()
-            return thisValue.getSlotAs<Int>(SlotName.ByteLength).toValue()
+            return thisValue.getSlot(SlotName.ByteLength).toValue()
         }
 
         @ECMAImpl("25.3.4.3")
@@ -78,9 +78,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
             val thisValue = arguments.thisValue
             if (!Operations.requireInternalSlot(thisValue, SlotName.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError()
-            if (Operations.isDetachedBuffer(thisValue.getSlotAs(SlotName.ViewedArrayBuffer)))
+            if (Operations.isDetachedBuffer(thisValue.getSlot(SlotName.ViewedArrayBuffer)))
                 Errors.TODO("DataView.prototype.byteLength isDetachedBuffer").throwTypeError()
-            return thisValue.getSlotAs<Int>(SlotName.ByteOffset).toValue()
+            return thisValue.getSlot(SlotName.ByteOffset).toValue()
         }
 
         @ECMAImpl("25.3.4.5")

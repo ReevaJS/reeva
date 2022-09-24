@@ -8,9 +8,9 @@ import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 
 class JSArrayBufferObject private constructor(realm: Realm) : JSObject(realm, realm.arrayBufferProto) {
-    val data by lateinitSlot<DataBlock>(SlotName.ArrayBufferData)
-    val byteLength by lateinitSlot<Int>(SlotName.ArrayBufferByteLength)
-    val detachKey by slot<JSValue>(SlotName.ArrayBufferDetachKey, JSUndefined)
+    val data by lateinitSlot(SlotName.ArrayBufferData)
+    val byteLength by lateinitSlot(SlotName.ArrayBufferByteLength)
+    val detachKey by slot(SlotName.ArrayBufferDetachKey, JSUndefined)
 
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSArrayBufferObject(realm).initialize()

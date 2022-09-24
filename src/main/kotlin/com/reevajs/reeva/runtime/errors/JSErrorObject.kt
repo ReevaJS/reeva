@@ -13,7 +13,7 @@ open class JSErrorObject protected constructor(
     errorProto: JSObject = realm.errorProto
 ) : JSObject(realm, errorProto) {
     init {
-        addSlot(SlotName.ErrorData)
+        addSlot(SlotName.ErrorData, Unit)
     }
 
     override fun init() {

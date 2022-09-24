@@ -191,7 +191,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
                 Errors.IncompatibleMethodCall("RegExp.prototype.source").throwTypeError()
             }
             // TODO: EscapeRegExpPattern (21.2.5.12)
-            return thisValue.getSlotAs<String>(SlotName.OriginalSource).toValue()
+            return thisValue.getSlot(SlotName.OriginalSource).toValue()
         }
 
         @ECMAImpl("22.2.5.13")
@@ -248,7 +248,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         ): JSValue {
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype.$methodName").throwTypeError()
-            val flags = thisValue.getSlotAs<String?>(SlotName.OriginalFlags)
+            val flags = thisValue.getSlotOrNull(SlotName.OriginalFlags)
             if (flags == null) {
                 if (thisValue.sameValue(Agent.activeAgent.getActiveRealm().regExpProto))
                     return JSUndefined

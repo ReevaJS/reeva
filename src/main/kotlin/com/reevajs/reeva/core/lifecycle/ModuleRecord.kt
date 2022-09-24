@@ -261,13 +261,13 @@ abstract class ModuleRecord(val realm: Realm) : Executable {
             expect(promise is JSObject)
 
             // b. Assert: promise.[[PromiseState]] is not pending.
-            val promiseState = promise.getSlotAs<Operations.PromiseState>(SlotName.PromiseState)
+            val promiseState = promise.getSlot(SlotName.PromiseState)
             ecmaAssert(promiseState != Operations.PromiseState.Pending)
 
             // c. If promise.[[PromiseState]] is rejected, then
             if (promiseState == Operations.PromiseState.Rejected) {
                 // i. Return ThrowCompletion(promise.[[PromiseResult]]).
-                val result = promise.getSlotAs<JSValue>(SlotName.PromiseResult)
+                val result = promise.getSlot(SlotName.PromiseResult)
                 throw ThrowException(result)
             }
 

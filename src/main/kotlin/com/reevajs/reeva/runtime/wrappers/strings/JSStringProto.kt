@@ -57,7 +57,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
                 return thisValue
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError()
-            return thisValue.getSlotAs(SlotName.StringData)
+            return thisValue.getSlotOrNull(SlotName.StringData)
                 ?: Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError()
         }
 

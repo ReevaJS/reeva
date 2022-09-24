@@ -115,8 +115,8 @@ open class HostHooks {
                 try {
                     // If promise does not have any handlers by the time this microtask is ran, it
                     // will not have any handlers, and we can print a warning
-                    if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled)) {
-                        val result = promise.getSlotAs<JSValue>(SlotName.PromiseResult)
+                    if (!promise.getSlot(SlotName.PromiseIsHandled)) {
+                        val result = promise.getSlot(SlotName.PromiseResult)
                         println("\u001b[31mUnhandled promise rejection: ${result.toJSString()}\u001B[0m")
                     }
                 } finally {

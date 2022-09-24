@@ -156,8 +156,8 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                 value = when {
                     value.hasSlot(SlotName.NumberData) -> value.toNumber()
                     value.hasSlot(SlotName.StringData) -> value.toJSString()
-                    value.hasSlot(SlotName.BooleanData) -> value.getSlotAs(SlotName.BooleanData)
-                    value.hasSlot(SlotName.BigIntData) -> value.getSlotAs(SlotName.BigIntData)
+                    value.hasSlot(SlotName.BooleanData) -> value.getSlot(SlotName.BooleanData)
+                    value.hasSlot(SlotName.BigIntData) -> value.getSlot(SlotName.BigIntData)
                     else -> value
                 }
             }

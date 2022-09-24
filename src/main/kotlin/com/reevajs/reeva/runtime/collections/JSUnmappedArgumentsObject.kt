@@ -2,17 +2,15 @@ package com.reevajs.reeva.runtime.collections
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 
 class JSUnmappedArgumentsObject private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
-    var parameterMap by lateinitSlot<JSValue>(SlotName.ParameterMap)
+    var parameterMap by lateinitSlot(SlotName.UnmappedParameterMap)
 
     override fun init() {
         super.init()
-
         parameterMap = JSUndefined
     }
 

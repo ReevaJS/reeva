@@ -176,7 +176,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
                 } else {
                     when {
                         Operations.isArray(obj) -> "Array"
-                        obj.hasSlot(SlotName.ParameterMap) -> "Arguments"
+                        obj.hasSlot(SlotName.UnmappedParameterMap) || obj.hasSlot(SlotName.MappedParameterMap) -> "Arguments"
                         obj is JSFunction -> "Function" // TODO: Slot check? Can you extend Function?
                         obj.hasSlot(SlotName.ErrorData) -> "Error"
                         obj.hasSlot(SlotName.BooleanData) -> "Boolean"

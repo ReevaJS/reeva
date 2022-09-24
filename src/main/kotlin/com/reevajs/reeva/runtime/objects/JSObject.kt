@@ -14,7 +14,7 @@ import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
 open class JSObject protected constructor(realm: Realm, private var prototypeBacker: JSValue = JSNull) : JSValue() {
-    private val slots = mutableMapOf<Any, Any?>()
+    private val slots = mutableMapOf<SlotName<*>, Any?>()
     private val id = Agent.activeAgent.nextObjectId()
 
     internal val storage = mutableMapOf<StringOrSymbol, Descriptor>()
@@ -410,20 +410,22 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
         addProperty(key, Descriptor(function, attributes))
     }
 
-    fun addSlot(name: Any, value: JSValue = JSUndefined) {
-        slots[name] = value
+    fun <T> addSlot(slot: SlotName<T>, value: T? = null) {
+        slots[slot] = value
     }
 
-    fun hasSlot(name: Any) = name in slots
+    fun hasSlot(slot: SlotName<*>) = slot in slots
 
-    fun hasSlots(vararg names: Any) = names.all(::hasSlot)
+    fun hasSlots(names: List<SlotName<*>>) = names.all(::hasSlot)
 
-    fun getSlot(name: Any) = slots[name]
+    @Suppress("UNCHECKED_CAST")
+    fun <T> getSlot(slot: SlotName<T>): T = slots[slot] as T
 
-    inline fun <reified T> getSlotAs(name: Any) = getSlot(name) as T
+    @Suppress("UNCHECKED_CAST")
+    fun <T> getSlotOrNull(slot: SlotName<T>): T? = slots[slot] as T?
 
-    fun setSlot(name: Any, value: Any?) {
-        slots[name] = value
+    fun <T> setSlot(slot: SlotName<T>, value: T?) {
+        slots[slot] = value
     }
 
     internal fun internalGet(property: PropertyKey): Descriptor? {
@@ -480,37 +482,37 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
         }
     }
 
-    protected fun <T> slot(name: Any, initialValue: T) = SlotDelegator(name, initialValue)
+    protected fun <T> slot(slot: SlotName<T>, initialValue: T) = SlotDelegator(slot, initialValue)
 
-    protected fun <T> lateinitSlot(name: Any) = LateInitSlotDelegator<T>(name)
+    protected fun <T> lateinitSlot(slot: SlotName<T>) = LateInitSlotDelegator(slot)
 
-    protected inner class SlotDelegator<T>(val name: Any, initialValue: T) : ReadWriteProperty<JSObject, T> {
+    protected inner class SlotDelegator<T>(val slot: SlotName<T>, initialValue: T) : ReadWriteProperty<JSObject, T> {
         init {
-            slots[name] = initialValue
+            slots[slot] = initialValue
         }
 
         @Suppress("UNCHECKED_CAST")
         override fun getValue(thisRef: JSObject, property: KProperty<*>): T {
-            return slots[name] as T
+            return slots[slot] as T
         }
 
         override fun setValue(thisRef: JSObject, property: KProperty<*>, value: T) {
-            slots[name] = value
+            slots[slot] = value
         }
     }
 
-    protected inner class LateInitSlotDelegator<T>(val name: Any) : ReadWriteProperty<JSObject, T> {
+    protected inner class LateInitSlotDelegator<T>(val slot: SlotName<T>) : ReadWriteProperty<JSObject, T> {
         init {
-            slots[name] = null
+            slots[slot] = null
         }
 
         @Suppress("UNCHECKED_CAST")
         override fun getValue(thisRef: JSObject, property: KProperty<*>): T {
-            return slots[name] as T
+            return slots[slot] as T
         }
 
         override fun setValue(thisRef: JSObject, property: KProperty<*>, value: T) {
-            slots[name] = value
+            slots[slot] = value
         }
     }
 

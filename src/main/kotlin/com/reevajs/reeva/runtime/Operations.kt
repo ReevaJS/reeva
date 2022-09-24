@@ -918,7 +918,7 @@ object Operations {
         if (value is JSObject) {
             val handler = value.getSlot(SlotName.ProxyHandler)
             if (handler != null)
-                return isArray(value.getSlotAs(SlotName.ProxyTarget))
+                return isArray(value.getSlot(SlotName.ProxyTarget))
         }
         return false
     }
@@ -1644,7 +1644,7 @@ object Operations {
     @ECMAImpl("9.1.12")
     fun ordinaryObjectCreate(
         proto: JSValue,
-        additionalInternalSlotList: List<SlotName>,
+        additionalInternalSlotList: List<SlotName<*>>,
         realm: Realm = this.realm,
     ): JSObject {
         // Spec deviation: [[Prototype]] and [[Extensible]] are not implemented as slots,
@@ -1652,7 +1652,7 @@ object Operations {
         // Kotlin side
         val obj = JSObject.create(realm, proto = proto)
         additionalInternalSlotList.forEach {
-            obj.addSlot(it, JSUndefined)
+            obj.addSlot(it, null)
         }
         return obj
     }
@@ -1661,7 +1661,7 @@ object Operations {
     @ECMAImpl("9.1.13")
     fun ordinaryCreateFromConstructor(
         constructor: JSValue,
-        internalSlotsList: List<SlotName> = emptyList(),
+        internalSlotsList: List<SlotName<*>> = emptyList(),
         realm: Realm = this.realm,
         defaultProto: Function<Realm, JSObject>,
     ): JSObject {
@@ -1685,7 +1685,7 @@ object Operations {
 
     @JvmStatic
     @ECMAImpl("9.1.15")
-    fun requireInternalSlot(obj: JSValue, slot: SlotName): Boolean {
+    fun requireInternalSlot(obj: JSValue, slot: SlotName<*>): Boolean {
         contract {
             returns(true) implies (obj is JSObject)
         }
@@ -1774,13 +1774,13 @@ object Operations {
     @ECMAImpl("9.4.5.9")
     fun isValidIntegerIndex(obj: JSValue, index: JSNumber): Boolean {
         ecmaAssert(obj is JSIntegerIndexedObject)
-        if (isDetachedBuffer(obj.getSlotAs(SlotName.ViewedArrayBuffer)))
+        if (isDetachedBuffer(obj.getSlot(SlotName.ViewedArrayBuffer)))
             return false
         if (!isIntegralNumber(index))
             return false
         if (index.isNegativeZero)
             return false
-        if (index.number < 0 || index.number > obj.getSlotAs<Int>(SlotName.ArrayLength))
+        if (index.number < 0 || index.number > obj.getSlot(SlotName.ArrayLength))
             return false
         return true
     }
@@ -1791,11 +1791,11 @@ object Operations {
         ecmaAssert(obj is JSIntegerIndexedObject)
         if (index !is JSNumber || !isValidIntegerIndex(obj, index))
             return JSUndefined
-        val offset = obj.getSlotAs<Int>(SlotName.ByteOffset)
-        val kind = obj.getSlotAs<TypedArrayKind>(SlotName.TypedArrayKind)
+        val offset = obj.getSlot(SlotName.ByteOffset)
+        val kind = obj.getSlot(SlotName.TypedArrayKind)
         val indexedPosition = (index.asInt * kind.size) + offset
         return getValueFromBuffer(
-            obj.getSlotAs(SlotName.ViewedArrayBuffer),
+            obj.getSlot(SlotName.ViewedArrayBuffer),
             indexedPosition,
             kind,
             true,
@@ -1811,15 +1811,15 @@ object Operations {
         if (index !is JSNumber || !isValidIntegerIndex(obj, index))
             return
 
-        val kind = obj.getSlotAs<TypedArrayKind>(SlotName.TypedArrayKind)
+        val kind = obj.getSlot(SlotName.TypedArrayKind)
         val numValue = if (kind.isBigInt) {
             value.toBigInt()
         } else value.toNumber()
 
-        val offset = obj.getSlotAs<Int>(SlotName.ByteOffset)
+        val offset = obj.getSlot(SlotName.ByteOffset)
         val indexedPosition = (index.asInt * kind.size) + offset
         setValueInBuffer(
-            obj.getSlotAs(SlotName.ViewedArrayBuffer),
+            obj.getSlot(SlotName.ViewedArrayBuffer),
             indexedPosition,
             kind,
             numValue,
@@ -1847,13 +1847,13 @@ object Operations {
         ecmaAssert(position in 0 until size)
         val first = string[position]
         if (!first.isHighSurrogate() && !first.isLowSurrogate())
-            return CodepointRecord(first.toInt(), 1, false)
+            return CodepointRecord(first.code, 1, false)
         if (first.isLowSurrogate() || position + 1 == size)
-            return CodepointRecord(first.toInt(), 1, true)
+            return CodepointRecord(first.code, 1, true)
         val second = string[position + 1]
         if (!second.isLowSurrogate())
-            return CodepointRecord(first.toInt(), 1, true)
-        return CodepointRecord(utf16SurrogatePairToCodePoint(first.toInt(), second.toInt()), 2, false)
+            return CodepointRecord(first.code, 1, true)
+        return CodepointRecord(utf16SurrogatePairToCodePoint(first.code, second.code), 2, false)
     }
 
     @JvmStatic
@@ -2368,14 +2368,14 @@ object Operations {
         requireInternalSlot(thisValue, SlotName.RegExpMatcher)
 
         val text = string.string
-        val flags = thisValue.getSlotAs<String>(SlotName.OriginalFlags)
+        val flags = thisValue.getSlot(SlotName.OriginalFlags)
         val global = JSRegExpObject.Flag.Global.char in flags
         val sticky = JSRegExpObject.Flag.Sticky.char in flags
         val lastIndex = if (global || sticky) {
             thisValue.get("lastIndex").toLength().asInt
         } else 0
 
-        val regex = thisValue.getSlotAs<RegExp>(SlotName.RegExpMatcher)
+        val regex = thisValue.getSlot(SlotName.RegExpMatcher)
         val match = regex.matcher(text).match(lastIndex)
 
         if (match == null) {
@@ -2418,9 +2418,9 @@ object Operations {
     @JvmStatic
     @ECMAImpl("22.2.4.1")
     fun typedArraySpeciesCreate(exemplar: JSValue, arguments: JSArguments): JSObject {
-        ecmaAssert(exemplar is JSObject && exemplar.hasSlots(SlotName.TypedArrayName, SlotName.ContentType))
+        ecmaAssert(exemplar is JSObject && exemplar.hasSlots(listOf(SlotName.TypedArrayName, SlotName.ContentType)))
 
-        val kind = exemplar.getSlotAs<TypedArrayKind>(SlotName.TypedArrayKind)
+        val kind = exemplar.getSlot(SlotName.TypedArrayKind)
         val defaultConstructor = kind.getCtor(Agent.activeAgent.getActiveRealm())
         val constructor = speciesConstructor(exemplar, defaultConstructor)
         val result = typedArrayCreate(constructor, arguments)
@@ -2437,7 +2437,7 @@ object Operations {
         expect(newTypedArray is JSObject)
         if (arguments.size == 1) {
             val arg = arguments.argument(0)
-            if (arg is JSNumber && newTypedArray.getSlotAs<Int>(SlotName.ArrayLength) != arg.asInt)
+            if (arg is JSNumber && newTypedArray.getSlot(SlotName.ArrayLength) != arg.asInt)
                 Errors.TODO("typedArrayCreate").throwTypeError()
         }
         return newTypedArray
@@ -2449,7 +2449,7 @@ object Operations {
         if (!requireInternalSlot(obj, SlotName.TypedArrayName))
             Errors.TODO("validateTypedArray requireInternalSlot").throwTypeError()
         ecmaAssert(obj.hasSlot(SlotName.ViewedArrayBuffer))
-        val buffer = obj.getSlotAs<JSObject>(SlotName.ViewedArrayBuffer)
+        val buffer = obj.getSlot(SlotName.ViewedArrayBuffer)
         if (isDetachedBuffer(buffer))
             Errors.TODO("validateTypedArray isDetachedBuffer").throwTypeError()
     }
@@ -2508,7 +2508,7 @@ object Operations {
     @ECMAImpl("24.1.2.2")
     fun isDetachedBuffer(buffer: JSValue): Boolean {
         ecmaAssert(buffer is JSObject && buffer.hasSlot(SlotName.ArrayBufferData))
-        return buffer.getSlot(SlotName.ArrayBufferData) == null
+        return buffer.getSlotOrNull(SlotName.ArrayBufferData) == null
     }
 
     @JvmStatic
@@ -2516,15 +2516,15 @@ object Operations {
     fun detachArrayBuffer(arrayBuffer: JSValue, key: JSValue = JSUndefined) {
         ecmaAssert(arrayBuffer is JSObject)
         ecmaAssert(
-            arrayBuffer.hasSlots(
+            arrayBuffer.hasSlots(listOf(
                 SlotName.ArrayBufferData,
                 SlotName.ArrayBufferByteLength,
                 SlotName.ArrayBufferDetachKey
-            )
+            ))
         )
         ecmaAssert(!isSharedArrayBuffer(arrayBuffer))
 
-        val expectedKey = arrayBuffer.getSlotAs<JSValue>(SlotName.ArrayBufferDetachKey)
+        val expectedKey = arrayBuffer.getSlotOrNull(SlotName.ArrayBufferDetachKey) ?: JSUndefined
         if (!expectedKey.sameValue(key))
             Errors.ArrayBuffer.BadDetachKey(expectedKey.toString(), key.toString())
                 .throwTypeError()
@@ -2547,8 +2547,8 @@ object Operations {
         val targetBuffer = allocateArrayBuffer(cloneConstructor, srcLength)
         if (isDetachedBuffer(srcBuffer))
             Errors.TODO("cloneArrayBuffer isDetachedBuffer").throwTypeError()
-        val srcBlock = srcBuffer.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
-        val targetBlock = targetBuffer.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
+        val srcBlock = srcBuffer.getSlot(SlotName.ArrayBufferData)
+        val targetBlock = targetBuffer.getSlot(SlotName.ArrayBufferData)
         copyDataBlockBytes(targetBlock, 0, srcBlock, srcByteOffset, srcLength)
         return targetBuffer
     }
@@ -2629,7 +2629,7 @@ object Operations {
     ): JSValue {
         ecmaAssert(arrayBuffer is JSObject)
         ecmaAssert(!isDetachedBuffer(arrayBuffer))
-        val block = arrayBuffer.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
+        val block = arrayBuffer.getSlot(SlotName.ArrayBufferData)
         ecmaAssert(byteIndex + kind.size - 1 < block.size)
 
         if (isSharedArrayBuffer(arrayBuffer))
@@ -2708,7 +2708,7 @@ object Operations {
         ecmaAssert(!isDetachedBuffer(arrayBuffer))
         ecmaAssert(if (value is JSBigInt) isBigIntElementType(type) else value is JSNumber)
 
-        val block = arrayBuffer.getSlotAs<DataBlock>(SlotName.ArrayBufferData)
+        val block = arrayBuffer.getSlot(SlotName.ArrayBufferData)
         ecmaAssert(byteIndex + type.size <= block.size)
 
         val rawBytes = numericToRawBytes(type, value, isLittleEndian)
@@ -2736,12 +2736,12 @@ object Operations {
 
         val index = requestIndex.toIndex()
         val isLittleEndian = littleEndian.toBoolean()
-        val buffer = view.getSlotAs<JSObject>(SlotName.ViewedArrayBuffer)
+        val buffer = view.getSlot(SlotName.ViewedArrayBuffer)
         if (isDetachedBuffer(buffer))
             Errors.TODO("getViewValue isDetachedBuffer").throwTypeError()
 
-        val viewOffset = view.getSlotAs<Int>(SlotName.ByteOffset)
-        val viewSize = view.getSlotAs<Int>(SlotName.ByteLength)
+        val viewOffset = view.getSlot(SlotName.ByteOffset)
+        val viewSize = view.getSlot(SlotName.ByteLength)
         if (index + kind.size > viewSize)
             Errors.TODO("getViewValue out of range").throwRangeError()
 
@@ -2763,12 +2763,12 @@ object Operations {
         val index = requestIndex.toIndex()
         val numberValue = if (kind.isBigInt) value.toBigInt() else value.toNumber()
         val isLittleEndian = littleEndian.toBoolean()
-        val buffer = view.getSlotAs<JSObject>(SlotName.ViewedArrayBuffer)
+        val buffer = view.getSlot(SlotName.ViewedArrayBuffer)
         if (isDetachedBuffer(buffer))
             Errors.TODO("getViewValue isDetachedBuffer").throwTypeError()
 
-        val viewOffset = view.getSlotAs<Int>(SlotName.ByteOffset)
-        val viewSize = view.getSlotAs<Int>(SlotName.ByteLength)
+        val viewOffset = view.getSlot(SlotName.ByteOffset)
+        val viewSize = view.getSlot(SlotName.ByteLength)
         if (index + kind.size > viewSize)
             Errors.TODO("getViewValue out of range").throwRangeError()
 
@@ -2796,10 +2796,10 @@ object Operations {
     @ECMAImpl("26.6.1.4")
     fun fulfillPromise(promise: JSObject, reason: JSValue): JSValue {
         ecmaAssert(promise.getSlot(SlotName.PromiseState) == PromiseState.Pending)
-        val reactions = promise.getSlotAs<List<PromiseReaction>>(SlotName.PromiseFulfillReactions).toList()
+        val reactions = promise.getSlot(SlotName.PromiseFulfillReactions).toList()
         promise.setSlot(SlotName.PromiseResult, reason)
-        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<PromiseReaction>())
-        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<PromiseReaction>())
+        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf())
+        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf())
         promise.setSlot(SlotName.PromiseState, PromiseState.Fulfilled)
         return triggerPromiseReactions(reactions, reason)
     }
@@ -2843,12 +2843,12 @@ object Operations {
         if (!isPromise(value))
             return value
 
-        while (value.getSlotAs<PromiseState>(SlotName.PromiseState) == PromiseState.Pending)
+        while (value.getSlot(SlotName.PromiseState) == PromiseState.Pending)
             Agent.activeAgent.microtaskQueue.checkpoint()
 
-        val result = value.getSlotAs<JSValue>(SlotName.PromiseResult)
+        val result = value.getSlot(SlotName.PromiseResult)
 
-        if (value.getSlotAs<PromiseState>(SlotName.PromiseState) == PromiseState.Fulfilled)
+        if (value.getSlot(SlotName.PromiseState) == PromiseState.Fulfilled)
             return result
 
         throw ThrowException(result)
@@ -2858,13 +2858,13 @@ object Operations {
     @ECMAImpl("26.6.1.7")
     internal fun rejectPromise(promise: JSObject, reason: JSValue): JSValue {
         ecmaAssert(promise.getSlot(SlotName.PromiseState) == PromiseState.Pending)
-        val reactions = promise.getSlotAs<List<PromiseReaction>>(SlotName.PromiseRejectReactions).toList()
+        val reactions = promise.getSlot(SlotName.PromiseRejectReactions).toList()
         promise.setSlot(SlotName.PromiseResult, reason)
-        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<PromiseReaction>())
-        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<PromiseReaction>())
+        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf())
+        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf())
         promise.setSlot(SlotName.PromiseState, PromiseState.Rejected)
 
-        if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled))
+        if (!promise.getSlot(SlotName.PromiseIsHandled))
             Agent.activeAgent.hostHooks.promiseRejectionTracker(promise, "reject")
 
         return triggerPromiseReactions(reactions, reason)
@@ -2993,20 +2993,20 @@ object Operations {
         val fulfillReaction = PromiseReaction(resultCapability, PromiseReaction.Type.Fulfill, onFulfilledCallback)
         val rejectReaction = PromiseReaction(resultCapability, PromiseReaction.Type.Reject, onRejectedCallback)
 
-        when (promise.getSlotAs<PromiseState>(SlotName.PromiseState)) {
+        when (promise.getSlot(SlotName.PromiseState)) {
             PromiseState.Pending -> {
-                promise.getSlotAs<MutableList<PromiseReaction>>(SlotName.PromiseFulfillReactions).add(fulfillReaction)
-                promise.getSlotAs<MutableList<PromiseReaction>>(SlotName.PromiseRejectReactions).add(rejectReaction)
+                promise.getSlot(SlotName.PromiseFulfillReactions).add(fulfillReaction)
+                promise.getSlot(SlotName.PromiseRejectReactions).add(rejectReaction)
             }
             PromiseState.Fulfilled -> {
                 val fulfillJob =
-                    newPromiseReactionJob(fulfillReaction, promise.getSlotAs(SlotName.PromiseResult))
+                    newPromiseReactionJob(fulfillReaction, promise.getSlot(SlotName.PromiseResult))
                 Agent.activeAgent.hostHooks.enqueuePromiseJob(fulfillJob.realm, fulfillJob.job)
             }
             else -> {
-                if (!promise.getSlotAs<Boolean>(SlotName.PromiseIsHandled))
+                if (!promise.getSlot(SlotName.PromiseIsHandled))
                     Agent.activeAgent.hostHooks.promiseRejectionTracker(promise, "handle")
-                val rejectJob = newPromiseReactionJob(rejectReaction, promise.getSlotAs(SlotName.PromiseResult))
+                val rejectJob = newPromiseReactionJob(rejectReaction, promise.getSlot(SlotName.PromiseResult))
                 Agent.activeAgent.hostHooks.enqueuePromiseJob(rejectJob.realm, rejectJob.job)
             }
         }

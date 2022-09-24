@@ -151,7 +151,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         private fun thisMapData(thisValue: JSValue, method: String): JSMapObject.MapData {
             if (!Operations.requireInternalSlot(thisValue, SlotName.MapData))
                 Errors.IncompatibleMethodCall("Map.prototype.$method").throwTypeError()
-            return thisValue.getSlotAs(SlotName.MapData)
+            return thisValue.getSlot(SlotName.MapData)
         }
     }
 }

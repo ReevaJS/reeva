@@ -31,7 +31,7 @@ class JSProxyObject private constructor(
     override val isCallable = Operations.isCallable(target)
 
     val target by slot(SlotName.ProxyTarget, target)
-    var handler: JSObject? by slot(SlotName.ProxyHandler, handler)
+    var handler by slot(SlotName.ProxyHandler, handler)
 
     override fun isConstructor() = Operations.isConstructor(target)
 

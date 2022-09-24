@@ -25,7 +25,7 @@ class JSDataViewCtor private constructor(realm: Realm) : JSNativeFunction(realm,
         if (Operations.isDetachedBuffer(buffer))
             Errors.TODO("DataViewCtor isDetachedBuffer 1").throwTypeError()
 
-        val bufferByteLength = buffer.getSlotAs<Int>(SlotName.ArrayBufferByteLength)
+        val bufferByteLength = buffer.getSlot(SlotName.ArrayBufferByteLength)
         if (offset > bufferByteLength)
             Errors.DataView.OutOfRangeOffset(offset, bufferByteLength).throwRangeError()
 

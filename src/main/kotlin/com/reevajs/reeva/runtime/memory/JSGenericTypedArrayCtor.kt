@@ -82,14 +82,14 @@ open class JSGenericTypedArrayCtor protected constructor(
     @ECMAImpl("22.2.5.1.2")
     private fun initializeTypedArrayFromTypedArray(obj: JSValue, srcArray: JSValue) {
         ecmaAssert(obj is JSObject && srcArray is JSObject)
-        val srcData = srcArray.getSlotAs<JSValue>(SlotName.ViewedArrayBuffer)
+        val srcData = srcArray.getSlot(SlotName.ViewedArrayBuffer)
         if (Operations.isDetachedBuffer(srcData))
             Errors.TODO("initializeTypedArrayFromTypedArray isDetachedBuffer 1").throwTypeError()
 
-        val ctorKind = obj.getSlotAs<Operations.TypedArrayKind>(SlotName.TypedArrayKind)
-        val srcKind = srcArray.getSlotAs<Operations.TypedArrayKind>(SlotName.TypedArrayKind)
-        val srcByteOffset = srcArray.getSlotAs<Int>(SlotName.ByteOffset)
-        val elementLength = srcArray.getSlotAs<Int>(SlotName.ArrayLength)
+        val ctorKind = obj.getSlot(SlotName.TypedArrayKind)
+        val srcKind = srcArray.getSlot(SlotName.TypedArrayKind)
+        val srcByteOffset = srcArray.getSlot(SlotName.ByteOffset)
+        val elementLength = srcArray.getSlot(SlotName.ArrayLength)
         val byteLength = ctorKind.size * elementLength
 
         val bufferCtor = if (Operations.isSharedArrayBuffer(srcData)) {
@@ -146,7 +146,7 @@ open class JSGenericTypedArrayCtor protected constructor(
         ecmaAssert(obj is JSObject && obj.hasSlot(SlotName.TypedArrayKind))
         ecmaAssert(buffer is JSObject && buffer.hasSlot(SlotName.ArrayBufferData))
 
-        val ctorKind = obj.getSlotAs<Operations.TypedArrayKind>(SlotName.TypedArrayKind)
+        val ctorKind = obj.getSlot(SlotName.TypedArrayKind)
         val elementSize = ctorKind.size
         val offset = byteOffset.toIndex()
         if (offset % elementSize != 0)
@@ -155,7 +155,7 @@ open class JSGenericTypedArrayCtor protected constructor(
         if (Operations.isDetachedBuffer(buffer))
             Errors.TODO("initializeTypedArrayFromArrayBuffer isDetachedBuffer").throwTypeError()
 
-        val bufferByteLength = buffer.getSlotAs<Int>(SlotName.ArrayBufferByteLength)
+        val bufferByteLength = buffer.getSlot(SlotName.ArrayBufferByteLength)
         val newByteLength = if (length == JSUndefined) {
             if (bufferByteLength % elementSize != 0)
                 Errors.TypedArrays.InvalidBufferLength(bufferByteLength, ctorKind).throwRangeError()
