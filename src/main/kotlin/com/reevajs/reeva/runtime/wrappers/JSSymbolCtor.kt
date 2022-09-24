@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.primitives.JSSymbol
@@ -32,8 +31,8 @@ class JSSymbolCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         defineOwnProperty("toStringTag", Realm.WellKnownSymbols.toStringTag, 0)
         defineOwnProperty("unscopables", Realm.WellKnownSymbols.unscopables, 0)
 
-        defineBuiltin("for", 1, ReevaBuiltin.SymbolCtorFor)
-        defineBuiltin("keyFor", 1, ReevaBuiltin.SymbolCtorKeyFor)
+        defineBuiltin("for", 1, ::for_)
+        defineBuiltin("keyFor", 1, ::keyFor)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

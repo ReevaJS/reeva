@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -29,9 +28,9 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.symbolCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineNativeProperty("description", attrs { +conf; -enum }, ::getDescription, null)
-        defineBuiltin("toString", 0, ReevaBuiltin.SymbolProtoToString)
-        defineBuiltin("toValue", 0, ReevaBuiltin.SymbolProtoToValue)
-        defineBuiltin(Realm.WellKnownSymbols.toPrimitive, 0, ReevaBuiltin.SymbolProtoSymbolToPrimitive)
+        defineBuiltin("toString", 0, ::toString)
+        defineBuiltin("toValue", 0, ::toValue)
+        defineBuiltin(Realm.WellKnownSymbols.toPrimitive, 0, ::symbolToPrimitive)
     }
 
     fun getDescription(thisValue: JSValue): JSValue {

@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.iterators.JSMapIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -22,16 +21,16 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
 
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Map".toValue(), Descriptor.CONFIGURABLE)
 
-        defineBuiltinGetter("size", ReevaBuiltin.MapProtoGetSize, attrs { +conf; -enum })
-        defineBuiltin("clear", 0, ReevaBuiltin.MapProtoClear)
-        defineBuiltin("delete", 1, ReevaBuiltin.MapProtoDelete)
-        defineBuiltin("entries", 0, ReevaBuiltin.MapProtoEntries)
-        defineBuiltin("forEach", 1, ReevaBuiltin.MapProtoForEach)
-        defineBuiltin("get", 1, ReevaBuiltin.MapProtoGet)
-        defineBuiltin("has", 1, ReevaBuiltin.MapProtoHas)
-        defineBuiltin("keys", 1, ReevaBuiltin.MapProtoKeys)
-        defineBuiltin("set", 2, ReevaBuiltin.MapProtoSet)
-        defineBuiltin("values", 2, ReevaBuiltin.MapProtoValues)
+        defineBuiltinGetter("size", ::getSize, attrs { +conf; -enum })
+        defineBuiltin("clear", 0, ::clear)
+        defineBuiltin("delete", 1, ::delete)
+        defineBuiltin("entries", 0, ::entries)
+        defineBuiltin("forEach", 1, ::forEach)
+        defineBuiltin("get", 1, ::get)
+        defineBuiltin("has", 1, ::has)
+        defineBuiltin("keys", 1, ::keys)
+        defineBuiltin("set", 2, ::set)
+        defineBuiltin("values", 2, ::values)
 
         // "The initial value of the @@iterator property is the same function object
         // as the initial value of the 'entries' property."

@@ -3,7 +3,6 @@ package com.reevajs.reeva.jvmcompat
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.expect
@@ -13,7 +12,7 @@ class JSClassProto private constructor(realm: Realm) : JSObject(realm, realm.obj
     override fun init() {
         super.init()
 
-        defineBuiltin("toString", 0, ReevaBuiltin.ClassProtoToString)
+        defineBuiltin("toString", 0, ::toString)
     }
 
     companion object {

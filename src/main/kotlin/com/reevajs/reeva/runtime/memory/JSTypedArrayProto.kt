@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayProto
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -20,39 +19,39 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
         defineBuiltinGetter(
             Realm.WellKnownSymbols.toStringTag,
-            ReevaBuiltin.TypedArrayProtoGetSymbolToStringTag,
+            ::getSymbolToStringTag,
             attrs { +conf; -enum },
         )
-        defineBuiltinGetter("buffer", ReevaBuiltin.TypedArrayProtoGetBuffer, attrs { +conf; -enum })
-        defineBuiltinGetter("byteLength", ReevaBuiltin.TypedArrayProtoGetByteLength, attrs { +conf; -enum })
-        defineBuiltinGetter("byteOffset", ReevaBuiltin.TypedArrayProtoGetByteOffset, attrs { +conf; -enum })
-        defineBuiltinGetter("length", ReevaBuiltin.TypedArrayProtoGetLength, attrs { +conf; -enum })
+        defineBuiltinGetter("buffer", ::getBuffer, attrs { +conf; -enum })
+        defineBuiltinGetter("byteLength", ::getByteLength, attrs { +conf; -enum })
+        defineBuiltinGetter("byteOffset", ::getByteOffset, attrs { +conf; -enum })
+        defineBuiltinGetter("length", ::getLength, attrs { +conf; -enum })
 
-        defineBuiltin("at", 1, ReevaBuiltin.TypedArrayProtoAt)
-        defineBuiltin("copyWithin", 2, ReevaBuiltin.TypedArrayProtoCopyWithin)
-        defineBuiltin("entries", 0, ReevaBuiltin.TypedArrayProtoEntries)
-        defineBuiltin("every", 1, ReevaBuiltin.TypedArrayProtoEvery)
-        defineBuiltin("fill", 1, ReevaBuiltin.TypedArrayProtoFill)
-        defineBuiltin("filter", 1, ReevaBuiltin.TypedArrayProtoFilter)
-        defineBuiltin("find", 1, ReevaBuiltin.TypedArrayProtoFind)
-        defineBuiltin("findIndex", 1, ReevaBuiltin.TypedArrayProtoFindIndex)
-        defineBuiltin("forEach", 1, ReevaBuiltin.TypedArrayProtoForEach)
-        defineBuiltin("includes", 1, ReevaBuiltin.TypedArrayProtoIncludes)
-        defineBuiltin("indexOf", 1, ReevaBuiltin.TypedArrayProtoIndexOf)
-        defineBuiltin("join", 1, ReevaBuiltin.TypedArrayProtoJoin)
-//        defineBuiltin("keys", 0, Builtin.TypedArrayProtoKeys)
-        defineBuiltin("lastIndexOf", 1, ReevaBuiltin.TypedArrayProtoLastIndexOf)
-//        defineBuiltin("map", 1, Builtin.TypedArrayProtoMap)
-        defineBuiltin("reduce", 1, ReevaBuiltin.TypedArrayProtoReduce)
-        defineBuiltin("reduceRight", 1, ReevaBuiltin.TypedArrayProtoReduceRight)
-        defineBuiltin("reverse", 0, ReevaBuiltin.TypedArrayProtoReverse)
-//        defineBuiltin("set", 1, Builtin.TypedArrayProtoSet)
-//        defineBuiltin("slice", 2, Builtin.TypedArrayProtoSlice)
-        defineBuiltin("some", 1, ReevaBuiltin.TypedArrayProtoSome)
-//        defineBuiltin("sort", 1, Builtin.TypedArrayProtoSort)
-//        defineBuiltin("subarray", 2, Builtin.TypedArrayProtoSubarray)
-//        defineBuiltin("toString", 0, Builtin.TypedArrayProtoToString)
-//        defineBuiltin("values", 0, Builtin.TypedArrayProtoValues)
+        defineBuiltin("at", 1, ::at)
+        defineBuiltin("copyWithin", 2, ::copyWithin)
+        defineBuiltin("entries", 0, ::entries)
+        defineBuiltin("every", 1, ::every)
+        defineBuiltin("fill", 1, ::fill)
+        defineBuiltin("filter", 1, ::filter)
+        defineBuiltin("find", 1, ::find)
+        defineBuiltin("findIndex", 1, ::findIndex)
+        defineBuiltin("forEach", 1, ::forEach)
+        defineBuiltin("includes", 1, ::includes)
+        defineBuiltin("indexOf", 1, ::indexOf)
+        defineBuiltin("join", 1, ::join)
+//        defineBuiltin("keys", 0, ::keys)
+        defineBuiltin("lastIndexOf", 1, ::lastIndexOf)
+//        defineBuiltin("map", 1, ::map)
+        defineBuiltin("reduce", 1, ::reduce)
+        defineBuiltin("reduceRight", 1, ::reduceRight)
+        defineBuiltin("reverse", 0, ::reverse)
+//        defineBuiltin("set", 1, ::set)
+//        defineBuiltin("slice", 2, ::slice)
+        defineBuiltin("some", 1, ::some)
+//        defineBuiltin("sort", 1, ::sort)
+//        defineBuiltin("subarray", 2, ::subarray)
+//        defineBuiltin("toString", 0, ::toString)
+//        defineBuiltin("values", 0, ::values)
     }
 
     companion object {

@@ -4,12 +4,11 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.Builtin
+import com.reevajs.reeva.runtime.functions.BuiltinFunction
 import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
 import com.reevajs.reeva.runtime.objects.index.IndexedProperties
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.*
-import java.awt.Shape
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
@@ -312,7 +311,7 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
 
     fun defineBuiltinGetter(
         name: String,
-        builtin: Builtin,
+        builtin: BuiltinFunction,
         attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
     ) {
         defineBuiltinAccessor(name.key(), name, attributes, builtin, isGetter = true)
@@ -320,7 +319,7 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
 
     fun defineBuiltinGetter(
         name: JSSymbol,
-        builtin: Builtin,
+        builtin: BuiltinFunction,
         attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
     ) {
         defineBuiltinAccessor(name.key(), "get [${name.description}]", attributes, builtin, isGetter = true)
@@ -328,7 +327,7 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
 
     fun defineBuiltinSetter(
         name: String,
-        builtin: Builtin,
+        builtin: BuiltinFunction,
         attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
     ) {
         defineBuiltinAccessor(name.key(), name, attributes, builtin, isGetter = false)
@@ -336,7 +335,7 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
 
     fun defineBuiltinSetter(
         name: JSSymbol,
-        builtin: Builtin,
+        builtin: BuiltinFunction,
         attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
     ) {
         defineBuiltinAccessor(name.key(), "set [${name.description}]", attributes, builtin, isGetter = false)
@@ -346,7 +345,7 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
         key: PropertyKey,
         jsName: String,
         attributes: Int,
-        builtin: Builtin,
+        builtin: BuiltinFunction,
         isGetter: Boolean,
     ) {
         val length = if (isGetter) 0 else 1
@@ -384,7 +383,7 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
     fun defineBuiltin(
         name: String,
         length: Int,
-        builtin: Builtin,
+        builtin: BuiltinFunction,
         attributes: Int = attrs { +conf; -enum; +writ },
     ) {
         defineBuiltin(name.key(), name, length, builtin, attributes)
@@ -393,7 +392,7 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
     fun defineBuiltin(
         name: JSSymbol,
         length: Int,
-        builtin: Builtin,
+        builtin: BuiltinFunction,
         attributes: Int = attrs { +conf; -enum; +writ },
     ) {
         defineBuiltin(name.key(), "[${name.description}]", length, builtin, attributes)
@@ -403,7 +402,7 @@ open class JSObject protected constructor(realm: Realm, private var prototypeBac
         key: PropertyKey,
         jsName: String,
         length: Int,
-        builtin: Builtin,
+        builtin: BuiltinFunction,
         attributes: Int = attrs { +conf; -enum; +writ },
     ) {
         val function = JSBuiltinFunction.create(jsName, length, builtin)

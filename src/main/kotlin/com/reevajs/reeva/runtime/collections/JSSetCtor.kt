@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSFalse
@@ -17,7 +16,7 @@ import com.reevajs.reeva.utils.attrs
 class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set", 0) {
     override fun init() {
         super.init()
-        defineBuiltinGetter(Realm.WellKnownSymbols.species, ReevaBuiltin.SetCtorGetSymbolSpecies, attrs { +conf; -enum })
+        defineBuiltinGetter(Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

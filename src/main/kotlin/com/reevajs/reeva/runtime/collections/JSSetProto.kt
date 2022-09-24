@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.iterators.JSSetIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -20,15 +19,15 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
     override fun init() {
         super.init()
 
-        defineBuiltinGetter("size", ReevaBuiltin.SetProtoGetSize, attrs { +conf; -enum })
+        defineBuiltinGetter("size", ::getSize, attrs { +conf; -enum })
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Set".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("add", 1, ReevaBuiltin.SetProtoAdd)
-        defineBuiltin("clear", 1, ReevaBuiltin.SetProtoClear)
-        defineBuiltin("delete", 1, ReevaBuiltin.SetProtoDelete)
-        defineBuiltin("entries", 1, ReevaBuiltin.SetProtoEntries)
-        defineBuiltin("forEach", 1, ReevaBuiltin.SetProtoForEach)
-        defineBuiltin("has", 1, ReevaBuiltin.SetProtoHas)
-        defineBuiltin("values", 1, ReevaBuiltin.SetProtoValues)
+        defineBuiltin("add", 1, ::add)
+        defineBuiltin("clear", 1, ::clear)
+        defineBuiltin("delete", 1, ::delete)
+        defineBuiltin("entries", 1, ::entries)
+        defineBuiltin("forEach", 1, ::forEach)
+        defineBuiltin("has", 1, ::has)
+        defineBuiltin("values", 1, ::values)
 
         // "The initial value of the 'keys' property is the same function object as the initial value
         // of the 'values' property"

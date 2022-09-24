@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.primitives.*
@@ -18,18 +17,18 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
 
         val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty("constructor", realm.objectCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineBuiltinGetter("__proto__", ReevaBuiltin.ObjectProtoGetProto, attrs { +conf; -enum })
-        defineBuiltinSetter("__proto__", ReevaBuiltin.ObjectProtoSetProto, attrs { +conf; -enum })
-        defineBuiltin("__defineGetter__", 2, ReevaBuiltin.ObjectProtoDefineGetter)
-        defineBuiltin("__defineSetter__", 2, ReevaBuiltin.ObjectProtoDefineSetter)
-        defineBuiltin("__lookupGetter__", 1, ReevaBuiltin.ObjectProtoLookupGetter)
-        defineBuiltin("__lookupSetter__", 1, ReevaBuiltin.ObjectProtoLookupSetter)
-        defineBuiltin("hasOwnProperty", 1, ReevaBuiltin.ObjectProtoHasOwnProperty)
-        defineBuiltin("isPrototypeOf", 1, ReevaBuiltin.ObjectProtoIsPrototypeOf)
-        defineBuiltin("propertyIsEnumerable", 1, ReevaBuiltin.ObjectProtoPropertyIsEnumerable)
-        defineBuiltin("toLocaleString", 0, ReevaBuiltin.ObjectProtoToLocaleString)
-        defineBuiltin("toString", 0, ReevaBuiltin.ObjectProtoToString)
-        defineBuiltin("valueOf", 0, ReevaBuiltin.ObjectProtoValueOf)
+        defineBuiltinGetter("__proto__", ::getProto, attrs { +conf; -enum })
+        defineBuiltinSetter("__proto__", ::setProto, attrs { +conf; -enum })
+        defineBuiltin("__defineGetter__", 2, ::defineGetter)
+        defineBuiltin("__defineSetter__", 2, ::defineSetter)
+        defineBuiltin("__lookupGetter__", 1, ::lookupGetter)
+        defineBuiltin("__lookupSetter__", 1, ::lookupSetter)
+        defineBuiltin("hasOwnProperty", 1, ::hasOwnProperty)
+        defineBuiltin("isPrototypeOf", 1, ::isPrototypeOf)
+        defineBuiltin("propertyIsEnumerable", 1, ::propertyIsEnumerable)
+        defineBuiltin("toLocaleString", 0, ::toLocaleString)
+        defineBuiltin("toString", 0, ::toString)
+        defineBuiltin("valueOf", 0, ::valueOf)
     }
 
     @ECMAImpl("10.4.7.1")

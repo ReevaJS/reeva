@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 
@@ -12,7 +11,7 @@ class JSIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.
     override fun init() {
         super.init()
 
-        defineBuiltin(Realm.WellKnownSymbols.iterator, 0, ReevaBuiltin.IteratorProtoSymbolIterator)
+        defineBuiltin(Realm.WellKnownSymbols.iterator, 0, ::symbolIterator)
     }
 
     companion object {

@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -29,9 +28,9 @@ class JSFunctionProto private constructor(realm: Realm) : JSObject(realm, realm.
         defineOwnProperty("caller".key(), desc)
         defineOwnProperty("arguments".key(), desc)
 
-        defineBuiltin("apply", 2, ReevaBuiltin.FunctionProtoApply)
-        defineBuiltin("bind", 1, ReevaBuiltin.FunctionProtoBind)
-        defineBuiltin("call", 1, ReevaBuiltin.FunctionProtoCall)
+        defineBuiltin("apply", 2, ::apply)
+        defineBuiltin("bind", 1, ::bind)
+        defineBuiltin("call", 1, ::call)
     }
 
     companion object {

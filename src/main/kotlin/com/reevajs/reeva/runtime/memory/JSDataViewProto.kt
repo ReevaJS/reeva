@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -23,30 +22,30 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         defineOwnProperty("constructor", realm.dataViewCtor, attrs { +conf; -enum; +writ })
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "DataView".toValue(), attrs { +conf; -enum; -writ })
 
-        defineBuiltinGetter("buffer", ReevaBuiltin.DataViewProtoGetBuffer, attrs { +conf; -enum })
-        defineBuiltinGetter("byteLength", ReevaBuiltin.DataViewProtoGetByteLength, attrs { +conf; -enum })
-        defineBuiltinGetter("byteOffset", ReevaBuiltin.DataViewProtoGetByteOffset, attrs { +conf; -enum })
+        defineBuiltinGetter("buffer", ::getBuffer, attrs { +conf; -enum })
+        defineBuiltinGetter("byteLength", ::getByteLength, attrs { +conf; -enum })
+        defineBuiltinGetter("byteOffset", ::getByteOffset, attrs { +conf; -enum })
 
-        defineBuiltin("getBigInt64", 1, ReevaBuiltin.DataViewProtoGetBigInt64)
-        defineBuiltin("getBigUint64", 1, ReevaBuiltin.DataViewProtoGetBigUint64)
-        defineBuiltin("getFloat32", 1, ReevaBuiltin.DataViewProtoGetFloat32)
-        defineBuiltin("getFloat64", 1, ReevaBuiltin.DataViewProtoGetFloat64)
-        defineBuiltin("getInt8", 1, ReevaBuiltin.DataViewProtoGetInt8)
-        defineBuiltin("getInt16", 1, ReevaBuiltin.DataViewProtoGetInt16)
-        defineBuiltin("getInt32", 1, ReevaBuiltin.DataViewProtoGetInt32)
-        defineBuiltin("getUint8", 1, ReevaBuiltin.DataViewProtoGetUint8)
-        defineBuiltin("getUint16", 1, ReevaBuiltin.DataViewProtoGetUint16)
-        defineBuiltin("getUint32", 1, ReevaBuiltin.DataViewProtoGetUint32)
-        defineBuiltin("setBigInt64", 2, ReevaBuiltin.DataViewProtoSetBigInt64)
-        defineBuiltin("setBigUint64", 2, ReevaBuiltin.DataViewProtoSetBigUint64)
-        defineBuiltin("setFloat32", 2, ReevaBuiltin.DataViewProtoSetFloat32)
-        defineBuiltin("setFloat64", 2, ReevaBuiltin.DataViewProtoSetFloat64)
-        defineBuiltin("setInt8", 2, ReevaBuiltin.DataViewProtoSetInt8)
-        defineBuiltin("setInt16", 2, ReevaBuiltin.DataViewProtoSetInt16)
-        defineBuiltin("setInt32", 2, ReevaBuiltin.DataViewProtoSetInt32)
-        defineBuiltin("setUint8", 2, ReevaBuiltin.DataViewProtoSetUint8)
-        defineBuiltin("setUint16", 2, ReevaBuiltin.DataViewProtoSetUint16)
-        defineBuiltin("setUint32", 2, ReevaBuiltin.DataViewProtoSetUint32)
+        defineBuiltin("getBigInt64", 1, ::getBigInt64)
+        defineBuiltin("getBigUint64", 1, ::getBigUint64)
+        defineBuiltin("getFloat32", 1, ::getFloat32)
+        defineBuiltin("getFloat64", 1, ::getFloat64)
+        defineBuiltin("getInt8", 1, ::getInt8)
+        defineBuiltin("getInt16", 1, ::getInt16)
+        defineBuiltin("getInt32", 1, ::getInt32)
+        defineBuiltin("getUint8", 1, ::getUint8)
+        defineBuiltin("getUint16", 1, ::getUint16)
+        defineBuiltin("getUint32", 1, ::getUint32)
+        defineBuiltin("setBigInt64", 2, ::setBigInt64)
+        defineBuiltin("setBigUint64", 2, ::setBigUint64)
+        defineBuiltin("setFloat32", 2, ::setFloat32)
+        defineBuiltin("setFloat64", 2, ::setFloat64)
+        defineBuiltin("setInt8", 2, ::setInt8)
+        defineBuiltin("setInt16", 2, ::setInt16)
+        defineBuiltin("setInt32", 2, ::setInt32)
+        defineBuiltin("setUint8", 2, ::setUint8)
+        defineBuiltin("setUint16", 2, ::setUint16)
+        defineBuiltin("setUint32", 2, ::setUint32)
     }
 
     companion object {

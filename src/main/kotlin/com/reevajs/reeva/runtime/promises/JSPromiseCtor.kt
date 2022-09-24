@@ -6,7 +6,6 @@ import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -22,10 +21,10 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
     override fun init() {
         super.init()
 
-        defineBuiltin("all", 1, ReevaBuiltin.PromiseCtorAll)
-        defineBuiltin("allSettled", 1, ReevaBuiltin.PromiseCtorAllSettled)
-        defineBuiltin("resolve", 1, ReevaBuiltin.PromiseCtorResolve)
-        defineBuiltin("reject", 1, ReevaBuiltin.PromiseCtorReject)
+        defineBuiltin("all", 1, ::all)
+        defineBuiltin("allSettled", 1, ::allSettled)
+        defineBuiltin("resolve", 1, ::resolve)
+        defineBuiltin("reject", 1, ::reject)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

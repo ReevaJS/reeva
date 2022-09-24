@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -29,9 +28,9 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
     override fun init() {
         super.init()
 
-        defineBuiltin("now", 0, ReevaBuiltin.DateCtorNow)
-        defineBuiltin("parse", 0, ReevaBuiltin.DateCtorParse)
-        defineBuiltin("UTC", 0, ReevaBuiltin.DateCtorUTC)
+        defineBuiltin("now", 0, ::now)
+        defineBuiltin("parse", 0, ::parse)
+        defineBuiltin("UTC", 0, ::utc)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

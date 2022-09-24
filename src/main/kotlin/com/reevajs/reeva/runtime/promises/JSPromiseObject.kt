@@ -14,8 +14,8 @@ class JSPromiseObject private constructor(
     var state by slot(SlotName.PromiseState, state)
     var result by slot(SlotName.PromiseResult, result)
 
-    val fulfillReactions by slot(SlotName.PromiseFulfillReactions, mutableListOf<Operations.PromiseReaction>())
-    val rejectReactions by slot(SlotName.PromiseRejectReactions, mutableListOf<Operations.PromiseReaction>())
+    val fulfillReactions by slot(SlotName.PromiseFulfillReactions, mutableListOf())
+    val rejectReactions by slot(SlotName.PromiseRejectReactions, mutableListOf())
     var isHandled by slot(SlotName.PromiseIsHandled, false)
 
     companion object {

@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -73,12 +72,12 @@ open class JSGlobalObject protected constructor(
         defineOwnProperty("globalThis", this, Descriptor.WRITABLE or Descriptor.CONFIGURABLE)
         defineOwnProperty("undefined", JSUndefined, 0)
 
-        defineBuiltin("isNaN", 1, ReevaBuiltin.GlobalIsNaN)
-        defineBuiltin("eval", 1, ReevaBuiltin.GlobalEval)
-        defineBuiltin("parseInt", 1, ReevaBuiltin.GlobalParseInt)
-        defineBuiltin("id", 1, ReevaBuiltin.GlobalId)
-        defineBuiltin("jvm", 1, ReevaBuiltin.GlobalJvm)
-        defineBuiltin("inspect", 1, ReevaBuiltin.GlobalInspect)
+        defineBuiltin("isNaN", 1, ::isNaN)
+        defineBuiltin("eval", 1, ::eval)
+        defineBuiltin("parseInt", 1, ::parseInt)
+        defineBuiltin("id", 1, ::id)
+        defineBuiltin("jvm", 1, ::jvm)
+        defineBuiltin("inspect", 1, ::inspect)
 
         // TODO: The tests involving these functions have some pretty intense for loops which increase
         //       the test suite time significantly (~40%). These tests fail-fast when the functions

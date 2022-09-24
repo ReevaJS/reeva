@@ -197,7 +197,7 @@ object JVMValueMapper {
                 val arrayType = if (targetClass.isArray) targetClass.componentType else Any::class.java
                 val constructedArray = java.lang.reflect.Array.newInstance(
                     arrayType,
-                    value.getLength(value).asInt,
+                    JSArrayObject.getLength(value).asInt,
                 )
                 value.indexedProperties.indices().forEach { index ->
                     if (index !in Int.MIN_VALUE..Int.MAX_VALUE)

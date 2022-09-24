@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -21,9 +20,9 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
         defineOwnProperty("constructor", realm.promiseCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Promise".toValue(), Descriptor.CONFIGURABLE)
 
-        defineBuiltin("catch", 1, ReevaBuiltin.PromiseProtoCatch)
-        defineBuiltin("finally", 1, ReevaBuiltin.PromiseProtoFinally)
-        defineBuiltin("then", 1, ReevaBuiltin.PromiseProtoThen)
+        defineBuiltin("catch", 1, ::catch)
+        defineBuiltin("finally", 1, ::finally)
+        defineBuiltin("then", 1, ::then)
     }
 
     companion object {

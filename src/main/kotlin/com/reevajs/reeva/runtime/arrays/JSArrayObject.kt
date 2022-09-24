@@ -22,17 +22,6 @@ open class JSArrayObject protected constructor(
         defineNativeProperty("length", attrs { -conf; -enum; +writ }, ::getLength, ::setLength)
     }
 
-    fun getLength(thisValue: JSValue): JSValue {
-        expect(thisValue is JSObject)
-        return thisValue.indexedProperties.arrayLikeSize.toValue()
-    }
-
-    fun setLength(thisValue: JSValue, newLength: JSValue): JSValue {
-        expect(thisValue is JSObject)
-        thisValue.indexedProperties.setArrayLikeSize(newLength.toLength().asLong)
-        return JSUndefined
-    }
-
     @ECMAImpl("9.4.2.1", "[[DefineOwnProperty]]")
     @ECMAImpl("9.4.2.4", "ArraySetLength")
     override fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
@@ -131,5 +120,16 @@ open class JSArrayObject protected constructor(
             realm: Realm = Agent.activeAgent.getActiveRealm(),
             proto: JSValue = realm.arrayProto,
         ) = JSArrayObject(realm, proto).initialize()
+
+        fun getLength(thisValue: JSValue): JSValue {
+            expect(thisValue is JSObject)
+            return thisValue.indexedProperties.arrayLikeSize.toValue()
+        }
+
+        fun setLength(thisValue: JSValue, newLength: JSValue): JSValue {
+            expect(thisValue is JSObject)
+            thisValue.indexedProperties.setArrayLikeSize(newLength.toLength().asLong)
+            return JSUndefined
+        }
     }
 }

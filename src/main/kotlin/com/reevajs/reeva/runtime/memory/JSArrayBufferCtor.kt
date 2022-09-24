@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -18,8 +17,8 @@ class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(rea
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.WellKnownSymbols.species, ReevaBuiltin.ArrayBufferCtorGetSymbolSpecies, attrs { +conf; -enum })
-        defineBuiltin("isView", 1, ReevaBuiltin.ArrayBufferCtorIsView)
+        defineBuiltinGetter(Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum })
+        defineBuiltin("isView", 1, ::isView)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

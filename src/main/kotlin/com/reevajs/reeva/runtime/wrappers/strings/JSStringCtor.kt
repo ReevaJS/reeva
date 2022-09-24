@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.primitives.JSSymbol
@@ -16,8 +15,8 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun init() {
         super.init()
 
-        defineBuiltin("fromCharCode", 1, ReevaBuiltin.StringCtorFromCharCode)
-        defineBuiltin("fromCodePoint", 1, ReevaBuiltin.StringCtorFromCodePoint)
+        defineBuiltin("fromCharCode", 1, ::fromCharCode)
+        defineBuiltin("fromCodePoint", 1, ::fromCodePoint)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

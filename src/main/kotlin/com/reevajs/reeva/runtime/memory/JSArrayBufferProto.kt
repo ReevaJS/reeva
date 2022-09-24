@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -23,8 +22,8 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
         val realm = Agent.activeAgent.getActiveRealm()
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "ArrayBuffer".toValue(), attrs { +conf })
         defineOwnProperty("constructor", realm.arrayBufferCtor, attrs { +conf; -enum; +writ })
-        defineBuiltinGetter("byteLength", ReevaBuiltin.ArrayBufferProtoGetByteLength, attrs { +conf; -enum })
-        defineBuiltin("slice", 2, ReevaBuiltin.ArrayBufferProtoSlice)
+        defineBuiltinGetter("byteLength", ::getByteLength, attrs { +conf; -enum })
+        defineBuiltin("slice", 2, ::slice)
     }
 
     companion object {

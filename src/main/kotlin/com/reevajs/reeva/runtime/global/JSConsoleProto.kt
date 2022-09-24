@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSSymbol
@@ -15,7 +14,7 @@ import com.reevajs.reeva.runtime.toJSString
 class JSConsoleProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {
         super.init()
-        defineBuiltin("log", 0, ReevaBuiltin.ConsoleProtoLog)
+        defineBuiltin("log", 0, ::log)
     }
 
     companion object {

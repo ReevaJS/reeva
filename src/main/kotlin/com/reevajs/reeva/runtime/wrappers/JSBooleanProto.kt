@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -20,8 +19,8 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.booleanCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineBuiltin("toString", 0, ReevaBuiltin.BooleanProtoToString)
-        defineBuiltin("valueOf", 0, ReevaBuiltin.BooleanProtoValueOf)
+        defineBuiltin("toString", 0, ::toString)
+        defineBuiltin("valueOf", 0, ::valueOf)
     }
 
     companion object {

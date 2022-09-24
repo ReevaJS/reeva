@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -17,7 +16,7 @@ class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.WellKnownSymbols.species, ReevaBuiltin.RegExpCtorGetSpecies, attrs { +conf; -enum })
+        defineBuiltinGetter(Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum })
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

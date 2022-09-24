@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.mfbt.Dtoa
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -22,13 +21,13 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
         setPrototype(realm.objectProto)
         defineOwnProperty("prototype", realm.objectProto, Descriptor.HAS_BASIC)
         defineOwnProperty("constructor", realm.numberCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-        defineBuiltin("valueOf", 0, ReevaBuiltin.NumberProtoValueOf)
-        defineBuiltin("toExponential", 1, ReevaBuiltin.NumberProtoToExponential)
-        defineBuiltin("toFixed", 1, ReevaBuiltin.NumberProtoToFixed)
-        defineBuiltin("toLocaleString", 0, ReevaBuiltin.NumberProtoToLocaleString)
-        defineBuiltin("toPrecision", 1, ReevaBuiltin.NumberProtoToPrecision)
-        defineBuiltin("toString", 1, ReevaBuiltin.NumberProtoToString)
-        defineBuiltin("valueOf", 0, ReevaBuiltin.NumberProtoValueOf)
+        defineBuiltin("valueOf", 0, ::valueOf)
+        defineBuiltin("toExponential", 1, ::toExponential)
+        defineBuiltin("toFixed", 1, ::toFixed)
+        defineBuiltin("toLocaleString", 0, ::toLocaleString)
+        defineBuiltin("toPrecision", 1, ::toPrecision)
+        defineBuiltin("toString", 1, ::toString)
+        defineBuiltin("valueOf", 0, ::valueOf)
     }
 
     companion object {

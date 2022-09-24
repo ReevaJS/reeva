@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -17,22 +16,22 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         super.init()
 
         val attrs = attrs { +conf; -enum }
-        defineBuiltinGetter("dotAll", ReevaBuiltin.RegExpProtoGetDotAll, attributes = attrs)
-        defineBuiltinGetter("flags", ReevaBuiltin.RegExpProtoGetFlags, attributes = attrs)
-        defineBuiltinGetter("global", ReevaBuiltin.RegExpProtoGetGlobal, attributes = attrs)
-        defineBuiltinGetter("ignoreCase", ReevaBuiltin.RegExpProtoGetIgnoreCase, attributes = attrs)
-        defineBuiltinGetter("multiline", ReevaBuiltin.RegExpProtoGetMultiline, attributes = attrs)
-        defineBuiltinGetter("source", ReevaBuiltin.RegExpProtoGetSource, attributes = attrs)
-        defineBuiltinGetter("sticky", ReevaBuiltin.RegExpProtoGetSticky, attributes = attrs)
-        defineBuiltinGetter("unicode", ReevaBuiltin.RegExpProtoGetUnicode, attributes = attrs)
-        defineBuiltin(Realm.WellKnownSymbols.match, 1, ReevaBuiltin.RegExpProtoMatch)
-        defineBuiltin(Realm.WellKnownSymbols.matchAll, 1, ReevaBuiltin.RegExpProtoMatchAll)
-        defineBuiltin(Realm.WellKnownSymbols.replace, 2, ReevaBuiltin.RegExpProtoReplace)
-        defineBuiltin(Realm.WellKnownSymbols.search, 1, ReevaBuiltin.RegExpProtoSearch)
-        defineBuiltin(Realm.WellKnownSymbols.split, 2, ReevaBuiltin.RegExpProtoSplit)
-        defineBuiltin("exec", 1, ReevaBuiltin.RegExpProtoExec)
-        defineBuiltin("test", 1, ReevaBuiltin.RegExpProtoTest)
-        defineBuiltin("toString", 0, ReevaBuiltin.RegExpProtoToString)
+        defineBuiltinGetter("dotAll", ::getDotAll, attributes = attrs)
+        defineBuiltinGetter("flags", ::getFlags, attributes = attrs)
+        defineBuiltinGetter("global", ::getGlobal, attributes = attrs)
+        defineBuiltinGetter("ignoreCase", ::getIgnoreCase, attributes = attrs)
+        defineBuiltinGetter("multiline", ::getMultiline, attributes = attrs)
+        defineBuiltinGetter("source", ::getSource, attributes = attrs)
+        defineBuiltinGetter("sticky", ::getSticky, attributes = attrs)
+        defineBuiltinGetter("unicode", ::getUnicode, attributes = attrs)
+        defineBuiltin(Realm.WellKnownSymbols.match, 1, ::symbolMatch)
+        defineBuiltin(Realm.WellKnownSymbols.matchAll, 1, ::symbolMatchAll)
+        defineBuiltin(Realm.WellKnownSymbols.replace, 2, ::symbolReplace)
+        defineBuiltin(Realm.WellKnownSymbols.search, 1, ::symbolSearch)
+        defineBuiltin(Realm.WellKnownSymbols.split, 2, ::symbolSplit)
+        defineBuiltin("exec", 1, ::exec)
+        defineBuiltin("test", 1, ::test)
+        defineBuiltin("toString", 0, ::toString)
     }
 
     companion object {

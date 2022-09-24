@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
@@ -13,7 +12,7 @@ import com.reevajs.reeva.utils.ecmaAssert
 class JSListIteratorProto private constructor(realm: Realm) : JSObject(realm, realm.iteratorProto) {
     override fun init() {
         super.init()
-        defineBuiltin("next", 0, ReevaBuiltin.ListIteratorProtoNext)
+        defineBuiltin("next", 0, ::next)
     }
 
     companion object {

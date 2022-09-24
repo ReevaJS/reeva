@@ -6,7 +6,6 @@ import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -22,9 +21,9 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.WellKnownSymbols.toStringTag, ReevaBuiltin.JSONGetSymbolToStringTag, attrs { +conf; -enum; -writ })
-        defineBuiltin("parse", 2, ReevaBuiltin.JSONParse)
-        defineBuiltin("stringify", 3, ReevaBuiltin.JSONStringify)
+        defineBuiltinGetter(Realm.WellKnownSymbols.toStringTag, ::getSymbolToStringTag, attrs { +conf; -enum; -writ })
+        defineBuiltin("parse", 2, ::parse)
+        defineBuiltin("stringify", 3, ::stringify)
     }
 
     private data class SerializeState(

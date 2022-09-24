@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSGlobalObject
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
-import com.reevajs.reeva.runtime.builtins.Builtin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -30,9 +29,9 @@ class Test262GlobalObject private constructor(realm: Realm) : JSGlobalObject(rea
             val realm = Agent.activeAgent.getActiveRealm()
             defineOwnProperty("global", globalObject, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
             defineOwnProperty("agent", JS262AgentObject.create(realm), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
-            defineBuiltin("createRealm", 0, Builtin.forClass(this::class.java, "createRealm"))
-            defineBuiltin("detachArrayBuffer", 1, Builtin.forClass(this::class.java, "detachArrayBuffer"))
-            defineBuiltin("gc", 0, Builtin.forClass(this::class.java, "gc"))
+            defineBuiltin("createRealm", 0, ::createRealm)
+            defineBuiltin("detachArrayBuffer", 1, ::detachArrayBuffer)
+            defineBuiltin("gc", 0, ::gc)
         }
 
         companion object {

@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -24,8 +23,8 @@ open class JSGenericTypedArrayCtor protected constructor(
         super.init()
 
         defineOwnProperty("BYTES_PER_ELEMENT", kind.size.toValue(), 0)
-        defineBuiltin("from", 1, ReevaBuiltin.TypedArrayCtorFrom)
-        defineBuiltin("of", 0, ReevaBuiltin.TypedArrayCtorOf)
+        defineBuiltin("from", 1, JSTypedArrayCtor::from)
+        defineBuiltin("of", 0, JSTypedArrayCtor::of)
     }
 
     @ECMAImpl("22.2.5.1")

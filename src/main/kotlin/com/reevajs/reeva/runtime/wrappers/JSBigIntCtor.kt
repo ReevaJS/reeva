@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.primitives.JSBigInt
@@ -18,8 +17,8 @@ class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun init() {
         super.init()
 
-        defineBuiltin("asIntN", 2, ReevaBuiltin.BigIntCtorAsIntN)
-        defineBuiltin("asUintN", 2, ReevaBuiltin.BigIntCtorAsUintN)
+        defineBuiltin("asIntN", 2, ::asIntN)
+        defineBuiltin("asUintN", 2, ::asUintN)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

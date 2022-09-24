@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
@@ -17,7 +16,7 @@ class JSStringIteratorProto private constructor(realm: Realm) : JSObject(realm, 
         super.init()
 
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "String Iterator".toValue(), attrs { +conf; -enum; -writ })
-        defineBuiltin("next", 0, ReevaBuiltin.StringIteratorProtoNext)
+        defineBuiltin("next", 0, ::next)
     }
 
     companion object {

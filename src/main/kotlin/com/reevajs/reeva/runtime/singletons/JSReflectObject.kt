@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -20,18 +19,18 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         super.init()
 
         defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Reflect".toValue(), Descriptor.CONFIGURABLE)
-        defineBuiltin("apply", 3, ReevaBuiltin.ReflectApply)
-        defineBuiltin("construct", 2, ReevaBuiltin.ReflectConstruct)
-        defineBuiltin("defineProperty", 3, ReevaBuiltin.ReflectDefineProperty)
-        defineBuiltin("deleteProperty", 2, ReevaBuiltin.ReflectDeleteProperty)
-        defineBuiltin("get", 2, ReevaBuiltin.ReflectGet)
-        defineBuiltin("getOwnPropertyDescriptor", 2, ReevaBuiltin.ReflectGetOwnPropertyDescriptor)
-        defineBuiltin("has", 2, ReevaBuiltin.ReflectHas)
-        defineBuiltin("isExtensible", 1, ReevaBuiltin.ReflectIsExtensible)
-        defineBuiltin("ownKeys", 1, ReevaBuiltin.ReflectOwnKeys)
-        defineBuiltin("preventExtensions", 1, ReevaBuiltin.ReflectPreventExtensions)
-        defineBuiltin("set", 2, ReevaBuiltin.ReflectSet)
-        defineBuiltin("setPrototypeOf", 2, ReevaBuiltin.ReflectSetPrototypeOf)
+        defineBuiltin("apply", 3, ::apply)
+        defineBuiltin("construct", 2, ::construct)
+        defineBuiltin("defineProperty", 3, ::defineProperty)
+        defineBuiltin("deleteProperty", 2, ::deleteProperty)
+        defineBuiltin("get", 2, ::get)
+        defineBuiltin("getOwnPropertyDescriptor", 2, ::getOwnPropertyDescriptor)
+        defineBuiltin("has", 2, ::has)
+        defineBuiltin("isExtensible", 1, ::isExtensible)
+        defineBuiltin("ownKeys", 1, ::ownKeys)
+        defineBuiltin("preventExtensions", 1, ::preventExtensions)
+        defineBuiltin("set", 2, ::set)
+        defineBuiltin("setPrototypeOf", 2, ::setPrototypeOf)
     }
 
     companion object {

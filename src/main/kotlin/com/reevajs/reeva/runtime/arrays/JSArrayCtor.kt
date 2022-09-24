@@ -6,7 +6,6 @@ import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.errors.JSTypeErrorObject
 import com.reevajs.reeva.runtime.functions.JSFunction
@@ -22,11 +21,11 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     override fun init() {
         super.init()
 
-        defineBuiltinGetter(Realm.WellKnownSymbols.species, ReevaBuiltin.ArrayCtorGetSymbolSpecies, attrs { +conf; -enum; -writ })
+        defineBuiltinGetter(Realm.WellKnownSymbols.species, ::getSymbolSpecies, attrs { +conf; -enum; -writ })
 
-        defineBuiltin("isArray", 1, ReevaBuiltin.ArrayCtorIsArray)
-        defineBuiltin("from", 1, ReevaBuiltin.ArrayCtorFrom)
-        defineBuiltin("of", 0, ReevaBuiltin.ArrayCtorOf)
+        defineBuiltin("isArray", 1, ::isArray)
+        defineBuiltin("from", 1, ::from)
+        defineBuiltin("of", 0, ::of)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {

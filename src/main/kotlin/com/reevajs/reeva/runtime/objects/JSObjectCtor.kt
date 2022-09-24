@@ -4,7 +4,6 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
-import com.reevajs.reeva.runtime.builtins.ReevaBuiltin
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.functions.JSRunnableFunction
@@ -21,27 +20,27 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun init() {
         super.init()
 
-        defineBuiltin("assign", 2, ReevaBuiltin.ObjectCtorAssign)
-        defineBuiltin("create", 2, ReevaBuiltin.ObjectCtorCreate)
-        defineBuiltin("defineProperties", 2, ReevaBuiltin.ObjectCtorDefineProperties)
-        defineBuiltin("defineProperty", 3, ReevaBuiltin.ObjectCtorDefineProperty)
-        defineBuiltin("entries", 1, ReevaBuiltin.ObjectCtorEntries)
-        defineBuiltin("freeze", 1, ReevaBuiltin.ObjectCtorFreeze)
-        defineBuiltin("fromEntries", 1, ReevaBuiltin.ObjectCtorFromEntries)
-        defineBuiltin("getOwnPropertyDescriptor", 2, ReevaBuiltin.ObjectCtorGetOwnPropertyDescriptor)
-        defineBuiltin("getOwnPropertyDescriptors", 1, ReevaBuiltin.ObjectCtorGetOwnPropertyDescriptors)
-        defineBuiltin("getOwnPropertyNames", 1, ReevaBuiltin.ObjectCtorGetOwnPropertyNames)
-        defineBuiltin("getOwnPropertySymbols", 1, ReevaBuiltin.ObjectCtorGetOwnPropertySymbols)
-        defineBuiltin("getPrototypeOf", 1, ReevaBuiltin.ObjectCtorGetPrototypeOf)
-        defineBuiltin("is", 2, ReevaBuiltin.ObjectCtorIs)
-        defineBuiltin("isExtensible", 1, ReevaBuiltin.ObjectCtorIsExtensible)
-        defineBuiltin("isFrozen", 1, ReevaBuiltin.ObjectCtorIsFrozen)
-        defineBuiltin("isSealed", 1, ReevaBuiltin.ObjectCtorIsSealed)
-        defineBuiltin("keys", 1, ReevaBuiltin.ObjectCtorKeys)
-        defineBuiltin("preventExtensions", 1, ReevaBuiltin.ObjectCtorPreventExtensions)
-        defineBuiltin("seal", 1, ReevaBuiltin.ObjectCtorSeal)
-        defineBuiltin("setPrototypeOf", 2, ReevaBuiltin.ObjectCtorSetPrototypeOf)
-        defineBuiltin("values", 1, ReevaBuiltin.ObjectCtorValues)
+        defineBuiltin("assign", 2, ::assign)
+        defineBuiltin("create", 2, ::create_)
+        defineBuiltin("defineProperties", 2, ::defineProperties)
+        defineBuiltin("defineProperty", 3, ::defineProperty)
+        defineBuiltin("entries", 1, ::entries)
+        defineBuiltin("freeze", 1, ::freeze)
+        defineBuiltin("fromEntries", 1, ::fromEntries)
+        defineBuiltin("getOwnPropertyDescriptor", 2, ::getOwnPropertyDescriptor)
+        defineBuiltin("getOwnPropertyDescriptors", 1, ::getOwnPropertyDescriptors)
+        defineBuiltin("getOwnPropertyNames", 1, ::getOwnPropertyNames)
+        defineBuiltin("getOwnPropertySymbols", 1, ::getOwnPropertySymbols)
+        defineBuiltin("getPrototypeOf", 1, ::getPrototypeOf)
+        defineBuiltin("is", 2, ::is_)
+        defineBuiltin("isExtensible", 1, ::isExtensible)
+        defineBuiltin("isFrozen", 1, ::isFrozen)
+        defineBuiltin("isSealed", 1, ::isSealed)
+        defineBuiltin("keys", 1, ::keys)
+        defineBuiltin("preventExtensions", 1, ::preventExtensions)
+        defineBuiltin("seal", 1, ::seal)
+        defineBuiltin("setPrototypeOf", 2, ::setPrototypeOf)
+        defineBuiltin("values", 1, ::values)
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
