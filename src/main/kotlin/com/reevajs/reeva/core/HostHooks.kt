@@ -1,8 +1,6 @@
 package com.reevajs.reeva.core
 
 import com.reevajs.reeva.core.lifecycle.*
-import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.core.realm.RealmExtension
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
@@ -14,7 +12,6 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.expect
 import java.io.File
 import java.util.function.Function
-import javax.swing.text.html.HTML.Tag.P
 
 open class HostHooks {
     @ECMAImpl("9.5.2")

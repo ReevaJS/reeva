@@ -2,16 +2,13 @@ package com.reevajs.reeva.runtime.functions.generators
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.ExecutionContext
-import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.core.environment.EnvRecord
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.interpreter.Interpreter
 import com.reevajs.reeva.transformer.TransformedSource
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
-import com.reevajs.reeva.utils.expect
 
 class JSGeneratorObject private constructor(
     realm: Realm,

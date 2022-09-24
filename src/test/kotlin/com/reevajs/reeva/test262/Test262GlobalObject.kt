@@ -1,7 +1,7 @@
 package com.reevajs.reeva.test262
 
 import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.realm.Realm
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSGlobalObject
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations

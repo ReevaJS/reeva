@@ -2,7 +2,6 @@ package com.reevajs.reeva.core
 
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.core.lifecycle.Executable
-import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction

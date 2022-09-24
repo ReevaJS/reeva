@@ -1,7 +1,7 @@
 package com.reevajs.reeva.core.environment
 
 import com.reevajs.reeva.core.lifecycle.ModuleRecord
-import com.reevajs.reeva.core.realm.Realm
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.JSObject

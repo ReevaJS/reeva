@@ -3,7 +3,7 @@ package com.reevajs.reeva.interpreter
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
-import com.reevajs.reeva.core.realm.Realm
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.transformer.*

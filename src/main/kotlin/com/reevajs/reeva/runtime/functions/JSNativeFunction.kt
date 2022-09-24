@@ -2,18 +2,14 @@ package com.reevajs.reeva.runtime.functions
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.ExecutionContext
-import com.reevajs.reeva.core.realm.Realm
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.runtime.primitives.JSUndefined
-import com.reevajs.reeva.utils.Errors
-import com.reevajs.reeva.utils.NativeFunctionSignature
 import com.reevajs.reeva.utils.toValue
-import java.lang.reflect.InvocationTargetException
-import java.util.function.Function
 
 /**
  * This implements what the spec calls a builtin function. This is called NativeFunction

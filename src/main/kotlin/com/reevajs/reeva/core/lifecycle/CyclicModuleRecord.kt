@@ -1,19 +1,14 @@
 package com.reevajs.reeva.core.lifecycle
 
-import com.reevajs.reeva.Reeva
-import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.ExecutionContext
-import com.reevajs.reeva.core.realm.Realm
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.errors.completion
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.ecmaAssert
-import kotlin.math.min
 
 @ECMAImpl("16.2.1.5")
 abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {

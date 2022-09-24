@@ -1,4 +1,4 @@
-package com.reevajs.reeva.core.realm
+package com.reevajs.reeva.core
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.ModuleTree

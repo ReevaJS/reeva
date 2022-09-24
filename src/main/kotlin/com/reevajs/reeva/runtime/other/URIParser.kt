@@ -1,6 +1,5 @@
 package com.reevajs.reeva.runtime.other
 
-import com.reevajs.reeva.core.realm.Realm
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.utils.*
 import kotlin.experimental.inv

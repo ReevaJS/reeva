@@ -3,7 +3,7 @@ package com.reevajs.reeva.test262
 import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.HostHooks
-import com.reevajs.reeva.core.realm.Realm
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.FileSourceInfo
 import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
@@ -11,15 +11,10 @@ import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.transformer.opcodes.Throw
 import com.reevajs.reeva.utils.Result
-import com.reevajs.reeva.utils.unreachable
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assumptions
-import org.opentest4j.AssertionFailedError
 import org.opentest4j.TestAbortedException
-import strikt.api.expectThat
-import strikt.assertions.isA
 import java.io.File
 
 class Test262Test(

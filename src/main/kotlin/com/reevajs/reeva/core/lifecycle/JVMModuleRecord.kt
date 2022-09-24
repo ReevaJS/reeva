@@ -1,6 +1,6 @@
 package com.reevajs.reeva.core.lifecycle
 
-import com.reevajs.reeva.core.realm.Realm
+import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.jvmcompat.JSPackageObject

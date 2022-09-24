@@ -3,16 +3,11 @@ package com.reevajs.reeva.core
 import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.core.errors.DefaultErrorReporter
 import com.reevajs.reeva.core.lifecycle.*
-import com.reevajs.reeva.core.realm.Realm
-import com.reevajs.reeva.core.realm.RealmExtension
-import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.JSObject
-import java.io.Closeable
 import java.nio.ByteOrder
 import java.util.function.Function
-import kotlin.concurrent.withLock
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
