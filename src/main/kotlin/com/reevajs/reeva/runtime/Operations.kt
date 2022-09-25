@@ -1523,7 +1523,7 @@ object Operations {
         val objectRecord = ObjectEnvRecord(realm, globalObject, false, null)
 
         // 2. Let dclRec be a new declarative Environment Record containing no bindings.
-        val declarativeRecord = DeclarativeEnvRecord(realm, DeclarativeEnvRecord.UnoptimizedBindings(), null)
+        val declarativeRecord = DeclarativeEnvRecord(realm, null)
 
         // 3. Let env be a new global Environment Record.
         // 4. Set env.[[ObjectRecord]] to objRec.

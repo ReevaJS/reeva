@@ -594,11 +594,7 @@ class Interpreter(
 
     override fun visitPushDeclarativeEnvRecord(opcode: PushDeclarativeEnvRecord) {
         val runningContext = agent.runningExecutionContext
-        runningContext.envRecord = DeclarativeEnvRecord(
-            realm,
-            DeclarativeEnvRecord.Bindings.fromSlotCount(opcode.slotCount),
-            runningContext.envRecord,
-        )
+        runningContext.envRecord = DeclarativeEnvRecord(realm, runningContext.envRecord)
     }
 
     override fun visitPushModuleEnvRecord() {
@@ -621,32 +617,12 @@ class Interpreter(
         realm.globalEnv.setMutableBinding(opcode.name, popValue(), opcode.isStrict)
     }
 
-    override fun visitLoadCurrentEnvSlot(opcode: LoadCurrentEnvSlot) {
-        push(agent.runningExecutionContext.envRecord!!.getBindingValue(opcode.slot, opcode.isStrict))
-    }
-
-    override fun visitStoreCurrentEnvSlot(opcode: StoreCurrentEnvSlot) {
-        agent.runningExecutionContext.envRecord!!.setMutableBinding(opcode.slot, popValue(), opcode.isStrict)
-    }
-
     override fun visitLoadCurrentEnvName(opcode: LoadCurrentEnvName) {
         push(agent.runningExecutionContext.envRecord!!.getBindingValue(opcode.name, opcode.isStrict))
     }
 
     override fun visitStoreCurrentEnvName(opcode: StoreCurrentEnvName) {
         agent.runningExecutionContext.envRecord!!.setMutableBinding(opcode.name, popValue(), opcode.isStrict)
-    }
-
-    override fun visitLoadEnvSlot(opcode: LoadEnvSlot) {
-        var env = agent.runningExecutionContext.envRecord!!
-        repeat(opcode.distance) { env = env.outer!! }
-        push(env.getBindingValue(opcode.slot, opcode.isStrict))
-    }
-
-    override fun visitStoreEnvSlot(opcode: StoreEnvSlot) {
-        var env = agent.runningExecutionContext.envRecord!!
-        repeat(opcode.distance) { env = env.outer!! }
-        env.setMutableBinding(opcode.slot, popValue(), opcode.isStrict)
     }
 
     override fun visitLoadEnvName(opcode: LoadEnvName) {

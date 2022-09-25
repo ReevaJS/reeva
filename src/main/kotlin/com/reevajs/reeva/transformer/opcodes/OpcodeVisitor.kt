@@ -73,10 +73,6 @@ interface OpcodeVisitor {
             PopEnvRecord -> visitPopEnvRecord()
             is LoadGlobal -> visitLoadGlobal(opcode)
             is StoreGlobal -> visitStoreGlobal(opcode)
-            is LoadCurrentEnvSlot -> visitLoadCurrentEnvSlot(opcode)
-            is StoreCurrentEnvSlot -> visitStoreCurrentEnvSlot(opcode)
-            is LoadEnvSlot -> visitLoadEnvSlot(opcode)
-            is StoreEnvSlot -> visitStoreEnvSlot(opcode)
             is LoadCurrentEnvName -> visitLoadCurrentEnvName(opcode)
             is StoreCurrentEnvName -> visitStoreCurrentEnvName(opcode)
             is LoadEnvName -> visitLoadEnvName(opcode)
@@ -274,14 +270,6 @@ interface OpcodeVisitor {
     fun visitLoadGlobal(opcode: LoadGlobal)
 
     fun visitStoreGlobal(opcode: StoreGlobal)
-
-    fun visitLoadCurrentEnvSlot(opcode: LoadCurrentEnvSlot)
-
-    fun visitStoreCurrentEnvSlot(opcode: StoreCurrentEnvSlot)
-
-    fun visitLoadEnvSlot(opcode: LoadEnvSlot)
-
-    fun visitStoreEnvSlot(opcode: StoreEnvSlot)
 
     fun visitLoadCurrentEnvName(opcode: LoadCurrentEnvName)
 

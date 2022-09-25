@@ -9,12 +9,9 @@ import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.unreachable
 
-class ModuleEnvRecord(
-    realm: Realm,
-    outer: EnvRecord?,
-) : DeclarativeEnvRecord(realm, UnoptimizedBindings(), outer) {
+class ModuleEnvRecord(realm: Realm, outer: EnvRecord?) : DeclarativeEnvRecord(realm, outer) {
     @ECMAImpl("9.1.1.5.1")
-    override fun getBindingValue(name: EnvRecordKey, isStrict: Boolean): JSValue {
+    override fun getBindingValue(name: String, isStrict: Boolean): JSValue {
         // 1. Assert: S is true.
         ecmaAssert(isStrict)
 
@@ -45,7 +42,7 @@ class ModuleEnvRecord(
     }
 
     @ECMAImpl("9.1.1.5.2")
-    override fun deleteBinding(name: EnvRecordKey): Boolean {
+    override fun deleteBinding(name: String): Boolean {
         // The DeleteBinding concrete method of a module Environment Record is never used within this specification.
         unreachable()
     }
