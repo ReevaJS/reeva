@@ -181,29 +181,153 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         if (kind.isGenerator)
             insertGeneratorPrologue()
 
-        val functionInfo = makeFunctionInfo(
+        expect(functionScope is HoistingScope)
+        expect(bodyScope is HoistingScope)
+
+        val variables = bodyScope.variableSources
+        val varVariables = variables.filter { it.type == VariableType.Var }
+        val functionNames = mutableListOf<String>()
+        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
+
+        for (decl in varVariables.asReversed()) {
+            if (decl !is FunctionDeclarationNode || decl.name() in functionNames)
+                continue
+
+            functionNames.add(0, decl.name())
+
+            // We only care about top-level functions. Functions in nested block
+            // scopes get initialized in BlockDeclarationInstantiation
+            if (decl !in bodyScope.hoistedVariables)
+                functionsToInitialize.add(0, decl)
+        }
+
+        when (functionScope.argumentsMode) {
+            HoistingScope.ArgumentsMode.None -> {
+            }
+            HoistingScope.ArgumentsMode.Unmapped -> {
+                +CreateUnmappedArgumentsObject
+                storeToSource(functionScope.argumentsSource)
+            }
+            HoistingScope.ArgumentsMode.Mapped -> {
+                +CreateMappedArgumentsObject
+                storeToSource(functionScope.argumentsSource)
+            }
+        }
+
+        enterScope(functionScope)
+
+        if (parameters.containsDuplicates())
+            TODO("Handle duplicate parameter names")
+
+        val receiver = functionScope.receiverVariable
+
+        if (receiver != null && !receiver.isInlineable) {
+            +LoadValue(RECEIVER_LOCAL)
+            storeToSource(receiver)
+        }
+
+        val reservedLocals = getReservedLocalsCount(kind.isGenerator)
+
+        parameters.forEachIndexed { index, param ->
+            val local = Local(reservedLocals + index)
+
+            when (param) {
+                is SimpleParameter -> {
+                    if (param.initializer != null) {
+                        +LoadValue(local)
+                        builder.ifHelper(::JumpIfNotUndefined) {
+                            visit(param.initializer)
+                            storeToSource(param)
+                        }
+                    } else if (!param.isInlineable) {
+                        +LoadValue(local)
+                        storeToSource(param)
+                    }
+                }
+                is BindingParameter -> {
+                    if (param.initializer != null) {
+                        +LoadValue(local)
+                        builder.ifHelper(::JumpIfNotUndefined) {
+                            visit(param.initializer)
+                            +StoreValue(local)
+                        }
+                    }
+                    assign(param.pattern, local)
+                }
+                is RestParameter -> {
+                    +CollectRestArgs
+                    assign(param.declaration.node)
+                }
+            }
+        }
+
+        for (func in functionsToInitialize) {
+            visitFunctionHelper(
+                func.identifier!!.processedName,
+                func.parameters,
+                func.body,
+                func.functionScope,
+                func.body.scope,
+                isStrict,
+                isArrow = false,
+                func.kind,
+            )
+
+            storeToSource(func)
+        }
+
+        if (bodyScope != functionScope)
+            enterScope(bodyScope)
+
+        // body's scope is the same as the function's scope (the scope we receive
+        // as a parameter). We don't want to re-enter the same scope, so we explicitly
+        // call visitASTListNode instead, which skips the {enter,exit}Scope calls.
+        if (body is BlockNode) {
+            visitASTListNode(body.statements)
+        } else visit(body)
+
+        if (!builder.isDone) {
+            if (kind.isGenerator)
+                +SetGeneratorPhase(-1)
+
+            if (classConstructorKind == JSFunction.ConstructorKind.Derived) {
+                expect(body is BlockNode)
+                // TODO: Check to see if this is redundant
+                +LoadValue(RECEIVER_LOCAL)
+                +ThrowSuperNotInitializedIfEmpty
+                builder.setLastOpcodeLocation(body.sourceLocation)
+            } else if (body is BlockNode) {
+                +PushUndefined
+            }
+
+            +Return
+        }
+
+        if (bodyScope != functionScope)
+            exitScope(bodyScope)
+        exitScope(functionScope)
+
+        val functionInfo = FunctionInfo(
             name,
-            parameters,
-            body,
-            functionScope,
-            bodyScope,
+            builder.build(),
             isStrict,
-            isArrow,
-            kind,
-            classConstructorKind,
+            parameters.expectedArgumentCount(),
+            isTopLevel = false,
+            isGenerator = kind.isGenerator,
+            isArrow = isArrow,
         )
 
         builder = prevBuilder
-        val closureOp = when {
-            classConstructorKind != null -> ::CreateMethod
-            kind.isGenerator && kind.isAsync -> ::CreateAsyncGeneratorClosure
-            kind.isGenerator -> ::CreateGeneratorClosure
-            kind.isAsync -> ::CreateAsyncClosure
-            else -> ::CreateClosure
-        }
 
-        if (instantiateFunction)
-            +closureOp(functionInfo)
+        if (instantiateFunction) {
+            when {
+                classConstructorKind != null -> +CreateMethod(functionInfo)
+                kind.isGenerator && kind.isAsync -> +CreateAsyncGeneratorClosure(functionInfo)
+                kind.isGenerator -> +CreateGeneratorClosure(functionInfo)
+                kind.isAsync -> +CreateAsyncClosure(functionInfo)
+                else -> +CreateClosure(functionInfo)
+            }
+        }
 
         return functionInfo.also(builder::addNestedFunction)
     }
@@ -247,190 +371,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         } finally {
             if (pushScope)
                 exitScope(node.scope)
-        }
-    }
-
-    private fun makeFunctionInfo(
-        name: String,
-        parameters: ParameterList,
-        body: ASTNode,
-        functionScope: Scope,
-        bodyScope: Scope,
-        isStrict: Boolean,
-        isArrow: Boolean,
-        kind: Operations.FunctionKind,
-        classConstructorKind: JSFunction.ConstructorKind?,
-        hasClassFields: Boolean = false,
-    ): FunctionInfo {
-        functionDeclarationInstantiation(
-            parameters,
-            functionScope,
-            bodyScope,
-            isStrict,
-            isGenerator = kind.isGenerator,
-        ) {
-            if (hasClassFields && classConstructorKind == JSFunction.ConstructorKind.Base) {
-                // We can't load fields here if we are in a derived constructor as super() hasn't
-                // been called
-                callClassInstanceFieldInitializer()
-            }
-
-            // body's scope is the same as the function's scope (the scope we receive
-            // as a parameter). We don't want to re-enter the same scope, so we explicitly
-            // call visitASTListNode instead, which skips the {enter,exit}Scope calls.
-            if (body is BlockNode) {
-                visitASTListNode(body.statements)
-            } else visit(body)
-
-            if (!builder.isDone) {
-                if (kind.isGenerator)
-                    +SetGeneratorPhase(-1)
-
-                if (classConstructorKind == JSFunction.ConstructorKind.Derived) {
-                    expect(body is BlockNode)
-                    // TODO: Check to see if this is redundant
-                    +LoadValue(RECEIVER_LOCAL)
-                    +ThrowSuperNotInitializedIfEmpty
-                    builder.setLastOpcodeLocation(body.sourceLocation)
-                } else if (body is BlockNode) {
-                    +PushUndefined
-                }
-
-                +Return
-            }
-        }
-
-        return FunctionInfo(
-            name,
-            builder.build(),
-            isStrict,
-            parameters.expectedArgumentCount(),
-            isTopLevel = false,
-            isGenerator = kind.isGenerator,
-            isArrow = isArrow,
-        )
-    }
-
-    private fun functionDeclarationInstantiation(
-        parameters: ParameterList,
-        functionScope: Scope,
-        bodyScope: Scope,
-        isStrict: Boolean,
-        isGenerator: Boolean,
-        evaluationBlock: () -> Unit,
-    ) {
-        expect(functionScope is HoistingScope)
-        expect(bodyScope is HoistingScope)
-
-        val variables = bodyScope.variableSources
-        val varVariables = variables.filter { it.type == VariableType.Var }
-        val functionNames = mutableListOf<String>()
-        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
-
-        for (decl in varVariables.asReversed()) {
-            if (decl !is FunctionDeclarationNode)
-                continue
-
-            val name = decl.name()
-            if (name in functionNames)
-                continue
-
-            functionNames.add(0, name)
-
-            // We only care about top-level functions. Functions in nested block
-            // scopes get initialized in BlockDeclarationInstantiation
-            if (decl !in bodyScope.hoistedVariables)
-                functionsToInitialize.add(0, decl)
-        }
-
-        when (functionScope.argumentsMode) {
-            HoistingScope.ArgumentsMode.None -> {
-            }
-
-            HoistingScope.ArgumentsMode.Unmapped -> {
-                +CreateUnmappedArgumentsObject
-                storeToSource(functionScope.argumentsSource)
-            }
-
-            HoistingScope.ArgumentsMode.Mapped -> {
-                +CreateMappedArgumentsObject
-                storeToSource(functionScope.argumentsSource)
-            }
-        }
-
-        enterScope(functionScope)
-
-        if (parameters.containsDuplicates())
-            TODO("Handle duplicate parameter names")
-
-        val receiver = functionScope.receiverVariable
-
-        if (receiver != null && !receiver.isInlineable) {
-            +LoadValue(RECEIVER_LOCAL)
-            storeToSource(receiver)
-        }
-
-        val reservedLocals = getReservedLocalsCount(isGenerator)
-
-        parameters.forEachIndexed { index, param ->
-            val local = Local(reservedLocals + index)
-
-            when (param) {
-                is SimpleParameter -> {
-                    if (param.initializer != null) {
-                        +LoadValue(local)
-                        builder.ifHelper(::JumpIfNotUndefined) {
-                            visit(param.initializer)
-                            storeToSource(param)
-                        }
-                    } else if (!param.isInlineable) {
-                        +LoadValue(local)
-                        storeToSource(param)
-                    }
-                }
-
-                is BindingParameter -> {
-                    if (param.initializer != null) {
-                        +LoadValue(local)
-                        builder.ifHelper(::JumpIfNotUndefined) {
-                            visit(param.initializer)
-                            +StoreValue(local)
-                        }
-                    }
-                    assign(param.pattern, local)
-                }
-
-                is RestParameter -> {
-                    +CollectRestArgs
-                    assign(param.declaration.node)
-                }
-            }
-        }
-
-        for (func in functionsToInitialize) {
-            visitFunctionHelper(
-                func.identifier!!.processedName,
-                func.parameters,
-                func.body,
-                func.functionScope,
-                func.body.scope,
-                isStrict,
-                isArrow = false,
-                func.kind,
-            )
-
-            storeToSource(func)
-        }
-
-        if (bodyScope != functionScope)
-            enterScope(bodyScope)
-
-        evaluationBlock()
-
-        if (builder.isDone) {
-            if (bodyScope != functionScope)
-                exitScope(bodyScope)
-            exitScope(functionScope)
         }
     }
 
