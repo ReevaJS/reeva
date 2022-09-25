@@ -1530,13 +1530,25 @@ class Parser(val sourceInfo: SourceInfo) {
         return parseIdentifier().also(::validateBindingIdentifier)
     }
 
-    private fun checkForAndConsumeUseStrict(): ASTNode? = nps {
-        return@nps if (match(TokenType.StringLiteral) && token.literals == "use strict") {
+    private fun consumeStringLiteral(): StringLiteralNode? = nps {
+        if (match(TokenType.StringLiteral)) {
+            val node = StringLiteralNode(token.literals)
             consume()
-            if (match(TokenType.Semicolon))
-                consume()
-            StringLiteralNode("use strict")
+            node
         } else null
+    }.also {
+        if (match(TokenType.Semicolon))
+            consume()
+    }
+
+    private fun checkForAndConsumeUseStrict(): ASTNode? {
+        var useStrictDirective: StringLiteralNode? = null
+
+        while (true) {
+            val stringLiteral = consumeStringLiteral() ?: return useStrictDirective
+            if (stringLiteral.value == "use strict")
+                useStrictDirective = stringLiteral
+        }
     }
 
     private fun parseBlock(): BlockNode = nps {
