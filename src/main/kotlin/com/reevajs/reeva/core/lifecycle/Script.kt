@@ -51,9 +51,7 @@ class Script(val realm: Realm, private val parsedSource: ParsedSource) : Executa
         //     a. Set result to NormalCompletion(undefined).
         val result = try {
             val transformedSource = Executable.transform(parsedSource)
-            Interpreter(transformedSource, listOf(realm.globalObject, JSUndefined)).interpret().let {
-                if (it.hasError) throw it.error() else it.value()
-            }
+            Interpreter(transformedSource, listOf(realm.globalObject, JSUndefined)).interpret()
         } finally {
             // 15. Suspend scriptContext and remove it from the execution context stack.
             agent.popExecutionContext()

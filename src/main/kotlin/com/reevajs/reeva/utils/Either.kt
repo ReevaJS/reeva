@@ -1,7 +1,8 @@
 package com.reevajs.reeva.utils
 
 @Suppress("UNCHECKED_CAST")
-inline class Either<L, R>(private val value: Any) {
+@JvmInline
+value class Either<L, R>(private val value: Any) {
     val isLeft: Boolean get() = value is Left
     val isRight: Boolean get() = value is Right
 

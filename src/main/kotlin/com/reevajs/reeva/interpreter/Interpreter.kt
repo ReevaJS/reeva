@@ -53,7 +53,7 @@ class Interpreter(
         }
     }
 
-    fun interpret(): Result<ThrowException, JSValue> {
+    fun interpret(): JSValue {
         for ((index, arg) in arguments.take(info.ir.argCount).withIndex()) {
             locals[index] = arg
         }
@@ -94,7 +94,7 @@ class Interpreter(
                 }
 
                 if (!handled)
-                    return Result.error(e)
+                    throw e
             } catch (e: Throwable) {
                 println("Exception in FunctionInfo ${info.name}, opcode ${ip - 1}")
                 throw e
@@ -103,7 +103,7 @@ class Interpreter(
 
         expect(stack.size == 1)
         expect(stack[0] is JSValue)
-        return Result.success(stack[0] as JSValue)
+        return stack[0] as JSValue
     }
 
     override fun visitCopyObjectExcludingProperties(opcode: CopyObjectExcludingProperties) {

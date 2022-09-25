@@ -222,8 +222,7 @@ class NormalInterpretedFunction private constructor(
 ) : InterpretedFunction(realm, transformedSource) {
     override fun evaluate(arguments: JSArguments): JSValue {
         val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
-        val result = Interpreter(transformedSource, args).interpret()
-        return result.valueOrElse { throw result.error() }
+        return Interpreter(transformedSource, args).interpret()
     }
 
     companion object {

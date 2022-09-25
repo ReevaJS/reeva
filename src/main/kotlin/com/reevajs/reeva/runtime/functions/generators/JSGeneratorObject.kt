@@ -43,12 +43,7 @@ class JSGeneratorObject private constructor(
     private fun execute(): JSValue {
         val interpreter = Interpreter(transformedSource, arguments)
         val result = interpreter.interpret()
-        return if (result.hasValue) {
-            Operations.createIterResultObject(
-                result.value(),
-                generatorState.phase == -1,
-            )
-        } else throw result.error()
+        return Operations.createIterResultObject(result, generatorState.phase == -1)
     }
 
     companion object {

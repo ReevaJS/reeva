@@ -337,9 +337,7 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
         agent.pushExecutionContext(context)
 
         try {
-            Interpreter(transformedSource, listOf(JSUndefined, JSUndefined)).interpret().let {
-                if (it.hasError) throw it.error() else it.value()
-            }
+            Interpreter(transformedSource, listOf(JSUndefined, JSUndefined)).interpret()
         } finally {
             agent.popExecutionContext()
         }
