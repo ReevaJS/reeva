@@ -70,10 +70,6 @@ abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeW
 
 // Represents the way a variable is stored during execution
 sealed interface VariableKey {
-    // The variable is stored in an optimized DeclarativeEnvRecord and accessed
-    // by the specified slot in the bindings array
-    class EnvRecordSlot(val slot: Int) : VariableKey
-
     // The variable is stored directly in the interpreter's locals list, and
     // accessed directly by the given index
     class InlineIndex(val index: Int) : VariableKey

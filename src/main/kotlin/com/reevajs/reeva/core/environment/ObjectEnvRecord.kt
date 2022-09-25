@@ -21,9 +21,7 @@ class ObjectEnvRecord(
     outer: EnvRecord?,
 ) : EnvRecord(outer) {
     @ECMAImpl("9.1.1.2.1")
-    override fun hasBinding(name: EnvRecordKey): Boolean {
-        expect(name is String)
-
+    override fun hasBinding(name: String): Boolean {
         // 1. Let bindingObject be envRec.[[BindingObject]].
         // 2. let foundBinding be ? HasProperty(bindingObject, N).
         // 3. If foundBinding is false, return false.
@@ -50,9 +48,7 @@ class ObjectEnvRecord(
     }
 
     @ECMAImpl("9.1.1.2.2")
-    override fun createMutableBinding(name: EnvRecordKey, deletable: Boolean) {
-        expect(name is String)
-
+    override fun createMutableBinding(name: String, deletable: Boolean) {
         // 1. Let bindingObject be envRec.[[BindingObject]]
         // 2. Perform ? DefinePropertyOrThrow(bindingObject, N, PropertyDescriptor { [[Value]]: undefined, [[Writable]]:
         //    true, [[Enumerable]]: true, [[Configurable]]: D }).
@@ -66,14 +62,14 @@ class ObjectEnvRecord(
     }
 
     @ECMAImpl("9.1.1.2.3")
-    override fun createImmutableBinding(name: EnvRecordKey, shouldThrowOnReassignment: Boolean) {
+    override fun createImmutableBinding(name: String, shouldThrowOnReassignment: Boolean) {
         // The CreateImmutableBinding concrete method of an object Environment Record is never used within this
         // specification
         unreachable()
     }
 
     @ECMAImpl("9.1.1.2.4")
-    override fun initializeBinding(name: EnvRecordKey, value: JSValue) {
+    override fun initializeBinding(name: String, value: JSValue) {
         // 1. Perform ? envRec.SetMutableBinding(N, V, false).
         setMutableBinding(name, value, false)
 
@@ -81,9 +77,7 @@ class ObjectEnvRecord(
     }
 
     @ECMAImpl("9.1.1.2.5")
-    override fun setMutableBinding(name: EnvRecordKey, value: JSValue, isStrict: Boolean) {
-        expect(name is String)
-
+    override fun setMutableBinding(name: String, value: JSValue, isStrict: Boolean) {
         // 1. Let bindingObject be envRec.[[BindingObject]]
         // 2. Let stillExists be ? HasProperty(bindingObject, N).
         // 3. If stillExists is false and S is true, throw a ReferenceError exception.
@@ -97,9 +91,7 @@ class ObjectEnvRecord(
     }
 
     @ECMAImpl("9.1.1.2.6")
-    override fun getBindingValue(name: EnvRecordKey, isStrict: Boolean): JSValue {
-        expect(name is String)
-
+    override fun getBindingValue(name: String, isStrict: Boolean): JSValue {
         // 1. Let bindingObject be envRec.[[BindingObject]]
         // 2. Let value be ? HasProperty(bindingObject, N).
         // 3. If value is false, then
@@ -116,9 +108,7 @@ class ObjectEnvRecord(
     }
 
     @ECMAImpl("9.1.1.2.7")
-    override fun deleteBinding(name: EnvRecordKey): Boolean {
-        expect(name is String)
-
+    override fun deleteBinding(name: String): Boolean {
         // 1. Let bindingObject be envRec.[[BindingObject]].
         // 2. Return ? bindingObject.[[Delete]](N).
         return bindingObject.delete(name)

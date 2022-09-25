@@ -66,11 +66,8 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     private fun enterScope(scope: Scope) {
         currentScope = scope
 
-        if (scope.requiresEnv()) {
-            // If we are in an eval-scope, all slot optimizations get thrown out the window,
-            // and everything is stored in the EnvRecord by name
-            +PushDeclarativeEnvRecord(scope.slotCount.takeIf { !scope.isTaintedByEval })
-        }
+        if (scope.requiresEnv())
+            +PushDeclarativeEnvRecord
     }
 
     private fun exitScope(scope: Scope) {
@@ -460,15 +457,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             +LoadValue(Local(key.index))
         } else {
             val distance = currentScope!!.envDistanceFrom(source.scope)
-            val name = if (key is VariableKey.Named) source.name() else null
-            val index = if (key is VariableKey.EnvRecordSlot) key.slot else null
+            val name = source.name()
 
-            when {
-                distance == 0 && name == null -> +LoadCurrentEnvSlot(index!!, source.scope.isStrict)
-                distance == 0 && name != null -> +LoadCurrentEnvName(name, source.scope.isStrict)
-                name == null -> +LoadEnvSlot(index!!, distance, source.scope.isStrict)
-                else -> +LoadEnvName(name, distance, source.scope.isStrict)
-            }
+            if (distance == 0) {
+                +LoadCurrentEnvName(name, source.scope.isStrict)
+            } else +LoadEnvName(name, distance, source.scope.isStrict)
         }
     }
 
@@ -493,15 +486,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             +StoreValue(Local(key.index))
         } else {
             val distance = currentScope!!.envDistanceFrom(source.scope)
-            val name = if (key is VariableKey.Named) source.name() else null
-            val index = if (key is VariableKey.EnvRecordSlot) key.slot else null
+            val name = source.name()
 
-            when {
-                distance == 0 && name == null -> +StoreCurrentEnvSlot(index!!, source.scope.isStrict)
-                distance == 0 && name != null -> +StoreCurrentEnvName(name, source.scope.isStrict)
-                name == null -> +StoreEnvSlot(index!!, distance, source.scope.isStrict)
-                else -> +StoreEnvName(name, distance, source.scope.isStrict)
-            }
+            if (distance == 0) {
+                +StoreCurrentEnvName(name, source.scope.isStrict)
+            } else +StoreEnvName(name, distance, source.scope.isStrict)
         }
     }
 

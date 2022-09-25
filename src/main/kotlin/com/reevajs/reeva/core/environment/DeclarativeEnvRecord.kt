@@ -8,16 +8,14 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 
-open class DeclarativeEnvRecord(
-    protected val realm: Realm,
-    protected val bindings: Bindings,
-    outer: EnvRecord?,
-) : EnvRecord(outer) {
+open class DeclarativeEnvRecord(protected val realm: Realm, outer: EnvRecord?) : EnvRecord(outer) {
+    protected val bindings = mutableMapOf<String, Binding>()
+
     @ECMAImpl("9.1.1.1.1")
-    override fun hasBinding(name: EnvRecordKey) = name in bindings
+    override fun hasBinding(name: String) = name in bindings
 
     @ECMAImpl("9.1.1.1.2")
-    override fun createMutableBinding(name: EnvRecordKey, deletable: Boolean) {
+    override fun createMutableBinding(name: String, deletable: Boolean) {
         // 1. Assert: envRec does not already have a binding for N.
         ecmaAssert(!hasBinding(name))
 
@@ -29,7 +27,7 @@ open class DeclarativeEnvRecord(
     }
 
     @ECMAImpl("9.1.1.1.3")
-    override fun createImmutableBinding(name: EnvRecordKey, isStrict: Boolean) {
+    override fun createImmutableBinding(name: String, isStrict: Boolean) {
         // 1. Assert: envRec does not already have a binding for N.
         ecmaAssert(!hasBinding(name))
 
@@ -41,7 +39,7 @@ open class DeclarativeEnvRecord(
     }
 
     @ECMAImpl("9.1.1.1.4")
-    override fun initializeBinding(name: EnvRecordKey, value: JSValue) {
+    override fun initializeBinding(name: String, value: JSValue) {
         val binding = bindings[name]
 
         // 1. Assert: envRec must have an uninitialized binding for N.
@@ -55,7 +53,7 @@ open class DeclarativeEnvRecord(
     }
 
     @ECMAImpl("9.1.1.1.5")
-    override fun setMutableBinding(name: EnvRecordKey, value: JSValue, isStrict: Boolean) {
+    override fun setMutableBinding(name: String, value: JSValue, isStrict: Boolean) {
         @Suppress("NAME_SHADOWING")
         var isStrict = isStrict
         val binding = bindings[name]
@@ -100,7 +98,7 @@ open class DeclarativeEnvRecord(
     }
 
     @ECMAImpl("9.1.1.1.6")
-    override fun getBindingValue(name: EnvRecordKey, isStrict: Boolean): JSValue {
+    override fun getBindingValue(name: String, isStrict: Boolean): JSValue {
         val binding = bindings[name]
 
         // 1. Assert: envRec has a binding for N.
@@ -115,7 +113,7 @@ open class DeclarativeEnvRecord(
     }
 
     @ECMAImpl("9.1.1.1.7")
-    override fun deleteBinding(name: EnvRecordKey): Boolean {
+    override fun deleteBinding(name: String): Boolean {
         val binding = bindings[name]
 
         // 1. Assert: envRec has a binding for the name that is the value of N.
@@ -148,54 +146,6 @@ open class DeclarativeEnvRecord(
     override fun withBaseObject(): JSObject? {
         // 1. Return undefined.
         return null
-    }
-
-    interface Bindings {
-        operator fun contains(key: Any): Boolean
-
-        operator fun get(key: Any): Binding?
-
-        operator fun set(key: Any, value: Binding)
-
-        fun remove(key: Any)
-
-        companion object {
-            fun fromSlotCount(slotCount: Int?) = if (slotCount != null) {
-                OptimizedBindings(slotCount)
-            } else UnoptimizedBindings()
-        }
-    }
-
-    class OptimizedBindings(slotCount: Int) : Bindings {
-        private val bindings = Array<Binding?>(slotCount) { null }
-
-        override fun contains(key: Any) = bindings.getOrNull(key as Int) != null
-
-        override fun get(key: Any) = bindings[key as Int]
-
-        override fun set(key: Any, value: Binding) {
-            bindings[key as Int] = value
-        }
-
-        override fun remove(key: Any) {
-            bindings[key as Int] = null
-        }
-    }
-
-    class UnoptimizedBindings : Bindings {
-        private val bindings = mutableMapOf<String, Binding>()
-
-        override fun contains(key: Any) = (key as String) in bindings
-
-        override fun get(key: Any) = bindings[key as String]
-
-        override fun set(key: Any, value: Binding) {
-            bindings[key as String] = value
-        }
-
-        override fun remove(key: Any) {
-            bindings.remove(key as String)
-        }
     }
 
     open class Binding private constructor(var value: JSValue?, private var flags: Int) {

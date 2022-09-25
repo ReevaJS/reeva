@@ -22,9 +22,7 @@ class GlobalEnvRecord(
     private val varNames = mutableSetOf<String>()
 
     @ECMAImpl("9.1.1.4.1")
-    override fun hasBinding(name: EnvRecordKey): Boolean {
-        expect(name is String)
-
+    override fun hasBinding(name: String): Boolean {
         // 1. Let DclRec be envRec.[[DeclarativeRecord]]
         // 2. If ! DclRec.HasBinding(N) is true, return true.
         if (declarativeRecord.hasBinding(name))
@@ -36,9 +34,7 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.2")
-    override fun createMutableBinding(name: EnvRecordKey, deletable: Boolean) {
-        expect(name is String)
-
+    override fun createMutableBinding(name: String, deletable: Boolean) {
         // 1. Let DclRec be envRec.[[DeclarativeRecord]].
         // 2. If ! DclRec.HasBinding(N) is true, throw a TypeError exception.
         if (declarativeRecord.hasBinding(name))
@@ -49,9 +45,7 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.3")
-    override fun createImmutableBinding(name: EnvRecordKey, isStrict: Boolean) {
-        expect(name is String)
-
+    override fun createImmutableBinding(name: String, isStrict: Boolean) {
         // 1. Let DclRec be envRec.[[DeclarativeRecord]].
         // 2. If ! DclRec.HasBinding(N) is true, throw a TypeError exception.
         if (declarativeRecord.hasBinding(name))
@@ -62,9 +56,7 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.4")
-    override fun initializeBinding(name: EnvRecordKey, value: JSValue) {
-        expect(name is String)
-
+    override fun initializeBinding(name: String, value: JSValue) {
         // 1. Let DclRec be envRec.[[DeclarativeRecord]].
         // 2. If ! DclRec.HasBinding(N) is true, then
         if (declarativeRecord.hasBinding(name)) {
@@ -82,9 +74,7 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.5")
-    override fun setMutableBinding(name: EnvRecordKey, value: JSValue, isStrict: Boolean) {
-        expect(name is String)
-
+    override fun setMutableBinding(name: String, value: JSValue, isStrict: Boolean) {
         // 1. Let DclRec be envRec.[[DeclarativeRecord]].
         // 2. If ! DclRec.HasBinding(N) is true, then
         if (declarativeRecord.hasBinding(name)) {
@@ -98,9 +88,7 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.6")
-    override fun getBindingValue(name: EnvRecordKey, isStrict: Boolean): JSValue {
-        expect(name is String)
-
+    override fun getBindingValue(name: String, isStrict: Boolean): JSValue {
         // 1. Let DclRec be envRec.[[DeclarativeRecord]].
         // 2. If ! DclRec.HasBinding(N) is true, then
         if (declarativeRecord.hasBinding(name)) {
@@ -114,9 +102,7 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.7")
-    override fun deleteBinding(name: EnvRecordKey): Boolean {
-        expect(name is String)
-
+    override fun deleteBinding(name: String): Boolean {
         // 1. Let DclRec be envRec.[[DeclarativeRecord]].
         // 2. If ! DclRec.HasBinding(N) is true, then
         if (declarativeRecord.hasBinding(name)) {
@@ -172,9 +158,7 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.12")
-    fun hasVarDeclaration(name: EnvRecordKey): Boolean {
-        expect(name is String)
-
+    fun hasVarDeclaration(name: String): Boolean {
         // 1. Let varDeclaredNames be envRec.[[VarNames]].
         // 2. If varDeclaredNames contains N, return true.
         // 3. Return false.
@@ -182,18 +166,14 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.13")
-    fun hasLexicalDeclaration(name: EnvRecordKey): Boolean {
-        expect(name is String)
-
+    fun hasLexicalDeclaration(name: String): Boolean {
         // 1. Let DclRec be envRec.[[DeclarativeRecord]].
         // 2. Return ! DclRec.HasBinding(N).
         return declarativeRecord.hasBinding(name)
     }
 
     @ECMAImpl("9.1.1.4.14")
-    fun hasRestrictedGlobalProperty(name: EnvRecordKey): Boolean {
-        expect(name is String)
-
+    fun hasRestrictedGlobalProperty(name: String): Boolean {
         // 1. Let ObjRec be envRec.[[ObjectRecord]].
         // 2. Let globalObject be ObjRec.[[BindingObject]].
         // 3. Let existingProp be ? globalObject.[[GetOwnProperty]](N).
@@ -206,9 +186,7 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.15")
-    fun canDeclareGlobalVar(name: EnvRecordKey): Boolean {
-        expect(name is String)
-
+    fun canDeclareGlobalVar(name: String): Boolean {
         // 1. Let ObjRec be envRec.[[ObjectRecord]].
         // 2. Let globalObject be ObjRec.[[BindingObject]].
         val globalObject = objectRecord.bindingObject
@@ -223,9 +201,7 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.16")
-    fun canDeclareGlobalFunction(name: EnvRecordKey): Boolean {
-        expect(name is String)
-
+    fun canDeclareGlobalFunction(name: String): Boolean {
         // 1. Let ObjRec be envRec.[[ObjectRecord]].
         // 2. Let globalObject be ObjRec.[[BindingObject]].
         val globalObject = objectRecord.bindingObject
@@ -244,9 +220,7 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.17")
-    fun createGlobalVarBinding(name: EnvRecordKey, deletable: Boolean) {
-        expect(name is String)
-
+    fun createGlobalVarBinding(name: String, deletable: Boolean) {
         // 1. Let ObjRec be envRec.[[ObjectRecord]].
         // 2. Let globalObject be ObjRec.[[BindingObject]].
         val globalObject = objectRecord.bindingObject
@@ -272,9 +246,7 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.18")
-    fun createGlobalFunctionBinding(name: EnvRecordKey, value: JSValue, deletable: Boolean) {
-        expect(name is String)
-
+    fun createGlobalFunctionBinding(name: String, value: JSValue, deletable: Boolean) {
         // 1. Let ObjRec be envRec.[[ObjectRecord]].
         // 2. Let globalObject be ObjRec.[[BindingObject]].
         val globalObject = objectRecord.bindingObject

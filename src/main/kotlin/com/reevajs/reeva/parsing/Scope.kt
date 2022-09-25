@@ -22,12 +22,7 @@ open class Scope(
         get() = outer!!.nextInlineableLocal
         set(value) { outer!!.nextInlineableLocal = value }
 
-    protected open var nextSlot: Int
-        get() = outer!!.nextSlot
-        set(value) { outer!!.nextSlot = value }
-
     val inlineableLocalCount: Int get() = nextInlineableLocal
-    val slotCount: Int get() = nextSlot
 
     var isTaintedByEval = false
         private set
@@ -107,7 +102,7 @@ open class Scope(
             it.key = when {
                 isTaintedByEval -> VariableKey.Named
                 it.isInlineable -> VariableKey.InlineIndex(nextInlineableLocal++)
-                else -> VariableKey.EnvRecordSlot(nextSlot++)
+                else -> VariableKey.Named
             }
         }
     }
@@ -152,7 +147,6 @@ open class HoistingScope(
     private val reservedLocals = Transformer.getReservedLocalsCount(isGenerator)
 
     override var nextInlineableLocal = reservedLocals
-    override var nextSlot = 0
 
     // Variables that are only "effectively" declared in this scope, such
     // as var declarations in a nested block
@@ -231,7 +225,7 @@ open class HoistingScope(
             receiverVariable!!.key = when {
                 isTaintedByEval -> VariableKey.Named
                 receiverVariable!!.isInlineable -> VariableKey.InlineIndex(0)
-                else -> VariableKey.EnvRecordSlot(nextSlot++)
+                else -> VariableKey.Named
             }
         }
 
@@ -239,7 +233,7 @@ open class HoistingScope(
             source.key = when {
                 isTaintedByEval -> VariableKey.Named
                 source.isInlineable -> VariableKey.InlineIndex(reservedLocals + index)
-                else -> VariableKey.EnvRecordSlot(nextSlot++)
+                else -> VariableKey.Named
             }
         }
 
@@ -247,7 +241,7 @@ open class HoistingScope(
             it.key = when {
                 isTaintedByEval -> VariableKey.Named
                 it.isInlineable -> VariableKey.InlineIndex(nextInlineableLocal++)
-                else -> VariableKey.EnvRecordSlot(nextSlot++)
+                else -> VariableKey.Named
             }
         }
     }

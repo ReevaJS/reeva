@@ -465,7 +465,7 @@ class DeclareGlobalFunc(val name: String) : Opcode(-1)
  * should be a non-optimized declarative env record. This can happen in scopes
  * where eval is present, for example.
  */
-class PushDeclarativeEnvRecord(val slotCount: Int?) : Opcode(0)
+object PushDeclarativeEnvRecord : Opcode(0)
 
 /**
  * Creates a new ModuleEnvRecord with the current EnvRecord as its parent,
@@ -490,59 +490,36 @@ class LoadGlobal(val name: String, val isStrict: Boolean) : Opcode(1)
 class StoreGlobal(val name: String, val isStrict: Boolean) : Opcode(-1)
 
 /**
- * Loads a value from the current EnvRecord at the specified [slot].
- */
-class LoadCurrentEnvSlot(val slot: Int, val isStrict: Boolean) : Opcode(1)
-
-/**
- * Stores a value into the current EnvRecord at the specified [slot].
- */
-class StoreCurrentEnvSlot(val slot: Int, val isStrict: Boolean) : Opcode(-1)
-
-/**
- * Loads a value from a parent EnvRecord at the specified [slot]. The EnvRecord
- * is chosen via [distance], where a distance of zero implies the current
- * EnvRecord (though [distance] will always be greater than zero).
- */
-class LoadEnvSlot(val slot: Int, val distance: Int, val isStrict: Boolean) : Opcode(1)
-
-/**
- * Stores a value to a parent EnvRecord at the specified [slot]. The EnvRecord
- * is chosen via [distance], where a distance of zero implies the current
- * EnvRecord (though [distance] will always be greater than zero).
- */
-class StoreEnvSlot(val slot: Int, val distance: Int, val isStrict: Boolean) : Opcode(-1)
-
-/**
- * Like [LoadCurrentEnvSlot], but for unoptimized environments which use variable names
+ * Loads a value from the current EnvRecord with the specified [name].
  */
 class LoadCurrentEnvName(val name: String, val isStrict: Boolean) : Opcode(1)
 
 /**
- * Like [StoreCurrentEnvSlot], but for unoptimized environments which use variable names
+ * Stores a value into the current EnvRecord with the specified [name].
  */
 class StoreCurrentEnvName(val name: String, val isStrict: Boolean) : Opcode(-1)
 
 /**
- * Like [LoadEnvSlot], but for unoptimized environments which use variable names
+ * Loads a value from a parent EnvRecord with the specified [name]. The EnvRecord
+ * is chosen via [distance], where a distance of zero implies the current
+ * EnvRecord (though [distance] will always be greater than zero).
  */
 class LoadEnvName(val name: String, val distance: Int, val isStrict: Boolean) : Opcode(1)
 
 /**
- * Like [StoreEnvSlot], but for unoptimized environments which use variable names
+ * Stores a value to a parent EnvRecord with the specified [name]. The EnvRecord
+ * is chosen via [distance], where a distance of zero implies the current
+ * EnvRecord (though [distance] will always be greater than zero).
  */
-
 class StoreEnvName(val name: String, val distance: Int, val isStrict: Boolean) : Opcode(-1)
 
 /**
  * Loads a named variable from the outer ModuleEnvRecord.
- * TODO: Use slots?
  */
 class LoadModuleVar(val name: String) : Opcode(1)
 
 /**
  * Stores a named variable to the outer ModuleEnvRecord
- * TODO: Use slots?
  */
 class StoreModuleVar(val name: String) : Opcode(-1)
 
