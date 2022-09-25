@@ -54,7 +54,7 @@ class ModuleEnvRecord(realm: Realm, outer: EnvRecord?) : DeclarativeEnvRecord(re
     }
 
     @ECMAImpl("9.1.1.5.4")
-    fun getThisBinding(): JSValue {
+    override fun getThisBinding(): JSValue {
         // 1. Return undefined.
         return JSUndefined
     }

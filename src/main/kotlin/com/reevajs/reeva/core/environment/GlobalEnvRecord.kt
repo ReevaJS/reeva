@@ -152,7 +152,7 @@ class GlobalEnvRecord(
     }
 
     @ECMAImpl("9.1.1.4.11")
-    fun getThisBinding(): JSValue {
+    override fun getThisBinding(): JSValue {
         // 1. Return envRecord.[[GlobalThisValue]]
         return globalThisValue
     }

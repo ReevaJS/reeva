@@ -77,6 +77,8 @@ interface OpcodeVisitor {
             is StoreCurrentEnvName -> visitStoreCurrentEnvName(opcode)
             is LoadEnvName -> visitLoadEnvName(opcode)
             is StoreEnvName -> visitStoreEnvName(opcode)
+            LoadReceiver -> visitLoadReceiver()
+            LoadNewTarget -> visitLoadNewTarget()
             is Jump -> visitJump(opcode)
             is JumpIfTrue -> visitJumpIfTrue(opcode)
             is JumpIfFalse -> visitJumpIfFalse(opcode)
@@ -278,6 +280,10 @@ interface OpcodeVisitor {
     fun visitLoadEnvName(opcode: LoadEnvName)
 
     fun visitStoreEnvName(opcode: StoreEnvName)
+
+    fun visitLoadReceiver()
+
+    fun visitLoadNewTarget()
 
     fun visitJump(opcode: Jump)
 

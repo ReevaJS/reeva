@@ -3,6 +3,7 @@ package com.reevajs.reeva.interpreter
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.environment.FunctionEnvRecord
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -11,6 +12,7 @@ import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObject
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toObject
 import com.reevajs.reeva.transformer.TransformedSource
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
@@ -30,7 +32,7 @@ abstract class InterpretedFunction(
     transformedSource.functionInfo.isStrict,
     prototype,
 ) {
-    private val outerEnvRecord = Agent.activeAgent.activeEnvRecord
+    private val environment = Agent.activeAgent.activeEnvRecord
 
     protected abstract fun evaluate(arguments: JSArguments): JSValue
 
@@ -41,7 +43,7 @@ abstract class InterpretedFunction(
         val callerContext = agent.runningExecutionContext
 
         // 2.  Let calleeContext be PrepareForOrdinaryCall(F, undefined).
-        val calleeContext = prepareForOrdinaryCall()
+        val calleeContext = prepareForOrdinaryCall(JSUndefined)
 
         // 3.  Assert: calleeContext is now the running execution context.
         ecmaAssert(calleeContext == agent.runningExecutionContext)
@@ -59,20 +61,19 @@ abstract class InterpretedFunction(
         }
 
         // 5.  Perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
-        // Note: This return value is non-spec. The spec simply binds it to the current environment, so it doesn't need
-        //       to return it. We need to pass it into the interpreter manually.
-        val thisArgument = ordinaryCallBindThis(calleeContext, arguments.thisValue)
+        ordinaryCallBindThis(calleeContext, arguments.thisValue)
 
         return try {
             // 6.  Let result be OrdinaryCallEvaluateBody(F, argumentsList).
             // 8.  If result.[[Type]] is return, return NormalCompletion(result.[[Value]]).
             // 9.  ReturnIfAbrupt(result).
             // 10. Return NormalCompletion(undefined).
-            evaluate(arguments.withThisValue(thisArgument))
+            evaluate(arguments)
         } finally {
             // 7.  Remove calleeContext from the execution context stack and restore callerContext as the running
             //     execution context.
             agent.popExecutionContext()
+            ecmaAssert(agent.runningExecutionContext == callerContext)
         }
     }
 
@@ -93,7 +94,7 @@ abstract class InterpretedFunction(
         } else arguments.thisValue
 
         // 4.  Let calleeContext be PrepareForOrdinaryCall(F, newTarget).
-        val calleeContext = prepareForOrdinaryCall()
+        val calleeContext = prepareForOrdinaryCall(arguments.newTarget)
 
         // 5.  Assert: calleeContext is now the running execution context.
         ecmaAssert(calleeContext == agent.runningExecutionContext)
@@ -101,8 +102,7 @@ abstract class InterpretedFunction(
         //  6.  If kind is base, then
         if (constructorKind == ConstructorKind.Base) {
             // a. Perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
-            // Note: See call for explanation of return value
-            thisArgument = ordinaryCallBindThis(calleeContext, thisArgument)
+            ordinaryCallBindThis(calleeContext, thisArgument)
 
             // b.  Let initializeResult be InitializeInstanceElements(thisArgument, F).
             // c.  If initializeResult is an abrupt completion, then
@@ -114,12 +114,11 @@ abstract class InterpretedFunction(
         }
 
         // 7.  Let constructorEnv be the LexicalEnvironment of calleeContext.
-        // Note: While our ExecutionContexts do store EnvRecords, EnvRecords do not store receiver bindings.
+        val constructorEnv = calleeContext.envRecord as FunctionEnvRecord
 
         return try {
             // 8.  Let result be OrdinaryCallEvaluateBody(F, argumentsList).
             val result = evaluate(arguments.withThisValue(thisArgument))
-
 
             // 10. If result.[[Type]] is return, then
             when {
@@ -137,7 +136,7 @@ abstract class InterpretedFunction(
                     // Note: This is implicit, as we don't have a catch block. Any exceptions will propagate upwards.
 
                     // 12. Return ? constructorEnv.getThisBinding().
-                    thisArgument
+                    constructorEnv.getThisBinding()
                 }
             }
         } finally {
@@ -147,33 +146,102 @@ abstract class InterpretedFunction(
         }
     }
 
-    /**
-     * We don't need to accept a newTarget or push any environments, as this is
-     * handled by the interpreter (the function may not need an environment
-     * record at all).
-     */
     @ECMAImpl("10.2.1.1")
-    protected fun prepareForOrdinaryCall(): ExecutionContext {
+    protected fun prepareForOrdinaryCall(newTarget: JSValue): ExecutionContext {
         val agent = Agent.activeAgent
+
+        // 1. Let callerContext be the running execution context.
         val callerContext = agent.runningExecutionContext
 
+        // 2. Let calleeContext be a new ECMAScript code execution context.
+        // 3. Set the Function of calleeContext to F.
+        // 4. Let calleeRealm be F.[[Realm]].
+        // 5. Set the Realm of calleeContext to calleeRealm.
+        // 6. Set the ScriptOrModule of calleeContext to F.[[ScriptOrModule]].
+        // 7. Let localEnv be NewFunctionEnvironment(F, newTarget).
+        // 8. Set the LexicalEnvironment of calleeContext to localEnv.
+        // 9. Set the VariableEnvironment of calleeContext to localEnv.
+        // 10. Set the PrivateEnvironment of calleeContext to F.[[PrivateEnvironment]].
+        val localEnv = newFunctionEnvironment(newTarget)
+
         val calleeContext = ExecutionContext(
-            realm,
-            this,
-            outerEnvRecord,
-            callerContext.executable,
-            null
+            function = this,
+            realm = realm,
+            executable = callerContext.executable, // TODO: This seems wrong
+            envRecord = localEnv,
         )
 
+        // 11. If callerContext is not already suspended, suspend callerContext.
+
+        // 12. Push calleeContext onto the execution context stack; calleeContext is now the running execution context.
+        // 13. NOTE: Any exception objects produced after this point are associated with calleeRealm.
         agent.pushExecutionContext(calleeContext)
+
+        // 14. Return calleeContext.
         return calleeContext
     }
 
     @ECMAImpl("10.2.1.2")
-    protected fun ordinaryCallBindThis(calleeContext: ExecutionContext, thisArgument: JSValue): JSValue {
-        // TODO: This could not be further from the spec. We need to associate
-        //       a ThisMode with each function so we can implement this properly
-        return thisArgument
+    protected fun ordinaryCallBindThis(calleeContext: ExecutionContext, thisArgument: JSValue) {
+        // 1. Let thisMode be F.[[ThisMode]].
+        // 2. If thisMode is lexical, return unused.
+        if (thisMode == ThisMode.Lexical)
+            return
+
+        // 3. Let calleeRealm be F.[[Realm]].
+        val calleeRealm = realm
+
+        // 4. Let localEnv be the LexicalEnvironment of calleeContext.
+        val localEnv = calleeContext.envRecord
+
+        // 5. If thisMode is strict, let thisValue be thisArgument.
+        val thisValue = if (thisMode == ThisMode.Strict) {
+            thisArgument
+        }
+        // 6. Else,
+        else {
+            // a. If thisArgument is undefined or null, then
+            if (thisArgument.isNullish) {
+                // i. Let globalEnv be calleeRealm.[[GlobalEnv]].
+                val globalEnv = calleeRealm.globalEnv
+
+                // ii. Assert: globalEnv is a global Environment Record.
+                // iii. Let thisValue be globalEnv.[[GlobalThisValue]].
+                globalEnv.globalThisValue
+            }
+            // b. Else,
+            else {
+                // i. Let thisValue be ! ToObject(thisArgument).
+                // ii. NOTE: ToObject produces wrapper objects using calleeRealm.
+                thisArgument.toObject()
+            }
+        }
+
+        // 7. Assert: localEnv is a function Environment Record.
+        ecmaAssert(localEnv is FunctionEnvRecord)
+
+        // 8. Assert: The next step never returns an abrupt completion because localEnv.[[ThisBindingStatus]] is not initialized.
+        // 9. Perform ! localEnv.BindThisValue(thisValue).
+        localEnv.bindThisValue(thisValue)
+
+        // 10. Return unused.
+    }
+
+    @ECMAImpl("9.1.2.4")
+    private fun newFunctionEnvironment(newTarget: JSValue): FunctionEnvRecord {
+        // 1. Let env be a new function Environment Record containing no bindings.
+        // 2. Set env.[[FunctionObject]] to F.
+        // 3. If F.[[ThisMode]] is lexical, set env.[[ThisBindingStatus]] to lexical.
+        // 4. Else, set env.[[ThisBindingStatus]] to uninitialized.
+        // 5. Set env.[[NewTarget]] to newTarget.
+        // 6. Set env.[[OuterEnv]] to F.[[Environment]].
+        // 7. Return env.
+        return FunctionEnvRecord(
+            realm,
+            environment,
+            this,
+            newTarget,
+        )
     }
 }
 

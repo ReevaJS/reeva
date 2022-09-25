@@ -637,6 +637,14 @@ class Interpreter(
         env.setMutableBinding(opcode.name, popValue(), opcode.isStrict)
     }
 
+    override fun visitLoadReceiver() {
+        push(Operations.resolveThisBinding())
+    }
+
+    override fun visitLoadNewTarget() {
+        push(Operations.getNewTarget())
+    }
+
     override fun visitJump(opcode: Jump) {
         ip = opcode.to
     }

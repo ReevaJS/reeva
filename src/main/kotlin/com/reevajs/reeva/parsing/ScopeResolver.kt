@@ -80,20 +80,22 @@ class ScopeResolver : ASTVisitor {
     }
 
     override fun visitVariableDeclaration(node: VariableDeclarationNode) {
-        for (decl in node.declarations) {
-            val mode = if (scope.outerHoistingScope is GlobalScope) {
-                VariableMode.Global
-            } else VariableMode.Declared
+        val mode = if (scope.outerHoistingScope is GlobalScope) {
+            VariableMode.Global
+        } else VariableMode.Declared
 
+        for (decl in node.declarations)
             visitDeclaration(decl, mode, VariableType.Var)
-        }
     }
 
     override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
         val type = if (node.isConst) VariableType.Const else VariableType.Let
+        val mode = if (scope.outerHoistingScope is GlobalScope) {
+            VariableMode.Global
+        } else VariableMode.Declared
 
         for (decl in node.declarations)
-            visitDeclaration(decl, VariableMode.Declared, type)
+            visitDeclaration(decl, mode, type)
     }
 
     private fun visitDeclaration(declaration: Declaration, mode: VariableMode, type: VariableType) {
@@ -329,8 +331,7 @@ class ScopeResolver : ASTVisitor {
         }
 
         val bodyScope = if (body is BlockNode && !parameters.isSimple()) {
-            // The body scope shouldn't be a target for the receiver or new.target
-            // sources
+            // The body scope shouldn't be a target for the receiver or new.target sources
             HoistingScope(scope, isLexical = true, allowVarInlining, kind.isGenerator).also {
                 scope = it
             }
@@ -469,14 +470,5 @@ class ScopeResolver : ASTVisitor {
     override fun visitUnaryExpression(node: UnaryExpressionNode) {
         node.scope = scope
         super.visitUnaryExpression(node)
-    }
-
-    override fun visitThisLiteral(node: ThisLiteralNode) {
-        node.scope = scope
-        scope.outerHoistingScope.addReceiverReference(node)
-    }
-
-    override fun visitNewTargetExpression(node: NewTargetNode) {
-        node.scope = scope
     }
 }

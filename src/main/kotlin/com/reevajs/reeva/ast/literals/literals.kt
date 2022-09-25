@@ -58,6 +58,4 @@ class BigIntLiteralNode(val value: String, val type: Type) : ASTNodeBase(), Expr
 
 class NullLiteralNode : ASTNodeBase(), ExpressionNode
 
-class ThisLiteralNode : VariableRefNode(), ExpressionNode {
-    override fun name() = "*this"
-}
+class ThisLiteralNode : ASTNodeBase(), ExpressionNode

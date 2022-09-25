@@ -152,12 +152,8 @@ open class HoistingScope(
     // as var declarations in a nested block
     val hoistedVariables = mutableListOf<VariableSourceNode>()
 
-    var receiverVariable: VariableSourceNode? = null
-
     var argumentsMode = ArgumentsMode.None
     lateinit var argumentsSource: VariableSourceNode
-
-    override fun requiresEnv() = super.requiresEnv() || receiverVariable?.isInlineable == false
 
     fun addHoistedVariable(source: VariableSourceNode) {
         if (source.scope == this)
@@ -165,26 +161,6 @@ open class HoistingScope(
 
         hoistedVariables.add(source)
         source.hoistedScope = this
-    }
-
-    fun addReceiverReference(node: VariableRefNode) {
-        val declaredScope = node.scope
-        val receiverScope = getReceiverOrNewTargetScope()
-
-        if (receiverScope.receiverVariable == null) {
-            val receiverVariable = FakeSourceNode("*this")
-            receiverVariable.mode = VariableMode.Parameter
-            receiverVariable.type = VariableType.Const
-            receiverVariable.scope = receiverScope
-            receiverScope.receiverVariable = receiverVariable
-            receiverScope.connectPendingReferences(receiverVariable)
-        }
-
-        val sourceVariable = receiverScope.receiverVariable!!
-        node.source = sourceVariable
-
-        if (receiverScope != declaredScope)
-            receiverScope.receiverVariable!!.isInlineable = false
     }
 
     override fun finish() {
@@ -221,14 +197,6 @@ open class HoistingScope(
 
         nextInlineableLocal = reservedLocals + parameters.size
 
-        if (receiverVariable != null) {
-            receiverVariable!!.key = when {
-                isTaintedByEval -> VariableKey.Named
-                receiverVariable!!.isInlineable -> VariableKey.InlineIndex(0)
-                else -> VariableKey.Named
-            }
-        }
-
         parameters.forEachIndexed { index, source ->
             source.key = when {
                 isTaintedByEval -> VariableKey.Named
@@ -253,7 +221,9 @@ open class HoistingScope(
     }
 }
 
-class GlobalScope : HoistingScope(null, isLexical = false)
+class GlobalScope : HoistingScope(null, isLexical = false) {
+    override fun requiresEnv() = false
+}
 
 class ModuleScope(outer: Scope) : HoistingScope(outer, isLexical = false) {
     override var isStrict = true

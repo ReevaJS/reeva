@@ -523,6 +523,16 @@ class LoadModuleVar(val name: String) : Opcode(1)
  */
 class StoreModuleVar(val name: String) : Opcode(-1)
 
+/**
+ * Loads the current this value
+ */
+object LoadReceiver : Opcode(1)
+
+/**
+ * Loads the current new.target value
+ */
+object LoadNewTarget : Opcode(1)
+
 ///////////
 // Jumps //
 ///////////

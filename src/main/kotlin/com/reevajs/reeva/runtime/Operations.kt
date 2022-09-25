@@ -5,9 +5,7 @@ package com.reevajs.reeva.runtime
 import com.reevajs.reeva.ast.ASTNode
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
-import com.reevajs.reeva.core.environment.GlobalEnvRecord
-import com.reevajs.reeva.core.environment.ObjectEnvRecord
+import com.reevajs.reeva.core.environment.*
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.jvmcompat.JSClassInstanceObject
 import com.reevajs.reeva.jvmcompat.JSClassObject
@@ -1768,6 +1766,47 @@ object Operations {
         if (!isConstructor(ctor))
             Errors.SpeciesNotCtor.throwTypeError()
         return construct(ctor, listOf(length.toValue()))
+    }
+
+    @JvmStatic
+    @ECMAImpl("9.4.3")
+    fun getThisEnvironment(): EnvRecord {
+        // 1. Let env be the running execution context's LexicalEnvironment.
+        var env = Agent.activeAgent.runningExecutionContext.envRecord!!
+
+        // 2. Repeat,
+        while (true) {
+            // a. Let exists be env.HasThisBinding().
+            // b. If exists is true, return env.
+            if (env.hasThisBinding())
+                return env
+
+            // c. Let outer be env.[[OuterEnv]].
+            // d. Assert: outer is not null.
+            // e. Set env to outer.
+            env = env.outer!!
+        }
+    }
+
+    @JvmStatic
+    @ECMAImpl("9.4.4")
+    fun resolveThisBinding(): JSValue {
+        // 1. Let envRec be GetThisEnvironment().
+        // 2. Return ? envRec.GetThisBinding().
+        return getThisEnvironment().getThisBinding()
+    }
+
+    @JvmStatic
+    @ECMAImpl("9.4.5")
+    fun getNewTarget(): JSValue {
+        // 1. Let envRec be GetThisEnvironment().
+        val envRec = getThisEnvironment()
+
+        // 2. Assert: envRec has a [[NewTarget]] field.
+        ecmaAssert(envRec is FunctionEnvRecord)
+
+        // 3. Return envRec.[[NewTarget]].
+        return envRec.newTarget
     }
 
     @JvmStatic

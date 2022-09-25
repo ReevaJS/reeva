@@ -3,6 +3,7 @@ package com.reevajs.reeva.core.environment
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.utils.unreachable
 
 /**
  * The runtime-equivalent of the Parser's Scope objects
@@ -28,4 +29,8 @@ abstract class EnvRecord(val outer: EnvRecord?) : JSValue() {
     abstract fun hasSuperBinding(): Boolean
 
     abstract fun withBaseObject(): JSObject?
+
+    open fun getThisBinding(): JSValue {
+        unreachable()
+    }
 }

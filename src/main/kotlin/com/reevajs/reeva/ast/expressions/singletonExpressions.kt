@@ -6,6 +6,4 @@ import com.reevajs.reeva.ast.VariableRefNode
 
 object ImportMetaExpressionNode : ASTNodeBase(), ExpressionNode
 
-class NewTargetNode : VariableRefNode(), ExpressionNode {
-    override fun name() = "*new.target"
-}
+class NewTargetNode : ASTNodeBase(), ExpressionNode

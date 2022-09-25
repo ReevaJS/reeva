@@ -289,7 +289,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 if (classConstructorKind == JSFunction.ConstructorKind.Derived) {
                     expect(body is BlockNode)
                     // TODO: Check to see if this is redundant
-                    +LoadValue(RECEIVER_LOCAL)
+                    +LoadReceiver
                     +ThrowSuperNotInitializedIfEmpty
                     builder.setLastOpcodeLocation(body.sourceLocation)
                 } else if (body is BlockNode) {
@@ -362,13 +362,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         if (parameters.containsDuplicates())
             TODO("Handle duplicate parameter names")
-
-        val receiver = functionScope.receiverVariable
-
-        if (receiver != null && !receiver.isInlineable) {
-            +LoadValue(RECEIVER_LOCAL)
-            storeToSource(receiver)
-        }
 
         val reservedLocals = getReservedLocalsCount(isGenerator)
 
@@ -444,7 +437,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             if (source.name() == "undefined") {
                 +PushUndefined
             } else {
-                expect(source.type == VariableType.Var)
                 +LoadGlobal(source.name(), source.scope.isStrict)
             }
 
@@ -473,7 +465,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     builder.setLastOpcodeLocation(source.sourceLocation)
                 } else return
             } else {
-                expect(source.type == VariableType.Var)
                 +StoreGlobal(source.name(), source.scope.isStrict)
             }
 
@@ -1696,7 +1687,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         )
 
         for (field in fields) {
-            +LoadValue(RECEIVER_LOCAL)
+            +LoadReceiver
             storeClassField(field)
         }
 
@@ -1720,7 +1711,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     private fun callClassInstanceFieldInitializer() {
         +PushClosure
         +LoadNamedProperty(Realm.InternalSymbols.classInstanceFields)
-        +LoadValue(RECEIVER_LOCAL)
+        +LoadReceiver
         +Call(0)
         +Pop
     }
@@ -1753,7 +1744,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         } else {
             // Initializer the super constructor
             +GetSuperConstructor
-            +LoadValue(NEW_TARGET_LOCAL)
+            +LoadNewTarget
             +CollectRestArgs
             +ConstructArray
             if (hasInstanceFields)
@@ -1813,7 +1804,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     override fun visitSuperPropertyExpression(node: SuperPropertyExpressionNode) {
-        +LoadValue(RECEIVER_LOCAL)
+        +LoadReceiver
         +ThrowSuperNotInitializedIfEmpty
         builder.setLastOpcodeLocation(node.sourceLocation)
 
@@ -1832,7 +1823,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         +ThrowSuperNotInitializedIfEmpty
         builder.setLastOpcodeLocation(node.sourceLocation)
 
-        +LoadValue(NEW_TARGET_LOCAL)
+        +LoadNewTarget
 
         if (pushArguments(node.arguments) == ArgumentsMode.Normal) {
             +Construct(node.arguments.size)
@@ -1905,7 +1896,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     override fun visitNewTargetExpression(node: NewTargetNode) {
-        +LoadValue(NEW_TARGET_LOCAL)
+        +LoadNewTarget
     }
 
     override fun visitArrayLiteral(node: ArrayLiteralNode) {
@@ -2038,7 +2029,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     override fun visitThisLiteral(node: ThisLiteralNode) {
-        +LoadValue(RECEIVER_LOCAL)
+        +LoadReceiver
     }
 
     private fun unsupported(message: String): Nothing {
@@ -2062,12 +2053,10 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     companion object {
-        val RECEIVER_LOCAL = Local(0)
-        val NEW_TARGET_LOCAL = Local(1)
-        val GENERATOR_STATE_LOCAL = Local(2)
+        val GENERATOR_STATE_LOCAL = Local(1)
 
         fun getReservedLocalsCount(isGenerator: Boolean): Int {
-            return if (isGenerator) 3 else 2
+            return if (isGenerator) 1 else 0
         }
     }
 }

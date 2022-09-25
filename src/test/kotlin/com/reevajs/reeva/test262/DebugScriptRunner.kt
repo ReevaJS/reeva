@@ -20,8 +20,8 @@ fun main() {
     }.withActiveScope {
         val realm = makeRealmAndInitializeExecutionEnvironment()
 
-        // val sourceInfo = FileSourceInfo(File("./demo/index.mjs"))
-        val sourceInfo = LiteralSourceInfo("e", collectTest262Script() + File("./demo/index.mjs").readText(), false)
+        val sourceInfo = FileSourceInfo(File("./demo/index.mjs"))
+        // val sourceInfo = LiteralSourceInfo("e", collectTest262Script() + File("./demo/index.mjs").readText(), false)
         val executable = Reeva.compile(realm, sourceInfo)
         if (executable.hasError) {
             errorReporter.reportParseError(sourceInfo, executable.error())
