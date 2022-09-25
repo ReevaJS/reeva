@@ -4,7 +4,7 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.lifecycle.ModuleRecord
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -34,7 +34,7 @@ class JSModuleNamespaceObject private constructor(
     @ECMAImpl("10.4.6.2")
     override fun setPrototype(newPrototype: JSValue): Boolean {
         // 1. Return ! SetImmutablePrototype(O, V)
-        return Operations.setImmutablePrototype(this, newPrototype)
+        return AOs.setImmutablePrototype(this, newPrototype)
     }
 
     @ECMAImpl("10.4.6.3")

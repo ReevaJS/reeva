@@ -3,7 +3,7 @@ package com.reevajs.reeva.core
 import com.reevajs.reeva.core.lifecycle.*
 import com.reevajs.reeva.runtime.JSGlobalObject
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSFunction
@@ -17,13 +17,13 @@ import java.io.File
 
 open class HostHooks {
     @ECMAImpl("9.5.2")
-    open fun makeJobCallback(callback: JSFunction): Operations.JobCallback {
-        return Operations.JobCallback(callback)
+    open fun makeJobCallback(callback: JSFunction): AOs.JobCallback {
+        return AOs.JobCallback(callback)
     }
 
     @ECMAImpl("9.5.3")
-    open fun callJobCallback(handler: Operations.JobCallback, arguments: JSArguments): JSValue {
-        return Operations.call(handler.callback, arguments)
+    open fun callJobCallback(handler: AOs.JobCallback, arguments: JSArguments): JSValue {
+        return AOs.call(handler.callback, arguments)
     }
 
     @ECMAImpl("9.5.4")

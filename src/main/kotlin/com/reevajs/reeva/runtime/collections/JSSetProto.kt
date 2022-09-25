@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.collections
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.iterators.JSSetIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -43,7 +43,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSetProto(realm).initialize()
 
         private fun thisSetObject(thisValue: JSValue, method: String): JSSetObject.SetData {
-            if (!Operations.requireInternalSlot(thisValue, SlotName.SetData))
+            if (!AOs.requireInternalSlot(thisValue, SlotName.SetData))
                 Errors.IncompatibleMethodCall("Set.prototype.$method").throwTypeError()
             return thisValue.getSlot(SlotName.SetData)
         }
@@ -100,7 +100,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         fun forEach(arguments: JSArguments): JSValue {
             val data = thisSetObject(arguments.thisValue, "forEach")
             val (callback, thisArg) = arguments.takeArgs(0..1)
-            if (!Operations.isCallable(callback))
+            if (!AOs.isCallable(callback))
                 Errors.Set.FirstArgNotCallable("forEach").throwTypeError()
 
             data.iterationCount++
@@ -109,7 +109,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
             while (index < data.insertionOrder.size) {
                 val value = data.insertionOrder[index]
                 if (value != JSEmpty)
-                    Operations.call(callback, thisArg, listOf(value, value, arguments.thisValue))
+                    AOs.call(callback, thisArg, listOf(value, value, arguments.thisValue))
 
                 index++
             }

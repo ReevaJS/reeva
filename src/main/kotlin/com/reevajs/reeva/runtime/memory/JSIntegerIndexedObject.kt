@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.memory
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
@@ -13,7 +13,7 @@ import com.reevajs.reeva.runtime.primitives.JSUndefined
 
 class JSIntegerIndexedObject private constructor(
     realm: Realm,
-    private val kind: Operations.TypedArrayKind,
+    private val kind: AOs.TypedArrayKind,
     proto: JSValue = kind.getProto(realm),
 ) : JSObject(realm, proto) {
     // ContentType slot is just kind.isBigInt, so we don't store that
@@ -29,10 +29,10 @@ class JSIntegerIndexedObject private constructor(
         if (property.isSymbol)
             return super.getOwnPropertyDescriptor(property)
 
-        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
+        val numericIndex = AOs.canonicalNumericIndexString(property.asValue)
             ?: return super.getOwnPropertyDescriptor(property)
 
-        val value = Operations.integerIndexedElementGet(this, numericIndex)
+        val value = AOs.integerIndexedElementGet(this, numericIndex)
         if (value == JSUndefined)
             return null
 
@@ -42,19 +42,19 @@ class JSIntegerIndexedObject private constructor(
     override fun hasProperty(property: PropertyKey): Boolean {
         if (property.isSymbol)
             return super.hasProperty(property)
-        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
+        val numericIndex = AOs.canonicalNumericIndexString(property.asValue)
             ?: return super.hasProperty(property)
-        return Operations.isValidIntegerIndex(this, numericIndex)
+        return AOs.isValidIntegerIndex(this, numericIndex)
     }
 
     override fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
         if (property.isSymbol)
             return super.defineOwnProperty(property, descriptor)
 
-        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
+        val numericIndex = AOs.canonicalNumericIndexString(property.asValue)
             ?: return super.defineOwnProperty(property, descriptor)
 
-        if (!Operations.isValidIntegerIndex(this, numericIndex))
+        if (!AOs.isValidIntegerIndex(this, numericIndex))
             return false
 
         if (descriptor.isAccessorDescriptor)
@@ -66,7 +66,7 @@ class JSIntegerIndexedObject private constructor(
         if (descriptor.hasWritable && !descriptor.isWritable)
             return false
         if (descriptor.getRawValue() != JSEmpty)
-            Operations.integerIndexedElementSet(this, numericIndex, descriptor.getActualValue(this))
+            AOs.integerIndexedElementSet(this, numericIndex, descriptor.getActualValue(this))
         return true
     }
 
@@ -74,20 +74,20 @@ class JSIntegerIndexedObject private constructor(
         if (property.isSymbol)
             return super.get(property, receiver)
 
-        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
+        val numericIndex = AOs.canonicalNumericIndexString(property.asValue)
             ?: return super.get(property, receiver)
 
-        return Operations.integerIndexedElementGet(receiver, numericIndex)
+        return AOs.integerIndexedElementGet(receiver, numericIndex)
     }
 
     override fun set(property: PropertyKey, value: JSValue, receiver: JSValue): Boolean {
         if (property.isSymbol)
             return super.set(property, value, receiver)
 
-        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
+        val numericIndex = AOs.canonicalNumericIndexString(property.asValue)
             ?: return super.set(property, value, receiver)
 
-        Operations.integerIndexedElementSet(receiver, numericIndex, value)
+        AOs.integerIndexedElementSet(receiver, numericIndex, value)
         return true
     }
 
@@ -95,14 +95,14 @@ class JSIntegerIndexedObject private constructor(
         if (property.isSymbol)
             return super.delete(property)
 
-        val numericIndex = Operations.canonicalNumericIndexString(property.asValue)
+        val numericIndex = AOs.canonicalNumericIndexString(property.asValue)
             ?: return super.delete(property)
 
-        return !Operations.isValidIntegerIndex(this, numericIndex)
+        return !AOs.isValidIntegerIndex(this, numericIndex)
     }
 
     override fun ownPropertyKeys(onlyEnumerable: Boolean): List<PropertyKey> {
-        val properties = if (!Operations.isDetachedBuffer(viewedArrayBuffer)) {
+        val properties = if (!AOs.isDetachedBuffer(viewedArrayBuffer)) {
             (0..arrayLength).map(PropertyKey::from).toMutableList()
         } else mutableListOf()
 
@@ -113,7 +113,7 @@ class JSIntegerIndexedObject private constructor(
 
     companion object {
         fun create(
-            kind: Operations.TypedArrayKind,
+            kind: AOs.TypedArrayKind,
             realm: Realm = Agent.activeAgent.getActiveRealm(),
             proto: JSValue = kind.getProto(realm),
         ) = JSIntegerIndexedObject(realm, kind, proto).initialize()

@@ -24,9 +24,9 @@ class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun evaluate(arguments: JSArguments): JSValue {
         if (arguments.newTarget != JSUndefined)
             Errors.BigInt.CtorCalledWithNew.throwTypeError()
-        val prim = arguments.argument(0).toPrimitive(Operations.ToPrimitiveHint.AsNumber)
+        val prim = arguments.argument(0).toPrimitive(AOs.ToPrimitiveHint.AsNumber)
         if (prim is JSNumber) {
-            if (!Operations.isIntegralNumber(prim))
+            if (!AOs.isIntegralNumber(prim))
                 Errors.BigInt.Conversion(prim.toString()).throwRangeError()
             return BigInteger.valueOf(prim.asLong).toValue()
         }

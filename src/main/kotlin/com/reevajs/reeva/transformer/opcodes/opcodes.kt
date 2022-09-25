@@ -1,7 +1,7 @@
 package com.reevajs.reeva.transformer.opcodes
 
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.transformer.FunctionInfo
 import com.reevajs.reeva.transformer.Local
 import com.reevajs.regexp.RegExp
@@ -373,28 +373,28 @@ object DeletePropertySloppy : Opcode(-1)
 ///////////////
 
 /**
- * Pushes an [Operations.IteratorRecord] from the value at the top of the stack
+ * Pushes an [AOs.IteratorRecord] from the value at the top of the stack
  * using the GetIterator ECMAScript algorithm.
  */
 object GetIterator : Opcode(0)
 
 /**
  * Calls the IteratorNext ECMAScript algorithm on the value at the top of the
- * stack. The value must be an [Operations.IteratorRecord] created from
+ * stack. The value must be an [AOs.IteratorRecord] created from
  * [GetIterator].
  */
 object IteratorNext : Opcode(0)
 
 /**
  * Calls the IteratorComplete ECMAScript algorithm on the value at the top of
- * the stack. THe value must be an [Operations.IteratorRecord] created from
+ * the stack. THe value must be an [AOs.IteratorRecord] created from
  * [GetIterator].
  */
 object IteratorResultDone : Opcode(0)
 
 /**
  * Calls the IteratorValue ECMAScript algorithm on the value at the top of the
- * stack. THe value must be an [Operations.IteratorRecord] created from
+ * stack. THe value must be an [AOs.IteratorRecord] created from
  * [GetIterator].
  */
 object IteratorResultValue : Opcode(0)
@@ -792,6 +792,6 @@ class CreateTemplateLiteral(val numberOfParts: Int) : Opcode(-numberOfParts + 1)
  * Pushes a JSObjectPropertyIterator for the object at the top of the
  * stack. The value need not be an object; ToObject is performs on the value
  * before creates the property iterator. The pushed value is a
- * [Operations.IteratorRecord]
+ * [AOs.IteratorRecord]
  */
 object ForInEnumerate : Opcode(0)

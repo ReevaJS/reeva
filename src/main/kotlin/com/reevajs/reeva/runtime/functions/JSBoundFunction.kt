@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.functions
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.utils.ecmaAssert
@@ -32,13 +32,13 @@ class JSBoundFunction private constructor(
         val args = boundArguments + arguments
 
         // 5.  Return ? Call(target, boundThis, args).
-        return Operations.call(boundTargetFunction, boundThis, args)
+        return AOs.call(boundTargetFunction, boundThis, args)
     }
 
     override fun construct(arguments: JSArguments): JSValue {
         // 1.  Let target be F.[[BoundTargetFunction]].
         // 2.  Assert: IsConstructor(target) is true.
-        ecmaAssert(Operations.isConstructor(boundTargetFunction))
+        ecmaAssert(AOs.isConstructor(boundTargetFunction))
 
         // 3.  Let boundArgs be F.[[BoundArguments]]
         // 4.  Let args be the list-concatenation of boundArgs and argumentsList
@@ -50,7 +50,7 @@ class JSBoundFunction private constructor(
         } else arguments.newTarget
 
         // 6.  Return ? Construct(target, args, newTarget)
-        return Operations.construct(boundTargetFunction, args, newTarget)
+        return AOs.construct(boundTargetFunction, args, newTarget)
     }
 
     companion object {

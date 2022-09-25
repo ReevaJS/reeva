@@ -6,7 +6,7 @@ import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.ast.literals.PropertyName
 import com.reevajs.reeva.ast.statements.BlockNode
 import com.reevajs.reeva.parsing.lexer.TokenLocation
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.expect
 
 class EarlyErrorDetector(private val reporter: ErrorReporter) : ASTVisitor {
@@ -127,8 +127,8 @@ class EarlyErrorDetector(private val reporter: ErrorReporter) : ASTVisitor {
                             val thisFunc = it as FunctionDeclarationNode
                             val otherFunc = funcNames[name]!! as FunctionDeclarationNode
 
-                            if (thisFunc.kind != Operations.FunctionKind.Normal ||
-                                otherFunc.kind != Operations.FunctionKind.Normal
+                            if (thisFunc.kind != AOs.FunctionKind.Normal ||
+                                otherFunc.kind != AOs.FunctionKind.Normal
                             ) {
                                 reporter.at(it).duplicateDeclaration(name, "function")
                             }

@@ -36,7 +36,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         return JSStringObject.create(theString).also {
             it.setPrototype(
-                Operations.getPrototypeFromConstructor(newTarget, Realm::stringProto),
+                AOs.getPrototypeFromConstructor(newTarget, Realm::stringProto),
             )
         }
     }
@@ -60,7 +60,7 @@ class JSStringCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             return buildString {
                 arguments.forEach {
                     val nextCP = it.toNumber()
-                    if (!Operations.isIntegralNumber(nextCP))
+                    if (!AOs.isIntegralNumber(nextCP))
                         Errors.Strings.InvalidCodepoint(nextCP.toString()).throwRangeError()
                     val value = nextCP.asInt
                     if (value < 0 || value > 0x10ffff)

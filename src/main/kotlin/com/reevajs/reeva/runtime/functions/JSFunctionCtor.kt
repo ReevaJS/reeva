@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.functions
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.utils.attrs
 import com.reevajs.reeva.utils.toValue
@@ -16,10 +16,10 @@ class JSFunctionCtor private constructor(realm: Realm) : JSNativeFunction(realm,
     }
 
     override fun evaluate(arguments: JSArguments): JSValue {
-        return Operations.createDynamicFunction(
+        return AOs.createDynamicFunction(
             this,
             arguments.newTarget,
-            Operations.FunctionKind.Normal,
+            AOs.FunctionKind.Normal,
             arguments
         )
     }

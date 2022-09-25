@@ -3,7 +3,7 @@ package com.reevajs.reeva.test262
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -43,7 +43,7 @@ class JS262Object private constructor(
 
         @JvmStatic
         fun detachArrayBuffer(arguments: JSArguments): JSValue {
-            Operations.detachArrayBuffer(arguments.argument(0))
+            AOs.detachArrayBuffer(arguments.argument(0))
             return JSUndefined
         }
 

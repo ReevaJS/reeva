@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.objects
 
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.primitives.JSAccessor
@@ -261,7 +261,7 @@ data class Descriptor constructor(
 
             if (obj.hasProperty("get")) {
                 val getterTemp = obj.get("get")
-                if (!Operations.isCallable(getterTemp) && getterTemp != JSUndefined)
+                if (!AOs.isCallable(getterTemp) && getterTemp != JSUndefined)
                     Errors.DescriptorGetType.throwTypeError()
                 getter = getterTemp as? JSFunction
                 descriptor.attributes = descriptor.attributes or HAS_GETTER
@@ -270,7 +270,7 @@ data class Descriptor constructor(
 
             if (obj.hasProperty("set")) {
                 val setterTemp = obj.get("set")
-                if (!Operations.isCallable(setterTemp) && setterTemp != JSUndefined)
+                if (!AOs.isCallable(setterTemp) && setterTemp != JSUndefined)
                     Errors.DescriptorSetType.throwTypeError()
                 setter = setterTemp as? JSFunction
                 descriptor.attributes = descriptor.attributes or HAS_SETTER

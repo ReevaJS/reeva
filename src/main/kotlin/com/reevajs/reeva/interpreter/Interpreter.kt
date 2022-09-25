@@ -206,7 +206,7 @@ class Interpreter(
     private fun visitBinaryOperator(operator: String) {
         val rhs = popValue()
         val lhs = popValue()
-        push(Operations.applyStringOrNumericBinaryOperator(lhs, rhs, operator))
+        push(AOs.applyStringOrNumericBinaryOperator(lhs, rhs, operator))
     }
 
     override fun visitAdd() {
@@ -260,58 +260,58 @@ class Interpreter(
     override fun visitTestEqualStrict() {
         val rhs = popValue()
         val lhs = popValue()
-        push(Operations.isLooselyEqual(lhs, rhs))
+        push(AOs.isLooselyEqual(lhs, rhs))
     }
 
     override fun visitTestNotEqualStrict() {
         val rhs = popValue()
         val lhs = popValue()
-        push(Operations.isLooselyEqual(lhs, rhs).inv())
+        push(AOs.isLooselyEqual(lhs, rhs).inv())
     }
 
     override fun visitTestEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        push(Operations.isStrictlyEqual(lhs, rhs))
+        push(AOs.isStrictlyEqual(lhs, rhs))
     }
 
     override fun visitTestNotEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        push(Operations.isStrictlyEqual(lhs, rhs).inv())
+        push(AOs.isStrictlyEqual(lhs, rhs).inv())
     }
 
     override fun visitTestLessThan() {
         val rhs = popValue()
         val lhs = popValue()
-        val result = Operations.isLessThan(lhs, rhs, true)
+        val result = AOs.isLessThan(lhs, rhs, true)
         push(result.ifUndefined(JSFalse))
     }
 
     override fun visitTestLessThanOrEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        val result = Operations.isLessThan(rhs, lhs, false)
+        val result = AOs.isLessThan(rhs, lhs, false)
         push(if (result == JSFalse) JSTrue else JSFalse)
     }
 
     override fun visitTestGreaterThan() {
         val rhs = popValue()
         val lhs = popValue()
-        val result = Operations.isLessThan(rhs, lhs, false)
+        val result = AOs.isLessThan(rhs, lhs, false)
         push(result.ifUndefined(JSFalse))
     }
 
     override fun visitTestGreaterThanOrEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        val result = Operations.isLessThan(lhs, rhs, true)
+        val result = AOs.isLessThan(lhs, rhs, true)
         push(if (result == JSFalse) JSTrue else JSFalse)
     }
 
     override fun visitTestInstanceOf() {
         val ctor = popValue()
-        push(Operations.instanceofOperator(popValue(), ctor))
+        push(AOs.instanceofOperator(popValue(), ctor))
     }
 
     override fun visitTestIn() {
@@ -319,11 +319,11 @@ class Interpreter(
         if (rhs !is JSObject)
             Errors.InBadRHS.throwTypeError(realm)
         val lhs = popValue().toPropertyKey()
-        push(Operations.hasProperty(rhs, lhs).toValue())
+        push(AOs.hasProperty(rhs, lhs).toValue())
     }
 
     override fun visitTypeOf() {
-        push(Operations.typeofOperator(popValue()))
+        push(AOs.typeofOperator(popValue()))
     }
 
     override fun visitTypeOfGlobal(opcode: TypeOfGlobal) {
@@ -346,8 +346,8 @@ class Interpreter(
     override fun visitNegate() {
         val value = popValue().let {
             if (it is JSBigInt) {
-                Operations.bigintUnaryMinus(it)
-            } else Operations.numericUnaryMinus(it)
+                AOs.bigintUnaryMinus(it)
+            } else AOs.numericUnaryMinus(it)
         }
         push(value)
     }
@@ -355,8 +355,8 @@ class Interpreter(
     override fun visitBitwiseNot() {
         val value = popValue().let {
             if (it is JSBigInt) {
-                Operations.bigintBitwiseNOT(it)
-            } else Operations.numericBitwiseNOT(it)
+                AOs.bigintBitwiseNOT(it)
+            } else AOs.numericBitwiseNOT(it)
         }
         push(value)
     }
@@ -450,19 +450,19 @@ class Interpreter(
     }
 
     override fun visitGetIterator() {
-        push(Operations.getIterator(popValue().toObject()))
+        push(AOs.getIterator(popValue().toObject()))
     }
 
     override fun visitIteratorNext() {
-        push(Operations.iteratorNext(pop() as Operations.IteratorRecord))
+        push(AOs.iteratorNext(pop() as AOs.IteratorRecord))
     }
 
     override fun visitIteratorResultDone() {
-        push(Operations.iteratorComplete(popValue()))
+        push(AOs.iteratorComplete(popValue()))
     }
 
     override fun visitIteratorResultValue() {
-        push(Operations.iteratorValue(popValue()))
+        push(AOs.iteratorValue(popValue()))
     }
 
     override fun visitPushJVMFalse() {
@@ -488,7 +488,7 @@ class Interpreter(
         val target = popValue()
 
         push(
-            Operations.call(
+            AOs.call(
                 target,
                 receiver,
                 args.asReversed(),
@@ -501,7 +501,7 @@ class Interpreter(
         val receiver = popValue()
         val target = popValue()
         push(
-            Operations.call(
+            AOs.call(
                 target,
                 receiver,
                 (0 until argsArray.indexedProperties.arrayLikeSize).map(argsArray::get),
@@ -521,11 +521,11 @@ class Interpreter(
 
         // For some reason, the spec says this check should happen here instead
         // of in Construct
-        if (!Operations.isConstructor(target))
+        if (!AOs.isConstructor(target))
             Errors.NotACtor(target.toString()).throwTypeError()
 
         push(
-            Operations.construct(
+            AOs.construct(
                 target,
                 args.asReversed(),
                 newTarget,
@@ -538,7 +538,7 @@ class Interpreter(
         val newTarget = popValue()
         val target = popValue()
         push(
-            Operations.construct(
+            AOs.construct(
                 target,
                 (0 until argsArray.indexedProperties.arrayLikeSize).map(argsArray::get),
                 newTarget,
@@ -689,23 +689,23 @@ class Interpreter(
     override fun visitForInEnumerate() {
         val target = popValue().toObject()
         val iterator = JSObjectPropertyIterator.create(target)
-        val nextMethod = Operations.getV(iterator, "next".key())
-        val iteratorRecord = Operations.IteratorRecord(iterator, nextMethod, false)
+        val nextMethod = AOs.getV(iterator, "next".key())
+        val iteratorRecord = AOs.IteratorRecord(iterator, nextMethod, false)
         push(iteratorRecord)
     }
 
     override fun visitCreateClosure(opcode: CreateClosure) {
         val function = NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir))
-        Operations.setFunctionName(function, opcode.ir.name.key())
-        Operations.makeConstructor(function)
-        Operations.setFunctionLength(function, opcode.ir.length)
+        AOs.setFunctionName(function, opcode.ir.name.key())
+        AOs.makeConstructor(function)
+        AOs.setFunctionLength(function, opcode.ir.length)
         push(function)
     }
 
     override fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure) {
         val function = GeneratorInterpretedFunction.create(transformedSource.forInfo(opcode.ir))
-        Operations.setFunctionName(function, opcode.ir.name.key())
-        Operations.setFunctionLength(function, opcode.ir.length)
+        AOs.setFunctionName(function, opcode.ir.name.key())
+        AOs.setFunctionLength(function, opcode.ir.length)
         push(function)
     }
 
@@ -744,22 +744,22 @@ class Interpreter(
         val arguments = this.arguments.drop(Transformer.getReservedLocalsCount(info.isGenerator))
 
         val obj = JSUnmappedArgumentsObject.create()
-        Operations.definePropertyOrThrow(
+        AOs.definePropertyOrThrow(
             obj,
             "length".key(),
             Descriptor(arguments.size.toValue(), attrs { +conf; -enum; +writ })
         )
 
         for ((index, arg) in arguments.withIndex())
-            Operations.createDataPropertyOrThrow(obj, index.key(), arg)
+            AOs.createDataPropertyOrThrow(obj, index.key(), arg)
 
-        Operations.definePropertyOrThrow(
+        AOs.definePropertyOrThrow(
             obj,
             Realm.WellKnownSymbols.iterator,
             Descriptor(realm.arrayProto.get("values"), attrs { +conf; -enum; +writ })
         )
 
-        Operations.definePropertyOrThrow(
+        AOs.definePropertyOrThrow(
             obj,
             "callee".key(),
             Descriptor(JSAccessor(realm.throwTypeError, realm.throwTypeError), 0),
@@ -812,7 +812,7 @@ class Interpreter(
     }
 
     override fun visitCollectRestArgs() {
-        push(Operations.createArrayFromList(arguments.drop(info.ir.argCount - 1)))
+        push(AOs.createArrayFromList(arguments.drop(info.ir.argCount - 1)))
     }
 
     override fun visitDefineGetterProperty() {
@@ -831,10 +831,10 @@ class Interpreter(
 
     private fun defineAccessor(obj: JSObject, property: JSValue, method: JSFunction, isGetter: Boolean) {
         val key = property.toPropertyKey()
-        Operations.setFunctionName(method, key, if (isGetter) "get" else "set")
+        AOs.setFunctionName(method, key, if (isGetter) "get" else "set")
         val accessor = if (isGetter) JSAccessor(method, null) else JSAccessor(null, method)
         val descriptor = Descriptor(accessor, Descriptor.CONFIGURABLE or Descriptor.ENUMERABLE)
-        Operations.definePropertyOrThrow(obj, key, descriptor)
+        AOs.definePropertyOrThrow(obj, key, descriptor)
     }
 
     override fun visitGetGeneratorPhase() {
@@ -899,7 +899,7 @@ class Interpreter(
                 protoParent = JSNull
                 constructorParent = realm.functionProto
             }
-            !Operations.isConstructor(superClass) ->
+            !AOs.isConstructor(superClass) ->
                 Errors.NotACtor(superClass.toJSString().string).throwTypeError()
             else -> {
                 protoParent = superClass.get("prototype")
@@ -910,18 +910,18 @@ class Interpreter(
         }
 
         val proto = JSObject.create(proto = protoParent)
-        Operations.makeClassConstructor(constructor)
+        AOs.makeClassConstructor(constructor)
 
         // TODO// Operations.setFunctionName(constructor, className)
 
-        Operations.makeConstructor(constructor, false, proto)
+        AOs.makeConstructor(constructor, false, proto)
 
         if (superClass != JSEmpty)
             constructor.constructorKind = JSFunction.ConstructorKind.Derived
 
         constructor.setPrototype(constructorParent)
-        Operations.makeMethod(constructor, proto)
-        Operations.createMethodProperty(proto, "constructor".key(), constructor)
+        AOs.makeMethod(constructor, proto)
+        AOs.createMethodProperty(proto, "constructor".key(), constructor)
 
         push(ClassCtorAndProto(constructor, proto))
     }
@@ -968,7 +968,7 @@ class Interpreter(
             else -> TODO()
         }
 
-        Operations.makeMethod(closure, obj)
+        AOs.makeMethod(closure, obj)
 
         if (kind == MethodDefinitionNode.Kind.Getter || kind == MethodDefinitionNode.Kind.Setter) {
             val (prefix, desc) = if (kind == MethodDefinitionNode.Kind.Getter) {
@@ -977,8 +977,8 @@ class Interpreter(
                 "set" to Descriptor(JSAccessor(null, closure), Descriptor.CONFIGURABLE)
             }
 
-            Operations.setFunctionName(closure, name, prefix)
-            Operations.definePropertyOrThrow(obj, name, desc)
+            AOs.setFunctionName(closure, name, prefix)
+            AOs.definePropertyOrThrow(obj, name, desc)
             return
         }
 
@@ -988,7 +988,7 @@ class Interpreter(
             MethodDefinitionNode.Kind.Setter -> {}
             MethodDefinitionNode.Kind.Generator -> {
                 val prototype = JSObject.create(proto = realm.generatorObjectProto)
-                Operations.definePropertyOrThrow(
+                AOs.definePropertyOrThrow(
                     closure,
                     "prototype".key(),
                     Descriptor(prototype, Descriptor.WRITABLE),
@@ -997,7 +997,7 @@ class Interpreter(
             else -> TODO()
         }
 
-        Operations.defineMethodProperty(name, obj, closure, enumerable)
+        AOs.defineMethodProperty(name, obj, closure, enumerable)
     }
 
     override fun visitFinalizeClass() {

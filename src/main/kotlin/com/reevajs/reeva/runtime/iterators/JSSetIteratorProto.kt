@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.iterators
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -31,25 +31,25 @@ class JSSetIteratorProto private constructor(realm: Realm) : JSObject(realm, rea
             if (thisValue !is JSSetIterator)
                 Errors.IncompatibleMethodCall("%MapIteratorPrototype%.next").throwTypeError()
 
-            val set = thisValue.iteratedSet ?: return Operations.createIterResultObject(JSUndefined, true)
+            val set = thisValue.iteratedSet ?: return AOs.createIterResultObject(JSUndefined, true)
 
             while (thisValue.nextIndex < set.insertionOrder.size) {
                 val value = set.insertionOrder[thisValue.nextIndex]
                 thisValue.nextIndex++
                 if (value != JSEmpty) {
                     if (thisValue.iterationKind == PropertyKind.KeyValue) {
-                        return Operations.createIterResultObject(
-                            Operations.createArrayFromList(listOf(value, value)),
+                        return AOs.createIterResultObject(
+                            AOs.createArrayFromList(listOf(value, value)),
                             false
                         )
                     }
-                    return Operations.createIterResultObject(value, false)
+                    return AOs.createIterResultObject(value, false)
                 }
             }
 
             set.iterationCount--
             thisValue.iteratedSet = null
-            return Operations.createIterResultObject(JSUndefined, true)
+            return AOs.createIterResultObject(JSUndefined, true)
         }
     }
 }

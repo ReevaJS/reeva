@@ -13,7 +13,7 @@ import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.parsing.Parser
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.other.JSModuleNamespaceObject

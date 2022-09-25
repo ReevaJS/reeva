@@ -153,7 +153,7 @@ object JVMValueMapper {
                 Char::class.javaPrimitiveType, Char::class.javaObjectType ->
                     if (value.isNaN) errorIfIncompatible(value, targetClass)
                     else value.number.toInt().toChar()
-                String::class.java -> Operations.numericToString(value)
+                String::class.java -> AOs.numericToString(value)
                 else -> errorIfIncompatible(value, targetClass)
             }
         }
@@ -242,7 +242,7 @@ object JVMValueMapper {
                 Float::class.javaObjectType, Long::class.javaPrimitiveType, Long::class.javaObjectType,
                 Int::class.javaPrimitiveType, Int::class.javaObjectType, Short::class.javaPrimitiveType,
                 Short::class.javaObjectType, Byte::class.javaPrimitiveType, Byte::class.javaObjectType -> jsToJvm(
-                    value.toPrimitive(Operations.ToPrimitiveHint.AsNumber),
+                    value.toPrimitive(AOs.ToPrimitiveHint.AsNumber),
                     targetClass
                 )
                 else -> errorIfIncompatible(value, targetClass)

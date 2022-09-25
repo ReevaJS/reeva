@@ -8,7 +8,7 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.lifecycle.ModuleRecord
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.lexer.*
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.*
 import com.reevajs.regexp.parser.RegExpSyntaxError
 import kotlin.contracts.ExperimentalContracts
@@ -81,7 +81,7 @@ class Parser(val sourceInfo: SourceInfo) {
         }
     }
 
-    fun parseFunction(expectedKind: Operations.FunctionKind): Result<ParsingError, ParsedSource> {
+    fun parseFunction(expectedKind: AOs.FunctionKind): Result<ParsingError, ParsedSource> {
         return parseImpl(isModule = false) {
             parseFunctionDeclaration().also {
                 expect(it.kind == expectedKind)
@@ -1159,7 +1159,7 @@ class Parser(val sourceInfo: SourceInfo) {
         val identifier: IdentifierNode?,
         val params: ParameterList,
         val body: BlockNode,
-        val type: Operations.FunctionKind,
+        val type: AOs.FunctionKind,
     ) : ASTNodeBase()
 
     private fun parseFunctionHelper(isDeclaration: Boolean): FunctionTemp = nps {
@@ -1176,10 +1176,10 @@ class Parser(val sourceInfo: SourceInfo) {
         } else false
 
         val type = when {
-            isAsync && isGenerator -> Operations.FunctionKind.AsyncGenerator
-            isAsync -> Operations.FunctionKind.Async
-            isGenerator -> Operations.FunctionKind.Generator
-            else -> Operations.FunctionKind.Normal
+            isAsync && isGenerator -> AOs.FunctionKind.AsyncGenerator
+            isAsync -> AOs.FunctionKind.Async
+            isGenerator -> AOs.FunctionKind.Generator
+            else -> AOs.FunctionKind.Normal
         }
 
         // TODO: Allow no identifier in default export
@@ -1902,7 +1902,7 @@ class Parser(val sourceInfo: SourceInfo) {
         } else ""
 
         try {
-            RegExpLiteralNode(source, flags, Operations.makeRegExp(source, flags))
+            RegExpLiteralNode(source, flags, AOs.makeRegExp(source, flags))
         } catch (e: RegExpSyntaxError) {
             reporter.at(token).error(e.message!!)
         }
@@ -2342,7 +2342,7 @@ class Parser(val sourceInfo: SourceInfo) {
             parseFunctionBody(isAsync = false, isGenerator = false)
         } else parseExpression(2)
 
-        ArrowFunctionNode(parameters, body, Operations.FunctionKind.Normal)
+        ArrowFunctionNode(parameters, body, AOs.FunctionKind.Normal)
     }
 
     private fun parseUnaryExpression(): ExpressionNode = nps {

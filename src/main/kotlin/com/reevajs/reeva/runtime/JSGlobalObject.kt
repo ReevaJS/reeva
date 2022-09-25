@@ -48,16 +48,16 @@ open class JSGlobalObject protected constructor(
             //    b. Let desc be the fully populated data Property Descriptor for the property, containing the specified attributes for the property. For properties listed in 19.2, 19.3, or 19.4 the value of the [[Value]] attribute is the corresponding intrinsic object from realmRec.
             //    c. Perform ? DefinePropertyOrThrow(global, name, desc).
 
-            Operations.definePropertyOrThrow(
+            AOs.definePropertyOrThrow(
                 global, "globalThis".key(), Descriptor(realm.globalEnv.globalThisValue, attrs { +conf; -enum; +writ }),
             )
-            Operations.definePropertyOrThrow(
+            AOs.definePropertyOrThrow(
                 global, "Infinity".key(), Descriptor(JSNumber.POSITIVE_INFINITY, attrs { -conf; -enum; -writ }),
             )
-            Operations.definePropertyOrThrow(
+            AOs.definePropertyOrThrow(
                 global, "NaN".key(), Descriptor(JSNumber.NaN, attrs { -conf; -enum; -writ })
             )
-            Operations.definePropertyOrThrow(
+            AOs.definePropertyOrThrow(
                 global, "undefined".key(), Descriptor(JSUndefined, attrs { -conf; -enum; -writ })
             )
 
@@ -84,7 +84,7 @@ open class JSGlobalObject protected constructor(
             )
 
             for (function in builtinFunctions)
-                Operations.definePropertyOrThrow(global, function.debugName.key(), Descriptor(function, attr))
+                AOs.definePropertyOrThrow(global, function.debugName.key(), Descriptor(function, attr))
 
             val bindings = mapOf(
                 "Array" to realm.arrayCtor,
@@ -141,7 +141,7 @@ open class JSGlobalObject protected constructor(
             )
 
             for ((key, value) in bindings)
-                Operations.definePropertyOrThrow(global, key.key(), Descriptor(value, attr))
+                AOs.definePropertyOrThrow(global, key.key(), Descriptor(value, attr))
 
             // 3. Return global.
             return global
@@ -214,9 +214,9 @@ open class JSGlobalObject protected constructor(
 
         @JvmStatic
         fun parseInt(arguments: JSArguments): JSValue {
-            var inputString = Operations.trimString(
+            var inputString = AOs.trimString(
                 arguments.argument(0).toJSString(),
-                Operations.TrimType.Start,
+                AOs.TrimType.Start,
             )
             val sign = when {
                 inputString.startsWith("-") -> {

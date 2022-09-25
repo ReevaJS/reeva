@@ -91,7 +91,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         @JvmStatic
         fun getByteLength(arguments: JSArguments): JSValue {
             val buffer = getBuffer(arguments)
-            if (Operations.isDetachedBuffer(buffer))
+            if (AOs.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
             return (arguments.thisValue as JSObject).getSlot(SlotName.ByteLength).toValue()
         }
@@ -100,7 +100,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         @JvmStatic
         fun getByteOffset(arguments: JSArguments): JSValue {
             val buffer = getBuffer(arguments)
-            if (Operations.isDetachedBuffer(buffer))
+            if (AOs.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
             return (arguments.thisValue as JSObject).getSlot(SlotName.ByteOffset).toValue()
         }
@@ -109,7 +109,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         @JvmStatic
         fun getLength(arguments: JSArguments): JSValue {
             val buffer = getBuffer(arguments)
-            if (Operations.isDetachedBuffer(buffer))
+            if (AOs.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
             return (arguments.thisValue as JSObject).getSlot(SlotName.ArrayLength).toValue()
         }
@@ -118,7 +118,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         fun at(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             expect(thisValue is JSObject)
-            Operations.validateTypedArray(thisValue)
+            AOs.validateTypedArray(thisValue)
             val len = thisValue.getSlot(SlotName.ArrayLength)
             val relativeIndex = arguments.argument(0).toIntegerOrInfinity()
 
@@ -139,22 +139,22 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         fun copyWithin(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
             expect(thisValue is JSObject)
-            Operations.validateTypedArray(thisValue)
+            AOs.validateTypedArray(thisValue)
 
             val (target, start, end) = arguments.takeArgs(0..2)
             val len = thisValue.getSlot(SlotName.ArrayLength)
 
-            val to = Operations.mapWrappedArrayIndex(target.toIntegerOrInfinity(), len.toLong())
-            val from = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(), len.toLong())
+            val to = AOs.mapWrappedArrayIndex(target.toIntegerOrInfinity(), len.toLong())
+            val from = AOs.mapWrappedArrayIndex(start.toIntegerOrInfinity(), len.toLong())
             val relativeEnd = if (end == JSUndefined) len.toValue() else end.toIntegerOrInfinity()
-            val final = Operations.mapWrappedArrayIndex(relativeEnd, len.toLong())
+            val final = AOs.mapWrappedArrayIndex(relativeEnd, len.toLong())
 
             val count = min(final - from, len - to)
             if (count <= 0)
                 return thisValue
 
             val buffer = thisValue.getSlot(SlotName.ViewedArrayBuffer)
-            if (Operations.isDetachedBuffer(buffer))
+            if (AOs.isDetachedBuffer(buffer))
                 Errors.TODO("%TypedArray%.prototype.copyWithin").throwTypeError()
 
             val kind = thisValue.getSlot(SlotName.TypedArrayKind)
@@ -171,20 +171,20 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             } else 1
 
             while (countBytes > 0) {
-                val value = Operations.getValueFromBuffer(
+                val value = AOs.getValueFromBuffer(
                     buffer,
                     fromByteIndex.toInt(),
-                    Operations.TypedArrayKind.Uint8,
+                    AOs.TypedArrayKind.Uint8,
                     true,
-                    Operations.TypedArrayOrder.Unordered
+                    AOs.TypedArrayOrder.Unordered
                 )
-                Operations.setValueInBuffer(
+                AOs.setValueInBuffer(
                     buffer,
                     toByteIndex.toInt(),
-                    Operations.TypedArrayKind.Uint8,
+                    AOs.TypedArrayKind.Uint8,
                     value,
                     true,
-                    Operations.TypedArrayOrder.Unordered
+                    AOs.TypedArrayOrder.Unordered
                 )
                 fromByteIndex += direction
                 toByteIndex += direction
@@ -197,14 +197,14 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         @ECMAImpl("23.2.3.6")
         @JvmStatic
         fun entries(arguments: JSArguments): JSValue {
-            Operations.validateTypedArray(arguments.thisValue)
-            return Operations.createArrayIterator(arguments.thisValue as JSObject, PropertyKind.KeyValue)
+            AOs.validateTypedArray(arguments.thisValue)
+            return AOs.createArrayIterator(arguments.thisValue as JSObject, PropertyKind.KeyValue)
         }
 
         @ECMAImpl("23.2.3.7")
         @JvmStatic
         fun every(arguments: JSArguments): JSValue {
-            Operations.validateTypedArray(arguments.thisValue)
+            AOs.validateTypedArray(arguments.thisValue)
             return JSArrayProto.genericArrayEvery(arguments, lengthProducer, indicesProducer())
         }
 
@@ -212,7 +212,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         @JvmStatic
         fun fill(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            Operations.validateTypedArray(thisValue)
+            AOs.validateTypedArray(thisValue)
             expect(thisValue is JSObject)
 
             val (valueArg, start, end) = arguments.takeArgs(0..2)
@@ -220,15 +220,15 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             val kind = thisValue.getSlot(SlotName.TypedArrayKind)
             val value = if (kind.isBigInt) valueArg.toBigInt() else valueArg.toNumber()
 
-            var k = Operations.mapWrappedArrayIndex(start.toIntegerOrInfinity(), len)
+            var k = AOs.mapWrappedArrayIndex(start.toIntegerOrInfinity(), len)
             val relativeEnd = if (end == JSUndefined) len.toValue() else end.toIntegerOrInfinity()
-            val final = Operations.mapWrappedArrayIndex(relativeEnd, len)
+            val final = AOs.mapWrappedArrayIndex(relativeEnd, len)
 
-            if (Operations.isDetachedBuffer(thisValue.getSlot(SlotName.ViewedArrayBuffer)))
+            if (AOs.isDetachedBuffer(thisValue.getSlot(SlotName.ViewedArrayBuffer)))
                 Errors.TODO("%TypedArray%.prototype.fill isDetachedBuffer").throwTypeError()
 
             while (k < final) {
-                Operations.set(thisValue, k.key(), value, true)
+                AOs.set(thisValue, k.key(), value, true)
                 k++
             }
 
@@ -239,7 +239,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         @JvmStatic
         fun filter(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            Operations.validateTypedArray(thisValue)
+            AOs.validateTypedArray(thisValue)
             expect(thisValue is JSObject)
 
             val (callbackfn, thisArg) = arguments.takeArgs(0..1)
@@ -252,14 +252,14 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
 
             while (k < len) {
                 val value = thisValue.get(k)
-                if (Operations.call(callbackfn, thisArg, listOf(value, k.toValue(), thisValue)).toBoolean())
+                if (AOs.call(callbackfn, thisArg, listOf(value, k.toValue(), thisValue)).toBoolean())
                     kept.add(value)
                 k++
             }
 
-            val newArr = Operations.typedArraySpeciesCreate(thisValue, JSArguments(listOf(kept.size.toValue())))
+            val newArr = AOs.typedArraySpeciesCreate(thisValue, JSArguments(listOf(kept.size.toValue())))
             kept.forEachIndexed { index, value ->
-                Operations.set(thisValue, index.key(), value, true)
+                AOs.set(thisValue, index.key(), value, true)
             }
 
             return newArr

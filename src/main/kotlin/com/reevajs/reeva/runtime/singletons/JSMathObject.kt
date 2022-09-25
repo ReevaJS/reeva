@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.singletons
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -221,9 +221,9 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         fun imul(arguments: JSArguments): JSValue {
             val a = arguments.argument(0).toUint32()
             val b = arguments.argument(1).toUint32()
-            val product = (a.asInt * b.asInt) % Operations.MAX_32BIT_INT
-            if (product >= Operations.MAX_31BIT_INT)
-                return (product - Operations.MAX_32BIT_INT).toValue()
+            val product = (a.asInt * b.asInt) % AOs.MAX_32BIT_INT
+            if (product >= AOs.MAX_31BIT_INT)
+                return (product - AOs.MAX_32BIT_INT).toValue()
             return product.toValue()
         }
 

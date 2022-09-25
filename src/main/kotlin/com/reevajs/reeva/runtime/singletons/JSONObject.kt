@@ -39,7 +39,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         fun parse(arguments: JSArguments): JSValue {
             val text = arguments.argument(0).toJSString().string
             val reviver = arguments.argument(1).let {
-                if (Operations.isCallable(it)) it else null
+                if (AOs.isCallable(it)) it else null
             }
 
             val result = try {
@@ -58,11 +58,11 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         ) {
             val result = parseHelper(element, reviver)
             if (reviver != null) {
-                val revived = Operations.call(reviver, value, listOf(key, result))
+                val revived = AOs.call(reviver, value, listOf(key, result))
                 if (revived != JSUndefined)
-                    Operations.createDataProperty(value, key, revived)
+                    AOs.createDataProperty(value, key, revived)
             } else {
-                Operations.createDataProperty(value, key, result)
+                AOs.createDataProperty(value, key, result)
             }
         }
 
@@ -120,7 +120,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             }
 
             val wrapper = JSObject.create()
-            Operations.createDataPropertyOrThrow(wrapper, "".toValue(), value)
+            AOs.createDataPropertyOrThrow(wrapper, "".toValue(), value)
             val state = SerializeState(
                 mutableListOf(),
                 "",
@@ -144,9 +144,9 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
         ): String? {
             var value = holder.get(key)
             if (value is JSObject || value is JSBigInt) {
-                val toJSON = Operations.getV(value, "toJSON".toValue())
-                if (Operations.isCallable(toJSON)) {
-                    value = Operations.call(toJSON, value, listOf(key.asValue))
+                val toJSON = AOs.getV(value, "toJSON".toValue())
+                if (AOs.isCallable(toJSON)) {
+                    value = AOs.call(toJSON, value, listOf(key.asValue))
                 }
             }
             if (value is JSObject) {
@@ -174,8 +174,8 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             }
             if (value.isBigInt)
                 Errors.JSON.StringifyBigInt.throwTypeError()
-            if (value.isObject && !Operations.isCallable(value)) {
-                if (Operations.isArray(value))
+            if (value.isObject && !AOs.isCallable(value)) {
+                if (AOs.isArray(value))
                     return serializeJSONArray(state, value as JSArrayObject)
                 return serializeJSONObject(state, value as JSObject)
             }
@@ -227,7 +227,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             val stepback = state.indent
             state.indent += state.gap
             val partial = mutableListOf<String>()
-            val len = Operations.lengthOfArrayLike(value)
+            val len = AOs.lengthOfArrayLike(value)
             for (i in 0 until len) {
                 val strP = serializeJSONProperty(state, i.key(), value)
                 partial.add(strP ?: "null")
@@ -263,7 +263,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             state.indent += state.gap
             val partial = mutableListOf<String>()
 
-            Operations.enumerableOwnPropertyNames(value, PropertyKind.Key).forEach { property ->
+            AOs.enumerableOwnPropertyNames(value, PropertyKind.Key).forEach { property ->
                 val strP = serializeJSONProperty(state, property.toPropertyKey(), value)
                 if (strP != null) {
                     partial.add(

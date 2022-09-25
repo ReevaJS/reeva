@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.singletons
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -41,11 +41,11 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         fun apply(arguments: JSArguments): JSValue {
             val (target, thisArg, argumentsList) = arguments.takeArgs(0..2)
 
-            if (!Operations.isCallable(target))
+            if (!AOs.isCallable(target))
                 Errors.NotCallable(target.toString()).throwTypeError()
 
-            val args = Operations.createListFromArrayLike(argumentsList)
-            return Operations.call(target, thisArg, args)
+            val args = AOs.createListFromArrayLike(argumentsList)
+            return AOs.call(target, thisArg, args)
         }
 
         @ECMAImpl("28.1.2")
@@ -55,15 +55,15 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
             val newTarget = if (arguments.size <= 2) {
                 target
             } else arguments.argument(2).also {
-                if (!Operations.isConstructor(it))
+                if (!AOs.isConstructor(it))
                     Errors.NotACtor(it.toString()).throwTypeError()
             }
 
-            if (!Operations.isCallable(target))
+            if (!AOs.isCallable(target))
                 Errors.NotCallable(target.toString()).throwTypeError()
 
-            val args = Operations.createListFromArrayLike(argumentsList)
-            return Operations.construct(target, args, newTarget)
+            val args = AOs.createListFromArrayLike(argumentsList)
+            return AOs.construct(target, args, newTarget)
         }
 
         @ECMAImpl("28.1.3")
@@ -142,7 +142,7 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
             if (target !is JSObject)
                 Errors.Reflect.FirstArgNotCallable("ownKeys").throwTypeError()
             val keys = target.ownPropertyKeys()
-            return Operations.createArrayFromList(keys.map { it.asValue })
+            return AOs.createArrayFromList(keys.map { it.asValue })
         }
 
         @ECMAImpl("28.1.11")

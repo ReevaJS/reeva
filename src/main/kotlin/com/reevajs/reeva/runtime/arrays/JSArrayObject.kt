@@ -99,7 +99,7 @@ open class JSArrayObject protected constructor(
             }
             ecmaAssert(oldLen >= 0)
 
-            val index = arrayIndex % Operations.MAX_32BIT_INT
+            val index = arrayIndex % AOs.MAX_32BIT_INT
             if (index >= oldLen && !oldLenDesc.isWritable)
                 return false
 

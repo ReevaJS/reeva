@@ -32,7 +32,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
 
     @ECMAImpl("10.4.7.1")
     override fun setPrototype(newPrototype: JSValue): Boolean {
-        return Operations.setImmutablePrototype(this, newPrototype)
+        return AOs.setImmutablePrototype(this, newPrototype)
     }
 
     companion object {
@@ -66,11 +66,11 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         fun defineGetter(arguments: JSArguments): JSValue {
             val obj = arguments.thisValue.toObject()
             val getter = arguments.argument(1)
-            if (!Operations.isCallable(getter))
+            if (!AOs.isCallable(getter))
                 Errors.Object.DefineGetterBadArgType.throwTypeError()
             val desc = Descriptor(JSAccessor(getter, null), Descriptor.ENUMERABLE or Descriptor.CONFIGURABLE)
             val key = arguments.argument(0).toPropertyKey()
-            Operations.definePropertyOrThrow(obj, key, desc)
+            AOs.definePropertyOrThrow(obj, key, desc)
             return JSUndefined
         }
 
@@ -79,11 +79,11 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         fun defineSetter(arguments: JSArguments): JSValue {
             val obj = arguments.thisValue.toObject()
             val setter = arguments.argument(1)
-            if (!Operations.isCallable(setter))
+            if (!AOs.isCallable(setter))
                 Errors.Object.DefineSetterBadArgType.throwTypeError()
             val desc = Descriptor(JSAccessor(null, setter), Descriptor.ENUMERABLE or Descriptor.CONFIGURABLE)
             val key = arguments.argument(0).toPropertyKey()
-            Operations.definePropertyOrThrow(obj, key, desc)
+            AOs.definePropertyOrThrow(obj, key, desc)
             return JSUndefined
         }
 
@@ -124,7 +124,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         fun hasOwnProperty(arguments: JSArguments): JSValue {
             val key = arguments.argument(0).toPropertyKey()
             val o = arguments.thisValue.toObject()
-            return Operations.hasOwnProperty(o, key).toValue()
+            return AOs.hasOwnProperty(o, key).toValue()
         }
 
         @ECMAImpl("19.1.3.3")
@@ -156,7 +156,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         @JvmStatic
         fun toLocaleString(arguments: JSArguments): JSValue {
             val thisObj = arguments.thisValue.toObject()
-            return Operations.invoke(thisObj, "toString".toValue())
+            return AOs.invoke(thisObj, "toString".toValue())
         }
 
         @ECMAImpl("20.1.3.6")
@@ -173,7 +173,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
                     it.string
                 } else {
                     when {
-                        Operations.isArray(obj) -> "Array"
+                        AOs.isArray(obj) -> "Array"
                         obj.hasSlot(SlotName.UnmappedParameterMap) || obj.hasSlot(SlotName.MappedParameterMap) -> "Arguments"
                         obj is JSFunction -> "Function" // TODO: Slot check? Can you extend Function?
                         obj.hasSlot(SlotName.ErrorData) -> "Error"

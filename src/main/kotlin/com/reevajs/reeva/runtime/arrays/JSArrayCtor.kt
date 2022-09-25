@@ -4,7 +4,7 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.errors.JSTypeErrorObject
@@ -31,7 +31,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
     override fun evaluate(arguments: JSArguments): JSValue {
         val realNewTarget = arguments.newTarget.ifUndefined(this)
 
-        val proto = Operations.getPrototypeFromConstructor(realNewTarget, Realm::arrayProto)
+        val proto = AOs.getPrototypeFromConstructor(realNewTarget, Realm::arrayProto)
 
         return when (arguments.size) {
             0 -> JSArrayObject.create(proto = proto)
@@ -54,7 +54,7 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                 }
             }
             else -> {
-                val array = Operations.arrayCreate(arguments.size, proto)
+                val array = AOs.arrayCreate(arguments.size, proto)
                 arguments.forEachIndexed { index, value ->
                     array.indexedProperties.set(array, index, value)
                 }
@@ -85,47 +85,47 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
             val thisArg = arguments.argument(2)
 
             val mapping = if (mapFn == JSUndefined) false else {
-                if (!Operations.isCallable(mapFn))
+                if (!AOs.isCallable(mapFn))
                     Errors.NotCallable(mapFn.toString()).throwTypeError()
                 true
             }
 
-            val usingIterator = Operations.getMethod(items, Realm.WellKnownSymbols.iterator)
+            val usingIterator = AOs.getMethod(items, Realm.WellKnownSymbols.iterator)
             if (usingIterator != JSUndefined) {
-                val array = if (Operations.isConstructor(arguments.thisValue)) {
-                    Operations.construct(arguments.thisValue) as JSObject
-                } else Operations.arrayCreate(0)
+                val array = if (AOs.isConstructor(arguments.thisValue)) {
+                    AOs.construct(arguments.thisValue) as JSObject
+                } else AOs.arrayCreate(0)
 
                 val iteratorRecord =
-                    Operations.getIterator(items, Operations.IteratorHint.Sync, usingIterator as JSFunction)
+                    AOs.getIterator(items, AOs.IteratorHint.Sync, usingIterator as JSFunction)
                 var k = 0L
                 while (true) {
-                    if (k == Operations.MAX_SAFE_INTEGER) {
+                    if (k == AOs.MAX_SAFE_INTEGER) {
                         val error = JSTypeErrorObject.create("array length ${Long.MAX_VALUE} is too large")
-                        Operations.iteratorClose(iteratorRecord, error)
+                        AOs.iteratorClose(iteratorRecord, error)
                         throw ThrowException(error)
                     }
 
-                    val next = Operations.iteratorStep(iteratorRecord)
+                    val next = AOs.iteratorStep(iteratorRecord)
                     if (next == JSFalse) {
-                        Operations.set(array, "length".key(), k.toValue(), true)
+                        AOs.set(array, "length".key(), k.toValue(), true)
                         return array
                     }
 
-                    val nextValue = Operations.iteratorValue(next)
+                    val nextValue = AOs.iteratorValue(next)
                     val mappedValue = if (mapping) {
                         try {
-                            Operations.call(mapFn, thisArg, listOf(nextValue, k.toValue()))
+                            AOs.call(mapFn, thisArg, listOf(nextValue, k.toValue()))
                         } catch (e: ThrowException) {
-                            Operations.iteratorClose(iteratorRecord, e.value)
+                            AOs.iteratorClose(iteratorRecord, e.value)
                             throw e
                         }
                     } else nextValue
 
                     try {
-                        Operations.createDataPropertyOrThrow(array, k.key(), mappedValue)
+                        AOs.createDataPropertyOrThrow(array, k.key(), mappedValue)
                     } catch (e: ThrowException) {
-                        Operations.iteratorClose(iteratorRecord, e.value)
+                        AOs.iteratorClose(iteratorRecord, e.value)
                         throw e
                     }
 
@@ -134,42 +134,42 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
             }
 
             val arrayLike = items.toObject()
-            val len = Operations.lengthOfArrayLike(arrayLike)
-            val array = if (Operations.isConstructor(arguments.thisValue)) {
-                Operations.construct(arguments.thisValue, listOf(len.toValue())) as JSObject
-            } else Operations.arrayCreate(len)
+            val len = AOs.lengthOfArrayLike(arrayLike)
+            val array = if (AOs.isConstructor(arguments.thisValue)) {
+                AOs.construct(arguments.thisValue, listOf(len.toValue())) as JSObject
+            } else AOs.arrayCreate(len)
 
             var k = 0
             while (k < len) {
                 val kValue = arrayLike.get(k)
                 val mappedValue = if (mapping) {
-                    Operations.call(mapFn, thisArg, listOf(kValue, k.toValue()))
+                    AOs.call(mapFn, thisArg, listOf(kValue, k.toValue()))
                 } else kValue
-                Operations.createDataPropertyOrThrow(array, k.key(), mappedValue)
+                AOs.createDataPropertyOrThrow(array, k.key(), mappedValue)
                 k++
             }
 
-            Operations.set(array, "length".key(), len.toValue(), true)
+            AOs.set(array, "length".key(), len.toValue(), true)
             return array
         }
 
         @ECMAImpl("23.1.2.2")
         @JvmStatic
         fun isArray(arguments: JSArguments): JSValue {
-            return Operations.isArray(arguments.argument(0)).toValue()
+            return AOs.isArray(arguments.argument(0)).toValue()
         }
 
         @ECMAImpl("23.1.2.3")
         @JvmStatic
         fun of(arguments: JSArguments): JSValue {
-            val array = if (Operations.isConstructor(arguments.thisValue)) {
-                Operations.construct(arguments.thisValue, listOf(arguments.size.toValue())) as JSObject
-            } else Operations.arrayCreate(arguments.size)
+            val array = if (AOs.isConstructor(arguments.thisValue)) {
+                AOs.construct(arguments.thisValue, listOf(arguments.size.toValue())) as JSObject
+            } else AOs.arrayCreate(arguments.size)
 
             arguments.forEachIndexed { index, value ->
-                Operations.createDataPropertyOrThrow(array, index.key(), value)
+                AOs.createDataPropertyOrThrow(array, index.key(), value)
             }
-            Operations.set(array, "length".key(), arguments.size.toValue(), true)
+            AOs.set(array, "length".key(), arguments.size.toValue(), true)
             return array
         }
 

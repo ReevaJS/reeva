@@ -5,7 +5,7 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -262,10 +262,10 @@ abstract class ModuleRecord(val realm: Realm) : Executable {
 
             // b. Assert: promise.[[PromiseState]] is not pending.
             val promiseState = promise.getSlot(SlotName.PromiseState)
-            ecmaAssert(promiseState != Operations.PromiseState.Pending)
+            ecmaAssert(promiseState != AOs.PromiseState.Pending)
 
             // c. If promise.[[PromiseState]] is rejected, then
-            if (promiseState == Operations.PromiseState.Rejected) {
+            if (promiseState == AOs.PromiseState.Rejected) {
                 // i. Return ThrowCompletion(promise.[[PromiseResult]]).
                 val result = promise.getSlot(SlotName.PromiseResult)
                 throw ThrowException(result)

@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.promises
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -30,7 +30,7 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
         @ECMAImpl("27.2.5.1")
         @JvmStatic
         fun catch(arguments: JSArguments): JSValue {
-            return Operations.invoke(
+            return AOs.invoke(
                 arguments.thisValue,
                 "then".toValue(),
                 listOf(JSUndefined, arguments.argument(0))
@@ -44,11 +44,11 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
                 Errors.IncompatibleMethodCall("Promise.prototype.finally").throwTypeError()
 
             val onFinally = arguments.argument(0)
-            val ctor = Operations.speciesConstructor(
+            val ctor = AOs.speciesConstructor(
                 arguments.thisValue,
                 Agent.activeAgent.getActiveRealm().promiseCtor,
             )
-            val (thenFinally, catchFinally) = if (!Operations.isCallable(onFinally)) {
+            val (thenFinally, catchFinally) = if (!AOs.isCallable(onFinally)) {
                 onFinally to onFinally
             } else {
                 JSThenFinallyFunction.create(ctor, onFinally) to JSCatchFinallyFunction.create(
@@ -57,21 +57,21 @@ class JSPromiseProto private constructor(realm: Realm) : JSObject(realm, realm.o
                 )
             }
 
-            return Operations.invoke(arguments.thisValue, "then".toValue(), listOf(thenFinally, catchFinally))
+            return AOs.invoke(arguments.thisValue, "then".toValue(), listOf(thenFinally, catchFinally))
         }
 
         @ECMAImpl("27.2.5.4")
         @JvmStatic
         fun then(arguments: JSArguments): JSValue {
-            if (!Operations.isPromise(arguments.thisValue))
+            if (!AOs.isPromise(arguments.thisValue))
                 Errors.IncompatibleMethodCall("Promise.prototype.then").throwTypeError()
 
-            val ctor = Operations.speciesConstructor(
+            val ctor = AOs.speciesConstructor(
                 arguments.thisValue,
                 Agent.activeAgent.getActiveRealm().promiseCtor,
             )
-            val resultCapability = Operations.newPromiseCapability(ctor)
-            return Operations.performPromiseThen(
+            val resultCapability = AOs.newPromiseCapability(ctor)
+            return AOs.performPromiseThen(
                 arguments.thisValue,
                 arguments.argument(0),
                 arguments.argument(1),

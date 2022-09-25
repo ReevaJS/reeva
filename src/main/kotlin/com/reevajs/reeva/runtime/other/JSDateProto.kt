@@ -225,7 +225,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             val thisValue = arguments.thisValue
             val zdt = thisTimeValue(thisValue, "setFullYear") ?: ZonedDateTime.ofInstant(
                 Instant.EPOCH,
-                Operations.defaultZone
+                AOs.defaultZone
             )
             expect(thisValue is JSDateObject)
             val year = arguments.argument(0).toNumber()
@@ -245,7 +245,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             val thisValue = arguments.thisValue
             val zdt = thisTimeValue(thisValue, "setHours") ?: ZonedDateTime.ofInstant(
                 Instant.EPOCH,
-                Operations.defaultZone
+                AOs.defaultZone
             )
             expect(thisValue is JSDateObject)
             val hour = arguments.argument(0).toNumber()
@@ -267,7 +267,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             val thisValue = arguments.thisValue
             val zdt = thisTimeValue(thisValue, "setMilliseconds") ?: ZonedDateTime.ofInstant(
                 Instant.EPOCH,
-                Operations.defaultZone
+                AOs.defaultZone
             )
             expect(thisValue is JSDateObject)
             val ms = arguments.argument(0).toNumber()
@@ -282,7 +282,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             val thisValue = arguments.thisValue
             val zdt = thisTimeValue(thisValue, "setMinutes") ?: ZonedDateTime.ofInstant(
                 Instant.EPOCH,
-                Operations.defaultZone
+                AOs.defaultZone
             )
             expect(thisValue is JSDateObject)
             val minute = arguments.argument(0).toNumber()
@@ -302,7 +302,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             val thisValue = arguments.thisValue
             val zdt = thisTimeValue(thisValue, "setMonth") ?: ZonedDateTime.ofInstant(
                 Instant.EPOCH,
-                Operations.defaultZone
+                AOs.defaultZone
             )
             expect(thisValue is JSDateObject)
             val month = arguments.argument(0).toNumber()
@@ -318,7 +318,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             val thisValue = arguments.thisValue
             val zdt = thisTimeValue(thisValue, "setSeconds") ?: ZonedDateTime.ofInstant(
                 Instant.EPOCH,
-                Operations.defaultZone
+                AOs.defaultZone
             )
             expect(thisValue is JSDateObject)
             val second = arguments.argument(0).toNumber()
@@ -341,7 +341,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             val time = arguments.argument(0).toNumber()
             ifAnyNotFinite(thisValue, time) { return it }
 
-            val tv = ZonedDateTime.ofInstant(Instant.ofEpochMilli(time.asLong), Operations.defaultZone)
+            val tv = ZonedDateTime.ofInstant(Instant.ofEpochMilli(time.asLong), AOs.defaultZone)
             return dateValueSetHelper(thisValue, tv)
         }
 
@@ -475,7 +475,7 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         @JvmStatic
         fun toDateString(arguments: JSArguments): JSValue {
             val zdt = thisTimeValue(arguments.thisValue, "toDateString") ?: return "Invalid Date".toValue()
-            return Operations.dateString(zdt).toValue()
+            return AOs.dateString(zdt).toValue()
         }
 
         @ECMAImpl("21.4.4.36")
@@ -502,16 +502,16 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         @JvmStatic
         fun toJSON(arguments: JSArguments): JSValue {
             val obj = arguments.thisValue.toObject()
-            val tv = obj.toPrimitive(Operations.ToPrimitiveHint.AsNumber)
+            val tv = obj.toPrimitive(AOs.ToPrimitiveHint.AsNumber)
             if (tv is JSNumber && !tv.isFinite)
                 return JSNull
-            return Operations.invoke(obj, "toISOString".toValue())
+            return AOs.invoke(obj, "toISOString".toValue())
         }
 
         @ECMAImpl("21.4.4.41")
         @JvmStatic
         fun toString(arguments: JSArguments): JSValue {
-            return Operations.toDateString(
+            return AOs.toDateString(
                 thisTimeValue(arguments.thisValue, "toString") ?: return "Invalid Date".toValue()
             ).toValue()
         }
@@ -520,20 +520,20 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
         @JvmStatic
         fun toTimeString(arguments: JSArguments): JSValue {
             val zdt = thisTimeValue(arguments.thisValue, "toTimeString") ?: return "Invalid Date".toValue()
-            return (Operations.timeString(zdt) + Operations.timeZoneString(zdt)).toValue()
+            return (AOs.timeString(zdt) + AOs.timeZoneString(zdt)).toValue()
         }
 
         @ECMAImpl("21.4.4.43")
         @JvmStatic
         fun toUTCString(arguments: JSArguments): JSValue {
             val zdt = thisTimeValue(arguments.thisValue, "toUTCString") ?: return "Invalid Date".toValue()
-            val weekday = zdt.dayOfWeek.getDisplayName(TextStyle.SHORT, Operations.defaultLocale)
-            val month = zdt.month.getDisplayName(TextStyle.SHORT, Operations.defaultLocale)
+            val weekday = zdt.dayOfWeek.getDisplayName(TextStyle.SHORT, AOs.defaultLocale)
+            val month = zdt.month.getDisplayName(TextStyle.SHORT, AOs.defaultLocale)
             val day = "%02d".format(zdt.dayOfMonth)
             val yearSign = if (zdt.year >= 0) "" else "-"
             val paddedYear = zdt.year.toString().padStart(4, '0')
 
-            return "$weekday, $day $month $yearSign$paddedYear ${Operations.timeString(zdt)}".toValue()
+            return "$weekday, $day $month $yearSign$paddedYear ${AOs.timeString(zdt)}".toValue()
         }
 
         @ECMAImpl("21.4.4.44")
@@ -552,20 +552,20 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             val hint = arguments.argument(0).toJSString().string
 
             return when (hint) {
-                "string", "default" -> Operations.ordinaryToPrimitive(
+                "string", "default" -> AOs.ordinaryToPrimitive(
                     arguments.thisValue,
-                    Operations.ToPrimitiveHint.AsString
+                    AOs.ToPrimitiveHint.AsString
                 )
-                "number" -> Operations.ordinaryToPrimitive(
+                "number" -> AOs.ordinaryToPrimitive(
                     arguments.thisValue,
-                    Operations.ToPrimitiveHint.AsNumber
+                    AOs.ToPrimitiveHint.AsNumber
                 )
                 else -> Errors.InvalidToPrimitiveHint(hint).throwTypeError()
             }
         }
 
         private fun dateValueSetHelper(dateObj: JSObject, zdt: ZonedDateTime): JSValue {
-            return if (Operations.timeClip(zdt) == null) {
+            return if (AOs.timeClip(zdt) == null) {
                 dateObj.setSlot(SlotName.DateValue, null)
                 JSNumber.NaN
             } else {

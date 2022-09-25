@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.memory
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
@@ -28,7 +28,7 @@ class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(rea
         if (newTarget == JSUndefined)
             Errors.CtorCallWithoutNew("ArrayBuffer").throwTypeError()
 
-        return Operations.allocateArrayBuffer(
+        return AOs.allocateArrayBuffer(
             newTarget,
             arguments.argument(0).toIndex()
         )

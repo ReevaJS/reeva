@@ -49,7 +49,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val newTarget = arguments.newTarget
         // TODO: "If NewTarget is neither undefined nor the active function, then..."
         if (newTarget != JSUndefined && newTarget != agent.getActiveFunction())
-            return Operations.ordinaryCreateFromConstructor(newTarget, defaultProto = Realm::objectProto)
+            return AOs.ordinaryCreateFromConstructor(newTarget, defaultProto = Realm::objectProto)
         if (value.isUndefined || value.isNull)
             return JSObject.create()
         return value.toObject()
@@ -112,7 +112,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
                 Errors.Object.DefinePropertyBadArgType.throwTypeError()
             val key = arguments.argument(1).toPropertyKey()
             val desc = Descriptor.fromObject(arguments.argument(2))
-            Operations.definePropertyOrThrow(obj, key.asValue, desc)
+            AOs.definePropertyOrThrow(obj, key.asValue, desc)
             return obj
         }
 
@@ -120,8 +120,8 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @JvmStatic
         fun entries(arguments: JSArguments): JSValue {
             val obj = arguments.argument(0).toObject()
-            val names = Operations.enumerableOwnPropertyNames(obj, PropertyKind.KeyValue)
-            return Operations.createArrayFromList(names)
+            val names = AOs.enumerableOwnPropertyNames(obj, PropertyKind.KeyValue)
+            return AOs.createArrayFromList(names)
         }
 
         @ECMAImpl("20.1.2.6")
@@ -130,7 +130,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             val obj = arguments.argument(0)
             if (obj !is JSObject)
                 return obj
-            if (!Operations.setIntegrityLevel(obj, Operations.IntegrityLevel.Frozen)) {
+            if (!AOs.setIntegrityLevel(obj, AOs.IntegrityLevel.Frozen)) {
                 // TODO: spidermonkey throws this error in the Proxy preventExtensions handler
                 Errors.TODO("Object.freeze").throwTypeError()
             }
@@ -146,10 +146,10 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
                 val key = args.argument(0)
                 val value = args.argument(1)
                 ecmaAssert(args.thisValue is JSObject)
-                Operations.createDataPropertyOrThrow(args.thisValue, key, value)
+                AOs.createDataPropertyOrThrow(args.thisValue, key, value)
                 JSUndefined
             }
-            return Operations.addEntriesFromIterable( obj, iterable, adder)
+            return AOs.addEntriesFromIterable( obj, iterable, adder)
         }
 
         @ECMAImpl("20.1.2.8")
@@ -169,7 +169,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             obj.ownPropertyKeys().forEach { key ->
                 val desc = obj.getOwnPropertyDescriptor(key)!!
                 val descObj = desc.toObject(obj)
-                Operations.createDataPropertyOrThrow(descriptors, key, descObj)
+                AOs.createDataPropertyOrThrow(descriptors, key, descObj)
             }
             return descriptors
         }
@@ -230,8 +230,8 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @JvmStatic
         fun keys(arguments: JSArguments): JSValue {
             val obj = arguments.argument(0).toObject()
-            val nameList = Operations.enumerableOwnPropertyNames(obj, PropertyKind.Key)
-            return Operations.createArrayFromList(nameList)
+            val nameList = AOs.enumerableOwnPropertyNames(obj, PropertyKind.Key)
+            return AOs.createArrayFromList(nameList)
         }
 
         @ECMAImpl("20.1.2.18")
@@ -253,7 +253,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             val obj = arguments.argument(0)
             if (obj !is JSObject)
                 return obj
-            if (!Operations.setIntegrityLevel(obj, Operations.IntegrityLevel.Sealed)) {
+            if (!AOs.setIntegrityLevel(obj, AOs.IntegrityLevel.Sealed)) {
                 // TODO: spidermonkey throws this error in the Proxy preventExtensions handler
                 Errors.TODO("Object.seal").throwTypeError()
             }
@@ -278,8 +278,8 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @JvmStatic
         fun values(arguments: JSArguments): JSValue {
             val obj = arguments.argument(0).toObject()
-            val nameList = Operations.enumerableOwnPropertyNames(obj, PropertyKind.Value)
-            return Operations.createArrayFromList(nameList)
+            val nameList = AOs.enumerableOwnPropertyNames(obj, PropertyKind.Value)
+            return AOs.createArrayFromList(nameList)
         }
 
         private fun getOwnPropertyKeys(target: JSValue, isSymbols: Boolean): JSValue {
@@ -289,7 +289,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
                 if (!key.isSymbol xor isSymbols)
                     keyList.add(key.asValue)
             }
-            return Operations.createArrayFromList(keyList)
+            return AOs.createArrayFromList(keyList)
         }
 
         @ECMAImpl("19.1.2.3.1")
@@ -304,7 +304,7 @@ class JSObjectCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
                 }
             }
             descriptors.forEach { (key, descriptor) ->
-                Operations.definePropertyOrThrow(target, key.asValue, descriptor)
+                AOs.definePropertyOrThrow(target, key.asValue, descriptor)
             }
             return target
         }

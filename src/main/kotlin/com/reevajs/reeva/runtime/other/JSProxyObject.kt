@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.other
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSFunction
@@ -31,12 +31,12 @@ class JSProxyObject private constructor(
     if (target is JSFunction) target.isStrict else false,
     if (target is JSFunction) realm.functionProto else realm.objectProto,
 ) {
-    override val isCallable = Operations.isCallable(target)
+    override val isCallable = AOs.isCallable(target)
 
     val target by slot(SlotName.ProxyTarget, target)
     var handler by slot(SlotName.ProxyHandler, handler)
 
-    override fun isConstructor() = Operations.isConstructor(target)
+    override fun isConstructor() = AOs.isConstructor(target)
 
     fun revoke() {
         expect(handler != null)
@@ -49,7 +49,7 @@ class JSProxyObject private constructor(
                 Errors.Proxy.Revoked(name).throwTypeError()
             it
         }
-        val trap = Operations.getMethod(handler, name.toValue())
+        val trap = AOs.getMethod(handler, name.toValue())
         if (trap is JSUndefined)
             block()
         return handler to trap
@@ -60,7 +60,7 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("getPrototypeOf") {
             return target.getPrototype()
         }
-        val handlerProto = Operations.call(trap, handler, listOf(target))
+        val handlerProto = AOs.call(trap, handler, listOf(target))
         if (handlerProto !is JSObject && handlerProto != JSNull)
             Errors.Proxy.GetPrototypeOf.ReturnObjectOrNull.throwTypeError()
         if (target.isExtensible())
@@ -77,7 +77,7 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("setPrototypeOf") {
             return target.setPrototype(newPrototype)
         }
-        val booleanTrapResult = Operations.call(trap, handler, listOf(target, newPrototype)).toBoolean()
+        val booleanTrapResult = AOs.call(trap, handler, listOf(target, newPrototype)).toBoolean()
         if (!booleanTrapResult)
             return false
         if (target.isExtensible())
@@ -92,7 +92,7 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("isExtensible") {
             return target.isExtensible()
         }
-        val booleanTrapResult = Operations.call(trap, handler, listOf(target)).toBoolean()
+        val booleanTrapResult = AOs.call(trap, handler, listOf(target)).toBoolean()
         if (booleanTrapResult != target.isExtensible())
             Errors.Proxy.IsExtensible.DifferentReturn.throwTypeError()
         return booleanTrapResult
@@ -102,7 +102,7 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("preventExtensions") {
             return target.preventExtensions()
         }
-        val booleanTrapResult = Operations.call(trap, handler, listOf(target)).toBoolean()
+        val booleanTrapResult = AOs.call(trap, handler, listOf(target)).toBoolean()
         if (booleanTrapResult && target.isExtensible())
             Errors.Proxy.PreventExtensions.ExtensibleReturn.throwTypeError()
         return booleanTrapResult
@@ -112,7 +112,7 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("getOwnPropertyDescriptor") {
             return target.getOwnPropertyDescriptor(property)
         }
-        val trapResultObj = Operations.call(trap, handler, listOf(target, property.asValue))
+        val trapResultObj = AOs.call(trap, handler, listOf(target, property.asValue))
         if (trapResultObj !is JSObject && trapResultObj != JSUndefined)
             Errors.Proxy.GetOwnPropertyDesc.ReturnObjectOrUndefined.throwTypeError()
         val targetDesc = target.getOwnPropertyDescriptor(property)
@@ -126,7 +126,7 @@ class JSProxyObject private constructor(
             return null
         }
         val resultDesc = Descriptor.fromObject(trapResultObj).complete()
-        if (!Operations.isCompatiblePropertyDescriptor(target.isExtensible(), resultDesc, targetDesc))
+        if (!AOs.isCompatiblePropertyDescriptor(target.isExtensible(), resultDesc, targetDesc))
             Errors.Proxy.GetOwnPropertyDesc.NonExistentNonExtensible(property).throwTypeError()
         if (!resultDesc.isConfigurable) {
             if (targetDesc == null)
@@ -145,7 +145,7 @@ class JSProxyObject private constructor(
         }
 
         val descObj = descriptor.toObject(target)
-        val booleanTrapResult = Operations.call(trap, handler, listOf(target, property.asValue, descObj)).toBoolean()
+        val booleanTrapResult = AOs.call(trap, handler, listOf(target, property.asValue, descObj)).toBoolean()
         if (!booleanTrapResult)
             return false
         val targetDesc = target.getOwnPropertyDescriptor(property)
@@ -157,7 +157,7 @@ class JSProxyObject private constructor(
             if (settingConfigFalse)
                 Errors.Proxy.DefineOwnProperty.AddNonConf(property).throwTypeError()
         } else {
-            if (!Operations.isCompatiblePropertyDescriptor(isExtensible, descriptor, targetDesc))
+            if (!AOs.isCompatiblePropertyDescriptor(isExtensible, descriptor, targetDesc))
                 Errors.Proxy.DefineOwnProperty.IncompatibleDesc(property).throwTypeError()
             if (settingConfigFalse && targetDesc.isConfigurable)
                 Errors.Proxy.DefineOwnProperty.ChangeConf(property).throwTypeError()
@@ -175,7 +175,7 @@ class JSProxyObject private constructor(
             return target.hasProperty(property)
         }
         val booleanTrapResult =
-            Operations.call(trap, handler, listOf(target, property.asValue)).toBoolean()
+            AOs.call(trap, handler, listOf(target, property.asValue)).toBoolean()
         if (!booleanTrapResult) {
             val targetDesc = target.getOwnPropertyDescriptor(property)
             if (targetDesc != null) {
@@ -192,7 +192,7 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("get") {
             return target.get(property, receiver)
         }
-        val trapResult = Operations.call(trap, handler, listOf(target, property.asValue, receiver))
+        val trapResult = AOs.call(trap, handler, listOf(target, property.asValue, receiver))
         val targetDesc = target.getOwnPropertyDescriptor(property)
         if (targetDesc != null && !targetDesc.isConfigurable) {
             if (targetDesc.isDataDescriptor && !targetDesc.isWritable &&
@@ -210,7 +210,7 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("set") {
             return target.set(property, value, receiver)
         }
-        val trapResult = Operations.call(trap, handler, listOf(target, property.asValue, receiver)).toBoolean()
+        val trapResult = AOs.call(trap, handler, listOf(target, property.asValue, receiver)).toBoolean()
         if (!trapResult)
             return false
         val targetDesc = target.getOwnPropertyDescriptor(property)
@@ -227,7 +227,7 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("deleteProperty") {
             return target.delete(property)
         }
-        val booleanTrapResult = Operations.call(
+        val booleanTrapResult = AOs.call(
             trap,
             handler,
             listOf(target, property.asValue.toJSString())
@@ -246,9 +246,9 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("ownKeys") {
             return target.ownPropertyKeys(onlyEnumerable)
         }
-        val trapResultArray = Operations.call(trap, handler, listOf(target))
+        val trapResultArray = AOs.call(trap, handler, listOf(target))
         // Spec deviation: We use numbers as keys, so we need to include the number type in this list
-        val trapResult = Operations.createListFromArrayLike(
+        val trapResult = AOs.createListFromArrayLike(
             trapResultArray,
             listOf(Type.String, Type.Symbol, Type.Number)
         ).map {
@@ -291,16 +291,16 @@ class JSProxyObject private constructor(
         val (handler, trap) = getTrapAndHandler("apply") {
             return (target as JSFunction).call(arguments)
         }
-        val argArray = Operations.createArrayFromList(arguments)
-        return Operations.call(trap, handler, listOf(target, arguments.thisValue, argArray))
+        val argArray = AOs.createArrayFromList(arguments)
+        return AOs.call(trap, handler, listOf(target, arguments.thisValue, argArray))
     }
 
     override fun construct(arguments: JSArguments): JSValue {
         val (handler, trap) = getTrapAndHandler("construct") {
             return (target as JSFunction).construct(arguments)
         }
-        val argArray = Operations.createArrayFromList(arguments)
-        val newObj = Operations.call(trap, handler, listOf(target, argArray, arguments.newTarget))
+        val argArray = AOs.createArrayFromList(arguments)
+        val newObj = AOs.call(trap, handler, listOf(target, argArray, arguments.newTarget))
         if (newObj !is JSObject)
             Errors.Proxy.Construct.NonObject.throwTypeError()
         return newObj

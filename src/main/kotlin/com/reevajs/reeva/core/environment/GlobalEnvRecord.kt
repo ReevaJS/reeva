@@ -2,7 +2,7 @@ package com.reevajs.reeva.core.environment
 
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -193,7 +193,7 @@ class GlobalEnvRecord(
 
         // 3. Let hasProperty be ? HasOwnProperty(globalObject, N).
         // 4. If hasProperty is true, return true.
-        if (Operations.hasOwnProperty(globalObject, name.key()))
+        if (AOs.hasOwnProperty(globalObject, name.key()))
             return true
 
         // 5. Return ? IsExtensible(globalObject).
@@ -228,7 +228,7 @@ class GlobalEnvRecord(
         // 3. Let hasProperty be ? HasOwnProperty(globalObject, N).
         // 4. Let extensible be ? IsExtensible(globalObject).
         // 5. If hasProperty is false and extensible is true, then
-        if (!Operations.hasOwnProperty(globalObject, name.key()) && globalObject.isExtensible()) {
+        if (!AOs.hasOwnProperty(globalObject, name.key()) && globalObject.isExtensible()) {
             // a. Perform ? ObjRec.CreateMutableBinding(N, D).
             objectRecord.createMutableBinding(name, deletable)
 
@@ -270,10 +270,10 @@ class GlobalEnvRecord(
         }
 
         // 6. Perform ? DefinePropertyOrThrow(globalObject, N, desc).
-        Operations.definePropertyOrThrow(globalObject, name.key(), desc)
+        AOs.definePropertyOrThrow(globalObject, name.key(), desc)
 
         // 7. Perform ? Set(globalObject, N, V, false).
-        Operations.set(globalObject, name.key(), value, false)
+        AOs.set(globalObject, name.key(), value, false)
 
         // 8. Let varDeclaredNames be envRec.[[VarNames]].
         // 9. If varDeclaredNames does not contain N, then

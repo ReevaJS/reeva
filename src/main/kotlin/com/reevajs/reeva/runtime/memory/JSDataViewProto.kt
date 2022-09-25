@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.memory
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -55,7 +55,7 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getBuffer(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!Operations.requireInternalSlot(thisValue, SlotName.DataView))
+            if (!AOs.requireInternalSlot(thisValue, SlotName.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.buffer").throwTypeError()
             return thisValue.getSlot(SlotName.ViewedArrayBuffer)
         }
@@ -64,9 +64,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getByteLength(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!Operations.requireInternalSlot(thisValue, SlotName.DataView))
+            if (!AOs.requireInternalSlot(thisValue, SlotName.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError()
-            if (Operations.isDetachedBuffer(thisValue.getSlot(SlotName.ViewedArrayBuffer)))
+            if (AOs.isDetachedBuffer(thisValue.getSlot(SlotName.ViewedArrayBuffer)))
                 Errors.TODO("DataView.prototype.byteLength isDetachedBuffer").throwTypeError()
             return thisValue.getSlot(SlotName.ByteLength).toValue()
         }
@@ -75,9 +75,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getByteOffset(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!Operations.requireInternalSlot(thisValue, SlotName.DataView))
+            if (!AOs.requireInternalSlot(thisValue, SlotName.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError()
-            if (Operations.isDetachedBuffer(thisValue.getSlot(SlotName.ViewedArrayBuffer)))
+            if (AOs.isDetachedBuffer(thisValue.getSlot(SlotName.ViewedArrayBuffer)))
                 Errors.TODO("DataView.prototype.byteLength isDetachedBuffer").throwTypeError()
             return thisValue.getSlot(SlotName.ByteOffset).toValue()
         }
@@ -86,11 +86,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getBigInt64(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
-            return Operations.getViewValue(
+            return AOs.getViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian,
-                Operations.TypedArrayKind.BigInt64
+                AOs.TypedArrayKind.BigInt64
             )
         }
 
@@ -98,11 +98,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getBigUint64(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
-            return Operations.getViewValue(
+            return AOs.getViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian,
-                Operations.TypedArrayKind.BigUint64
+                AOs.TypedArrayKind.BigUint64
             )
         }
 
@@ -110,11 +110,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getFloat32(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
-            return Operations.getViewValue(
+            return AOs.getViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
-                Operations.TypedArrayKind.Float32
+                AOs.TypedArrayKind.Float32
             )
         }
 
@@ -122,11 +122,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getFloat64(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
-            return Operations.getViewValue(
+            return AOs.getViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
-                Operations.TypedArrayKind.Float64
+                AOs.TypedArrayKind.Float64
             )
         }
 
@@ -134,11 +134,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getInt8(arguments: JSArguments): JSValue {
             val byteOffset = arguments.argument(0)
-            return Operations.getViewValue(
+            return AOs.getViewValue(
                 arguments.thisValue,
                 byteOffset,
                 JSTrue,
-                Operations.TypedArrayKind.Int8
+                AOs.TypedArrayKind.Int8
             )
         }
 
@@ -146,11 +146,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getInt16(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
-            return Operations.getViewValue(
+            return AOs.getViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
-                Operations.TypedArrayKind.Int16
+                AOs.TypedArrayKind.Int16
             )
         }
 
@@ -158,11 +158,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getInt32(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
-            return Operations.getViewValue(
+            return AOs.getViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
-                Operations.TypedArrayKind.Int32
+                AOs.TypedArrayKind.Int32
             )
         }
 
@@ -170,11 +170,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getUint8(arguments: JSArguments): JSValue {
             val byteOffset = arguments.argument(0)
-            return Operations.getViewValue(
+            return AOs.getViewValue(
                 arguments.thisValue,
                 byteOffset,
                 JSTrue,
-                Operations.TypedArrayKind.Uint8
+                AOs.TypedArrayKind.Uint8
             )
         }
 
@@ -182,11 +182,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getUint16(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
-            return Operations.getViewValue(
+            return AOs.getViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
-                Operations.TypedArrayKind.Uint16
+                AOs.TypedArrayKind.Uint16
             )
         }
 
@@ -194,11 +194,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getUint32(arguments: JSArguments): JSValue {
             val (byteOffset, littleEndian) = arguments.takeArgs(0..1)
-            return Operations.getViewValue(
+            return AOs.getViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
-                Operations.TypedArrayKind.Uint32
+                AOs.TypedArrayKind.Uint32
             )
         }
 
@@ -206,11 +206,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun setBigInt64(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
-            Operations.setViewValue(
+            AOs.setViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian,
-                Operations.TypedArrayKind.BigInt64,
+                AOs.TypedArrayKind.BigInt64,
                 value
             )
             return JSUndefined
@@ -220,11 +220,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun setBigUint64(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
-            Operations.setViewValue(
+            AOs.setViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian,
-                Operations.TypedArrayKind.BigUint64,
+                AOs.TypedArrayKind.BigUint64,
                 value
             )
             return JSUndefined
@@ -234,11 +234,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun setFloat32(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
-            Operations.setViewValue(
+            AOs.setViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
-                Operations.TypedArrayKind.Float32,
+                AOs.TypedArrayKind.Float32,
                 value
             )
             return JSUndefined
@@ -248,11 +248,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun setFloat64(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
-            Operations.setViewValue(
+            AOs.setViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
-                Operations.TypedArrayKind.Float64,
+                AOs.TypedArrayKind.Float64,
                 value
             )
             return JSUndefined
@@ -262,11 +262,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun setInt8(arguments: JSArguments): JSValue {
             val (byteOffset, value) = arguments.takeArgs(0..1)
-            Operations.setViewValue(
+            AOs.setViewValue(
                 arguments.thisValue,
                 byteOffset,
                 JSTrue,
-                Operations.TypedArrayKind.Int8,
+                AOs.TypedArrayKind.Int8,
                 value
             )
             return JSUndefined
@@ -276,11 +276,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun setInt16(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
-            Operations.setViewValue(
+            AOs.setViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
-                Operations.TypedArrayKind.Int16,
+                AOs.TypedArrayKind.Int16,
                 value
             )
             return JSUndefined
@@ -290,11 +290,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun setInt32(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
-            Operations.setViewValue(
+            AOs.setViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
-                Operations.TypedArrayKind.Int32,
+                AOs.TypedArrayKind.Int32,
                 value
             )
             return JSUndefined
@@ -304,11 +304,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun setUint8(arguments: JSArguments): JSValue {
             val (byteOffset, value) = arguments.takeArgs(0..1)
-            Operations.setViewValue(
+            AOs.setViewValue(
                 arguments.thisValue,
                 byteOffset,
                 JSTrue,
-                Operations.TypedArrayKind.Uint8,
+                AOs.TypedArrayKind.Uint8,
                 value
             )
             return JSUndefined
@@ -318,11 +318,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun setUint16(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
-            Operations.setViewValue(
+            AOs.setViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
-                Operations.TypedArrayKind.Uint16,
+                AOs.TypedArrayKind.Uint16,
                 value
             )
             return JSUndefined
@@ -332,11 +332,11 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun setUint32(arguments: JSArguments): JSValue {
             val (byteOffset, value, littleEndian) = arguments.takeArgs(0..2)
-            Operations.setViewValue(
+            AOs.setViewValue(
                 arguments.thisValue,
                 byteOffset,
                 littleEndian.ifUndefined(JSFalse),
-                Operations.TypedArrayKind.Uint32,
+                AOs.TypedArrayKind.Uint32,
                 value
             )
             return JSUndefined

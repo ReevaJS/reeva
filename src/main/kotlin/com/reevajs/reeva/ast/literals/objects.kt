@@ -5,7 +5,7 @@ import com.reevajs.reeva.ast.expressions.SuperCallExpressionNode
 import com.reevajs.reeva.ast.statements.ASTListNode
 import com.reevajs.reeva.ast.statements.BlockNode
 import com.reevajs.reeva.parsing.Scope
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 
 typealias PropertyDefinitionList = ASTListNode<Property>
 
@@ -31,7 +31,7 @@ class PropertyName(
     fun asString() = when (type) {
         Type.Identifier -> (expression as IdentifierNode).processedName
         Type.String -> (expression as StringLiteralNode).value
-        Type.Number -> Operations.numberToString((expression as NumericLiteralNode).value)
+        Type.Number -> AOs.numberToString((expression as NumericLiteralNode).value)
         Type.Computed -> "[computed method name]"
     }
 
@@ -70,10 +70,10 @@ class MethodDefinitionNode(
         AsyncGenerator(isAsync = true, isGenerator = true);
 
         fun toFunctionKind() = when (this) {
-            Generator -> Operations.FunctionKind.Generator
-            Async -> Operations.FunctionKind.Async
-            AsyncGenerator -> Operations.FunctionKind.AsyncGenerator
-            else -> Operations.FunctionKind.Normal
+            Generator -> AOs.FunctionKind.Generator
+            Async -> AOs.FunctionKind.Async
+            AsyncGenerator -> AOs.FunctionKind.AsyncGenerator
+            else -> AOs.FunctionKind.Normal
         }
     }
 }

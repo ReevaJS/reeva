@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.iterators
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -48,7 +48,7 @@ class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject
                         if (desc != null) {
                             thisValue.visitedKeys.add(key)
                             if (desc.isEnumerable) {
-                                return Operations.createIterResultObject(key.asValue.toJSString(), false)
+                                return AOs.createIterResultObject(key.asValue.toJSString(), false)
                             }
                         }
                     }
@@ -56,7 +56,7 @@ class JSObjectPropertyIteratorProto private constructor(realm: Realm) : JSObject
                 thisValue.obj = obj.getPrototype()
                 thisValue.objWasVisited = false
                 if (thisValue.obj == JSNull)
-                    return Operations.createIterResultObject(JSUndefined, true)
+                    return AOs.createIterResultObject(JSUndefined, true)
             }
         }
     }

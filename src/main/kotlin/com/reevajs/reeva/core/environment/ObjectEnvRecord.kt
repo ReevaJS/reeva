@@ -2,7 +2,7 @@ package com.reevajs.reeva.core.environment
 
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -52,7 +52,7 @@ class ObjectEnvRecord(
         // 1. Let bindingObject be envRec.[[BindingObject]]
         // 2. Perform ? DefinePropertyOrThrow(bindingObject, N, PropertyDescriptor { [[Value]]: undefined, [[Writable]]:
         //    true, [[Enumerable]]: true, [[Configurable]]: D }).
-        Operations.definePropertyOrThrow(bindingObject, name.key(), Descriptor(JSUndefined, 0).apply {
+        AOs.definePropertyOrThrow(bindingObject, name.key(), Descriptor(JSUndefined, 0).apply {
             setWritable(true)
             setEnumerable(true)
             setConfigurable(deletable)
@@ -85,7 +85,7 @@ class ObjectEnvRecord(
             Errors.TODO("ObjectEnvironmentRecord::setMutableBinding").throwReferenceError(realm)
 
         // 4. Perform ? Set(bindingObject, N, V, S)
-        Operations.set(bindingObject, name.key(), value, isStrict)
+        AOs.set(bindingObject, name.key(), value, isStrict)
 
         // 5. Return unused.
     }

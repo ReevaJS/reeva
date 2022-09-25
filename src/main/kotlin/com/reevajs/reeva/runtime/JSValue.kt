@@ -96,9 +96,9 @@ abstract class JSValue {
         if (type != other.type)
             return false
         if (type == Type.Number)
-            return Operations.numericSameValue(this, other).boolean
+            return AOs.numericSameValue(this, other).boolean
         if (type == Type.BigInt)
-            return Operations.bigintSameValue(this, other).boolean
+            return AOs.bigintSameValue(this, other).boolean
         return sameValueNonNumeric(other)
     }
 
@@ -107,9 +107,9 @@ abstract class JSValue {
         if (type != other.type)
             return false
         if (type == Type.Number)
-            return Operations.numericSameValueZero(this, other).boolean
+            return AOs.numericSameValueZero(this, other).boolean
         if (type == Type.BigInt)
-            return Operations.bigintSameValueZero(this, other).boolean
+            return AOs.bigintSameValueZero(this, other).boolean
         return sameValueNonNumeric(other)
     }
 
@@ -140,7 +140,7 @@ abstract class JSValue {
     fun ifNullish(value: JSValue) = if (this == JSUndefined || this == JSNull) value else this
 
     override fun toString(): String {
-        return Operations.toPrintableString(this)
+        return AOs.toPrintableString(this)
     }
 
     override fun equals(other: Any?): Boolean {
@@ -190,43 +190,43 @@ abstract class JSValue {
  * Operations extension methods
  */
 
-val JSValue.isCallable: Boolean get() = Operations.isCallable(this)
-val JSValue.isConstructor: Boolean get() = Operations.isConstructor(this)
-val JSValue.isIntegralNumber: Boolean get() = Operations.isIntegralNumber(this)
-val JSValue.isPropertyKey: Boolean get() = Operations.isPropertyKey(this)
-val JSValue.isRegExp: Boolean get() = Operations.isRegExp(this)
+val JSValue.isCallable: Boolean get() = AOs.isCallable(this)
+val JSValue.isConstructor: Boolean get() = AOs.isConstructor(this)
+val JSValue.isIntegralNumber: Boolean get() = AOs.isIntegralNumber(this)
+val JSValue.isPropertyKey: Boolean get() = AOs.isPropertyKey(this)
+val JSValue.isRegExp: Boolean get() = AOs.isRegExp(this)
 
-fun JSValue.toBoolean() = Operations.toBoolean(this)
-fun JSValue.toNumeric() = Operations.toNumeric(this)
-fun JSValue.toNumber() = Operations.toNumber(this)
-fun JSValue.toJSString() = Operations.toString(this)
-fun JSValue.toIntegerOrInfinity() = Operations.toIntegerOrInfinity(this)
-fun JSValue.toInt32() = Operations.toInt32(this)
-fun JSValue.toUint32() = Operations.toUint32(this)
-fun JSValue.toUint16() = Operations.toUint16(this)
-fun JSValue.toBigInt() = Operations.toBigInt(this)
-fun JSValue.toObject() = Operations.toObject(this)
-fun JSValue.toPropertyKey() = Operations.toPropertyKey(this)
-fun JSValue.toLength() = Operations.toLength(this)
-fun JSValue.toIndex() = Operations.toIndex(this)
-fun JSValue.requireObjectCoercible() = Operations.requireObjectCoercible(this)
-fun JSValue.lengthOfArrayLike() = Operations.lengthOfArrayLike(this)
-fun JSValue.toPrimitive(hint: Operations.ToPrimitiveHint? = null) =
-    Operations.toPrimitive(this, hint)
+fun JSValue.toBoolean() = AOs.toBoolean(this)
+fun JSValue.toNumeric() = AOs.toNumeric(this)
+fun JSValue.toNumber() = AOs.toNumber(this)
+fun JSValue.toJSString() = AOs.toString(this)
+fun JSValue.toIntegerOrInfinity() = AOs.toIntegerOrInfinity(this)
+fun JSValue.toInt32() = AOs.toInt32(this)
+fun JSValue.toUint32() = AOs.toUint32(this)
+fun JSValue.toUint16() = AOs.toUint16(this)
+fun JSValue.toBigInt() = AOs.toBigInt(this)
+fun JSValue.toObject() = AOs.toObject(this)
+fun JSValue.toPropertyKey() = AOs.toPropertyKey(this)
+fun JSValue.toLength() = AOs.toLength(this)
+fun JSValue.toIndex() = AOs.toIndex(this)
+fun JSValue.requireObjectCoercible() = AOs.requireObjectCoercible(this)
+fun JSValue.lengthOfArrayLike() = AOs.lengthOfArrayLike(this)
+fun JSValue.toPrimitive(hint: AOs.ToPrimitiveHint? = null) =
+    AOs.toPrimitive(this, hint)
 
-fun JSValue.exp(other: JSValue) = Operations.exp(this, other)
-fun JSValue.mul(other: JSValue) = Operations.mul(this, other)
-fun JSValue.div(other: JSValue) = Operations.div(this, other)
-fun JSValue.mod(other: JSValue) = Operations.mod(this, other)
-fun JSValue.add(other: JSValue) = Operations.add(this, other)
-fun JSValue.sub(other: JSValue) = Operations.sub(this, other)
-fun JSValue.shl(other: JSValue) = Operations.shl(this, other)
-fun JSValue.shr(other: JSValue) = Operations.shr(this, other)
-fun JSValue.ushr(other: JSValue) = Operations.ushr(this, other)
-fun JSValue.and(other: JSValue) = Operations.and(this, other)
-fun JSValue.xor(other: JSValue) = Operations.xor(this, other)
-fun JSValue.or(other: JSValue) = Operations.or(this, other)
-fun JSValue.isLessThan(other: JSValue) = Operations.isLessThan(this, other)
-fun JSValue.isLessThanOrEqual(other: JSValue) = Operations.isLessThanOrEqual(this, other)
-fun JSValue.isGreaterThan(other: JSValue) = Operations.isGreaterThan(this, other)
-fun JSValue.isGreaterThanOrEqual(other: JSValue) = Operations.isGreaterThanOrEqual(this, other)
+fun JSValue.exp(other: JSValue) = AOs.exp(this, other)
+fun JSValue.mul(other: JSValue) = AOs.mul(this, other)
+fun JSValue.div(other: JSValue) = AOs.div(this, other)
+fun JSValue.mod(other: JSValue) = AOs.mod(this, other)
+fun JSValue.add(other: JSValue) = AOs.add(this, other)
+fun JSValue.sub(other: JSValue) = AOs.sub(this, other)
+fun JSValue.shl(other: JSValue) = AOs.shl(this, other)
+fun JSValue.shr(other: JSValue) = AOs.shr(this, other)
+fun JSValue.ushr(other: JSValue) = AOs.ushr(this, other)
+fun JSValue.and(other: JSValue) = AOs.and(this, other)
+fun JSValue.xor(other: JSValue) = AOs.xor(this, other)
+fun JSValue.or(other: JSValue) = AOs.or(this, other)
+fun JSValue.isLessThan(other: JSValue) = AOs.isLessThan(this, other)
+fun JSValue.isLessThanOrEqual(other: JSValue) = AOs.isLessThanOrEqual(this, other)
+fun JSValue.isGreaterThan(other: JSValue) = AOs.isGreaterThan(this, other)
+fun JSValue.isGreaterThanOrEqual(other: JSValue) = AOs.isGreaterThanOrEqual(this, other)

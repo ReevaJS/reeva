@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.regexp
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
@@ -22,7 +22,7 @@ class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
     override fun evaluate(arguments: JSArguments): JSValue {
         val pattern = arguments.argument(0)
         val flags = arguments.argument(1)
-        val patternIsRegExp = Operations.isRegExp(pattern)
+        val patternIsRegExp = AOs.isRegExp(pattern)
 
         val currentNewTarget = arguments.newTarget
         val newTarget = if (currentNewTarget == JSUndefined) {
@@ -46,8 +46,8 @@ class JSRegExpCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             else -> pattern to flags
         }
 
-        val obj = Operations.regExpAlloc(newTarget)
-        return Operations.regExpInitialize(obj, patternSource, flagSource)
+        val obj = AOs.regExpAlloc(newTarget)
+        return AOs.regExpInitialize(obj, patternSource, flagSource)
     }
 
     companion object {

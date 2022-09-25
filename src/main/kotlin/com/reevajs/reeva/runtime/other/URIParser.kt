@@ -1,6 +1,6 @@
 package com.reevajs.reeva.runtime.other
 
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.hexValue
@@ -22,7 +22,7 @@ object URIParser {
                 i += 1
                 builder.append(char)
             } else {
-                val codePoint = Operations.codePointAt(string, i)
+                val codePoint = AOs.codePointAt(string, i)
                 if (codePoint.isUnpairedSurrogate)
                     Errors.MalformedURI(string).throwURIError()
                 i += codePoint.codeUnitCount

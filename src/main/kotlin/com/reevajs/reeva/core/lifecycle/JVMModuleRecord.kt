@@ -5,7 +5,7 @@ import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.jvmcompat.JSPackageObject
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
@@ -52,7 +52,7 @@ class JVMModuleRecord(realm: Realm, val specifier: String) : ModuleRecord(realm)
             }
         }
 
-        return Operations.promiseResolve(realm.promiseCtor, JSUndefined)
+        return AOs.promiseResolve(realm.promiseCtor, JSUndefined)
     }
 
     override fun makeNamespaceImport(exports: List<String>): JSObject {

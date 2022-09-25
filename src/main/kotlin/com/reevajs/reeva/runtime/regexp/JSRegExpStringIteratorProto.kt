@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.regexp
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -39,12 +39,12 @@ class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(r
             if (thisValue !is JSRegExpStringIterator)
                 Errors.IncompatibleMethodCall("%RegExpStringIterator%.prototype.next").throwTypeError()
             if (thisValue.done)
-                return Operations.createIterResultObject(JSUndefined, true)
+                return AOs.createIterResultObject(JSUndefined, true)
 
-            val match = Operations.regExpExec(thisValue, thisValue.iteratedString, ".next")
+            val match = AOs.regExpExec(thisValue, thisValue.iteratedString, ".next")
             if (match == JSNull) {
                 thisValue.done = true
-                return Operations.createIterResultObject(JSUndefined, true)
+                return AOs.createIterResultObject(JSUndefined, true)
             }
 
             expect(match is JSObject)
@@ -55,12 +55,12 @@ class JSRegExpStringIteratorProto private constructor(realm: Realm) : JSObject(r
                     val thisIndex = thisValue.get("lastIndex").toLength().asInt
                     // TODO: AdvanceStringIndex
                     val nextIndex = thisIndex + 1
-                    Operations.set(thisValue, "lastIndex".key(), nextIndex.toValue(), true)
+                    AOs.set(thisValue, "lastIndex".key(), nextIndex.toValue(), true)
                 }
-                Operations.createIterResultObject(match, false)
+                AOs.createIterResultObject(match, false)
             } else {
                 thisValue.done = true
-                Operations.createIterResultObject(match, false)
+                AOs.createIterResultObject(match, false)
             }
         }
     }

@@ -2,7 +2,7 @@ package com.reevajs.reeva.runtime.wrappers.strings
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -31,7 +31,7 @@ open class JSStringObject protected constructor(realm: Realm, string: JSString) 
     override fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
         val desc = stringGetOwnProperty(property)
         if (desc != null)
-            return Operations.isCompatiblePropertyDescriptor(isExtensible(), descriptor, desc)
+            return AOs.isCompatiblePropertyDescriptor(isExtensible(), descriptor, desc)
         return super.defineOwnProperty(property, descriptor)
     }
 
@@ -45,8 +45,8 @@ open class JSStringObject protected constructor(realm: Realm, string: JSString) 
     private fun stringGetOwnProperty(property: PropertyKey): Descriptor? {
         if (property.isSymbol)
             return null
-        val index = Operations.canonicalNumericIndexString(property.asValue) ?: return null
-        if (!Operations.isIntegralNumber(index))
+        val index = AOs.canonicalNumericIndexString(property.asValue) ?: return null
+        if (!AOs.isIntegralNumber(index))
             return null
         if (index.isNegativeZero)
             return null

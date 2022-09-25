@@ -7,7 +7,7 @@ import com.reevajs.reeva.ast.expressions.UnaryExpressionNode
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.ast.literals.ThisLiteralNode
 import com.reevajs.reeva.ast.statements.*
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.unreachable
 
@@ -292,11 +292,11 @@ class ScopeResolver : ASTVisitor {
     private fun visitFunctionHelper(
         parameters: ParameterList,
         body: ASTNode,
-        kind: Operations.FunctionKind,
+        kind: AOs.FunctionKind,
         isLexical: Boolean,
     ): Scope {
         val prevAllowVarInlining = allowVarInlining
-        allowVarInlining = kind == Operations.FunctionKind.Normal
+        allowVarInlining = kind == AOs.FunctionKind.Normal
         val functionScope = HoistingScope(scope, isLexical, allowVarInlining, kind.isGenerator)
         scope = functionScope
 

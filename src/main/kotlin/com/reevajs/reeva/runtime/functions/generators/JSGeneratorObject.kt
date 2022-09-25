@@ -5,7 +5,7 @@ import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.interpreter.Interpreter
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.transformer.TransformedSource
@@ -43,7 +43,7 @@ class JSGeneratorObject private constructor(
     private fun execute(): JSValue {
         val interpreter = Interpreter(transformedSource, arguments)
         val result = interpreter.interpret()
-        return Operations.createIterResultObject(result, generatorState.phase == -1)
+        return AOs.createIterResultObject(result, generatorState.phase == -1)
     }
 
     companion object {

@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.objects
 
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.collections.JSMapObject
 import com.reevajs.reeva.runtime.collections.JSSetObject
 import com.reevajs.reeva.runtime.memory.DataBlock
@@ -31,10 +31,10 @@ value class SlotName<T>(val index: Int) {
         val OriginalFlags = nextSlot<String>()
         val UnmappedParameterMap = nextSlot<JSValue>() // [[ParameterMap]]
         val MappedParameterMap = nextSlot<JSObject>() // [[ParameterMap]], non-standard
-        val PromiseFulfillReactions = nextSlot<MutableList<Operations.PromiseReaction>>()
+        val PromiseFulfillReactions = nextSlot<MutableList<AOs.PromiseReaction>>()
         val PromiseIsHandled = nextSlot<Boolean>()
-        val PromiseState = nextSlot<Operations.PromiseState>()
-        val PromiseRejectReactions = nextSlot<MutableList<Operations.PromiseReaction>>()
+        val PromiseState = nextSlot<AOs.PromiseState>()
+        val PromiseRejectReactions = nextSlot<MutableList<AOs.PromiseReaction>>()
         val PromiseResult = nextSlot<JSValue>()
         val ProxyHandler = nextSlot<JSObject?>()
         val ProxyTarget = nextSlot<JSObject>()
@@ -42,7 +42,7 @@ value class SlotName<T>(val index: Int) {
         val SetData = nextSlot<JSSetObject.SetData>()
         val StringData = nextSlot<JSString>()
         val SymbolData = nextSlot<JSSymbol>()
-        val TypedArrayKind = nextSlot<Operations.TypedArrayKind>() // non-standard
+        val TypedArrayKind = nextSlot<AOs.TypedArrayKind>() // non-standard
         val TypedArrayName = nextSlot<String>()
         val ViewedArrayBuffer = nextSlot<JSObject>()
 

@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.collections
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.iterators.JSMapIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -85,7 +85,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         fun forEach(arguments: JSArguments): JSValue {
             val data = thisMapData(arguments.thisValue, "forEach")
             val (callback, thisArg) = arguments.takeArgs(0..1)
-            if (!Operations.isCallable(callback))
+            if (!AOs.isCallable(callback))
                 Errors.Map.CallableFirstArg("forEach")
 
             data.iterationCount++
@@ -94,7 +94,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
             while (index < data.keyInsertionOrder.size) {
                 val key = data.keyInsertionOrder[index]
                 if (key != JSEmpty)
-                    Operations.call(callback, thisArg, listOf(data.map[key]!!, key, arguments.thisValue))
+                    AOs.call(callback, thisArg, listOf(data.map[key]!!, key, arguments.thisValue))
 
                 index++
             }
@@ -149,7 +149,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         }
 
         private fun thisMapData(thisValue: JSValue, method: String): JSMapObject.MapData {
-            if (!Operations.requireInternalSlot(thisValue, SlotName.MapData))
+            if (!AOs.requireInternalSlot(thisValue, SlotName.MapData))
                 Errors.IncompatibleMethodCall("Map.prototype.$method").throwTypeError()
             return thisValue.getSlot(SlotName.MapData)
         }

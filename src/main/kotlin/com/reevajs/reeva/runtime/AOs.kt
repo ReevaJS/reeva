@@ -55,7 +55,7 @@ import kotlin.contracts.contract
 import kotlin.math.*
 
 @OptIn(ExperimentalContracts::class)
-object Operations {
+object AOs {
     private val realm: Realm
         inline get() = Agent.activeAgent.getActiveRealm()
 

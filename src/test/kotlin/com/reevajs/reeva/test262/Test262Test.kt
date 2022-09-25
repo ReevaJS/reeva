@@ -10,7 +10,7 @@ import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
 import com.reevajs.reeva.core.lifecycle.SourceInfo
 import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.toBoolean
@@ -46,7 +46,7 @@ class Test262Test(
                     super.createHostDefinedProperties(realm, globalObject)
 
                     val descriptor = JS262Object.create(globalObject, realm).toDescriptor { +conf; -enum; +writ }
-                    Operations.definePropertyOrThrow(globalObject, "$262".key(), descriptor)
+                    AOs.definePropertyOrThrow(globalObject, "$262".key(), descriptor)
                 }
             }
         }

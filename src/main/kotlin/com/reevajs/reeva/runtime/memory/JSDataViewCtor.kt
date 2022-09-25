@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.memory
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -19,12 +19,12 @@ class JSDataViewCtor private constructor(realm: Realm) : JSNativeFunction(realm,
 
         val (buffer, byteOffset, byteLength) = arguments.takeArgs(0..2)
 
-        if (!Operations.requireInternalSlot(buffer, SlotName.ArrayBufferData))
+        if (!AOs.requireInternalSlot(buffer, SlotName.ArrayBufferData))
             Errors.DataView.CtorBadBufferArg.throwTypeError()
 
         val offset = byteOffset.toIndex()
 
-        if (Operations.isDetachedBuffer(buffer))
+        if (AOs.isDetachedBuffer(buffer))
             Errors.TODO("DataViewCtor isDetachedBuffer 1").throwTypeError()
 
         val bufferByteLength = buffer.getSlot(SlotName.ArrayBufferByteLength)
@@ -38,12 +38,12 @@ class JSDataViewCtor private constructor(realm: Realm) : JSNativeFunction(realm,
             }
         } else bufferByteLength - offset
 
-        val obj = Operations.ordinaryCreateFromConstructor(
+        val obj = AOs.ordinaryCreateFromConstructor(
             newTarget,
             listOf(SlotName.DataView),
             defaultProto = Realm::dataViewProto,
         )
-        if (Operations.isDetachedBuffer(buffer))
+        if (AOs.isDetachedBuffer(buffer))
             Errors.TODO("DataViewCtor isDetachedBuffer 2").throwTypeError()
 
         obj.setSlot(SlotName.ViewedArrayBuffer, buffer)

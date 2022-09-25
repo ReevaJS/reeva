@@ -6,7 +6,7 @@ import com.reevajs.reeva.ast.statements.BlockNode
 import com.reevajs.reeva.ast.statements.DeclarationNode
 import com.reevajs.reeva.ast.statements.VariableSourceProvider
 import com.reevajs.reeva.parsing.Scope
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.duplicates
 
 typealias ArgumentList = ASTListNode<ArgumentNode>
@@ -76,7 +76,7 @@ class FunctionDeclarationNode(
     val identifier: IdentifierNode?, // can be omitted in default exports
     val parameters: ParameterList,
     val body: BlockNode,
-    val kind: Operations.FunctionKind,
+    val kind: AOs.FunctionKind,
 ) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), DeclarationNode, VariableSourceProvider {
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
@@ -92,7 +92,7 @@ class FunctionExpressionNode(
     val identifier: IdentifierNode?,
     val parameters: ParameterList,
     val body: BlockNode,
-    val kind: Operations.FunctionKind,
+    val kind: AOs.FunctionKind,
 ) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), ExpressionNode {
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
@@ -105,7 +105,7 @@ class FunctionExpressionNode(
 class ArrowFunctionNode(
     val parameters: ParameterList,
     val body: ASTNode, // BlockNode or ExpressionNode
-    val kind: Operations.FunctionKind,
+    val kind: AOs.FunctionKind,
 ) : NodeWithScope(parameters + body), ExpressionNode {
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope

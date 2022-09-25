@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.wrappers
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
@@ -18,9 +18,9 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         super.init()
 
         defineOwnProperty("EPSILON", Math.ulp(1.0).toValue(), 0)
-        defineOwnProperty("MAX_SAFE_INTEGER", Operations.MAX_SAFE_INTEGER.toValue(), 0)
+        defineOwnProperty("MAX_SAFE_INTEGER", AOs.MAX_SAFE_INTEGER.toValue(), 0)
         defineOwnProperty("MAX_VALUE", Double.MAX_VALUE.toValue(), 0)
-        defineOwnProperty("MIN_SAFE_INTEGER", (-Operations.MAX_SAFE_INTEGER).toValue(), 0)
+        defineOwnProperty("MIN_SAFE_INTEGER", (-AOs.MAX_SAFE_INTEGER).toValue(), 0)
         defineOwnProperty("MIN_VALUE", Double.MIN_VALUE.toValue(), 0)
         defineOwnProperty("NaN", Double.NaN.toValue(), 0)
         defineOwnProperty("NEGATIVE_INFINITY", Double.NEGATIVE_INFINITY.toValue(), 0)
@@ -43,7 +43,7 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         if (newTarget == JSUndefined)
             return n
 
-        return Operations.ordinaryCreateFromConstructor(
+        return AOs.ordinaryCreateFromConstructor(
             newTarget,
             listOf(SlotName.NumberData),
             defaultProto = Realm::numberProto,
@@ -78,7 +78,7 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @ECMAImpl("20.1.2.3")
         @JvmStatic
         fun isInteger(arguments: JSArguments): JSValue {
-            return Operations.isIntegralNumber(arguments.argument(0)).toValue()
+            return AOs.isIntegralNumber(arguments.argument(0)).toValue()
         }
 
         @ECMAImpl("20.1.2.4")
@@ -90,9 +90,9 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         @ECMAImpl("20.1.2.5")
         @JvmStatic
         fun isSafeInteger(arguments: JSArguments): JSValue {
-            if (!Operations.isIntegralNumber(arguments.argument(0)))
+            if (!AOs.isIntegralNumber(arguments.argument(0)))
                 return JSFalse
-            return (abs(arguments.argument(0).asDouble) <= Operations.MAX_SAFE_INTEGER).toValue()
+            return (abs(arguments.argument(0).asDouble) <= AOs.MAX_SAFE_INTEGER).toValue()
         }
 
         @ECMAImpl("20.1.2.12")

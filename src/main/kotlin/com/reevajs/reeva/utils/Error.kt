@@ -4,7 +4,7 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.errors.*
 import com.reevajs.reeva.runtime.objects.PropertyKey
 
@@ -427,19 +427,19 @@ object Errors {
     }
 
     object TypedArrays {
-        class InvalidByteOffset(offset: Int, kind: Operations.TypedArrayKind) : Error(
+        class InvalidByteOffset(offset: Int, kind: AOs.TypedArrayKind) : Error(
             "invalid ${kind.name}Array offset " +
                 "$offset ($offset % ${kind.size} !== 0)"
         )
-        class InvalidBufferLength(length: Int, kind: Operations.TypedArrayKind) : Error(
+        class InvalidBufferLength(length: Int, kind: AOs.TypedArrayKind) : Error(
             "cannot initialize ${kind.name}Array " +
                 "from ArrayBuffer with length $length ($length % ${kind.size} !== 0)"
         )
-        class InvalidOffsetAndBufferSize(offset: Int, size: Int, kind: Operations.TypedArrayKind) : Error(
+        class InvalidOffsetAndBufferSize(offset: Int, size: Int, kind: AOs.TypedArrayKind) : Error(
             "cannot " +
                 "initialize ${kind.name}Array with offset $offset from buffer of size $size"
         )
-        class InvalidOffsetAndLength(offset: Int, length: Int, size: Int, kind: Operations.TypedArrayKind) : Error(
+        class InvalidOffsetAndLength(offset: Int, length: Int, size: Int, kind: AOs.TypedArrayKind) : Error(
             "cannot " +
                 "initialize ${kind.name}Array with offset $offset and length $length from buffer of size $size"
         )

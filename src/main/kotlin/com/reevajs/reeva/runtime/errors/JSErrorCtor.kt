@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.errors
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -28,7 +28,7 @@ open class JSErrorCtor protected constructor(
             //  function object; else let newTarget be NewTarget."
             JSUndefined
         }
-        val obj = Operations.ordinaryCreateFromConstructor(
+        val obj = AOs.ordinaryCreateFromConstructor(
             newTarget,
             listOf(SlotName.ErrorData),
             defaultProto = ::errorProto,
@@ -38,7 +38,7 @@ open class JSErrorCtor protected constructor(
         if (message != JSUndefined) {
             val msg = message.toJSString()
             val msgDesc = Descriptor(msg, attrs { +conf; -enum; +writ })
-            Operations.definePropertyOrThrow(obj, "message".key(), msgDesc)
+            AOs.definePropertyOrThrow(obj, "message".key(), msgDesc)
         }
 
         return obj

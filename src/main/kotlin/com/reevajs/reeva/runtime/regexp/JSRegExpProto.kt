@@ -42,7 +42,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         fun exec(arguments: JSArguments): JSValue {
             // Handled by the regExpBuiltinExec function
 //        Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher)
-            return Operations.regExpBuiltinExec(
+            return AOs.regExpBuiltinExec(
                 arguments.thisValue,
                 arguments.argument(0).toJSString()
             )
@@ -58,7 +58,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         @JvmStatic
         fun getFlags(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
+            if (!AOs.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
                 Errors.IncompatibleMethodCall("RegExp.prototype.flags").throwTypeError()
             var result = ""
             if (thisValue.get("global").toBoolean())
@@ -98,23 +98,23 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             val string = arguments.argument(0).toJSString()
             val global = thisValue.get("global").toBoolean()
             if (!global)
-                return Operations.regExpExec(thisValue, string, "[@@match]")
+                return AOs.regExpExec(thisValue, string, "[@@match]")
 
             val fullUnicode = thisValue.get("unicode").toBoolean()
-            Operations.set(thisValue, "lastIndex".key(), 0.toValue(), true)
-            val arr = Operations.arrayCreate(0)
+            AOs.set(thisValue, "lastIndex".key(), 0.toValue(), true)
+            val arr = AOs.arrayCreate(0)
             var n = 0
             while (true) {
-                val result = Operations.regExpExec(thisValue, string, "[@@match]")
+                val result = AOs.regExpExec(thisValue, string, "[@@match]")
                 if (result == JSNull)
                     return if (n == 0) JSNull else arr
                 val matchStr = (result as JSObject).get(0).toJSString()
-                Operations.createDataPropertyOrThrow(arr, n.key(), matchStr)
+                AOs.createDataPropertyOrThrow(arr, n.key(), matchStr)
                 if (matchStr.string == "") {
                     val thisIndex = thisValue.get("lastIndex").toLength().asInt
                     // TODO: AdvanceStringIndex
                     val nextIndex = thisIndex + 1
-                    Operations.set(thisValue, "lastIndex".key(), nextIndex.toValue(), true)
+                    AOs.set(thisValue, "lastIndex".key(), nextIndex.toValue(), true)
                 }
                 n++
             }
@@ -128,13 +128,13 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
                 Errors.IncompatibleMethodCall("RegExp.prototype[@@matchAll]").throwTypeError()
 
             val string = arguments.argument(0).toJSString()
-            val ctor = Operations.speciesConstructor(thisValue, Agent.activeAgent.getActiveRealm().regExpCtor)
+            val ctor = AOs.speciesConstructor(thisValue, Agent.activeAgent.getActiveRealm().regExpCtor)
             val flags = thisValue.get("flags").toJSString()
             val lastIndex = thisValue.get("lastIndex").toLength()
 
-            val matcher = Operations.construct(ctor, listOf(thisValue, flags))
+            val matcher = AOs.construct(ctor, listOf(thisValue, flags))
             expect(matcher is JSObject)
-            Operations.set(matcher, "lastIndex".key(), lastIndex, true)
+            AOs.set(matcher, "lastIndex".key(), lastIndex, true)
             val global = 'g' in flags.string
             val fullUnicode = 'u' in flags.string
             return JSRegExpStringIterator.create(thisValue as JSRegExpObject, string, global, fullUnicode)
@@ -165,12 +165,12 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             val string = arguments.argument(0).toJSString()
             val previousLastIndex = thisValue.get("lastIndex")
             if (previousLastIndex.asInt != 0)
-                Operations.set(thisValue, "lastIndex".key(), 0.toValue(), true)
+                AOs.set(thisValue, "lastIndex".key(), 0.toValue(), true)
 
-            val result = Operations.regExpExec(thisValue, string, "[@@search]")
+            val result = AOs.regExpExec(thisValue, string, "[@@search]")
             val currentLastIndex = thisValue.get("lastIndex")
             if (!currentLastIndex.sameValue(previousLastIndex))
-                Operations.set(thisValue, "lastIndex".key(), previousLastIndex, true)
+                AOs.set(thisValue, "lastIndex".key(), previousLastIndex, true)
             if (result == JSNull)
                 return (-1).toValue()
 
@@ -184,7 +184,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             val thisValue = arguments.thisValue
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype.source").throwTypeError()
-            if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher)) {
+            if (!AOs.requireInternalSlot(thisValue, SlotName.RegExpMatcher)) {
                 if (thisValue.sameValue(thisValue))
                     return "(?:)".toValue()
                 Errors.IncompatibleMethodCall("RegExp.prototype.source").throwTypeError()
@@ -211,10 +211,10 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         @JvmStatic
         fun test(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
+            if (!AOs.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
                 Errors.IncompatibleMethodCall("RegExp.prototype.test").throwTypeError()
             val string = arguments.argument(0).toJSString()
-            val match = Operations.regExpExec( thisValue, string, ".test")
+            val match = AOs.regExpExec( thisValue, string, ".test")
             return (match != JSNull).toValue()
         }
 
@@ -222,7 +222,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         @JvmStatic
         fun toString(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!Operations.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
+            if (!AOs.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
                 Errors.IncompatibleMethodCall("RegExp.prototype.toString").throwTypeError()
             val pattern = thisValue.get("source").toJSString()
             val flags = thisValue.get("flags").toJSString()

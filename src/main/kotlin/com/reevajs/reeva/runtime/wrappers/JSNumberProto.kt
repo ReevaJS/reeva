@@ -4,7 +4,7 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.mfbt.Dtoa
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -60,7 +60,7 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
                 }
             }
             if (!x.isFinite)
-                return Operations.numericToString(x).toValue()
+                return AOs.numericToString(x).toValue()
 
             return Dtoa.toExponential(x.asDouble, requestedDigits)?.toValue() ?: TODO()
         }
@@ -80,7 +80,7 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
                 }
             }
             if (!x.isFinite)
-                return Operations.numericToString(x).toValue()
+                return AOs.numericToString(x).toValue()
 
             val value = x.asDouble
             if (value >= 1e21)
@@ -104,7 +104,7 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
             val x = thisNumberValue(arguments.thisValue, "toFixed")
             val requestedDigits = arguments.argument(0).toIntegerOrInfinity()
             if (!x.isFinite)
-                return Operations.numericToString(x).toValue()
+                return AOs.numericToString(x).toValue()
 
             if (requestedDigits.isInfinite || requestedDigits.number !in 1.0..100.0)
                 Errors.Number.PrecisionOutOfRange(requestedDigits.toJSString().string).throwRangeError()
@@ -122,7 +122,7 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
                 Errors.Number.PrecisionOutOfRange(r.toJSString().string).throwRangeError()
 
             if (!x.isFinite)
-                return Operations.numericToString(x).toValue()
+                return AOs.numericToString(x).toValue()
 
             val num = x.asDouble
             val radix = r.asInt

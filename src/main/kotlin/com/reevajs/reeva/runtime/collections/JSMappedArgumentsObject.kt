@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.collections
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
@@ -16,14 +16,14 @@ class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm
 
     override fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
         val desc = super.getOwnPropertyDescriptor(property) ?: return null
-        if (Operations.hasOwnProperty(parameterMap, property)) {
+        if (AOs.hasOwnProperty(parameterMap, property)) {
             desc.setRawValue(parameterMap.get(property))
         }
         return desc
     }
 
     override fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
-        val isMapped = Operations.hasOwnProperty(parameterMap, property)
+        val isMapped = AOs.hasOwnProperty(parameterMap, property)
         var newDescriptor = descriptor
 
         if (isMapped && descriptor.isDataDescriptor) {
@@ -53,7 +53,7 @@ class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm
     }
 
     override fun get(property: PropertyKey, receiver: JSValue): JSValue {
-        if (!Operations.hasOwnProperty(parameterMap, property))
+        if (!AOs.hasOwnProperty(parameterMap, property))
             return super.get(property, receiver)
         return parameterMap.get(property, parameterMap)
     }
@@ -61,7 +61,7 @@ class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm
     override fun set(property: PropertyKey, value: JSValue, receiver: JSValue): Boolean {
         val isMapped = if (!this.sameValue(receiver)) {
             false
-        } else Operations.hasOwnProperty(parameterMap, property)
+        } else AOs.hasOwnProperty(parameterMap, property)
 
         if (isMapped) {
             val status = parameterMap.set(property, value)
@@ -72,7 +72,7 @@ class JSMappedArgumentsObject private constructor(realm: Realm) : JSObject(realm
     }
 
     override fun delete(property: PropertyKey): Boolean {
-        val isMapped = Operations.hasOwnProperty(parameterMap, property)
+        val isMapped = AOs.hasOwnProperty(parameterMap, property)
         val result = super.delete(property)
         if (result && isMapped)
             parameterMap.delete(property)

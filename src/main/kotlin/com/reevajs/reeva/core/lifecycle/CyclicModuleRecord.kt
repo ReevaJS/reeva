@@ -4,7 +4,7 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.errors.completion
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
@@ -52,7 +52,7 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
      * and any child module in the module tree are done executing.
      */
     @ECMAImpl("16.2.1.5")
-    protected var topLevelCapability: Operations.PromiseCapability? = null
+    protected var topLevelCapability: AOs.PromiseCapability? = null
 
     /**
      * Links the current module with any required modules and initialized the environment.
@@ -154,7 +154,7 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
         val stack = mutableListOf<ModuleRecord>()
 
         // 6. Let capability be ! NewPromiseCapability(%Promise%).
-        val capability = Operations.newPromiseCapability(module.realm.promiseCtor)
+        val capability = AOs.newPromiseCapability(module.realm.promiseCtor)
 
         // 7. Set module.[[TopLevelCapability]] to capability.
         module.topLevelCapability = capability
@@ -185,7 +185,7 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
             ecmaAssert(module.evaluationError == result.error())
 
             // d. Perform ! Call(capability.[[Reject]], undefined, « result.[[Value]] »).
-            Operations.call(capability.reject!!, JSUndefined, listOf(result.error().value))
+            AOs.call(capability.reject!!, JSUndefined, listOf(result.error().value))
         }
         // 10. Else,
         else {
@@ -198,7 +198,7 @@ abstract class CyclicModuleRecord(realm: Realm) : ModuleRecord(realm) {
             // c. If module.[[AsyncEvaluation]] is false, then
             //    i.  Assert: module.[[Status]] is evaluated.
             //    ii. Perform ! Call(capability.[[Resolve]], undefined, « undefined »).
-            Operations.call(capability.resolve!!, JSUndefined, listOf(JSUndefined))
+            AOs.call(capability.resolve!!, JSUndefined, listOf(JSUndefined))
 
             // d. Assert: stack is empty.
             ecmaAssert(stack.isEmpty())

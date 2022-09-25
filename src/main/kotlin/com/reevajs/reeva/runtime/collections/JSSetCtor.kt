@@ -4,7 +4,7 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.SlotName
@@ -24,7 +24,7 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
         if (arguments.newTarget == JSUndefined)
             Errors.CtorCallWithoutNew("Set").throwTypeError()
 
-        val set = Operations.ordinaryCreateFromConstructor(
+        val set = AOs.ordinaryCreateFromConstructor(
             arguments.newTarget,
             listOf(SlotName.SetData),
             defaultProto = Realm::setProto,
@@ -35,19 +35,19 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
             return set
 
         val adder = set.get("add")
-        if (!Operations.isCallable(adder))
+        if (!AOs.isCallable(adder))
             Errors.Set.ThisMissingAdd.throwTypeError()
 
-        val iteratorRecord = Operations.getIterator(iterator)
+        val iteratorRecord = AOs.getIterator(iterator)
         while (true) {
-            val next = Operations.iteratorStep(iteratorRecord)
+            val next = AOs.iteratorStep(iteratorRecord)
             if (next == JSFalse)
                 return set
-            val nextValue = Operations.iteratorValue(next)
+            val nextValue = AOs.iteratorValue(next)
             try {
-                Operations.call(adder, set, listOf(nextValue))
+                AOs.call(adder, set, listOf(nextValue))
             } catch (e: ThrowException) {
-                Operations.iteratorClose(iteratorRecord, e.value)
+                AOs.iteratorClose(iteratorRecord, e.value)
                 throw e
             }
         }

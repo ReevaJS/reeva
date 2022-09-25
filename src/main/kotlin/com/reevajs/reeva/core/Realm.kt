@@ -5,7 +5,7 @@ import com.reevajs.reeva.jvmcompat.JSClassProto
 import com.reevajs.reeva.jvmcompat.JSPackageObject
 import com.reevajs.reeva.jvmcompat.JSPackageProto
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayCtor
 import com.reevajs.reeva.runtime.arrays.JSArrayProto
@@ -185,7 +185,7 @@ class Realm {
 
         // 5. Let newGlobalEnv be NewGlobalEnvironment(globalObj, thisValue).
         // 6. Set realmRec.[[GlobalEnv]] to newGlobalEnv.
-        globalEnv = Operations.newGlobalEnvironment(this, theGlobalObject, theThisValue)
+        globalEnv = AOs.newGlobalEnvironment(this, theGlobalObject, theThisValue)
 
         // 7. Return unused.
     }
@@ -362,8 +362,8 @@ class Realm {
 
         // 3. Perform AddRestrictedFunctionProperties(realmRec.[[Intrinsics]].[[%Function.prototype%]], realmRec).
         val desc = Descriptor(JSAccessor(throwTypeError, throwTypeError), Descriptor.CONFIGURABLE)
-        Operations.definePropertyOrThrow(functionProto, "caller".key(), desc)
-        Operations.definePropertyOrThrow(functionProto, "arguments".key(), desc)
+        AOs.definePropertyOrThrow(functionProto, "caller".key(), desc)
+        AOs.definePropertyOrThrow(functionProto, "arguments".key(), desc)
 
         // 4. Return unused.
     }

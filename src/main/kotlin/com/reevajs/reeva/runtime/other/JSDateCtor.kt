@@ -35,7 +35,7 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
 
     override fun evaluate(arguments: JSArguments): JSValue {
         if (arguments.newTarget == JSUndefined)
-            return Operations.toDateString(ZonedDateTime.now()).toValue()
+            return AOs.toDateString(ZonedDateTime.now()).toValue()
 
         val zdt = when (arguments.size) {
             0 -> ZonedDateTime.now()
@@ -48,10 +48,10 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
                     if (prim is JSString) {
                         parseHelper(arguments)
                     } else {
-                        Operations.timeClip(
+                        AOs.timeClip(
                             ZonedDateTime.ofInstant(
                                 Instant.ofEpochMilli(prim.toNumber().asLong),
-                                Operations.defaultZone
+                                AOs.defaultZone
                             )
                         )
                     }
@@ -92,11 +92,11 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
                         .plus(millis, ChronoUnit.MILLIS)
                 }
 
-                return JSDateObject.create(Operations.timeClip(ZonedDateTime.of(date, Operations.defaultZone)))
+                return JSDateObject.create(AOs.timeClip(ZonedDateTime.of(date, AOs.defaultZone)))
             }
         }
 
-        return Operations.ordinaryCreateFromConstructor(
+        return AOs.ordinaryCreateFromConstructor(
             arguments.newTarget,
             listOf(SlotName.DateValue),
             defaultProto = Realm::dateProto,
@@ -136,7 +136,7 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
                 } else ZoneOffset.UTC,
             )
 
-            return Operations.timeClip(ztd)
+            return AOs.timeClip(ztd)
         }
 
         private fun TemporalAccessor.getOrDefault(field: TemporalField, default: Int = 0): Int {
@@ -181,7 +181,7 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
             }
 
             val zdt = ZonedDateTime.of(date, ZoneOffset.UTC)
-            if (Operations.timeClip(zdt) == null)
+            if (AOs.timeClip(zdt) == null)
                 return JSNumber.NaN
 
             return zdt.toInstant().toEpochMilli().toValue()

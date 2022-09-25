@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.memory
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
@@ -19,7 +19,7 @@ import java.util.function.Function
 
 open class JSGenericTypedArrayCtor protected constructor(
     realm: Realm,
-    private val kind: Operations.TypedArrayKind,
+    private val kind: AOs.TypedArrayKind,
 ) : JSNativeFunction(realm, "${kind.name}Array", 3, prototype = realm.typedArrayCtor) {
     override fun init() {
         super.init()
@@ -50,9 +50,9 @@ open class JSGenericTypedArrayCtor protected constructor(
             firstArgument.hasSlot(SlotName.ArrayBufferData) ->
                 initializeTypedArrayFromArrayBuffer(obj, firstArgument, arguments.argument(1), arguments.argument(2))
             else -> {
-                val usingIterator = Operations.getMethod(firstArgument, Realm.WellKnownSymbols.iterator)
+                val usingIterator = AOs.getMethod(firstArgument, Realm.WellKnownSymbols.iterator)
                 if (usingIterator != JSUndefined) {
-                    val values = Operations.iterableToList(firstArgument, usingIterator)
+                    val values = AOs.iterableToList(firstArgument, usingIterator)
                     initializeTypedArrayFromList(obj, values)
                 } else {
                     initializeTypedArrayFromArrayLike(obj, firstArgument)
@@ -69,7 +69,7 @@ open class JSGenericTypedArrayCtor protected constructor(
         defaultProtoProducer: Function<Realm, JSObject>,
         length: Int? = null,
     ): JSValue {
-        val proto = Operations.getPrototypeFromConstructor(newTarget, defaultProtoProducer)
+        val proto = AOs.getPrototypeFromConstructor(newTarget, defaultProtoProducer)
         val obj = JSIntegerIndexedObject.create(kind, proto = proto)
         if (length == null) {
             obj.setSlot(SlotName.ByteLength, 0)
@@ -84,7 +84,7 @@ open class JSGenericTypedArrayCtor protected constructor(
     private fun initializeTypedArrayFromTypedArray(obj: JSValue, srcArray: JSValue) {
         ecmaAssert(obj is JSObject && srcArray is JSObject)
         val srcData = srcArray.getSlot(SlotName.ViewedArrayBuffer)
-        if (Operations.isDetachedBuffer(srcData))
+        if (AOs.isDetachedBuffer(srcData))
             Errors.TODO("initializeTypedArrayFromTypedArray isDetachedBuffer 1").throwTypeError()
 
         val ctorKind = obj.getSlot(SlotName.TypedArrayKind)
@@ -93,14 +93,14 @@ open class JSGenericTypedArrayCtor protected constructor(
         val elementLength = srcArray.getSlot(SlotName.ArrayLength)
         val byteLength = ctorKind.size * elementLength
 
-        val bufferCtor = if (Operations.isSharedArrayBuffer(srcData)) {
-            Operations.speciesConstructor(srcData, realm.arrayBufferCtor)
+        val bufferCtor = if (AOs.isSharedArrayBuffer(srcData)) {
+            AOs.speciesConstructor(srcData, realm.arrayBufferCtor)
         } else realm.arrayBufferCtor
 
         val data = if (ctorKind == srcKind) {
-            Operations.cloneArrayBuffer(srcData, srcByteOffset, byteLength, bufferCtor)
-        } else Operations.allocateArrayBuffer(bufferCtor, byteLength).also { buffer ->
-            if (Operations.isDetachedBuffer(srcData))
+            AOs.cloneArrayBuffer(srcData, srcByteOffset, byteLength, bufferCtor)
+        } else AOs.allocateArrayBuffer(bufferCtor, byteLength).also { buffer ->
+            if (AOs.isDetachedBuffer(srcData))
                 Errors.TODO("initializeTypedArrayFromTypedArray isDetachedBuffer 2").throwTypeError()
             if (ctorKind.isBigInt != srcKind.isBigInt)
                 Errors.TODO("initializeTypedArrayFromTypedArray isBigInt").throwTypeError()
@@ -110,20 +110,20 @@ open class JSGenericTypedArrayCtor protected constructor(
             var count = elementLength
 
             while (count > 0) {
-                val value = Operations.getValueFromBuffer(
+                val value = AOs.getValueFromBuffer(
                     srcData,
                     srcByteIndex,
                     srcKind,
                     true,
-                    Operations.TypedArrayOrder.Unordered,
+                    AOs.TypedArrayOrder.Unordered,
                 )
-                Operations.setValueInBuffer(
+                AOs.setValueInBuffer(
                     buffer,
                     targetByteIndex,
                     ctorKind,
                     value,
                     true,
-                    Operations.TypedArrayOrder.Unordered,
+                    AOs.TypedArrayOrder.Unordered,
                 )
                 srcByteIndex += srcKind.size
                 targetByteIndex -= ctorKind.size
@@ -153,7 +153,7 @@ open class JSGenericTypedArrayCtor protected constructor(
         if (offset % elementSize != 0)
             Errors.TypedArrays.InvalidByteOffset(offset, ctorKind).throwRangeError()
 
-        if (Operations.isDetachedBuffer(buffer))
+        if (AOs.isDetachedBuffer(buffer))
             Errors.TODO("initializeTypedArrayFromArrayBuffer isDetachedBuffer").throwTypeError()
 
         val bufferByteLength = buffer.getSlot(SlotName.ArrayBufferByteLength)
@@ -186,22 +186,22 @@ open class JSGenericTypedArrayCtor protected constructor(
         ecmaAssert(obj is JSObject && obj.hasSlot(SlotName.TypedArrayName))
         allocateTypedArrayBuffer(obj, values.size)
         values.forEachIndexed { index, value ->
-            Operations.set(obj, index.key(), value, true)
+            AOs.set(obj, index.key(), value, true)
         }
     }
 
     @ECMAImpl("22.2.5.1.5")
     private fun initializeTypedArrayFromArrayLike(obj: JSValue, arrayLike: JSObject) {
         ecmaAssert(obj is JSObject && obj.hasSlot(SlotName.TypedArrayName))
-        val length = Operations.lengthOfArrayLike(arrayLike)
+        val length = AOs.lengthOfArrayLike(arrayLike)
         for (i in 0 until length)
-            Operations.set(obj, i.key(), arrayLike.get(i), true)
+            AOs.set(obj, i.key(), arrayLike.get(i), true)
     }
 
     @ECMAImpl("22.2.5.1.6")
     private fun allocateTypedArrayBuffer(obj: JSObject, length: Int) {
         val byteLength = kind.size * length
-        val data = Operations.allocateArrayBuffer(realm.arrayBufferCtor, byteLength)
+        val data = AOs.allocateArrayBuffer(realm.arrayBufferCtor, byteLength)
         obj.setSlot(SlotName.ViewedArrayBuffer, data)
         obj.setSlot(SlotName.ByteLength, byteLength)
         obj.setSlot(SlotName.ByteOffset, 0)
@@ -209,67 +209,67 @@ open class JSGenericTypedArrayCtor protected constructor(
     }
 }
 
-class JSInt8ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Int8) {
+class JSInt8ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, AOs.TypedArrayKind.Int8) {
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSInt8ArrayCtor(realm).initialize()
     }
 }
 
-class JSUint8ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Uint8) {
+class JSUint8ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, AOs.TypedArrayKind.Uint8) {
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSUint8ArrayCtor(realm).initialize()
     }
 }
 
-class JSUint8CArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Uint8C) {
+class JSUint8CArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, AOs.TypedArrayKind.Uint8C) {
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSUint8CArrayCtor(realm).initialize()
     }
 }
 
-class JSInt16ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Int16) {
+class JSInt16ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, AOs.TypedArrayKind.Int16) {
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSInt16ArrayCtor(realm).initialize()
     }
 }
 
-class JSUint16ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Uint16) {
+class JSUint16ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, AOs.TypedArrayKind.Uint16) {
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSUint16ArrayCtor(realm).initialize()
     }
 }
 
-class JSInt32ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Int32) {
+class JSInt32ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, AOs.TypedArrayKind.Int32) {
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSInt32ArrayCtor(realm).initialize()
     }
 }
 
-class JSUint32ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Uint32) {
+class JSUint32ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, AOs.TypedArrayKind.Uint32) {
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSUint32ArrayCtor(realm).initialize()
     }
 }
 
-class JSFloat32ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Float32) {
+class JSFloat32ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, AOs.TypedArrayKind.Float32) {
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSFloat32ArrayCtor(realm).initialize()
     }
 }
 
-class JSFloat64ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.Float64) {
+class JSFloat64ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, AOs.TypedArrayKind.Float64) {
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSFloat64ArrayCtor(realm).initialize()
     }
 }
 
-class JSBigInt64ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.BigInt64) {
+class JSBigInt64ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, AOs.TypedArrayKind.BigInt64) {
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSBigInt64ArrayCtor(realm).initialize()
     }
 }
 
-class JSBigUint64ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, Operations.TypedArrayKind.BigUint64) {
+class JSBigUint64ArrayCtor(realm: Realm) : JSGenericTypedArrayCtor(realm, AOs.TypedArrayKind.BigUint64) {
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSBigUint64ArrayCtor(realm).initialize()
     }

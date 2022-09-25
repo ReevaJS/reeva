@@ -1,7 +1,7 @@
 package com.reevajs.reeva.runtime.objects
 
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.primitives.JSNumber
 import com.reevajs.reeva.runtime.primitives.JSString
 import com.reevajs.reeva.runtime.primitives.JSSymbol
@@ -68,7 +68,7 @@ data class PropertyKey private constructor(internal val value: Any) {
                 if (long != null) {
                     if (long in 0..Int.MAX_VALUE)
                         return PropertyKey(long.toInt())
-                    if (long in 0 until Operations.MAX_ARRAY_INDEX)
+                    if (long in 0 until AOs.MAX_ARRAY_INDEX)
                         return PropertyKey(long)
                 }
                 return PropertyKey(string)

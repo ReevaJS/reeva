@@ -4,7 +4,7 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSFunction
@@ -87,7 +87,7 @@ abstract class InterpretedFunction(
         // 3.  If kind is base, then
         var thisArgument = if (constructorKind == ConstructorKind.Base) {
             // a. Let thisArgument be ? OrdinaryCreateFromConstructor(newTarget, "%Object.prototype%").
-            Operations.ordinaryCreateFromConstructor(
+            AOs.ordinaryCreateFromConstructor(
                 arguments.newTarget,
                 defaultProto = Realm::objectProto,
             )

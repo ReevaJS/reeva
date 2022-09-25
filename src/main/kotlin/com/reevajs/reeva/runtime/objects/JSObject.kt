@@ -173,7 +173,7 @@ open class JSObject protected constructor(
 
     @ECMAImpl("9.1.6")
     open fun defineOwnProperty(property: PropertyKey, descriptor: Descriptor): Boolean {
-        return Operations.validateAndApplyPropertyDescriptor(
+        return AOs.validateAndApplyPropertyDescriptor(
             this,
             property,
             isExtensible(),
@@ -202,7 +202,7 @@ open class JSObject protected constructor(
 
         return when {
             desc.isDataDescriptor -> desc.getActualValue(receiver)
-            desc.hasGetterFunction -> Operations.call(desc.getter!!, receiver)
+            desc.hasGetterFunction -> AOs.call(desc.getter!!, receiver)
             else -> JSUndefined
         }
     }
@@ -258,7 +258,7 @@ open class JSObject protected constructor(
         expect(ownDesc.isAccessorDescriptor)
         if (!ownDesc.hasSetterFunction)
             return false
-        Operations.call(ownDesc.setter!!, receiver, listOf(value))
+        AOs.call(ownDesc.setter!!, receiver, listOf(value))
         return true
     }
 

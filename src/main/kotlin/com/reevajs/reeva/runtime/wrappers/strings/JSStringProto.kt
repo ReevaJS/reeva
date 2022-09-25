@@ -123,7 +123,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
             }
             if (position < 0 || position >= string.length)
                 return JSUndefined
-            return Operations.codePointAt(string, position).codePoint.toValue()
+            return AOs.codePointAt(string, position).codePoint.toValue()
         }
 
         @ECMAImpl("22.1.3.4")
@@ -235,14 +235,14 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
             var (searchValue, replaceValue) = arguments.takeArgs(0..1)
 
             if (!searchValue.isNullish) {
-                val replacer = Operations.getMethod(searchValue, Realm.WellKnownSymbols.replace)
+                val replacer = AOs.getMethod(searchValue, Realm.WellKnownSymbols.replace)
                 if (replacer != JSUndefined)
-                    return Operations.call(replacer, searchValue, listOf(obj, replaceValue))
+                    return AOs.call(replacer, searchValue, listOf(obj, replaceValue))
             }
 
             val string = obj.toJSString().string
             val searchString = searchValue.toJSString().asString
-            val functionalReplace = Operations.isCallable(replaceValue)
+            val functionalReplace = AOs.isCallable(replaceValue)
             if (!functionalReplace)
                 replaceValue = replaceValue.toJSString()
 
@@ -252,7 +252,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
 
             val preserved = string.substring(0, position)
             val replacement = if (functionalReplace) {
-                Operations.call(
+                AOs.call(
                     replaceValue,
                     JSUndefined,
                     listOf(searchString.toValue(), position.toValue(), string.toValue())
@@ -303,30 +303,30 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
             val (separator, limit) = arguments.takeArgs(0..1)
 
             if (!separator.isNullish) {
-                val splitter = Operations.getMethod(separator, Realm.WellKnownSymbols.split)
+                val splitter = AOs.getMethod(separator, Realm.WellKnownSymbols.split)
                 if (splitter != JSUndefined)
-                    return Operations.call(splitter, separator, listOf(obj, limit))
+                    return AOs.call(splitter, separator, listOf(obj, limit))
             }
 
             val string = obj.toJSString().string
-            val array = Operations.arrayCreate(0)
+            val array = AOs.arrayCreate(0)
             var arrayLength = 0
             val lim = if (limit == JSUndefined) {
-                Operations.MAX_32BIT_INT - 1
+                AOs.MAX_32BIT_INT - 1
             } else limit.toUint32().asInt
 
             val separatorString = separator.toJSString().string
             if (lim == 0)
                 return array
             if (separator == JSUndefined) {
-                Operations.createDataPropertyOrThrow(array, 0.key(), string.toValue())
+                AOs.createDataPropertyOrThrow(array, 0.key(), string.toValue())
                 return array
             }
 
             val stringLength = string.length
             if (stringLength == 0) {
                 if (separatorString.isNotEmpty())
-                    Operations.createDataPropertyOrThrow(array, 0.key(), string.toValue())
+                    AOs.createDataPropertyOrThrow(array, 0.key(), string.toValue())
                 return array
             }
 
@@ -346,7 +346,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
                     continue
                 }
 
-                Operations.createDataPropertyOrThrow(
+                AOs.createDataPropertyOrThrow(
                     array,
                     arrayLength.key(),
                     string.substring(splitStart, splitEnd).toValue(),
@@ -358,7 +358,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
                 splitEnd = splitStart
             }
 
-            Operations.createDataPropertyOrThrow(
+            AOs.createDataPropertyOrThrow(
                 array,
                 arrayLength.key(),
                 string.substring(splitStart, stringLength).toValue(),

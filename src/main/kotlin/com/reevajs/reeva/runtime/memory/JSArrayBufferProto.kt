@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.memory
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -34,12 +34,12 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
         @JvmStatic
         fun getByteLength(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!Operations.requireInternalSlot(thisValue, SlotName.ArrayBufferData))
+            if (!AOs.requireInternalSlot(thisValue, SlotName.ArrayBufferData))
                 Errors.IncompatibleMethodCall("ArrayBuffer.prototype.byteLength").throwTypeError()
-            if (Operations.isSharedArrayBuffer(thisValue))
+            if (AOs.isSharedArrayBuffer(thisValue))
                 Errors.TODO("ArrayBuffer.prototype.getByteLength isSharedArrayBuffer").throwTypeError()
 
-            if (Operations.isDetachedBuffer(thisValue))
+            if (AOs.isDetachedBuffer(thisValue))
                 return JSNumber.ZERO
             return thisValue.getSlot(SlotName.ArrayBufferByteLength).toValue()
         }
@@ -48,11 +48,11 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
         @JvmStatic
         fun slice(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!Operations.requireInternalSlot(thisValue, SlotName.ArrayBufferData))
+            if (!AOs.requireInternalSlot(thisValue, SlotName.ArrayBufferData))
                 Errors.IncompatibleMethodCall("ArrayBuffer.prototype.slice").throwTypeError()
-            if (Operations.isSharedArrayBuffer(thisValue))
+            if (AOs.isSharedArrayBuffer(thisValue))
                 Errors.TODO("ArrayBuffer.prototype.slice isSharedArrayBuffer 1").throwTypeError()
-            if (Operations.isDetachedBuffer(thisValue))
+            if (AOs.isDetachedBuffer(thisValue))
                 Errors.TODO("ArrayBuffer.prototype.slice isDetachedBuffer").throwTypeError()
 
             val length = thisValue.getSlot(SlotName.ArrayBufferByteLength)
@@ -77,14 +77,14 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
 
             val newLength = max(final - first, 0)
 
-            val ctor = Operations.speciesConstructor(thisValue, Agent.activeAgent.getActiveRealm().arrayBufferCtor)
-            val new = Operations.construct(ctor, listOf(newLength.toValue()))
-            if (!Operations.requireInternalSlot(new, SlotName.ArrayBufferData))
+            val ctor = AOs.speciesConstructor(thisValue, Agent.activeAgent.getActiveRealm().arrayBufferCtor)
+            val new = AOs.construct(ctor, listOf(newLength.toValue()))
+            if (!AOs.requireInternalSlot(new, SlotName.ArrayBufferData))
                 Errors.ArrayBuffer.BadSpecies(new.toString()).throwTypeError()
 
-            if (Operations.isSharedArrayBuffer(new))
+            if (AOs.isSharedArrayBuffer(new))
                 Errors.TODO("ArrayBuffer.prototype.slice isSharedArrayBuffer 2").throwTypeError()
-            if (Operations.isDetachedBuffer(new))
+            if (AOs.isDetachedBuffer(new))
                 Errors.TODO("ArrayBuffer.prototype.slice isDetachedBuffer 1").throwTypeError()
 
             if (new.sameValue(thisValue))
@@ -92,12 +92,12 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
 
             if (new.getSlot(SlotName.ArrayBufferByteLength) < newLength)
                 Errors.TODO("ArrayBuffer.prototype.slice newLength").throwTypeError()
-            if (Operations.isDetachedBuffer(new))
+            if (AOs.isDetachedBuffer(new))
                 Errors.TODO("ArrayBuffer.prototype.slice isDetachedBuffer 2").throwTypeError()
 
             val fromBuf = thisValue.getSlot(SlotName.ArrayBufferData)
             val toBuf = new.getSlot(SlotName.ArrayBufferData)
-            Operations.copyDataBlockBytes(toBuf, 0, fromBuf, first, newLength)
+            AOs.copyDataBlockBytes(toBuf, 0, fromBuf, first, newLength)
             return new
         }
     }

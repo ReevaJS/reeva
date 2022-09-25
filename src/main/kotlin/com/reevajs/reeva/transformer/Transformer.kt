@@ -9,7 +9,7 @@ import com.reevajs.reeva.core.lifecycle.ModuleRecord
 import com.reevajs.reeva.parsing.HoistingScope
 import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.parsing.Scope
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.utils.expect
@@ -166,7 +166,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         bodyScope: Scope,
         isStrict: Boolean,
         isArrow: Boolean,
-        kind: Operations.FunctionKind,
+        kind: AOs.FunctionKind,
         classConstructorKind: JSFunction.ConstructorKind? = null,
         instantiateFunction: Boolean = true,
     ): FunctionInfo {
@@ -1550,7 +1550,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 method.body.scope,
                 isStrict = true,
                 isArrow = false,
-                Operations.FunctionKind.Normal,
+                AOs.FunctionKind.Normal,
                 classConstructorKind = constructorKind,
             )
         } else {

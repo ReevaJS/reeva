@@ -4,7 +4,7 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.JSValue
-import com.reevajs.reeva.runtime.Operations
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
@@ -32,10 +32,10 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             Errors.CtorCallWithoutNew("Promise").throwTypeError(realm)
 
         val executor = arguments.argument(0)
-        if (!Operations.isCallable(executor))
+        if (!AOs.isCallable(executor))
             Errors.Promise.CtorFirstArgCallable.throwTypeError(realm)
 
-        val promise = Operations.ordinaryCreateFromConstructor(
+        val promise = AOs.ordinaryCreateFromConstructor(
             arguments.newTarget,
             listOf(
                 SlotName.PromiseState,
@@ -48,18 +48,18 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             it.promiseProto
         }
 
-        promise.setSlot(SlotName.PromiseState, Operations.PromiseState.Pending)
-        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<Operations.PromiseReaction>())
-        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<Operations.PromiseReaction>())
+        promise.setSlot(SlotName.PromiseState, AOs.PromiseState.Pending)
+        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<AOs.PromiseReaction>())
+        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<AOs.PromiseReaction>())
         promise.setSlot(SlotName.PromiseIsHandled, false)
         promise.setSlot(SlotName.PromiseResult, JSUndefined)
 
-        val (resolveFunction, rejectFunction) = Operations.createResolvingFunctions(promise)
+        val (resolveFunction, rejectFunction) = AOs.createResolvingFunctions(promise)
 
         try {
-            Operations.call(executor, JSUndefined, listOf(resolveFunction, rejectFunction))
+            AOs.call(executor, JSUndefined, listOf(resolveFunction, rejectFunction))
         } catch (e: ThrowException) {
-            Operations.call(rejectFunction, JSUndefined, listOf(e.value))
+            AOs.call(rejectFunction, JSUndefined, listOf(e.value))
         }
         return promise
     }
@@ -70,12 +70,12 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         @ECMAImpl("26.6.4.1", "26.6.4.1.2")
         @JvmStatic
         fun all(arguments: JSArguments): JSValue {
-            val capability = Operations.newPromiseCapability(arguments.thisValue)
+            val capability = AOs.newPromiseCapability(arguments.thisValue)
             val resolve = ifAbruptRejectPromise(capability, { return it }) {
-                Operations.getPromiseResolve(arguments.thisValue)
+                AOs.getPromiseResolve(arguments.thisValue)
             }
             val iteratorRecord = ifAbruptRejectPromise(capability, { return it }) {
-                Operations.getIterator(arguments.argument(0))
+                AOs.getIterator(arguments.argument(0))
             }
 
             return try {
@@ -83,31 +83,31 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             } catch (e: ThrowException) {
                 try {
                     if (!iteratorRecord.isDone)
-                        Operations.iteratorClose(iteratorRecord, e.value)
+                        AOs.iteratorClose(iteratorRecord, e.value)
                     else JSEmpty
                 } finally {
-                    Operations.call(capability.reject!!, JSUndefined, listOf(e.value))
+                    AOs.call(capability.reject!!, JSUndefined, listOf(e.value))
                     capability.promise
                 }
             }
         }
 
         private fun performPromiseAllSettled(
-            iteratorRecord: Operations.IteratorRecord,
+            iteratorRecord: AOs.IteratorRecord,
             constructor: JSValue,
-            resultCapability: Operations.PromiseCapability,
+            resultCapability: AOs.PromiseCapability,
             promiseResolve: JSValue
         ): JSValue {
-            ecmaAssert(Operations.isConstructor(constructor))
-            ecmaAssert(Operations.isCallable(promiseResolve))
+            ecmaAssert(AOs.isConstructor(constructor))
+            ecmaAssert(AOs.isCallable(promiseResolve))
 
             val values = mutableListOf<JSValue>()
-            val remainingElementCount = Operations.Wrapper(1)
+            val remainingElementCount = AOs.Wrapper(1)
             var index = 0
 
             while (true) {
                 val next = try {
-                    Operations.iteratorStep(iteratorRecord)
+                    AOs.iteratorStep(iteratorRecord)
                 } catch (e: ThrowException) {
                     iteratorRecord.isDone = true
                     throw e
@@ -117,21 +117,21 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                     iteratorRecord.isDone = true
                     remainingElementCount.value--
                     if (remainingElementCount.value == 0) {
-                        val valuesArray = Operations.createArrayFromList(values)
-                        Operations.call(resultCapability.resolve!!, JSUndefined, listOf(valuesArray))
+                        val valuesArray = AOs.createArrayFromList(values)
+                        AOs.call(resultCapability.resolve!!, JSUndefined, listOf(valuesArray))
                     }
                     return resultCapability.promise
                 }
 
                 val nextValue = try {
-                    Operations.iteratorValue(next)
+                    AOs.iteratorValue(next)
                 } catch (e: ThrowException) {
                     iteratorRecord.isDone = true
                     throw e
                 }
 
                 values.add(JSUndefined)
-                val nextPromise = Operations.call(promiseResolve, constructor, listOf(nextValue))
+                val nextPromise = AOs.call(promiseResolve, constructor, listOf(nextValue))
                 val resolveElement = JSPromiseAllSettledResolver.create(
                     index,
                     values,
@@ -147,7 +147,7 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                     true
                 )
                 remainingElementCount.value++
-                Operations.invoke(nextPromise, "then".toValue(), listOf(resolveElement, rejectElement))
+                AOs.invoke(nextPromise, "then".toValue(), listOf(resolveElement, rejectElement))
                 index++
             }
         }
@@ -155,12 +155,12 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         @ECMAImpl("27.2.4.2")
         @JvmStatic
         fun allSettled(arguments: JSArguments): JSValue {
-            val capability = Operations.newPromiseCapability(arguments.thisValue)
+            val capability = AOs.newPromiseCapability(arguments.thisValue)
             val resolve = ifAbruptRejectPromise(capability, { return it }) {
-                Operations.getPromiseResolve(arguments.thisValue)
+                AOs.getPromiseResolve(arguments.thisValue)
             }
             val iteratorRecord = ifAbruptRejectPromise(capability, { return it }) {
-                Operations.getIterator(arguments.argument(0))
+                AOs.getIterator(arguments.argument(0))
             }
 
             return try {
@@ -168,31 +168,31 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             } catch (e: ThrowException) {
                 try {
                     if (!iteratorRecord.isDone)
-                        Operations.iteratorClose(iteratorRecord, e.value)
+                        AOs.iteratorClose(iteratorRecord, e.value)
                     else JSEmpty
                 } finally {
-                    Operations.call(capability.reject!!, JSUndefined, listOf(e.value))
+                    AOs.call(capability.reject!!, JSUndefined, listOf(e.value))
                     return capability.promise
                 }
             }
         }
 
         private fun performPromiseAll(
-            iteratorRecord: Operations.IteratorRecord,
+            iteratorRecord: AOs.IteratorRecord,
             constructor: JSValue,
-            resultCapability: Operations.PromiseCapability,
+            resultCapability: AOs.PromiseCapability,
             promiseResolve: JSValue
         ): JSValue {
-            ecmaAssert(Operations.isConstructor(constructor))
-            ecmaAssert(Operations.isCallable(promiseResolve))
+            ecmaAssert(AOs.isConstructor(constructor))
+            ecmaAssert(AOs.isCallable(promiseResolve))
 
             val values = mutableListOf<JSValue>()
-            val remainingElementCount = Operations.Wrapper(1)
+            val remainingElementCount = AOs.Wrapper(1)
             var index = 0
 
             while (true) {
                 val next = try {
-                    Operations.iteratorStep(iteratorRecord)
+                    AOs.iteratorStep(iteratorRecord)
                 } catch (e: ThrowException) {
                     iteratorRecord.isDone = true
                     throw e
@@ -202,25 +202,25 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
                     iteratorRecord.isDone = true
                     remainingElementCount.value--
                     if (remainingElementCount.value == 0) {
-                        val valuesArray = Operations.createArrayFromList(values)
-                        Operations.call(resultCapability.resolve!!, JSUndefined, listOf(valuesArray))
+                        val valuesArray = AOs.createArrayFromList(values)
+                        AOs.call(resultCapability.resolve!!, JSUndefined, listOf(valuesArray))
                     }
                     return resultCapability.promise
                 }
 
                 val nextValue = try {
-                    Operations.iteratorValue(next)
+                    AOs.iteratorValue(next)
                 } catch (e: ThrowException) {
                     iteratorRecord.isDone = true
                     throw e
                 }
 
                 values.add(JSUndefined)
-                val nextPromise = Operations.call(promiseResolve, constructor, listOf(nextValue))
+                val nextPromise = AOs.call(promiseResolve, constructor, listOf(nextValue))
                 val resolveElement =
                     JSPromiseAllResolver.create(index, values, resultCapability, remainingElementCount)
                 remainingElementCount.value++
-                Operations.invoke(
+                AOs.invoke(
                     nextPromise,
                     "then".toValue(),
                     listOf(resolveElement, resultCapability.reject!!)
@@ -232,8 +232,8 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         @ECMAImpl("27.2.4.6")
         @JvmStatic
         fun reject(arguments: JSArguments): JSValue {
-            val capability = Operations.newPromiseCapability(arguments.thisValue)
-            Operations.call(capability.reject!!, JSUndefined, listOf(arguments.argument(0)))
+            val capability = AOs.newPromiseCapability(arguments.thisValue)
+            AOs.call(capability.reject!!, JSUndefined, listOf(arguments.argument(0)))
             return capability.promise
         }
 
@@ -242,18 +242,18 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         fun resolve(arguments: JSArguments): JSValue {
             if (arguments.thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("Promise.resolve").throwTypeError()
-            return Operations.promiseResolve(arguments.thisValue, arguments.argument(0))
+            return AOs.promiseResolve(arguments.thisValue, arguments.argument(0))
         }
 
         private inline fun <T> ifAbruptRejectPromise(
-            capability: Operations.PromiseCapability,
+            capability: AOs.PromiseCapability,
             returnBlock: (JSValue) -> Nothing,
             producer: () -> T
         ): T {
             return try {
                 producer()
             } catch (e: ThrowException) {
-                Operations.call(capability.reject!!, JSUndefined, listOf(e.value))
+                AOs.call(capability.reject!!, JSUndefined, listOf(e.value))
                 returnBlock(capability.promise)
             }
         }
