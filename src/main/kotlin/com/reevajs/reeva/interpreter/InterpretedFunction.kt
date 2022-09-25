@@ -11,6 +11,7 @@ import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObject
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.toObject
 import com.reevajs.reeva.transformer.TransformedSource
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
@@ -30,15 +31,15 @@ abstract class InterpretedFunction(
     transformedSource.functionInfo.isStrict,
     prototype,
 ) {
-    private val outerEnvRecord = Agent.activeAgent.activeEnvRecord
+    private val environment = Agent.activeAgent.activeEnvRecord
 
     protected abstract fun evaluate(arguments: JSArguments): JSValue
 
     @ECMAImpl("10.2.1", "[[Call]]")
     override fun call(arguments: JSArguments): JSValue {
-        // 1.  Let callerContext be the running execution context.
         val agent = Agent.activeAgent
-        val callerContext = agent.runningExecutionContext
+
+        // 1.  Let callerContext be the running execution context.
 
         // 2.  Let calleeContext be PrepareForOrdinaryCall(F, undefined).
         val calleeContext = prepareForOrdinaryCall()
@@ -61,7 +62,7 @@ abstract class InterpretedFunction(
         // 5.  Perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
         // Note: This return value is non-spec. The spec simply binds it to the current environment, so it doesn't need
         //       to return it. We need to pass it into the interpreter manually.
-        val thisArgument = ordinaryCallBindThis(calleeContext, arguments.thisValue)
+        val thisArgument = ordinaryCallBindThis(arguments.thisValue)
 
         return try {
             // 6.  Let result be OrdinaryCallEvaluateBody(F, argumentsList).
@@ -84,7 +85,7 @@ abstract class InterpretedFunction(
 
         // 2.  Let kind be F.[[ConstructorKind]].
         // 3.  If kind is base, then
-        var thisArgument = if (constructorKind == JSFunction.ConstructorKind.Base) {
+        var thisArgument = if (constructorKind == ConstructorKind.Base) {
             // a. Let thisArgument be ? OrdinaryCreateFromConstructor(newTarget, "%Object.prototype%").
             Operations.ordinaryCreateFromConstructor(
                 arguments.newTarget,
@@ -102,15 +103,14 @@ abstract class InterpretedFunction(
         if (constructorKind == ConstructorKind.Base) {
             // a. Perform OrdinaryCallBindThis(F, calleeContext, thisArgument).
             // Note: See call for explanation of return value
-            thisArgument = ordinaryCallBindThis(calleeContext, thisArgument)
+            thisArgument = ordinaryCallBindThis(thisArgument)
 
             // b.  Let initializeResult be InitializeInstanceElements(thisArgument, F).
             // c.  If initializeResult is an abrupt completion, then
             //     i.  Remove calleeContext from the execution context stack and restore callerContext as the running
             //         execution context.
             //     ii. Return Completion(initializeResult).
-
-            // Class fields are handled in the IR/bytecode, so no work is done here
+            // Note: Class fields are handled in the IR/bytecode, so no work is done here
         }
 
         // 7.  Let constructorEnv be the LexicalEnvironment of calleeContext.
@@ -160,7 +160,7 @@ abstract class InterpretedFunction(
         val calleeContext = ExecutionContext(
             realm,
             this,
-            outerEnvRecord,
+            environment,
             callerContext.executable,
             null
         )
@@ -170,10 +170,49 @@ abstract class InterpretedFunction(
     }
 
     @ECMAImpl("10.2.1.2")
-    protected fun ordinaryCallBindThis(calleeContext: ExecutionContext, thisArgument: JSValue): JSValue {
-        // TODO: This could not be further from the spec. We need to associate
-        //       a ThisMode with each function so we can implement this properly
-        return thisArgument
+    protected fun ordinaryCallBindThis(thisArgument: JSValue): JSValue {
+        // NOTE: In the spec, this function binds the proper receiver value to the function environment.
+        //       However, we don't use function environments, and instead pass the proper receiver
+        //       and new.target values directly to the interpreter via its arguments. So this function
+        //       returns the receiver value instead of binding.
+
+        // 1. Let thisMode be F.[[ThisMode]].
+        // 2. If thisMode is lexical, return unused.
+        if (thisMode == ThisMode.Lexical)
+            return thisArgument
+
+        // 3. Let calleeRealm be F.[[Realm]].
+        val calleeRealm = realm
+
+        // 4. Let localEnv be the LexicalEnvironment of calleeContext.
+        // 5. If thisMode is strict, let thisValue be thisArgument.
+        val thisValue = if (thisMode == ThisMode.Strict) {
+            thisArgument
+        }
+        // 6. Else,
+        else {
+            // a. If thisArgument is undefined or null, then
+            if (thisArgument.isNullish) {
+                // i. Let globalEnv be calleeRealm.[[GlobalEnv]].
+                val globalEnv = calleeRealm.globalEnv
+
+                // ii. Assert: globalEnv is a global Environment Record.
+                // iii. Let thisValue be globalEnv.[[GlobalThisValue]].
+                globalEnv.globalThisValue
+            }
+            // b. Else,
+            else {
+                // i. Let thisValue be ! ToObject(thisArgument).
+                // ii. NOTE: ToObject produces wrapper objects using calleeRealm.
+                thisArgument.toObject()
+            }
+        }
+
+        // 7. Assert: localEnv is a function Environment Record.
+        // 8. Assert: The next step never returns an abrupt completion because localEnv.[[ThisBindingStatus]] is not initialized.
+        // 9. Perform ! localEnv.BindThisValue(thisValue).
+        // 10. Return unused.
+        return thisValue
     }
 }
 

@@ -7,6 +7,7 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
+import com.reevajs.reeva.interpreter.Interpreter
 import com.reevajs.reeva.interpreter.NormalInterpretedFunction
 import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.parsing.Parser
@@ -14,7 +15,9 @@ import com.reevajs.reeva.parsing.ParsingError
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.Operations
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.other.JSModuleNamespaceObject
+import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.Result
 import com.reevajs.reeva.utils.ecmaAssert
@@ -334,8 +337,9 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
         agent.pushExecutionContext(context)
 
         try {
-            val function = NormalInterpretedFunction.create(transformedSource)
-            Operations.call(function, realm.globalObject, emptyList())
+            Interpreter(transformedSource, listOf(JSUndefined, JSUndefined)).interpret().let {
+                if (it.hasError) throw it.error() else it.value()
+            }
         } finally {
             agent.popExecutionContext()
         }
