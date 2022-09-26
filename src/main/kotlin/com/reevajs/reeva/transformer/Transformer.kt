@@ -201,6 +201,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 functionsToInitialize.add(0, decl)
         }
 
+        if (parameters.containsDuplicates())
+            TODO("Handle duplicate parameter names")
+
+        enterScope(functionScope)
+
         when (functionScope.argumentsMode) {
             HoistingScope.ArgumentsMode.None -> {
             }
@@ -213,11 +218,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 storeToSource(functionScope.argumentsSource)
             }
         }
-
-        enterScope(functionScope)
-
-        if (parameters.containsDuplicates())
-            TODO("Handle duplicate parameter names")
 
         val receiver = functionScope.receiverVariable
 
