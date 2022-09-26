@@ -103,9 +103,9 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             }
 
             if (space is JSObject) {
-                if (space.hasSlot(SlotName.NumberData)) {
+                if (SlotName.NumberData in space) {
                     space = space.toNumber()
-                } else if (space.hasSlot(SlotName.StringData)) {
+                } else if (SlotName.StringData in space) {
                     space = space.toJSString()
                 }
             }
@@ -151,10 +151,10 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             }
             if (value is JSObject) {
                 value = when {
-                    value.hasSlot(SlotName.NumberData) -> value.toNumber()
-                    value.hasSlot(SlotName.StringData) -> value.toJSString()
-                    value.hasSlot(SlotName.BooleanData) -> value.getSlot(SlotName.BooleanData)
-                    value.hasSlot(SlotName.BigIntData) -> value.getSlot(SlotName.BigIntData)
+                    SlotName.NumberData in value -> value.toNumber()
+                    SlotName.StringData in value -> value.toJSString()
+                    SlotName.BooleanData in value -> value[SlotName.BooleanData]
+                    SlotName.BigIntData in value -> value[SlotName.BigIntData]
                     else -> value
                 }
             }

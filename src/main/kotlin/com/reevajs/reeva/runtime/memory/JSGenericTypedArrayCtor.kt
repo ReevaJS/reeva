@@ -45,9 +45,9 @@ open class JSGenericTypedArrayCtor protected constructor(
 
         val obj = allocateTypedArray(newTarget, kind::getProto)
         when {
-            firstArgument.hasSlot(SlotName.TypedArrayName) ->
+            SlotName.TypedArrayName in firstArgument ->
                 initializeTypedArrayFromTypedArray(obj, firstArgument)
-            firstArgument.hasSlot(SlotName.ArrayBufferData) ->
+            SlotName.ArrayBufferData in firstArgument ->
                 initializeTypedArrayFromArrayBuffer(obj, firstArgument, arguments.argument(1), arguments.argument(2))
             else -> {
                 val usingIterator = AOs.getMethod(firstArgument, Realm.WellKnownSymbols.iterator)
@@ -72,9 +72,9 @@ open class JSGenericTypedArrayCtor protected constructor(
         val proto = AOs.getPrototypeFromConstructor(newTarget, defaultProtoProducer)
         val obj = JSIntegerIndexedObject.create(kind, proto = proto)
         if (length == null) {
-            obj.setSlot(SlotName.ByteLength, 0)
-            obj.setSlot(SlotName.ByteOffset, 0)
-            obj.setSlot(SlotName.ArrayLength, 0)
+            obj[SlotName.ByteLength] = 0
+            obj[SlotName.ByteOffset] = 0
+            obj[SlotName.ArrayLength] = 0
         } else allocateTypedArrayBuffer(obj, length)
 
         return obj
@@ -83,14 +83,14 @@ open class JSGenericTypedArrayCtor protected constructor(
     @ECMAImpl("22.2.5.1.2")
     private fun initializeTypedArrayFromTypedArray(obj: JSValue, srcArray: JSValue) {
         ecmaAssert(obj is JSObject && srcArray is JSObject)
-        val srcData = srcArray.getSlot(SlotName.ViewedArrayBuffer)
+        val srcData = srcArray[SlotName.ViewedArrayBuffer]
         if (AOs.isDetachedBuffer(srcData))
             Errors.TODO("initializeTypedArrayFromTypedArray isDetachedBuffer 1").throwTypeError()
 
-        val ctorKind = obj.getSlot(SlotName.TypedArrayKind)
-        val srcKind = srcArray.getSlot(SlotName.TypedArrayKind)
-        val srcByteOffset = srcArray.getSlot(SlotName.ByteOffset)
-        val elementLength = srcArray.getSlot(SlotName.ArrayLength)
+        val ctorKind = obj[SlotName.TypedArrayKind]
+        val srcKind = srcArray[SlotName.TypedArrayKind]
+        val srcByteOffset = srcArray[SlotName.ByteOffset]
+        val elementLength = srcArray[SlotName.ArrayLength]
         val byteLength = ctorKind.size * elementLength
 
         val bufferCtor = if (AOs.isSharedArrayBuffer(srcData)) {
@@ -131,10 +131,10 @@ open class JSGenericTypedArrayCtor protected constructor(
             }
         }
 
-        obj.setSlot(SlotName.ViewedArrayBuffer, data)
-        obj.setSlot(SlotName.ByteLength, byteLength)
-        obj.setSlot(SlotName.ByteOffset, 0)
-        obj.setSlot(SlotName.ArrayLength, elementLength)
+        obj[SlotName.ViewedArrayBuffer] = data
+        obj[SlotName.ByteLength] = byteLength
+        obj[SlotName.ByteOffset] = 0
+        obj[SlotName.ArrayLength] = elementLength
     }
 
     @ECMAImpl("22.2.5.1.3")
@@ -144,10 +144,10 @@ open class JSGenericTypedArrayCtor protected constructor(
         byteOffset: JSValue,
         length: JSValue,
     ) {
-        ecmaAssert(obj is JSObject && obj.hasSlot(SlotName.TypedArrayKind))
-        ecmaAssert(buffer is JSObject && buffer.hasSlot(SlotName.ArrayBufferData))
+        ecmaAssert(obj is JSObject && SlotName.TypedArrayKind in obj)
+        ecmaAssert(buffer is JSObject && SlotName.ArrayBufferData in buffer)
 
-        val ctorKind = obj.getSlot(SlotName.TypedArrayKind)
+        val ctorKind = obj[SlotName.TypedArrayKind]
         val elementSize = ctorKind.size
         val offset = byteOffset.toIndex()
         if (offset % elementSize != 0)
@@ -156,7 +156,7 @@ open class JSGenericTypedArrayCtor protected constructor(
         if (AOs.isDetachedBuffer(buffer))
             Errors.TODO("initializeTypedArrayFromArrayBuffer isDetachedBuffer").throwTypeError()
 
-        val bufferByteLength = buffer.getSlot(SlotName.ArrayBufferByteLength)
+        val bufferByteLength = buffer[SlotName.ArrayBufferByteLength]
         val newByteLength = if (length == JSUndefined) {
             if (bufferByteLength % elementSize != 0)
                 Errors.TypedArrays.InvalidBufferLength(bufferByteLength, ctorKind).throwRangeError()
@@ -175,15 +175,15 @@ open class JSGenericTypedArrayCtor protected constructor(
             }
         }
 
-        obj.setSlot(SlotName.ViewedArrayBuffer, buffer)
-        obj.setSlot(SlotName.ByteLength, newByteLength)
-        obj.setSlot(SlotName.ByteOffset, offset)
-        obj.setSlot(SlotName.ArrayLength, newByteLength / elementSize)
+        obj[SlotName.ViewedArrayBuffer] = buffer
+        obj[SlotName.ByteLength] = newByteLength
+        obj[SlotName.ByteOffset] = offset
+        obj[SlotName.ArrayLength] = newByteLength / elementSize
     }
 
     @ECMAImpl("22.2.5.1.4")
     private fun initializeTypedArrayFromList(obj: JSValue, values: List<JSValue>) {
-        ecmaAssert(obj is JSObject && obj.hasSlot(SlotName.TypedArrayName))
+        ecmaAssert(obj is JSObject && SlotName.TypedArrayName in obj)
         allocateTypedArrayBuffer(obj, values.size)
         values.forEachIndexed { index, value ->
             AOs.set(obj, index.key(), value, true)
@@ -192,7 +192,7 @@ open class JSGenericTypedArrayCtor protected constructor(
 
     @ECMAImpl("22.2.5.1.5")
     private fun initializeTypedArrayFromArrayLike(obj: JSValue, arrayLike: JSObject) {
-        ecmaAssert(obj is JSObject && obj.hasSlot(SlotName.TypedArrayName))
+        ecmaAssert(obj is JSObject && SlotName.TypedArrayName in obj)
         val length = AOs.lengthOfArrayLike(arrayLike)
         for (i in 0 until length)
             AOs.set(obj, i.key(), arrayLike.get(i), true)
@@ -202,10 +202,10 @@ open class JSGenericTypedArrayCtor protected constructor(
     private fun allocateTypedArrayBuffer(obj: JSObject, length: Int) {
         val byteLength = kind.size * length
         val data = AOs.allocateArrayBuffer(realm.arrayBufferCtor, byteLength)
-        obj.setSlot(SlotName.ViewedArrayBuffer, data)
-        obj.setSlot(SlotName.ByteLength, byteLength)
-        obj.setSlot(SlotName.ByteOffset, 0)
-        obj.setSlot(SlotName.ArrayLength, length)
+        obj[SlotName.ViewedArrayBuffer] = data
+        obj[SlotName.ByteLength] = byteLength
+        obj[SlotName.ByteOffset] = 0
+        obj[SlotName.ArrayLength] = length
     }
 }
 

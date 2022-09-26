@@ -80,9 +80,9 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             contract {
                 returns() implies (value is JSObject)
             }
-            if (value !is JSObject || !value.hasSlot(SlotName.DateValue))
+            if (value !is JSObject || SlotName.DateValue !in value)
                 Errors.IncompatibleMethodCall("Date.prototype.$method").throwTypeError()
-            return value.getSlot(SlotName.DateValue)
+            return value[SlotName.DateValue]
         }
 
         private fun thisUTCTimeValue(value: JSValue, method: String): ZonedDateTime? {
@@ -566,17 +566,17 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
 
         private fun dateValueSetHelper(dateObj: JSObject, zdt: ZonedDateTime): JSValue {
             return if (AOs.timeClip(zdt) == null) {
-                dateObj.setSlot(SlotName.DateValue, null)
+                dateObj[SlotName.DateValue] = null
                 JSNumber.NaN
             } else {
-                dateObj.setSlot(SlotName.DateValue, zdt)
+                dateObj[SlotName.DateValue] = zdt
                 zdt.toInstant().toEpochMilli().toValue()
             }
         }
 
         private inline fun ifAnyNotFinite(dateObj: JSObject, vararg values: JSValue, returner: (JSValue) -> Unit) {
             if (values.any { !it.isFinite }) {
-                dateObj.setSlot(SlotName.DateValue, null)
+                dateObj[SlotName.DateValue] = null
                 returner(JSNumber.NaN)
             }
         }

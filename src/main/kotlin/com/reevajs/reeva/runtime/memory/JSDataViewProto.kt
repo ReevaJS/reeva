@@ -57,7 +57,7 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
             val thisValue = arguments.thisValue
             if (!AOs.requireInternalSlot(thisValue, SlotName.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.buffer").throwTypeError()
-            return thisValue.getSlot(SlotName.ViewedArrayBuffer)
+            return thisValue[SlotName.ViewedArrayBuffer]
         }
 
         @ECMAImpl("25.3.4.2")
@@ -66,9 +66,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
             val thisValue = arguments.thisValue
             if (!AOs.requireInternalSlot(thisValue, SlotName.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError()
-            if (AOs.isDetachedBuffer(thisValue.getSlot(SlotName.ViewedArrayBuffer)))
+            if (AOs.isDetachedBuffer(thisValue[SlotName.ViewedArrayBuffer]))
                 Errors.TODO("DataView.prototype.byteLength isDetachedBuffer").throwTypeError()
-            return thisValue.getSlot(SlotName.ByteLength).toValue()
+            return thisValue[SlotName.ByteLength].toValue()
         }
 
         @ECMAImpl("25.3.4.3")
@@ -77,9 +77,9 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
             val thisValue = arguments.thisValue
             if (!AOs.requireInternalSlot(thisValue, SlotName.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError()
-            if (AOs.isDetachedBuffer(thisValue.getSlot(SlotName.ViewedArrayBuffer)))
+            if (AOs.isDetachedBuffer(thisValue[SlotName.ViewedArrayBuffer]))
                 Errors.TODO("DataView.prototype.byteLength isDetachedBuffer").throwTypeError()
-            return thisValue.getSlot(SlotName.ByteOffset).toValue()
+            return thisValue[SlotName.ByteOffset].toValue()
         }
 
         @ECMAImpl("25.3.4.5")

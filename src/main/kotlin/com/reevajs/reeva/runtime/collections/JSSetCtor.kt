@@ -29,7 +29,7 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
             listOf(SlotName.SetData),
             defaultProto = Realm::setProto,
         )
-        set.setSlot(SlotName.SetData, JSSetObject.SetData())
+        set[SlotName.SetData] = JSSetObject.SetData()
         val iterator = arguments.argument(0)
         if (iterator == JSUndefined || iterator == JSNull)
             return set

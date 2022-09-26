@@ -48,11 +48,11 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             it.promiseProto
         }
 
-        promise.setSlot(SlotName.PromiseState, AOs.PromiseState.Pending)
-        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf<AOs.PromiseReaction>())
-        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf<AOs.PromiseReaction>())
-        promise.setSlot(SlotName.PromiseIsHandled, false)
-        promise.setSlot(SlotName.PromiseResult, JSUndefined)
+        promise[SlotName.PromiseState] = AOs.PromiseState.Pending
+        promise[SlotName.PromiseFulfillReactions] = mutableListOf<AOs.PromiseReaction>()
+        promise[SlotName.PromiseRejectReactions] = mutableListOf<AOs.PromiseReaction>()
+        promise[SlotName.PromiseIsHandled] = false
+        promise[SlotName.PromiseResult] = JSUndefined
 
         val (resolveFunction, rejectFunction) = AOs.createResolvingFunctions(promise)
 

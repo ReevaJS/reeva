@@ -48,7 +48,7 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
             listOf(SlotName.NumberData),
             defaultProto = Realm::numberProto,
         ).also {
-            it.setSlot(SlotName.NumberData, n)
+            it[SlotName.NumberData] = n
         }
     }
 

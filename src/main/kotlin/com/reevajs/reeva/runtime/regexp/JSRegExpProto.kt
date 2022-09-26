@@ -190,7 +190,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
                 Errors.IncompatibleMethodCall("RegExp.prototype.source").throwTypeError()
             }
             // TODO: EscapeRegExpPattern (21.2.5.12)
-            return thisValue.getSlot(SlotName.OriginalSource).toValue()
+            return thisValue[SlotName.OriginalSource].toValue()
         }
 
         @ECMAImpl("22.2.5.13")

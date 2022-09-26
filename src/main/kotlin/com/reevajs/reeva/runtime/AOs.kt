@@ -916,9 +916,9 @@ object AOs {
             return isArray(value.target)
         }
         if (value is JSObject) {
-            val handler = value.getSlot(SlotName.ProxyHandler)
+            val handler = value[SlotName.ProxyHandler]
             if (handler != null)
-                return isArray(value.getSlot(SlotName.ProxyTarget))
+                return isArray(value[SlotName.ProxyTarget])
         }
         return false
     }
@@ -964,7 +964,7 @@ object AOs {
             return matcher.toBoolean()
         if (value is JSRegExpObject)
             return true
-        return value.hasSlot(SlotName.RegExpMatcher)
+        return SlotName.RegExpMatcher in value
     }
 
     fun isLessThan(lhs: JSValue, rhs: JSValue): Boolean {
@@ -1689,7 +1689,7 @@ object AOs {
         contract {
             returns(true) implies (obj is JSObject)
         }
-        return obj is JSObject && obj.hasSlot(slot)
+        return obj is JSObject && slot in obj
     }
 
     @JvmStatic
@@ -1774,13 +1774,13 @@ object AOs {
     @ECMAImpl("9.4.5.9")
     fun isValidIntegerIndex(obj: JSValue, index: JSNumber): Boolean {
         ecmaAssert(obj is JSIntegerIndexedObject)
-        if (isDetachedBuffer(obj.getSlot(SlotName.ViewedArrayBuffer)))
+        if (isDetachedBuffer(obj[SlotName.ViewedArrayBuffer]))
             return false
         if (!isIntegralNumber(index))
             return false
         if (index.isNegativeZero)
             return false
-        if (index.number < 0 || index.number > obj.getSlot(SlotName.ArrayLength))
+        if (index.number < 0 || index.number > obj[SlotName.ArrayLength])
             return false
         return true
     }
@@ -1791,11 +1791,11 @@ object AOs {
         ecmaAssert(obj is JSIntegerIndexedObject)
         if (index !is JSNumber || !isValidIntegerIndex(obj, index))
             return JSUndefined
-        val offset = obj.getSlot(SlotName.ByteOffset)
-        val kind = obj.getSlot(SlotName.TypedArrayKind)
+        val offset = obj[SlotName.ByteOffset]
+        val kind = obj[SlotName.TypedArrayKind]
         val indexedPosition = (index.asInt * kind.size) + offset
         return getValueFromBuffer(
-            obj.getSlot(SlotName.ViewedArrayBuffer),
+            obj[SlotName.ViewedArrayBuffer],
             indexedPosition,
             kind,
             true,
@@ -1811,15 +1811,15 @@ object AOs {
         if (index !is JSNumber || !isValidIntegerIndex(obj, index))
             return
 
-        val kind = obj.getSlot(SlotName.TypedArrayKind)
+        val kind = obj[SlotName.TypedArrayKind]
         val numValue = if (kind.isBigInt) {
             value.toBigInt()
         } else value.toNumber()
 
-        val offset = obj.getSlot(SlotName.ByteOffset)
+        val offset = obj[SlotName.ByteOffset]
         val indexedPosition = (index.asInt * kind.size) + offset
         setValueInBuffer(
-            obj.getSlot(SlotName.ViewedArrayBuffer),
+            obj[SlotName.ViewedArrayBuffer],
             indexedPosition,
             kind,
             numValue,
@@ -2328,9 +2328,9 @@ object AOs {
         if (flags.toCharArray().distinct().size != flags.length)
             Errors.RegExp.DuplicateFlag.throwSyntaxError()
 
-        obj.setSlot(SlotName.OriginalSource, pattern)
-        obj.setSlot(SlotName.OriginalFlags, flags)
-        obj.setSlot(SlotName.RegExpMatcher, makeRegExpOrThrow(pattern, flags))
+        obj[SlotName.OriginalSource] = pattern
+        obj[SlotName.OriginalFlags] = flags
+        obj[SlotName.RegExpMatcher] = makeRegExpOrThrow(pattern, flags)
 
         set(obj, "lastIndex".key(), 0.toValue(), true)
 
@@ -2368,14 +2368,14 @@ object AOs {
         requireInternalSlot(thisValue, SlotName.RegExpMatcher)
 
         val text = string.string
-        val flags = thisValue.getSlot(SlotName.OriginalFlags)
+        val flags = thisValue[SlotName.OriginalFlags]
         val global = JSRegExpObject.Flag.Global.char in flags
         val sticky = JSRegExpObject.Flag.Sticky.char in flags
         val lastIndex = if (global || sticky) {
             thisValue.get("lastIndex").toLength().asInt
         } else 0
 
-        val regex = thisValue.getSlot(SlotName.RegExpMatcher)
+        val regex = thisValue[SlotName.RegExpMatcher]
         val match = regex.matcher(text).match(lastIndex)
 
         if (match == null) {
@@ -2420,11 +2420,11 @@ object AOs {
     fun typedArraySpeciesCreate(exemplar: JSValue, arguments: JSArguments): JSObject {
         ecmaAssert(exemplar is JSObject && exemplar.hasSlots(listOf(SlotName.TypedArrayName, SlotName.ContentType)))
 
-        val kind = exemplar.getSlot(SlotName.TypedArrayKind)
+        val kind = exemplar[SlotName.TypedArrayKind]
         val defaultConstructor = kind.getCtor(Agent.activeAgent.getActiveRealm())
         val constructor = speciesConstructor(exemplar, defaultConstructor)
         val result = typedArrayCreate(constructor, arguments)
-        if (result.getSlot(SlotName.ContentType) != exemplar.getSlot(SlotName.ContentType))
+        if (result[SlotName.ContentType] != exemplar[SlotName.ContentType])
             Errors.TODO("typedArraySpeciesCreate").throwTypeError()
         return result
     }
@@ -2437,7 +2437,7 @@ object AOs {
         expect(newTypedArray is JSObject)
         if (arguments.size == 1) {
             val arg = arguments.argument(0)
-            if (arg is JSNumber && newTypedArray.getSlot(SlotName.ArrayLength) != arg.asInt)
+            if (arg is JSNumber && newTypedArray[SlotName.ArrayLength] != arg.asInt)
                 Errors.TODO("typedArrayCreate").throwTypeError()
         }
         return newTypedArray
@@ -2448,8 +2448,8 @@ object AOs {
     fun validateTypedArray(obj: JSValue) {
         if (!requireInternalSlot(obj, SlotName.TypedArrayName))
             Errors.TODO("validateTypedArray requireInternalSlot").throwTypeError()
-        ecmaAssert(obj.hasSlot(SlotName.ViewedArrayBuffer))
-        val buffer = obj.getSlot(SlotName.ViewedArrayBuffer)
+        ecmaAssert(SlotName.ViewedArrayBuffer in obj)
+        val buffer = obj[SlotName.ViewedArrayBuffer]
         if (isDetachedBuffer(buffer))
             Errors.TODO("validateTypedArray isDetachedBuffer").throwTypeError()
     }
@@ -2499,15 +2499,15 @@ object AOs {
         val slots = listOf(SlotName.ArrayBufferData, SlotName.ArrayBufferByteLength, SlotName.ArrayBufferDetachKey)
         val obj = ordinaryCreateFromConstructor(constructor, slots, defaultProto = Realm::arrayBufferProto)
         val block = createByteDataBlock(byteLength)
-        obj.setSlot(SlotName.ArrayBufferData, block)
-        obj.setSlot(SlotName.ArrayBufferByteLength, byteLength)
+        obj[SlotName.ArrayBufferData] = block
+        obj[SlotName.ArrayBufferByteLength] = byteLength
         return obj
     }
 
     @JvmStatic
     @ECMAImpl("24.1.2.2")
     fun isDetachedBuffer(buffer: JSValue): Boolean {
-        ecmaAssert(buffer is JSObject && buffer.hasSlot(SlotName.ArrayBufferData))
+        ecmaAssert(buffer is JSObject && SlotName.ArrayBufferData in buffer)
         return buffer.getSlotOrNull(SlotName.ArrayBufferData) == null
     }
 
@@ -2529,8 +2529,8 @@ object AOs {
             Errors.ArrayBuffer.BadDetachKey(expectedKey.toString(), key.toString())
                 .throwTypeError()
 
-        arrayBuffer.setSlot(SlotName.ArrayBufferData, null)
-        arrayBuffer.setSlot(SlotName.ArrayBufferByteLength, 0)
+        arrayBuffer[SlotName.ArrayBufferData] = null
+        arrayBuffer[SlotName.ArrayBufferByteLength] = 0
     }
 
     @JvmStatic
@@ -2541,14 +2541,14 @@ object AOs {
         srcLength: Int,
         cloneConstructor: JSValue
     ): JSObject {
-        ecmaAssert(srcBuffer is JSObject && srcBuffer.hasSlot(SlotName.ArrayBufferData))
+        ecmaAssert(srcBuffer is JSObject && SlotName.ArrayBufferData in srcBuffer)
         ecmaAssert(cloneConstructor.isConstructor)
 
         val targetBuffer = allocateArrayBuffer(cloneConstructor, srcLength)
         if (isDetachedBuffer(srcBuffer))
             Errors.TODO("cloneArrayBuffer isDetachedBuffer").throwTypeError()
-        val srcBlock = srcBuffer.getSlot(SlotName.ArrayBufferData)
-        val targetBlock = targetBuffer.getSlot(SlotName.ArrayBufferData)
+        val srcBlock = srcBuffer[SlotName.ArrayBufferData]
+        val targetBlock = targetBuffer[SlotName.ArrayBufferData]
         copyDataBlockBytes(targetBlock, 0, srcBlock, srcByteOffset, srcLength)
         return targetBuffer
     }
@@ -2629,7 +2629,7 @@ object AOs {
     ): JSValue {
         ecmaAssert(arrayBuffer is JSObject)
         ecmaAssert(!isDetachedBuffer(arrayBuffer))
-        val block = arrayBuffer.getSlot(SlotName.ArrayBufferData)
+        val block = arrayBuffer[SlotName.ArrayBufferData]
         ecmaAssert(byteIndex + kind.size - 1 < block.size)
 
         if (isSharedArrayBuffer(arrayBuffer))
@@ -2708,7 +2708,7 @@ object AOs {
         ecmaAssert(!isDetachedBuffer(arrayBuffer))
         ecmaAssert(if (value is JSBigInt) isBigIntElementType(type) else value is JSNumber)
 
-        val block = arrayBuffer.getSlot(SlotName.ArrayBufferData)
+        val block = arrayBuffer[SlotName.ArrayBufferData]
         ecmaAssert(byteIndex + type.size <= block.size)
 
         val rawBytes = numericToRawBytes(type, value, isLittleEndian)
@@ -2736,12 +2736,12 @@ object AOs {
 
         val index = requestIndex.toIndex()
         val isLittleEndian = littleEndian.toBoolean()
-        val buffer = view.getSlot(SlotName.ViewedArrayBuffer)
+        val buffer = view[SlotName.ViewedArrayBuffer]
         if (isDetachedBuffer(buffer))
             Errors.TODO("getViewValue isDetachedBuffer").throwTypeError()
 
-        val viewOffset = view.getSlot(SlotName.ByteOffset)
-        val viewSize = view.getSlot(SlotName.ByteLength)
+        val viewOffset = view[SlotName.ByteOffset]
+        val viewSize = view[SlotName.ByteLength]
         if (index + kind.size > viewSize)
             Errors.TODO("getViewValue out of range").throwRangeError()
 
@@ -2763,12 +2763,12 @@ object AOs {
         val index = requestIndex.toIndex()
         val numberValue = if (kind.isBigInt) value.toBigInt() else value.toNumber()
         val isLittleEndian = littleEndian.toBoolean()
-        val buffer = view.getSlot(SlotName.ViewedArrayBuffer)
+        val buffer = view[SlotName.ViewedArrayBuffer]
         if (isDetachedBuffer(buffer))
             Errors.TODO("getViewValue isDetachedBuffer").throwTypeError()
 
-        val viewOffset = view.getSlot(SlotName.ByteOffset)
-        val viewSize = view.getSlot(SlotName.ByteLength)
+        val viewOffset = view[SlotName.ByteOffset]
+        val viewSize = view[SlotName.ByteLength]
         if (index + kind.size > viewSize)
             Errors.TODO("getViewValue out of range").throwRangeError()
 
@@ -2795,12 +2795,12 @@ object AOs {
     @JvmStatic
     @ECMAImpl("26.6.1.4")
     fun fulfillPromise(promise: JSObject, reason: JSValue): JSValue {
-        ecmaAssert(promise.getSlot(SlotName.PromiseState) == PromiseState.Pending)
-        val reactions = promise.getSlot(SlotName.PromiseFulfillReactions).toList()
-        promise.setSlot(SlotName.PromiseResult, reason)
-        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf())
-        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf())
-        promise.setSlot(SlotName.PromiseState, PromiseState.Fulfilled)
+        ecmaAssert(promise[SlotName.PromiseState] == PromiseState.Pending)
+        val reactions = promise[SlotName.PromiseFulfillReactions].toList()
+        promise[SlotName.PromiseResult] = reason
+        promise[SlotName.PromiseFulfillReactions] = mutableListOf()
+        promise[SlotName.PromiseRejectReactions] = mutableListOf()
+        promise[SlotName.PromiseState] = PromiseState.Fulfilled
         return triggerPromiseReactions(reactions, reason)
     }
 
@@ -2828,7 +2828,7 @@ object AOs {
             return true
         if (value is JSProxyObject)
             return isPromise(value.target)
-        return value.hasSlot(SlotName.PromiseState)
+        return SlotName.PromiseState in value
     }
 
     @JvmStatic
@@ -2836,12 +2836,12 @@ object AOs {
         if (!isPromise(value))
             return value
 
-        while (value.getSlot(SlotName.PromiseState) == PromiseState.Pending)
+        while (value[SlotName.PromiseState] == PromiseState.Pending)
             Agent.activeAgent.microtaskQueue.checkpoint()
 
-        val result = value.getSlot(SlotName.PromiseResult)
+        val result = value[SlotName.PromiseResult]
 
-        if (value.getSlot(SlotName.PromiseState) == PromiseState.Fulfilled)
+        if (value[SlotName.PromiseState] == PromiseState.Fulfilled)
             return result
 
         throw ThrowException(result)
@@ -2850,14 +2850,14 @@ object AOs {
     @JvmStatic
     @ECMAImpl("26.6.1.7")
     internal fun rejectPromise(promise: JSObject, reason: JSValue): JSValue {
-        ecmaAssert(promise.getSlot(SlotName.PromiseState) == PromiseState.Pending)
-        val reactions = promise.getSlot(SlotName.PromiseRejectReactions).toList()
-        promise.setSlot(SlotName.PromiseResult, reason)
-        promise.setSlot(SlotName.PromiseFulfillReactions, mutableListOf())
-        promise.setSlot(SlotName.PromiseRejectReactions, mutableListOf())
-        promise.setSlot(SlotName.PromiseState, PromiseState.Rejected)
+        ecmaAssert(promise[SlotName.PromiseState] == PromiseState.Pending)
+        val reactions = promise[SlotName.PromiseRejectReactions].toList()
+        promise[SlotName.PromiseResult] = reason
+        promise[SlotName.PromiseFulfillReactions] = mutableListOf()
+        promise[SlotName.PromiseRejectReactions] = mutableListOf()
+        promise[SlotName.PromiseState] = PromiseState.Rejected
 
-        if (!promise.getSlot(SlotName.PromiseIsHandled))
+        if (!promise[SlotName.PromiseIsHandled])
             Agent.activeAgent.hostHooks.promiseRejectionTracker(promise, "reject")
 
         return triggerPromiseReactions(reactions, reason)
@@ -2986,25 +2986,25 @@ object AOs {
         val fulfillReaction = PromiseReaction(resultCapability, PromiseReaction.Type.Fulfill, onFulfilledCallback)
         val rejectReaction = PromiseReaction(resultCapability, PromiseReaction.Type.Reject, onRejectedCallback)
 
-        when (promise.getSlot(SlotName.PromiseState)) {
+        when (promise[SlotName.PromiseState]) {
             PromiseState.Pending -> {
-                promise.getSlot(SlotName.PromiseFulfillReactions).add(fulfillReaction)
-                promise.getSlot(SlotName.PromiseRejectReactions).add(rejectReaction)
+                promise[SlotName.PromiseFulfillReactions].add(fulfillReaction)
+                promise[SlotName.PromiseRejectReactions].add(rejectReaction)
             }
             PromiseState.Fulfilled -> {
                 val fulfillJob =
-                    newPromiseReactionJob(fulfillReaction, promise.getSlot(SlotName.PromiseResult))
+                    newPromiseReactionJob(fulfillReaction, promise[SlotName.PromiseResult])
                 Agent.activeAgent.hostHooks.enqueuePromiseJob(fulfillJob.realm, fulfillJob.job)
             }
             else -> {
-                if (!promise.getSlot(SlotName.PromiseIsHandled))
+                if (!promise[SlotName.PromiseIsHandled])
                     Agent.activeAgent.hostHooks.promiseRejectionTracker(promise, "handle")
-                val rejectJob = newPromiseReactionJob(rejectReaction, promise.getSlot(SlotName.PromiseResult))
+                val rejectJob = newPromiseReactionJob(rejectReaction, promise[SlotName.PromiseResult])
                 Agent.activeAgent.hostHooks.enqueuePromiseJob(rejectJob.realm, rejectJob.job)
             }
         }
 
-        promise.setSlot(SlotName.PromiseIsHandled, true)
+        promise[SlotName.PromiseIsHandled] = true
 
         return resultCapability?.promise ?: JSUndefined
     }

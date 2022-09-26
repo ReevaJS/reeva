@@ -40,7 +40,7 @@ class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(rea
         @ECMAImpl("25.1.4.1")
         @JvmStatic
         fun isView(arguments: JSArguments): JSValue {
-            return arguments.argument(0).let { it is JSObject && it.hasSlot(SlotName.ViewedArrayBuffer) }.toValue()
+            return arguments.argument(0).let { it is JSObject && SlotName.ViewedArrayBuffer in it }.toValue()
         }
 
         @ECMAImpl("25.1.4.3")

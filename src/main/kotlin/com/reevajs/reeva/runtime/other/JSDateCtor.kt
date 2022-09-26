@@ -41,8 +41,8 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
             0 -> ZonedDateTime.now()
             1 -> {
                 val arg = arguments.argument(0)
-                if (arg is JSObject && arg.hasSlot(SlotName.DateValue)) {
-                    arg.getSlot(SlotName.DateValue) ?: return JSDateObject.create(null)
+                if (arg is JSObject && SlotName.DateValue in arg) {
+                    arg[SlotName.DateValue] ?: return JSDateObject.create(null)
                 } else {
                     val prim = arg.toPrimitive()
                     if (prim is JSString) {
@@ -100,7 +100,7 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
             arguments.newTarget,
             listOf(SlotName.DateValue),
             defaultProto = Realm::dateProto,
-        ).also { it.setSlot(SlotName.DateValue, zdt) }
+        ).also { it[SlotName.DateValue] = zdt }
     }
 
     companion object {

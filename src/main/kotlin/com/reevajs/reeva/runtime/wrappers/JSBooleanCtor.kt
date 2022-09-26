@@ -24,7 +24,7 @@ class JSBooleanCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             listOf(SlotName.BooleanData),
             defaultProto = Realm::booleanProto,
         ).also {
-            it.setSlot(SlotName.BooleanData, bool)
+            it[SlotName.BooleanData] = bool
         }
     }
 

@@ -41,7 +41,7 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
 
             if (AOs.isDetachedBuffer(thisValue))
                 return JSNumber.ZERO
-            return thisValue.getSlot(SlotName.ArrayBufferByteLength).toValue()
+            return thisValue[SlotName.ArrayBufferByteLength].toValue()
         }
 
         @ECMAImpl("25.1.5.3")
@@ -55,7 +55,7 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
             if (AOs.isDetachedBuffer(thisValue))
                 Errors.TODO("ArrayBuffer.prototype.slice isDetachedBuffer").throwTypeError()
 
-            val length = thisValue.getSlot(SlotName.ArrayBufferByteLength)
+            val length = thisValue[SlotName.ArrayBufferByteLength]
             val relativeStart = arguments.argument(0).toIntegerOrInfinity()
             val first = when {
                 relativeStart.number < 0 -> max(length + relativeStart.asInt, 0)
@@ -90,13 +90,13 @@ class JSArrayBufferProto private constructor(realm: Realm) : JSObject(realm, rea
             if (new.sameValue(thisValue))
                 Errors.TODO("ArrayBuffer.prototype.slice SameValue").throwTypeError()
 
-            if (new.getSlot(SlotName.ArrayBufferByteLength) < newLength)
+            if (new[SlotName.ArrayBufferByteLength] < newLength)
                 Errors.TODO("ArrayBuffer.prototype.slice newLength").throwTypeError()
             if (AOs.isDetachedBuffer(new))
                 Errors.TODO("ArrayBuffer.prototype.slice isDetachedBuffer 2").throwTypeError()
 
-            val fromBuf = thisValue.getSlot(SlotName.ArrayBufferData)
-            val toBuf = new.getSlot(SlotName.ArrayBufferData)
+            val fromBuf = thisValue[SlotName.ArrayBufferData]
+            val toBuf = new[SlotName.ArrayBufferData]
             AOs.copyDataBlockBytes(toBuf, 0, fromBuf, first, newLength)
             return new
         }

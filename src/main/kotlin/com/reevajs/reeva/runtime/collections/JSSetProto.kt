@@ -45,7 +45,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         private fun thisSetObject(thisValue: JSValue, method: String): JSSetObject.SetData {
             if (!AOs.requireInternalSlot(thisValue, SlotName.SetData))
                 Errors.IncompatibleMethodCall("Set.prototype.$method").throwTypeError()
-            return thisValue.getSlot(SlotName.SetData)
+            return thisValue[SlotName.SetData]
         }
 
         @ECMAImpl("24.2.3.1")

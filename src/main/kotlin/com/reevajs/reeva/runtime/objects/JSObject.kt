@@ -430,6 +430,14 @@ open class JSObject protected constructor(
         slots[slot] = value
     }
 
+    operator fun contains(slot: SlotName<*>) = hasSlot(slot)
+
+    operator fun <T> get(slot: SlotName<T>) = getSlot(slot)
+
+    operator fun <T> set(slot: SlotName<T>, value: T?) {
+        setSlot(slot, value)
+    }
+
     internal fun internalGet(property: PropertyKey): Descriptor? {
         val stringOrSymbol = when {
             property.isInt -> return indexedProperties.getDescriptor(property.asInt)
