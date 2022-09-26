@@ -532,16 +532,19 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
          * ...gets transformed into...
          *
          *     <x>
-         *     Dup
+         *     StoreValue [y]
          *     <0>
+         *     LoadValue [y]
          *     TestEqualStrict
          *     JumpIfToBooleanTrue BLOCK    <- True op for cascading case
          *     Dup
          *     <1>
+         *     LoadValue [y]
          *     TestEqualStrict
          *     JumpIfToBooleanTrue BLOCK    <- True op for cascading case
          *     Dup
          *     <2>
+         *     LoadValue [y]
          *     TestEqualStrict
          *     JumpIfToBooleanFalse END     <- False op for non-cascading case
          * CODE:
@@ -550,6 +553,8 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
          */
 
         visitExpression(node.target)
+        val target = builder.newLocalSlot(LocalKind.Value)
+        +StoreValue(target)
 
         var defaultClause: SwitchClause? = null
         val fallThroughJumps = mutableListOf<JumpInstr>()
@@ -562,7 +567,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 continue
             }
 
-            +Dup
+            +LoadValue(target)
             visitExpression(clause.target)
             +TestEqualStrict
 
