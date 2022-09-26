@@ -2223,13 +2223,14 @@ class Parser(val sourceInfo: SourceInfo) {
         val elements = mutableListOf<ArrayElementNode>()
 
         while (!match(TokenType.CloseBracket)) {
-            while (match(TokenType.Comma)) {
+            if (match(TokenType.Comma)) {
                 elements.add(
                     nps {
                         consume()
                         ArrayElementNode(null, ArrayElementNode.Type.Elision)
                     }
                 )
+                continue
             }
 
             nps {
