@@ -1860,14 +1860,20 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         for (element in node.elements) {
             when (element.type) {
-                ArrayElementNode.Type.Elision -> {
+                ArrayElementNode.Type.Elision, ArrayElementNode.Type.Normal -> {
+                    if (element.type == ArrayElementNode.Type.Elision) {
+                        +PushEmpty
+                    } else {
+                        visitExpression(element.expression!!)
+                    }
+
                     if (index != null) {
+                        +StoreArrayIndexed(arrayLocal, index)
                         index++
                     } else {
-                        +IncInt(indexLocal!!)
+                        +StoreArray(arrayLocal, indexLocal!!)
                     }
                 }
-
                 ArrayElementNode.Type.Spread -> {
                     if (indexLocal == null) {
                         indexLocal = builder.newLocalSlot(LocalKind.Int)
@@ -1885,16 +1891,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     +StoreValue(iteratorLocal)
                     iterateValues(setOf(), iteratorLocal) {
                         +StoreArray(arrayLocal, indexLocal)
-                    }
-                }
-
-                ArrayElementNode.Type.Normal -> {
-                    visitExpression(element.expression!!)
-                    if (index != null) {
-                        +StoreArrayIndexed(arrayLocal, index)
-                        index++
-                    } else {
-                        +StoreArray(arrayLocal, indexLocal!!)
                     }
                 }
             }
