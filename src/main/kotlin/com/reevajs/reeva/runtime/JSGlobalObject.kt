@@ -134,6 +134,7 @@ open class JSGlobalObject protected constructor(
                 // TODO
                 // "Atomics" to realm.atomicObj,
                 "JSON" to realm.jsonObj,
+                "Temporal" to realm.temporalObj,
                 "Math" to realm.mathObj,
                 "Reflect" to realm.reflectObj,
 

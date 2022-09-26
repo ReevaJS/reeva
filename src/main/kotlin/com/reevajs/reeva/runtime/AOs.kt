@@ -2433,64 +2433,99 @@ object AOs {
     }
 
     @JvmStatic
-    @ECMAImpl("20.4.1.11")
+    @ECMAImpl("21.4.1.11")
     fun makeTime(hour: JSValue, min: JSValue, sec: JSValue, ms: JSValue): JSValue {
+        // 1. If hour is not finite or min is not finite or sec is not finite or ms is not finite, return NaN.
         if (!hour.isFinite || !min.isFinite || !sec.isFinite || !ms.isFinite)
             return JSNumber.NaN
 
+        // 2. Let h be 𝔽(! ToIntegerOrInfinity(hour)).
         val h = hour.toIntegerOrInfinity().asInt
+
+        // 3. Let m be 𝔽(! ToIntegerOrInfinity(min)).
         val m = min.toIntegerOrInfinity().asInt
+
+        // 4. Let s be 𝔽(! ToIntegerOrInfinity(sec)).
         val s = sec.toIntegerOrInfinity().asInt
+
+        // 5. Let milli be 𝔽(! ToIntegerOrInfinity(ms)).
         val milli = ms.toIntegerOrInfinity().asInt
 
-        val lt = LocalTime.of(h, m, s, milli * 1_000_000)
-
-        return (lt.second * 1000 + lt.nano / 1_000_000).toValue()
+        // 6. Let t be ((h * msPerHour + m * msPerMinute) + s * msPerSecond) + milli, performing the arithmetic
+        //    according to IEEE 754-2019 rules (that is, as if using the ECMAScript operators * and +).
+        // 7. Return t.
+        return makeTime(h, m, s, milli).toValue()
     }
 
     @JvmStatic
-    @ECMAImpl("20.4.1.12")
-    fun makeDay(year: JSValue, month: JSValue, day: JSValue): JSValue {
-        if (!year.isFinite || !month.isFinite || !day.isFinite)
+    @ECMAImpl("21.4.1.11")
+    fun makeTime(hour: Int, minute: Int, second: Int, millisecond: Int): Long {
+        val lt = LocalTime.of(hour, minute, second, millisecond * 1_000_000)
+        return lt.second * 1000L + lt.nano / 1_000_000L
+    }
+
+    @JvmStatic
+    @ECMAImpl("21.4.1.12")
+    fun makeDay(year: JSValue, month: JSValue, date: JSValue): JSValue {
+        // 1. If year is not finite or month is not finite or date is not finite, return NaN.
+        if (!year.isFinite || !month.isFinite || !date.isFinite)
             return JSNumber.NaN
 
+        // 2. Let y be 𝔽(! ToIntegerOrInfinity(year)).
         val y = year.toIntegerOrInfinity().asInt
+
+        // 3. Let m be 𝔽(! ToIntegerOrInfinity(month)).
         val m = month.toIntegerOrInfinity().asInt
-        val d = day.toIntegerOrInfinity().asInt
 
-        return makeDay(y, m, d).toValue()
+        // 4. Let dt be 𝔽(! ToIntegerOrInfinity(date)).
+        val dt = date.toIntegerOrInfinity().asInt
+
+        // 5. Let ym be y + 𝔽(floor(ℝ(m) / 12)).
+        // 6. If ym is not finite, return NaN.
+        // 7. Let mn be 𝔽(ℝ(m) modulo 12).
+        // 8. Find a finite time value t such that YearFromTime(t) is ym and MonthFromTime(t) is mn and DateFromTime(t)
+        //    is 1𝔽; but if this is not possible (because some argument is out of range), return NaN.
+        // 9. Return Day(t) + dt - 1𝔽.
+        return makeDay(y, m, dt).toValue()
     }
 
     @JvmStatic
-    @ECMAImpl("20.4.1.12")
-    fun makeDay(year: Int, month: Int, day: Int): Long {
+    @ECMAImpl("21.4.1.12")
+    fun makeDay(year: Int, month: Int, date: Int): Long {
         // TODO: Out of range check
-        return LocalDate.of(year, month, day).toEpochDay()
+        return LocalDate.of(year, month, date).toEpochDay()
     }
 
     @JvmStatic
-    @ECMAImpl("20.4.1.13")
+    @ECMAImpl("21.4.1.13")
     fun makeDate(day: JSValue, time: JSValue): JSValue {
+        // 1. If day is not finite or time is not finite, return NaN.
         if (!day.isFinite || !time.isFinite)
             return JSNumber.NaN
 
+        // 2. Let tv be day × msPerDay + time.
+        // 3. If tv is not finite, return NaN.
+        // 4. Return tv.
         return makeDate(day.asLong, time.asLong).toValue()
     }
 
     @JvmStatic
-    @ECMAImpl("20.4.1.13")
+    @ECMAImpl("21.4.1.13")
     fun makeDate(day: Long, time: Long): Long {
         return day * 86400000L + time
     }
 
     @JvmStatic
-    @ECMAImpl("20.4.1.14")
-    fun timeClip(zdt: ZonedDateTime): ZonedDateTime? {
-        return if (abs(zdt.toInstant().toEpochMilli()) > 8.64e15) null else zdt
+    @ECMAImpl("21.4.1.14")
+    fun timeClip(time: ZonedDateTime): ZonedDateTime? {
+        // 1. If time is not finite, return NaN.
+        // 2. If abs(ℝ(time)) > 8.64 × 10^15, return NaN.
+        // 3. Return 𝔽(! ToIntegerOrInfinity(time)).
+        return if (abs(time.toInstant().toEpochMilli()) > 8.64e15) null else time
     }
 
     @JvmStatic
-    @ECMAImpl("20.4.4.41.2")
+    @ECMAImpl("21.4.4.41.2")
     fun timeString(zdt: ZonedDateTime): String {
         val hour = "%02d".format(zdt.hour)
         val minute = "%02d".format(zdt.minute)
@@ -2499,7 +2534,7 @@ object AOs {
     }
 
     @JvmStatic
-    @ECMAImpl("20.4.4.41.2")
+    @ECMAImpl("21.4.4.41.2")
     fun dateString(zdt: ZonedDateTime): String {
         val weekday = zdt.dayOfWeek.getDisplayName(TextStyle.SHORT, defaultLocale)
         val month = zdt.month.getDisplayName(TextStyle.SHORT, defaultLocale)
@@ -2511,7 +2546,7 @@ object AOs {
     }
 
     @JvmStatic
-    @ECMAImpl("20.4.4.41.2")
+    @ECMAImpl("21.4.4.41.2")
     fun timeZoneString(zdt: ZonedDateTime): String {
         // TODO: Check if this is the correct range, i.e., negative or positive around UTC
         val offsetSeconds = zdt.offset.totalSeconds
@@ -2523,7 +2558,7 @@ object AOs {
     }
 
     @JvmStatic
-    @ECMAImpl("20.4.4.41.4")
+    @ECMAImpl("21.4.4.41.4")
     fun toDateString(tv: ZonedDateTime): String {
         return buildString {
             append(dateString(tv))
@@ -2548,6 +2583,13 @@ object AOs {
     }
 
     private fun isLineTerminator(ch: Char) = ch == '\u000a' || ch == '\u000d' || ch == '\u2028' || ch == '\u2029'
+
+    @ECMAImpl("21.2.1.1.1")
+    fun numberToBigInt(number: JSNumber): JSBigInt {
+        if (!isIntegralNumber(number))
+            Errors.BigInt.Conversion(number.toJSString().string)
+        return JSBigInt(BigInteger.valueOf(number.number.toLong()))
+    }
 
     @JvmStatic
     @ECMAImpl("21.2.3.2.1")

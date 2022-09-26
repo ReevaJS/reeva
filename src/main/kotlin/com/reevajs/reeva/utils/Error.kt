@@ -426,6 +426,17 @@ object Errors {
     object Symbol {
         object KeyForBadArg : Error("the first argument to Symbol.keyFor must be a symbol")
     }
+    object Temporal {
+        class InvalidISO8601String(string: String) : Error("invalid ISO-8601 string: \"$string\"")
+        class InvalidISODate(date: String) : Error("invalid ISO date: \"$date\"")
+        class InvalidISOTime(time: String) : Error("invalid ISO time: \"$time\"")
+        class InvalidTimeZone(timeZone: String) : Error("invalid time zone: \"$timeZone\"")
+        class InvalidEpochInstant(instant: Long) : Error("invalid epoch instant: $instant")
+        class InvalidDuration(duration: String) : Error("invalid duration: $duration")
+        class InvalidOffset(offset: String) : Error("invalid offset string: \"$offset\"")
+        class InvalidEpochNanoseconds(seconds: String) : Error("invalid epoch nanoseconds: \"$seconds\"")
+        object OptionsMustBeObject : Error("temporal options-bag argument must be an object or undefined")
+    }
 
     object TypedArrays {
         class InvalidByteOffset(offset: Int, kind: AOs.TypedArrayKind) : Error(

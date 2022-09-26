@@ -25,11 +25,8 @@ class JSBigIntCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         if (arguments.newTarget != JSUndefined)
             Errors.BigInt.CtorCalledWithNew.throwTypeError()
         val prim = arguments.argument(0).toPrimitive(AOs.ToPrimitiveHint.AsNumber)
-        if (prim is JSNumber) {
-            if (!AOs.isIntegralNumber(prim))
-                Errors.BigInt.Conversion(prim.toString()).throwRangeError()
-            return BigInteger.valueOf(prim.asLong).toValue()
-        }
+        if (prim is JSNumber)
+            return AOs.numberToBigInt(prim)
         return prim.toBigInt()
     }
 
