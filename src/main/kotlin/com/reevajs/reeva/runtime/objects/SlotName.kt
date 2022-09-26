@@ -10,10 +10,10 @@ import com.reevajs.regexp.RegExp
 import java.time.ZonedDateTime
 
 @JvmInline
-value class SlotName<T>(val index: Int) {
+value class SlotName<T> private constructor(val index: Int) {
     companion object {
-        val ArrayBufferData = nextSlot<DataBlock>()
         val ArrayBufferByteLength = nextSlot<Int>()
+        val ArrayBufferData = nextSlot<DataBlock>()
         val ArrayBufferDetachKey = nextSlot<JSValue>()
         val ArrayLength = nextSlot<Int>()
         val BigIntData = nextSlot<JSBigInt>()
@@ -26,16 +26,15 @@ value class SlotName<T>(val index: Int) {
         val Description = nextSlot<String>()
         val ErrorData = nextSlot<Unit>()
         val MapData = nextSlot<JSMapObject.MapData>()
-        val NumberData = nextSlot<JSNumber>()
-        val OriginalSource = nextSlot<String>()
-        val OriginalFlags = nextSlot<String>()
-        val UnmappedParameterMap = nextSlot<JSValue>() // [[ParameterMap]]
         val MappedParameterMap = nextSlot<JSObject>() // [[ParameterMap]], non-standard
+        val NumberData = nextSlot<JSNumber>()
+        val OriginalFlags = nextSlot<String>()
+        val OriginalSource = nextSlot<String>()
         val PromiseFulfillReactions = nextSlot<MutableList<AOs.PromiseReaction>>()
         val PromiseIsHandled = nextSlot<Boolean>()
-        val PromiseState = nextSlot<AOs.PromiseState>()
         val PromiseRejectReactions = nextSlot<MutableList<AOs.PromiseReaction>>()
         val PromiseResult = nextSlot<JSValue>()
+        val PromiseState = nextSlot<AOs.PromiseState>()
         val ProxyHandler = nextSlot<JSObject?>()
         val ProxyTarget = nextSlot<JSObject>()
         val RegExpMatcher = nextSlot<RegExp>()
@@ -44,10 +43,11 @@ value class SlotName<T>(val index: Int) {
         val SymbolData = nextSlot<JSSymbol>()
         val TypedArrayKind = nextSlot<AOs.TypedArrayKind>() // non-standard
         val TypedArrayName = nextSlot<String>()
+        val UnmappedParameterMap = nextSlot<JSValue>() // [[ParameterMap]]
         val ViewedArrayBuffer = nextSlot<JSObject>()
 
         private var nextSlotIndex = 0
 
-        private fun <T> nextSlot() = SlotName<T>(nextSlotIndex++)
+        fun <T> nextSlot() = SlotName<T>(nextSlotIndex++)
     }
 }
