@@ -46,8 +46,8 @@ fun Any.toValue(): JSValue = when (this) {
     is Boolean -> toValue()
     is String -> toValue()
     is Char -> toValue()
-    is Number -> toValue()
     is BigInteger -> toValue()
+    is Number -> toValue()
     else -> throw IllegalArgumentException("Cannot convert ${this::class.simpleName} to a JSValue")
 }
 
