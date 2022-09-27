@@ -32,6 +32,7 @@ class JSProxyObject private constructor(
     if (target is JSFunction) realm.functionProto else realm.objectProto,
 ) {
     override val isCallable = AOs.isCallable(target)
+    override val indexedProperties by target::indexedProperties
 
     val target by slot(SlotName.ProxyTarget, target)
     var handler by slot(SlotName.ProxyHandler, handler)

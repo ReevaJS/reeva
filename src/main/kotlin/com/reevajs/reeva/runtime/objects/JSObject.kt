@@ -20,7 +20,7 @@ open class JSObject protected constructor(
     private val id = Agent.activeAgent.nextObjectId()
 
     internal val storage = mutableMapOf<StringOrSymbol, Descriptor>()
-    internal val indexedProperties = IndexedProperties()
+    internal open val indexedProperties = IndexedProperties()
     private var extensible: Boolean = true
 
     init {
