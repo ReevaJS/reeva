@@ -40,9 +40,7 @@ import com.reevajs.reeva.runtime.regexp.JSRegExpStringIteratorProto
 import com.reevajs.reeva.runtime.singletons.JSMathObject
 import com.reevajs.reeva.runtime.singletons.JSONObject
 import com.reevajs.reeva.runtime.singletons.JSReflectObject
-import com.reevajs.reeva.runtime.temporal.JSInstantCtor
-import com.reevajs.reeva.runtime.temporal.JSInstantProto
-import com.reevajs.reeva.runtime.temporal.JSTemporalObject
+import com.reevajs.reeva.runtime.temporal.*
 import com.reevajs.reeva.runtime.wrappers.*
 import com.reevajs.reeva.runtime.wrappers.strings.JSStringCtor
 import com.reevajs.reeva.runtime.wrappers.strings.JSStringIteratorProto
@@ -114,6 +112,7 @@ class Realm {
     lateinit var syntaxErrorProto: JSSyntaxErrorProto private set
     lateinit var uriErrorProto: JSURIErrorProto private set
 
+    lateinit var durationProto: JSDurationProto private set
     lateinit var instantProto: JSInstantProto private set
 
     lateinit var objectCtor: JSObjectCtor private set
@@ -156,6 +155,7 @@ class Realm {
     lateinit var syntaxErrorCtor: JSSyntaxErrorCtor private set
     lateinit var uriErrorCtor: JSURIErrorCtor private set
 
+    lateinit var durationCtor: JSDurationCtor private set
     lateinit var instantCtor: JSInstantCtor private set
 
     lateinit var throwTypeError: JSFunction private set
@@ -264,6 +264,7 @@ class Realm {
         syntaxErrorCtor = JSSyntaxErrorCtor.create(this)
         uriErrorCtor = JSURIErrorCtor.create(this)
 
+        durationCtor = JSDurationCtor.create(this)
         instantCtor = JSInstantCtor.create(this)
 
         symbolCtor = JSSymbolCtor.create(this)
@@ -316,6 +317,7 @@ class Realm {
         syntaxErrorProto = JSSyntaxErrorProto.create(this)
         uriErrorProto = JSURIErrorProto.create(this)
 
+        durationProto = JSDurationProto.create(this)
         instantProto = JSInstantProto.create(this)
 
         throwTypeError = JSRunnableFunction.create("", 0, this) {
@@ -374,6 +376,7 @@ class Realm {
         syntaxErrorCtor.defineOwnProperty("prototype", syntaxErrorProto, Descriptor.HAS_BASIC)
         uriErrorCtor.defineOwnProperty("prototype", uriErrorProto, Descriptor.HAS_BASIC)
 
+        durationCtor.defineOwnProperty("prototype", durationProto, Descriptor.HAS_BASIC)
         instantCtor.defineOwnProperty("prototype", instantProto, Descriptor.HAS_BASIC)
 
         functionProto.defineOwnProperty("constructor", functionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)

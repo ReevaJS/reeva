@@ -25,9 +25,11 @@ value class Slot<T> private constructor(val index: Int) {
         val ContentType = nextSlot<JSValue>()
         val DataView = nextSlot<Unit>()
         val DateValue = nextSlot<ZonedDateTime?>()
+        val Day = nextSlot<Int>()
         val Days = nextSlot<Int>()
         val Description = nextSlot<String>()
         val ErrorData = nextSlot<Unit>()
+        val Hour = nextSlot<Int>()
         val Hours = nextSlot<Int>()
         val InitializedTemporalDate = nextSlot<Unit>()
         val InitializedTemporalDateTime = nextSlot<Unit>()
@@ -47,9 +49,13 @@ value class Slot<T> private constructor(val index: Int) {
         val MapData = nextSlot<MapData>()
         val MappedParameterMap = nextSlot<JSObject>() // [[ParameterMap]], non-standard
         val Microseconds = nextSlot<Int>()
+        val Microsecond = nextSlot<Int>()
+        val Millisecond = nextSlot<Int>()
         val Milliseconds = nextSlot<Int>()
         val Minutes = nextSlot<Int>()
+        val Month = nextSlot<Int>()
         val Months = nextSlot<Int>()
+        val Nanosecond = nextSlot<BigInteger>()
         val Nanoseconds = nextSlot<BigInteger>()
         val NumberData = nextSlot<JSNumber>()
         val Options = nextSlot<JSObject>()
@@ -65,6 +71,7 @@ value class Slot<T> private constructor(val index: Int) {
         val RegExpMatcher = nextSlot<RegExp>()
         val RoundingIncrement = nextSlot<Int>()
         val RoundingMode = nextSlot<String>()
+        val Second = nextSlot<Int>()
         val Seconds = nextSlot<Int>()
         val SetData = nextSlot<SetData>()
         val SmallestUnit = nextSlot<String>()
@@ -75,7 +82,9 @@ value class Slot<T> private constructor(val index: Int) {
         val TypedArrayName = nextSlot<String>()
         val UnmappedParameterMap = nextSlot<JSValue>() // [[ParameterMap]]
         val ViewedArrayBuffer = nextSlot<JSObject>()
+        val Week = nextSlot<Int>()
         val Weeks = nextSlot<Int>()
+        val Year = nextSlot<Int>()
         val Years = nextSlot<Int>()
 
         private var nextSlotIndex = 0
