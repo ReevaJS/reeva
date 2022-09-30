@@ -2033,7 +2033,7 @@ object AOs {
             if (lprim.isString || rprim.isString) {
                 val lstr = lprim.toJSString()
                 val rstr = rprim.toJSString()
-                return JSString(lstr.string + rstr.string)
+                return JSString.makeRope(lstr, rstr)
             }
         }
 
