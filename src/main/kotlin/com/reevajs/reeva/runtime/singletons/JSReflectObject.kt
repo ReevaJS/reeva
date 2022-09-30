@@ -52,6 +52,9 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun construct(arguments: JSArguments): JSValue {
             val (target, argumentsList) = arguments.takeArgs(0..1)
+            if (!AOs.isConstructor(target))
+                Errors.NotACtor(target.toString()).throwTypeError()
+
             val newTarget = if (arguments.size <= 2) {
                 target
             } else arguments.argument(2).also {
