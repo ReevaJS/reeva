@@ -20,6 +20,9 @@ import java.util.concurrent.ConcurrentLinkedQueue
 class Test262Runner {
     @TestFactory
     fun test262testProvider(): List<DynamicNode> {
+        if (target?.isFile == true)
+            return listOf(makeTest(target))
+
         return getDynamicTests(target ?: testDirectory)
     }
 
@@ -37,20 +40,24 @@ class Test262Runner {
         }.map {
             if (it.isDirectory) {
                 DynamicContainer.dynamicContainer(it.name, getDynamicTests(it))
-            } else {
-                val name = it.absolutePath.replace(testDirectory.absolutePath, "")
-                val contents = it.readText()
+            } else makeTest(it)
+        }
+    }
 
-                val yamlStart = contents.indexOf("/*---")
-                val yamlEnd = contents.indexOf("---*/")
-                expect(yamlStart != -1 && yamlEnd != -1)
-                val yaml = contents.substring(yamlStart + 5, yamlEnd)
-                val metadata = Yaml.default.decodeFromString(Test262Metadata.serializer(), yaml)
+    private fun makeTest(file: File): DynamicTest {
+        require(file.isFile)
 
-                DynamicTest.dynamicTest(it.name) {
-                    Test262Test(name, it, contents, metadata).test()
-                }
-            }
+        val name = file.absolutePath.replace(testDirectory.absolutePath, "")
+        val contents = file.readText()
+
+        val yamlStart = contents.indexOf("/*---")
+        val yamlEnd = contents.indexOf("---*/")
+        expect(yamlStart != -1 && yamlEnd != -1)
+        val yaml = contents.substring(yamlStart + 5, yamlEnd)
+        val metadata = Yaml.default.decodeFromString(Test262Metadata.serializer(), yaml)
+
+        return DynamicTest.dynamicTest(file.name) {
+            Test262Test(name, file, contents, metadata).test()
         }
     }
 
