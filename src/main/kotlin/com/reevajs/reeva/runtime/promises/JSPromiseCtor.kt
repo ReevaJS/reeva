@@ -2,7 +2,7 @@ package com.reevajs.reeva.runtime.promises
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.core.errors.ThrowException
+import com.reevajs.reeva.core.errors.*
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -71,25 +71,21 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         @JvmStatic
         fun all(arguments: JSArguments): JSValue {
             val capability = AOs.newPromiseCapability(arguments.thisValue)
-            val resolve = ifAbruptRejectPromise(capability, { return it }) {
-                AOs.getPromiseResolve(arguments.thisValue)
-            }
-            val iteratorRecord = ifAbruptRejectPromise(capability, { return it }) {
-                AOs.getIterator(arguments.argument(0))
+
+            val resolve = ifAbruptRejectPromise(completion { AOs.getPromiseResolve(arguments.thisValue) }, capability) { return it }
+            val iteratorRecord = ifAbruptRejectPromise(completion { AOs.getIterator(arguments.argument(0)) }, capability) { return it }
+
+            var result = completion { 
+                performPromiseAll(iteratorRecord, arguments.thisValue, capability, resolve)
             }
 
-            return try {
-                performPromiseAll(iteratorRecord, arguments.thisValue, capability, resolve)
-            } catch (e: ThrowException) {
-                try {
-                    if (!iteratorRecord.isDone)
-                        AOs.iteratorClose(iteratorRecord, e.value)
-                    else JSEmpty
-                } finally {
-                    AOs.call(capability.reject!!, JSUndefined, listOf(e.value))
-                    capability.promise
-                }
+            if (!result.isNormal) {
+                if (!iteratorRecord.isDone)
+                    result = completion { AOs.iteratorClose(iteratorRecord, result) }
+                ifAbruptRejectPromise(result, capability) { return it }
             }
+
+            return result.unwrap()
         }
 
         private fun performPromiseAllSettled(
@@ -156,25 +152,21 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         @JvmStatic
         fun allSettled(arguments: JSArguments): JSValue {
             val capability = AOs.newPromiseCapability(arguments.thisValue)
-            val resolve = ifAbruptRejectPromise(capability, { return it }) {
-                AOs.getPromiseResolve(arguments.thisValue)
-            }
-            val iteratorRecord = ifAbruptRejectPromise(capability, { return it }) {
-                AOs.getIterator(arguments.argument(0))
+
+            val resolve = ifAbruptRejectPromise(completion { AOs.getPromiseResolve(arguments.thisValue) }, capability) { return it }
+            val iteratorRecord = ifAbruptRejectPromise(completion { AOs.getIterator(arguments.argument(0)) }, capability) { return it }
+
+            var result = completion {
+                performPromiseAllSettled(iteratorRecord, arguments.thisValue, capability, resolve)
             }
 
-            return try {
-                performPromiseAllSettled(iteratorRecord, arguments.thisValue, capability, resolve)
-            } catch (e: ThrowException) {
-                try {
-                    if (!iteratorRecord.isDone)
-                        AOs.iteratorClose(iteratorRecord, e.value)
-                    else JSEmpty
-                } finally {
-                    AOs.call(capability.reject!!, JSUndefined, listOf(e.value))
-                    return capability.promise
-                }
+            if (!result.isNormal) {
+                if (!iteratorRecord.isDone)
+                    result = completion { AOs.iteratorClose(iteratorRecord, result) }
+                ifAbruptRejectPromise(result, capability) { return it }
             }
+
+            return result.unwrap()
         }
 
         private fun performPromiseAll(
@@ -245,17 +237,22 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             return AOs.promiseResolve(arguments.thisValue, arguments.argument(0))
         }
 
-        private inline fun <T> ifAbruptRejectPromise(
-            capability: AOs.PromiseCapability,
-            returnBlock: (JSValue) -> Nothing,
-            producer: () -> T
-        ): T {
-            return try {
-                producer()
-            } catch (e: ThrowException) {
-                AOs.call(capability.reject!!, JSUndefined, listOf(e.value))
+        @JvmStatic
+        @ECMAImpl("27.2.1.1.1")
+        inline fun <T> ifAbruptRejectPromise(value: Completion<T>, capability: AOs.PromiseCapability, returnBlock: (JSValue) -> Nothing): T {
+            // 1. Assert: value is a Completion Record.
+    
+            // 2. If value is an abrupt completion, then
+            if (!value.isNormal) {
+                // a. Perform ? Call(capability.[[Reject]], undefined, « value.[[Value]] »).
+                AOs.call(capability.reject!!, JSUndefined, listOf(value.error().value))
+    
+                // b. Return capability.[[Promise]].
                 returnBlock(capability.promise)
             }
+    
+            // 3. Else, set value to value.[[Value]].
+            return value.value()
         }
     }
 }

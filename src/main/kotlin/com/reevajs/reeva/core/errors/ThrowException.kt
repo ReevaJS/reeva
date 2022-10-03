@@ -23,3 +23,7 @@ fun <T : Any?> completion(block: () -> T): Completion<T> = try {
 } catch (e: ThrowException) {
     Completion.error(e)
 }
+
+val Completion<*>.isNormal: Boolean get() = hasValue
+val Completion<*>.isThrow: Boolean get() = hasError
+fun <T> Completion<T>.unwrap() = if (isNormal) value() else throw error()

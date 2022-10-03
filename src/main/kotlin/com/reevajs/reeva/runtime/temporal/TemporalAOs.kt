@@ -2,17 +2,17 @@ package com.reevajs.reeva.runtime.temporal
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.errors.completion
+import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
-import com.reevajs.reeva.runtime.objects.Slot
-import com.reevajs.reeva.runtime.primitives.JSNumber
-import com.reevajs.reeva.runtime.primitives.JSString
-import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.*
+import com.reevajs.reeva.runtime.objects.Slot
+import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.*
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -20,8 +20,10 @@ import java.math.MathContext
 import java.math.RoundingMode
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoField
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.pow
@@ -73,6 +75,19 @@ object TemporalAOs {
     }
 
     @JvmStatic
+    @ECMAImpl("3.5.5")
+    fun differenceISODate(year1: Int, month1: Int, day1: Int, year2: Int, month2: Int, day2: Int, largestUnit: String): DateDurationRecord {
+        TODO()
+    }
+
+
+    @JvmStatic
+    @ECMAImpl("3.5.6")
+    fun regulateISODate(year: Int, month: Int, day: Int, overflow: String): ISODateRecord {
+        TODO()
+    }
+
+    @JvmStatic
     @ECMAImpl("3.5.7")
     fun isValidISODate(year: Int, month: Int, day: Int): Boolean {
         // 1. If month < 1 or month > 12, then
@@ -88,6 +103,12 @@ object TemporalAOs {
         //    a. Return false.
         // 4. Return true.
         return day in 1..daysInMonth
+    }
+
+    @JvmStatic
+    @ECMAImpl("3.5.11")
+    fun addISODate(year: Int, month: Int, day: Int, years: Int, months: Int, weeks: Int, days: Int, overflow: String): ISODateRecord {
+        TODO()
     }
 
     @JvmStatic
@@ -2043,6 +2064,24 @@ object TemporalAOs {
         // 8. Return ! CreateTemporalInstant(ns).
         return createTemporalInstant(ns)
     }
+
+    @JvmStatic
+    @ECMAImpl("9.5.2")
+    fun regulateISOYearMonth(year: Int, month: Int, overflow: String): ISOYearMonthRecord {
+        TODO()
+    }
+
+    @JvmStatic
+    @ECMAImpl("9.5.5")
+    fun createTemporalYearMonth(isoYear: Int, isoMonth: Int, calendar: JSObject, referenceISODay: Int, newTarget: JSObject? = null): JSObject {
+        TODO()
+    }
+
+    @JvmStatic
+    @ECMAImpl("10.5.2")
+    fun createTemporalMonthDay(isoMonth: Int, isoDay: Int, calendar: JSObject, referenceISOYear: Int, newTarget: JSObject? = null): JSObject {
+        TODO()
+    }
     
     @JvmStatic
     @ECMAImpl("11.1.1")
@@ -2175,61 +2214,803 @@ object TemporalAOs {
     }
 
     @JvmStatic
-    @ECMAImpl("12.1.30")
-    fun isISOLeapYear(year: Int): Boolean {
-        if (year % 4 != 0)
-            return false
-        if (year % 400 == 0)
-            return true
-        if (year % 100 == 0)
-            return false
-        return true
+    @ECMAImpl("12.1.1")
+    fun isBuiltinCalendar(id: String): Boolean {
+        // 1. Let calendars be AvailableCalendars().
+        // 2. If calendars contains id, return true.
+        // 3. Return false.
+        return id in availableCalendars()
     }
 
     @JvmStatic
-    @ECMAImpl("12.1.32")
-    fun isoDaysInMonth(year: Int, month: Int): Int {
-        if (month in setOf(1, 3, 5, 7, 8, 10, 12))
-            return 31
-        if (month != 2)
-            return 30
-        return if (isISOLeapYear(year)) 29 else 28
+    @ECMAImpl("12.1.2")
+    fun availableCalendars(): Set<String> {
+        // 1. Let calendars be the List of String values representing calendar types supported by the implementation.
+        // 2. Assert: calendars contains "iso8601".
+        // 3. Assert: calendars does not contain any element that does not identify a calendar type in the Unicode Common Locale Data Repository (CLDR).
+        // 4. Sort calendars in order as if an Array of the same values had been sorted using %Array.prototype.sort% with undefined as comparefn.
+        // 5. Return calendars.
+        return setOf("iso8601")
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.1")
+    fun createTemporalCalendar(identifier: String, newTarget: JSObject? = null): JSObject {
+        // 1. Assert: IsBuiltinCalendar(identifier) is true.
+        ecmaAssert(isBuiltinCalendar(identifier))
+
+        // 2. If newTarget is not provided, set newTarget to %Temporal.Calendar%.
+        // 3. Let object be ? OrdinaryCreateFromConstructor(newTarget, "%Temporal.Calendar.prototype%", « [[InitializedTemporalCalendar]], [[Identifier]] »).
+        val obj = AOs.ordinaryCreateFromConstructor(
+            newTarget ?: realm.calendarCtor,
+            listOf(Slot.InitializedTemporalCalendar),
+            defaultProto = Realm::calendarProto,
+        )
+
+        // 4. Set object.[[Identifier]] to identifier.
+        obj[Slot.Identifier] = identifier
+
+        // 5. Return object.
+        return obj
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.2")
+    fun getBuiltinCalendar(id: String): JSObject {
+        // 1. If IsBuiltinCalendar(id) is false, throw a RangeError exception.
+        if (!isBuiltinCalendar(id))
+            Errors.Temporal.InvalidBuiltinCalendar(id).throwRangeError()
+
+        // 2. Return ! CreateTemporalCalendar(id).
+        return createTemporalCalendar(id)
     }
 
     @JvmStatic
     @ECMAImpl("12.2.3")
     fun getISO8601Calendar(): JSObject {
-        TODO()
+        // 1. Return ! GetBuiltinCalendar("iso8601").
+        return getBuiltinCalendar("iso8601")
     }
 
     @JvmStatic
     @ECMAImpl("12.2.4")
     fun calendarFields(calendar: JSObject, fieldNames: List<String>): List<String> {
-        TODO()
+        // 1. Let fields be ? GetMethod(calendar, "fields").
+        val fields = AOs.getMethod(calendar, "fields".toValue())
+
+        // 2. Let fieldsArray be CreateArrayFromList(fieldNames).
+        var fieldsArray = AOs.createArrayFromList(fieldNames.map { it.toValue() })
+
+        // 3. If fields is not undefined, then
+        if (fields != JSUndefined) {
+            // a. Set fieldsArray to ? Call(fields, calendar, « fieldsArray »).
+            fieldsArray = AOs.call(fields, calendar, listOf(fieldsArray))
+        }
+
+        // 4. Return ? IterableToListOfType(fieldsArray, « String »).
+        return iterableToListOfType(fieldsArray, setOf(JSValue.Type.String)).map { (it as JSString).string }
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.5")
+    fun calendarMergeFields(calendar: JSObject, fields: JSObject, additionalFields: JSObject): JSObject {
+        // 1. Let mergeFields be ? GetMethod(calendar, "mergeFields").
+        val mergeFields = AOs.getMethod(calendar, "mergeFields".toValue())
+
+        // 2. If mergeFields is undefined, then
+        if (mergeFields == JSUndefined) {
+            // a. Return ? DefaultMergeCalendarFields(fields, additionalFields).
+            return defaultMergeCalendarFields(fields, additionalFields)
+        }
+
+        // 3. Let result be ? Call(mergeFields, calendar, « fields, additionalFields »).
+        val result = AOs.call(mergeFields, calendar, listOf(fields, additionalFields))
+
+        // 4. If Type(result) is not Object, throw a TypeError exception.
+        if (result !is JSObject)
+            Errors.TODO("calendarMergeFields").throwTypeError()
+
+        // 5. Return result.
+        return result
     }
 
     @JvmStatic
     @ECMAImpl("12.2.6")
-    fun calendarDateAdd(calendar: JSObject, date: JSValue, duration: JSValue, options: JSObject? = null, dateAdd: JSValue? = null): JSObject {
-        TODO()
+    fun calendarDateAdd(calendar: JSObject, date: JSValue, duration: JSValue, options_: JSObject? = null, dateAdd_: JSValue? = null): JSObject {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. If options is not present, set options to undefined.
+        // 3. Assert: Type(options) is Object or Undefined.
+        val options = options_ ?: JSUndefined
+
+        // 4. If dateAdd is not present, set dateAdd to ? GetMethod(calendar, "dateAdd").
+        val dateAdd = dateAdd_ ?: AOs.getMethod(calendar, "dateAdd".toValue())
+
+        // 5. Let addedDate be ? Call(dateAdd, calendar, « date, duration, options »).
+        val addedDate = AOs.call(dateAdd, calendar, listOf(date, duration, options))
+
+        // 6. Perform ? RequireInternalSlot(addedDate, [[InitializedTemporalDate]]).
+        if (!AOs.requireInternalSlot(addedDate, Slot.InitializedTemporalDate))
+            Errors.TODO("calendarDateAdd").throwTypeError()
+
+        // 7. Return addedDate.
+        return addedDate
     }
 
     @JvmStatic
     @ECMAImpl("12.2.7")
-    fun calendarDateUntil(calendar: JSObject, one: JSValue, two: JSValue, options: JSObject, dateUntil: JSValue? = null): JSObject {
-        TODO()
+    fun calendarDateUntil(calendar: JSObject, one: JSValue, two: JSValue, options: JSObject, dateUntil_: JSValue? = null): JSObject {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. If dateUntil is not present, set dateUntil to ? GetMethod(calendar, "dateUntil").
+        val dateUntil = dateUntil_ ?: AOs.getMethod(calendar, "dateUntil".toValue())
+
+        // 3. Let duration be ? Call(dateUntil, calendar, « one, two, options »).
+        val duration = AOs.call(dateUntil, calendar, listOf(one, two, options))
+
+        // 4. Perform ? RequireInternalSlot(duration, [[InitializedTemporalDuration]]).
+        if (!AOs.requireInternalSlot(duration, Slot.InitializedTemporalDuration))
+            Errors.TODO("calendarDateUntil").throwTypeError()
+
+        // 5. Return duration.
+        return duration
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.8")
+    fun calendarYear(calendar: JSObject, dateLike: JSValue): JSValue {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. Let result be ? Invoke(calendar, "year", « dateLike »).
+        val result = AOs.invoke(calendar, "year".key(), listOf(dateLike))
+
+        // 3. If result is undefined, throw a RangeError exception.
+        if (result == JSUndefined)
+            Errors.TODO("calendarYear").throwRangeError()
+
+        // 4. Return ? ToIntegerThrowOnInfinity(result).
+        return toIntegerThrowOnInfinity(result)
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.9")
+    fun calendarMonth(calendar: JSObject, dateLike: JSValue): JSValue {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. Let result be ? Invoke(calendar, "month", « dateLike »).
+        val result = AOs.invoke(calendar, "month".key(), listOf(dateLike))
+
+        // 3. Return ? ToPositiveInteger(result).
+        return toPositiveInteger(result)
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.10")
+    fun calendarMonthCode(calendar: JSObject, dateLike: JSValue): JSValue {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. Let result be ? Invoke(calendar, "monthCode", « dateLike »).
+        val result = AOs.invoke(calendar, "monthCode".key(), listOf(dateLike))
+
+        // 3. If result is undefined, throw a RangeError exception.
+        if (result == JSUndefined)
+            Errors.TODO("calendarMonthCode").throwRangeError()
+
+        // 4. Return ? ToString(result).
+        return result.toJSString()
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.11")
+    fun calendarDay(calendar: JSObject, dateLike: JSValue): JSValue {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. Let result be ? Invoke(calendar, "day", « dateLike »).
+        val result = AOs.invoke(calendar, "day".key(), listOf(dateLike))
+
+        // 3. Return ? ToPositiveInteger(result).
+        return toPositiveInteger(result)
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.12")
+    fun calendarDayOfWeek(calendar: JSObject, dateLike: JSValue): JSValue {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. Return ? Invoke(calendar, "dayOfWeek", « dateLike »).
+        return AOs.invoke(calendar, "dayOfWeek".key(), listOf(dateLike))
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.13")
+    fun calendarDayOfYear(calendar: JSObject, dateLike: JSValue): JSValue {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. Return ? Invoke(calendar, "dayOfYear", « dateLike »).
+        return AOs.invoke(calendar, "dayOfYear".key(), listOf(dateLike))
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.14")
+    fun calendarWeekOfYear(calendar: JSObject, dateLike: JSValue): JSValue {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. Return ? Invoke(calendar, "weekOfYear", « dateLike »).
+        return AOs.invoke(calendar, "weekOfYear".key(), listOf(dateLike))
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.15")
+    fun calendarDaysInWeek(calendar: JSObject, dateLike: JSValue): JSValue {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. Return ? Invoke(calendar, "daysInWeek", « dateLike »).
+        return AOs.invoke(calendar, "daysInWeek".key(), listOf(dateLike))
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.16")
+    fun calendarDayInMonth(calendar: JSObject, dateLike: JSValue): JSValue {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. Return ? Invoke(calendar, "daysInMonth", « dateLike »).
+        return AOs.invoke(calendar, "daysInMonth".key(), listOf(dateLike))
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.17")
+    fun calendarDayInYear(calendar: JSObject, dateLike: JSValue): JSValue {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. Return ? Invoke(calendar, "daysInYear", « dateLike »).
+        return AOs.invoke(calendar, "daysInYear".key(), listOf(dateLike))
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.18")
+    fun calendarMonthsInYear(calendar: JSObject, dateLike: JSValue): JSValue {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. Return ? Invoke(calendar, "monthsInYear", « dateLike »).
+        return AOs.invoke(calendar, "monthsInYear".key(), listOf(dateLike))
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.19")
+    fun calendarInLeapYear(calendar: JSObject, dateLike: JSValue): JSValue {
+        // 1. Assert: Type(calendar) is Object.
+
+        // 2. Return ? Invoke(calendar, "inLeapYear", « dateLike »).
+        return AOs.invoke(calendar, "inLeapYear".key(), listOf(dateLike))
+    }
+
+    private fun isObjectWithCalendar(obj: JSObject): Boolean {
+        return obj.hasSlots(listOf(Slot.InitializedTemporalDate, Slot.InitializedTemporalDateTime, Slot.InitializedTemporalMonthDay, Slot.InitializedTemporalTime, Slot.InitializedTemporalYearMonth, Slot.InitializedTemporalZonedDateTime))
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.20")
+    fun toTemporalCalendar(temporalCalendarLike_: JSValue): JSObject {
+        var temporalCalendarLike = temporalCalendarLike_
+
+        // 1. If Type(temporalCalendarLike) is Object, then
+        if (temporalCalendarLike is JSObject) {
+            // a. If temporalCalendarLike has an [[InitializedTemporalDate]], [[InitializedTemporalDateTime]], [[InitializedTemporalMonthDay]], [[InitializedTemporalTime]], [[InitializedTemporalYearMonth]], or [[InitializedTemporalZonedDateTime]] internal slot, then
+            if (isObjectWithCalendar(temporalCalendarLike)) {
+                // i. Return temporalCalendarLike.[[Calendar]].
+                return temporalCalendarLike[Slot.Calendar]
+            }
+
+            // b. If ? HasProperty(temporalCalendarLike, "calendar") is false, return temporalCalendarLike.
+            if (!temporalCalendarLike.hasProperty("calendar"))
+                return temporalCalendarLike
+
+            // c. Set temporalCalendarLike to ? Get(temporalCalendarLike, "calendar").
+            temporalCalendarLike = temporalCalendarLike.get("calendar")
+
+            // d. If Type(temporalCalendarLike) is Object and ? HasProperty(temporalCalendarLike, "calendar") is false, return temporalCalendarLike.
+            if (temporalCalendarLike is JSObject && !temporalCalendarLike.hasProperty("calendar"))
+                return temporalCalendarLike
+        }
+
+        // 2. Let identifier be ? ToString(temporalCalendarLike).
+        var identifier = temporalCalendarLike.toJSString().string
+
+        // 3. Set identifier to ? ParseTemporalCalendarString(identifier).
+        identifier = parseTemporalCalendarString(identifier)
+
+        // 4. If IsBuiltinCalendar(identifier) is false, throw a RangeError exception.
+        if (!isBuiltinCalendar(identifier))
+            Errors.TODO("toTemporalCalendar").throwRangeError()
+
+        // 5. Return ! CreateTemporalCalendar(identifier).
+        return createTemporalCalendar(identifier)
     }
 
     @JvmStatic
     @ECMAImpl("12.2.21")
     fun toTemporalCalendarWithISODefault(temporalCalendarLike: JSValue): JSObject {
-        TODO()
+        // 1. If temporalCalendarLike is undefined, then
+        if (temporalCalendarLike == JSUndefined) {
+            // a. Return ! GetISO8601Calendar().
+            return getISO8601Calendar()
+        }
+
+        // 2. Return ? ToTemporalCalendar(temporalCalendarLike).
+        return toTemporalCalendar(temporalCalendarLike)
     }
 
     @JvmStatic
     @ECMAImpl("12.2.22")
     fun getTemporalCalendarWithISODefault(item: JSObject): JSObject {
-        TODO()
+        // 1. If item has an [[InitializedTemporalDate]], [[InitializedTemporalDateTime]], [[InitializedTemporalMonthDay]], [[InitializedTemporalTime]], [[InitializedTemporalYearMonth]], or [[InitializedTemporalZonedDateTime]] internal slot, then
+        if (isObjectWithCalendar(item)) {
+            // a. Return item.[[Calendar]].
+            return item[Slot.Calendar]
+        }
+
+        // 2. Let calendarLike be ? Get(item, "calendar").
+        val calendarLike = item.get("calendar")
+
+        // 3. Return ? ToTemporalCalendarWithISODefault(calendarLike).
+        return toTemporalCalendarWithISODefault(calendarLike)
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.23")
+    fun calendarDateFromFields(calendar: JSObject, fields: JSObject, options: JSObject? = null): JSObject {
+        // 1. If options is not present, set options to undefined.
+        // 2. Let date be ? Invoke(calendar, "dateFromFields", « fields, options »).
+        val date = AOs.invoke(calendar, "dateFromFields".key(), listOf(fields, options ?: JSUndefined))
+
+        // 3. Perform ? RequireInternalSlot(date, [[InitializedTemporalDate]]).
+        if (!AOs.requireInternalSlot(date, Slot.InitializedTemporalDate))
+            Errors.TODO("calendarDateFromFields").throwTypeError()
+
+        // 4. Return date.
+        return date
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.24")
+    fun calendarYearMonthFromFields(calendar: JSObject, fields: JSObject, options: JSObject? = null): JSObject {
+        // 1. If options is not present, set options to undefined.
+        // 2. Let yearMonth be ? Invoke(calendar, "yearMonth", « fields, options »).
+        val yearMonth = AOs.invoke(calendar, "yearMonth".key(), listOf(fields, options ?: JSUndefined))
+
+        // 3. Perform ? RequireInternalSlot(yearMonth, [[InitializedTemporalYearMonth]]).
+        if (!AOs.requireInternalSlot(yearMonth, Slot.InitializedTemporalYearMonth))
+            Errors.TODO("calendarDateFromFields").throwTypeError()
+
+        // 4. Return yearMonth.
+        return yearMonth
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.25")
+    fun calendarMonthDayFromFields(calendar: JSObject, fields: JSObject, options: JSObject? = null): JSObject {
+        // 1. If options is not present, set options to undefined.
+        // 2. Let date be ? Invoke(calendar, "monthDayFromFields", « fields, options »).
+        val monthDay = AOs.invoke(calendar, "monthDayFromFields".key(), listOf(fields, options ?: JSUndefined))
+
+        // 3. Perform ? RequireInternalSlot(monthDay, [[InitializedTemporalMonthDay]]).
+        if (!AOs.requireInternalSlot(monthDay, Slot.InitializedTemporalMonthDay))
+            Errors.TODO("calendarMonthDayFromFields").throwTypeError()
+
+        // 4. Return monthDay.
+        return monthDay
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.26")
+    fun maybeFormatCalendarAnnotation(calendarObject: JSValue, showCalendar: String): String {
+        // 1. If showCalendar is "never", return the empty String.
+        if (showCalendar == "never")
+            return ""
+
+        // 2. Assert: Type(calendarObject) is Object.
+        ecmaAssert(calendarObject is JSObject)
+
+        // 3. Let calendarID be ? ToString(calendarObject).
+        val calendarID = calendarObject.toJSString().string
+
+        // 4. Return FormatCalendarAnnotation(calendarID, showCalendar).
+        return formatCalendarAnnotation(calendarID, showCalendar)
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.27")
+    fun formatCalendarAnnotation(id: String, showCalendar: String): String {
+        // 1. If showCalendar is "never", return the empty String.
+        if (showCalendar == "never")
+            return ""
+
+        // 2. If showCalendar is "auto" and id is "iso8601", return the empty String.
+        if (showCalendar == "auto" && id == "iso8601")
+            return ""
+
+        // 3. Return the string-concatenation of "[u-ca=", id, and "]".
+        return "[u-ca=$id]"
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.28")
+    fun calendarEquals(one: JSObject, two: JSObject): Boolean {
+        // 1. If one and two are the same Object value, return true.
+        if (one == two)
+            return true
+
+        // 2. Let calendarOne be ? ToString(one).
+        val calendarOne = one.toJSString().string
+
+        // 3. Let calendarTwo be ? ToString(two).
+        val calendarTwo = two.toJSString().string
+
+        // 4. If calendarOne is calendarTwo, return true.
+        // 5. Return false.
+        return calendarOne == calendarTwo
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.29")
+    fun consolidateCalendars(one: JSObject, two: JSObject): JSObject {
+        // 1. If one and two are the same Object value, return two.
+        if (one == two)
+            return two
+
+        // 2. Let calendarOne be ? ToString(one).
+        val calendarOne = one.toJSString().string
+
+        // 3. Let calendarTwo be ? ToString(two).
+        val calendarTwo = two.toJSString().string
+
+        // 4. If calendarOne is calendarTwo, return two.
+        if (calendarOne == calendarTwo)
+            return two
+
+        // 5. If calendarOne is "iso8601", return two.
+        if (calendarOne == "iso8601")
+            return two
+
+        // 6. If calendarTwo is "iso8601", return one.
+        if (calendarTwo == "iso8601")
+            return one
+
+        // 7. Throw a RangeError exception.
+        Errors.Temporal.IncompatibleCalendars(calendarOne, calendarTwo).throwRangeError()
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.30")
+    fun isoDaysInMonth(year: Int, month: Int): Int {
+        // 1. Assert: year is an integer.
+
+        // 2. Assert: month is an integer, month ≥ 1, and month ≤ 12.
+        ecmaAssert(month in 1..12)
+
+        // 3. If month is 1, 3, 5, 7, 8, 10, or 12, return 31.
+        if (month in setOf(1, 3, 5, 7, 8, 10, 12))
+            return 31
+
+        // 4. If month is 4, 6, 9, or 11, return 30.
+        if (month != 2)
+            return 30
+
+        // 5. Return 28 + ℝ(InLeapYear(TimeFromYear(𝔽(year)))).
+        return 28 + AOs.inLeapYear(AOs.timeFromYear(year))
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.31")
+    fun toISOWeekOfYear(year: Int, month: Int, day: Int): Int {
+        // Use java.time instead of following the spec precisely
+        return LocalDateTime.of(year, month, day, 0, 0).get(ChronoField.ALIGNED_WEEK_OF_YEAR)
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.32")
+    fun isoMonthCode(month: Int): String {
+        // 1. Let numberPart be ToZeroPaddedDecimalString(month, 2).
+        // 2. Return the string-concatenation of "M" and numberPart.
+        return "M" + month.toString().padStart(2, '0')
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.33")
+    fun resolveISOMonth(fields: JSObject): Int {
+        // 1. Assert: fields is an ordinary object with no more and no less than the own data properties listed in Table 15.
+        // TODO: Assert it's an ordinary object?
+        val ownKeys = fields.ownPropertyKeys(onlyEnumerable = false)
+        ecmaAssert(ownKeys.size == temporalFieldRequirements.size)
+        ecmaAssert(ownKeys.all { it.isString && it.asString in temporalFieldRequirements })
+
+        // 2. Let month be ! Get(fields, "month").
+        val month = fields.get("month")
+
+        // 3. Assert: month is undefined or month is a Number.
+        ecmaAssert(month == JSUndefined || month is JSNumber)
+
+        // 4. Let monthCode be ! Get(fields, "monthCode").
+        val monthCode = fields.get("monthCode")
+
+        // 5. If monthCode is undefined, then
+        if (monthCode == JSUndefined) {
+            // a. If month is undefined, throw a TypeError exception.
+            if (month == JSUndefined)
+                Errors.TODO("resolveISOMonth 1").throwTypeError()
+
+            // b. Return ℝ(month).
+            return (month as JSNumber).number.toInt()
+        }
+
+        // 6. Assert: Type(monthCode) is String.
+        ecmaAssert(monthCode is JSString)
+
+        // 7. If the length of monthCode is not 3, throw a RangeError exception.
+        if (monthCode.string.length != 3)
+            Errors.Temporal.InvalidMonthCode(monthCode.string).throwRangeError()
+
+        // 8. If the first code unit of monthCode is not 0x004D (LATIN CAPITAL LETTER M), throw a RangeError exception.
+        if (monthCode.string[0] != 'M')
+            Errors.Temporal.InvalidMonthCode(monthCode.string).throwRangeError()
+
+        // 9. Let monthCodeDigits be the substring of monthCode from 1.
+        val monthCodeDigits = monthCode.string.drop(1)
+
+        // 10. If ParseText(StringToCodePoints(monthCodeDigits), DateMonth) is a List of errors, throw a RangeError exception.
+        // 11. Let monthCodeNumber be ! ToIntegerOrInfinity(monthCodeDigits).
+        val monthCodeNumber = monthCodeDigits.toIntOrNull()
+        if (monthCodeNumber == null || monthCodeNumber !in 1..12)
+            Errors.Temporal.InvalidMonthCode(monthCode.string).throwRangeError()
+
+        // 12. Assert: SameValue(monthCode, ISOMonthCode(monthCodeNumber)) is true.
+
+        // 13. If month is not undefined and SameValue(month, monthCodeNumber) is false, throw a RangeError exception.
+        if (month != JSUndefined && month.asInt != monthCodeNumber)
+            Errors.TODO("resolveISOMonth 2")
+
+        // 14. Return monthCodeNumber.
+        return monthCodeNumber
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.34")
+    fun isoDateFromFields(fields_: JSObject, options: JSObject): ISODateRecord {
+        // 1. Assert: Type(fields) is Object.
+
+        // 2. Set fields to ? PrepareTemporalFields(fields, « "day", "month", "monthCode", "year" », « "year", "day" »).
+        val fields = prepareTemporalFields(fields_, listOf("day", "month", "monthCode", "year"), setOf("year", "day"))
+
+        // 3. Let overflow be ? ToTemporalOverflow(options).
+        val overflow = toTemporalOverflow(options)
+
+        // 4. Let year be ! Get(fields, "year").
+        val year = fields.get("year")
+
+        // 5. Assert: Type(year) is Number.
+        ecmaAssert(year is JSNumber)
+
+        // 6. Let month be ? ResolveISOMonth(fields).
+        val month = resolveISOMonth(fields)
+
+        // 7. Let day be ! Get(fields, "day").
+        val day = fields.get("day")
+
+        // 8. Assert: Type(day) is Number.
+        ecmaAssert(day is JSNumber)
+
+        // 9. Return ? RegulateISODate(ℝ(year), month, ℝ(day), overflow).
+        return regulateISODate(year.number.toInt(), month, day.number.toInt(), overflow)
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.35")
+    fun isoYearMonthFromFields(fields_: JSObject, options: JSObject): ISOYearMonthRecord {
+        // 1. Assert: Type(fields) is Object.
+
+        // 2. Set fields to ? PrepareTemporalFields(fields, « "month", "monthCode", "year" », « "year" »).
+        val fields = prepareTemporalFields(fields_, listOf("month", "monthCode", "year"), setOf("year"))
+
+        // 3. Let overflow be ? ToTemporalOverflow(options).
+        val overflow = toTemporalOverflow(options)
+
+        // 4. Let year be ! Get(fields, "year").
+        val year = fields.get("year")
+
+        // 5. Assert: Type(year) is Number.
+        ecmaAssert(year is JSNumber)
+
+        // 6. Let month be ? ResolveISOMonth(fields).
+        val month = resolveISOMonth(fields)
+
+        // 7. Let result be ? RegulateISOYearMonth(ℝ(year), month, overflow).
+        val result = regulateISOYearMonth(year.number.toInt(), month, overflow)
+
+        // 8. Return the Record { [[Year]]: result.[[Year]], [[Month]]: result.[[Month]], [[ReferenceISODay]]: 1 }.
+        return ISOYearMonthRecord(result.year, result.month, 1)
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.36")
+    fun isoMonthDayFromFields(fields_: JSObject, options: JSObject): ISOMonthDayRecord {
+        // 1. Assert: Type(fields) is Object.
+
+        // 2. Set fields to ? PrepareTemporalFields(fields, « "day", "month", "monthCode", "year" », « "day" »).
+        val fields = prepareTemporalFields(fields_, listOf("day", "month", "monthCode", "year"), setOf("day"))
+
+        // 3. Let overflow be ? ToTemporalOverflow(options).
+        val overflow = toTemporalOverflow(options)
+
+        // 4. Let month be ! Get(fields, "month").
+        val montValue = fields.get("month")
+
+        // 5. Let monthCode be ! Get(fields, "monthCode").
+        val monthCode = fields.get("monthCode")
+
+        // 6. Let year be ! Get(fields, "year").
+        val year = fields.get("year")
+
+        // 7. If month is not undefined, and monthCode and year are both undefined, then
+        if (montValue != JSUndefined && (monthCode == JSUndefined && year == JSUndefined)) {
+            // a. Throw a TypeError exception.
+            Errors.TODO("isoMonthDayFromFields").throwTypeError()
+        }
+
+        // 8. Set month to ? ResolveISOMonth(fields).
+        val month = resolveISOMonth(fields)
+
+        // 9. Let day be ! Get(fields, "day").
+        val day = fields.get("day")
+
+        // 10. Assert: Type(day) is Number.
+        ecmaAssert(day is JSNumber)
+
+        // 11. Let referenceISOYear be 1972 (the first leap year after the Unix epoch).
+        val referenceISOYear = 1972
+
+        // 12. If monthCode is undefined, then
+        val result = if (monthCode == JSUndefined) {
+            // a. Assert: Type(year) is Number.
+            ecmaAssert(year is JSNumber)
+
+            // b. Let result be ? RegulateISODate(ℝ(year), month, ℝ(day), overflow).
+            regulateISODate(year.number.toInt(), month, day.number.toInt(), overflow)
+        }
+        // 13. Else,
+        else {
+            // a. Let result be ? RegulateISODate(referenceISOYear, month, ℝ(day), overflow).
+            regulateISODate(referenceISOYear, month, day.number.toInt(), overflow)
+        }
+
+        // 14. Return the Record { [[Month]]: result.[[Month]], [[Day]]: result.[[Day]], [[ReferenceISOYear]]: referenceISOYear }.
+        return ISOMonthDayRecord(result.month, result.day, referenceISOYear)
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.37")
+    fun defaultMergeCalendarFields(fields: JSObject, additionalFields: JSObject): JSObject {
+        // 1. Let merged be OrdinaryObjectCreate(%Object.prototype%).
+        val merged = JSObject.create()
+
+        // 2. Let fieldsKeys be ? EnumerableOwnPropertyNames(fields, key).
+        val fieldsKeys = AOs.enumerableOwnPropertyNames(fields, JSObject.PropertyKind.Key)
+
+        // 3. For each element key of fieldsKeys, do
+        for (key in fieldsKeys) {
+            // a. If key is not "month" or "monthCode", then
+            if (!(key as? JSString)?.string.let { it == "month" || it == "monthCode" }) {
+                // i. Let propValue be ? Get(fields, key).
+                val propValue = fields.get(key.key())
+
+                // ii. If propValue is not undefined, then
+                if (propValue != JSUndefined) {
+                    // 1. Perform ! CreateDataPropertyOrThrow(merged, key, propValue).
+                    AOs.createDataPropertyOrThrow(merged, key, propValue)
+                }
+            }
+        }
+
+        // 4. Let additionalFieldsKeys be ? EnumerableOwnPropertyNames(additionalFields, key).
+        val additionalFieldsKeys = AOs.enumerableOwnPropertyNames(additionalFields, JSObject.PropertyKind.Key)
+
+        // 5. For each element key of additionalFieldsKeys, do
+        for (key in additionalFieldsKeys) {
+            // a. Let propValue be ? Get(additionalFields, key).
+            val propValue = additionalFields.get(key.key())
+
+            // b. If propValue is not undefined, then
+            if (propValue != JSUndefined) {
+                // i. Perform ! CreateDataPropertyOrThrow(merged, key, propValue).
+                AOs.createDataPropertyOrThrow(merged, key, propValue)
+            }
+        }
+
+        // 6. If additionalFieldsKeys does not contain either "month" or "monthCode", then
+        if (additionalFieldsKeys.none { v -> (v as? JSString)?.string.let { it == "month" || it == "monthCode" } }) {
+            // a. Let month be ? Get(fields, "month").
+            val month = fields.get("month")
+
+            // b. If month is not undefined, then
+            if (month != JSUndefined) {
+                // i. Perform ! CreateDataPropertyOrThrow(merged, "month", month).
+                AOs.createDataPropertyOrThrow(merged, "month".key(), month)
+            }
+
+            // c. Let monthCode be ? Get(fields, "monthCode").
+            val monthCode = fields.get("monthCode")
+
+            // d. If monthCode is not undefined, then
+            if (monthCode != JSUndefined) {
+                // i. Perform ! CreateDataPropertyOrThrow(merged, "monthCode", monthCode).
+                AOs.createDataPropertyOrThrow(merged, "monthCode".key(), monthCode)
+            }
+        }
+
+        // 7. Return merged.
+        return merged
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.38")
+    fun toISODayOfYear(year: Int, month: Int, day: Int): Int {
+        // 1. Assert: IsValidISODate(year, month, day) is true.
+        // 2. Let epochDays be MakeDay(𝔽(year), 𝔽(month - 1), 𝔽(day)).
+        // 3. Assert: epochDays is finite.
+        // 4. Return ℝ(DayWithinYear(MakeDate(epochDays, +0𝔽))) + 1.
+        return LocalDate.of(year, month, day).dayOfYear
+    }
+
+    @JvmStatic
+    @ECMAImpl("12.2.39")
+    fun toISODayOfWeek(year: Int, month: Int, day: Int): Int {
+        // 1. Assert: IsValidISODate(year, month, day) is true.
+        // 2. Let epochDays be MakeDay(𝔽(year), 𝔽(month - 1), 𝔽(day)).
+        // 3. Assert: epochDays is finite.
+        // 4. Let dayOfWeek be WeekDay(MakeDate(epochDays, +0𝔽)).
+        // 5. If dayOfWeek = +0𝔽, return 7.
+        // 6. Return ℝ(dayOfWeek).
+        return LocalDate.of(year, month, day).dayOfWeek.value
+    }
+
+    @JvmStatic
+    @ECMAImpl("13.1")
+    fun iterableToListOfType(items: JSValue, elementTypes: Set<JSValue.Type>): List<JSValue> {
+        // 1. Let iteratorRecord be ? GetIterator(items, sync).
+        val iteratorRecord = AOs.getIterator(items, AOs.IteratorHint.Sync)
+
+        // 2. Let values be a new empty List.
+        val values = mutableListOf<JSValue>()
+
+        // 3. Let next be true.
+        var next: JSValue = JSTrue
+
+        // 4. Repeat, while next is not false,
+        while (next != JSFalse) {
+            // a. Set next to ? IteratorStep(iteratorRecord).
+            next = AOs.iteratorStep(iteratorRecord)
+
+            // b. If next is not false, then
+            if (next != JSFalse) {
+                // i. Let nextValue be ? IteratorValue(next).
+                val nextValue = AOs.iteratorValue(next)
+                
+                // ii. If Type(nextValue) is not an element of elementTypes, then
+                if (nextValue.type !in elementTypes) {
+                    // 1. Let completion be ThrowCompletion(a newly created TypeError object).
+                    val completion = completion<JSValue> { Errors.TODO("iterableToListOfType").throwTypeError() }
+
+                    // 2. Return ? IteratorClose(iteratorRecord, completion).
+                    AOs.iteratorClose(iteratorRecord, completion)
+                    unreachable()
+                }
+
+                // iii. Append nextValue to the end of the List values.
+                values.add(nextValue)
+            }
+        }
+
+        // 5. Return values.
+        return values
     }
 
     @JvmStatic
@@ -2303,6 +3084,15 @@ object TemporalAOs {
 
         // 7. Return value.
         return value
+    }
+
+    @JvmStatic
+    @ECMAImpl("13.4")
+    fun toTemporalOverflow(options: JSObject): String {
+        // 1. If options is undefined, return "constrain".
+
+        // 2. Return ? GetOption(options, "overflow", "string", « "constrain", "reject" », "constrain").
+        return (getOption(options, "overflow".key(), JSValue.Type.String, listOf("constrain".toValue(), "reject".toValue()), TemporalUnitDefault.Value("constrain".toValue())) as JSString).string
     }
 
     @JvmStatic
@@ -3104,6 +3894,31 @@ object TemporalAOs {
     }
 
     @JvmStatic
+    @ECMAImpl("13.31")
+    fun parseTemporalCalendarString(isoString: String): String {
+        try {
+            // 1. Let parseResult be Completion(ParseISODateTime(isoString)).
+            val parseResult = parseISODateTime(isoString)
+
+            // 2. If parseResult is a normal completion, then
+            //    a. Let calendar be parseResult.[[Value]].[[Calendar]].
+            //    b. If calendar is undefined, return "iso8601".
+            //    c. Else, return calendar.
+            return parseResult.calendar ?: "iso8601"
+        }
+        // 3. Else,
+        catch (e: ThrowException) {
+            // a. Set parseResult to ParseText(StringToCodePoints(isoString), CalendarName).
+            // b. If parseResult is a List of errors, throw a RangeError exception.
+            // c. Else, return isoString.
+            if (Regex.calendarID.matchEntire(isoString) != null)
+                Errors.Temporal.InvalidBuiltinCalendar(isoString).throwRangeError()
+
+            return isoString
+        }
+    }
+
+    @JvmStatic
     @ECMAImpl("13.34")
     fun parseTemporalDurationString(isoString: String): DurationRecord {
         // 1. Let duration be ParseText(StringToCodePoints(isoString), TemporalDurationString).
@@ -3523,6 +4338,12 @@ object TemporalAOs {
             nanoseconds ?: BigInteger.ZERO,
         )
     }
+
+    data class ISODateRecord(val year: Int, val month: Int, val day: Int)
+
+    data class ISOMonthDayRecord(val month: Int, val day: Int, val referenceISODay: Int)
+
+    data class ISOYearMonthRecord(val year: Int, val month: Int, val referenceISODay: Int)
 
     data class ParsedISODateTime(
         val year: Int,

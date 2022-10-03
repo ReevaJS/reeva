@@ -15,7 +15,7 @@ import com.reevajs.reeva.utils.*
 import java.math.BigDecimal
 import java.math.BigInteger
 
-class JSDurationProto(realm: Realm) : JSObject(realm, realm.objectProto) {
+class JSDurationProto private constructor(realm: Realm) : JSObject(realm, realm.objectProto) {
     override fun init() {
         super.init()
 

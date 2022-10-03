@@ -112,6 +112,7 @@ class Realm {
     lateinit var syntaxErrorProto: JSSyntaxErrorProto private set
     lateinit var uriErrorProto: JSURIErrorProto private set
 
+    lateinit var calendarProto: JSCalendarProto private set
     lateinit var durationProto: JSDurationProto private set
     lateinit var instantProto: JSInstantProto private set
 
@@ -155,6 +156,7 @@ class Realm {
     lateinit var syntaxErrorCtor: JSSyntaxErrorCtor private set
     lateinit var uriErrorCtor: JSURIErrorCtor private set
 
+    lateinit var calendarCtor: JSCalendarCtor private set
     lateinit var durationCtor: JSDurationCtor private set
     lateinit var instantCtor: JSInstantCtor private set
 
@@ -264,6 +266,7 @@ class Realm {
         syntaxErrorCtor = JSSyntaxErrorCtor.create(this)
         uriErrorCtor = JSURIErrorCtor.create(this)
 
+        calendarCtor = JSCalendarCtor.create(this)
         durationCtor = JSDurationCtor.create(this)
         instantCtor = JSInstantCtor.create(this)
 
@@ -317,6 +320,7 @@ class Realm {
         syntaxErrorProto = JSSyntaxErrorProto.create(this)
         uriErrorProto = JSURIErrorProto.create(this)
 
+        calendarProto = JSCalendarProto.create(this)
         durationProto = JSDurationProto.create(this)
         instantProto = JSInstantProto.create(this)
 
@@ -376,6 +380,7 @@ class Realm {
         syntaxErrorCtor.defineOwnProperty("prototype", syntaxErrorProto, Descriptor.HAS_BASIC)
         uriErrorCtor.defineOwnProperty("prototype", uriErrorProto, Descriptor.HAS_BASIC)
 
+        calendarCtor.defineOwnProperty("prototype", calendarProto, Descriptor.HAS_BASIC)
         durationCtor.defineOwnProperty("prototype", durationProto, Descriptor.HAS_BASIC)
         instantCtor.defineOwnProperty("prototype", instantProto, Descriptor.HAS_BASIC)
 

@@ -3,6 +3,7 @@ package com.reevajs.reeva.runtime.collections
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.errors.ThrowException
+import com.reevajs.reeva.core.errors.completion
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -43,13 +44,11 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
             val next = AOs.iteratorStep(iteratorRecord)
             if (next == JSFalse)
                 return set
+
             val nextValue = AOs.iteratorValue(next)
-            try {
+            AOs.ifAbruptCloseIterator(completion {
                 AOs.call(adder, set, listOf(nextValue))
-            } catch (e: ThrowException) {
-                AOs.iteratorClose(iteratorRecord, e.value)
-                throw e
-            }
+            }, iteratorRecord) { return it }
         }
     }
 

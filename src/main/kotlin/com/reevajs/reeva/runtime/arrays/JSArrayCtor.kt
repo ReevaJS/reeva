@@ -2,7 +2,7 @@ package com.reevajs.reeva.runtime.arrays
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.core.errors.ThrowException
+import com.reevajs.reeva.core.errors.*
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -11,6 +11,7 @@ import com.reevajs.reeva.runtime.errors.JSTypeErrorObject
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.runtime.primitives.JSFalse
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toObject
@@ -101,9 +102,8 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
                 var k = 0L
                 while (true) {
                     if (k == AOs.MAX_SAFE_INTEGER) {
-                        val error = JSTypeErrorObject.create("array length ${Long.MAX_VALUE} is too large")
-                        AOs.iteratorClose(iteratorRecord, error)
-                        throw ThrowException(error)
+                        val error = completion<JSValue> { Errors.InvalidArrayLength(Long.MAX_VALUE).throwTypeError() }
+                        return AOs.iteratorClose(iteratorRecord, error)
                     }
 
                     val next = AOs.iteratorStep(iteratorRecord)
@@ -114,20 +114,15 @@ class JSArrayCtor private constructor(realm: Realm) : JSNativeFunction(realm, "A
 
                     val nextValue = AOs.iteratorValue(next)
                     val mappedValue = if (mapping) {
-                        try {
+                        AOs.ifAbruptCloseIterator(completion { 
                             AOs.call(mapFn, thisArg, listOf(nextValue, k.toValue()))
-                        } catch (e: ThrowException) {
-                            AOs.iteratorClose(iteratorRecord, e.value)
-                            throw e
-                        }
+                        }, iteratorRecord) { return it }
                     } else nextValue
 
-                    try {
+                    AOs.ifAbruptCloseIterator(completion<JSValue> {
                         AOs.createDataPropertyOrThrow(array, k.key(), mappedValue)
-                    } catch (e: ThrowException) {
-                        AOs.iteratorClose(iteratorRecord, e.value)
-                        throw e
-                    }
+                        JSEmpty
+                    }, iteratorRecord) { return it }
 
                     k++
                 }

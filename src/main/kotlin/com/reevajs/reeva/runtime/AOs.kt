@@ -15,7 +15,7 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
 import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.core.environment.ObjectEnvRecord
-import com.reevajs.reeva.core.errors.ThrowException
+import com.reevajs.reeva.core.errors.*
 import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
 import com.reevajs.reeva.core.lifecycle.Script
 import com.reevajs.reeva.interpreter.AsyncInterpretedFunction
@@ -98,6 +98,8 @@ object AOs {
             0x40.toByte(), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
         )
     )
+
+    const val MS_PER_DAY = 86_400_000L
 
     val defaultZone = ZoneId.systemDefault()
     val defaultZoneOffset = defaultZone.rules.getOffset(Instant.now())
@@ -1497,16 +1499,59 @@ object AOs {
     }
 
     @JvmStatic
-    @ECMAImpl("7.4.6")
-    fun iteratorClose(record: IteratorRecord, value: JSValue): JSValue {
-        val method = record.iterator.get("return")
-        if (method == JSUndefined)
-            return value
-        return call(method, record.iterator)
+    @ECMAImpl("7.4.7")
+    fun iteratorClose(iteratorRecord: IteratorRecord, completion: Completion<JSValue>): JSValue {
+        // 1. Assert: iteratorRecord.[[Iterator]] is an Object.
+
+        // 2. Let iterator be iteratorRecord.[[Iterator]].
+        val iterator = iteratorRecord.iterator
+
+        // 3. Let innerResult be Completion(GetMethod(iterator, "return")).
+        var innerResult = completion { getMethod(iterator, "return".toValue()) }
+
+        // 4. If innerResult.[[Type]] is normal, then
+        if (innerResult.isNormal) {
+            // a. Let return be innerResult.[[Value]].
+            val return_ = innerResult.value()
+
+            // b. If return is undefined, return ? completion.
+            if (return_ == JSUndefined)
+                return completion.unwrap()
+
+            // c. Set innerResult to Completion(Call(return, iterator)).
+            innerResult = completion { call(return_, iterator) }
+        }
+
+        // 5. If completion.[[Type]] is throw, return ? completion.
+        if (completion.isThrow)
+            return completion.unwrap()
+
+        // 6. If innerResult.[[Type]] is throw, return ? innerResult.
+        if (innerResult.isThrow)
+            return innerResult.unwrap()
+
+        // 7. If innerResult.[[Value]] is not an Object, throw a TypeError exception.
+        if (innerResult.value() !is JSObject)
+            Errors.TODO("iteratorClose").throwTypeError()
+        
+        // 8. Return ? completion.
+        return completion.unwrap()
     }
 
     @JvmStatic
     @ECMAImpl("7.4.8")
+    inline fun ifAbruptCloseIterator(value: Completion<JSValue>, iteratorRecord: IteratorRecord, returnBlock: (JSValue) -> Nothing): JSValue {
+        // 1. Assert: value is a Completion Record.
+        // 2. If value is an abrupt completion, return ? IteratorClose(iteratorRecord, value).
+        if (!value.isNormal)
+            returnBlock(iteratorClose(iteratorRecord, value))
+
+        // 3. Else, set value to value.[[Value]].
+        return value.value()
+    }
+
+    @JvmStatic
+    @ECMAImpl("7.4.10")
     fun createIterResultObject(value: JSValue, done: Boolean): JSValue {
         val obj = JSObject.create()
         createDataPropertyOrThrow(obj, "value".toValue(), value)
@@ -1515,7 +1560,7 @@ object AOs {
     }
 
     @JvmStatic
-    @ECMAImpl("7.4.10")
+    @ECMAImpl("7.4.12")
     fun iterableToList(items: JSValue, method: JSValue? = null): List<JSValue> {
         val iteratorRecord = getIterator(items, method = method as? JSFunction)
         val values = mutableListOf<JSValue>()
@@ -2433,6 +2478,26 @@ object AOs {
     }
 
     @JvmStatic
+    fun daysInYear(year: Int): Int = when {
+        year % 4 != 0 -> 365
+        year % 100 != 0 -> 366
+        year % 400 != 0 -> 365
+        else -> 366
+    }
+
+    @JvmStatic
+    fun dayFromYear(year: Int): Int = 365 * (year - 1970) + ((year - 1969) / 4) - ((year - 1901) / 100) + ((year - 1601) / 400)
+
+    @JvmStatic
+    fun timeFromYear(year: Int): Long = MS_PER_DAY * dayFromYear(year).toLong()
+
+    @JvmStatic
+    fun yearFromTime(time: Long): Int = Instant.ofEpochMilli(time).atOffset(ZoneOffset.UTC).year
+
+    @JvmStatic
+    fun inLeapYear(time: Long): Int = if (daysInYear(yearFromTime(time)) == 365) 0 else 1
+
+    @JvmStatic
     @ECMAImpl("21.4.1.11")
     fun makeTime(hour: JSValue, min: JSValue, sec: JSValue, ms: JSValue): JSValue {
         // 1. If hour is not finite or min is not finite or sec is not finite or ms is not finite, return NaN.
@@ -2764,39 +2829,45 @@ object AOs {
     @JvmStatic
     @ECMAImpl("23.1.1.2")
     fun addEntriesFromIterable(target: JSObject, iterable: JSValue, adder: JSValue): JSValue {
+        // 1. If IsCallable(adder) is false, throw a TypeError exception.
         if (!isCallable(adder))
             Errors.TODO("addEntriesFromIterable 1").throwTypeError()
 
-        // TODO: This whole method is super scuffed
-        ecmaAssert(iterable != JSUndefined && iterable != JSNull)
-        val record = getIterator(iterable) as? IteratorRecord ?: return JSEmpty
+        // 2. Let iteratorRecord be ? GetIterator(iterable).
+        val iteratorRecord = getIterator(iterable)
+
+        // 3. Repeat,
         while (true) {
-            val next = iteratorStep(record)
+            // a. Let next be ? IteratorStep(iteratorRecord).
+            val next = iteratorStep(iteratorRecord)
+
+            // b. If next is false, return target.
             if (next == JSFalse)
                 return target
+
+            // c. Let nextItem be ? IteratorValue(next).
             val nextItem = iteratorValue(next)
+
+            // d. If nextItem is not an Object, then
             if (nextItem !is JSObject) {
-                iteratorClose(record, JSEmpty)
-                Errors.TODO("addEntriesFromIterable 2").throwTypeError()
+                // i. Let error be ThrowCompletion(a newly created TypeError object).
+                val error = completion<JSValue> { Errors.TODO("addEntriesFromIterable 1").throwTypeError() }
+
+                // ii. Return ? IteratorClose(iteratorRecord, error).
+                return iteratorClose(iteratorRecord, error)
             }
-            val key = try {
-                nextItem.get(0)
-            } catch (e: ThrowException) {
-                iteratorClose(record, JSEmpty)
-                throw e
-            }
-            val value = try {
-                nextItem.get(1)
-            } catch (e: ThrowException) {
-                iteratorClose(record, JSEmpty)
-                throw e
-            }
-            try {
-                call(adder, target, listOf(key, value))
-            } catch (e: ThrowException) {
-                iteratorClose(record, JSEmpty)
-                throw e
-            }
+
+            // e. Let k be Completion(Get(nextItem, "0")).
+            // f. IfAbruptCloseIterator(k, iteratorRecord).
+            val k = ifAbruptCloseIterator(completion { nextItem.get(0) }, iteratorRecord) { return it }
+
+            // g. Let v be Completion(Get(nextItem, "1")).
+            // h. IfAbruptCloseIterator(v, iteratorRecord).
+            val v = ifAbruptCloseIterator(completion { nextItem.get(1) }, iteratorRecord) { return it }
+
+            // i. Let status be Completion(Call(adder, target, « k, v »)).
+            // j. IfAbruptCloseIterator(status, iteratorRecord).
+            ifAbruptCloseIterator(completion { call(adder, target, listOf(k, v)) }, iteratorRecord) { return it }
         }
     }
 

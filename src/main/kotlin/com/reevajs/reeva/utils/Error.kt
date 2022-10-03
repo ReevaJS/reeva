@@ -427,6 +427,10 @@ object Errors {
         object KeyForBadArg : Error("the first argument to Symbol.keyFor must be a symbol")
     }
     object Temporal {
+        class IncompatibleCalendars(one: String, two: String) : Error("cannot consolidate calendar \"$one\" with calendar \"$two\"")
+        class InvalidBuiltinCalendar(id: String) : Error("invalid calendar: \"$id\"")
+        class InvalidMonthCode(code: String) : Error("invalid month code: \"$code\"")
+
         class InvalidISO8601String(string: String) : Error("invalid ISO-8601 string: \"$string\"")
         class InvalidISODate(date: String) : Error("invalid ISO date: \"$date\"")
         class InvalidISOTime(time: String) : Error("invalid ISO time: \"$time\"")
