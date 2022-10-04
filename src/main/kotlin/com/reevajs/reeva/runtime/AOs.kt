@@ -2041,6 +2041,12 @@ object AOs {
     }
 
     @JvmStatic
+    @ECMAImpl("11.6.13")
+    fun builtinTimeZoneGetPlainDateTimeFor(timeZone: JSObject, instant: JSObject, calendar: JSObject): JSObject {
+        TODO()
+    }
+
+    @JvmStatic
     @ECMAImpl("12.5.5")
     fun typeofOperator(value: JSValue): JSValue {
         return when (value) {
@@ -2496,6 +2502,15 @@ object AOs {
 
     @JvmStatic
     fun inLeapYear(time: Long): Int = if (daysInYear(yearFromTime(time)) == 365) 0 else 1
+
+    @JvmStatic
+    fun monthFromTime(time: Long): Int = Instant.ofEpochMilli(time).atOffset(ZoneOffset.UTC).monthValue
+
+    @JvmStatic
+    fun dayWithinYear(time: Long) = Instant.ofEpochMilli(time).atOffset(ZoneOffset.UTC).dayOfYear
+
+    @JvmStatic
+    fun dateFromTime(time: Long) = Instant.ofEpochMilli(time).atOffset(ZoneOffset.UTC).dayOfMonth
 
     @JvmStatic
     @ECMAImpl("21.4.1.11")

@@ -36,7 +36,7 @@ class JSCalendarCtor private constructor(realm: Realm) : JSNativeFunction(realm,
         }
 
         // 4. Return ? CreateTemporalCalendar(id, NewTarget).
-        return TemporalAOs.createTemporalCalendar(id, arguments.newTarget as? JSObject)
+        return TemporalAOs.createTemporalCalendar(id, arguments.newTarget as JSObject)
     }
 
     companion object {
