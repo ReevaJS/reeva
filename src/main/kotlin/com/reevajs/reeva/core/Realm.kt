@@ -308,6 +308,7 @@ class Realm {
         throwTypeError = JSRunnableFunction.create("", 0, this) {
             Errors.CalleePropertyAccess.throwTypeError(this)
         }
+        AOs.setIntegrityLevel(throwTypeError, AOs.IntegrityLevel.Frozen)
 
         mathObj = JSMathObject.create(this)
         reflectObj = JSReflectObject.create(this)
