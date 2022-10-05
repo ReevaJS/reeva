@@ -116,6 +116,7 @@ class Realm {
     lateinit var durationProto: JSDurationProto private set
     lateinit var instantProto: JSInstantProto private set
     lateinit var plainDateProto: JSPlainDateProto private set
+    lateinit var plainTimeProto: JSPlainTimeProto private set
 
     lateinit var objectCtor: JSObjectCtor private set
     lateinit var numberCtor: JSNumberCtor private set
@@ -161,6 +162,7 @@ class Realm {
     lateinit var durationCtor: JSDurationCtor private set
     lateinit var instantCtor: JSInstantCtor private set
     lateinit var plainDateCtor: JSPlainDateCtor private set
+    lateinit var plainTimeCtor: JSPlainTimeCtor private set
 
     lateinit var throwTypeError: JSFunction private set
 
@@ -272,6 +274,7 @@ class Realm {
         durationCtor = JSDurationCtor.create(this)
         instantCtor = JSInstantCtor.create(this)
         plainDateCtor = JSPlainDateCtor.create(this)
+        plainTimeCtor = JSPlainTimeCtor.create(this)
 
         symbolCtor = JSSymbolCtor.create(this)
         symbolProto = JSSymbolProto.create(this)
@@ -327,6 +330,7 @@ class Realm {
         durationProto = JSDurationProto.create(this)
         instantProto = JSInstantProto.create(this)
         plainDateProto = JSPlainDateProto.create(this)
+        plainTimeProto = JSPlainTimeProto.create(this)
 
         throwTypeError = JSRunnableFunction.create("", 0, this) {
             Errors.CalleePropertyAccess.throwTypeError(this)
@@ -388,6 +392,7 @@ class Realm {
         durationCtor.defineOwnProperty("prototype", durationProto, Descriptor.HAS_BASIC)
         instantCtor.defineOwnProperty("prototype", instantProto, Descriptor.HAS_BASIC)
         plainDateCtor.defineOwnProperty("prototype", plainDateProto, Descriptor.HAS_BASIC)
+        plainTimeCtor.defineOwnProperty("prototype", plainTimeProto, Descriptor.HAS_BASIC)
 
         functionProto.defineOwnProperty("constructor", functionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
 

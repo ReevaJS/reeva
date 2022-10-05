@@ -40,7 +40,7 @@ class JSPlainDateCtor private constructor(realm: Realm) : JSNativeFunction(realm
         val calendar = TemporalAOs.toTemporalCalendarWithISODefault(arguments.argument(3))
 
         // 6. Return ? CreateTemporalDate(y, m, d, calendar, NewTarget).
-        return TemporalAOs.createTemporalDate(y.number.toInt(), m.number.toInt(), d.number.toInt(), calendar, arguments.newTarget as JSObject)
+        return TemporalAOs.createTemporalDate(y, m, d, calendar, arguments.newTarget as JSObject)
     }
 
     companion object {

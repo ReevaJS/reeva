@@ -58,6 +58,7 @@ value class Slot<T> private constructor(val index: Int) {
         val Millisecond = nextSlot<Int>()
         val Milliseconds = nextSlot<Int>()
         val Minutes = nextSlot<Int>()
+        val Minute = nextSlot<Int>()
         val Month = nextSlot<Int>()
         val Months = nextSlot<Int>()
         val Nanosecond = nextSlot<BigInteger>()

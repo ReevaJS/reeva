@@ -566,21 +566,215 @@ object TemporalAOs {
     }
 
     @JvmStatic
+    @ECMAImpl("4.5.1")
+    fun differenceTime(
+        hour1: Int,
+        minute1: Int,
+        second1: Int,
+        millisecond1: Int,
+        microsecond1: Int,
+        nanosecond1: BigInteger,
+        hour2: Int,
+        minute2: Int,
+        second2: Int,
+        millisecond2: Int,
+        microsecond2: Int,
+        nanosecond2: BigInteger,
+    ): TimeDurationRecord {
+        // 1. Let hours be h2 - h1.
+        val hours = hour2 - hour1
+
+        // 2. Let minutes be min2 - min1.
+        val minutes = minute2 - minute1
+
+        // 3. Let seconds be s2 - s1.
+        val seconds = second2 - second1
+
+        // 4. Let milliseconds be ms2 - ms1.
+        val milliseconds = millisecond2 - millisecond1
+
+        // 5. Let microseconds be mus2 - mus1.
+        val microseconds = microsecond2 - microsecond1
+
+        // 6. Let nanoseconds be ns2 - ns1.
+        val nanoseconds = nanosecond2 - nanosecond1
+
+        // 7. Let sign be ! DurationSign(0, 0, 0, 0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds).
+        val sign = durationSign(
+            DurationRecord(0, 0, 0, 0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds),
+        )
+
+        // 8. Let bt be ! BalanceTime(hours × sign, minutes × sign, seconds × sign, milliseconds × sign,
+        //    microseconds × sign, nanoseconds × sign).
+        val bt = balanceTime(
+            hours * sign,
+            minutes * sign,
+            seconds * sign,
+            milliseconds * sign,
+            microseconds * sign,
+            nanoseconds * sign.toBigInteger(),
+        )
+
+        // 9. Assert: bt.[[Days]] is 0.
+        ecmaAssert(bt.days == 0)
+
+        // 10. Return ! CreateTimeDurationRecord(0, bt.[[Hour]] × sign, bt.[[Minute]] × sign, bt.[[Second]] × sign,
+        //     bt.[[Millisecond]] × sign, bt.[[Microsecond]] × sign, bt.[[Nanosecond]] × sign).
+        return createTimeDurationRecord(
+            0,
+            bt.hours * sign,
+            bt.minutes * sign,
+            bt.seconds * sign,
+            bt.milliseconds * sign,
+            bt.microseconds * sign,
+            bt.nanoseconds * sign.toBigInteger(),
+        )
+    }
+
+    @JvmStatic
     @ECMAImpl("4.5.2")
     fun toTemporalTime(item: JSValue, overflow: String = "constrain"): JSObject {
-        TODO()
+        // 1. If overflow is not present, set overflow to "constrain".
+
+        // 2. Assert: overflow is either "constrain" or "reject".
+        ecmaAssert(overflow == "constrain" || overflow == "reject")
+
+        // 3. If Type(item) is Object, then
+        val result = if (item is JSObject) {
+            // a. If item has an [[InitializedTemporalTime]] internal slot, then
+            if (Slot.InitializedTemporalTime in item) {
+                // i. Return item.
+                return item
+            }
+
+            // b. If item has an [[InitializedTemporalZonedDateTime]] internal slot, then
+            if (Slot.InitializedTemporalZonedDateTime in item) {
+                // i. Let instant be ! CreateTemporalInstant(item.[[Nanoseconds]]).
+                val instant = createTemporalInstant(item[Slot.Nanoseconds])
+
+                // ii. Set plainDateTime to ? BuiltinTimeZoneGetPlainDateTimeFor(item.[[TimeZone]], instant,
+                //     item.[[Calendar]]).
+                val plainDateTime = builtinTimeZoneGetPlainDateTimeFor(
+                    item[Slot.TimeZone], instant, item[Slot.Calendar],
+                )
+
+                // iii. Return ! CreateTemporalTime(plainDateTime.[[ISOHour]], plainDateTime.[[ISOMinute]],
+                //      plainDateTime.[[ISOSecond]], plainDateTime.[[ISOMillisecond]],
+                //      plainDateTime.[[ISOMicrosecond]], plainDateTime.[[ISONanosecond]]).
+                return createTemporalTime(
+                    plainDateTime[Slot.ISOHour],
+                    plainDateTime[Slot.ISOMinute],
+                    plainDateTime[Slot.ISOSecond],
+                    plainDateTime[Slot.ISOMillisecond],
+                    plainDateTime[Slot.ISOMicrosecond],
+                    plainDateTime[Slot.ISONanosecond],
+                )
+            }
+
+            // c. If item has an [[InitializedTemporalDateTime]] internal slot, then
+            if (Slot.InitializedTemporalDateTime in item) {
+                // i. Return ! CreateTemporalTime(item.[[ISOHour]], item.[[ISOMinute]], item.[[ISOSecond]],
+                //    item.[[ISOMillisecond]], item.[[ISOMicrosecond]], item.[[ISONanosecond]]).
+                return createTemporalTime(
+                    item[Slot.ISOHour],
+                    item[Slot.ISOMinute],
+                    item[Slot.ISOSecond],
+                    item[Slot.ISOMillisecond],
+                    item[Slot.ISOMicrosecond],
+                    item[Slot.ISONanosecond],
+                )
+            }
+
+            // d. Let calendar be ? GetTemporalCalendarWithISODefault(item).
+            val calendar = getTemporalCalendarWithISODefault(item)
+
+            // e. If ? ToString(calendar) is not "iso8601", then
+            if (calendar.toJSString().string != "iso8601") {
+                // i. Throw a RangeError exception.
+                Errors.TODO("toTemporalTime 1").throwRangeError()
+            }
+
+            // f. Let result be ? ToTemporalTimeRecord(item).
+            val result = toTemporalTimeRecord(item)
+
+            // g. Set result to ? RegulateTime(result.[[Hour]], result.[[Minute]], result.[[Second]],
+            //    result.[[Millisecond]], result.[[Microsecond]], result.[[Nanosecond]], overflow).
+            regulateTime(
+                result.hour!!,
+                result.minute!!,
+                result.second!!,
+                result.millisecond!!,
+                result.microsecond!!,
+                result.nanosecond!!,
+                overflow
+            )
+        }
+        // 4. Else,
+        else {
+            // a. Let string be ? ToString(item).
+            val string = item.toJSString().string
+
+            // b. Let result be ? ParseTemporalTimeString(string).
+            val result = parseTemporalTimeString(string)
+
+            // c. Assert: IsValidTime(result.[[Hour]], result.[[Minute]], result.[[Second]], result.[[Millisecond]], result.[[Microsecond]], result.[[Nanosecond]]) is true.
+            ecmaAssert(isValidTime(
+                result.hour,
+                result.minute,
+                result.second,
+                result.millisecond,
+                result.microsecond,
+                result.nanosecond,
+            ))
+
+            // d. If result.[[Calendar]] is not one of undefined or "iso8601", then
+            val calendar = result.calendar
+            if (calendar != null && calendar != "iso8601") {
+                // i. Throw a RangeError exception.
+                Errors.TODO("toTemporalTime 2").throwRangeError()
+            }
+
+            TimeDurationRecord(0, result.hour, result.minute, result.second, result.millisecond, result.microsecond, result.nanosecond)
+        }
+
+        // 5. Return ! CreateTemporalTime(result.[[Hour]], result.[[Minute]], result.[[Second]], result.[[Millisecond]], result.[[Microsecond]], result.[[Nanosecond]]).
+        return createTemporalTime(
+            result.hours,
+            result.minutes,
+            result.seconds,
+            result.milliseconds,
+            result.microseconds,
+            result.nanoseconds,
+        )
+    }
+
+    @JvmStatic
+    @ECMAImpl("4.5.3")
+    fun regulateTime(hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger, overflow: String): TimeDurationRecord {
+        // 1. Assert: hour, minute, second, millisecond, microsecond and nanosecond are integers.
+        // 2. Assert: overflow is either "constrain" or "reject".
+        ecmaAssert(overflow == "constrain" || overflow == "reject")
+
+        // 3. If overflow is "constrain", then
+        if (overflow == "constrain") {
+            // a. Return ! ConstrainTime(hour, minute, second, millisecond, microsecond, nanosecond).
+            return constrainTime(hour, minute, second, millisecond, microsecond, nanosecond)
+        }
+        // 4. Else,
+        else {
+            // a. Assert: overflow is "reject".
+            // b. If IsValidTime(hour, minute, second, millisecond, microsecond, nanosecond) is false, throw a RangeError exception.
+            if (!isValidTime(hour, minute, second, millisecond, microsecond, nanosecond))
+                Errors.TODO("regulateTime").throwRangeError()
+
+            // c. Return the Record { [[Hour]]: hour, [[Minute]]: minute, [[Second]]: second, [[Millisecond]]: millisecond, [[Microsecond]]: microsecond, [[Nanosecond]]: nanosecond }.
+            return TimeDurationRecord(0, hour, minute, second, millisecond, microsecond, nanosecond)
+        }
     }
 
     @JvmStatic
     @ECMAImpl("4.5.4")
-    fun isValidTime(
-        hour: Int,
-        minute: Int,
-        second: Int,
-        millisecond: Int,
-        microsecond: Int,
-        nanosecond: BigInteger
-    ): Boolean {
+    fun isValidTime(hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger): Boolean {
         // 1. If hour < 0 or hour > 23, then
         //    a. Return false.
         // 2. If minute < 0 or minute > 59, then
@@ -600,6 +794,429 @@ object TemporalAOs {
             millisecond in 0..999 &&
             microsecond in 0..999 &&
             nanosecond in BigInteger.ZERO..BigInteger.valueOf(999L)
+    }
+
+    @JvmStatic
+    @ECMAImpl("4.5.5")
+    fun balanceTime(hour_: Int, minute_: Int, second_: Int, millisecond_: Int, microsecond_: Int, nanosecond_: BigInteger): TimeDurationRecord {
+        var hour = hour_
+        var minute = minute_
+        var second = second_
+        var millisecond = millisecond_
+        var microsecond = microsecond_
+        var nanosecond = nanosecond_
+
+        // 1. Assert: hour, minute, second, millisecond, microsecond, and nanosecond are integers.
+
+        // 2. Set microsecond to microsecond + floor(nanosecond / 1000).
+        microsecond += (nanosecond / BigInteger.valueOf(1000L)).toInt()
+
+        // 3. Set nanosecond to nanosecond modulo 1000.
+        nanosecond %= BigInteger.valueOf(1000L)
+
+        // 4. Set millisecond to millisecond + floor(microsecond / 1000).
+        millisecond += microsecond / 1000
+
+        // 5. Set microsecond to microsecond modulo 1000.
+        microsecond %= 1000
+
+        // 6. Set second to second + floor(millisecond / 1000).
+        second += millisecond / 1000
+
+        // 7. Set millisecond to millisecond modulo 1000.
+        millisecond %= 1000
+
+        // 8. Set minute to minute + floor(second / 60).
+        minute += second / 60
+
+        // 9. Set second to second modulo 60.
+        second %= 60
+
+        // 10. Set hour to hour + floor(minute / 60).
+        hour += minute / 60
+
+        // 11. Set minute to minute modulo 60.
+        minute %= 60
+
+        // 12. Let days be floor(hour / 24).
+        val days = hour / 24
+
+        // 13. Set hour to hour modulo 24.
+        hour %= 24
+
+        // 14. Return the Record { [[Days]]: days, [[Hour]]: hour, [[Minute]]: minute, [[Second]]: second, [[Millisecond]]: millisecond, [[Microsecond]]: microsecond, [[Nanosecond]]: nanosecond }.
+        return TimeDurationRecord(days, hour, minute, second, millisecond, microsecond, nanosecond)
+    }
+
+    @JvmStatic
+    @ECMAImpl("4.5.6")
+    fun constrainTime(hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger): TimeDurationRecord {
+        // 1. Assert: hour, minute, second, millisecond, microsecond, and nanosecond are integers.
+
+        // 2. Set hour to the result of clamping hour between 0 and 23.
+        val hour_ = hour.coerceIn(0..23)
+
+        // 3. Set minute to the result of clamping minute between 0 and 59.
+        val minute_ = minute.coerceIn(0..59)
+
+        // 4. Set second to the result of clamping second between 0 and 59.
+        val second_ = second.coerceIn(0..59)
+
+        // 5. Set millisecond to the result of clamping millisecond between 0 and 999.
+        val millisecond_ = millisecond.coerceIn(0..999)
+
+        // 6. Set microsecond to the result of clamping microsecond between 0 and 999.
+        val microsecond_ = microsecond.coerceIn(0..999)
+
+        // 7. Set nanosecond to the result of clamping nanosecond between 0 and 999.
+        val nanosecond_ = nanosecond.coerceIn(BigInteger.ZERO..BigInteger.valueOf(999L))
+
+        // 8. Return the Record { [[Hour]]: hour, [[Minute]]: minute, [[Second]]: second, [[Millisecond]]: millisecond, [[Microsecond]]: microsecond, [[Nanosecond]]: nanosecond }.
+        return TimeDurationRecord(0, hour_, minute_, second_, millisecond_, microsecond_, nanosecond_)
+    }
+
+    @JvmStatic
+    @ECMAImpl("4.5.7")
+    fun createTemporalTime(hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger, newTarget: JSObject? = null): JSObject {
+        // 1. Assert: hour, minute, second, millisecond, microsecond and nanosecond are integers.
+        // 2. If IsValidTime(hour, minute, second, millisecond, microsecond, nanosecond) is false, throw a RangeError exception.
+        if (!isValidTime(hour, minute, second, millisecond, microsecond, nanosecond))
+            Errors.TODO("createTemporalTime").throwRangeError()
+
+        // 3. If newTarget is not present, set newTarget to %Temporal.PlainTime%.
+        // 4. Let object be ? OrdinaryCreateFromConstructor(newTarget, "%Temporal.PlainTime.prototype%", « [[InitializedTemporalTime]], [[ISOHour]], [[ISOMinute]], [[ISOSecond]], [[ISOMillisecond]], [[ISOMicrosecond]], [[ISONanosecond]], [[Calendar]] »).
+        val obj = AOs.ordinaryCreateFromConstructor(
+            newTarget ?: realm.plainTimeCtor,
+            listOf(Slot.InitializedTemporalTime),
+            defaultProto = Realm::plainTimeProto,
+        )
+
+        // 5. Set object.[[ISOHour]] to hour.
+        obj[Slot.ISOHour] = hour
+
+        // 6. Set object.[[ISOMinute]] to minute.
+        obj[Slot.ISOMinute] = minute
+
+        // 7. Set object.[[ISOSecond]] to second.
+        obj[Slot.ISOSecond] = second
+
+        // 8. Set object.[[ISOMillisecond]] to millisecond.
+        obj[Slot.ISOMillisecond] = millisecond
+
+        // 9. Set object.[[ISOMicrosecond]] to microsecond.
+        obj[Slot.ISOMicrosecond] = microsecond
+
+        // 10. Set object.[[ISONanosecond]] to nanosecond.
+        obj[Slot.ISONanosecond] = nanosecond
+
+        // 11. Set object.[[Calendar]] to ! GetISO8601Calendar().
+        obj[Slot.Calendar] = getISO8601Calendar()
+
+        // 12. Return object.
+        return obj
+    }
+
+    @JvmStatic
+    @ECMAImpl("4.5.8")
+    fun toTemporalTimeRecord(temporalTimeLike: JSObject, completeness: String = "complete"): TemporalTimeLikeRecord {
+        // 1. If completeness is not present, set completeness to complete.
+
+        // 2. Let partial be ? PrepareTemporalFields(temporalTimeLike, « "hour", "microsecond", "millisecond", "minute", "nanosecond", "second" », partial).
+        val partial = prepareTemporalFields(temporalTimeLike, listOf("hour", "microsecond", "millisecond", "minute", "nanosecond", "second"), null)
+
+        // 3. Let result be a new TemporalTimeLike Record with each field set to undefined.
+        val result = TemporalTimeLikeRecord()
+
+        // 4. For each row of Table 4, except the header row, in table order, do
+        fun getValue(propertyName: String): JSValue? {
+            // a. Let field be the Field Name value of the current row.
+            // b. Let propertyName be the Property Name value of the current row.
+
+            // c. Let valueDesc be OrdinaryGetOwnProperty(partial, propertyName).
+            val valueDesc = partial.getOwnPropertyDescriptor(propertyName)
+
+            // d. If valueDesc is not undefined, then
+            return if (valueDesc != null) {
+                // i. Assert: valueDesc is a data Property Descriptor.
+                ecmaAssert(valueDesc.isDataDescriptor)
+
+                // ii. Set the field of result whose name is field to ℝ(valueDesc.[[Value]]).
+                valueDesc.value
+            }
+            // e. Else if completeness is complete, then
+            else if (completeness == "complete") {
+                // i. Set the field of result whose name is field to 0.
+                JSNumber.ZERO
+            } else null
+        }
+
+        (getValue("hour") as? JSNumber)?.also { result.hour = it.number.toInt() }
+        (getValue("minute") as? JSNumber)?.also { result.minute = it.number.toInt() }
+        (getValue("second") as? JSNumber)?.also { result.second = it.number.toInt() }
+        (getValue("millisecond") as? JSNumber)?.also { result.millisecond = it.number.toInt() }
+        (getValue("microsecond") as? JSNumber)?.also { result.microsecond = it.number.toInt() }
+        (getValue("nanosecond") as? JSNumber)?.also { result.nanosecond = it.number.toInt().toBigInteger() }
+
+        // 5. Return result.
+        return result
+    }
+
+
+    @ECMAImpl("4.5.8")
+    data class TemporalTimeLikeRecord(
+        var hour: Int? = null,
+        var minute: Int? = null,
+        var second: Int? = null,
+        var millisecond: Int? = null,
+        var microsecond: Int? = null,
+        var nanosecond: BigInteger? = null,
+    )
+
+    @JvmStatic
+    @ECMAImpl("4.5.9")
+    fun temporalTimeToString(hour_: Int, minute_: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger, precision: String): String {
+        // 1. Assert: hour, minute, second, millisecond, microsecond and nanosecond are integers.
+
+        // 2. Let hour be ToZeroPaddedDecimalString(hour, 2).
+        val hour = hour_.toString().padStart(2, '0')
+
+        // 3. Let minute be ToZeroPaddedDecimalString(minute, 2).
+        val minute = minute_.toString().padStart(2, '0')
+
+        // 4. Let seconds be ! FormatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision).
+        val seconds = formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision)
+
+        // 5. Return the string-concatenation of hour, the code unit 0x003A (COLON), minute, and seconds.
+        return "$hour:$minute$seconds"
+    }
+
+    @JvmStatic
+    @ECMAImpl("4.5.10")
+    fun compareTemporalTime(
+        hour1: Int, minute1: Int, second1: Int, millisecond1: Int, microsecond1: Int, nanosecond1: BigInteger,
+        hour2: Int, minute2: Int, second2: Int, millisecond2: Int, microsecond2: Int, nanosecond2: BigInteger,
+    ): Int {
+        fun <T : Comparable<T>> compare(a: T, b: T) = a.compareTo(b).takeIf { it != 0 }
+
+        // 1. Assert: h1, min1, s1, ms1, mus1, ns1, h2, min2, s2, ms2, mus2, and ns2 are integers.
+        // 2. If h1 > h2, return 1.
+        // 3. If h1 < h2, return -1.
+        compare(hour1, hour2)?.let { return it }
+
+        // 4. If min1 > min2, return 1.
+        // 5. If min1 < min2, return -1.
+        compare(minute1, minute2)?.let { return it }
+
+        // 6. If s1 > s2, return 1.
+        // 7. If s1 < s2, return -1.
+        compare(second1, second2)?.let { return it }
+
+        // 8. If ms1 > ms2, return 1.
+        // 9. If ms1 < ms2, return -1.
+        compare(millisecond1, millisecond2)?.let { return it }
+
+        // 10. If mus1 > mus2, return 1.
+        // 11. If mus1 < mus2, return -1.
+        compare(microsecond1, microsecond2)?.let { return it }
+
+        // 12. If ns1 > ns2, return 1.
+        // 13. If ns1 < ns2, return -1.
+        compare(nanosecond1, nanosecond2)?.let { return it.toInt() }
+
+        // 14. Return 0.
+        return 0
+    }
+
+    @JvmStatic
+    @ECMAImpl("4.5.11")
+    fun addTime(
+        hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger,
+        hours: Int, minutes: Int, seconds: Int, milliseconds: Int, microseconds: Int, nanoseconds: BigInteger,
+    ): TimeDurationRecord {
+        // 1. Assert: hour, minute, second, millisecond, microsecond, nanosecond, hours, minutes, seconds, milliseconds, microseconds, and nanoseconds are integers.
+
+        // 2. Assert: IsValidTime(hour, minute, second, millisecond, microsecond, nanosecond) is true.
+        ecmaAssert(isValidTime(hour, minute, second, millisecond, microsecond, nanosecond))
+
+        // 3. Let hour be hour + hours.
+        // 4. Let minute be minute + minutes.
+        // 5. Let second be second + seconds.
+        // 6. Let millisecond be millisecond + milliseconds.
+        // 7. Let microsecond be microsecond + microseconds.
+        // 8. Let nanosecond be nanosecond + nanoseconds.
+        // 9. Return ! BalanceTime(hour, minute, second, millisecond, microsecond, nanosecond).
+        return balanceTime(
+            hour + hours,
+            minute + minutes,
+            second + seconds,
+            millisecond + milliseconds,
+            microsecond + microseconds,
+            nanosecond + nanoseconds,
+        )
+    }
+
+    @JvmStatic
+    @ECMAImpl("4.5.12")
+    fun roundTime(hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger, increment: Int, unit: String, roundingMode: String, dayLengthNs: BigInteger? = null): TimeDurationRecord {
+        // 1. Assert: hour, minute, second, millisecond, microsecond, nanosecond, and increment are integers.
+
+        // 2. Assert: IsValidTime(hour, minute, second, millisecond, microsecond, nanosecond) is true.
+        ecmaAssert(isValidTime(hour, minute, second, millisecond, microsecond, nanosecond))
+
+        // 3. Let fractionalSecond be nanosecond × 10^-9 + microsecond × 10^-6 + millisecond × 10-^3 + second.
+        val fractionalSecond = (nanosecond * BigInteger.TEN.pow(-9)).toDouble() + microsecond.toDouble() * 10.0.pow(-6) + millisecond.toDouble() * 10.0.pow(-3) + second
+
+        // 4. If unit is "day", then
+        val quantity = if (unit == "day") {
+            // a. If dayLengthNs is not present, set dayLengthNs to nsPerDay.
+            val dayLength = dayLengthNs ?: NS_PER_DAY
+
+            // b. Let quantity be (((((hour × 60 + minute) × 60 + second) × 1000 + millisecond) × 1000 + microsecond) × 1000 + nanosecond) / dayLengthNs.
+            val tmp = (((hour * 60 + minute) * 60 + second) * 1000 + millisecond) * 1000 + microsecond
+            (((tmp.toBigInteger() * BigInteger.valueOf(1000L)) + nanosecond) / dayLength).toDouble()
+        }
+        // 5. Else if unit is "hour", then
+        else if (unit == "hour") {
+            // a. Let quantity be (fractionalSecond / 60 + minute) / 60 + hour.
+            (fractionalSecond / 60.0 + minute) / 60.0 + hour
+        }
+        // 6. Else if unit is "minute", then
+        else if (unit == "minute") {
+            // a. Let quantity be fractionalSecond / 60 + minute.
+            fractionalSecond / 60 + minute
+        }
+        // 7. Else if unit is "second", then
+        else if (unit == "second") {
+            // a. Let quantity be fractionalSecond.
+            fractionalSecond
+        }
+        // 8. Else if unit is "millisecond", then
+        else if (unit == "millisecond") {
+            // a. Let quantity be nanosecond × 10^-6 + microsecond × 10^-3 + millisecond.
+            (nanosecond * BigInteger.TEN.pow(-6)).toDouble() + microsecond * 10.0.pow(-3) + millisecond
+        }
+        // 9. Else if unit is "microsecond", then
+        else if (unit == "microsecond") {
+            // a. Let quantity be nanosecond × 10^-3 + microsecond.
+            (nanosecond * BigInteger.TEN.pow(-3)).toDouble() + microsecond
+        }
+        // 10. Else,
+        else {
+            // a. Assert: unit is "nanosecond".
+            ecmaAssert(unit == "nanosecond")
+
+            // b. Let quantity be nanosecond.
+            nanosecond.toDouble()
+        }
+
+        // 11. Let result be RoundNumberToIncrement(quantity, increment, roundingMode).
+        val result = roundNumberToIncrement(quantity.toInt().toBigInteger(), increment.toBigInteger(), roundingMode)
+
+        // 12. If unit is "day", then
+        if (unit == "day") {
+            // a. Return the Record { [[Days]]: result, [[Hour]]: 0, [[Minute]]: 0, [[Second]]: 0, [[Millisecond]]: 0, [[Microsecond]]: 0, [[Nanosecond]]: 0 }.
+            return TimeDurationRecord(result.toInt(), 0, 0, 0, 0, 0, BigInteger.ZERO)
+        }
+
+        // 13. If unit is "hour", then
+        if (unit == "hour") {
+            // a. Return ! BalanceTime(result, 0, 0, 0, 0, 0).
+            return balanceTime(result.toInt(), 0, 0, 0, 0, BigInteger.ZERO)
+        }
+
+        // 14. If unit is "minute", then
+        if (unit == "minute") {
+            // a. Return ! BalanceTime(hour, result, 0, 0, 0, 0).
+            return balanceTime(hour, result.toInt(), 0, 0, 0, BigInteger.ZERO)
+        }
+
+        // 15. If unit is "second", then
+        if (unit == "second") {
+            // a. Return ! BalanceTime(hour, minute, result, 0, 0, 0).
+            return balanceTime(hour, minute, result.toInt(), 0, 0, BigInteger.ZERO)
+        }
+
+        // 16. If unit is "millisecond", then
+        if (unit == "millisecond") {
+            // a. Return ! BalanceTime(hour, minute, second, result, 0, 0).
+            return balanceTime(hour, minute, second, result.toInt(), 0, BigInteger.ZERO)
+        }
+
+        // 17. If unit is "microsecond", then
+        if (unit == "microsecond") {
+            // a. Return ! BalanceTime(hour, minute, second, millisecond, result, 0).
+            return balanceTime(hour, minute, second, millisecond, result.toInt(), BigInteger.ZERO)
+        }
+
+        // 18. Assert: unit is "nanosecond".
+        // 19. Return ! BalanceTime(hour, minute, second, millisecond, microsecond, result).
+        return balanceTime(hour, minute, second, millisecond, microsecond, result)
+    }
+
+    @JvmStatic
+    @ECMAImpl("4.5.13")
+    fun differenceTemporalPlainTime(isUntil: Boolean, temporalTime: JSObject, other: JSValue, options: JSValue): JSObject {
+        // 1. If operation is since, let sign be -1. Otherwise, let sign be 1.
+        val sign = if (isUntil) 1 else -1
+
+        // 2. Set other to ? ToTemporalTime(other).
+        val other = toTemporalTime(other)
+
+        // 3. Let settings be ? GetDifferenceSettings(operation, options, time, « », "nanosecond", "hour").
+        val settings = getDifferenceSettings(isUntil, options, "time", emptyList(), "nanoseconds", "hour")
+
+        // 4. Let result be ! DifferenceTime(temporalTime.[[ISOHour]], temporalTime.[[ISOMinute]], temporalTime.[[ISOSecond]], temporalTime.[[ISOMillisecond]], temporalTime.[[ISOMicrosecond]], temporalTime.[[ISONanosecond]], other.[[ISOHour]], other.[[ISOMinute]], other.[[ISOSecond]], other.[[ISOMillisecond]], other.[[ISOMicrosecond]], other.[[ISONanosecond]]).
+        var result = differenceTime(
+            temporalTime[Slot.ISOHour], temporalTime[Slot.ISOMinute], temporalTime[Slot.ISOSecond], temporalTime[Slot.ISOMillisecond], temporalTime[Slot.ISOMicrosecond], temporalTime[Slot.ISONanosecond],
+            other[Slot.ISOHour], other[Slot.ISOMinute], other[Slot.ISOSecond], other[Slot.ISOMillisecond], other[Slot.ISOMicrosecond], other[Slot.ISONanosecond],
+        )
+
+        // 5. Set result to (! RoundDuration(0, 0, 0, 0, result.[[Hours]], result.[[Minutes]], result.[[Seconds]], result.[[Milliseconds]], result.[[Microseconds]], result.[[Nanoseconds]], settings.[[RoundingIncrement]], settings.[[SmallestUnit]], settings.[[RoundingMode]])).[[DurationRecord]].
+        result = roundDuration(
+            DurationRecord(
+                0,
+                0,
+                0,
+                0,
+                result.hours,
+                result.minutes,
+                result.seconds,
+                result.milliseconds,
+                result.microseconds,
+                result.nanoseconds,
+            ),
+            settings.roundingIncrement, 
+            settings.smallestUnit,
+            settings.roundingMode,
+        ).duration.toTimeDurationRecord()
+
+        // 6. Set result to ! BalanceDuration(0, result.[[Hours]], result.[[Minutes]], result.[[Seconds]], result.[[Milliseconds]], result.[[Microseconds]], result.[[Nanoseconds]], settings.[[LargestUnit]]).
+        result = balanceDuration(0, result.hours, result.minutes, result.seconds, result.milliseconds, result.microseconds, result.nanoseconds, settings.largestUnit)
+
+        // 7. Return ! CreateTemporalDuration(0, 0, 0, 0, sign × result.[[Hours]], sign × result.[[Minutes]], sign × result.[[Seconds]], sign × result.[[Milliseconds]], sign × result.[[Microseconds]], sign × result.[[Nanoseconds]]).
+        return createTemporalDuration(DurationRecord(0, 0, 0, 0, sign * result.hours, sign * result.minutes, sign * result.seconds, sign * result.milliseconds, sign * result.microseconds, sign.toBigInteger() * result.nanoseconds))
+    }
+
+    @JvmStatic
+    @ECMAImpl("4.5.14")
+    fun addDurationToOrSubtractDurationFromPlainTime(isAdd: Boolean, temporalTime: JSObject, temporalDurationLike: JSValue): JSObject {
+        // 1. If operation is subtract, let sign be -1. Otherwise, let sign be 1.
+        val sign = if (isAdd) 1 else -1
+
+        // 2. Let duration be ? ToTemporalDurationRecord(temporalDurationLike).
+        val duration = toTemporalDurationRecord(temporalDurationLike)
+
+        // 3. Let result be ! AddTime(temporalTime.[[ISOHour]], temporalTime.[[ISOMinute]], temporalTime.[[ISOSecond]], temporalTime.[[ISOMillisecond]], temporalTime.[[ISOMicrosecond]], temporalTime.[[ISONanosecond]], sign × duration.[[Hours]], sign × duration.[[Minutes]], sign × duration.[[Seconds]], sign × duration.[[Milliseconds]], sign × duration.[[Microseconds]], sign × duration.[[Nanoseconds]]).
+        val result = addTime(
+            temporalTime[Slot.ISOHour], temporalTime[Slot.ISOMinute], temporalTime[Slot.ISOSecond], temporalTime[Slot.ISOMillisecond], temporalTime[Slot.ISOMicrosecond], temporalTime[Slot.ISONanosecond],
+            sign * duration.hours, sign * duration.minutes, sign * duration.seconds, sign * duration.milliseconds, sign * duration.microseconds, sign.toBigInteger() * duration.nanoseconds,
+        )
+
+        // 4. Assert: IsValidTime(result.[[Hour]], result.[[Minute]], result.[[Second]], result.[[Millisecond]], result.[[Microsecond]], result.[[Nanosecond]]) is true.
+        ecmaAssert(isValidTime(result.hours, result.minutes, result.seconds, result.milliseconds, result.microseconds, result.nanoseconds))
+
+        // 5. Return ! CreateTemporalTime(result.[[Hour]], result.[[Minute]], result.[[Second]], result.[[Millisecond]], result.[[Microsecond]], result.[[Nanosecond]]).
+        return createTemporalTime(result.hours, result.minutes, result.seconds, result.milliseconds, result.microseconds, result.nanoseconds)
     }
 
     @JvmStatic
@@ -2847,7 +3464,7 @@ object TemporalAOs {
             Errors.TODO("calendarYear").throwRangeError()
 
         // 4. Return ? ToIntegerThrowOnInfinity(result).
-        return toIntegerThrowOnInfinity(result)
+        return toIntegerThrowOnInfinity(result).toValue()
     }
 
     @JvmStatic
@@ -4148,6 +4765,46 @@ object TemporalAOs {
     }
 
     @JvmStatic
+    @ECMAImpl("13.21")
+    fun formatSecondsStringPart(second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger, precision: Any /* String | Int */): String {
+        // 1. Assert: second, millisecond, microsecond, and nanosecond are integers.
+
+        // 2. If precision is "minute", return "".
+        if (precision == "minute")
+            return ""
+
+        // 3. Let secondsString be the string-concatenation of the code unit 0x003A (COLON) and ToZeroPaddedDecimalString(second, 2).
+        val secondsString = ":" + second.toString().padStart(2, '0')
+
+        // 4. Let fraction be millisecond × 10^6 + microsecond × 10^3 + nanosecond.
+        var fraction = millisecond * 1_000_000 + microsecond * 1_000L + nanosecond.toInt()
+
+        // 5. If precision is "auto", then
+        val fractionStr = if (precision == "auto") {
+            // a. If fraction is 0, return secondsString.
+            if (fraction == 0L)
+                return secondsString
+
+            // b. Set fraction to ToZeroPaddedDecimalString(fraction, 9).
+            // c. Set fraction to the longest possible substring of fraction starting at position 0 and not ending with the code unit 0x0030 (DIGIT ZERO).
+            fraction.toString().padStart(9, '0').dropLastWhile { it == '0' }
+        }
+        // 6. Else,
+        else {
+            // a. If precision is 0, return secondsString.
+            if (precision == 0)
+                return secondsString
+
+            // b. Set fraction to ToZeroPaddedDecimalString(fraction, 9).
+            // c. Set fraction to the substring of fraction from 0 to precision.
+            fraction.toString().padStart(9, '0').substring(0, precision as Int)
+        }
+
+        // 7. Return the string-concatenation of secondsString, the code unit 0x002E (FULL STOP), and fraction.
+        return "$secondsString.$fraction"
+    }
+
+    @JvmStatic
     @ECMAImpl("13.22")
     fun roundTowardsZero(x: BigDecimal): BigInteger {
         // 1. Return the mathematical value that is the same sign as x and whose magnitude is floor(abs(x)).
@@ -4623,6 +5280,21 @@ object TemporalAOs {
         // 2. Return ? ParseISODateTime(isoString).
         return parseISODateTime(isoString)
     }
+
+    @JvmStatic
+    @ECMAImpl("13.37")
+    fun parseTemporalTimeString(isoString: String): ParsedISODateTime {
+        // 1. Let parseResult be ParseText(StringToCodePoints(isoString), TemporalTimeString).
+        // 2. If parseResult is a List of errors, throw a RangeError exception.
+        // 3. If parseResult contains a UTCDesignator Parse Node, throw a RangeError exception.
+        // 4. Let result be ? ParseISODateTime(isoString).
+        // 5. Return the Record { [[Hour]]: result.[[Hour]], [[Minute]]: result.[[Minute]], [[Second]]: result.[[Second]], [[Millisecond]]: result.[[Millisecond]], [[Microsecond]]: result.[[Microsecond]], [[Nanosecond]]: result.[[Nanosecond]], [[Calendar]]: result.[[Calendar]] }.
+        val result = parseISODateTime(isoString)
+        if (result.z)
+            Errors.TODO("parseTemporalDateTimeString").throwRangeError()
+        return result
+    }
+
     @JvmStatic
     @ECMAImpl("13.40")
     fun toPositiveInteger(argument: JSValue): JSNumber {
@@ -4630,18 +5302,18 @@ object TemporalAOs {
         val integer = toIntegerThrowOnInfinity(argument)
 
         // 2. If integer ≤ 0, then
-        if (integer.number <= 0) {
+        if (integer <= 0) {
             // a. Throw a RangeError exception.
             Errors.TODO("toPositiveInteger").throwRangeError()
         }
 
         // 3. Return integer.
-        return integer
+        return integer.toValue()
     }
 
     @JvmStatic
     @ECMAImpl("13.41")
-    fun toIntegerThrowOnInfinity(argument: JSValue): JSNumber {
+    fun toIntegerThrowOnInfinity(argument: JSValue): Int {
         // 1. Let integer be ? ToIntegerOrInfinity(argument).
         val integer = argument.toIntegerOrInfinity()
 
@@ -4652,7 +5324,7 @@ object TemporalAOs {
         }
 
         // 3. Return integer.
-        return integer
+        return integer.number.toInt()
     }
 
     @JvmStatic
@@ -4675,7 +5347,7 @@ object TemporalAOs {
 
     @JvmStatic
     @ECMAImpl("13.43")
-    fun prepareTemporalFields(fields: JSObject, fieldNames: List<String>, requiredFields: Set<String>?): JSObject {
+    fun prepareTemporalFields(fields: JSObject, fieldNames: List<String>, requiredFields: Set<String>? /* null = partial */): JSObject {
         // 1. Let result be OrdinaryObjectCreate(null).
         val result = JSObject.create()
 
@@ -4702,7 +5374,7 @@ object TemporalAOs {
                     if (conversion == "ToIntegerThrowOnInfinity") {
                         // a. Set value to ? ToIntegerThrowOnInfinity(value).
                         // b. Set value to 𝔽(value).
-                        toIntegerThrowOnInfinity(value)
+                        toIntegerThrowOnInfinity(value).toValue()
                     }
                     // 3. Else if Conversion is ToPositiveInteger, then
                     else if (conversion == "ToPositiveInteger") {
@@ -4846,8 +5518,13 @@ object TemporalAOs {
         var seconds: Int,
         var milliseconds: Int,
         var microseconds: Int,
-        var nanoseconds: BigInteger, // TODO: This should be an Int according to the spec
-    )
+        var nanoseconds: BigInteger,
+    ) {
+        fun toTimeDurationRecord(): TimeDurationRecord {
+            expect(years == 0 && months == 0 && weeks == 0)
+            return TimeDurationRecord(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)
+        }
+    }
 
     data class DateDurationRecord(
         val years: Int,
