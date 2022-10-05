@@ -1155,12 +1155,12 @@ object TemporalAOs {
 
     @JvmStatic
     @ECMAImpl("4.5.13")
-    fun differenceTemporalPlainTime(isUntil: Boolean, temporalTime: JSObject, other: JSValue, options: JSValue): JSObject {
+    fun differenceTemporalPlainTime(isUntil: Boolean, temporalTime: JSObject, other_: JSValue, options: JSValue): JSObject {
         // 1. If operation is since, let sign be -1. Otherwise, let sign be 1.
         val sign = if (isUntil) 1 else -1
 
         // 2. Set other to ? ToTemporalTime(other).
-        val other = toTemporalTime(other)
+        val other = toTemporalTime(other_)
 
         // 3. Let settings be ? GetDifferenceSettings(operation, options, time, « », "nanosecond", "hour").
         val settings = getDifferenceSettings(isUntil, options, "time", emptyList(), "nanoseconds", "hour")
@@ -1253,19 +1253,512 @@ object TemporalAOs {
     @JvmStatic
     @ECMAImpl("5.5.2")
     fun isoDateTimeWithinLimits(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger): Boolean {
-        TODO()
+        // 1. Assert: IsValidISODate(year, month, day) is true.
+        ecmaAssert(isValidISODate(year, month, day))
+
+        // 2. Let ns be ℝ(GetEpochFromISOParts(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond)).
+        val ns = getEpochFromISOParts(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond)
+
+        // 3. If ns ≤ nsMinInstant - nsPerDay, then
+        if (ns <= NS_MIN_INSTANT - NS_PER_DAY) {
+            // a. Return false.
+            return false
+        }
+
+        // 4. If ns ≥ nsMaxInstant + nsPerDay, then
+        if (ns >= NS_MAX_INSTANT + NS_PER_DAY) {
+            // a. Return false.
+            return false
+        }
+
+        // 5. Return true.
+        return true
     }
 
     @JvmStatic
     @ECMAImpl("5.5.3")
-    fun interpretTemporalDateTimeFields(calendar: JSObject, fields: JSObject, options: JSObject): DateTimeRecord {
-        TODO()
+    fun interpretTemporalDateTimeFields(calendar: JSObject, fields: JSObject, options: JSObject?): DateTimeRecord {
+        // 1. Let timeResult be ? ToTemporalTimeRecord(fields).
+        val timeResult = toTemporalTimeRecord(fields)
+
+        // 2. Let overflow be ? ToTemporalOverflow(options).
+        val overflow = toTemporalOverflow(options)
+
+        // 3. Let temporalDate be ? CalendarDateFromFields(calendar, fields, options).
+        val temporalDate = calendarDateFromFields(calendar, fields, options)
+
+        // 4. Let timeResult be ? RegulateTime(timeResult.[[Hour]], timeResult.[[Minute]], timeResult.[[Second]], timeResult.[[Millisecond]], timeResult.[[Microsecond]], timeResult.[[Nanosecond]], overflow).
+        val timeResult2 = regulateTime(
+            timeResult.hour!!, timeResult.minute!!, timeResult.second!!, timeResult.millisecond!!, timeResult.microsecond!!, timeResult.nanosecond!!, overflow,
+        )
+
+        // 5. Return the Record { [[Year]]: temporalDate.[[ISOYear]], [[Month]]: temporalDate.[[ISOMonth]], [[Day]]: temporalDate.[[ISODay]], [[Hour]]: timeResult.[[Hour]], [[Minute]]: timeResult.[[Minute]], [[Second]]: timeResult.[[Second]], [[Millisecond]]: timeResult.[[Millisecond]], [[Microsecond]]: timeResult.[[Microsecond]], [[Nanosecond]]: timeResult.[[Nanosecond]] }.
+        return DateTimeRecord(
+            temporalDate[Slot.ISOYear],
+            temporalDate[Slot.ISOMonth],
+            temporalDate[Slot.ISODay],
+            timeResult2.hours,
+            timeResult2.minutes,
+            timeResult2.seconds,
+            timeResult2.milliseconds,
+            timeResult2.microseconds,
+            timeResult2.nanoseconds,
+        )
+    }
+
+    @JvmStatic
+    @ECMAImpl("5.5.4")
+    fun toTemporalDateTime(item: JSValue, options: JSObject? = null): JSObject {
+        // 1. If options is not present, set options to undefined.
+        // 2. Assert: Type(options) is Object or Undefined.
+
+        var calendar: JSObject
+
+        // 3. If Type(item) is Object, then
+        val result = if (item is JSObject) {
+            // a. If item has an [[InitializedTemporalDateTime]] internal slot, then
+            if (Slot.InitializedTemporalDateTime in item) {
+                // i. Return item.
+                return item
+            }
+
+            // b. If item has an [[InitializedTemporalZonedDateTime]] internal slot, then
+            if (Slot.InitializedTemporalZonedDateTime in item) {
+                // i. Perform ? ToTemporalOverflow(options).
+                toTemporalOverflow(options)
+
+                // ii. Let instant be ! CreateTemporalInstant(item.[[Nanoseconds]]).
+                val instant = createTemporalInstant(item[Slot.Nanoseconds])
+
+                // iii. Return ? BuiltinTimeZoneGetPlainDateTimeFor(item.[[TimeZone]], instant, item.[[Calendar]]).
+                return builtinTimeZoneGetPlainDateTimeFor(item[Slot.TimeZone], instant, item[Slot.Calendar])
+            }
+
+            // c. If item has an [[InitializedTemporalDate]] internal slot, then
+            if (Slot.InitializedTemporalDate in item) {
+                // i. Perform ? ToTemporalOverflow(options).
+                toTemporalOverflow(options)
+
+                // ii. Return ? CreateTemporalDateTime(item.[[ISOYear]], item.[[ISOMonth]], item.[[ISODay]], 0, 0, 0, 0, 0, 0, item.[[Calendar]]).
+                return createTemporalDateTime(item[Slot.ISOYear], item[Slot.ISOMonth], item[Slot.ISODay], 0, 0, 0, 0, 0, BigInteger.ZERO, item[Slot.Calendar])
+            }
+
+            // d. Let calendar be ? GetTemporalCalendarWithISODefault(item).
+            calendar = getTemporalCalendarWithISODefault(item)
+
+            // e. Let fieldNames be ? CalendarFields(calendar, « "day", "hour", "microsecond", "millisecond", "minute", "month", "monthCode", "nanosecond", "second", "year" »).
+            val fieldNames = calendarFields(calendar, listOf("day", "hour", "microsecond", "millisecond", "minute", "month", "monthCode", "nanosecond", "second", "year"))
+
+            // f. Let fields be ? PrepareTemporalFields(item, fieldNames, «»).
+            val fields = prepareTemporalFields(item, fieldNames, emptySet())
+
+            // g. Let result be ? InterpretTemporalDateTimeFields(calendar, fields, options).
+            interpretTemporalDateTimeFields(calendar, fields, options)
+        }
+        // 4. Else,
+        else {
+            // a. Perform ? ToTemporalOverflow(options).
+            toTemporalOverflow(options)
+
+            // b. Let string be ? ToString(item).
+            val string = item.toJSString().string
+
+            // c. Let result be ? ParseTemporalDateTimeString(string).
+            val result = parseTemporalDateTimeString(string)
+
+            // d. Assert: IsValidISODate(result.[[Year]], result.[[Month]], result.[[Day]]) is true.
+            ecmaAssert(isValidISODate(result.year, result.month, result.day))
+
+            // e. Assert: IsValidTime(result.[[Hour]], result.[[Minute]], result.[[Second]], result.[[Millisecond]], result.[[Microsecond]], result.[[Nanosecond]]) is true.
+            ecmaAssert(isValidTime(result.hour, result.minute, result.second, result.millisecond, result.microsecond, result.nanosecond))
+
+            // f. Let calendar be ? ToTemporalCalendarWithISODefault(result.[[Calendar]]).
+            calendar = toTemporalCalendarWithISODefault(result.calendar?.toValue() ?: JSUndefined)
+
+            result.toDateTime()
+        }
+
+        // 5. Return ? CreateTemporalDateTime(result.[[Year]], result.[[Month]], result.[[Day]], result.[[Hour]], result.[[Minute]], result.[[Second]], result.[[Millisecond]], result.[[Microsecond]], result.[[Nanosecond]], calendar).
+        return createTemporalDateTime(result.year, result.month, result.day, result.hour, result.minute, result.second, result.millisecond, result.microsecond, result.nanosecond, calendar)
+    }
+
+    @JvmStatic
+    @ECMAImpl("5.5.5")
+    fun balanceISODateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger): DateTimeRecord {
+        // 1. Assert: year, month, day, hour, minute, second, millisecond, microsecond, and nanosecond are integers.
+
+        // 2. Let balancedTime be ! BalanceTime(hour, minute, second, millisecond, microsecond, nanosecond).
+        val balancedTime = balanceTime(hour, minute, second, millisecond, microsecond, nanosecond)
+
+        // 3. Let balancedDate be BalanceISODate(year, month, day + balancedTime.[[Days]]).
+        val balancedDate = balanceISODate(year, month, day + balancedTime.days)
+
+        // 4. Return the Record { [[Year]]: balancedDate.[[Year]], [[Month]]: balancedDate.[[Month]], [[Day]]: balancedDate.[[Day]], [[Hour]]: balancedTime.[[Hour]], [[Minute]]: balancedTime.[[Minute]], [[Second]]: balancedTime.[[Second]], [[Millisecond]]: balancedTime.[[Millisecond]], [[Microsecond]]: balancedTime.[[Microsecond]], [[Nanosecond]]: balancedTime.[[Nanosecond]] }.
+        return DateTimeRecord(
+            balancedDate.year,
+            balancedDate.month,
+            balancedDate.day,
+            balancedTime.hours,
+            balancedTime.minutes,
+            balancedTime.seconds,
+            balancedTime.milliseconds,
+            balancedTime.microseconds,
+            balancedTime.nanoseconds,
+        )
     }
 
     @JvmStatic
     @ECMAImpl("5.5.6")
-    fun createTemporalDateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger, calendar: JSObject, newTarget: JSValue? = null): JSObject {
-        TODO()
+    fun createTemporalDateTime(isoYear: Int, isoMonth: Int, isoDay: Int, hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger, calendar: JSObject, newTarget: JSValue? = null): JSObject {
+        // 1. Assert: isoYear, isoMonth, isoDay, hour, minute, second, millisecond, microsecond, and nanosecond are integers.
+        // 2. Assert: Type(calendar) is Object.
+
+        // 3. If IsValidISODate(isoYear, isoMonth, isoDay) is false, throw a RangeError exception.
+        if (!isValidISODate(isoYear, isoMonth, isoDay))
+            Errors.TODO("createTemporalDateTime 1").throwRangeError()
+
+        // 4. If IsValidTime(hour, minute, second, millisecond, microsecond, nanosecond) is false, throw a RangeError exception.
+        if (!isValidTime(hour, minute, second, millisecond, microsecond, nanosecond))
+            Errors.TODO("createTemporalDateTime 2").throwRangeError()
+
+        // 5. If ISODateTimeWithinLimits(isoYear, isoMonth, isoDay, hour, minute, second, millisecond, microsecond, nanosecond) is false, then
+        if (!isoDateTimeWithinLimits(isoYear, isoMonth, isoDay, hour, minute, second, millisecond, microsecond, nanosecond)) {
+            // a. Throw a RangeError exception.
+            Errors.TODO("createTemporalDateTime 3").throwRangeError()
+        }
+
+        // 6. If newTarget is not present, set newTarget to %Temporal.PlainDateTime%.
+        // 7. Let object be ? OrdinaryCreateFromConstructor(newTarget, "%Temporal.PlainDateTime.prototype%", « [[InitializedTemporalDateTime]], [[ISOYear]], [[ISOMonth]], [[ISODay]], [[ISOHour]], [[ISOMinute]], [[ISOSecond]], [[ISOMillisecond]], [[ISOMicrosecond]], [[ISONanosecond]], [[Calendar]] »).
+        val obj = AOs.ordinaryCreateFromConstructor(
+            newTarget ?: realm.plainDateTimeCtor,
+            listOf(Slot.InitializedTemporalDateTime),
+            defaultProto = Realm::plainDateTimeProto,
+        )
+
+        // 8. Set object.[[ISOYear]] to isoYear.
+        obj[Slot.ISOYear] = isoYear
+
+        // 9. Set object.[[ISOMonth]] to isoMonth.
+        obj[Slot.ISOMonth] = isoMonth
+
+        // 10. Set object.[[ISODay]] to isoDay.
+        obj[Slot.ISODay] = isoDay
+
+        // 11. Set object.[[ISOHour]] to hour.
+        obj[Slot.ISOHour] = hour
+
+        // 12. Set object.[[ISOMinute]] to minute.
+        obj[Slot.ISOMinute] = minute
+
+        // 13. Set object.[[ISOSecond]] to second.
+        obj[Slot.ISOSecond] = second
+
+        // 14. Set object.[[ISOMillisecond]] to millisecond.
+        obj[Slot.ISOMillisecond] = millisecond
+
+        // 15. Set object.[[ISOMicrosecond]] to microsecond.
+        obj[Slot.ISOMicrosecond] = microsecond
+
+        // 16. Set object.[[ISONanosecond]] to nanosecond.
+        obj[Slot.ISONanosecond] = nanosecond
+
+        // 17. Set object.[[Calendar]] to calendar.
+        obj[Slot.Calendar] = calendar
+
+        // 18. Return object.
+        return obj
+    }
+
+    @JvmStatic
+    @ECMAImpl("5.5.7")
+    fun temporalDateTimeToString(isoYear: Int, isoMonth: Int, isoDay: Int, hour_: Int, minute_: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger, calendar: JSObject, precision: String, showCalendar: String): String {
+        // 1. Assert: isoYear, isoMonth, isoDay, hour, minute, second, millisecond, microsecond, and nanosecond are integers.
+
+        // 2. Let year be ! PadISOYear(isoYear).
+        val year = padISOYear(isoYear)
+
+        // 3. Let month be ToZeroPaddedDecimalString(isoMonth, 2).
+        val month = isoMonth.toString().padStart(2, '0')
+
+        // 4. Let day be ToZeroPaddedDecimalString(isoDay, 2).
+        val day = isoDay.toString().padStart(2, '0')
+
+        // 5. Let hour be ToZeroPaddedDecimalString(hour, 2).
+        val hour = hour_.toString().padStart(2, '0')
+
+        // 6. Let minute be ToZeroPaddedDecimalString(minute, 2).
+        val minute = minute_.toString().padStart(2, '0')
+
+        // 7. Let seconds be ! FormatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision).
+        val seconds = formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision)
+
+        // 8. Let calendarString be ? MaybeFormatCalendarAnnotation(calendar, showCalendar).
+        val calendarString = maybeFormatCalendarAnnotation(calendar, showCalendar)
+
+        // 9. Return the string-concatenation of year, the code unit 0x002D (HYPHEN-MINUS), month, the code unit 0x002D (HYPHEN-MINUS), day, 0x0054 (LATIN CAPITAL LETTER T), hour, the code unit 0x003A (COLON), minute, seconds, and calendarString.
+        return "$year-$month-${day}T$hour:$minute$seconds$calendarString"
+    }
+
+    @JvmStatic
+    @ECMAImpl("5.5.8")
+    fun compareISODateTime(
+        year1: Int, month1: Int, day1: Int, hour1: Int, minute1: Int, second1: Int, millisecond1: Int, microsecond1: Int, nanosecond1: BigInteger,
+        year2: Int, month2: Int, day2: Int, hour2: Int, minute2: Int, second2: Int, millisecond2: Int, microsecond2: Int, nanosecond2: BigInteger,
+    ): Int {
+        // 1. Assert: y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1, y2, mon2, d2, h2, min2, s2, ms2, mus2, and ns2 are integers.
+
+        // 2. Let dateResult be ! CompareISODate(y1, mon1, d1, y2, mon2, d2).
+        val dateResult = compareISODate(year1, month1, day1, year2, month2, day2)
+
+        // 3. If dateResult is not 0, then
+        if (dateResult != 0) {
+            // a. Return dateResult.
+            return dateResult
+        }
+
+        // 4. Return ! CompareTemporalTime(h1, min1, s1, ms1, mus1, ns1, h2, min2, s2, ms2, mus2, ns2).
+        return compareTemporalTime(
+            hour1, minute1, second1, millisecond1, microsecond1, nanosecond1,
+            hour2, minute2, second2, millisecond2, microsecond2, nanosecond2,
+        )
+    }
+
+    @JvmStatic
+    @ECMAImpl("5.5.9")
+    fun addDateTime(
+        year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger,
+        calendar: JSObject,
+        years: Int, months: Int, weeks: Int, days: Int, hours: Int, minutes: Int, seconds: Int, milliseconds: Int, microseconds: Int, nanoseconds: BigInteger,
+        options: JSObject?,
+    ): DateTimeRecord {
+        // 1. Assert: ISODateTimeWithinLimits(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond) is true.
+        ecmaAssert(isoDateTimeWithinLimits(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond))
+
+        // 2. Let timeResult be ! AddTime(hour, minute, second, millisecond, microsecond, nanosecond, hours, minutes, seconds, milliseconds, microseconds, nanoseconds).
+        val timeResult = addTime(
+            hour, minute, second, millisecond, microsecond, nanosecond,
+            hours, minutes, seconds, milliseconds, microseconds, nanoseconds,
+        )
+
+        // 3. Let datePart be ! CreateTemporalDate(year, month, day, calendar).
+        val datePart = createTemporalDate(year, month, day, calendar)
+
+        // 4. Let dateDuration be ? CreateTemporalDuration(years, months, weeks, days + timeResult.[[Days]], 0, 0, 0, 0, 0, 0).
+        val dateDuration = createTemporalDuration(DurationRecord(years, months, weeks, days + timeResult.days, 0, 0, 0, 0, 0, BigInteger.ZERO))
+
+        // 5. Let addedDate be ? CalendarDateAdd(calendar, datePart, dateDuration, options).
+        val addedDate = calendarDateAdd(calendar, datePart, dateDuration, options)
+
+        // 6. Return the Record { [[Year]]: addedDate.[[ISOYear]], [[Month]]: addedDate.[[ISOMonth]], [[Day]]: addedDate.[[ISODay]], [[Hour]]: timeResult.[[Hour]], [[Minute]]: timeResult.[[Minute]], [[Second]]: timeResult.[[Second]], [[Millisecond]]: timeResult.[[Millisecond]], [[Microsecond]]: timeResult.[[Microsecond]], [[Nanosecond]]: timeResult.[[Nanosecond]] }.
+        return DateTimeRecord(
+            addedDate[Slot.ISOYear],
+            addedDate[Slot.ISOMonth],
+            addedDate[Slot.ISODay],
+            timeResult.hours,
+            timeResult.minutes,
+            timeResult.seconds,
+            timeResult.milliseconds,
+            timeResult.microseconds,
+            timeResult.nanoseconds,
+        )
+    }
+
+    @JvmStatic
+    @ECMAImpl("5.5.10")
+    fun roundISODateTime(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger, increment: Int, unit: String, roundingMode: String, dayLength: BigInteger = NS_PER_DAY): DateTimeRecord {
+        // 1. Assert: year, month, day, hour, minute, second, millisecond, microsecond, and nanosecond are integers.
+
+        // 2. Assert: ISODateTimeWithinLimits(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond) is true.
+        ecmaAssert(isoDateTimeWithinLimits(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond))
+
+        // 3. If dayLength is not present, set dayLength to nsPerDay.
+
+        // 4. Let roundedTime be ! RoundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength).
+        val roundedTime = roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength)
+
+        // 5. Let balanceResult be BalanceISODate(year, month, day + roundedTime.[[Days]]).
+        val balanceResult = balanceISODate(year, month, day + roundedTime.days)
+
+        // 6. Return the Record { [[Year]]: balanceResult.[[Year]], [[Month]]: balanceResult.[[Month]], [[Day]]: balanceResult.[[Day]], [[Hour]]: roundedTime.[[Hour]], [[Minute]]: roundedTime.[[Minute]], [[Second]]: roundedTime.[[Second]], [[Millisecond]]: roundedTime.[[Millisecond]], [[Microsecond]]: roundedTime.[[Microsecond]], [[Nanosecond]]: roundedTime.[[Nanosecond]] }.
+        return DateTimeRecord(
+            balanceResult.year,
+            balanceResult.month,
+            balanceResult.day,
+            roundedTime.hours,
+            roundedTime.minutes,
+            roundedTime.seconds,
+            roundedTime.milliseconds,
+            roundedTime.microseconds,
+            roundedTime.nanoseconds,
+        )
+    }
+
+    @JvmStatic
+    @ECMAImpl("5.5.11")
+    fun differenceISODateTime(
+        year1: Int, month1: Int, day1: Int, hour1: Int, minute1: Int, second1: Int, millisecond1: Int, microsecond1: Int, nanosecond1: BigInteger,
+        year2: Int, month2: Int, day2: Int, hour2: Int, minute2: Int, second2: Int, millisecond2: Int, microsecond2: Int, nanosecond2: BigInteger,
+        calendar: JSObject, largestUnit: String, options: JSObject,
+    ): DurationRecord {
+        // 1. Assert: ISODateTimeWithinLimits(y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1) is true.
+        ecmaAssert(isoDateTimeWithinLimits(year1, month1, day1, hour1, minute1, second1, millisecond1, microsecond1, nanosecond1))
+
+        // 2. Assert: ISODateTimeWithinLimits(y2, mon2, d2, h2, min2, s2, ms2, mus2, ns2) is true.
+        ecmaAssert(isoDateTimeWithinLimits(year2, month2, day2, hour2, minute2, second2, millisecond2, microsecond2, nanosecond2))
+
+        // 3. Let timeDifference be ! DifferenceTime(h1, min1, s1, ms1, mus1, ns1, h2, min2, s2, ms2, mus2, ns2).
+        var timeDifference = differenceTime(hour1, minute1, second1, millisecond1, microsecond1, nanosecond1, hour2, minute2, second2, millisecond2, microsecond2, nanosecond2)
+
+        // 4. Let timeSign be ! DurationSign(0, 0, 0, 0, timeDifference.[[Hours]], timeDifference.[[Minutes]], timeDifference.[[Seconds]], timeDifference.[[Milliseconds]], timeDifference.[[Microseconds]], timeDifference.[[Nanoseconds]]).
+        val timeSign = durationSign(DurationRecord(0, 0, 0, 0, timeDifference.hours, timeDifference.minutes, timeDifference.seconds, timeDifference.milliseconds, timeDifference.microseconds, timeDifference.nanoseconds))
+
+        // 5. Let dateSign be ! CompareISODate(y2, mon2, d2, y1, mon1, d1).
+        val dateSign = compareISODate(year2, month2, day1, year1, month1, day1)
+
+        // 6. Let adjustedDate be CreateISODateRecord(y1, mon1, d1).
+        var adjustedDate = createISODateRecord(year1, month1, day1)
+
+        // 7. If timeSign is -dateSign, then
+        if (timeSign == -dateSign) {
+            // a. Set adjustedDate to BalanceISODate(adjustedDate.[[Year]], adjustedDate.[[Month]], adjustedDate.[[Day]] - timeSign).
+            adjustedDate = balanceISODate(adjustedDate.year, adjustedDate.month, adjustedDate.day - timeSign)
+
+            // b. Set timeDifference to ! BalanceDuration(-timeSign, timeDifference.[[Hours]], timeDifference.[[Minutes]], timeDifference.[[Seconds]], timeDifference.[[Milliseconds]], timeDifference.[[Microseconds]], timeDifference.[[Nanoseconds]], largestUnit).
+            timeDifference = balanceDuration(-timeSign, timeDifference.hours, timeDifference.minutes, timeDifference.seconds, timeDifference.milliseconds, timeDifference.microseconds, timeDifference.nanoseconds, largestUnit)
+        }
+
+        // 8. Let date1 be ! CreateTemporalDate(adjustedDate.[[Year]], adjustedDate.[[Month]], adjustedDate.[[Day]], calendar).
+        val date1 = createTemporalDate(adjustedDate.year, adjustedDate.month, adjustedDate.day, calendar)
+
+        // 9. Let date2 be ! CreateTemporalDate(y2, mon2, d2, calendar).
+        val date2 = createTemporalDate(year2, month2, day2, calendar)
+
+        // 10. Let dateLargestUnit be ! LargerOfTwoTemporalUnits("day", largestUnit).
+        val dateLargestUnit = largerOfTwoTemporalUnits("day", largestUnit)
+
+        // 11. Let untilOptions be ? MergeLargestUnitOption(options, dateLargestUnit).
+        val untilOptions = mergeLargestUnitOption(options, dateLargestUnit)
+
+        // 12. Let dateDifference be ? CalendarDateUntil(calendar, date1, date2, untilOptions).
+        val dateDifference = calendarDateUntil(calendar, date1, date2, untilOptions)
+
+        // 13. Let balanceResult be ? BalanceDuration(dateDifference.[[Days]], timeDifference.[[Hours]], timeDifference.[[Minutes]], timeDifference.[[Seconds]], timeDifference.[[Milliseconds]], timeDifference.[[Microseconds]], timeDifference.[[Nanoseconds]], largestUnit).
+        val balanceResult = balanceDuration(dateDifference[Slot.Days], timeDifference.hours, timeDifference.minutes, timeDifference.seconds, timeDifference.milliseconds, timeDifference.microseconds, timeDifference.nanoseconds, largestUnit)
+
+        // 14. Return ! CreateDurationRecord(dateDifference.[[Years]], dateDifference.[[Months]], dateDifference.[[Weeks]], balanceResult.[[Days]], balanceResult.[[Hours]], balanceResult.[[Minutes]], balanceResult.[[Seconds]], balanceResult.[[Milliseconds]], balanceResult.[[Microseconds]], balanceResult.[[Nanoseconds]]).
+        return createDurationRecord(dateDifference[Slot.Years], dateDifference[Slot.Months], dateDifference[Slot.Weeks], balanceResult.days, balanceResult.hours, balanceResult.minutes, balanceResult.seconds, balanceResult.milliseconds, balanceResult.microseconds, balanceResult.nanoseconds)
+    }
+
+    @JvmStatic
+    @ECMAImpl("5.5.12")
+    fun differenceTemporalPlainDateTime(isUntil: Boolean, dateTime: JSObject, other_: JSValue, options: JSValue): JSObject {
+        // 1. If operation is since, let sign be -1. Otherwise, let sign be 1.
+        val sign = if (isUntil) 1 else -1
+
+        // 2. Set other to ? ToTemporalDateTime(other).
+        val other = toTemporalDateTime(other_)
+
+        // 3. If ? CalendarEquals(dateTime.[[Calendar]], other.[[Calendar]]) is false, throw a RangeError exception.
+        if (!calendarEquals(dateTime[Slot.Calendar], other[Slot.Calendar]))
+            Errors.TODO("differenceTemporalPlainDateTime").throwRangeError()
+
+        // 4. Let settings be ? GetDifferenceSettings(operation, options, datetime, « », "nanosecond", "day").
+        val settings = getDifferenceSettings(isUntil, options, "datetime", emptyList(), "nanosecond", "day")
+
+        // 5. Let diff be ? DifferenceISODateTime(dateTime.[[ISOYear]], dateTime.[[ISOMonth]], dateTime.[[ISODay]], dateTime.[[ISOHour]], dateTime.[[ISOMinute]], dateTime.[[ISOSecond]], dateTime.[[ISOMillisecond]], dateTime.[[ISOMicrosecond]], dateTime.[[ISONanosecond]], other.[[ISOYear]], other.[[ISOMonth]], other.[[ISODay]], other.[[ISOHour]], other.[[ISOMinute]], other.[[ISOSecond]], other.[[ISOMillisecond]], other.[[ISOMicrosecond]], other.[[ISONanosecond]], dateTime.[[Calendar]], settings.[[LargestUnit]], settings.[[Options]]).
+        val diff = differenceISODateTime(
+            dateTime[Slot.ISOYear],
+            dateTime[Slot.ISOMonth],
+            dateTime[Slot.ISODay],
+            dateTime[Slot.ISOHour],
+            dateTime[Slot.ISOMinute],
+            dateTime[Slot.ISOSecond],
+            dateTime[Slot.ISOMillisecond],
+            dateTime[Slot.ISOMicrosecond],
+            dateTime[Slot.ISONanosecond],
+            other[Slot.ISOYear],
+            other[Slot.ISOMonth],
+            other[Slot.ISODay],
+            other[Slot.ISOHour],
+            other[Slot.ISOMinute],
+            other[Slot.ISOSecond],
+            other[Slot.ISOMillisecond],
+            other[Slot.ISOMicrosecond],
+            other[Slot.ISONanosecond],
+            dateTime[Slot.Calendar],
+            settings.largestUnit,
+            settings.options,
+        )
+
+        // 6. Let relativeTo be ! CreateTemporalDate(dateTime.[[ISOYear]], dateTime.[[ISOMonth]], dateTime.[[ISODay]], dateTime.[[Calendar]]).
+        val relativeTo = createTemporalDate(dateTime[Slot.ISOYear], dateTime[Slot.ISOMonth], dateTime[Slot.ISODay], dateTime[Slot.Calendar])
+
+        // 7. Let roundResult be (? RoundDuration(diff.[[Years]], diff.[[Months]], diff.[[Weeks]], diff.[[Days]], diff.[[Hours]], diff.[[Minutes]], diff.[[Seconds]], diff.[[Milliseconds]], diff.[[Microseconds]], diff.[[Nanoseconds]], settings.[[RoundingIncrement]], settings.[[SmallestUnit]], settings.[[RoundingMode]], relativeTo)).[[DurationRecord]].
+        val roundResult = roundDuration(DurationRecord(diff.years, diff.months, diff.weeks, diff.days, diff.hours, diff.minutes, diff.seconds, diff.milliseconds, diff.microseconds, diff.nanoseconds), settings.roundingIncrement, settings.smallestUnit, settings.roundingMode, relativeTo).duration
+
+        // 8. Let result be ? BalanceDuration(roundResult.[[Days]], roundResult.[[Hours]], roundResult.[[Minutes]], roundResult.[[Seconds]], roundResult.[[Milliseconds]], roundResult.[[Microseconds]], roundResult.[[Nanoseconds]], settings.[[LargestUnit]]).
+        val result = balanceDuration(roundResult.days, roundResult.hours, roundResult.minutes, roundResult.seconds, roundResult.milliseconds, roundResult.microseconds, roundResult.nanoseconds, settings.largestUnit)
+
+        // 9. Return ! CreateTemporalDuration(sign × roundResult.[[Years]], sign × roundResult.[[Months]], sign × roundResult.[[Weeks]], sign × result.[[Days]], sign × result.[[Hours]], sign × result.[[Minutes]], sign × result.[[Seconds]], sign × result.[[Milliseconds]], sign × result.[[Microseconds]], sign × result.[[Nanoseconds]]).
+        return createTemporalDuration(DurationRecord(
+            sign * roundResult.years,
+            sign * roundResult.months,
+            sign * roundResult.weeks,
+            sign * result.days,
+            sign * result.hours,
+            sign * result.minutes,
+            sign * result.seconds,
+            sign * result.milliseconds,
+            sign * result.microseconds,
+            sign.toBigInteger() * result.nanoseconds,
+        ))
+    }
+
+    @JvmStatic
+    @ECMAImpl("5.5.13")
+    fun addDurationToOrSubtractDurationFromPlainDateTime(isAdd: Boolean, dateTime: JSObject, temporalDurationLike: JSValue, options: JSValue): JSObject {
+        // 1. If operation is subtract, let sign be -1. Otherwise, let sign be 1.
+        val sign = if (isAdd) 1 else -1
+
+        // 2. Let duration be ? ToTemporalDurationRecord(temporalDurationLike).
+        val duration = toTemporalDurationRecord(temporalDurationLike)
+
+        // 3. Set options to ? GetOptionsObject(options).
+        val options_ = getOptionsObject(options)
+
+        // 4. Let result be ? AddDateTime(dateTime.[[ISOYear]], dateTime.[[ISOMonth]], dateTime.[[ISODay]], dateTime.[[ISOHour]], dateTime.[[ISOMinute]], dateTime.[[ISOSecond]], dateTime.[[ISOMillisecond]], dateTime.[[ISOMicrosecond]], dateTime.[[ISONanosecond]], dateTime.[[Calendar]], sign × duration.[[Years]], sign × duration.[[Months]], sign × duration.[[Weeks]], sign × duration.[[Days]], sign × duration.[[Hours]], sign × duration.[[Minutes]], sign × duration.[[Seconds]], sign × duration.[[Milliseconds]], sign × duration.[[Microseconds]], sign × duration.[[Nanoseconds]], options).
+        val result = addDateTime(
+            dateTime[Slot.ISOYear],
+            dateTime[Slot.ISOMonth],
+            dateTime[Slot.ISODay],
+            dateTime[Slot.ISOHour],
+            dateTime[Slot.ISOMinute],
+            dateTime[Slot.ISOSecond],
+            dateTime[Slot.ISOMillisecond],
+            dateTime[Slot.ISOMicrosecond],
+            dateTime[Slot.ISONanosecond],
+            dateTime[Slot.Calendar],
+            sign * duration.years,
+            sign * duration.months,
+            sign * duration.weeks,
+            sign * duration.days,
+            sign * duration.hours,
+            sign * duration.minutes,
+            sign * duration.seconds,
+            sign * duration.milliseconds,
+            sign * duration.microseconds,
+            sign.toBigInteger() * duration.nanoseconds,
+            options_,
+        )
+
+        // 5. Assert: IsValidISODate(result.[[Year]], result.[[Month]], result.[[Day]]) is true.
+        ecmaAssert(isValidISODate(result.year, result.month, result.day))
+
+        // 6. Assert: IsValidTime(result.[[Hour]], result.[[Minute]], result.[[Second]], result.[[Millisecond]], result.[[Microsecond]], result.[[Nanosecond]]) is true.
+        ecmaAssert(isValidTime(result.hour, result.minute, result.second, result.millisecond, result.microsecond, result.nanosecond))
+
+        // 7. Return ? CreateTemporalDateTime(result.[[Year]], result.[[Month]], result.[[Day]], result.[[Hour]], result.[[Minute]], result.[[Second]], result.[[Millisecond]], result.[[Microsecond]], result.[[Nanosecond]], dateTime.[[Calendar]]).
+        return createTemporalDateTime(result.year, result.month, result.day, result.hour, result.minute, result.second, result.millisecond, result.microsecond, result.nanosecond, dateTime[Slot.Calendar])
     }
 
     @JvmStatic
@@ -4193,6 +4686,17 @@ object TemporalAOs {
     }
 
     @JvmStatic
+    @ECMAImpl("13.5")
+    fun toTemporalDisambiguation(options: JSObject?): String {
+        // 1. If options is undefined, return "compatible".
+        if (options == null)
+            return "compatible"
+
+        // 2. Return ? GetOption(options, "disambiguation", "string", « "compatible", "earlier", "later", "reject" », "compatible").
+        return (getOption(options, "disambiguation".key(), JSValue.Type.String, listOf("compatible", "earlier", "later", "reject").map { it.toValue() }, TemporalUnitDefault.Value("compatible".toValue())) as JSString).string
+    }
+
+    @JvmStatic
     @ECMAImpl("13.6")
     fun toTemporalRoundingMode(normalizedOptions: JSObject, fallback: String): String {
         // 1. Return ? GetOption(normalizedOptions, "roundingMode", "string", « "ceil", "floor", "expand", "trunc", "halfCeil", "halfFloor", "halfExpand", "halfTrunc", "halfEven" », fallback).
@@ -4292,6 +4796,27 @@ object TemporalAOs {
 
         // 9. Return increment.
         return inc
+    }
+
+    @JvmStatic
+    @ECMAImpl("13.13")
+    fun toTemporalDateTimeRoundingIncrement(normalizedOptions: JSObject, smallestUnit: String): Int {
+        // 1. If smallestUnit is "day", then
+        val maximum = if (smallestUnit == "day") {
+            // a. Let maximum be 1.
+            1
+        }
+        // 2. Else,
+        else {
+            // a. Let maximum be ! MaximumTemporalDurationRoundingIncrement(smallestUnit).
+            // b. Assert: maximum is not undefined.
+            maximumTemporalDurationRoundingIncrement(smallestUnit).also {
+                ecmaAssert(it != null)
+            }
+        }
+
+        // 3. Return ? ToTemporalRoundingIncrement(normalizedOptions, maximum, false).
+        return toTemporalRoundingIncrement(normalizedOptions, maximum, false)
     }
 
     @JvmStatic
@@ -4801,7 +5326,7 @@ object TemporalAOs {
         }
 
         // 7. Return the string-concatenation of secondsString, the code unit 0x002E (FULL STOP), and fraction.
-        return "$secondsString.$fraction"
+        return "$secondsString.$fractionStr"
     }
 
     @JvmStatic
