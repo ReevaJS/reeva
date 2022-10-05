@@ -9,6 +9,7 @@ import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSNull
+import com.reevajs.reeva.runtime.primitives.JSString
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toPropertyKey
 import com.reevajs.reeva.utils.Errors
@@ -145,7 +146,13 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
             if (target !is JSObject)
                 Errors.Reflect.FirstArgNotCallable("ownKeys").throwTypeError()
             val keys = target.ownPropertyKeys()
-            return AOs.createArrayFromList(keys.map { it.asValue })
+            return AOs.createArrayFromList(keys.map {
+                when {
+                    it.isInt -> JSString(it.asInt.toString())
+                    it.isLong -> JSString(it.asLong.toString())
+                    else -> it.asValue
+                }
+            })
         }
 
         @ECMAImpl("28.1.11")
