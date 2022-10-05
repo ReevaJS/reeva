@@ -6,7 +6,7 @@ import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.*
@@ -58,7 +58,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         @JvmStatic
         fun getFlags(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!AOs.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
+            if (!AOs.requireInternalSlot(thisValue, Slot.RegExpMatcher))
                 Errors.IncompatibleMethodCall("RegExp.prototype.flags").throwTypeError()
             var result = ""
             if (thisValue.get("global").toBoolean())
@@ -184,13 +184,13 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
             val thisValue = arguments.thisValue
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype.source").throwTypeError()
-            if (!AOs.requireInternalSlot(thisValue, SlotName.RegExpMatcher)) {
+            if (!AOs.requireInternalSlot(thisValue, Slot.RegExpMatcher)) {
                 if (thisValue.sameValue(thisValue))
                     return "(?:)".toValue()
                 Errors.IncompatibleMethodCall("RegExp.prototype.source").throwTypeError()
             }
             // TODO: EscapeRegExpPattern (21.2.5.12)
-            return thisValue[SlotName.OriginalSource].toValue()
+            return thisValue[Slot.OriginalSource].toValue()
         }
 
         @ECMAImpl("22.2.5.13")
@@ -211,7 +211,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         @JvmStatic
         fun test(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!AOs.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
+            if (!AOs.requireInternalSlot(thisValue, Slot.RegExpMatcher))
                 Errors.IncompatibleMethodCall("RegExp.prototype.test").throwTypeError()
             val string = arguments.argument(0).toJSString()
             val match = AOs.regExpExec( thisValue, string, ".test")
@@ -222,7 +222,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         @JvmStatic
         fun toString(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!AOs.requireInternalSlot(thisValue, SlotName.RegExpMatcher))
+            if (!AOs.requireInternalSlot(thisValue, Slot.RegExpMatcher))
                 Errors.IncompatibleMethodCall("RegExp.prototype.toString").throwTypeError()
             val pattern = thisValue.get("source").toJSString()
             val flags = thisValue.get("flags").toJSString()
@@ -247,7 +247,7 @@ class JSRegExpProto private constructor(realm: Realm) : JSObject(realm, realm.ob
         ): JSValue {
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("RegExp.prototype.$methodName").throwTypeError()
-            val flags = thisValue.getSlotOrNull(SlotName.OriginalFlags)
+            val flags = thisValue.getSlotOrNull(Slot.OriginalFlags)
             if (flags == null) {
                 if (thisValue.sameValue(Agent.activeAgent.getActiveRealm().regExpProto))
                     return JSUndefined

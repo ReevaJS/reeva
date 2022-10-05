@@ -6,7 +6,7 @@ import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toIndex
 import com.reevajs.reeva.utils.Errors
@@ -19,7 +19,7 @@ class JSDataViewCtor private constructor(realm: Realm) : JSNativeFunction(realm,
 
         val (buffer, byteOffset, byteLength) = arguments.takeArgs(0..2)
 
-        if (!AOs.requireInternalSlot(buffer, SlotName.ArrayBufferData))
+        if (!AOs.requireInternalSlot(buffer, Slot.ArrayBufferData))
             Errors.DataView.CtorBadBufferArg.throwTypeError()
 
         val offset = byteOffset.toIndex()
@@ -27,7 +27,7 @@ class JSDataViewCtor private constructor(realm: Realm) : JSNativeFunction(realm,
         if (AOs.isDetachedBuffer(buffer))
             Errors.TODO("DataViewCtor isDetachedBuffer 1").throwTypeError()
 
-        val bufferByteLength = buffer[SlotName.ArrayBufferByteLength]
+        val bufferByteLength = buffer[Slot.ArrayBufferByteLength]
         if (offset > bufferByteLength)
             Errors.DataView.OutOfRangeOffset(offset, bufferByteLength).throwRangeError()
 
@@ -40,15 +40,15 @@ class JSDataViewCtor private constructor(realm: Realm) : JSNativeFunction(realm,
 
         val obj = AOs.ordinaryCreateFromConstructor(
             newTarget,
-            listOf(SlotName.DataView),
+            listOf(Slot.DataView),
             defaultProto = Realm::dataViewProto,
         )
         if (AOs.isDetachedBuffer(buffer))
             Errors.TODO("DataViewCtor isDetachedBuffer 2").throwTypeError()
 
-        obj[SlotName.ViewedArrayBuffer] = buffer
-        obj[SlotName.ByteLength] = viewByteLength
-        obj[SlotName.ByteOffset] = offset
+        obj[Slot.ViewedArrayBuffer] = buffer
+        obj[Slot.ByteLength] = viewByteLength
+        obj[Slot.ByteOffset] = offset
         return obj
     }
 

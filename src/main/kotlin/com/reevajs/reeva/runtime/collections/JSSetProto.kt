@@ -8,7 +8,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.iterators.JSSetIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
@@ -43,9 +43,9 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSetProto(realm).initialize()
 
         private fun thisSetObject(thisValue: JSValue, method: String): JSSetObject.SetData {
-            if (!AOs.requireInternalSlot(thisValue, SlotName.SetData))
+            if (!AOs.requireInternalSlot(thisValue, Slot.SetData))
                 Errors.IncompatibleMethodCall("Set.prototype.$method").throwTypeError()
-            return thisValue[SlotName.SetData]
+            return thisValue[Slot.SetData]
         }
 
         @ECMAImpl("24.2.3.1")

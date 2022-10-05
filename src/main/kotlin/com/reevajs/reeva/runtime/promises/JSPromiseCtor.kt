@@ -9,7 +9,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.runtime.primitives.JSFalse
 import com.reevajs.reeva.runtime.primitives.JSUndefined
@@ -38,21 +38,21 @@ class JSPromiseCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
         val promise = AOs.ordinaryCreateFromConstructor(
             arguments.newTarget,
             listOf(
-                SlotName.PromiseState,
-                SlotName.PromiseResult,
-                SlotName.PromiseFulfillReactions,
-                SlotName.PromiseRejectReactions,
-                SlotName.PromiseIsHandled,
+                Slot.PromiseState,
+                Slot.PromiseResult,
+                Slot.PromiseFulfillReactions,
+                Slot.PromiseRejectReactions,
+                Slot.PromiseIsHandled,
             ),
         ) {
             it.promiseProto
         }
 
-        promise[SlotName.PromiseState] = AOs.PromiseState.Pending
-        promise[SlotName.PromiseFulfillReactions] = mutableListOf<AOs.PromiseReaction>()
-        promise[SlotName.PromiseRejectReactions] = mutableListOf<AOs.PromiseReaction>()
-        promise[SlotName.PromiseIsHandled] = false
-        promise[SlotName.PromiseResult] = JSUndefined
+        promise[Slot.PromiseState] = AOs.PromiseState.Pending
+        promise[Slot.PromiseFulfillReactions] = mutableListOf<AOs.PromiseReaction>()
+        promise[Slot.PromiseRejectReactions] = mutableListOf<AOs.PromiseReaction>()
+        promise[Slot.PromiseIsHandled] = false
+        promise[Slot.PromiseResult] = JSUndefined
 
         val (resolveFunction, rejectFunction) = AOs.createResolvingFunctions(promise)
 

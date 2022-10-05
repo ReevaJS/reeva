@@ -6,7 +6,7 @@ import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toBoolean
 import com.reevajs.reeva.utils.toValue
@@ -21,10 +21,10 @@ class JSBooleanCtor private constructor(realm: Realm) : JSNativeFunction(realm, 
             return JSBooleanObject.create(arguments.argument(0).toBoolean().toValue())
         return AOs.ordinaryCreateFromConstructor(
             newTarget,
-            listOf(SlotName.BooleanData),
+            listOf(Slot.BooleanData),
             defaultProto = Realm::booleanProto,
         ).also {
-            it[SlotName.BooleanData] = bool
+            it[Slot.BooleanData] = bool
         }
     }
 

@@ -8,7 +8,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toJSString
 import com.reevajs.reeva.utils.Errors
@@ -139,8 +139,8 @@ open class HostHooks {
                 try {
                     // If promise does not have any handlers by the time this microtask is ran, it
                     // will not have any handlers, and we can print a warning
-                    if (!promise[SlotName.PromiseIsHandled]) {
-                        val result = promise[SlotName.PromiseResult]
+                    if (!promise[Slot.PromiseIsHandled]) {
+                        val result = promise[Slot.PromiseResult]
                         println("\u001b[31mUnhandled promise rejection: ${result.toJSString()}\u001B[0m")
                     }
                 } finally {

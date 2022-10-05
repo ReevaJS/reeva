@@ -7,12 +7,12 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSString
 import com.reevajs.reeva.utils.toValue
 
 open class JSStringObject protected constructor(realm: Realm, string: JSString) : JSObject(realm) {
-    val string by slot(SlotName.StringData, string)
+    val string by slot(Slot.StringData, string)
 
     override fun init() {
         setPrototype(realm.stringProto)

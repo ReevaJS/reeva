@@ -4,7 +4,7 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.utils.toValue
 
 open class JSErrorObject protected constructor(
@@ -13,7 +13,7 @@ open class JSErrorObject protected constructor(
     errorProto: JSObject = realm.errorProto
 ) : JSObject(realm, errorProto) {
     init {
-        addSlot(SlotName.ErrorData, Unit)
+        addSlot(Slot.ErrorData, Unit)
     }
 
     override fun init() {

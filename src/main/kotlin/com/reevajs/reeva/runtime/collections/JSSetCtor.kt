@@ -7,7 +7,7 @@ import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSFalse
 import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
@@ -26,10 +26,10 @@ class JSSetCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Set
 
         val set = AOs.ordinaryCreateFromConstructor(
             arguments.newTarget,
-            listOf(SlotName.SetData),
+            listOf(Slot.SetData),
             defaultProto = Realm::setProto,
         )
-        set[SlotName.SetData] = JSSetObject.SetData()
+        set[Slot.SetData] = JSSetObject.SetData()
         val iterator = arguments.argument(0)
         if (iterator == JSUndefined || iterator == JSNull)
             return set

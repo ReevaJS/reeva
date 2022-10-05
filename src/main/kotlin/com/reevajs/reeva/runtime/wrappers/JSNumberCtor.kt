@@ -7,7 +7,7 @@ import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.runtime.toNumeric
 import com.reevajs.reeva.utils.toValue
@@ -45,10 +45,10 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
 
         return AOs.ordinaryCreateFromConstructor(
             newTarget,
-            listOf(SlotName.NumberData),
+            listOf(Slot.NumberData),
             defaultProto = Realm::numberProto,
         ).also {
-            it[SlotName.NumberData] = n
+            it[Slot.NumberData] = n
         }
     }
 

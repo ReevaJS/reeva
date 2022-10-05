@@ -10,7 +10,7 @@ import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toBoolean
@@ -34,8 +34,8 @@ class JSProxyObject private constructor(
     override val isCallable = AOs.isCallable(target)
     override val indexedProperties by target::indexedProperties
 
-    val target by slot(SlotName.ProxyTarget, target)
-    var handler by slot(SlotName.ProxyHandler, handler)
+    val target by slot(Slot.ProxyTarget, target)
+    var handler by slot(Slot.ProxyHandler, handler)
 
     override fun isConstructor() = AOs.isConstructor(target)
 

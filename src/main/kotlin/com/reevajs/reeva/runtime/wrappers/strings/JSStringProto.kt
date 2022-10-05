@@ -7,7 +7,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.*
 import kotlin.math.max
@@ -55,7 +55,7 @@ class JSStringProto private constructor(realm: Realm) : JSStringObject(realm, JS
                 return thisValue
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError()
-            return thisValue.getSlotOrNull(SlotName.StringData)
+            return thisValue.getSlotOrNull(Slot.StringData)
                 ?: Errors.IncompatibleMethodCall("String.prototype.$methodName").throwTypeError()
         }
 

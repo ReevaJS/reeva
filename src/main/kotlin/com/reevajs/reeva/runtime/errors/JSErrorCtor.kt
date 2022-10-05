@@ -8,7 +8,7 @@ import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toJSString
 import com.reevajs.reeva.utils.attrs
@@ -30,7 +30,7 @@ open class JSErrorCtor protected constructor(
         }
         val obj = AOs.ordinaryCreateFromConstructor(
             newTarget,
-            listOf(SlotName.ErrorData),
+            listOf(Slot.ErrorData),
             defaultProto = ::errorProto,
         )
         val message = arguments.argument(0)

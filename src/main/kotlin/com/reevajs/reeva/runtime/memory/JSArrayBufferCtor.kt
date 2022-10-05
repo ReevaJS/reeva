@@ -8,7 +8,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toIndex
 import com.reevajs.reeva.utils.Errors
@@ -40,7 +40,7 @@ class JSArrayBufferCtor private constructor(realm: Realm) : JSNativeFunction(rea
         @ECMAImpl("25.1.4.1")
         @JvmStatic
         fun isView(arguments: JSArguments): JSValue {
-            return arguments.argument(0).let { it is JSObject && SlotName.ViewedArrayBuffer in it }.toValue()
+            return arguments.argument(0).let { it is JSObject && Slot.ViewedArrayBuffer in it }.toValue()
         }
 
         @ECMAImpl("25.1.4.3")

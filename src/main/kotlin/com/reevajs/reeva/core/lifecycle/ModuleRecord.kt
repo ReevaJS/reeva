@@ -8,7 +8,7 @@ import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.other.JSModuleNamespaceObject
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
@@ -261,12 +261,12 @@ abstract class ModuleRecord(val realm: Realm) : Executable {
             expect(promise is JSObject)
 
             // b. Assert: promise.[[PromiseState]] is not pending.
-            ecmaAssert(promise[SlotName.PromiseState] != AOs.PromiseState.Pending)
+            ecmaAssert(promise[Slot.PromiseState] != AOs.PromiseState.Pending)
 
             // c. If promise.[[PromiseState]] is rejected, then
-            if (promise[SlotName.PromiseState] == AOs.PromiseState.Rejected) {
+            if (promise[Slot.PromiseState] == AOs.PromiseState.Rejected) {
                 // i. Return ThrowCompletion(promise.[[PromiseResult]]).
-                throw ThrowException(promise[SlotName.PromiseResult])
+                throw ThrowException(promise[Slot.PromiseResult])
             }
 
             // d. Return index.

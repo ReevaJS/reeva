@@ -174,14 +174,14 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
                 } else {
                     when {
                         AOs.isArray(obj) -> "Array"
-                        SlotName.UnmappedParameterMap in obj || SlotName.MappedParameterMap in obj -> "Arguments"
+                        Slot.UnmappedParameterMap in obj || Slot.MappedParameterMap in obj -> "Arguments"
                         obj is JSFunction -> "Function" // TODO: Slot check? Can you extend Function?
-                        SlotName.ErrorData in obj -> "Error"
-                        SlotName.BooleanData in obj -> "Boolean"
-                        SlotName.NumberData in obj -> "Number"
-                        SlotName.StringData in obj -> "String"
-                        SlotName.DateValue in obj -> "Date"
-                        SlotName.RegExpMatcher in obj -> "RegExp"
+                        Slot.ErrorData in obj -> "Error"
+                        Slot.BooleanData in obj -> "Boolean"
+                        Slot.NumberData in obj -> "Number"
+                        Slot.StringData in obj -> "String"
+                        Slot.DateValue in obj -> "Date"
+                        Slot.RegExpMatcher in obj -> "RegExp"
                         else -> "Object"
                     }
                 }

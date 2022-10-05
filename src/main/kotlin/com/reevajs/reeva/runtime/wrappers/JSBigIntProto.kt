@@ -7,7 +7,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSBigInt
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toIntegerOrInfinity
@@ -32,7 +32,7 @@ class JSBigIntProto private constructor(realm: Realm) : JSObject(realm, realm.ob
                 return thisValue
             if (thisValue !is JSObject)
                 Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError()
-            return thisValue.getSlotOrNull(SlotName.BigIntData)
+            return thisValue.getSlotOrNull(Slot.BigIntData)
                 ?: Errors.IncompatibleMethodCall("BigInt.prototype.$methodName").throwTypeError()
         }
 

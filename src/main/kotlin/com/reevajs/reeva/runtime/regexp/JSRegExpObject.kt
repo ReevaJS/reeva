@@ -3,7 +3,7 @@ package com.reevajs.reeva.runtime.regexp
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.regexp.RegExp
 
@@ -13,9 +13,9 @@ class JSRegExpObject private constructor(
     flags: String,
     regex: RegExp,
 ) : JSObject(realm, realm.regExpProto) {
-    val source by slot(SlotName.OriginalSource, source)
-    val flags by slot(SlotName.OriginalFlags, flags)
-    var regex by slot(SlotName.RegExpMatcher, regex)
+    val source by slot(Slot.OriginalSource, source)
+    val flags by slot(Slot.OriginalFlags, flags)
+    var regex by slot(Slot.RegExpMatcher, regex)
 
     init {
         val invalidFlag = flags.firstOrNull { Flag.values().none { flag -> flag.char == it } }

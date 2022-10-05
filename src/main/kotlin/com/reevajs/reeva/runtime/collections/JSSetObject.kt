@@ -4,11 +4,11 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 
 class JSSetObject private constructor(realm: Realm) : JSObject(realm, realm.setProto) {
-    val setData by slot(SlotName.SetData, SetData())
+    val setData by slot(Slot.SetData, SetData())
 
     data class SetData(
         val set: MutableSet<JSValue> = mutableSetOf(),

@@ -7,7 +7,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayProto
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSNumber
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.*
@@ -75,7 +75,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             val thisValue = arguments.thisValue
             if (thisValue !is JSObject)
                 return JSUndefined
-            val kind = thisValue.getSlotOrNull(SlotName.TypedArrayKind) ?: return JSUndefined
+            val kind = thisValue.getSlotOrNull(Slot.TypedArrayKind) ?: return JSUndefined
             return "${kind.name}Array".toValue()
         }
 
@@ -83,8 +83,8 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
         @JvmStatic
         fun getBuffer(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            ecmaAssert(thisValue is JSObject && SlotName.ViewedArrayBuffer in thisValue)
-            return thisValue[SlotName.ViewedArrayBuffer]
+            ecmaAssert(thisValue is JSObject && Slot.ViewedArrayBuffer in thisValue)
+            return thisValue[Slot.ViewedArrayBuffer]
         }
 
         @ECMAImpl("23.2.3.2")
@@ -93,7 +93,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             val buffer = getBuffer(arguments)
             if (AOs.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
-            return (arguments.thisValue as JSObject)[SlotName.ByteLength].toValue()
+            return (arguments.thisValue as JSObject)[Slot.ByteLength].toValue()
         }
 
         @ECMAImpl("23.2.3.3")
@@ -102,7 +102,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             val buffer = getBuffer(arguments)
             if (AOs.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
-            return (arguments.thisValue as JSObject)[SlotName.ByteOffset].toValue()
+            return (arguments.thisValue as JSObject)[Slot.ByteOffset].toValue()
         }
 
         @ECMAImpl("23.2.3.18")
@@ -111,7 +111,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             val buffer = getBuffer(arguments)
             if (AOs.isDetachedBuffer(buffer))
                 return JSNumber.ZERO
-            return (arguments.thisValue as JSObject)[SlotName.ArrayLength].toValue()
+            return (arguments.thisValue as JSObject)[Slot.ArrayLength].toValue()
         }
 
         @JvmStatic
@@ -119,7 +119,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             val thisValue = arguments.thisValue
             expect(thisValue is JSObject)
             AOs.validateTypedArray(thisValue)
-            val len = thisValue[SlotName.ArrayLength]
+            val len = thisValue[Slot.ArrayLength]
             val relativeIndex = arguments.argument(0).toIntegerOrInfinity()
 
             val k = if (relativeIndex.isPositiveInfinity || relativeIndex.asLong >= 0) {
@@ -142,7 +142,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             AOs.validateTypedArray(thisValue)
 
             val (target, start, end) = arguments.takeArgs(0..2)
-            val len = thisValue[SlotName.ArrayLength]
+            val len = thisValue[Slot.ArrayLength]
 
             val to = AOs.mapWrappedArrayIndex(target.toIntegerOrInfinity(), len.toLong())
             val from = AOs.mapWrappedArrayIndex(start.toIntegerOrInfinity(), len.toLong())
@@ -153,13 +153,13 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             if (count <= 0)
                 return thisValue
 
-            val buffer = thisValue[SlotName.ViewedArrayBuffer]
+            val buffer = thisValue[Slot.ViewedArrayBuffer]
             if (AOs.isDetachedBuffer(buffer))
                 Errors.TODO("%TypedArray%.prototype.copyWithin").throwTypeError()
 
-            val kind = thisValue[SlotName.TypedArrayKind]
+            val kind = thisValue[Slot.TypedArrayKind]
             val elementSize = kind.size
-            val byteOffset = thisValue[SlotName.ByteOffset]
+            val byteOffset = thisValue[Slot.ByteOffset]
             var toByteIndex = to * elementSize + byteOffset
             var fromByteIndex = from * elementSize + byteOffset
             var countBytes = count * elementSize
@@ -216,15 +216,15 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             expect(thisValue is JSObject)
 
             val (valueArg, start, end) = arguments.takeArgs(0..2)
-            val len = thisValue[SlotName.ArrayLength].toLong()
-            val kind = thisValue[SlotName.TypedArrayKind]
+            val len = thisValue[Slot.ArrayLength].toLong()
+            val kind = thisValue[Slot.TypedArrayKind]
             val value = if (kind.isBigInt) valueArg.toBigInt() else valueArg.toNumber()
 
             var k = AOs.mapWrappedArrayIndex(start.toIntegerOrInfinity(), len)
             val relativeEnd = if (end == JSUndefined) len.toValue() else end.toIntegerOrInfinity()
             val final = AOs.mapWrappedArrayIndex(relativeEnd, len)
 
-            if (AOs.isDetachedBuffer(thisValue[SlotName.ViewedArrayBuffer]))
+            if (AOs.isDetachedBuffer(thisValue[Slot.ViewedArrayBuffer]))
                 Errors.TODO("%TypedArray%.prototype.fill isDetachedBuffer").throwTypeError()
 
             while (k < final) {
@@ -246,7 +246,7 @@ class JSTypedArrayProto private constructor(realm: Realm) : JSObject(realm, real
             if (!callbackfn.isCallable)
                 Errors.NotCallable(callbackfn.toString()).throwTypeError()
 
-            val len = thisValue[SlotName.ArrayLength]
+            val len = thisValue[Slot.ArrayLength]
             val kept = mutableListOf<JSValue>()
             var k = 0
 

@@ -7,7 +7,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSNumber
 import com.reevajs.reeva.runtime.primitives.JSString
 import com.reevajs.reeva.runtime.primitives.JSUndefined
@@ -41,8 +41,8 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
             0 -> ZonedDateTime.now()
             1 -> {
                 val arg = arguments.argument(0)
-                if (arg is JSObject && SlotName.DateValue in arg) {
-                    arg[SlotName.DateValue] ?: return JSDateObject.create(null)
+                if (arg is JSObject && Slot.DateValue in arg) {
+                    arg[Slot.DateValue] ?: return JSDateObject.create(null)
                 } else {
                     val prim = arg.toPrimitive()
                     if (prim is JSString) {
@@ -98,9 +98,9 @@ class JSDateCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Da
 
         return AOs.ordinaryCreateFromConstructor(
             arguments.newTarget,
-            listOf(SlotName.DateValue),
+            listOf(Slot.DateValue),
             defaultProto = Realm::dateProto,
-        ).also { it[SlotName.DateValue] = zdt }
+        ).also { it[Slot.DateValue] = zdt }
     }
 
     companion object {

@@ -7,7 +7,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSBoolean
 import com.reevajs.reeva.runtime.primitives.JSFalse
 import com.reevajs.reeva.utils.Errors
@@ -30,7 +30,7 @@ class JSBooleanProto private constructor(realm: Realm) : JSBooleanObject(realm, 
                 return value as JSBoolean
             if (value !is JSObject)
                 Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError()
-            return value.getSlotOrNull(SlotName.BooleanData)
+            return value.getSlotOrNull(Slot.BooleanData)
                 ?: Errors.IncompatibleMethodCall("Boolean.prototype.$methodName").throwTypeError()
         }
 

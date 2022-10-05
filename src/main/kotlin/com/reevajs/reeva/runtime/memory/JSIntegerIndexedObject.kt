@@ -7,7 +7,7 @@ import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 
@@ -18,12 +18,12 @@ class JSIntegerIndexedObject private constructor(
 ) : JSObject(realm, proto) {
     // ContentType slot is just kind.isBigInt, so we don't store that
 
-    val typedArrayKind by slot(SlotName.TypedArrayKind, kind)
-    val typedArrayName by slot(SlotName.TypedArrayName, "${kind.name}Array")
-    val viewedArrayBuffer by lateinitSlot(SlotName.ViewedArrayBuffer)
-    val byteLength by lateinitSlot(SlotName.ByteLength)
-    val byteOffset by lateinitSlot(SlotName.ByteOffset)
-    val arrayLength by lateinitSlot(SlotName.ArrayLength)
+    val typedArrayKind by slot(Slot.TypedArrayKind, kind)
+    val typedArrayName by slot(Slot.TypedArrayName, "${kind.name}Array")
+    val viewedArrayBuffer by lateinitSlot(Slot.ViewedArrayBuffer)
+    val byteLength by lateinitSlot(Slot.ByteLength)
+    val byteOffset by lateinitSlot(Slot.ByteOffset)
+    val arrayLength by lateinitSlot(Slot.ArrayLength)
 
     override fun getOwnPropertyDescriptor(property: PropertyKey): Descriptor? {
         if (property.isSymbol)

@@ -10,7 +10,7 @@ import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.*
 import kotlinx.serialization.SerializationException
@@ -239,7 +239,7 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                             else if (v is JSObject) {
                                 // i. If v has a [[StringData]] or [[NumberData]] internal slot, set item to
                                 //    ? ToString(v).
-                                if (SlotName.StringData in v || SlotName.NumberData in v)
+                                if (Slot.StringData in v || Slot.NumberData in v)
                                     item = v.toJSString().string
                             }
 
@@ -259,12 +259,12 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
             // 5. If Type(space) is Object, then
             if (space is JSObject) {
                 // a. If space has a [[NumberData]] internal slot, then
-                if (SlotName.NumberData in space) {
+                if (Slot.NumberData in space) {
                     // i. Set space to ? ToNumber(space).
                     space = space.toNumber()
                 }
                 // b. Else if space has a [[StringData]] internal slot, then
-                else if (SlotName.StringData in space) {
+                else if (Slot.StringData in space) {
                     // i. Set space to ? ToString(space).
                     space = space.toJSString()
                 }
@@ -338,19 +338,19 @@ class JSONObject private constructor(realm: Realm) : JSObject(realm, realm.objec
                 value = when {
                     // a. If value has a [[NumberData]] internal slot, then
                     //    i. Set value to ? ToNumber(value).
-                    SlotName.NumberData in value -> value.toNumber()
+                    Slot.NumberData in value -> value.toNumber()
 
                     // b. Else if value has a [[StringData]] internal slot, then
                     //    i. Set value to ? ToString(value).
-                    SlotName.StringData in value -> value.toJSString()
+                    Slot.StringData in value -> value.toJSString()
 
                     // c. Else if value has a [[BooleanData]] internal slot, then
                     //    i. Set value to value.[[BooleanData]].
-                    SlotName.BooleanData in value -> value[SlotName.BooleanData]
+                    Slot.BooleanData in value -> value[Slot.BooleanData]
 
                     // d. Else if value has a [[BigIntData]] internal slot, then
                     //    i. Set value to value.[[BigIntData]].
-                    SlotName.BigIntData in value -> value[SlotName.BigIntData]
+                    Slot.BigIntData in value -> value[Slot.BigIntData]
 
                     else -> value
                 }

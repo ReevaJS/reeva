@@ -9,7 +9,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSNumber
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toIntegerOrInfinity
@@ -41,7 +41,7 @@ class JSNumberProto private constructor(realm: Realm) : JSNumberObject(realm, JS
                 return value as JSNumber
             if (value !is JSObject)
                 Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError()
-            return value.getSlotOrNull(SlotName.NumberData)
+            return value.getSlotOrNull(Slot.NumberData)
                 ?: Errors.IncompatibleMethodCall("Number.prototype.$methodName").throwTypeError()
         }
 

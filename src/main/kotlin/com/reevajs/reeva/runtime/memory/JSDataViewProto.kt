@@ -7,7 +7,7 @@ import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSFalse
 import com.reevajs.reeva.runtime.primitives.JSTrue
 import com.reevajs.reeva.runtime.primitives.JSUndefined
@@ -55,31 +55,31 @@ class JSDataViewProto private constructor(realm: Realm) : JSObject(realm, realm.
         @JvmStatic
         fun getBuffer(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!AOs.requireInternalSlot(thisValue, SlotName.DataView))
+            if (!AOs.requireInternalSlot(thisValue, Slot.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.buffer").throwTypeError()
-            return thisValue[SlotName.ViewedArrayBuffer]
+            return thisValue[Slot.ViewedArrayBuffer]
         }
 
         @ECMAImpl("25.3.4.2")
         @JvmStatic
         fun getByteLength(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!AOs.requireInternalSlot(thisValue, SlotName.DataView))
+            if (!AOs.requireInternalSlot(thisValue, Slot.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError()
-            if (AOs.isDetachedBuffer(thisValue[SlotName.ViewedArrayBuffer]))
+            if (AOs.isDetachedBuffer(thisValue[Slot.ViewedArrayBuffer]))
                 Errors.TODO("DataView.prototype.byteLength isDetachedBuffer").throwTypeError()
-            return thisValue[SlotName.ByteLength].toValue()
+            return thisValue[Slot.ByteLength].toValue()
         }
 
         @ECMAImpl("25.3.4.3")
         @JvmStatic
         fun getByteOffset(arguments: JSArguments): JSValue {
             val thisValue = arguments.thisValue
-            if (!AOs.requireInternalSlot(thisValue, SlotName.DataView))
+            if (!AOs.requireInternalSlot(thisValue, Slot.DataView))
                 Errors.IncompatibleMethodCall("DataView.prototype.byteLength").throwTypeError()
-            if (AOs.isDetachedBuffer(thisValue[SlotName.ViewedArrayBuffer]))
+            if (AOs.isDetachedBuffer(thisValue[Slot.ViewedArrayBuffer]))
                 Errors.TODO("DataView.prototype.byteLength isDetachedBuffer").throwTypeError()
-            return thisValue[SlotName.ByteOffset].toValue()
+            return thisValue[Slot.ByteOffset].toValue()
         }
 
         @ECMAImpl("25.3.4.5")

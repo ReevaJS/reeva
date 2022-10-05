@@ -7,7 +7,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSNumber
 import com.reevajs.reeva.utils.Errors
@@ -80,9 +80,9 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
             contract {
                 returns() implies (value is JSObject)
             }
-            if (value !is JSObject || SlotName.DateValue !in value)
+            if (value !is JSObject || Slot.DateValue !in value)
                 Errors.IncompatibleMethodCall("Date.prototype.$method").throwTypeError()
-            return value[SlotName.DateValue]
+            return value[Slot.DateValue]
         }
 
         private fun thisUTCTimeValue(value: JSValue, method: String): ZonedDateTime? {
@@ -566,17 +566,17 @@ class JSDateProto private constructor(realm: Realm) : JSObject(realm, realm.obje
 
         private fun dateValueSetHelper(dateObj: JSObject, zdt: ZonedDateTime): JSValue {
             return if (AOs.timeClip(zdt) == null) {
-                dateObj[SlotName.DateValue] = null
+                dateObj[Slot.DateValue] = null
                 JSNumber.NaN
             } else {
-                dateObj[SlotName.DateValue] = zdt
+                dateObj[Slot.DateValue] = zdt
                 zdt.toInstant().toEpochMilli().toValue()
             }
         }
 
         private inline fun ifAnyNotFinite(dateObj: JSObject, vararg values: JSValue, returner: (JSValue) -> Unit) {
             if (values.any { !it.isFinite }) {
-                dateObj[SlotName.DateValue] = null
+                dateObj[Slot.DateValue] = null
                 returner(JSNumber.NaN)
             }
         }

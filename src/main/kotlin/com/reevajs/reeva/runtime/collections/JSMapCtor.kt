@@ -6,7 +6,7 @@ import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSNull
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
@@ -25,10 +25,10 @@ class JSMapCtor private constructor(realm: Realm) : JSNativeFunction(realm, "Map
 
         val map = AOs.ordinaryCreateFromConstructor(
             arguments.newTarget,
-            listOf(SlotName.MapData),
+            listOf(Slot.MapData),
             defaultProto = Realm::mapProto,
         )
-        map[SlotName.MapData] = JSMapObject.MapData()
+        map[Slot.MapData] = JSMapObject.MapData()
         val iterable = arguments.argument(0)
         if (iterable == JSUndefined || iterable == JSNull)
             return map

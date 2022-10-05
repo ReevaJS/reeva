@@ -10,7 +10,7 @@ import com.reevajs.regexp.RegExp
 import java.time.ZonedDateTime
 
 @JvmInline
-value class SlotName<T> private constructor(val index: Int) {
+value class Slot<T> private constructor(val index: Int) {
     companion object {
         val ArrayBufferByteLength = nextSlot<Int>()
         val ArrayBufferData = nextSlot<DataBlock>()
@@ -48,6 +48,6 @@ value class SlotName<T> private constructor(val index: Int) {
 
         private var nextSlotIndex = 0
 
-        fun <T> nextSlot() = SlotName<T>(nextSlotIndex++)
+        fun <T> nextSlot() = Slot<T>(nextSlotIndex++)
     }
 }

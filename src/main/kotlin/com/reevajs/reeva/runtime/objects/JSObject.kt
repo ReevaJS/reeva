@@ -16,7 +16,7 @@ open class JSObject protected constructor(
     val realm: Realm,
     private var prototypeBacker: JSValue = JSNull,
 ) : JSValue() {
-    private val slots = mutableMapOf<SlotName<*>, Any?>()
+    private val slots = mutableMapOf<Slot<*>, Any?>()
     private val id = Agent.activeAgent.nextObjectId()
 
     internal val storage = mutableMapOf<StringOrSymbol, Descriptor>()
@@ -412,29 +412,29 @@ open class JSObject protected constructor(
         addProperty(key, Descriptor(function, attributes))
     }
 
-    fun <T> addSlot(slot: SlotName<T>, value: T? = null) {
+    fun <T> addSlot(slot: Slot<T>, value: T? = null) {
         slots[slot] = value
     }
 
-    fun hasSlot(slot: SlotName<*>) = slot in slots
+    fun hasSlot(slot: Slot<*>) = slot in slots
 
-    fun hasSlots(names: List<SlotName<*>>) = names.all(::hasSlot)
-
-    @Suppress("UNCHECKED_CAST")
-    fun <T> getSlot(slot: SlotName<T>): T = slots[slot] as T
+    fun hasSlots(names: List<Slot<*>>) = names.all(::hasSlot)
 
     @Suppress("UNCHECKED_CAST")
-    fun <T> getSlotOrNull(slot: SlotName<T>): T? = slots[slot] as T?
+    fun <T> getSlot(slot: Slot<T>): T = slots[slot] as T
 
-    fun <T> setSlot(slot: SlotName<T>, value: T?) {
+    @Suppress("UNCHECKED_CAST")
+    fun <T> getSlotOrNull(slot: Slot<T>): T? = slots[slot] as T?
+
+    fun <T> setSlot(slot: Slot<T>, value: T?) {
         slots[slot] = value
     }
 
-    operator fun contains(slot: SlotName<*>) = hasSlot(slot)
+    operator fun contains(slot: Slot<*>) = hasSlot(slot)
 
-    operator fun <T> get(slot: SlotName<T>) = getSlot(slot)
+    operator fun <T> get(slot: Slot<T>) = getSlot(slot)
 
-    operator fun <T> set(slot: SlotName<T>, value: T?) {
+    operator fun <T> set(slot: Slot<T>, value: T?) {
         setSlot(slot, value)
     }
 
@@ -492,11 +492,11 @@ open class JSObject protected constructor(
         }
     }
 
-    protected fun <T> slot(slot: SlotName<T>, initialValue: T) = SlotDelegator(slot, initialValue)
+    protected fun <T> slot(slot: Slot<T>, initialValue: T) = SlotDelegator(slot, initialValue)
 
-    protected fun <T> lateinitSlot(slot: SlotName<T>) = LateInitSlotDelegator(slot)
+    protected fun <T> lateinitSlot(slot: Slot<T>) = LateInitSlotDelegator(slot)
 
-    protected inner class SlotDelegator<T>(val slot: SlotName<T>, initialValue: T) : ReadWriteProperty<JSObject, T> {
+    protected inner class SlotDelegator<T>(val slot: Slot<T>, initialValue: T) : ReadWriteProperty<JSObject, T> {
         init {
             slots[slot] = initialValue
         }
@@ -511,7 +511,7 @@ open class JSObject protected constructor(
         }
     }
 
-    protected inner class LateInitSlotDelegator<T>(val slot: SlotName<T>) : ReadWriteProperty<JSObject, T> {
+    protected inner class LateInitSlotDelegator<T>(val slot: Slot<T>) : ReadWriteProperty<JSObject, T> {
         init {
             slots[slot] = null
         }

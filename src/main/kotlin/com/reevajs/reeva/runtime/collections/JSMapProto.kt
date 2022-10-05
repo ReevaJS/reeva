@@ -8,7 +8,7 @@ import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.iterators.JSMapIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
-import com.reevajs.reeva.runtime.objects.SlotName
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSEmpty
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.Errors
@@ -149,9 +149,9 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
         }
 
         private fun thisMapData(thisValue: JSValue, method: String): JSMapObject.MapData {
-            if (!AOs.requireInternalSlot(thisValue, SlotName.MapData))
+            if (!AOs.requireInternalSlot(thisValue, Slot.MapData))
                 Errors.IncompatibleMethodCall("Map.prototype.$method").throwTypeError()
-            return thisValue[SlotName.MapData]
+            return thisValue[Slot.MapData]
         }
     }
 }
