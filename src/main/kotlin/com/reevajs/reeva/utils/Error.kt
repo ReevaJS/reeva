@@ -438,7 +438,7 @@ object Errors {
         class InvalidEpochInstant(instant: Long) : Error("invalid epoch instant: $instant")
         class InvalidDuration(duration: String) : Error("invalid duration: $duration")
         class InvalidOffset(offset: String) : Error("invalid offset string: \"$offset\"")
-        class InvalidEpochNanoseconds(seconds: String) : Error("invalid epoch nanoseconds: \"$seconds\"")
+        class InvalidEpochNanoseconds(nanoseconds: String) : Error("invalid epoch nanoseconds: \"$nanoseconds\"")
         object OptionsMustBeObject : Error("temporal options-bag argument must be an object or undefined")
     }
 

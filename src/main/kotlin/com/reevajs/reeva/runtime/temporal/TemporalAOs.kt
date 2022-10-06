@@ -1763,7 +1763,7 @@ object TemporalAOs {
 
     @JvmStatic
     @ECMAImpl("6.5.1")
-    fun interpretISODateTimeOffset(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger, offsetBehaviour: String, offsetNanoseconds: BigInteger, timeZone: JSObject, disambiguation: String, offsetOption: String, matchBehavior: String): BigInteger {
+    fun interpretISODateTimeOffset(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int, millisecond: Int, microsecond: Int, nanosecond: BigInteger, offsetBehaviour: String, offsetNanoseconds: BigInteger, timeZone: JSObject, disambiguation: String, offsetOption: String, matchBehaviour: String): BigInteger {
         // 1. Let calendar be ! GetISO8601Calendar().
         val calendar = getISO8601Calendar()
 
@@ -1816,7 +1816,7 @@ object TemporalAOs {
             }
 
             // c. If matchBehaviour is match minutes, then
-            if (matchBehavior == "match minutes") {
+            if (matchBehaviour == "match minutes") {
                 // i. Let roundedCandidateNanoseconds be RoundNumberToIncrement(candidateNanoseconds, 60 × 10^9, "halfExpand").
                 val roundedCandidateNanoseconds = roundNumberToIncrement(candidateNanoseconds, BigInteger.valueOf(60L) * BigInteger.TEN.pow(9), "halfExpand")
 
@@ -1840,9 +1840,238 @@ object TemporalAOs {
     }
 
     @JvmStatic
+    @ECMAImpl("6.5.2")
+    fun toTemporalZonedDateTime(item: JSValue, options: JSObject? = null): JSObject {
+        // 1. If options is not present, set options to undefined.
+        // 2. Assert: Type(options) is Object or Undefined.
+
+        // 3. Let offsetBehaviour be option.
+        var offsetBehaviour = "option"
+
+        // 4. Let matchBehaviour be match exactly.
+        var matchBehaviour = "match exactly"
+
+        var calendar: JSObject
+        var timeZone: JSObject
+        var offsetString: String? = null
+
+        // 5. If Type(item) is Object, then
+        val result = if (item is JSObject) {
+            // a. If item has an [[InitializedTemporalZonedDateTime]] internal slot, then
+            if (Slot.InitializedTemporalZonedDateTime in item) {
+                // i. Return item.
+                return item
+            }
+
+            // b. Let calendar be ? GetTemporalCalendarWithISODefault(item).
+            calendar = getTemporalCalendarWithISODefault(item)
+
+            // c. Let fieldNames be ? CalendarFields(calendar, « "day", "hour", "microsecond", "millisecond", "minute", "month", "monthCode", "nanosecond", "second", "year" »).
+            val fieldNames = calendarFields(calendar, listOf("day", "hour", "microsecond", "millisecond", "minute", "month", "monthCode", "nanosecond", "second", "year")).toMutableList()
+
+            // d. Append "timeZone" to fieldNames.
+            fieldNames.add("timeZone")
+
+            // e. Append "offset" to fieldNames.
+            fieldNames.add("offset")
+
+            // f. Let fields be ? PrepareTemporalFields(item, fieldNames, « "timeZone" »).
+            val fields = prepareTemporalFields(item, fieldNames, setOf("timeZone"))
+
+            // g. Let timeZone be ! Get(fields, "timeZone").
+            // h. Set timeZone to ? ToTemporalTimeZone(timeZone).
+            timeZone = toTemporalTimeZone(fields.get("timeZone"))
+
+            // i. Let offsetString be ! Get(fields, "offset").
+            val offsetStringValue = fields.get("offset")
+
+            // j. If offsetString is undefined, then
+            if (offsetStringValue == JSUndefined) {
+                // i. Set offsetBehaviour to wall.
+                offsetBehaviour = "wall"
+            }
+            // k. Else,
+            else {
+                // i. Set offsetString to ? ToString(offsetString).
+                offsetString = offsetStringValue.toJSString().string
+            }
+
+            // l. Let result be ? InterpretTemporalDateTimeFields(calendar, fields, options).
+            interpretTemporalDateTimeFields(calendar, fields, options)
+        }
+        // 6. Else,
+        else {
+            // a. Perform ? ToTemporalOverflow(options).
+            toTemporalOverflow(options)
+
+            // b. Let string be ? ToString(item).
+            val string = item.toJSString().string
+
+            // c. Let result be ? ParseTemporalZonedDateTimeString(string).
+            val result = parseTemporalZonedDateTimeString(string)
+
+            // d. Let timeZoneName be result.[[TimeZone]].[[Name]].
+            var timeZoneName = result.tzName
+
+            // e. Assert: timeZoneName is not undefined.
+            ecmaAssert(timeZoneName != null)
+
+            // f. If ParseText(StringToCodePoints(timeZoneName), TimeZoneNumericUTCOffset) is a List of errors, then
+            if (Regex.offset.matchEntire(timeZoneName) == null) {
+                // i. If ! IsValidTimeZoneName(timeZoneName) is false, throw a RangeError exception.
+                if (!isValidTimeZoneName(timeZoneName))
+                    Errors.TODO("toTemporalZonedDateTime").throwRangeError()
+
+                // ii. Set timeZoneName to ! CanonicalizeTimeZoneName(timeZoneName).
+                timeZoneName = canonicalizeTimeZoneName(timeZoneName)
+            }
+
+            // g. Let offsetString be result.[[TimeZone]].[[OffsetString]].
+            offsetString = result.tzOffset
+
+            // h. If result.[[TimeZone]].[[Z]] is true, then
+            if (result.z) {
+                // i. Set offsetBehaviour to exact.
+                offsetBehaviour = "exact"
+            }
+            // i. Else if offsetString is undefined, then
+            else if (offsetString == null) {
+                // i. Set offsetBehaviour to wall.
+                offsetBehaviour = "wall"
+            }
+
+            // j. Let timeZone be ! CreateTemporalTimeZone(timeZoneName).
+            timeZone = createTemporalTimeZone(timeZoneName)
+
+            // k. Let calendar be ? ToTemporalCalendarWithISODefault(result.[[Calendar]]).
+            calendar = toTemporalCalendarWithISODefault(result.calendar?.toValue() ?: JSUndefined)
+
+            // l. Set matchBehaviour to match minutes.
+            matchBehaviour = "match minutes"
+
+            result.toDateTime()
+        }
+
+        // 7. Let offsetNanoseconds be 0.
+        var offsetNanoseconds = BigInteger.ZERO
+
+        // 8. If offsetBehaviour is option, then
+        if (offsetBehaviour == "option") {
+            // a. Set offsetNanoseconds to ? ParseTimeZoneOffsetString(offsetString).
+            offsetNanoseconds = parseTimeZoneOffsetString(offsetString!!)
+        }
+
+        // 9. Let disambiguation be ? ToTemporalDisambiguation(options).
+        val disambiguation = toTemporalDisambiguation(options)
+
+        // 10. Let offsetOption be ? ToTemporalOffset(options, "reject").
+        val offsetOption = toTemporalOffset(options, "reject")
+
+        // 11. Let epochNanoseconds be ? InterpretISODateTimeOffset(result.[[Year]], result.[[Month]], result.[[Day]], result.[[Hour]], result.[[Minute]], result.[[Second]], result.[[Millisecond]], result.[[Microsecond]], result.[[Nanosecond]], offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offsetOption, matchBehaviour).
+        val epochNanoseconds = interpretISODateTimeOffset(result.year, result.month, result.day, result.hour, result.minute, result.second, result.millisecond, result.microsecond, result.nanosecond, offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offsetOption, matchBehaviour)
+
+        // 12. Return ! CreateTemporalZonedDateTime(epochNanoseconds, timeZone, calendar).
+        return createTemporalZonedDateTime(epochNanoseconds, timeZone, calendar)
+    }
+
+    @JvmStatic
     @ECMAImpl("6.5.3")
     fun createTemporalZonedDateTime(epochNanoseconds: BigInteger, timeZone: JSObject, calendar: JSObject, newTarget: JSObject? = null): JSObject {
-        TODO()
+        // 1. Assert: ! IsValidEpochNanoseconds(epochNanoseconds) is true.
+        ecmaAssert(isValidEpochNanoseconds(epochNanoseconds))
+
+        // 2. If newTarget is not present, set newTarget to %Temporal.ZonedDateTime%.
+        // 3. Let object be ? OrdinaryCreateFromConstructor(newTarget, "%Temporal.ZonedDateTime.prototype%", « [[InitializedTemporalZonedDateTime]], [[Nanoseconds]], [[TimeZone]], [[Calendar]] »).
+        val obj = AOs.ordinaryCreateFromConstructor(
+            newTarget ?: realm.zonedDateTimeCtor,
+            listOf(Slot.InitializedTemporalZonedDateTime),
+            defaultProto = Realm::zonedDateTimeProto,
+        )
+
+        // 4. Set object.[[Nanoseconds]] to epochNanoseconds.
+        obj[Slot.Nanoseconds] = epochNanoseconds
+
+        // 5. Set object.[[TimeZone]] to timeZone.
+        obj[Slot.TimeZone] = timeZone
+
+        // 6. Set object.[[Calendar]] to calendar.
+        obj[Slot.Calendar] = calendar
+
+        // 7. Return object.
+        return obj
+    }
+
+    @JvmStatic
+    @ECMAImpl("6.5.4")
+    fun temporalZonedDateTimeToString(zonedDateTime: JSObject, precision: Any /* String | Int */, showCalendar: String, showTimeZone: String, showOffset: String, increment: Int = 1, unit: String = "nanosecond", roundingMode: String = "trunc"): String {
+        // 1. If increment is not present, set increment to 1.
+        // 2. If unit is not present, set unit to "nanosecond".
+        // 3. If roundingMode is not present, set roundingMode to "trunc".
+
+        // 4. Let ns be ! RoundTemporalInstant(zonedDateTime.[[Nanoseconds]], increment, unit, roundingMode).
+        val ns = roundTemporalInstant(zonedDateTime[Slot.Nanoseconds], increment, unit, roundingMode)
+
+        // 5. Let timeZone be zonedDateTime.[[TimeZone]].
+        val timeZone = zonedDateTime[Slot.TimeZone]
+
+        // 6. Let instant be ! CreateTemporalInstant(ns).
+        val instant = createTemporalInstant(ns)
+
+        // 7. Let isoCalendar be ! GetISO8601Calendar().
+        val isoCalendar = getISO8601Calendar()
+
+        // 8. Let temporalDateTime be ? BuiltinTimeZoneGetPlainDateTimeFor(timeZone, instant, isoCalendar).
+        val temporalDateTime = builtinTimeZoneGetPlainDateTimeFor(timeZone, instant, isoCalendar)
+
+        // 9. Let dateTimeString be ? TemporalDateTimeToString(temporalDateTime.[[ISOYear]], temporalDateTime.[[ISOMonth]], temporalDateTime.[[ISODay]], temporalDateTime.[[ISOHour]], temporalDateTime.[[ISOMinute]], temporalDateTime.[[ISOSecond]], temporalDateTime.[[ISOMillisecond]], temporalDateTime.[[ISOMicrosecond]], temporalDateTime.[[ISONanosecond]], isoCalendar, precision, "never").
+        val dateTimeString = temporalDateTimeToString(
+            temporalDateTime[Slot.ISOYear],
+            temporalDateTime[Slot.ISOMonth],
+            temporalDateTime[Slot.ISODay],
+            temporalDateTime[Slot.ISOHour],
+            temporalDateTime[Slot.ISOMinute],
+            temporalDateTime[Slot.ISOSecond],
+            temporalDateTime[Slot.ISOMillisecond],
+            temporalDateTime[Slot.ISOMicrosecond],
+            temporalDateTime[Slot.ISONanosecond],
+            isoCalendar,
+            precision as String,
+            "never",
+        )
+
+        // 10. If showOffset is "never", then
+        val offsetString = if (showOffset == "never") {
+            // a. Let offsetString be the empty String.
+            ""
+        }
+        // 11. Else,
+        else {
+            // a. Let offsetNs be ? GetOffsetNanosecondsFor(timeZone, instant).
+            val offsetNs = getOffsetNanosecondsFor(timeZone, instant)
+
+            // b. Let offsetString be ! FormatISOTimeZoneOffsetString(offsetNs).
+            formatISOTimeZoneOffsetString(offsetNs)
+        }
+
+        // 12. If showTimeZone is "never", then
+        val timeZoneString = if (showTimeZone == "never") {
+            // a. Let timeZoneString be the empty String.
+            ""
+        }
+        // 13. Else,
+        else {
+            // a. Let timeZoneID be ? ToString(timeZone).
+            val timeZoneId = timeZone.toJSString().string
+
+            // b. Let timeZoneString be the string-concatenation of the code unit 0x005B (LEFT SQUARE BRACKET), timeZoneID, and the code unit 0x005D (RIGHT SQUARE BRACKET).
+            "[$timeZoneId]"
+        }
+
+        // 14. Let calendarString be ? MaybeFormatCalendarAnnotation(zonedDateTime.[[Calendar]], showCalendar).
+        val calendarString = maybeFormatCalendarAnnotation(zonedDateTime[Slot.Calendar], showCalendar)
+
+        // 15. Return the string-concatenation of dateTimeString, offsetString, timeZoneString, and calendarString.
+        return "$dateTimeString$offsetString$timeZoneString$calendarString"
     }
 
     @JvmStatic
@@ -1863,22 +2092,410 @@ object TemporalAOs {
         nanoseconds: BigInteger,
         options: JSObject? = null,
     ): BigInteger {
-        TODO()
+        // 1. If options is not present, set options to undefined.
+        // 2. Assert: Type(options) is Object or Undefined.
+
+        // 3. If all of years, months, weeks, and days are 0, then
+        if (years == 0 && months == 0 && weeks == 0 && days == 0) {
+            // a. Return ? AddInstant(epochNanoseconds, hours, minutes, seconds, milliseconds, microseconds, nanoseconds).
+            return addInstant(epochNanoseconds, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)
+        }
+
+        // 4. Let instant be ! CreateTemporalInstant(epochNanoseconds).
+        val instant = createTemporalInstant(epochNanoseconds)
+
+        // 5. Let temporalDateTime be ? BuiltinTimeZoneGetPlainDateTimeFor(timeZone, instant, calendar).
+        val temporalDateTime = builtinTimeZoneGetPlainDateTimeFor(timeZone, instant, calendar)
+
+        // 6. Let datePart be ! CreateTemporalDate(temporalDateTime.[[ISOYear]], temporalDateTime.[[ISOMonth]], temporalDateTime.[[ISODay]], calendar).
+        val datePart = createTemporalDate(
+            temporalDateTime[Slot.ISOYear],
+            temporalDateTime[Slot.ISOMonth],
+            temporalDateTime[Slot.ISODay],
+            calendar,
+        )
+
+        // 7. Let dateDuration be ! CreateTemporalDuration(years, months, weeks, days, 0, 0, 0, 0, 0, 0).
+        val dateDuration = createTemporalDuration(DurationRecord(years, months, weeks, days, 0, 0, 0, 0, 0, BigInteger.ZERO))
+
+        // 8. Let addedDate be ? CalendarDateAdd(calendar, datePart, dateDuration, options).
+        val addedDate = calendarDateAdd(calendar, datePart, dateDuration, options)
+
+        // 9. Let intermediateDateTime be ? CreateTemporalDateTime(addedDate.[[ISOYear]], addedDate.[[ISOMonth]], addedDate.[[ISODay]], temporalDateTime.[[ISOHour]], temporalDateTime.[[ISOMinute]], temporalDateTime.[[ISOSecond]], temporalDateTime.[[ISOMillisecond]], temporalDateTime.[[ISOMicrosecond]], temporalDateTime.[[ISONanosecond]], calendar).
+        val intermediateDateTime = createTemporalDateTime(
+            addedDate[Slot.ISOYear],
+            addedDate[Slot.ISOMonth],
+            addedDate[Slot.ISODay],
+            temporalDateTime[Slot.ISOHour],
+            temporalDateTime[Slot.ISOMinute],
+            temporalDateTime[Slot.ISOSecond],
+            temporalDateTime[Slot.ISOMillisecond],
+            temporalDateTime[Slot.ISOMicrosecond],
+            temporalDateTime[Slot.ISONanosecond],
+            calendar,
+        )
+
+        // 10. Let intermediateInstant be ? BuiltinTimeZoneGetInstantFor(timeZone, intermediateDateTime, "compatible").
+        val intermediateInstant = builtinTimeZoneGetInstantFor(timeZone, intermediateDateTime, "compatible")
+
+        // 11. Return ? AddInstant(intermediateInstant.[[Nanoseconds]], hours, minutes, seconds, milliseconds, microseconds, nanoseconds).
+        return addInstant(intermediateInstant[Slot.Nanoseconds], hours, minutes, seconds, milliseconds, microseconds, nanoseconds)
     }
 
     @JvmStatic
     @ECMAImpl("6.5.6")
-    fun differenceZonedDateTime(nanosecond1: BigInteger, nanosecond2: BigInteger, timeZone: JSObject, calendar: JSObject, largestUnit: String, options: JSObject): DurationRecord {
-        TODO()
+    fun differenceZonedDateTime(nanoseconds1: BigInteger, nanoseconds2: BigInteger, timeZone: JSObject, calendar: JSObject, largestUnit: String, options: JSObject): DurationRecord {
+        // 1. If ns1 is ns2, then
+        if (nanoseconds1 == nanoseconds2) {
+            // a. Return ! CreateDurationRecord(0, 0, 0, 0, 0, 0, 0, 0, 0, 0).
+            return createDurationRecord(DurationRecord(0, 0, 0, 0, 0, 0, 0, 0, 0, BigInteger.ZERO))
+        }
+
+        // 2. Let startInstant be ! CreateTemporalInstant(ns1).
+        val startInstant = createTemporalInstant(nanoseconds1)
+
+        // 3. Let startDateTime be ? BuiltinTimeZoneGetPlainDateTimeFor(timeZone, startInstant, calendar).
+        val startDateTime = builtinTimeZoneGetPlainDateTimeFor(timeZone, startInstant, calendar)
+
+        // 4. Let endInstant be ! CreateTemporalInstant(ns2).
+        val endInstant = createTemporalInstant(nanoseconds2)
+
+        // 5. Let endDateTime be ? BuiltinTimeZoneGetPlainDateTimeFor(timeZone, endInstant, calendar).
+        val endDateTime = builtinTimeZoneGetPlainDateTimeFor(timeZone, endInstant, calendar)
+
+        // 6. Let dateDifference be ? DifferenceISODateTime(startDateTime.[[ISOYear]], startDateTime.[[ISOMonth]], startDateTime.[[ISODay]], startDateTime.[[ISOHour]], startDateTime.[[ISOMinute]], startDateTime.[[ISOSecond]], startDateTime.[[ISOMillisecond]], startDateTime.[[ISOMicrosecond]], startDateTime.[[ISONanosecond]], endDateTime.[[ISOYear]], endDateTime.[[ISOMonth]], endDateTime.[[ISODay]], endDateTime.[[ISOHour]], endDateTime.[[ISOMinute]], endDateTime.[[ISOSecond]], endDateTime.[[ISOMillisecond]], endDateTime.[[ISOMicrosecond]], endDateTime.[[ISONanosecond]], calendar, largestUnit, options).
+        val dateDifference = differenceISODateTime(
+            startDateTime[Slot.ISOYear],
+            startDateTime[Slot.ISOMonth],
+            startDateTime[Slot.ISODay],
+            startDateTime[Slot.ISOHour],
+            startDateTime[Slot.ISOMinute],
+            startDateTime[Slot.ISOSecond],
+            startDateTime[Slot.ISOMillisecond],
+            startDateTime[Slot.ISOMicrosecond],
+            startDateTime[Slot.ISONanosecond],
+            endDateTime[Slot.ISOYear],
+            endDateTime[Slot.ISOMonth],
+            endDateTime[Slot.ISODay],
+            endDateTime[Slot.ISOHour],
+            endDateTime[Slot.ISOMinute],
+            endDateTime[Slot.ISOSecond],
+            endDateTime[Slot.ISOMillisecond],
+            endDateTime[Slot.ISOMicrosecond],
+            endDateTime[Slot.ISONanosecond],
+            calendar,
+            largestUnit,
+            options,
+        )
+
+        // 7. Let intermediateNs be ? AddZonedDateTime(ns1, timeZone, calendar, dateDifference.[[Years]], dateDifference.[[Months]], dateDifference.[[Weeks]], 0, 0, 0, 0, 0, 0, 0).
+        val intermediateNs = addZonedDateTime(nanoseconds1, timeZone, calendar, dateDifference.years, dateDifference.months, dateDifference.weeks, 0, 0, 0, 0, 0, 0, BigInteger.ZERO)
+
+        // 8. Let timeRemainderNs be ns2 - intermediateNs.
+        val timeRemainderNs = nanoseconds2 - intermediateNs
+
+        // 9. Let intermediate be ! CreateTemporalZonedDateTime(intermediateNs, timeZone, calendar).
+        val intermediate = createTemporalZonedDateTime(intermediateNs, timeZone, calendar)
+
+        // 10. Let result be ? NanosecondsToDays(ℝ(timeRemainderNs), intermediate).
+        val result = nanosecondsToDays(timeRemainderNs, intermediate)
+
+        // 11. Let timeDifference be ! BalanceDuration(0, 0, 0, 0, 0, 0, result.[[Nanoseconds]], "hour").
+        val timeDifference = balanceDuration(0, 0, 0, 0, 0, 0, result.nanoseconds, "hour")
+
+        // 12. Return ! CreateDurationRecord(dateDifference.[[Years]], dateDifference.[[Months]], dateDifference.[[Weeks]], result.[[Days]], timeDifference.[[Hours]], timeDifference.[[Minutes]], timeDifference.[[Seconds]], timeDifference.[[Milliseconds]], timeDifference.[[Microseconds]], timeDifference.[[Nanoseconds]]).
+        return createDurationRecord(
+            dateDifference.years, 
+            dateDifference.months, 
+            dateDifference.weeks, 
+            result.days,
+            timeDifference.hours,
+            timeDifference.minutes,
+            timeDifference.seconds,
+            timeDifference.milliseconds,
+            timeDifference.microseconds,
+            timeDifference.nanoseconds,
+        )
     }
 
     @JvmStatic
     @ECMAImpl("6.5.7")
-    fun nanosecondsToDays(nanoseconds: BigInteger, relativeTo: JSValue): NanosecondsToDaysRecord {
-        TODO()
+    fun nanosecondsToDays(nanoseconds_: BigInteger, relativeTo: JSValue): NanosecondsToDaysRecord {
+        var nanoseconds = nanoseconds_
+
+        // 1. Let dayLengthNs be nsPerDay.
+        var dayLengthNs = NS_PER_DAY
+
+        // 2. If nanoseconds = 0, then
+        if (nanoseconds == BigInteger.ZERO) {
+            // a. Return the Record { [[Days]]: 0, [[Nanoseconds]]: 0, [[DayLength]]: dayLengthNs }.
+            return NanosecondsToDaysRecord(0, BigInteger.ZERO, dayLengthNs)
+        }
+
+        // 3. If nanoseconds < 0, let sign be -1; else, let sign be 1.
+        val sign = nanoseconds.signum()
+
+        // 4. If Type(relativeTo) is not Object or relativeTo does not have an [[InitializedTemporalZonedDateTime]]
+        //    internal slot, then
+        if (relativeTo !is JSObject || Slot.InitializedTemporalZonedDateTime !in relativeTo) {
+            // a. Return the Record {
+            //        [[Days]]: RoundTowardsZero(nanoseconds / dayLengthNs),
+            //        [[Nanoseconds]]: (abs(nanoseconds) modulo dayLengthNs) × sign,
+            //        [[DayLength]]: dayLengthNs
+            //    }.
+            return NanosecondsToDaysRecord(
+                roundTowardsZero(nanoseconds.toBigDecimal() / dayLengthNs.toBigDecimal()).toInt(),
+                (nanoseconds.abs() % dayLengthNs) * sign.toBigInteger(),
+                dayLengthNs,
+            )
+        }
+
+        // 5. Let startNs be ℝ(relativeTo.[[Nanoseconds]]).
+        val startNs = relativeTo[Slot.Nanoseconds]
+
+        // 6. Let startInstant be ! CreateTemporalInstant(ℤ(startNs)).
+        val startInstant = createTemporalInstant(startNs)
+
+        // 7. Let startDateTime be ? BuiltinTimeZoneGetPlainDateTimeFor(relativeTo.[[TimeZone]], startInstant,
+        //    relativeTo.[[Calendar]]).
+        val startDateTime = builtinTimeZoneGetPlainDateTimeFor(relativeTo[Slot.TimeZone], startInstant, relativeTo[Slot.Calendar])
+
+        // 8. Let endNs be startNs + nanoseconds.
+        val endNs = startNs + nanoseconds
+
+        // 9. If ! IsValidEpochNanoseconds(ℤ(endNs)) is false, throw a RangeError exception.
+        if (!isValidEpochNanoseconds(endNs))
+            Errors.TODO("nanosecondsToDays").throwRangeError()
+
+        // 10. Let endInstant be ! CreateTemporalInstant(ℤ(endNs)).
+        val endInstant = createTemporalInstant(endNs)
+
+        // 11. Let endDateTime be ? BuiltinTimeZoneGetPlainDateTimeFor(relativeTo.[[TimeZone]], endInstant, relativeTo.[[Calendar]]).
+        val endDateTime = builtinTimeZoneGetPlainDateTimeFor(relativeTo[Slot.TimeZone], endInstant, relativeTo[Slot.Calendar])
+
+        // 12. Let dateDifference be ? DifferenceISODateTime(startDateTime.[[ISOYear]], startDateTime.[[ISOMonth]], startDateTime.[[ISODay]], startDateTime.[[ISOHour]], startDateTime.[[ISOMinute]], startDateTime.[[ISOSecond]], startDateTime.[[ISOMillisecond]], startDateTime.[[ISOMicrosecond]], startDateTime.[[ISONanosecond]], endDateTime.[[ISOYear]], endDateTime.[[ISOMonth]], endDateTime.[[ISODay]], endDateTime.[[ISOHour]], endDateTime.[[ISOMinute]], endDateTime.[[ISOSecond]], endDateTime.[[ISOMillisecond]], endDateTime.[[ISOMicrosecond]], endDateTime.[[ISONanosecond]], relativeTo.[[Calendar]], "day", OrdinaryObjectCreate(null)).
+        val dateDifference = differenceISODateTime(
+            startDateTime[Slot.ISOYear],
+            startDateTime[Slot.ISOMonth],
+            startDateTime[Slot.ISODay],
+            startDateTime[Slot.ISOHour],
+            startDateTime[Slot.ISOMinute],
+            startDateTime[Slot.ISOSecond],
+            startDateTime[Slot.ISOMillisecond],
+            startDateTime[Slot.ISOMicrosecond],
+            startDateTime[Slot.ISONanosecond],
+            endDateTime[Slot.ISOYear],
+            endDateTime[Slot.ISOMonth],
+            endDateTime[Slot.ISODay],
+            endDateTime[Slot.ISOHour],
+            endDateTime[Slot.ISOMinute],
+            endDateTime[Slot.ISOSecond],
+            endDateTime[Slot.ISOMillisecond],
+            endDateTime[Slot.ISOMicrosecond],
+            endDateTime[Slot.ISONanosecond],
+            relativeTo[Slot.Calendar],
+            "day",
+            JSObject.create(),
+        )
+
+        // 13. Let days be dateDifference.[[Days]].
+        var days = dateDifference.days
+
+        // 14. Let intermediateNs be ℝ(? AddZonedDateTime(ℤ(startNs), relativeTo.[[TimeZone]], relativeTo.[[Calendar]], 0, 0, 0, days, 0, 0, 0, 0, 0, 0)).
+        var intermediateNs = addZonedDateTime(startNs, relativeTo[Slot.TimeZone], relativeTo[Slot.Calendar], 0, 0, 0, days, 0, 0, 0, 0, 0, BigInteger.ZERO)
+
+        // 15. If sign is 1, then
+        if (sign == 1) {
+            // a. Repeat, while days > 0 and intermediateNs > endNs,
+            while (days > 0 && intermediateNs > endNs) {
+                // i. Set days to days - 1.
+                days -= 1
+
+                // ii. Set intermediateNs to ℝ(? AddZonedDateTime(ℤ(startNs), relativeTo.[[TimeZone]], relativeTo.[[Calendar]], 0, 0, 0, days, 0, 0, 0, 0, 0, 0)).
+                intermediateNs = addZonedDateTime(startNs, relativeTo[Slot.TimeZone], relativeTo[Slot.Calendar], 0, 0, 0, days, 0, 0, 0, 0, 0, BigInteger.ZERO)
+            }
+        }
+
+        // 16. Set nanoseconds to endNs - intermediateNs.
+        nanoseconds = endNs - intermediateNs
+
+        // 17. Let done be false.
+        // 18. Repeat, while done is false,
+        while (true) {
+            // a. Let oneDayFartherNs be ℝ(? AddZonedDateTime(ℤ(intermediateNs), relativeTo.[[TimeZone]], relativeTo.[[Calendar]], 0, 0, 0, sign, 0, 0, 0, 0, 0, 0)).
+            val oneDayFartherNs = addZonedDateTime(intermediateNs, relativeTo[Slot.TimeZone], relativeTo[Slot.Calendar], 0, 0, 0, sign, 0, 0, 0, 0, 0, BigInteger.ZERO)
+
+            // b. Set dayLengthNs to oneDayFartherNs - intermediateNs.
+            dayLengthNs = oneDayFartherNs - intermediateNs
+
+            // c. If (nanoseconds - dayLengthNs) × sign ≥ 0, then
+            if ((nanoseconds - dayLengthNs) * sign.toBigInteger() >= BigInteger.ZERO) {
+                // i. Set nanoseconds to nanoseconds - dayLengthNs.
+                nanoseconds -= dayLengthNs
+
+                // ii. Set intermediateNs to oneDayFartherNs.
+                intermediateNs = oneDayFartherNs
+
+                // iii. Set days to days + sign.
+                days += sign
+            }
+            // d. Else,
+            else {
+                // i. Set done to true.
+                break
+            }
+        }
+
+        // 19. Return the Record { [[Days]]: days, [[Nanoseconds]]: nanoseconds, [[DayLength]]: abs(dayLengthNs) }.
+        return NanosecondsToDaysRecord(days, nanoseconds, dayLengthNs.abs())
     }
 
     data class NanosecondsToDaysRecord(val days: Int, val nanoseconds: BigInteger, val dayLength: BigInteger)
+
+    @JvmStatic
+    @ECMAImpl("6.5.8")
+    fun differenceTemporalZonedDateTime(isUntil: Boolean, zonedDateTime: JSObject, other_: JSValue, options: JSValue): JSObject {
+        // 1. If operation is since, let sign be -1. Otherwise, let sign be 1.
+        val sign = if (isUntil) 1 else -1
+
+        // 2. Set other to ? ToTemporalZonedDateTime(other).
+        val other = toTemporalZonedDateTime(other_)
+
+        // 3. If ? CalendarEquals(zonedDateTime.[[Calendar]], other.[[Calendar]]) is false, then
+        if (!calendarEquals(zonedDateTime[Slot.Calendar], other[Slot.Calendar])) {
+            // a. Throw a RangeError exception.
+            Errors.TODO("differenceTemporalZonedDateTime 1").throwRangeError()
+        }
+
+        // 4. Let settings be ? GetDifferenceSettings(operation, options, datetime, « », "nanosecond", "hour").
+        val settings = getDifferenceSettings(isUntil, options, "datetime", emptyList(), "nanosecond", "hour")
+
+        // 5. If settings.[[LargestUnit]] is not one of "year", "month", "week", or "day", then
+        if (!settings.largestUnit.let { it == "year" || it == "month" || it == "week" || it == "day" }) {
+            // a. Let result be ! DifferenceInstant(zonedDateTime.[[Nanoseconds]], other.[[Nanoseconds]], settings.[[RoundingIncrement]], settings.[[SmallestUnit]], settings.[[LargestUnit]], settings.[[RoundingMode]]).
+            val result = differenceInstant(zonedDateTime[Slot.Nanoseconds], other[Slot.Nanoseconds], settings.roundingIncrement, settings.smallestUnit, settings.largestUnit, settings.roundingMode)
+
+            // b. Return ! CreateTemporalDuration(0, 0, 0, 0, sign × result.[[Hours]], sign × result.[[Minutes]], sign × result.[[Seconds]], sign × result.[[Milliseconds]], sign × result.[[Microseconds]], sign × result.[[Nanoseconds]]).
+            return createTemporalDuration(DurationRecord(
+                0,
+                0,
+                0,
+                0,
+                sign * result.hours,
+                sign * result.minutes,
+                sign * result.seconds,
+                sign * result.milliseconds,
+                sign * result.microseconds,
+                sign.toBigInteger() * result.nanoseconds,
+            ))
+        }
+
+        // 6. If ? TimeZoneEquals(zonedDateTime.[[TimeZone]], other.[[TimeZone]]) is false, then
+        if (!timeZoneEquals(zonedDateTime[Slot.TimeZone], other[Slot.TimeZone])) {
+            // a. Throw a RangeError exception. 
+            Errors.TODO("differenceTemporalZonedDateTime 2").throwRangeError()
+        }
+
+        // 7. Let untilOptions be ? MergeLargestUnitOption(settings.[[Options]], settings.[[LargestUnit]]).
+        val untilOptions = TemporalAOs.mergeLargestUnitOption(settings.options, settings.largestUnit)
+
+        // 8. Let difference be ? DifferenceZonedDateTime(zonedDateTime.[[Nanoseconds]], other.[[Nanoseconds]], zonedDateTime.[[TimeZone]], zonedDateTime.[[Calendar]], settings.[[LargestUnit]], untilOptions).
+        val difference = differenceZonedDateTime(zonedDateTime[Slot.Nanoseconds], other[Slot.Nanoseconds], zonedDateTime[Slot.TimeZone], zonedDateTime[Slot.Calendar], settings.largestUnit, untilOptions)
+
+        // 9. Let roundResult be (? RoundDuration(difference.[[Years]], difference.[[Months]], difference.[[Weeks]], difference.[[Days]], difference.[[Hours]], difference.[[Minutes]], difference.[[Seconds]], difference.[[Milliseconds]], difference.[[Microseconds]], difference.[[Nanoseconds]], settings.[[RoundingIncrement]], settings.[[SmallestUnit]], settings.[[RoundingMode]], zonedDateTime)).[[DurationRecord]].
+        val roundResult = roundDuration(
+            DurationRecord(
+                difference.years,
+                difference.months,
+                difference.weeks,
+                difference.days,
+                difference.hours,
+                difference.minutes,
+                difference.seconds,
+                difference.milliseconds,
+                difference.microseconds,
+                difference.nanoseconds,
+            ),
+            settings.roundingIncrement,
+            settings.smallestUnit,
+            settings.roundingMode,
+            zonedDateTime,
+        ).duration
+
+        // 10. Let result be ? AdjustRoundedDurationDays(roundResult.[[Years]], roundResult.[[Months]], roundResult.[[Weeks]], roundResult.[[Days]], roundResult.[[Hours]], roundResult.[[Minutes]], roundResult.[[Seconds]], roundResult.[[Milliseconds]], roundResult.[[Microseconds]], roundResult.[[Nanoseconds]], settings.[[RoundingIncrement]], settings.[[SmallestUnit]], settings.[[RoundingMode]], zonedDateTime).
+        val result = adjustRoundedDurationDays(
+            DurationRecord(
+                roundResult.years,
+                roundResult.months,
+                roundResult.weeks,
+                roundResult.days,
+                roundResult.hours,
+                roundResult.minutes,
+                roundResult.seconds,
+                roundResult.milliseconds,
+                roundResult.microseconds,
+                roundResult.nanoseconds,
+            ),
+            settings.roundingIncrement,
+            settings.smallestUnit,
+            settings.roundingMode,
+            zonedDateTime,
+        )
+
+        // 11. Return ! CreateTemporalDuration(sign × result.[[Years]], sign × result.[[Months]], sign × result.[[Weeks]], sign × result.[[Days]], sign × result.[[Hours]], sign × result.[[Minutes]], sign × result.[[Seconds]], sign × result.[[Milliseconds]], sign × result.[[Microseconds]], sign × result.[[Nanoseconds]]).
+        return createTemporalDuration(DurationRecord(
+            sign * result.years,
+            sign * result.months,
+            sign * result.weeks,
+            sign * result.days,
+            sign * result.hours,
+            sign * result.minutes,
+            sign * result.seconds,
+            sign * result.milliseconds,
+            sign * result.microseconds,
+            sign.toBigInteger() * result.nanoseconds,
+        ))
+    }
+
+    @JvmStatic
+    @ECMAImpl("6.5.9")
+    fun addDurationToOrSubtractDurationFromZonedDateTime(isAdd: Boolean, zonedDateTime: JSObject, temporalDurationLike: JSValue, options_: JSValue): JSObject {
+        // 1. If operation is subtract, let sign be -1. Otherwise, let sign be 1.
+        val sign = if (isAdd) 1 else -1
+
+        // 2. Let duration be ? ToTemporalDurationRecord(temporalDurationLike).
+        val duration = toTemporalDurationRecord(temporalDurationLike)
+
+        // 3. Set options to ? GetOptionsObject(options).
+        val options = getOptionsObject(options_)
+
+        // 4. Let timeZone be zonedDateTime.[[TimeZone]].
+        val timeZone = zonedDateTime[Slot.TimeZone]
+
+        // 5. Let calendar be zonedDateTime.[[Calendar]].
+        val calendar = zonedDateTime[Slot.Calendar]
+
+        // 6. Let epochNanoseconds be ? AddZonedDateTime(zonedDateTime.[[Nanoseconds]], timeZone, calendar, sign × duration.[[Years]], sign × duration.[[Months]], sign × duration.[[Weeks]], sign × duration.[[Days]], sign × duration.[[Hours]], sign × duration.[[Minutes]], sign × duration.[[Seconds]], sign × duration.[[Milliseconds]], sign × duration.[[Microseconds]], sign × duration.[[Nanoseconds]], options).
+        val epochNanoseconds = addZonedDateTime(
+            zonedDateTime[Slot.Nanoseconds],
+            timeZone,
+            calendar,
+            sign * duration.years,
+            sign * duration.months,
+            sign * duration.weeks,
+            sign * duration.days,
+            sign * duration.hours,
+            sign * duration.minutes,
+            sign * duration.seconds,
+            sign * duration.milliseconds,
+            sign * duration.microseconds,
+            sign.toBigInteger() * duration.nanoseconds,
+            options,
+        )
+
+        // 7. Return ! CreateTemporalZonedDateTime(epochNanoseconds, timeZone, calendar).
+        return createTemporalZonedDateTime(epochNanoseconds, timeZone, calendar)
+    }
 
     @JvmStatic
     @ECMAImpl("7.5.5")
@@ -3766,6 +4383,12 @@ object TemporalAOs {
     }
 
     @JvmStatic
+    @ECMAImpl("11.6.9")
+    fun formatISOTimeZoneOffsetString(offsetNanoseconds: BigInteger): String {
+        TODO()
+    }
+
+    @JvmStatic
     @ECMAImpl("11.6.10")
     fun toTemporalTimeZone(temporalTimeZoneLike: JSValue): JSObject {
         TODO()
@@ -3774,6 +4397,12 @@ object TemporalAOs {
     @JvmStatic
     @ECMAImpl("11.6.11")
     fun getOffsetNanosecondsFor(timeZone: JSObject, instant: JSObject): BigInteger {
+        TODO()
+    }
+
+    @JvmStatic
+    @ECMAImpl("11.6.12")
+    fun builtinTimeZoneGetOffsetStringFor(timeZone: JSObject, instant: JSObject): String {
         TODO()
     }
 
@@ -3799,6 +4428,24 @@ object TemporalAOs {
     @ECMAImpl("11.6.16")
     fun getPossibleInstantsFor(timeZone: JSObject, dateTime: JSObject): List<JSObject> {
         TODO()
+    }
+
+    @JvmStatic
+    @ECMAImpl("11.6.17")
+    fun timeZoneEquals(one: JSObject, two: JSObject): Boolean {
+        // 1. If one and two are the same Object value, return true.
+        if (one == two)
+            return true
+
+        // 2. Let timeZoneOne be ? ToString(one).
+        val timeZoneOne = one.toJSString().string
+
+        // 3. Let timeZoneTwo be ? ToString(two).
+        val timeZoneTwo = two.toJSString().string
+
+        // 4. If timeZoneOne is timeZoneTwo, return true.
+        // 5. Return false.
+        return timeZoneOne == timeZoneTwo
     }
 
     @JvmStatic
@@ -4743,10 +5390,35 @@ object TemporalAOs {
     }
 
     @JvmStatic
+    @ECMAImpl("13.8")
+    fun toTemporalOffset(options: JSObject?, fallback: String): String {
+        // 1. If options is undefined, return fallback.
+        if (options == null)
+            return fallback
+
+        // 2. Return ? GetOption(options, "offset", "string", « "prefer", "use", "ignore", "reject" », fallback).
+        return getOption(options, "offset".key(), JSValue.Type.String, listOf("prefer", "use", "ignore", "reject").map { it.toValue() }, TemporalUnitDefault.Value(fallback.toValue())).asString
+    }
+
+    @JvmStatic
     @ECMAImpl("13.9")
     fun toShowCalendarOption(normalizedOptions: JSObject): String {
         // 1. Return ? GetOption(normalizedOptions, "calendarName", "string", « "auto", "always", "never" », "auto").
         return getOption(normalizedOptions, "calendarName".key(), JSValue.Type.String, listOf("auto", "always", "never").map { it.toValue() }, TemporalUnitDefault.Value("auto".toValue())).asString
+    }
+
+    @JvmStatic
+    @ECMAImpl("13.10")
+    fun toShowTimeZoneNameOption(normalizedOptions: JSObject): String {
+        // 1. Return ? GetOption(normalizedOptions, "timeZoneName", "string", « "auto", "never" », "auto").
+        return getOption(normalizedOptions, "timeZoneName".key(), JSValue.Type.String, listOf("auto", "never").map { it.toValue() }, TemporalUnitDefault.Value("auto".toValue())).asString
+    }
+
+    @JvmStatic
+    @ECMAImpl("13.11")
+    fun toShowOffsetOption(normalizedOptions: JSObject): String {
+        // 1. Return ? GetOption(normalizedOptions, "offset", "string", « "auto", "never" », "auto").
+        return getOption(normalizedOptions, "offset".key(), JSValue.Type.String, listOf("auto", "never").map { it.toValue() }, TemporalUnitDefault.Value("auto".toValue())).asString
     }
 
     @JvmStatic
@@ -5011,10 +5683,10 @@ object TemporalAOs {
         }
 
         // 4. Let offsetBehaviour be option.
-        var offsetBehavior = "option"
+        var offsetBehaviour = "option"
 
         // 5. Let matchBehaviour be match exactly.
-        var matchBehavior = "match exactly"
+        var matchBehaviour = "match exactly"
 
         var timeZone: JSObject?
         var offsetString: JSValue
@@ -5078,7 +5750,7 @@ object TemporalAOs {
             // l. If offsetString is undefined, then
             if (offsetString == JSUndefined) {
                 // i. Set offsetBehaviour to wall.
-                offsetBehavior = "wall"
+                offsetBehaviour = "wall"
             }
         }
         // 7. Else,
@@ -5121,16 +5793,16 @@ object TemporalAOs {
                 // iii. If result.[[TimeZone]].[[Z]] is true, then
                 if (result2.z) {
                     // 1. Set offsetBehaviour to exact.
-                    offsetBehavior = "exact"
+                    offsetBehaviour = "exact"
                 }
                 // iv. Else if offsetString is undefined, then
                 else if (offsetString == JSUndefined) {
                     // 1. Set offsetBehaviour to wall.
-                    offsetBehavior = "wall"
+                    offsetBehaviour = "wall"
                 }
 
                 // v. Set matchBehaviour to match minutes.
-                matchBehavior = "match minutes"
+                matchBehaviour = "match minutes"
             }
         }
 
@@ -5141,7 +5813,7 @@ object TemporalAOs {
         }
 
         // 9. If offsetBehaviour is option, then
-        val offsetNs = if (offsetBehavior == "option") {
+        val offsetNs = if (offsetBehaviour == "option") {
             // a. Set offsetString to ? ToString(offsetString).
             // b. Let offsetNs be ? ParseTimeZoneOffsetString(offsetString).
             parseTimeZoneOffsetString(offsetString.toJSString().string)
@@ -5163,12 +5835,12 @@ object TemporalAOs {
             result.millisecond,
             result.microsecond,
             result.nanosecond,
-            offsetBehavior, 
+            offsetBehaviour, 
             offsetNs,
             timeZone,
             "compatible",
             "reject",
-            matchBehavior,
+            matchBehaviour,
         )
 
         // 12. Return ! CreateTemporalZonedDateTime(epochNanoseconds, timeZone, calendar).
@@ -5614,6 +6286,38 @@ object TemporalAOs {
     @JvmStatic
     @ECMAImpl("13.29")
     fun parseTemporalInstantString(isoString: String): ParsedISODateTime {
+        // 1. If ParseText(StringToCodePoints(isoString), TemporalInstantString) is a List of errors, throw a RangeError exception.
+        if (Regex.instant.matchEntire(isoString) == null)
+            Errors.TODO("parseTemporalInstantString").throwRangeError()
+
+        // 2. Let result be ? ParseISODateTime(isoString).
+        val result = parseISODateTime(isoString)
+
+        // 3. Let offsetString be result.[[TimeZone]].[[OffsetString]].
+        var offsetString = result.tzOffset
+
+        // 4. If result.[[TimeZone]].[[Z]] is true, then
+        if (result.z) {
+            // a. Set offsetString to "+00:00".
+            offsetString = "+00:00"
+        }
+
+        // 5. Assert: offsetString is not undefined.
+        ecmaAssert(offsetString != null)
+
+        // 6. Return the Record { [[Year]]: result.[[Year]], [[Month]]: result.[[Month]], [[Day]]: result.[[Day]], [[Hour]]: result.[[Hour]], [[Minute]]: result.[[Minute]], [[Second]]: result.[[Second]], [[Millisecond]]: result.[[Millisecond]], [[Microsecond]]: result.[[Microsecond]], [[Nanosecond]]: result.[[Nanosecond]], [[TimeZoneOffsetString]]: offsetString }.
+        result.tzOffset = offsetString
+        return result
+    }
+
+    @JvmStatic
+    @ECMAImpl("13.30")
+    fun parseTemporalZonedDateTimeString(isoString: String): ParsedISODateTime {
+        // 1. If ParseText(StringToCodePoints(isoString), TemporalZonedDateTimeString) is a List of errors, throw a RangeError exception.
+        if (Regex.zonedDateTime.matchEntire(isoString) == null)
+            Errors.TODO("parseTemporalZonedDateTimeString").throwRangeError()
+
+        // 2. Return ? ParseISODateTime(isoString).
         return parseISODateTime(isoString)
     }
 
@@ -6123,7 +6827,7 @@ object TemporalAOs {
         val microsecond: Int,
         val nanosecond: BigInteger,
         val tzName: String?,
-        val tzOffset: String?,
+        var tzOffset: String?,
         val z: Boolean,
         val calendar: String?,
     ) {
@@ -6149,7 +6853,8 @@ object TemporalAOs {
         const val zoneSplit = """(?:([zZ])|(?:$offset)?)(?:\[($timeZoneID)])?"""
         const val calendar = """\[u-ca=($calendarID)]"""
         const val zonedDateTime = """^$dateSplit(?:(?:T|\s+)$timeSplit)?$zoneSplit(?:$calendar)?$"""
-        const val time = """^T?$timeSplit(?:$zoneSplit)?(?:$calendar)?$"""
+        const val time = """T?$timeSplit(?:$zoneSplit)?(?:$calendar)?$"""
+        const val instant = """$dateSplit$time"""
         const val yearMonth = """^($yearPart)-?($monthPart)$"""
         const val monthDay = """^(?:--)?($monthPart)-?($dayPart)$"""
         const val fraction = """(\d+)(?:[.,](\d{1,9}))?"""
@@ -6165,6 +6870,7 @@ object TemporalAOs {
         val offset = RegexStrings.offset.toRegex()
         val zonedDateTime = RegexStrings.zonedDateTime.toRegex(RegexOption.IGNORE_CASE)
         val time = RegexStrings.time.toRegex(RegexOption.IGNORE_CASE)
+        val instant = RegexStrings.instant.toRegex(RegexOption.IGNORE_CASE)
         val yearMonth = RegexStrings.yearMonth.toRegex()
         val monthDay = RegexStrings.monthDay.toRegex()
         val duration = RegexStrings.duration.toRegex(RegexOption.IGNORE_CASE)
