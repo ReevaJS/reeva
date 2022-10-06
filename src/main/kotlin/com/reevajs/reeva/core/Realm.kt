@@ -118,6 +118,7 @@ class Realm {
     lateinit var plainDateProto: JSPlainDateProto private set
     lateinit var plainDateTimeProto: JSPlainDateTimeProto private set
     lateinit var plainTimeProto: JSPlainTimeProto private set
+    lateinit var plainYearMonthProto: JSPlainYearMonthProto private set
     lateinit var zonedDateTimeProto: JSZonedDateTimeProto private set
 
     lateinit var objectCtor: JSObjectCtor private set
@@ -166,6 +167,7 @@ class Realm {
     lateinit var plainDateCtor: JSPlainDateCtor private set
     lateinit var plainDateTimeCtor: JSPlainDateTimeCtor private set
     lateinit var plainTimeCtor: JSPlainTimeCtor private set
+    lateinit var plainYearMonthCtor: JSPlainYearMonthCtor private set
     lateinit var zonedDateTimeCtor: JSZonedDateTimeCtor private set
 
     lateinit var throwTypeError: JSFunction private set
@@ -280,6 +282,7 @@ class Realm {
         plainDateCtor = JSPlainDateCtor.create(this)
         plainDateTimeCtor = JSPlainDateTimeCtor.create(this)
         plainTimeCtor = JSPlainTimeCtor.create(this)
+        plainYearMonthCtor = JSPlainYearMonthCtor.create(this)
         zonedDateTimeCtor = JSZonedDateTimeCtor.create(this)
 
         symbolCtor = JSSymbolCtor.create(this)
@@ -338,6 +341,7 @@ class Realm {
         plainDateProto = JSPlainDateProto.create(this)
         plainDateTimeProto = JSPlainDateTimeProto.create(this)
         plainTimeProto = JSPlainTimeProto.create(this)
+        plainYearMonthProto = JSPlainYearMonthProto.create(this)
         zonedDateTimeProto = JSZonedDateTimeProto.create(this)
 
         throwTypeError = JSRunnableFunction.create("", 0, this) {
@@ -402,6 +406,7 @@ class Realm {
         plainDateCtor.defineOwnProperty("prototype", plainDateProto, Descriptor.HAS_BASIC)
         plainDateTimeCtor.defineOwnProperty("prototype", plainDateTimeProto, Descriptor.HAS_BASIC)
         plainTimeCtor.defineOwnProperty("prototype", plainTimeProto, Descriptor.HAS_BASIC)
+        plainYearMonthCtor.defineOwnProperty("prototype", plainYearMonthProto, Descriptor.HAS_BASIC)
         zonedDateTimeCtor.defineOwnProperty("prototype", zonedDateTimeProto, Descriptor.HAS_BASIC)
 
         functionProto.defineOwnProperty("constructor", functionCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)

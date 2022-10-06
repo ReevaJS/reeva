@@ -4259,21 +4259,361 @@ object TemporalAOs {
     }
 
     @JvmStatic
+    @ECMAImpl("9.5.1")
+    fun toTemporalYearMonth(item: JSValue, options: JSObject? = null): JSObject {
+        // 1. If options is not present, set options to undefined.
+        // 2. Assert: Type(options) is Object or Undefined.
+
+        // 3. If Type(item) is Object, then
+        if (item is JSObject) {
+            // a. If item has an [[InitializedTemporalYearMonth]] internal slot, then
+            if (Slot.InitializedTemporalYearMonth in item) {
+                // i. Return item.
+                return item
+            }
+
+            // b. Let calendar be ? GetTemporalCalendarWithISODefault(item).
+            val calendar = getTemporalCalendarWithISODefault(item)
+
+            // c. Let fieldNames be ? CalendarFields(calendar, « "month", "monthCode", "year" »).
+            val fieldNames = calendarFields(calendar, listOf("month", "monthCode", "year"))
+
+            // d. Let fields be ? PrepareTemporalFields(item, fieldNames, «»).
+            val fields = prepareTemporalFields(item, fieldNames, emptySet())
+
+            // e. Return ? CalendarYearMonthFromFields(calendar, fields, options).
+            return calendarYearMonthFromFields(calendar, fields, options)
+        }
+
+        // 4. Perform ? ToTemporalOverflow(options).
+        toTemporalOverflow(options)
+
+        // 5. Let string be ? ToString(item).
+        val string = item.toJSString().string
+
+        // 6. Let result be ? ParseTemporalYearMonthString(string).
+        val result = parseTemporalYearMonthString(string)
+
+        // 7. Let calendar be ? ToTemporalCalendarWithISODefault(result.[[Calendar]]).
+        val calendar = toTemporalCalendarWithISODefault(result.calendar?.toValue() ?: JSUndefined)
+
+        // 8. Set result to ? CreateTemporalYearMonth(result.[[Year]], result.[[Month]], calendar, result.[[Day]]).
+        val result2 = createTemporalYearMonth(result.year, result.month, calendar, result.day)
+
+        // 9. NOTE: The following operation is called without options, in order for the calendar to store a canonical value in the [[ISODay]] internal slot of the result.
+        // 10. Return ? CalendarYearMonthFromFields(calendar, result).
+        return calendarYearMonthFromFields(calendar, result2)
+    }
+
+    @JvmStatic
     @ECMAImpl("9.5.2")
     fun regulateISOYearMonth(year: Int, month: Int, overflow: String): ISOYearMonthRecord {
-        TODO()
+        // 1. Assert: year and month are integers.
+        // 2. Assert: overflow is either "constrain" or "reject".
+        ecmaAssert(overflow == "contrain" || overflow == "reject")
+
+        // 3. If overflow is "constrain", then
+        return if (overflow == "constrain") {
+            // a. Set month to the result of clamping month between 1 and 12.
+            // b. Return the Record { [[Year]]: year, [[Month]]: month }.
+            ISOYearMonthRecord(year, month.coerceIn(1..12))
+        }
+        // 4. Else,
+        else {
+            // a. Assert: overflow is "reject".
+
+            // b. If month < 1 or month > 12, throw a RangeError exception.
+            if (month !in 1..12)
+                Errors.TODO("regulateISOYearMonth").throwRangeError()
+
+            // c. Return the Record { [[Year]]: year, [[Month]]: month }.
+            return ISOYearMonthRecord(year, month)
+        }
+    }
+
+    @JvmStatic
+    @ECMAImpl("9.5.3")
+    fun isoYearMonthWithinLimits(year: Int, month: Int): Boolean {
+        // 1. Assert: year and month are integers.
+
+        // 2. If year < -271821 or year > 275760, the
+        //    a. Return false.
+        if (year !in -271821..275760)
+            return false
+
+        // 3. If year is -271821 and month < 4, then
+        //    a. Return false.
+        if (year == -271821 && month < 4)
+            return false
+
+        // 4. If year is 275760 and month > 9, then
+        //    a. Return false.
+        if (year == 275760 && month > 9)
+            return false
+
+        // 5. Return true.
+        return true
     }
 
     @JvmStatic
     @ECMAImpl("9.5.4")
     fun balanceISOYearMonth(year: Int, month: Int): ISOYearMonthRecord {
-        TODO()
+        // 1. Assert: year and month are integers.
+
+        // 2. Set year to year + floor((month - 1) / 12).
+        // 3. Set month to ((month - 1) modulo 12) + 1.
+        // 4. Return the Record { [[Year]]: year, [[Month]]: month }.
+        return ISOYearMonthRecord(year + (month - 1) / 12, ((month - 1) % 12) + 1)
     }
 
     @JvmStatic
     @ECMAImpl("9.5.5")
     fun createTemporalYearMonth(isoYear: Int, isoMonth: Int, calendar: JSObject, referenceISODay: Int, newTarget: JSObject? = null): JSObject {
-        TODO()
+        // 1. Assert: isoYear, isoMonth, and referenceISODay are integers.
+        // 2. Assert: Type(calendar) is Object.
+
+        // 3. If IsValidISODate(isoYear, isoMonth, referenceISODay) is false, throw a RangeError exception.
+        if (!isValidISODate(isoYear, isoMonth, referenceISODay))
+            Errors.TODO("createTemporalYearMonth").throwRangeError()
+
+        // 4. If ! ISOYearMonthWithinLimits(isoYear, isoMonth) is false, throw a RangeError exception.
+        if (!isoYearMonthWithinLimits(isoYear, isoMonth))
+            Errors.Temporal.InvalidISOYearMonth(isoYear, isoMonth).throwRangeError()
+
+        // 5. If newTarget is not present, set newTarget to %Temporal.PlainYearMonth%.
+        // 6. Let object be ? OrdinaryCreateFromConstructor(newTarget, "%Temporal.PlainYearMonth.prototype%", « [[InitializedTemporalYearMonth]], [[ISOYear]], [[ISOMonth]], [[ISODay]], [[Calendar]] »).
+        val obj = AOs.ordinaryCreateFromConstructor(
+            newTarget ?: realm.plainYearMonthCtor,
+            listOf(Slot.InitializedTemporalYearMonth),
+            defaultProto = Realm::plainYearMonthProto,
+        )
+
+        // 7. Set object.[[ISOYear]] to isoYear.
+        obj[Slot.ISOYear] = isoYear
+
+        // 8. Set object.[[ISOMonth]] to isoMonth.
+        obj[Slot.ISOMonth] = isoMonth
+
+        // 9. Set object.[[Calendar]] to calendar.
+        obj[Slot.Calendar] = calendar
+
+        // 10. Set object.[[ISODay]] to referenceISODay.
+        obj[Slot.ISODay] = referenceISODay
+
+        // 11. Return object.
+        return obj
+    }
+
+    @JvmStatic
+    @ECMAImpl("9.5.6")
+    fun temporalYearMonthToString(yearMonth: JSObject, showCalendar: String): String {
+        // 1. Assert: Type(yearMonth) is Object.
+
+        // 2. Assert: yearMonth has an [[InitializedTemporalYearMonth]] internal slot.
+        ecmaAssert(Slot.InitializedTemporalYearMonth in yearMonth)
+
+        // 3. Let year be ! PadISOYear(yearMonth.[[ISOYear]]).
+        val year = padISOYear(yearMonth[Slot.ISOYear])
+
+        // 4. Let month be ToZeroPaddedDecimalString(yearMonth.[[ISOMonth]], 2).
+        val month = yearMonth[Slot.ISOMonth].toString().padStart(2, '0')
+
+        // 5. Let result be the string-concatenation of year, the code unit 0x002D (HYPHEN-MINUS), and month.
+        var result = "$year-$month"
+
+        // 6. Let calendarID be ? ToString(yearMonth.[[Calendar]]).
+        val calendarID = yearMonth[Slot.Calendar].toJSString().string
+
+        // 7. If showCalendar is "always" or if calendarID is not "iso8601", then
+        if (showCalendar == "always" || calendarID != "iso8601") {
+            // a. Let day be ToZeroPaddedDecimalString(yearMonth.[[ISODay]], 2).
+            val day = yearMonth[Slot.ISODay].toString().padStart(2, '0')
+
+            // b. Set result to the string-concatenation of result, the code unit 0x002D (HYPHEN-MINUS), and day.
+            result = "$result-$day"
+        }
+
+        // 8. Let calendarString be FormatCalendarAnnotation(calendarID, showCalendar).
+        val calendarString = formatCalendarAnnotation(calendarID, showCalendar)
+
+        // 9. Set result to the string-concatenation of result and calendarString.
+        // 10. Return result.
+        return result + calendarString
+    }
+
+    @JvmStatic
+    @ECMAImpl("9.5.7")
+    fun differenceTemporalPlainYearMonth(isUntil: Boolean, yearMonth: JSObject, other_: JSValue, options: JSValue): JSObject {
+        // 1. If operation is since, let sign be -1. Otherwise, let sign be 1.
+        val sign = if (isUntil) 1 else -1
+
+        // 2. Set other to ? ToTemporalYearMonth(other).
+        val other = toTemporalYearMonth(other_)
+
+        // 3. Let calendar be yearMonth.[[Calendar]].
+        val calendar = yearMonth[Slot.Calendar]
+
+        // 4. If ? CalendarEquals(calendar, other.[[Calendar]]) is false, throw a RangeError exception.
+        if (!calendarEquals(calendar, other[Slot.Calendar]))
+            Errors.Temporal.IncompatibleCalendars(calendar.toJSString().string, other[Slot.Calendar].toJSString().string).throwRangeError()
+
+        // 5. Let settings be ? GetDifferenceSettings(operation, options, date, « "week", "day" », "month", "year").
+        val settings = getDifferenceSettings(isUntil, options, "date", listOf("week", "day"), "month", "year")
+
+        // 6. Let fieldNames be ? CalendarFields(calendar, « "monthCode", "year" »).
+        val fieldNames = calendarFields(calendar, listOf("monthCode", "year"))
+
+        // 7. Let otherFields be ? PrepareTemporalFields(other, fieldNames, «»).
+        val otherFields = prepareTemporalFields(other, fieldNames, emptySet())
+
+        // 8. Perform ! CreateDataPropertyOrThrow(otherFields, "day", 1𝔽).
+        AOs.createDataPropertyOrThrow(otherFields, "day".key(), 1.toValue())
+
+        // 9. Let otherDate be ? CalendarDateFromFields(calendar, otherFields).
+        val otherDate = calendarDateFromFields(calendar, otherFields)
+
+        // 10. Let thisFields be ? PrepareTemporalFields(yearMonth, fieldNames, «»).
+        val thisFields = prepareTemporalFields(yearMonth, fieldNames, emptySet())
+
+        // 11. Perform ! CreateDataPropertyOrThrow(thisFields, "day", 1𝔽).
+        AOs.createDataPropertyOrThrow(thisFields, "day".key(), 1.toValue())
+
+        // 12. Let thisDate be ? CalendarDateFromFields(calendar, thisFields).
+        val thisDate = calendarDateFromFields(calendar, thisFields)
+
+        // 13. Let untilOptions be ? MergeLargestUnitOption(settings.[[Options]], settings.[[LargestUnit]]).
+        val untilOptions = mergeLargestUnitOption(settings.options, settings.largestUnit)
+
+        // 14. Let result be ? CalendarDateUntil(calendar, thisDate, otherDate, untilOptions).
+        var result = calendarDateUntil(calendar, thisDate, otherDate, untilOptions)
+
+        // 15. If settings.[[SmallestUnit]] is not "month" or settings.[[RoundingIncrement]] ≠ 1, then
+        if (settings.smallestUnit != "month" || settings.roundingIncrement != 1) {
+            // a. Set result to (? RoundDuration(result.[[Years]], result.[[Months]], 0, 0, 0, 0, 0, 0, 0, 0, settings.[[RoundingIncrement]], settings.[[SmallestUnit]], settings.[[RoundingMode]], thisDate)).[[DurationRecord]].
+            // TODO: Another instance of assigning a record to a language value
+            val result2 = roundDuration(
+                DurationRecord(
+                    result[Slot.Years],
+                    result[Slot.Months],
+                    0, 0, 0, 0, 0, 0, 0, BigInteger.ZERO,
+                ),
+                settings.roundingIncrement,
+                settings.smallestUnit,
+                settings.roundingMode,
+                thisDate
+            ).duration
+
+            return createTemporalDuration(DurationRecord(
+                sign * result2.years,
+                sign * result2.months,
+                0, 0, 0, 0, 0, 0, 0, BigInteger.ZERO,
+            ))
+        }
+
+        // 16. Return ! CreateTemporalDuration(sign × result.[[Years]], sign × result.[[Months]], 0, 0, 0, 0, 0, 0, 0, 0).
+        return createTemporalDuration(DurationRecord(
+            sign * result[Slot.Years],
+            sign * result[Slot.Months],
+            0, 0, 0, 0, 0, 0, 0, BigInteger.ZERO,
+        ))
+    }
+
+    @JvmStatic
+    @ECMAImpl("9.5.8")
+    fun addDurationToOrSubtractDurationFromPlainYearMonth(isAdd: Boolean, yearMonth: JSObject, temporalDurationLike: JSValue, options_: JSValue): JSObject {
+        // 1. Let duration be ? ToTemporalDuration(temporalDurationLike).
+        var duration = toTemporalDuration(temporalDurationLike)
+
+        // 2. If operation is subtract, then
+        if (!isAdd) {
+            // a. Set duration to ! CreateNegatedTemporalDuration(duration).
+            duration = createNegatedTemporalDuration(duration)
+        }
+
+        // 3. Let balanceResult be ? BalanceDuration(duration.[[Days]], duration.[[Hours]], duration.[[Minutes]], duration.[[Seconds]], duration.[[Milliseconds]], duration.[[Microseconds]], duration.[[Nanoseconds]], "day").
+        val balanceResult = balanceDuration(
+            duration[Slot.Days], 
+            duration[Slot.Hours], 
+            duration[Slot.Minutes], 
+            duration[Slot.Seconds], 
+            duration[Slot.Millisecond], 
+            duration[Slot.Microseconds], 
+            duration[Slot.Nanoseconds], 
+            "day",
+        )
+
+        // 4. Set options to ? GetOptionsObject(options).
+        val options = getOptionsObject(options_)
+
+        // 5. Let calendar be yearMonth.[[Calendar]].
+        val calendar = yearMonth[Slot.Calendar]
+
+        // 6. Let fieldNames be ? CalendarFields(calendar, « "monthCode", "year" »).
+        val fieldNames = calendarFields(calendar, listOf("monthCode", "year"))
+
+        // 7. Let fields be ? PrepareTemporalFields(yearMonth, fieldNames, «»).
+        val fields = prepareTemporalFields(yearMonth, fieldNames, emptySet())
+
+        // 8. Set sign to ! DurationSign(duration.[[Years]], duration.[[Months]], duration.[[Weeks]], balanceResult.[[Days]], 0, 0, 0, 0, 0, 0).
+        val sign = durationSign(DurationRecord(
+            duration[Slot.Years],
+            duration[Slot.Months],
+            duration[Slot.Weeks],
+            balanceResult.days,
+            0, 0, 0, 0, 0, BigInteger.ZERO,
+        ))
+
+        // 9. If sign < 0, then
+        val day = if (sign < 0) {
+            // a. Let dayFromCalendar be ? CalendarDaysInMonth(calendar, yearMonth).
+            val dayFromCalendar = calendarDaysInMonth(calendar, yearMonth) 
+
+            // b. Let day be ? ToPositiveInteger(dayFromCalendar).
+            toPositiveInteger(dayFromCalendar)
+        }
+        // 10. Else,
+        else {
+            // a. Let day be 1.
+            1.toValue()
+        }
+
+        // 11. Perform ! CreateDataPropertyOrThrow(fields, "day", 𝔽(day)).
+        AOs.createDataProperty(fields, "day".key(), day.toValue())
+
+        // 12. Let date be ? CalendarDateFromFields(calendar, fields).
+        val date = calendarDateFromFields(calendar, fields)
+
+        // 13. Let durationToAdd be ! CreateTemporalDuration(duration.[[Years]], duration.[[Months]], duration.[[Weeks]], balanceResult.[[Days]], 0, 0, 0, 0, 0, 0).
+        val durationToAdd = createTemporalDuration(DurationRecord(
+            duration[Slot.Years],
+            duration[Slot.Months],
+            duration[Slot.Weeks],
+            balanceResult.days,
+            0, 0, 0, 0, 0, BigInteger.ZERO,
+        ))
+
+        // 14. Let optionsCopy be OrdinaryObjectCreate(null).
+        val optionsCopy = JSObject.create()
+
+        // 15. Let entries be ? EnumerableOwnPropertyNames(options, key+value).
+        val entries = AOs.enumerableOwnPropertyNames(options, JSObject.PropertyKind.KeyValue)
+
+        // 16. For each element entry of entries, do
+        for (entry in entries) {
+            expect(entry is JSObject)
+
+            // a. Perform ! CreateDataPropertyOrThrow(optionsCopy, entry[0], entry[1]).
+            AOs.createDataPropertyOrThrow(optionsCopy, entry.get(0), entry.get(1))
+        }
+
+        // 17. Let addedDate be ? CalendarDateAdd(calendar, date, durationToAdd, options).
+        val addedDate = calendarDateAdd(calendar, date, durationToAdd, options)
+
+        // 18. Let addedDateFields be ? PrepareTemporalFields(addedDate, fieldNames, «»).
+        val addedDateFields = prepareTemporalFields(addedDate, fieldNames, emptySet())
+
+        // 19. Return ? CalendarYearMonthFromFields(calendar, addedDateFields, optionsCopy).
+        return calendarYearMonthFromFields(calendar, addedDateFields, optionsCopy)
     }
 
     @JvmStatic
@@ -6525,6 +6865,28 @@ object TemporalAOs {
     }
 
     @JvmStatic
+    @ECMAImpl("13.39")
+    fun parseTemporalYearMonthString(isoString: String): ParsedISODateTime {
+        // 1. Let parseResult be ParseText(StringToCodePoints(isoString), TemporalYearMonthString).
+        // 2. If parseResult is a List of errors, throw a RangeError exception.
+        val result = parseISODateTime(isoString)
+
+        // 3. If parseResult contains a UTCDesignator Parse Node, throw a RangeError exception.
+        if (result.z)
+            Errors.TODO("parseTemporalYearMonthString").throwRangeError()
+
+        // 4. Let result be ? ParseISODateTime(isoString).
+
+        // 5. Return the Record { [[Year]]: result.[[Year]], [[Month]]: result.[[Month]], [[Day]]: result.[[Day]], [[Calendar]]: result.[[Calendar]] }.
+        return ParsedISODateTime(
+            year = result.year,
+            month = result.month,
+            day = result.day,
+            calendar = result.calendar,
+        )
+    }
+
+    @JvmStatic
     @ECMAImpl("13.40")
     fun toPositiveInteger(argument: JSValue): JSNumber {
         // 1. Let integer be ? ToIntegerThrowOnInfinity(argument).
@@ -6814,22 +7176,22 @@ object TemporalAOs {
 
     data class ISOMonthDayRecord(val month: Int, val day: Int, val referenceISODay: Int)
 
-    data class ISOYearMonthRecord(val year: Int, val month: Int, val referenceISODay: Int)
+    data class ISOYearMonthRecord(val year: Int, val month: Int, val referenceISODay: Int = 0)
 
     data class ParsedISODateTime(
-        val year: Int,
-        val month: Int,
-        val day: Int,
-        val hour: Int,
-        val minute: Int,
-        val second: Int,
-        val millisecond: Int,
-        val microsecond: Int,
-        val nanosecond: BigInteger,
-        val tzName: String?,
-        var tzOffset: String?,
-        val z: Boolean,
-        val calendar: String?,
+        val year: Int = 0,
+        val month: Int = 0,
+        val day: Int = 0,
+        val hour: Int = 0,
+        val minute: Int = 0,
+        val second: Int = 0,
+        val millisecond: Int = 0,
+        val microsecond: Int = 0,
+        val nanosecond: BigInteger = BigInteger.ZERO,
+        val tzName: String? = null,
+        var tzOffset: String? = null,
+        val z: Boolean = false,
+        val calendar: String? = null,
     ) {
         fun toDateTime() = DateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond)
     }

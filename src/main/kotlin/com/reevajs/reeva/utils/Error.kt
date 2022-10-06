@@ -428,12 +428,14 @@ object Errors {
     }
     object Temporal {
         class IncompatibleCalendars(one: String, two: String) : Error("cannot consolidate calendar \"$one\" with calendar \"$two\"")
+
         class InvalidBuiltinCalendar(id: String) : Error("invalid calendar: \"$id\"")
         class InvalidMonthCode(code: String) : Error("invalid month code: \"$code\"")
 
         class InvalidISO8601String(string: String) : Error("invalid ISO-8601 string: \"$string\"")
         class InvalidISODate(date: String) : Error("invalid ISO date: \"$date\"")
         class InvalidISOTime(time: String) : Error("invalid ISO time: \"$time\"")
+        class InvalidISOYearMonth(year: Int, month: Int) : Error("invalid ISO year-month: $year-$month")
         class InvalidTimeZone(timeZone: String) : Error("invalid time zone: \"$timeZone\"")
         class InvalidEpochInstant(instant: Long) : Error("invalid epoch instant: $instant")
         class InvalidDuration(duration: String) : Error("invalid duration: $duration")
