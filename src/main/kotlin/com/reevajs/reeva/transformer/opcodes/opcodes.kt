@@ -680,9 +680,14 @@ object ThrowSuperNotInitializedIfEmpty : Opcode(-1)
 object Return : Opcode(-1)
 
 /**
- * Returns the value on the top of the stack from this function.
+ * Yields the value on the top of the stack from this function.
  */
 object Yield : Opcode(-1)
+
+/**
+ * Awaits the value on the top of the stack from this function.
+ */
+object Await : Opcode(-1)
 
 ///////////////
 // Functions //

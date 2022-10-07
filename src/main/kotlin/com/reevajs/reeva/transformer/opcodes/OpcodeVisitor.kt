@@ -106,6 +106,7 @@ interface OpcodeVisitor {
             Throw -> visitThrow()
             Return -> visitReturn()
             Yield -> visitYield()
+            Await -> visitAwait()
             DefineGetterProperty -> visitDefineGetterProperty()
             DefineSetterProperty -> visitDefineSetterProperty()
             GetSuperBase -> visitGetSuperBase()
@@ -329,6 +330,8 @@ interface OpcodeVisitor {
     fun visitReturn()
 
     fun visitYield()
+
+    fun visitAwait()
 
     fun visitDefineGetterProperty()
 

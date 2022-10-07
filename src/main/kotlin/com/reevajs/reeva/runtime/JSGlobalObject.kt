@@ -2,6 +2,7 @@ package com.reevajs.reeva.runtime
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.jvmcompat.JSPackageObject
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSBuiltinFunction

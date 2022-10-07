@@ -25,6 +25,7 @@ class JSBuiltinFunction private constructor(
     }
 
     companion object {
+        @JvmOverloads
         fun create(
             name: String,
             length: Int,
@@ -32,5 +33,17 @@ class JSBuiltinFunction private constructor(
             realm: Realm = Agent.activeAgent.getActiveRealm(),
             prototype: JSValue = realm.functionProto,
         ) = JSBuiltinFunction(realm, name, length, builtin, prototype).initialize()
+
+        fun create(builtin: BuiltinFunction): JSFunction {
+            val realm = Agent.activeAgent.getActiveRealm()
+
+            return JSBuiltinFunction(
+                realm,
+                "<native function>",
+                0,
+                builtin,
+                realm.functionProto
+            ).initialize()
+        }
     }
 }

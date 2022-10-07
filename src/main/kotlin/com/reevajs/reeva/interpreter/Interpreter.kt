@@ -9,6 +9,7 @@ import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.collections.JSUnmappedArgumentsObject
+import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.iterators.JSObjectPropertyIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
@@ -23,6 +24,7 @@ import com.reevajs.reeva.utils.*
 class Interpreter(
     private val transformedSource: TransformedSource,
     private val arguments: List<JSValue>,
+    private val topLevelPromiseCapability: AOs.PromiseCapability? = null,
 ) : OpcodeVisitor {
     private val info: FunctionInfo
         inline get() = transformedSource.functionInfo
@@ -43,6 +45,14 @@ class Interpreter(
 
     var isDone: Boolean = false
         private set
+
+    private var innerPromiseCapability = if (topLevelPromiseCapability != null) {
+        AOs.newPromiseCapability(realm.promiseCtor)
+    } else null
+
+    private var pendingAwaitValue: JSValue? = null
+    val isAwaiting: Boolean
+        get() = pendingAwaitValue != null
 
     // For fast handler lookup in main loop
     private val handlerStarts = mutableMapOf<Int, Handler>()
@@ -102,6 +112,9 @@ class Interpreter(
                 throw e
             }
         }
+
+        if (isAwaiting)
+            return JSUndefined
 
         expect(stack.isNotEmpty())
         expect(stack.last() is JSValue)
@@ -740,7 +753,10 @@ class Interpreter(
     }
 
     override fun visitCreateAsyncClosure(opcode: CreateAsyncClosure) {
-        TODO("Not yet implemented")
+        val function = AsyncInterpretedFunction.create(transformedSource.forInfo(opcode.ir))
+        AOs.setFunctionName(function, opcode.ir.name.key())
+        AOs.setFunctionLength(function, opcode.ir.length)
+        push(function)
     }
 
     override fun visitCreateAsyncGeneratorClosure(opcode: CreateAsyncGeneratorClosure) {
@@ -844,6 +860,27 @@ class Interpreter(
 
     override fun visitYield() {
         shouldLoop = false
+    }
+
+    override fun visitAwait() {
+        shouldLoop = false
+
+        pendingAwaitValue = popValue()
+        queueAwaitMicrotask()
+    }
+
+    private fun queueAwaitMicrotask() {
+        val innerPromise = AOs.promiseResolve(realm.promiseCtor, pendingAwaitValue!!)
+
+        AOs.performPromiseThen(
+            innerPromise as JSObject,
+            JSBuiltinFunction.create {
+                interpretWithYieldContinuation(it.argument(0), YieldContinuation.Continue)
+            },
+            JSBuiltinFunction.create {
+                interpretWithYieldContinuation(it.argument(0), YieldContinuation.Throw)
+            },
+        )
     }
 
     override fun visitCollectRestArgs() {
@@ -968,6 +1005,8 @@ class Interpreter(
                 NormalInterpretedFunction.create(transformedSource.forInfo(info))
             MethodDefinitionNode.Kind.Generator ->
                 GeneratorInterpretedFunction.create(transformedSource.forInfo(info))
+            MethodDefinitionNode.Kind.Async ->
+                AsyncInterpretedFunction.create(transformedSource.forInfo(info))
             else -> TODO()
         }
 
@@ -987,6 +1026,7 @@ class Interpreter(
 
         when (kind) {
             MethodDefinitionNode.Kind.Normal,
+            MethodDefinitionNode.Kind.Async,
             MethodDefinitionNode.Kind.Getter,
             MethodDefinitionNode.Kind.Setter -> {
             }
