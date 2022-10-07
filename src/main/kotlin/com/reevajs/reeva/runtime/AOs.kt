@@ -19,6 +19,7 @@ import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.errors.JSErrorObject
 import com.reevajs.reeva.runtime.errors.JSErrorProto
 import com.reevajs.reeva.runtime.functions.JSBoundFunction
+import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.iterators.JSArrayIterator
 import com.reevajs.reeva.runtime.memory.DataBlock
@@ -2991,11 +2992,13 @@ object AOs {
     @JvmStatic
     @ECMAImpl("26.6.5.4.1")
     fun performPromiseThen(
-        promise: JSObject,
+        promise: JSValue,
         onFulfilled: JSValue,
         onRejected: JSValue,
-        resultCapability: PromiseCapability?
+        resultCapability: PromiseCapability? = null,
     ): JSValue {
+        ecmaAssert(isPromise(promise))
+
         val onFulfilledCallback = if (isCallable(onFulfilled)) {
             Agent.activeAgent.hostHooks.makeJobCallback(onFulfilled)
         } else null

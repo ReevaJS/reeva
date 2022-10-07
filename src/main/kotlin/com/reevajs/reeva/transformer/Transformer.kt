@@ -1700,7 +1700,8 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     override fun visitAwaitExpression(node: AwaitExpressionNode) {
-        TODO()
+        visitExpression(node.expression)
+        +Await
     }
 
     override fun visitConditionalExpression(node: ConditionalExpressionNode) {
@@ -1874,7 +1875,10 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     }
 
                     when (method.kind) {
-                        MethodDefinitionNode.Kind.Normal, MethodDefinitionNode.Kind.Generator -> storeObjectProperty(
+                        MethodDefinitionNode.Kind.Normal,
+                        MethodDefinitionNode.Kind.Generator,
+                        MethodDefinitionNode.Kind.Async,
+                        MethodDefinitionNode.Kind.AsyncGenerator, -> storeObjectProperty(
                             method.propName,
                             ::makeFunction,
                         )
@@ -1886,8 +1890,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                                 +DefineGetterProperty
                             } else +DefineSetterProperty
                         }
-
-                        else -> TODO()
                     }
                 }
 

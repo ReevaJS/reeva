@@ -7,6 +7,7 @@ import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
+import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObject
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -262,5 +263,31 @@ class GeneratorInterpretedFunction private constructor(
             transformedSource: TransformedSource,
             realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = GeneratorInterpretedFunction(realm, transformedSource).initialize()
+    }
+}
+
+class AsyncInterpretedFunction private constructor(
+    realm: Realm,
+    transformedSource: TransformedSource,
+) : InterpretedFunction(realm, transformedSource) {
+    override fun evaluate(arguments: JSArguments): JSValue {
+        val promiseCapability = AOs.newPromiseCapability(realm.promiseCtor)
+
+        val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
+        val interpreter = Interpreter(transformedSource, args, promiseCapability)
+
+        val resultValue = interpreter.interpret()
+        if (!interpreter.isAwaiting) {
+            AOs.fulfillPromise(promiseCapability.promise as JSObject, resultValue)
+        }
+
+        return promiseCapability.promise
+    }
+
+    companion object {
+        fun create(
+            transformedSource: TransformedSource,
+            realm: Realm = Agent.activeAgent.getActiveRealm(),
+        ) = AsyncInterpretedFunction(realm, transformedSource).initialize()
     }
 }
