@@ -1,5 +1,7 @@
 package com.reevajs.reeva.transformer.opcodes
 
+import com.reevajs.reeva.parsing.lexer.TokenType
+
 interface OpcodeVisitor {
     fun visit(opcode: Opcode) {
         when (opcode) {
@@ -103,17 +105,12 @@ interface OpcodeVisitor {
             PushClosure -> visitPushClosure()
             Throw -> visitThrow()
             Return -> visitReturn()
+            Yield -> visitYield()
             DefineGetterProperty -> visitDefineGetterProperty()
             DefineSetterProperty -> visitDefineSetterProperty()
-            GetGeneratorPhase -> visitGetGeneratorPhase()
             GetSuperBase -> visitGetSuperBase()
-            is JumpTable -> visitJumpTable(opcode)
             is PushBigInt -> visitPushBigInt(opcode)
             PushEmpty -> visitPushEmpty()
-            is SetGeneratorPhase -> visitSetGeneratorPhase(opcode)
-            GetGeneratorSentValue -> visitGeneratorSentValue()
-            PushToGeneratorState -> visitPushToGeneratorState()
-            PopFromGeneratorState -> visitPopFromGeneratorState()
             is CopyObjectExcludingProperties -> visitCopyObjectExcludingProperties(opcode)
             is LoadBoolean -> visitLoadBoolean(opcode)
             is StoreBoolean -> visitStoreBoolean(opcode)
@@ -331,23 +328,17 @@ interface OpcodeVisitor {
 
     fun visitReturn()
 
+    fun visitYield()
+
     fun visitDefineGetterProperty()
 
     fun visitDefineSetterProperty()
 
-    fun visitGetGeneratorPhase()
-
     fun visitGetSuperBase()
-
-    fun visitJumpTable(opcode: JumpTable)
 
     fun visitPushBigInt(opcode: PushBigInt)
 
     fun visitPushEmpty()
-
-    fun visitSetGeneratorPhase(opcode: SetGeneratorPhase)
-
-    fun visitGeneratorSentValue()
 
     fun visitCopyObjectExcludingProperties(opcode: CopyObjectExcludingProperties)
 
@@ -370,10 +361,6 @@ interface OpcodeVisitor {
     fun visitAttachComputedClassMethod(opcode: AttachComputedClassMethod)
 
     fun visitFinalizeClass()
-
-    fun visitPushToGeneratorState()
-
-    fun visitPopFromGeneratorState()
 
     fun visitLoadModuleVar(opcode: LoadModuleVar)
 

@@ -140,11 +140,10 @@ open class HoistingScope(
     outer: Scope? = null,
     val isLexical: Boolean = false,
     allowVarInlining: Boolean = true,
-    isGenerator: Boolean = false,
 ) : Scope(outer, allowVarInlining) {
     override var isStrict = false
     var isDerivedClassConstructor = false
-    private val reservedLocals = Transformer.getReservedLocalsCount(isGenerator)
+    private val reservedLocals = Transformer.RESERVED_LOCALS_COUNT
 
     override var nextInlineableLocal = reservedLocals
 

@@ -297,7 +297,7 @@ class ScopeResolver : ASTVisitor {
     ): Scope {
         val prevAllowVarInlining = allowVarInlining
         allowVarInlining = kind == AOs.FunctionKind.Normal
-        val functionScope = HoistingScope(scope, isLexical, allowVarInlining, kind.isGenerator)
+        val functionScope = HoistingScope(scope, isLexical, allowVarInlining)
         scope = functionScope
 
         if (body is BlockNode && body.hasUseStrict)
@@ -331,7 +331,7 @@ class ScopeResolver : ASTVisitor {
         val bodyScope = if (body is BlockNode && !parameters.isSimple()) {
             // The body scope shouldn't be a target for the receiver or new.target
             // sources
-            HoistingScope(scope, isLexical = true, allowVarInlining, kind.isGenerator).also {
+            HoistingScope(scope, isLexical = true, allowVarInlining).also {
                 scope = it
             }
         } else functionScope

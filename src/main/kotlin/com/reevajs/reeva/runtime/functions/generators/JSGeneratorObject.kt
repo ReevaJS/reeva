@@ -15,35 +15,31 @@ class JSGeneratorObject private constructor(
     val transformedSource: TransformedSource,
     val receiver: JSValue,
     arguments: List<JSValue>,
-    val generatorState: Interpreter.GeneratorState,
     private val context: ExecutionContext,
 ) : JSObject(realm, realm.generatorObjectProto) {
-    private val arguments = listOf(receiver, JSUndefined, generatorState) + arguments
+    private val interpreter = Interpreter(transformedSource, listOf(receiver, JSUndefined) + arguments)
 
     fun next(value: JSValue): JSValue {
-        generatorState.sentValue = value
-        val agent = Agent.activeAgent
-
-        agent.pushExecutionContext(context)
-        return try {
-            execute()
-        } finally {
-            agent.popExecutionContext()
-        }
+        return execute(value, Interpreter.YieldContinuation.Continue)
     }
 
     fun return_(value: JSValue): JSValue {
-        TODO()
+        return execute(value, Interpreter.YieldContinuation.Return)
     }
 
     fun throw_(value: JSValue): JSValue {
-        TODO()
+        return execute(value, Interpreter.YieldContinuation.Throw)
     }
 
-    private fun execute(): JSValue {
-        val interpreter = Interpreter(transformedSource, arguments)
-        val result = interpreter.interpret()
-        return AOs.createIterResultObject(result, generatorState.phase == -1)
+    private fun execute(value: JSValue, mode: Interpreter.YieldContinuation): JSValue {
+        val agent = Agent.activeAgent
+
+        agent.pushExecutionContext(context)
+        try {
+            return AOs.createIterResultObject(interpreter.interpretWithYieldContinuation(value, mode), interpreter.isDone)
+        } finally {
+            agent.popExecutionContext()
+        }
     }
 
     companion object {
@@ -51,7 +47,6 @@ class JSGeneratorObject private constructor(
             transformedSource: TransformedSource,
             receiver: JSValue,
             arguments: List<JSValue>,
-            generatorState: Interpreter.GeneratorState,
             executionContext: ExecutionContext,
             realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = JSGeneratorObject(
@@ -59,7 +54,6 @@ class JSGeneratorObject private constructor(
             transformedSource,
             receiver,
             arguments,
-            generatorState,
             executionContext,
         ).initialize()
     }

@@ -48,12 +48,6 @@ class IRPrinter(private val transformedSource: TransformedSource) {
                 is DeclareGlobalFunc -> println(" ${opcode.name}")
                 is LoadNamedProperty -> println(" \"${opcode.name}\"")
                 is IncInt -> println(" [${opcode.local}]")
-                is JumpTable -> {
-                    val entries = opcode.table.entries.joinToString(separator = ", ") { (phase, target) ->
-                        "$phase: @$target"
-                    }
-                    println(" { $entries }")
-                }
                 is JumpInstr -> println(" @${opcode.to}")
                 is LoadCurrentEnvName -> println(" \"${opcode.name}\"")
                 is LoadEnvName -> println(" \"${opcode.name}\" #${opcode.distance}")
@@ -65,7 +59,6 @@ class IRPrinter(private val transformedSource: TransformedSource) {
                         println(" \"${opcode.literal}\"")
                     } else println(" ${opcode.literal}")
                 }
-                is SetGeneratorPhase -> println(" #${opcode.phase}")
                 is StoreNamedProperty -> println(" \"${opcode.name}\"")
                 is StoreCurrentEnvName -> println(" \"${opcode.name}\"")
                 is StoreEnvName -> println(" \"${opcode.name}\" #${opcode.distance}")

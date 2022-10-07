@@ -586,45 +586,6 @@ class JumpIfNullish(to: Int) : JumpInstr(to)
  */
 class JumpIfNotEmpty(to: Int) : JumpInstr(to)
 
-/**
- * Jumps to the location specified in the table, given by a JVM int value at
- * the top of the stack. This is the primary mechanism behind Generators.
- */
-class JumpTable(val table: Map<Int, Int>) : JumpInstr(-1)
-
-////////////////
-// Generators //
-////////////////
-
-/**
- * Loads the current function's GeneratorState and calls its getPhase() method.
- */
-object GetGeneratorPhase : Opcode(1)
-
-/**
- * Loads the current function's GeneratorState and calls its setPhase() method
- * with [phase] as the argument.
- */
-class SetGeneratorPhase(val phase: Int) : Opcode(0)
-
-/**
- * Loads the current function's GeneratorState and calls its getSentValue()
- * method.
- */
-object GetGeneratorSentValue : Opcode(1)
-
-/**
- * Pushes the value at the top of the stack into the GeneratorState's temporary
- * stack. This is used to save stack values across yield boundaries.
- */
-object PushToGeneratorState : Opcode(-1)
-
-/**
- * Pops a value from the GeneratorState's temporary stack and pushes it to the
- * primary stack. This is used to load stack values across yield boundaries.
- */
-object PopFromGeneratorState : Opcode(1)
-
 /////////////
 // Classes //
 /////////////
@@ -717,6 +678,11 @@ object ThrowSuperNotInitializedIfEmpty : Opcode(-1)
  * Returns the value on the top of the stack from this function.
  */
 object Return : Opcode(-1)
+
+/**
+ * Returns the value on the top of the stack from this function.
+ */
+object Yield : Opcode(-1)
 
 ///////////////
 // Functions //

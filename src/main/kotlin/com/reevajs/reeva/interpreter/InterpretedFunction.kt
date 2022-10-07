@@ -250,7 +250,6 @@ class GeneratorInterpretedFunction private constructor(
                 transformedSource,
                 arguments.thisValue,
                 arguments,
-                Interpreter.GeneratorState(),
                 Agent.activeAgent.runningExecutionContext,
             )
         }

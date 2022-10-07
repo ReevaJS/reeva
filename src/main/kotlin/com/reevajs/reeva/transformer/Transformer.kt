@@ -34,12 +34,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         val rootNode = parsedSource.node
 
-        builder = IRBuilder(
-            getReservedLocalsCount(isGenerator = false),
-            rootNode.scope.inlineableLocalCount,
-            isDerivedClassConstructor = false,
-            isGenerator = false,
-        )
+        builder = IRBuilder(RESERVED_LOCALS_COUNT, rootNode.scope.inlineableLocalCount)
 
         globalDeclarationInstantiation(rootNode.scope.outerGlobalScope as HoistingScope) {
             rootNode.children.forEach(::visit)
@@ -144,20 +139,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             exitScope(scope)
     }
 
-    private fun insertGeneratorPrologue() {
-        +GetGeneratorPhase
-        builder.initializeJumpTable()
-
-        // Always add the exhausted case
-        // TODO: Determine if a generator will never be exhausted?
-        builder.addJumpTableTarget(-1, builder.opcodeCount())
-        +PushUndefined
-        +Return
-
-        // Add the default case
-        builder.addJumpTableTarget(0, builder.opcodeCount())
-    }
-
     private fun visitFunctionHelper(
         name: String,
         parameters: ParameterList,
@@ -171,15 +152,15 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         instantiateFunction: Boolean = true,
     ): FunctionInfo {
         val prevBuilder = builder
-        builder = IRBuilder(
-            parameters.size + getReservedLocalsCount(isGenerator = kind.isGenerator),
-            functionScope.inlineableLocalCount,
-            classConstructorKind == JSFunction.ConstructorKind.Derived,
-            isGenerator = kind.isGenerator,
-        )
+        builder = IRBuilder(parameters.size + RESERVED_LOCALS_COUNT, functionScope.inlineableLocalCount)
 
+        // When generators are interpreted, they _always_ push a value onto the stack. This value is
+        // then used from the generator expression, thrown, or returned, depending on the call type.
+        // However, the beginning of the function is not a yield point, so the extra value from the
+        // first call will sit there and do nothing (the value passed to the first invocation of a
+        // generator's next/return/throw method is ignored). So we need an initial Pop to get rid of it
         if (kind.isGenerator)
-            insertGeneratorPrologue()
+            +Pop
 
         expect(functionScope is HoistingScope)
         expect(bodyScope is HoistingScope)
@@ -226,10 +207,8 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             storeToSource(receiver)
         }
 
-        val reservedLocals = getReservedLocalsCount(kind.isGenerator)
-
         parameters.forEachIndexed { index, param ->
-            val local = Local(reservedLocals + index)
+            val local = Local(RESERVED_LOCALS_COUNT + index)
 
             when (param) {
                 is SimpleParameter -> {
@@ -287,9 +266,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         } else visit(body)
 
         if (!builder.isDone) {
-            if (kind.isGenerator)
-                +SetGeneratorPhase(-1)
-
             if (classConstructorKind == JSFunction.ConstructorKind.Derived) {
                 expect(body is BlockNode)
                 // TODO: Check to see if this is redundant
@@ -1235,13 +1211,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             visitExpression(node.expression)
         }
 
-        if (builder.isGenerator) {
-            // Set the generator to it's exhausted state
-            // NOTE: this must come after the visitExpression call above, as
-            //       the expression could have a yield statement inside of it
-            +SetGeneratorPhase(-1)
-        }
-
         +Return
     }
 
@@ -1633,12 +1602,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
     private fun makeClassFieldInitializerMethod(fields: List<ClassFieldNode>): FunctionInfo {
         val prevBuilder = builder
-        builder = IRBuilder(
-            getReservedLocalsCount(isGenerator = false),
-            0,
-            isDerivedClassConstructor = false,
-            isGenerator = false,
-        )
+        builder = IRBuilder(RESERVED_LOCALS_COUNT, 0)
 
         for (field in fields) {
             +LoadValue(RECEIVER_LOCAL)
@@ -1676,19 +1640,14 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         hasInstanceFields: Boolean,
     ): FunctionInfo {
         // One for the receiver/new.target
-        var argCount = getReservedLocalsCount(isGenerator = false)
+        var argCount = RESERVED_LOCALS_COUNT
         if (constructorKind == JSFunction.ConstructorKind.Derived) {
             // ...and one for the rest param, if necessary
             argCount++
         }
 
         val prevBuilder = builder
-        builder = IRBuilder(
-            argCount,
-            0,
-            constructorKind == JSFunction.ConstructorKind.Derived,
-            isGenerator = false,
-        )
+        builder = IRBuilder(argCount, 0)
 
         if (constructorKind == JSFunction.ConstructorKind.Base) {
             if (hasInstanceFields)
@@ -1791,37 +1750,13 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     override fun visitYieldExpression(node: YieldExpressionNode) {
-        generatorYieldPoint {
-            if (node.expression == null) {
-                +PushUndefined
-            } else {
-                visitExpression(node.expression)
-            }
-        }
-    }
-
-    private fun generatorYieldPoint(block: () -> Unit) {
-        val phase = builder.incrementAndGetGeneratorPhase()
-        +SetGeneratorPhase(phase)
-
-        val stackHeight = builder.stackHeight
-        repeat(stackHeight) {
-            +PushToGeneratorState
+        if (node.expression == null) {
+            +PushUndefined
+        } else {
+            visitExpression(node.expression)
         }
 
-        block()
-
-        +Return
-
-        builder.addJumpTableTarget(phase, builder.opcodeCount())
-
-        // Restore the stack
-        repeat(stackHeight) {
-            +PopFromGeneratorState
-        }
-
-        // Load the received value onto the stack
-        +GetGeneratorSentValue
+        +Yield
     }
 
     override fun visitImportMetaExpression() {
@@ -2005,10 +1940,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     companion object {
         val RECEIVER_LOCAL = Local(0)
         val NEW_TARGET_LOCAL = Local(1)
-        val GENERATOR_STATE_LOCAL = Local(2)
 
-        fun getReservedLocalsCount(isGenerator: Boolean): Int {
-            return if (isGenerator) 3 else 2
-        }
+        const val RESERVED_LOCALS_COUNT = 2
     }
 }

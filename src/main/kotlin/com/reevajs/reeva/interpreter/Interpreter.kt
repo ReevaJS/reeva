@@ -39,7 +39,10 @@ class Interpreter(
     private var moduleEnv = agent.activeEnvRecord as? ModuleEnvRecord
 
     private var ip = 0
-    private var isDone = false
+    private var shouldLoop = true
+
+    var isDone: Boolean = false
+        private set
 
     // For fast handler lookup in main loop
     private val handlerStarts = mutableMapOf<Int, Handler>()
@@ -51,9 +54,7 @@ class Interpreter(
             handlerStarts[handler.start] = handler
             handlerEnds[handler.end] = handler
         }
-    }
 
-    fun interpret(): JSValue {
         for ((index, arg) in arguments.take(info.ir.argCount).withIndex()) {
             locals[index] = arg
         }
@@ -61,8 +62,28 @@ class Interpreter(
         repeat(info.ir.argCount - arguments.size) {
             locals[it + arguments.size] = JSUndefined
         }
+    }
 
-        while (!isDone) {
+    fun interpretWithYieldContinuation(value: JSValue, mode: YieldContinuation): JSValue {
+        if (isDone)
+            return JSUndefined
+
+        shouldLoop = true
+
+        when (mode) {
+            YieldContinuation.Continue -> push(value)
+            YieldContinuation.Throw -> handleThrownException(ThrowException(value))
+            YieldContinuation.Return -> {
+                push(value)
+                isDone = true
+            }
+        }
+
+        return interpret()
+    }
+
+    fun interpret(): JSValue {
+        while (shouldLoop && !isDone) {
             try {
                 val startHandler = handlerStarts[ip]
                 if (startHandler != null) {
@@ -75,35 +96,44 @@ class Interpreter(
 
                 visit(info.ir.opcodes[ip++])
             } catch (e: ThrowException) {
-                // TODO: Can we optimize this lookup?
-                var handled = false
-
-                for (handler in info.ir.handlers) {
-                    if (ip - 1 in handler.start..handler.end) {
-                        val stackDiff = stack.size - savedStackHeights.removeLast()
-                        expect(stackDiff >= 0)
-                        repeat(stackDiff) {
-                            stack.removeLast()
-                        }
-
-                        ip = handler.handler
-                        push(e.value)
-                        handled = true
-                        break
-                    }
-                }
-
-                if (!handled)
-                    throw e
+                handleThrownException(e)
             } catch (e: Throwable) {
                 println("Exception in FunctionInfo ${info.name}, opcode ${ip - 1}")
                 throw e
             }
         }
 
-        expect(stack.size == 1)
-        expect(stack[0] is JSValue)
-        return stack[0] as JSValue
+        expect(stack.isNotEmpty())
+        expect(stack.last() is JSValue)
+        val returnValue = stack.removeLast() as JSValue
+
+        if (isDone)
+            expect(stack.isEmpty())
+
+        return returnValue
+    }
+
+    private fun handleThrownException(e: ThrowException) {
+        // TODO: Can we optimize this lookup?
+        var handled = false
+
+        for (handler in info.ir.handlers) {
+            if (ip - 1 in handler.start..handler.end) {
+                val stackDiff = stack.size - savedStackHeights.removeLast()
+                expect(stackDiff >= 0)
+                repeat(stackDiff) {
+                    stack.removeLast()
+                }
+
+                ip = handler.handler
+                push(e.value)
+                handled = true
+                break
+            }
+        }
+
+        if (!handled)
+            throw e
     }
 
     override fun visitCopyObjectExcludingProperties(opcode: CopyObjectExcludingProperties) {
@@ -741,7 +771,7 @@ class Interpreter(
     }
 
     private fun createArgumentsObject(): JSObject {
-        val arguments = this.arguments.drop(Transformer.getReservedLocalsCount(info.isGenerator))
+        val arguments = this.arguments.drop(Transformer.RESERVED_LOCALS_COUNT)
 
         val obj = JSUnmappedArgumentsObject.create()
         AOs.definePropertyOrThrow(
@@ -808,7 +838,12 @@ class Interpreter(
     }
 
     override fun visitReturn() {
+        shouldLoop = false
         isDone = true
+    }
+
+    override fun visitYield() {
+        shouldLoop = false
     }
 
     override fun visitCollectRestArgs() {
@@ -837,44 +872,12 @@ class Interpreter(
         AOs.definePropertyOrThrow(obj, key, descriptor)
     }
 
-    override fun visitGetGeneratorPhase() {
-        val state = locals[Transformer.GENERATOR_STATE_LOCAL.value] as GeneratorState
-        push(state.phase)
-    }
-
-    override fun visitPushToGeneratorState() {
-        val state = locals[Transformer.GENERATOR_STATE_LOCAL.value] as GeneratorState
-        state.push(pop())
-    }
-
-    override fun visitPopFromGeneratorState() {
-        val state = locals[Transformer.GENERATOR_STATE_LOCAL.value] as GeneratorState
-        push(state.pop())
-    }
-
-    override fun visitJumpTable(opcode: JumpTable) {
-        val target = popInt()
-        val result = opcode.table[target]
-        expect(result != null)
-        ip = result
-    }
-
     override fun visitPushBigInt(opcode: PushBigInt) {
         push(JSBigInt(opcode.bigint))
     }
 
     override fun visitPushEmpty() {
         push(JSEmpty)
-    }
-
-    override fun visitSetGeneratorPhase(opcode: SetGeneratorPhase) {
-        val state = locals[Transformer.GENERATOR_STATE_LOCAL.value] as GeneratorState
-        state.phase = opcode.phase
-    }
-
-    override fun visitGeneratorSentValue() {
-        val state = locals[Transformer.GENERATOR_STATE_LOCAL.value] as GeneratorState
-        push(state.sentValue)
     }
 
     override fun visitCreateClassConstructor(opcode: CreateMethod) {
@@ -985,7 +988,8 @@ class Interpreter(
         when (kind) {
             MethodDefinitionNode.Kind.Normal,
             MethodDefinitionNode.Kind.Getter,
-            MethodDefinitionNode.Kind.Setter -> {}
+            MethodDefinitionNode.Kind.Setter -> {
+            }
             MethodDefinitionNode.Kind.Generator -> {
                 val prototype = JSObject.create(proto = realm.generatorObjectProto)
                 AOs.definePropertyOrThrow(
@@ -1025,21 +1029,9 @@ class Interpreter(
         stack.add(value)
     }
 
-    // Extends from JSValue so it can be passed as an argument
-    data class GeneratorState(
-        var phase: Int = 0,
-        var yieldedValue: JSValue = JSEmpty,
-        var sentValue: JSValue = JSEmpty,
-        var shouldThrow: Boolean = false,
-        var shouldReturn: Boolean = false,
-    ) : JSValue() {
-        // Used to preserve the stack in between yields
-        private val stack = ArrayDeque<Any>()
-
-        fun push(value: Any) {
-            stack.addLast(value)
-        }
-
-        fun pop() = stack.removeLast()
+    enum class YieldContinuation {
+        Continue,
+        Throw,
+        Return,
     }
 }

@@ -27,12 +27,7 @@ data class IR(
     val nestedFunctions: List<FunctionInfo>,
 )
 
-class IRBuilder(
-    val argCount: Int,
-    additionalReservedLocals: Int,
-    val isDerivedClassConstructor: Boolean,
-    val isGenerator: Boolean,
-) {
+class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
     private val opcodes = mutableListOf<Opcode>()
     private val locals = mutableListOf<LocalKind>()
     private val nestedFunctions = mutableListOf<FunctionInfo>()
@@ -41,9 +36,6 @@ class IRBuilder(
 
     var stackHeight = 0
         private set
-
-    private val generatorJumpTable = mutableMapOf<Int, Int>()
-    private var generatorPhase = 0
 
     val isDone: Boolean
         get() = opcodes.lastOrNull() === Return
@@ -65,17 +57,6 @@ class IRBuilder(
     fun addNestedFunction(function: FunctionInfo) {
         nestedFunctions.add(function)
     }
-
-    fun initializeJumpTable() {
-        addOpcode(JumpTable(generatorJumpTable))
-    }
-
-    fun addJumpTableTarget(phase: Int, target: Int) {
-        expect(generatorJumpTable[phase] == null)
-        generatorJumpTable[phase] = target
-    }
-
-    fun incrementAndGetGeneratorPhase() = ++generatorPhase
 
     private fun finalizeOpcodes(): List<Opcode> {
         // TODO: Figure out how to do this here but also print
