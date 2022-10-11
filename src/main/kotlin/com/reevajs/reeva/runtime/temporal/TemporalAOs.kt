@@ -4617,9 +4617,178 @@ object TemporalAOs {
     }
 
     @JvmStatic
+    @ECMAImpl("10.5.1")
+    fun toTemporalMonthDay(item: JSValue, options: JSObject? = null): JSObject {
+        // 1. If options is not present, set options to undefined.
+        // 2. Assert: Type(options) is Object or Undefined.
+
+        // 3. Let referenceISOYear be 1972 (the first leap year after the Unix epoch).
+        var referenceISOYear = 1972
+
+        // 4. If Type(item) is Object, then
+        if (item is JSObject) {
+            // a. If item has an [[InitializedTemporalMonthDay]] internal slot, then
+            if (Slot.InitializedTemporalMonthDay in item) {
+                // i. Return item.
+                return item
+            }
+
+            var calendar: JSObject?
+            var calendarAbsent: Boolean
+
+            // b. If item has an [[InitializedTemporalDate]], [[InitializedTemporalDateTime]], [[InitializedTemporalTime]], [[InitializedTemporalYearMonth]], or [[InitializedTemporalZonedDateTime]] internal slot, then
+            if (item.hasSlots(listOf(Slot.InitializedTemporalDate, Slot.InitializedTemporalDateTime, Slot.InitializedTemporalTime, Slot.InitializedTemporalYearMonth, Slot.InitializedTemporalZonedDateTime))) {
+                // i. Let calendar be item.[[Calendar]].
+                calendar = item[Slot.Calendar]
+
+                // ii. Let calendarAbsent be false.
+                calendarAbsent = false
+            }
+            // c. Else,
+            else {
+                // i. Let calendarLike be ? Get(item, "calendar").
+                val calendarLike = item.get("calendar")
+
+                // ii. If calendarLike is undefined, then
+                if (calendarLike == JSUndefined) {
+                    // 1. Let calendarAbsent be true.
+                    calendarAbsent = true
+                }
+                // iii. Else,
+                else {
+                    // 1. Let calendarAbsent be false.
+                    calendarAbsent = false
+                }
+
+                // iv. Let calendar be ? ToTemporalCalendarWithISODefault(calendarLike).
+                calendar = toTemporalCalendarWithISODefault(calendarLike)
+            }
+
+            // d. Let fieldNames be ? CalendarFields(calendar, « "day", "month", "monthCode", "year" »).
+            val fieldNames = calendarFields(calendar, listOf("day", "month", "monthCode", "year"))
+
+            // e. Let fields be ? PrepareTemporalFields(item, fieldNames, «»).
+            val fields = prepareTemporalFields(item, fieldNames, emptySet())
+
+            // f. Let month be ? Get(fields, "month").
+            val month = fields.get("month")
+
+            // g. Let monthCode be ? Get(fields, "monthCode").
+            val monthCode = fields.get("monthCode")
+
+            // h. Let year be ? Get(fields, "year").
+            val year = fields.get("year")
+
+            // i. If calendarAbsent is true, and month is not undefined, and monthCode is undefined and year is undefined, then
+            if (calendarAbsent && month != JSUndefined && monthCode == JSUndefined && year == JSUndefined) {
+                // i. Perform ! CreateDataPropertyOrThrow(fields, "year", 𝔽(referenceISOYear)).
+                AOs.createDataPropertyOrThrow(fields, "year".key(), referenceISOYear.toValue())
+            }
+
+            // j. Return ? CalendarMonthDayFromFields(calendar, fields, options).
+            return calendarMonthDayFromFields(calendar, fields, options)
+        }
+
+        // 5. Perform ? ToTemporalOverflow(options).
+        toTemporalOverflow(options)
+
+        // 6. Let string be ? ToString(item).
+        val string = item.toJSString().string
+
+        // 7. Let result be ? ParseTemporalMonthDayString(string).
+        val result = parseTemporalMonthDayString(string)
+
+        // 8. Let calendar be ? ToTemporalCalendarWithISODefault(result.[[Calendar]]).
+        val calendar = toTemporalCalendarWithISODefault(result.calendar?.toValue() ?: JSUndefined)
+
+        // 9. If result.[[Year]] is undefined, then
+        
+        // if (result.year == null) {
+            // a. Return ? CreateTemporalMonthDay(result.[[Month]], result.[[Day]], calendar, referenceISOYear).
+            return createTemporalMonthDay(result.month, result.day, calendar, referenceISOYear)
+        // }
+
+        // 10. Set result to ? CreateTemporalMonthDay(result.[[Month]], result.[[Day]], calendar, referenceISOYear).
+        // 11. NOTE: The following operation is called without options, in order for the calendar to store a canonical value in the [[ISOYear]] internal slot of the result.
+        val result2 = createTemporalMonthDay(result.month, result.day, calendar, referenceISOYear)
+
+        // 12. Return ? CalendarMonthDayFromFields(calendar, result).
+        return calendarMonthDayFromFields(calendar, result2)
+    }
+
+    @JvmStatic
     @ECMAImpl("10.5.2")
     fun createTemporalMonthDay(isoMonth: Int, isoDay: Int, calendar: JSObject, referenceISOYear: Int, newTarget: JSObject? = null): JSObject {
-        TODO()
+        // 1. Assert: isoMonth, isoDay, and referenceISOYear are integers.
+        // 2. Assert: Type(calendar) is Object.
+
+        // 3. If IsValidISODate(referenceISOYear, isoMonth, isoDay) is false, throw a RangeError exception.
+        if (!isValidISODate(referenceISOYear, isoMonth, isoDay))
+            Errors.TODO("createTemporalMonthDay 1").throwRangeError()
+
+        // 4. If ISODateTimeWithinLimits(referenceISOYear, isoMonth, isoDay, 12, 0, 0, 0, 0, 0) is false, throw a RangeError exception.
+        if (!isoDateTimeWithinLimits(referenceISOYear, isoMonth, isoDay, 12, 0, 0, 0, 0, BigInteger.ZERO))
+            Errors.TODO("createTemporalMonthDay 2").throwRangeError()
+
+        // 5. If newTarget is not present, set newTarget to %Temporal.PlainMonthDay%.
+        // 6. Let object be ? OrdinaryCreateFromConstructor(newTarget, "%Temporal.PlainMonthDay.prototype%", « [[InitializedTemporalMonthDay]], [[ISOMonth]], [[ISODay]], [[ISOYear]], [[Calendar]] »).
+        val obj = AOs.ordinaryCreateFromConstructor(
+            newTarget ?: realm.plainMonthDayCtor,
+            listOf(Slot.InitializedTemporalMonthDay),
+            defaultProto = Realm::plainMonthDayProto,
+        )
+
+        // 7. Set object.[[ISOMonth]] to isoMonth.
+        obj[Slot.ISOMonth] = isoMonth
+
+        // 8. Set object.[[ISODay]] to isoDay.
+        obj[Slot.ISODay] = isoDay
+
+        // 9. Set object.[[Calendar]] to calendar.
+        obj[Slot.Calendar] = calendar
+
+        // 10. Set object.[[ISOYear]] to referenceISOYear.
+        obj[Slot.ISOYear] = referenceISOYear
+
+        // 11. Return object.
+        return obj
+    }
+
+    @JvmStatic
+    @ECMAImpl("10.5.3")
+    fun temporalMonthDayToString(monthDay: JSObject, showCalendar: String): String {
+        // 1. Assert: Type(monthDay) is Object.
+
+        // 2. Assert: monthDay has an [[InitializedTemporalMonthDay]] internal slot.
+        ecmaAssert(Slot.InitializedTemporalMonthDay in monthDay)
+
+        // 3. Let month be ToZeroPaddedDecimalString(monthDay.[[ISOMonth]], 2).
+        val month = monthDay[Slot.ISOMonth].toString().padStart(2, '0')
+
+        // 4. Let day be ToZeroPaddedDecimalString(monthDay.[[ISODay]], 2).
+        val day = monthDay[Slot.ISODay].toString().padStart(2, '0')
+
+        // 5. Let result be the string-concatenation of month, the code unit 0x002D (HYPHEN-MINUS), and day.
+        var result = "$month-$day"
+
+        // 6. Let calendarID be ? ToString(monthDay.[[Calendar]]).
+        val calendarID = monthDay[Slot.Calendar].toJSString().string
+
+        // 7. If showCalendar is one of "always" or "critical", or if calendarID is not "iso8601", then
+        if ((showCalendar == "always" || showCalendar == "critical") || calendarID != "iso8601") {
+            // a. Let year be ! PadISOYear(monthDay.[[ISOYear]]).
+            val year = padISOYear(monthDay[Slot.ISOYear])
+
+            // b. Set result to the string-concatenation of year, the code unit 0x002D (HYPHEN-MINUS), and result.
+            result = "$year-$result"
+        }
+
+        // 8. Let calendarString be FormatCalendarAnnotation(calendarID, showCalendar).
+        val calendarString = formatCalendarAnnotation(calendarID, showCalendar)
+
+        // 9. Set result to the string-concatenation of result and calendarString.
+        // 10. Return result.
+        return result + calendarString
     }
     
     @JvmStatic
@@ -6398,7 +6567,7 @@ object TemporalAOs {
     }
 
     @JvmStatic
-    @ECMAImpl("13.32")
+    @ECMAImpl("13.24")
     fun roundNumberToIncrement(x: BigInteger, increment: BigInteger, roundingMode: String): BigInteger {
         // 1. Let quotient be x / increment.
         var quotient = x.toBigDecimal() / increment.toBigDecimal()
@@ -6433,7 +6602,7 @@ object TemporalAOs {
     }
 
     @JvmStatic
-    @ECMAImpl("13.28")
+    @ECMAImpl("13.27")
     fun parseISODateTime(isoString: String): ParsedISODateTime {
         // Note: This implementation is largely derived from the polyfill
 
@@ -6624,7 +6793,7 @@ object TemporalAOs {
     }
 
     @JvmStatic
-    @ECMAImpl("13.29")
+    @ECMAImpl("13.28")
     fun parseTemporalInstantString(isoString: String): ParsedISODateTime {
         // 1. If ParseText(StringToCodePoints(isoString), TemporalInstantString) is a List of errors, throw a RangeError exception.
         if (Regex.instant.matchEntire(isoString) == null)
@@ -6651,7 +6820,7 @@ object TemporalAOs {
     }
 
     @JvmStatic
-    @ECMAImpl("13.30")
+    @ECMAImpl("13.29")
     fun parseTemporalZonedDateTimeString(isoString: String): ParsedISODateTime {
         // 1. If ParseText(StringToCodePoints(isoString), TemporalZonedDateTimeString) is a List of errors, throw a RangeError exception.
         if (Regex.zonedDateTime.matchEntire(isoString) == null)
@@ -6662,7 +6831,7 @@ object TemporalAOs {
     }
 
     @JvmStatic
-    @ECMAImpl("13.31")
+    @ECMAImpl("13.30")
     fun parseTemporalCalendarString(isoString: String): String {
         try {
             // 1. Let parseResult be Completion(ParseISODateTime(isoString)).
@@ -6687,7 +6856,7 @@ object TemporalAOs {
     }
 
     @JvmStatic
-    @ECMAImpl("13.32")
+    @ECMAImpl("13.31")
     fun parseTemporalDateString(isoString: String): ParsedISODateTime {
         // 1. Let parts be ? ParseTemporalDateTimeString(isoString).
         val parts = parseTemporalDateTimeString(isoString)
@@ -6697,7 +6866,7 @@ object TemporalAOs {
     }
 
     @JvmStatic
-    @ECMAImpl("13.33")
+    @ECMAImpl("13.32")
     fun parseTemporalDateTimeString(isoString: String): ParsedISODateTime {
         // 1. Let parseResult be ParseText(StringToCodePoints(isoString), TemporalDateTimeString).
         // 2. If parseResult is a List of errors, throw a RangeError exception.
@@ -6710,7 +6879,7 @@ object TemporalAOs {
     }
 
     @JvmStatic
-    @ECMAImpl("13.34")
+    @ECMAImpl("13.33")
     fun parseTemporalDurationString(isoString: String): DurationRecord {
         // 1. Let duration be ParseText(StringToCodePoints(isoString), TemporalDurationString).
         // 2. If duration is a List of errors, throw a RangeError exception.
@@ -6843,6 +7012,26 @@ object TemporalAOs {
     }
 
     @JvmStatic
+    @ECMAImpl("13.34")
+    fun parseTemporalMonthDayString(isoString: String): ParsedISODateTime {
+        // 1. Let parseResult be ParseText(StringToCodePoints(isoString), TemporalMonthDayString).
+        // 2. If parseResult is a List of errors, throw a RangeError exception.
+        val result = parseISODateTime(isoString)
+
+        // 3. If parseResult contains a UTCDesignator Parse Node, throw a RangeError exception.
+        if (result.z) 
+            Errors.TODO("parseTemporalMonthDayString").throwRangeError()
+
+        // 4. Let result be ? ParseISODateTime(isoString).
+        // 5. Let year be result.[[Year]].
+        // 6. If parseResult does not contain a DateYear Parse Node, then
+        //    a. Set year to undefined.
+        // 7. Return the Record { [[Year]]: year, [[Month]]: result.[[Month]], [[Day]]: result.[[Day]], [[Calendar]]: result.[[Calendar]] }.
+        // TODO: This doesn't quite match the spec above
+        return result
+    }
+
+    @JvmStatic
     @ECMAImpl("13.36")
     fun parseTemporalRelativeToString(isoString: String): ParsedISODateTime {
         // 1. If ParseText(StringToCodePoints(isoString), TemporalDateTimeString) is a List of errors, throw a RangeError exception.
@@ -6855,12 +7044,14 @@ object TemporalAOs {
     fun parseTemporalTimeString(isoString: String): ParsedISODateTime {
         // 1. Let parseResult be ParseText(StringToCodePoints(isoString), TemporalTimeString).
         // 2. If parseResult is a List of errors, throw a RangeError exception.
-        // 3. If parseResult contains a UTCDesignator Parse Node, throw a RangeError exception.
-        // 4. Let result be ? ParseISODateTime(isoString).
-        // 5. Return the Record { [[Hour]]: result.[[Hour]], [[Minute]]: result.[[Minute]], [[Second]]: result.[[Second]], [[Millisecond]]: result.[[Millisecond]], [[Microsecond]]: result.[[Microsecond]], [[Nanosecond]]: result.[[Nanosecond]], [[Calendar]]: result.[[Calendar]] }.
         val result = parseISODateTime(isoString)
+
+        // 3. If parseResult contains a UTCDesignator Parse Node, throw a RangeError exception.
         if (result.z)
             Errors.TODO("parseTemporalDateTimeString").throwRangeError()
+
+        // 4. Let result be ? ParseISODateTime(isoString).
+        // 5. Return the Record { [[Hour]]: result.[[Hour]], [[Minute]]: result.[[Minute]], [[Second]]: result.[[Second]], [[Millisecond]]: result.[[Millisecond]], [[Microsecond]]: result.[[Microsecond]], [[Nanosecond]]: result.[[Nanosecond]], [[Calendar]]: result.[[Calendar]] }.
         return result
     }
 
