@@ -12,7 +12,7 @@ import com.reevajs.reeva.transformer.TransformedSource
 
 class JSGeneratorObject private constructor(
     realm: Realm,
-    val transformedSource: TransformedSource,
+    transformedSource: TransformedSource,
     val receiver: JSValue,
     arguments: List<JSValue>,
     private val context: ExecutionContext,

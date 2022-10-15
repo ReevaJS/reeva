@@ -1,25 +1,30 @@
 package com.reevajs.reeva.transformer
 
-import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.transformer.opcodes.*
-import com.reevajs.reeva.utils.expect
 
 @JvmInline
 value class Local(val value: Int) {
     override fun toString() = value.toString()
 }
 
-data class Handler(
-    val start: Int,
-    val end: Int,
-    val handler: Int,
-)
+@JvmInline
+value class BlockIndex(val value: Int) {
+    override fun toString() = value.toString()
+}
+
+class BasicBlock(
+    val index: BlockIndex,
+    val identifier: String?,
+    val opcodes: MutableList<Opcode>,
+    var handlerBlock: BlockIndex?,
+) {
+    override fun toString() = "Block($identifier)"
+}
 
 data class IR(
     val argCount: Int,
-    val opcodes: List<Opcode>,
+    val blocks: Map<BlockIndex, BasicBlock>,
     val locals: List<LocalKind>,
-    val handlers: List<Handler>,
 
     // Just so we can print them with the top-level script, not actually
     // necessary for function.
@@ -27,16 +32,12 @@ data class IR(
 )
 
 class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
-    private val opcodes = mutableListOf<Opcode>()
     private val locals = mutableListOf<LocalKind>()
     private val nestedFunctions = mutableListOf<FunctionInfo>()
-    private val handlers = mutableListOf<Handler>()
-
-    var stackHeight = 0
-        private set
-
-    val isDone: Boolean
-        get() = opcodes.lastOrNull() === Return
+    private val blocks = mutableMapOf<BlockIndex, BasicBlock>()
+    private val handlerBlocks = mutableListOf<BlockIndex>()
+    private var activeBlock: BasicBlock
+    private var nextBlockIndex = 0
 
     init {
         // Receiver + new.target
@@ -46,47 +47,40 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
         repeat(additionalReservedLocals) {
             locals.add(LocalKind.Value)
         }
+
+        activeBlock = blocks[makeBlock("Start")]!!
     }
 
-    fun addHandler(start: Int, end: Int, handler: Int) {
-        handlers.add(Handler(start, end, handler))
+    fun activeBlockReturns() = activeBlock.opcodes.lastOrNull().let {
+        it == Return || it == Throw
+    }
+
+    fun activeBlockIsTerminated() = activeBlock.opcodes.lastOrNull() is TerminatingOpcode
+
+    fun enterBlock(index: BlockIndex) {
+        activeBlock = blocks[index]!!
+    }
+
+    fun pushHandlerBlock(block: BlockIndex) {
+        handlerBlocks.add(block)
+    }
+
+    fun popHandlerBlock() {
+        handlerBlocks.removeLast()
     }
 
     fun addNestedFunction(function: FunctionInfo) {
         nestedFunctions.add(function)
     }
 
-    private fun finalizeOpcodes(): List<Opcode> {
-        // TODO: Figure out how to do this here but also print
-        //       the opcodes for debugging purposes
-        // IRValidator(opcodes).validate()
-        return opcodes
-    }
-
     fun addOpcode(opcode: Opcode) {
-        opcodes.add(opcode)
-        stackHeight += opcode.stackHeightModifier
+        activeBlock.opcodes.add(opcode)
     }
 
-    fun opcodeCount(): Int = opcodes.size
-
-    fun ifHelper(jumpBuilder: (to: Int) -> JumpInstr, block: () -> Unit) {
-        val jump = jumpBuilder(-1)
-        addOpcode(jump)
-        block()
-        jump.to = opcodeCount()
-    }
-
-    fun ifElseHelper(jumpBuilder: (to: Int) -> JumpInstr, firstBlock: () -> Unit, secondBlock: () -> Unit) {
-        val firstJump = jumpBuilder(-1)
-        addOpcode(firstJump)
-        firstBlock()
-
-        val secondJump = Jump(-1)
-        addOpcode(secondJump)
-        firstJump.to = opcodeCount()
-        secondBlock()
-        secondJump.to = opcodeCount()
+    fun makeBlock(name: String? = null): BlockIndex {
+        val index = BlockIndex(nextBlockIndex++)
+        blocks[index] = BasicBlock(index, name, mutableListOf(), handlerBlocks.lastOrNull())
+        return index
     }
 
     fun newLocalSlot(kind: LocalKind): Local {
@@ -96,9 +90,8 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
 
     fun build() = IR(
         argCount,
-        finalizeOpcodes(),
+        blocks,
         locals,
-        handlers,
         nestedFunctions,
     )
 }
