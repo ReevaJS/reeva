@@ -20,7 +20,6 @@ data class IR(
     val opcodes: List<Opcode>,
     val locals: List<LocalKind>,
     val handlers: List<Handler>,
-    val locationTable: Map<Int, SourceLocation>,
 
     // Just so we can print them with the top-level script, not actually
     // necessary for function.
@@ -32,7 +31,6 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
     private val locals = mutableListOf<LocalKind>()
     private val nestedFunctions = mutableListOf<FunctionInfo>()
     private val handlers = mutableListOf<Handler>()
-    private val locationTable = mutableMapOf<Int, SourceLocation>()
 
     var stackHeight = 0
         private set
@@ -70,10 +68,6 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
         stackHeight += opcode.stackHeightModifier
     }
 
-    fun setLastOpcodeLocation(location: SourceLocation) {
-        locationTable[opcodes.lastIndex] = location
-    }
-
     fun opcodeCount(): Int = opcodes.size
 
     fun ifHelper(jumpBuilder: (to: Int) -> JumpInstr, block: () -> Unit) {
@@ -105,7 +99,6 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
         finalizeOpcodes(),
         locals,
         handlers,
-        locationTable,
         nestedFunctions,
     )
 }

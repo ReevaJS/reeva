@@ -271,7 +271,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 // TODO: Check to see if this is redundant
                 +LoadValue(RECEIVER_LOCAL)
                 +ThrowSuperNotInitializedIfEmpty
-                builder.setLastOpcodeLocation(body.sourceLocation)
             } else if (body is BlockNode) {
                 +PushUndefined
             }
@@ -386,7 +385,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             if (source.name() == "undefined") {
                 if (source.scope.isStrict) {
                     +ThrowConstantReassignmentError("undefined")
-                    builder.setLastOpcodeLocation(source.sourceLocation)
                 } else return
             } else {
                 expect(source.type == VariableType.Var)
@@ -1102,7 +1100,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     private fun checkForConstReassignment(node: VariableRefNode): Boolean {
         return if (node.source.type == VariableType.Const) {
             +ThrowConstantReassignmentError(node.source.name())
-            builder.setLastOpcodeLocation(node.sourceLocation)
             true
         } else false
     }
@@ -1184,7 +1181,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     } else {
                         +CallArray
                     }
-                    builder.setLastOpcodeLocation(part.sourceLocation)
                 }
 
                 is OptionalComputedAccessChain -> {
@@ -1226,7 +1222,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         +Dup
         builder.ifHelper(::JumpIfNotEmpty) {
             +ThrowLexicalAccessError(node.processedName)
-            builder.setLastOpcodeLocation(node.sourceLocation)
         }
     }
 
@@ -1294,7 +1289,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         } else {
             +CallArray
         }
-        builder.setLastOpcodeLocation(node.sourceLocation)
     }
 
     override fun visitNewExpression(node: NewExpressionNode) {
@@ -1307,7 +1301,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         } else {
             +ConstructArray
         }
-        builder.setLastOpcodeLocation(node.sourceLocation)
     }
 
     override fun visitStringLiteral(node: StringLiteralNode) {
@@ -1333,7 +1326,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     override fun visitThrowStatement(node: ThrowStatementNode) {
         visitExpression(node.expr)
         +Throw
-        builder.setLastOpcodeLocation(node.sourceLocation)
     }
 
     override fun visitTryStatement(node: TryStatementNode) {
@@ -1720,7 +1712,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     override fun visitSuperPropertyExpression(node: SuperPropertyExpressionNode) {
         +LoadValue(RECEIVER_LOCAL)
         +ThrowSuperNotInitializedIfEmpty
-        builder.setLastOpcodeLocation(node.sourceLocation)
 
         +GetSuperBase
         if (node.isComputed) {
@@ -1735,7 +1726,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         +GetSuperConstructor
         +Dup
         +ThrowSuperNotInitializedIfEmpty
-        builder.setLastOpcodeLocation(node.sourceLocation)
 
         +LoadValue(NEW_TARGET_LOCAL)
 
