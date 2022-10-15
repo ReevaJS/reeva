@@ -40,6 +40,7 @@ class Interpreter(
 
     private var moduleEnv = agent.activeEnvRecord as? ModuleEnvRecord
 
+    private var activeBlock = info.ir.blocks[BlockIndex(0)]!!
     private var ip = 0
     private var shouldLoop = true
 
@@ -54,17 +55,7 @@ class Interpreter(
     val isAwaiting: Boolean
         get() = pendingAwaitValue != null
 
-    // For fast handler lookup in main loop
-    private val handlerStarts = mutableMapOf<Int, Handler>()
-    private val handlerEnds = mutableMapOf<Int, Handler>()
-    private val savedStackHeights = ArrayDeque<Int>()
-
     init {
-        for (handler in info.ir.handlers) {
-            handlerStarts[handler.start] = handler
-            handlerEnds[handler.end] = handler
-        }
-
         for ((index, arg) in arguments.take(info.ir.argCount).withIndex()) {
             locals[index] = arg
         }
@@ -81,7 +72,12 @@ class Interpreter(
         shouldLoop = true
 
         when (mode) {
-            YieldContinuation.Continue -> push(value)
+            YieldContinuation.Continue -> {
+                // Don't push the value received from the first invocation of the generator (this
+                // value is simply ignored)
+                if (activeBlock.index != BlockIndex(0))
+                    push(value)
+            }
             YieldContinuation.Throw -> handleThrownException(ThrowException(value))
             YieldContinuation.Return -> {
                 push(value)
@@ -95,20 +91,11 @@ class Interpreter(
     fun interpret(): JSValue {
         while (shouldLoop && !isDone) {
             try {
-                val startHandler = handlerStarts[ip]
-                if (startHandler != null) {
-                    savedStackHeights.add(stack.size)
-                } else {
-                    val endHandler = handlerEnds[ip]
-                    if (endHandler != null)
-                        savedStackHeights.removeLast()
-                }
-
-                visit(info.ir.opcodes[ip++])
+                visit(activeBlock.opcodes[ip++])
             } catch (e: ThrowException) {
                 handleThrownException(e)
             } catch (e: Throwable) {
-                println("Exception in FunctionInfo ${info.name}, opcode ${ip - 1}")
+                println("Exception in FunctionInfo ${info.name}, block @${activeBlock.index} opcode ${ip - 1}")
                 throw e
             }
         }
@@ -127,26 +114,13 @@ class Interpreter(
     }
 
     private fun handleThrownException(e: ThrowException) {
-        // TODO: Can we optimize this lookup?
-        var handled = false
-
-        for (handler in info.ir.handlers) {
-            if (ip - 1 in handler.start..handler.end) {
-                val stackDiff = stack.size - savedStackHeights.removeLast()
-                expect(stackDiff >= 0)
-                repeat(stackDiff) {
-                    stack.removeLast()
-                }
-
-                ip = handler.handler
-                push(e.value)
-                handled = true
-                break
-            }
-        }
-
-        if (!handled)
+        if (activeBlock.handlerBlock != null) {
+            stack.clear()
+            push(e.value)
+            jumpToBlock(activeBlock.handlerBlock!!)
+        } else {
             throw e
+        }
     }
 
     override fun visitCopyObjectExcludingProperties(opcode: CopyObjectExcludingProperties) {
@@ -681,52 +655,23 @@ class Interpreter(
     }
 
     override fun visitJump(opcode: Jump) {
-        ip = opcode.to
+        jumpToBlock(opcode.target)
     }
 
     override fun visitJumpIfTrue(opcode: JumpIfTrue) {
-        if (pop() == true)
-            ip = opcode.to
-    }
-
-    override fun visitJumpIfFalse(opcode: JumpIfFalse) {
-        if (pop() == false)
-            ip = opcode.to
+        jumpToBlock(if (pop() == true) opcode.trueTarget else opcode.falseTarget)
     }
 
     override fun visitJumpIfToBooleanTrue(opcode: JumpIfToBooleanTrue) {
-        if (popValue().toBoolean())
-            ip = opcode.to
-    }
-
-    override fun visitJumpIfToBooleanFalse(opcode: JumpIfToBooleanFalse) {
-        if (!popValue().toBoolean())
-            ip = opcode.to
+        jumpToBlock(if (popValue().toBoolean()) opcode.trueTarget else opcode.falseTarget)
     }
 
     override fun visitJumpIfUndefined(opcode: JumpIfUndefined) {
-        if (popValue() == JSUndefined)
-            ip = opcode.to
-    }
-
-    override fun visitJumpIfNotUndefined(opcode: JumpIfNotUndefined) {
-        if (popValue() != JSUndefined)
-            ip = opcode.to
-    }
-
-    override fun visitJumpIfNotNullish(opcode: JumpIfNotNullish) {
-        if (!popValue().isNullish)
-            ip = opcode.to
+        jumpToBlock(if (popValue() == JSUndefined) opcode.undefinedTarget else opcode.elseTarget)
     }
 
     override fun visitJumpIfNullish(opcode: JumpIfNullish) {
-        if (popValue().isNullish)
-            ip = opcode.to
-    }
-
-    override fun visitJumpIfNotEmpty(opcode: JumpIfNotEmpty) {
-        if (popValue() != JSEmpty)
-            ip = opcode.to
+        jumpToBlock(if (popValue().isNullish) opcode.nullishTarget else opcode.elseTarget)
     }
 
     override fun visitForInEnumerate() {
@@ -818,8 +763,9 @@ class Interpreter(
         Errors.AssignmentToConstant(opcode.name).throwTypeError()
     }
 
-    override fun visitThrowLexicalAccessError(opcode: ThrowLexicalAccessError) {
-        Errors.AccessBeforeInitialization(opcode.name).throwReferenceError(realm)
+    override fun visitThrowLexicalAccessError(opcode: ThrowLexicalAccessErrorIfEmpty) {
+        if (popValue() == JSEmpty)
+            Errors.AccessBeforeInitialization(opcode.name).throwReferenceError(realm)
     }
 
     override fun visitThrowSuperNotInitializedIfEmpty() {
@@ -858,15 +804,17 @@ class Interpreter(
         isDone = true
     }
 
-    override fun visitYield() {
+    override fun visitYield(opcode: Yield) {
         shouldLoop = false
+        jumpToBlock(opcode.target)
     }
 
-    override fun visitAwait() {
+    override fun visitAwait(opcode: Await) {
         shouldLoop = false
 
         pendingAwaitValue = popValue()
         queueAwaitMicrotask()
+        jumpToBlock(opcode.target)
     }
 
     private fun queueAwaitMicrotask() {
@@ -1057,6 +1005,11 @@ class Interpreter(
 
     override fun visitStoreModuleVar(opcode: StoreModuleVar) {
         moduleEnv!!.setMutableBinding(opcode.name, popValue(), isStrict = true)
+    }
+
+    private fun jumpToBlock(block: BlockIndex) {
+        ip = 0
+        activeBlock = info.ir.blocks[block]!!
     }
 
     private fun pop(): Any = stack.removeLast()

@@ -20,14 +20,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     private lateinit var builder: IRBuilder
     private var currentScope: Scope? = null
 
-    data class LabelledSection(
-        val labels: Set<String>,
-        val pendingBreakJumps: MutableList<JumpInstr> = mutableListOf(),
-        val pendingContinueJumps: MutableList<JumpInstr> = mutableListOf(),
-    )
-
-    private val breakableScopes = mutableListOf<LabelledSection>()
-    private val continuableScopes = mutableListOf<LabelledSection>()
+    private val controlFlowScopes = mutableListOf<ControlFlowScope>()
 
     fun transform(): TransformedSource {
         expect(!::builder.isInitialized, "Cannot reuse a Transformer")
@@ -38,7 +31,8 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         globalDeclarationInstantiation(rootNode.scope.outerGlobalScope as HoistingScope) {
             rootNode.children.forEach(::visit)
-            if (!builder.isDone) {
+
+            if (!builder.activeBlockReturns()) {
                 +PushUndefined
                 +Return
             }
@@ -68,7 +62,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     private fun exitScope(scope: Scope) {
         currentScope = scope.outer
 
-        if (scope.requiresEnv())
+        if (scope.requiresEnv() && !builder.activeBlockIsTerminated())
             +PopEnvRecord
     }
 
@@ -135,8 +129,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         block()
 
-        if (!builder.isDone)
-            exitScope(scope)
+        exitScope(scope)
     }
 
     private fun visitFunctionHelper(
@@ -153,14 +146,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     ): FunctionInfo {
         val prevBuilder = builder
         builder = IRBuilder(parameters.size + RESERVED_LOCALS_COUNT, functionScope.inlineableLocalCount)
-
-        // When generators are interpreted, they _always_ push a value onto the stack. This value is
-        // then used from the generator expression, thrown, or returned, depending on the call type.
-        // However, the beginning of the function is not a yield point, so the extra value from the
-        // first call will sit there and do nothing (the value passed to the first invocation of a
-        // generator's next/return/throw method is ignored). So we need an initial Pop to get rid of it
-        if (kind.isGenerator)
-            +Pop
 
         expect(functionScope is HoistingScope)
         expect(bodyScope is HoistingScope)
@@ -214,10 +199,16 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 is SimpleParameter -> {
                     if (param.initializer != null) {
                         +LoadValue(local)
-                        builder.ifHelper(::JumpIfNotUndefined) {
-                            visit(param.initializer)
-                            storeToSource(param)
-                        }
+
+                        val ifUndefinedBlock = builder.makeBlock("Parameter${index}Undefined")
+                        val continuationBlock = builder.makeBlock("Parameter${index}Continuation")
+
+                        +JumpIfUndefined(ifUndefinedBlock, continuationBlock)
+                        builder.enterBlock(ifUndefinedBlock)
+                        visit(param.initializer)
+                        storeToSource(param)
+                        +Jump(continuationBlock)
+                        builder.enterBlock(continuationBlock)
                     } else if (!param.isInlineable) {
                         +LoadValue(local)
                         storeToSource(param)
@@ -226,10 +217,16 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 is BindingParameter -> {
                     if (param.initializer != null) {
                         +LoadValue(local)
-                        builder.ifHelper(::JumpIfNotUndefined) {
-                            visit(param.initializer)
-                            +StoreValue(local)
-                        }
+
+                        val ifUndefinedBlock = builder.makeBlock("Parameter${index}Undefined")
+                        val continuationBlock = builder.makeBlock("Parameter${index}Continuation")
+
+                        +JumpIfUndefined(ifUndefinedBlock, continuationBlock)
+                        builder.enterBlock(ifUndefinedBlock)
+                        visit(param.initializer)
+                        +StoreValue(local)
+                        +Jump(continuationBlock)
+                        builder.enterBlock(continuationBlock)
                     }
                     assign(param.pattern, local)
                 }
@@ -263,18 +260,21 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         // call visitASTListNode instead, which skips the {enter,exit}Scope calls.
         if (body is BlockNode) {
             visitASTListNode(body.statements)
-        } else visit(body)
+        } else {
+            expect(isArrow)
+            visit(body)
+            +Return
+        }
 
-        if (!builder.isDone) {
-            if (classConstructorKind == JSFunction.ConstructorKind.Derived) {
-                expect(body is BlockNode)
-                // TODO: Check to see if this is redundant
-                +LoadValue(RECEIVER_LOCAL)
-                +ThrowSuperNotInitializedIfEmpty
-            } else if (body is BlockNode) {
-                +PushUndefined
-            }
+        if (classConstructorKind == JSFunction.ConstructorKind.Derived) {
+            expect(body is BlockNode)
+            // TODO: Check to see if this is redundant
+            +LoadValue(RECEIVER_LOCAL)
+            +ThrowSuperNotInitializedIfEmpty
+        }
 
+        if (body is BlockNode) {
+            +PushUndefined
             +Return
         }
 
@@ -320,8 +320,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             enterScope(node.scope)
 
         try {
-            if (node.labels.isNotEmpty())
-                enterBreakableScope(node.labels)
+            val continuationBlock = if (node.labels.isNotEmpty()) {
+                val continuationBlock = builder.makeBlock("IlockContinuation")
+                enterControlFlowScope(node.labels, continuationBlock, null)
+                continuationBlock
+            } else null
 
             // BlockScopeInstantiation
             node.scope.variableSources.filterIsInstance<FunctionDeclarationNode>().forEach {
@@ -341,8 +344,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
             visitASTListNode(node.statements)
 
-            if (node.labels.isNotEmpty())
-                exitBreakableScope().forEach { it.to = builder.opcodeCount() }
+            if (continuationBlock != null) {
+                exitControlFlowScope()
+                +Jump(continuationBlock)
+                builder.enterBlock(continuationBlock)
+            }
         } finally {
             if (pushScope)
                 exitScope(node.scope)
@@ -415,54 +421,66 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
     override fun visitIfStatement(node: IfStatementNode) {
         visitExpression(node.condition)
-        if (node.falseBlock == null) {
-            builder.ifHelper(::JumpIfToBooleanFalse) {
-                visit(node.trueBlock)
-            }
-        } else {
-            builder.ifElseHelper(::JumpIfToBooleanFalse, {
-                visit(node.trueBlock)
-            }, {
-                visit(node.falseBlock)
-            })
+
+        val trueBlock = builder.makeBlock("IfTrue")
+        val falseBlock = if (node.falseBlock != null) builder.makeBlock("IfFalse") else null
+        val continuationBlock = builder.makeBlock("IfContinuation")
+
+        +JumpIfToBooleanTrue(trueBlock, falseBlock ?: continuationBlock)
+
+        builder.enterBlock(trueBlock)
+        visit(node.trueBlock)
+        +Jump(continuationBlock)
+
+        if (node.falseBlock != null) {
+            builder.enterBlock(falseBlock!!)
+            visit(node.falseBlock)
+            +Jump(continuationBlock)
         }
+
+        builder.enterBlock(continuationBlock)
     }
 
     override fun visitWhileStatement(node: WhileStatementNode) {
-        val head = builder.opcodeCount()
-        val jumpToEnd = Jump(-1)
+        val conditionBlock = builder.makeBlock("WhileCondition")
+        val bodyBlock = builder.makeBlock("WhileBody")
+        val continuationBlock = builder.makeBlock("WhileContinuation")
 
+        +Jump(conditionBlock)
+        builder.enterBlock(conditionBlock)
         visitExpression(node.condition)
-        builder.ifHelper(::JumpIfToBooleanFalse) {
-            enterBreakableScope(node.labels)
-            enterContinuableScope(node.labels)
-            visitStatement(node.body)
-            +Jump(head)
-            exitContinuableScope().forEach { it.to = head }
-            exitBreakableScope().forEach { it.to = builder.opcodeCount() }
-        }
+        +JumpIfToBooleanTrue(bodyBlock, continuationBlock)
 
-        jumpToEnd.to = builder.opcodeCount()
+        builder.enterBlock(bodyBlock)
+        enterControlFlowScope(node.labels, continuationBlock, conditionBlock)
+        visitStatement(node.body)
+        exitControlFlowScope()
+        +Jump(conditionBlock)
+
+        builder.enterBlock(continuationBlock)
     }
 
     override fun visitDoWhileStatement(node: DoWhileStatementNode) {
-        val head = builder.opcodeCount()
+        val conditionBlock = builder.makeBlock("DoWhileCondition")
+        val bodyBlock = builder.makeBlock("DoWhileBody")
+        val continuationBlock = builder.makeBlock("DoWhileContinuation")
 
-        enterBreakableScope(node.labels)
-        enterContinuableScope(node.labels)
+        +Jump(bodyBlock)
+
+        builder.enterBlock(bodyBlock)
+        enterControlFlowScope(node.labels, continuationBlock, conditionBlock)
         visitStatement(node.body)
+        exitControlFlowScope()
+        +Jump(conditionBlock)
 
-        val beforeCheck = builder.opcodeCount()
+        builder.enterBlock(conditionBlock)
         visitExpression(node.condition)
-        +JumpIfToBooleanTrue(head)
+        +JumpIfToBooleanTrue(bodyBlock, continuationBlock)
 
-        exitContinuableScope().forEach { it.to = beforeCheck }
-        exitBreakableScope().forEach { it.to = builder.opcodeCount() }
+        builder.enterBlock(continuationBlock)
     }
 
     override fun visitForStatement(node: ForStatementNode) {
-        val jumpToEnd = JumpIfToBooleanFalse(-1)
-
         node.initializerScope?.also(::enterScope)
         node.initializer?.also {
             visit(it)
@@ -470,106 +488,123 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 +Pop
         }
 
-        enterContinuableScope(node.labels)
-        val head = builder.opcodeCount()
-        node.condition?.also {
-            visitExpression(it)
-            +jumpToEnd
+        val conditionBlock = builder.makeBlock("ForCondition")
+        val bodyBlock = builder.makeBlock("ForBody")
+        val incrementBlock = if (node.incrementer != null) builder.makeBlock("ForIncrement") else null
+        val continuationBlock = builder.makeBlock("ForContinuation")
+
+        +Jump(conditionBlock)
+        builder.enterBlock(conditionBlock)
+
+        enterControlFlowScope(node.labels, continuationBlock, incrementBlock ?: conditionBlock)
+
+        if (node.condition != null) {
+            visitExpression(node.condition)
+            +JumpIfToBooleanTrue(bodyBlock, continuationBlock)
+        } else {
+            +Jump(bodyBlock)
         }
 
-        enterBreakableScope(node.labels)
+        builder.enterBlock(bodyBlock)
         visitStatement(node.body)
 
-        val incrementer = builder.opcodeCount()
-        node.incrementer?.also {
-            visitExpression(it)
-            +Pop
-        }
-        +Jump(head)
+        exitControlFlowScope()
 
-        jumpToEnd.to = builder.opcodeCount()
-        exitContinuableScope().forEach { it.to = incrementer }
-        exitBreakableScope().forEach { it.to = builder.opcodeCount() }
+        if (node.incrementer != null) {
+            +Jump(incrementBlock!!)
+            builder.enterBlock(incrementBlock)
+            visitExpression(node.incrementer)
+            +Pop
+            +Jump(conditionBlock)
+        } else {
+            +Jump(continuationBlock)
+        }
+
+        builder.enterBlock(continuationBlock)
 
         node.initializerScope?.also(::exitScope)
     }
 
     override fun visitSwitchStatement(node: SwitchStatementNode) {
-        /**
-         * switch (x) {
-         *     case 0:
-         *     case 1:
-         *     case 2:
-         *         <block>
-         * }
-         *
-         * ...gets transformed into...
-         *
-         *     <x>
-         *     StoreValue [y]
-         *     <0>
-         *     LoadValue [y]
-         *     TestEqualStrict
-         *     JumpIfToBooleanTrue BLOCK    <- True op for cascading case
-         *     Dup
-         *     <1>
-         *     LoadValue [y]
-         *     TestEqualStrict
-         *     JumpIfToBooleanTrue BLOCK    <- True op for cascading case
-         *     Dup
-         *     <2>
-         *     LoadValue [y]
-         *     TestEqualStrict
-         *     JumpIfToBooleanFalse END     <- False op for non-cascading case
-         * CODE:
-         *     <block>
-         * END:
-         */
-
         visitExpression(node.target)
         val target = builder.newLocalSlot(LocalKind.Value)
         +StoreValue(target)
 
-        var defaultClause: SwitchClause? = null
-        val fallThroughJumps = mutableListOf<JumpInstr>()
+        data class ClauseWithBlocks(val clause: SwitchClause, val testBlock: BlockIndex?, val bodyBlock: BlockIndex?)
 
-        val endJumps = mutableListOf<JumpInstr>()
+        var defaultClause: ClauseWithBlocks? = null
 
-        for (clause in node.clauses) {
+        // We make all blocks up front to keep them ordered, which will ensure they are printed
+        // (when debugging) in a logical order
+        val clauses = node.clauses.mapIndexedNotNull { index, clause ->
             if (clause.target == null) {
-                defaultClause = clause
-                continue
-            }
-
-            +LoadValue(target)
-            visitExpression(clause.target)
-            +TestEqualStrict
-
-            if (clause.body == null) {
-                fallThroughJumps.add(+JumpIfToBooleanTrue(-1))
+                defaultClause = ClauseWithBlocks(
+                    clause,
+                    null,
+                    if (clause.body != null) builder.makeBlock("SwitchBodyDefault") else null
+                )
+                null
             } else {
-                val jumpAfterBody = +JumpIfToBooleanFalse(-1)
-
-                if (fallThroughJumps.isNotEmpty()) {
-                    for (jump in fallThroughJumps)
-                        jump.to = builder.opcodeCount()
-                    fallThroughJumps.clear()
-                }
-
-                enterBreakableScope(clause.labels)
-                visit(clause.body)
-                endJumps.addAll(exitBreakableScope())
-
-                endJumps.add(+Jump(-1))
-                jumpAfterBody.to = builder.opcodeCount()
+                ClauseWithBlocks(
+                    clause,
+                    builder.makeBlock("SwitchTest$index"),
+                    if (clause.body != null) builder.makeBlock("SwitchBody$index") else null
+                )
             }
         }
 
-        defaultClause?.body?.also(::visit)
+        val continuationBlock = builder.makeBlock("SwitchContinuation")
 
-        endJumps.forEach {
-            it.to = builder.opcodeCount()
+        if (clauses.isNotEmpty()) {
+            +Jump(clauses[0].testBlock!!)
+
+            for ((index, clause) in clauses.withIndex()) {
+                builder.enterBlock(clause.testBlock!!)
+
+                val nextTestBlock = clauses.drop(index + 1).map { it.testBlock!! }.firstOrNull()
+                val nextBodyBlock = clauses.drop(index + 1).firstNotNullOfOrNull { it.bodyBlock }
+
+                if (clause.bodyBlock == null) {
+                    if (nextBodyBlock == null) {
+                        // Evaluate the expression for side effects and jump to the default clause (or the
+                        // continuation if there is no default
+                        visitExpression(clause.clause.target!!)
+                        +Pop
+                        +Jump(nextTestBlock ?: defaultClause?.bodyBlock ?: continuationBlock)
+                    } else {
+                        +LoadValue(target)
+                        visitExpression(clause.clause.target!!)
+                        +TestEqualStrict
+
+                        // nextTestBlock is guaranteed to be non-null since nextBodyBlock is not null
+                        +JumpIfToBooleanTrue(nextBodyBlock, nextTestBlock!!)
+                    }
+                } else {
+                    +LoadValue(target)
+                    visitExpression(clause.clause.target!!)
+                    +TestEqualStrict
+                    +JumpIfToBooleanTrue(clause.bodyBlock, nextTestBlock ?: defaultClause?.bodyBlock ?: continuationBlock)
+
+                    builder.enterBlock(clause.bodyBlock)
+                    enterControlFlowScope(clause.clause.labels, continuationBlock, null)
+                    visit(clause.clause.body!!)
+                    exitControlFlowScope()
+                    +Jump(continuationBlock)
+                }
+            }
+        } else {
+            +Jump(defaultClause?.bodyBlock ?: continuationBlock)
         }
+
+        if (defaultClause != null) {
+            builder.enterBlock(defaultClause!!.bodyBlock!!)
+            enterControlFlowScope(defaultClause!!.clause.labels, continuationBlock, null)
+            visit(defaultClause!!.clause.body!!)
+            exitControlFlowScope()
+            +Jump(continuationBlock)
+        }
+
+        builder.enterBlock(continuationBlock)
     }
 
     override fun visitForIn(node: ForInNode) {
@@ -577,11 +612,19 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         visitExpression(node.expression)
         +Dup
         +StoreValue(local)
-        builder.ifHelper(::JumpIfUndefined) {
-            +LoadValue(local)
-            +ForInEnumerate
-            iterateForEach(node)
-        }
+
+        val bodyBlock = builder.makeBlock("ForInBody")
+        val continuationBlock = builder.makeBlock("ForInContinuation")
+
+        +JumpIfUndefined(continuationBlock, bodyBlock)
+        builder.enterBlock(bodyBlock)
+
+        +LoadValue(local)
+        +ForInEnumerate
+        iterateForEach(node)
+
+        +Jump(continuationBlock)
+        builder.enterBlock(continuationBlock)
     }
 
     override fun visitForOf(node: ForOfNode) {
@@ -610,48 +653,54 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         iteratorLocal: Local,
         action: () -> Unit,
     ) {
-        val head = builder.opcodeCount()
-        val resultLocal = builder.newLocalSlot(LocalKind.Value)
+        val iterationTestBlock = builder.makeBlock("IterationTestBlock")
+        val iterationAdvanceBlock = builder.makeBlock("IterationAdvanceBlock")
+        val continuationBlock = builder.makeBlock("IterationContinuation")
 
+        +Jump(iterationTestBlock)
+        builder.enterBlock(iterationTestBlock)
+
+        val resultLocal = builder.newLocalSlot(LocalKind.Value)
         +LoadValue(iteratorLocal)
         +IteratorNext
         +Dup
         +StoreValue(resultLocal)
         +IteratorResultDone
 
-        builder.ifHelper(::JumpIfTrue) {
-            +LoadValue(resultLocal)
-            +IteratorResultValue
+        +JumpIfTrue(continuationBlock, iterationAdvanceBlock)
+        builder.enterBlock(iterationAdvanceBlock)
 
-            enterBreakableScope(labels)
-            enterContinuableScope(labels)
-            action()
-            +Jump(head)
-            exitContinuableScope().forEach { it.to = head }
-            exitBreakableScope().forEach { it.to = builder.opcodeCount() }
-        }
+        +LoadValue(resultLocal)
+        +IteratorResultValue
+
+        enterControlFlowScope(labels, continuationBlock, iterationTestBlock)
+        action()
+        exitControlFlowScope()
+        +Jump(iterationTestBlock)
+
+        builder.enterBlock(continuationBlock)
     }
 
     override fun visitBreakStatement(node: BreakStatementNode) {
-        val jump = +Jump(-1)
-
         // Guaranteed to succeed as the Parser catches invalid labels
         val breakableScope = if (node.label != null) {
-            breakableScopes.asReversed().first { node.label in it.labels }
-        } else breakableScopes.last()
+            controlFlowScopes.asReversed().first { node.label in it.labels }
+        } else controlFlowScopes.last()
 
-        breakableScope.pendingBreakJumps.add(jump)
+        val continuationBlock = builder.makeBlock("BreakContinuation")
+        +Jump(breakableScope.breakBlock)
+        builder.enterBlock(continuationBlock)
     }
 
     override fun visitContinueStatement(node: ContinueStatementNode) {
-        // Guaranteed to succeed as Parser catched invalid labels
-        val jump = +Jump(-1)
-
+        // Guaranteed to succeed as Parser catches invalid labels
         val continuableScope = if (node.label != null) {
-            continuableScopes.asReversed().first { node.label in it.labels }
-        } else continuableScopes.last()
+            controlFlowScopes.asReversed().first { node.label in it.labels }
+        } else controlFlowScopes.last { it.continueBlock != null }
 
-        continuableScope.pendingContinueJumps.add(jump)
+        val continuationBlock = builder.makeBlock("ContinueContinuation")
+        +Jump(continuableScope.continueBlock!!)
+        builder.enterBlock(continuationBlock)
     }
 
     override fun visitCommaExpression(node: CommaExpressionNode) {
@@ -690,30 +739,51 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             BinaryOperator.And -> {
                 visit(node.lhs)
                 +Dup
-                builder.ifHelper(::JumpIfToBooleanFalse) {
-                    +Pop
-                    visit(node.rhs)
-                }
+
+                val ifTrueBlock = builder.makeBlock("LogicalAndTrueBlock")
+                val continuationBlock = builder.makeBlock("LogicalAndContinuation")
+
+                +JumpIfToBooleanTrue(ifTrueBlock, continuationBlock)
+                builder.enterBlock(ifTrueBlock)
+                +Pop
+                visit(node.rhs)
+                +Jump(continuationBlock)
+
+                builder.enterBlock(continuationBlock)
                 return
             }
 
             BinaryOperator.Or -> {
                 visit(node.lhs)
                 +Dup
-                builder.ifHelper(::JumpIfToBooleanTrue) {
-                    +Pop
-                    visit(node.rhs)
-                }
+
+                val ifFalseBlock = builder.makeBlock("LogicalOrFalseBlock")
+                val continuationBlock = builder.makeBlock("LogicalFalseContinuation")
+
+                +JumpIfToBooleanTrue(continuationBlock, ifFalseBlock)
+                builder.enterBlock(ifFalseBlock)
+                +Pop
+                visit(node.rhs)
+                +Jump(continuationBlock)
+
+                builder.enterBlock(continuationBlock)
                 return
             }
 
             BinaryOperator.Coalesce -> {
                 visit(node.lhs)
                 +Dup
-                builder.ifHelper(::JumpIfNotNullish) {
-                    +Pop
-                    visit(node.rhs)
-                }
+
+                val ifNullishBlock = builder.makeBlock("LogicalCoalesceNullishBlock")
+                val continuationBlock = builder.makeBlock("LogicalNullishContinuation")
+
+                +JumpIfNullish(ifNullishBlock, continuationBlock)
+                builder.enterBlock(ifNullishBlock)
+                +Pop
+                visit(node.rhs)
+                +Jump(continuationBlock)
+
+                builder.enterBlock(continuationBlock)
                 return
             }
         }
@@ -893,16 +963,22 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     storeToSource(property.declaration)
                     return
                 }
-
                 is SimpleBindingProperty -> {
                     val name = property.declaration.identifier.processedName
                     +LoadValue(valueLocal)
                     +LoadNamedProperty(name)
 
                     if (property.initializer != null) {
-                        builder.ifHelper(::JumpIfNotUndefined) {
-                            visitExpression(property.initializer)
-                        }
+                        val ifUndefinedBlock = builder.makeBlock("SimpleBindingIfUndefined")
+                        val continuationBlock = builder.makeBlock("SimpleBindingContinuation")
+
+                        +Dup
+                        +JumpIfUndefined(ifUndefinedBlock, continuationBlock)
+                        builder.enterBlock(ifUndefinedBlock)
+                        +Pop
+                        visitExpression(property.initializer)
+                        +Jump(continuationBlock)
+                        builder.enterBlock(continuationBlock)
                     }
 
                     if (hasRest) {
@@ -912,7 +988,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
                     property.alias ?: BindingDeclarationOrPattern(property.declaration)
                 }
-
                 is ComputedBindingProperty -> {
                     expect(property.name.type != PropertyName.Type.Identifier)
 
@@ -926,9 +1001,14 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                     }
 
                     if (property.initializer != null) {
-                        builder.ifHelper(::JumpIfNotUndefined) {
-                            visitExpression(property.initializer)
-                        }
+                        val ifNotUndefinedBlock = builder.makeBlock("ComputedBindingIfNotUndefined")
+                        val continuationBlock = builder.makeBlock("ComputedBindingContinuation")
+
+                        +JumpIfUndefined(continuationBlock, ifNotUndefinedBlock)
+                        builder.enterBlock(ifNotUndefinedBlock)
+                        visitExpression(property.initializer)
+                        +Jump(continuationBlock)
+                        builder.enterBlock(continuationBlock)
                     }
 
                     property.alias
@@ -946,8 +1026,26 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         +GetIterator
         // iter
 
+        fun exhaustionHelper(ifExhausted: () -> Unit, ifNotExhausted: () -> Unit) {
+            val ifExhaustedBlock = builder.makeBlock("IfExhaustedBlock")
+            val ifNotExhaustedBlock = builder.makeBlock("IfNotExhaustedBlock")
+            val continuationBlock = builder.makeBlock("ExhaustionContinuation")
+
+            +LoadBoolean(isExhaustedLocal)
+            +JumpIfTrue(ifExhaustedBlock, ifNotExhaustedBlock)
+
+            builder.enterBlock(ifExhaustedBlock)
+            ifExhausted()
+            +Jump(continuationBlock)
+
+            builder.enterBlock(ifNotExhaustedBlock)
+            ifNotExhausted()
+            +Jump(continuationBlock)
+
+            builder.enterBlock(continuationBlock)
+        }
+
         var first = true
-        val endJumps = mutableListOf<JumpInstr>()
 
         for (element in node.bindingElements) {
             // iter
@@ -957,15 +1055,12 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
                 if (first) {
                     // The iterator hasn't been called, so we can skip the exhaustion check
-                    println(builder.opcodeCount())
                     iteratorToArray(iterLocal)
-                    println(builder.opcodeCount())
                 } else {
-                    +LoadBoolean(isExhaustedLocal)
-                    builder.ifElseHelper(::JumpIfTrue, {
-                        iteratorToArray(iterLocal)
-                    }, {
+                    exhaustionHelper({
                         +CreateArray
+                    }, {
+                        iteratorToArray(iterLocal)
                     })
                 }
 
@@ -997,35 +1092,31 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
                 +IteratorResultValue
             } else {
-                +LoadBoolean(isExhaustedLocal)
-                builder.ifElseHelper(::JumpIfTrue, {
-                    // iter
+                exhaustionHelper({
+                    +PushUndefined
+                }, {
                     +Dup
                     +IteratorNext
-                    // iter result
                     +Dup
                     +IteratorResultDone
-                    // iter result isDone
 
                     // We don't need another if-else here on the isDone status, since if the
                     // iterator _is_ done, the result will just be undefined anyways
                     +StoreBoolean(isExhaustedLocal)
 
                     +IteratorResultValue
-                }, {
-                    // iter
-                    +PushUndefined
                 })
             }
 
-            if (element is SimpleBindingElement)
+            if (element is SimpleBindingElement) {
                 assign(element.alias.node)
+            } else if (element is BindingElisionElement) {
+                +Pop
+            }
 
             first = false
         }
 
-        endJumps.forEach { it.to = builder.opcodeCount() }
-        // iter
         +Pop
     }
 
@@ -1036,7 +1127,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         +CreateArray
         +StoreValue(arrayLocal)
-        +LoadValue(iteratorLocal)
 
         iterateValues(setOf(), iteratorLocal) {
             +StoreArray(arrayLocal, indexLocal)
@@ -1146,8 +1236,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 +PushUndefined
         }
 
-        val jumps = mutableListOf<JumpInstr>()
-
         var receiverLocal: Local? = null
 
         if (firstNeedsReceiver) {
@@ -1155,10 +1243,16 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             +StoreValue(receiverLocal)
         }
 
+        val ifNullishBlock = builder.makeBlock("OptionalChainIfNullish")
+        val continuationBlock = builder.makeBlock("OptionalContinuation")
+
         for ((index, part) in node.parts.withIndex()) {
             if (part.isOptional) {
                 +Dup
-                +JumpIfNullish(-1).also(jumps::add)
+
+                val ifNotNullishBlock = builder.makeBlock("Optional${index}NotNullish")
+                +JumpIfNullish(ifNullishBlock, ifNotNullishBlock)
+                builder.enterBlock(ifNotNullishBlock)
             }
 
             val needsReceiver =
@@ -1190,11 +1284,14 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             }
         }
 
-        val skip = +Jump(-1)
-        jumps.forEach { it.to = builder.opcodeCount() }
+        +Jump(continuationBlock)
+
+        builder.enterBlock(ifNullishBlock)
         +Pop
         +PushUndefined
-        skip.to = builder.opcodeCount()
+        +Jump(continuationBlock)
+
+        builder.enterBlock(continuationBlock)
 
         if (pushReceiver)
             +LoadValue(receiverLocal!!)
@@ -1208,6 +1305,10 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         }
 
         +Return
+
+        // Make another block for anything after the throw. This block will be eliminated by the
+        // BlockOptimizer.
+        builder.enterBlock(builder.makeBlock("ReturnContinuation"))
     }
 
     override fun visitIdentifierReference(node: IdentifierReferenceNode) {
@@ -1220,9 +1321,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         // We need to check if the variable has been initialized
         +Dup
-        builder.ifHelper(::JumpIfNotEmpty) {
-            +ThrowLexicalAccessError(node.processedName)
-        }
+        +ThrowLexicalAccessErrorIfEmpty(node.processedName)
     }
 
     enum class ArgumentsMode {
@@ -1326,6 +1425,10 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     override fun visitThrowStatement(node: ThrowStatementNode) {
         visitExpression(node.expr)
         +Throw
+
+        // Make another block for anything after the throw. This block will be eliminated by the
+        // BlockOptimizer.
+        builder.enterBlock(builder.makeBlock("ThrowContinuation"))
     }
 
     override fun visitTryStatement(node: TryStatementNode) {
@@ -1334,30 +1437,36 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         expect(node.catchNode != null)
 
-        val start = builder.opcodeCount()
-        visit(node.tryBlock)
-        val skipCatchJump = +Jump(-1)
+        val catchBlock = builder.makeBlock("CatchBlock")
+        builder.pushHandlerBlock(catchBlock)
+        val tryBlock = builder.makeBlock("TryBlock")
 
-        val catchStart = builder.opcodeCount()
-        val catchBlock = node.catchNode
+        +Jump(tryBlock)
+        builder.enterBlock(tryBlock)
+        visit(node.tryBlock)
+
+        builder.popHandlerBlock()
+        val continuationBlock = builder.makeBlock("TryContinuationBlock")
+        +Jump(continuationBlock)
+
+        builder.enterBlock(catchBlock)
 
         // We need to push the scope before we assign the catch parameter
-        enterScope(catchBlock.block.scope)
+        enterScope(node.catchNode.block.scope)
 
         // Handle the exception, which has been inserted onto the stack
-        if (catchBlock.parameter == null) {
+        if (node.catchNode.parameter == null) {
             +Pop
         } else {
-            assign(catchBlock.parameter.declaration.node)
+            assign(node.catchNode.parameter.declaration.node)
         }
 
         // Avoid pushing the scope twice
-        visitBlock(catchBlock.block, pushScope = false)
-        exitScope(catchBlock.block.scope)
+        visitBlock(node.catchNode.block, pushScope = false)
+        exitScope(node.catchNode.block.scope)
 
-        skipCatchJump.to = builder.opcodeCount()
-
-        builder.addHandler(start, catchStart - 1, catchStart)
+        +Jump(continuationBlock)
+        builder.enterBlock(continuationBlock)
     }
 
     override fun visitNamedDeclaration(declaration: NamedDeclaration) {
@@ -1692,21 +1801,29 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     }
 
     override fun visitAwaitExpression(node: AwaitExpressionNode) {
+        val continuationBlock = builder.makeBlock("AwaitContinuation")
         visitExpression(node.expression)
-        +Await
+        +Await(continuationBlock)
+        builder.enterBlock(continuationBlock)
     }
 
     override fun visitConditionalExpression(node: ConditionalExpressionNode) {
         visitExpression(node.predicate)
-        builder.ifElseHelper(
-            ::JumpIfToBooleanFalse,
-            {
-                visitExpression(node.ifTrue)
-            },
-            {
-                visitExpression(node.ifFalse)
-            },
-        )
+
+        val ifTrueBlock = builder.makeBlock("ConditionTrueBlock")
+        val ifFalseBlock = builder.makeBlock("ConditionFalseBlock")
+        val continuationBlock = builder.makeBlock("ConditionalContinuation")
+
+        +JumpIfToBooleanTrue(ifTrueBlock, ifFalseBlock)
+        builder.enterBlock(ifTrueBlock)
+        visitExpression(node.ifTrue)
+        +Jump(continuationBlock)
+
+        builder.enterBlock(ifFalseBlock)
+        visitExpression(node.ifFalse)
+        +Jump(continuationBlock)
+
+        builder.enterBlock(continuationBlock)
     }
 
     override fun visitSuperPropertyExpression(node: SuperPropertyExpressionNode) {
@@ -1747,7 +1864,9 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             visitExpression(node.expression)
         }
 
-        +Yield
+        val continuationBlock = builder.makeBlock("YieldContinuation")
+        +Yield(continuationBlock)
+        builder.enterBlock(continuationBlock)
     }
 
     override fun visitImportMetaExpression() {
@@ -1912,18 +2031,15 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     private fun unsupported(message: String): Nothing {
         throw NotImplementedError(message)
     }
-
-    private fun enterBreakableScope(labels: Set<String>) {
-        breakableScopes.add(LabelledSection(labels))
+    private fun enterControlFlowScope(labels: Set<String>, breakBlock: BlockIndex, continueBlock: BlockIndex?) {
+        controlFlowScopes.add(ControlFlowScope(labels, breakBlock, continueBlock))
     }
 
-    private fun exitBreakableScope() = breakableScopes.removeLast().pendingBreakJumps
-
-    private fun enterContinuableScope(labels: Set<String>) {
-        continuableScopes.add(LabelledSection(labels))
+    private fun exitControlFlowScope() {
+        controlFlowScopes.removeLast()
     }
 
-    private fun exitContinuableScope() = continuableScopes.removeLast().pendingContinueJumps
+    data class ControlFlowScope(val labels: Set<String>, val breakBlock: BlockIndex, val continueBlock: BlockIndex?)
 
     private operator fun <T : Opcode> T.unaryPlus() = apply {
         builder.addOpcode(this)

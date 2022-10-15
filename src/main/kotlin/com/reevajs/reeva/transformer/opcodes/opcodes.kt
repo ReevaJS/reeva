@@ -2,6 +2,7 @@ package com.reevajs.reeva.transformer.opcodes
 
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.runtime.AOs
+import com.reevajs.reeva.transformer.BlockIndex
 import com.reevajs.reeva.transformer.FunctionInfo
 import com.reevajs.reeva.transformer.Local
 import com.reevajs.regexp.RegExp
@@ -18,6 +19,9 @@ sealed class Opcode(val stackHeightModifier: Int) {
         return this::class.simpleName!!
     }
 }
+
+// Marker interface
+interface TerminatingOpcode
 
 ////////////////////////
 // Stack manipulation //
@@ -527,64 +531,34 @@ class StoreModuleVar(val name: String) : Opcode(-1)
 // Jumps //
 ///////////
 
-sealed class JumpInstr(var to: Int, stackHeightModifier: Int = -1) : Opcode(stackHeightModifier)
-
 /**
  * An absolute jump. Does not modify the stack
  */
-class Jump(to: Int) : JumpInstr(to, 0)
+class Jump(val target: BlockIndex) : Opcode(0), TerminatingOpcode
 
 /**
- * Jumps to [to] if the value at the top of the stack is the JVM boolean true.
+ * Jumps to [trueTarget] if the value at the top of the stack is the JVM boolean true,
+ * [falseTarget] otherwise.
  */
-class JumpIfTrue(to: Int) : JumpInstr(to)
+class JumpIfTrue(val trueTarget: BlockIndex, val falseTarget: BlockIndex) : Opcode(-1), TerminatingOpcode
 
 /**
- * Jumps to [to] if the value at the top of the stack is the JVM boolean false.
+ * Jumps to [trueTarget] if the result of calling ToBoolean on the JSValue at the top
+ * of the stack is the JVM boolean true, [falseTarget] otherwise.
  */
-class JumpIfFalse(to: Int) : JumpInstr(to)
+class JumpIfToBooleanTrue(val trueTarget: BlockIndex, val falseTarget: BlockIndex) : Opcode(-1), TerminatingOpcode
 
 /**
- * Jumps to [to] if the result of calling ToBoolean on the JSValue at the top
- * of the stack is the JVM boolean true.
+ * Jumps to [undefinedTarget] if the value on the top of the stack is the JSUndefined
+ * instance, [elseTarget] otherwise.
  */
-class JumpIfToBooleanTrue(to: Int) : JumpInstr(to)
+class JumpIfUndefined(val undefinedTarget: BlockIndex, val elseTarget: BlockIndex) : Opcode(-1), TerminatingOpcode
 
 /**
- * Jumps to [to] if the result of calling ToBoolean on the JSValue at the top
- * of the stack is the JVM boolean false.
+ * Jumps to [nullishTarget] if the value on the top of the stack is the neither the
+ * JSUndefined instance nor the JSNull instance, [elseTarget] otherwise.
  */
-class JumpIfToBooleanFalse(to: Int) : JumpInstr(to)
-
-/**
- * Jumps to [to] if the value on the top of the stack is the JSUndefined
- * instance.
- */
-class JumpIfUndefined(to: Int) : JumpInstr(to)
-
-/**
- * Jumps to [to] if the value on the top of the stack is not the JSUndefined
- * instance.
- */
-class JumpIfNotUndefined(to: Int) : JumpInstr(to)
-
-/**
- * Jumps to [to] if the value on the top of the stack is the neither the
- * JSUndefined instance nor the JSNull instance.
- */
-class JumpIfNotNullish(to: Int) : JumpInstr(to)
-
-/**
- * Jumps to [to] if the value on the top of the stack is either the
- * JSUndefined instance or the JSNull instance.
- */
-class JumpIfNullish(to: Int) : JumpInstr(to)
-
-/**
- * Jumps to [to] if the value on the top of the stack is not the JSEmpty
- * instance.
- */
-class JumpIfNotEmpty(to: Int) : JumpInstr(to)
+class JumpIfNullish(val nullishTarget: BlockIndex, val elseTarget: BlockIndex) : Opcode(-1), TerminatingOpcode
 
 /////////////
 // Classes //
@@ -656,7 +630,7 @@ object GetSuperBase : Opcode(1)
 /**
  * Throws the value on the top of the stack as an exception.
  */
-object Throw : Opcode(-1)
+object Throw : Opcode(-1), TerminatingOpcode
 
 /**
  * Throws a constant reassignment error, using [name] in the error message.
@@ -666,7 +640,7 @@ class ThrowConstantReassignmentError(val name: String) : Opcode(0)
 /**
  * Throws a lexical access error, using [name] in the error message.
  */
-class ThrowLexicalAccessError(val name: String) : Opcode(0)
+class ThrowLexicalAccessErrorIfEmpty(val name: String) : Opcode(-1)
 
 /**
  * Throws a super not initialized error if the value on the top of the stack
@@ -677,17 +651,17 @@ object ThrowSuperNotInitializedIfEmpty : Opcode(-1)
 /**
  * Returns the value on the top of the stack from this function.
  */
-object Return : Opcode(-1)
+object Return : Opcode(-1), TerminatingOpcode
 
 /**
  * Yields the value on the top of the stack from this function.
  */
-object Yield : Opcode(-1)
+class Yield(val target: BlockIndex) : Opcode(0), TerminatingOpcode
 
 /**
  * Awaits the value on the top of the stack from this function.
  */
-object Await : Opcode(-1)
+class Await(val target: BlockIndex) : Opcode(0), TerminatingOpcode
 
 ///////////////
 // Functions //
@@ -730,13 +704,13 @@ object CollectRestArgs : Opcode(1)
  * Creates an unmapped arguments object from the function arguments. Does not
  * perform the binding to the "arguments" variable.
  */
-object CreateUnmappedArgumentsObject : Opcode(0)
+object CreateUnmappedArgumentsObject : Opcode(1)
 
 /**
  * Creates a mapped arguments object from the function arguments. Does not
  * perform the binding to the "arguments" variable.
  */
-object CreateMappedArgumentsObject : Opcode(0)
+object CreateMappedArgumentsObject : Opcode(1)
 
 //////////
 // Misc //

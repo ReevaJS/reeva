@@ -1,7 +1,5 @@
 package com.reevajs.reeva.transformer.opcodes
 
-import com.reevajs.reeva.parsing.lexer.TokenType
-
 interface OpcodeVisitor {
     fun visit(opcode: Opcode) {
         when (opcode) {
@@ -81,14 +79,9 @@ interface OpcodeVisitor {
             is StoreEnvName -> visitStoreEnvName(opcode)
             is Jump -> visitJump(opcode)
             is JumpIfTrue -> visitJumpIfTrue(opcode)
-            is JumpIfFalse -> visitJumpIfFalse(opcode)
             is JumpIfToBooleanTrue -> visitJumpIfToBooleanTrue(opcode)
-            is JumpIfToBooleanFalse -> visitJumpIfToBooleanFalse(opcode)
             is JumpIfUndefined -> visitJumpIfUndefined(opcode)
-            is JumpIfNotUndefined -> visitJumpIfNotUndefined(opcode)
-            is JumpIfNotNullish -> visitJumpIfNotNullish(opcode)
             is JumpIfNullish -> visitJumpIfNullish(opcode)
-            is JumpIfNotEmpty -> visitJumpIfNotEmpty(opcode)
             is CreateRegExpObject -> visitCreateRegExpObject(opcode)
             is CreateTemplateLiteral -> visitCreateTemplateLiteral(opcode)
             ForInEnumerate -> visitForInEnumerate()
@@ -100,13 +93,13 @@ interface OpcodeVisitor {
             CreateUnmappedArgumentsObject -> visitCreateUnmappedArgumentsObject()
             CreateMappedArgumentsObject -> visitCreateMappedArgumentsObject()
             is ThrowConstantReassignmentError -> visitThrowConstantReassignmentError(opcode)
-            is ThrowLexicalAccessError -> visitThrowLexicalAccessError(opcode)
+            is ThrowLexicalAccessErrorIfEmpty -> visitThrowLexicalAccessError(opcode)
             ThrowSuperNotInitializedIfEmpty -> visitThrowSuperNotInitializedIfEmpty()
             PushClosure -> visitPushClosure()
             Throw -> visitThrow()
             Return -> visitReturn()
-            Yield -> visitYield()
-            Await -> visitAwait()
+            is Yield -> visitYield(opcode)
+            is Await -> visitAwait(opcode)
             DefineGetterProperty -> visitDefineGetterProperty()
             DefineSetterProperty -> visitDefineSetterProperty()
             GetSuperBase -> visitGetSuperBase()
@@ -281,21 +274,11 @@ interface OpcodeVisitor {
 
     fun visitJumpIfTrue(opcode: JumpIfTrue)
 
-    fun visitJumpIfFalse(opcode: JumpIfFalse)
-
     fun visitJumpIfToBooleanTrue(opcode: JumpIfToBooleanTrue)
-
-    fun visitJumpIfToBooleanFalse(opcode: JumpIfToBooleanFalse)
 
     fun visitJumpIfUndefined(opcode: JumpIfUndefined)
 
-    fun visitJumpIfNotUndefined(opcode: JumpIfNotUndefined)
-
-    fun visitJumpIfNotNullish(opcode: JumpIfNotNullish)
-
     fun visitJumpIfNullish(opcode: JumpIfNullish)
-
-    fun visitJumpIfNotEmpty(opcode: JumpIfNotEmpty)
 
     fun visitCreateRegExpObject(opcode: CreateRegExpObject)
 
@@ -321,7 +304,7 @@ interface OpcodeVisitor {
 
     fun visitThrowConstantReassignmentError(opcode: ThrowConstantReassignmentError)
 
-    fun visitThrowLexicalAccessError(opcode: ThrowLexicalAccessError)
+    fun visitThrowLexicalAccessError(opcode: ThrowLexicalAccessErrorIfEmpty)
 
     fun visitPushClosure()
 
@@ -329,9 +312,9 @@ interface OpcodeVisitor {
 
     fun visitReturn()
 
-    fun visitYield()
+    fun visitYield(opcode: Yield)
 
-    fun visitAwait()
+    fun visitAwait(opcode: Await)
 
     fun visitDefineGetterProperty()
 

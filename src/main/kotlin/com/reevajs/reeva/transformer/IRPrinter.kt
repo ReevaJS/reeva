@@ -2,8 +2,8 @@ package com.reevajs.reeva.transformer
 
 import com.reevajs.reeva.transformer.opcodes.*
 
-class IRPrinter(private val transformedSource: TransformedSource) {
-    private fun printInfo(info: FunctionInfo) {
+object IRPrinter {
+    fun printInfo(info: FunctionInfo) {
         val header = buildString {
             append("=== ")
             append(info.name)
@@ -13,10 +13,33 @@ class IRPrinter(private val transformedSource: TransformedSource) {
         println(header)
         println("Parameter count: ${info.ir.argCount}")
         println("Local count: ${info.ir.locals.size}")
-        println("Opcode count: ${info.ir.opcodes.size}")
+        println("Block count: ${info.ir.blocks.size}")
 
-        println("Opcodes:")
-        for ((index, opcode) in info.ir.opcodes.withIndex()) {
+        printBlocks(info.ir.blocks)
+
+        for (nestedFunction in info.ir.nestedFunctions) {
+            println("\n")
+            printInfo(nestedFunction)
+        }
+    }
+
+    fun printBlocks(blocks: Map<BlockIndex, BasicBlock>) {
+        println("Blocks:")
+        blocks.forEach(::printBlock)
+    }
+
+    fun printBlock(blockIndex: BlockIndex, block: BasicBlock) {
+        print("@$blockIndex ")
+
+        if (block.identifier != null)
+            print("${block.identifier} ")
+
+        if (block.handlerBlock != null)
+            print("handler=@${block.handlerBlock}")
+
+        println()
+
+        for ((index, opcode) in block.opcodes.withIndex()) {
             print("  ")
             print("%3d".format(index))
             print(".  ")
@@ -48,10 +71,10 @@ class IRPrinter(private val transformedSource: TransformedSource) {
                 is DeclareGlobalFunc -> println(" ${opcode.name}")
                 is LoadNamedProperty -> println(" \"${opcode.name}\"")
                 is IncInt -> println(" [${opcode.local}]")
-                is JumpInstr -> println(" @${opcode.to}")
                 is LoadCurrentEnvName -> println(" \"${opcode.name}\"")
                 is LoadEnvName -> println(" \"${opcode.name}\" #${opcode.distance}")
                 is LoadGlobal -> println(" \"${opcode.name}\"")
+                is LoadBoolean -> println(" [${opcode.local}]")
                 is LoadInt -> println(" [${opcode.local}]")
                 is LoadValue -> println(" [${opcode.local}]")
                 is PushConstant -> {
@@ -59,6 +82,7 @@ class IRPrinter(private val transformedSource: TransformedSource) {
                         println(" \"${opcode.literal}\"")
                     } else println(" ${opcode.literal}")
                 }
+                is PushBigInt -> println(" #${opcode.bigint}")
                 is StoreNamedProperty -> println(" \"${opcode.name}\"")
                 is StoreCurrentEnvName -> println(" \"${opcode.name}\"")
                 is StoreEnvName -> println(" \"${opcode.name}\" #${opcode.distance}")
@@ -66,33 +90,24 @@ class IRPrinter(private val transformedSource: TransformedSource) {
                 is StoreInt -> println(" [${opcode.local}]")
                 is StoreValue -> println(" [${opcode.local}]")
                 is ThrowConstantReassignmentError -> println(" \"${opcode.name}\"")
-                is ThrowLexicalAccessError -> println(" \"${opcode.name}\"")
+                is ThrowLexicalAccessErrorIfEmpty -> println(" \"${opcode.name}\"")
+                is Yield -> println(" @${opcode.target}")
+                is Await -> println(" @${opcode.target}")
                 is StoreArray -> println(" [${opcode.arrayLocal.value}] [${opcode.indexLocal.value}]")
                 is StoreArrayIndexed -> println(" [${opcode.arrayLocal}] #${opcode.index}")
                 is CopyObjectExcludingProperties -> println(" #${opcode.propertiesLocal}")
                 is PushJVMInt -> println(" #${opcode.int}")
                 is LoadModuleVar -> println(" \"${opcode.name}\"")
                 is StoreModuleVar -> println(" \"${opcode.name}\"")
+                is Jump -> println(" @${opcode.target}")
+                is JumpIfTrue -> println(" true=@${opcode.trueTarget} false=@${opcode.falseTarget}")
+                is JumpIfToBooleanTrue -> println(" true=@${opcode.trueTarget} false=@${opcode.falseTarget}")
+                is JumpIfUndefined -> println(" undefined=@${opcode.undefinedTarget} else=@${opcode.elseTarget}")
+                is JumpIfNullish -> println(" nullish=@${opcode.nullishTarget} else=@${opcode.elseTarget}")
                 is CreateRegExpObject -> println(" /${opcode.source}/${opcode.flags}")
                 is CreateTemplateLiteral -> println(" #${opcode.numberOfParts}")
                 else -> println()
             }
         }
-
-        if (info.ir.handlers.isNotEmpty()) {
-            println("\nHandlers:")
-
-            for (handler in info.ir.handlers)
-                println("    ${handler.start}-${handler.end}: ${handler.handler}")
-        }
-
-        for (nestedFunction in info.ir.nestedFunctions) {
-            println("\n")
-            printInfo(nestedFunction)
-        }
-    }
-
-    fun print() {
-        printInfo(transformedSource.functionInfo)
     }
 }

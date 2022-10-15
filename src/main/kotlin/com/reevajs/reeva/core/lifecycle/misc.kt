@@ -5,7 +5,6 @@ import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.transformer.IRPrinter
-import com.reevajs.reeva.transformer.IRValidator
 import com.reevajs.reeva.transformer.TransformedSource
 import com.reevajs.reeva.transformer.Transformer
 import com.reevajs.reeva.utils.unreachable
@@ -96,10 +95,11 @@ interface Executable {
         fun transform(parsedSource: ParsedSource): TransformedSource {
             return Transformer(parsedSource).transform().also {
                 if (Agent.activeAgent.printIR) {
-                    IRPrinter(it).print()
+                    IRPrinter.printInfo(it.functionInfo)
                     println('\n')
                 }
-                IRValidator(it.functionInfo).validate()
+
+                // TODO: Validate IR
             }
         }
     }
