@@ -156,27 +156,28 @@ data class Descriptor constructor(
         this.valueBacker = value
     }
 
-    @ECMAImpl("6.2.5.4", "FromPropertyDescriptor")
+    @ECMAImpl("6.2.6.4", "FromPropertyDescriptor")
     fun toObject(thisValue: JSValue): JSObject {
         val obj = JSObject.create()
+
+        if (isDataDescriptor)
+            obj.set("value", getActualValue(thisValue))
+        if (hasWritable)
+            obj.set("writable", isWritable.toValue())
         if (isAccessorDescriptor) {
             obj.set("get", (valueBacker as JSAccessor).getter ?: JSUndefined)
             obj.set("set", (valueBacker as JSAccessor).setter ?: JSUndefined)
-        } else if (isDataDescriptor) {
-            obj.set("value", getActualValue(thisValue))
         }
 
-        if (hasConfigurable)
-            obj.set("configurable", isConfigurable.toValue())
         if (hasEnumerable)
             obj.set("enumerable", isEnumerable.toValue())
-        if (hasWritable)
-            obj.set("writable", isWritable.toValue())
+        if (hasConfigurable)
+            obj.set("configurable", isConfigurable.toValue())
 
         return obj
     }
 
-    @ECMAImpl("6.2.5.6")
+    @ECMAImpl("6.2.6.6")
     fun complete() = apply {
         if (isGenericDescriptor) {
             if (valueBacker == JSEmpty)
