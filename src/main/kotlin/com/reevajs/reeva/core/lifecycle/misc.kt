@@ -92,8 +92,8 @@ interface Executable {
     fun execute(): JSValue
 
     companion object {
-        fun transform(parsedSource: ParsedSource): TransformedSource {
-            return Transformer(parsedSource).transform().also {
+        fun transform(parsedSource: ParsedSource, isEval: Boolean = false): TransformedSource {
+            return Transformer(parsedSource).transform(isEval).also {
                 if (Agent.activeAgent.printIR) {
                     IRPrinter.printInfo(it.functionInfo)
                     println('\n')
