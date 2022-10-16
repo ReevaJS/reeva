@@ -2,16 +2,16 @@ package com.reevajs.reeva.runtime.iterators
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.collections.JSSetObject
+import com.reevajs.reeva.runtime.collections.SetData
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.expect
 
 class JSSetIterator private constructor(
     realm: Realm,
-    data: JSSetObject.SetData,
+    data: SetData,
     val iterationKind: PropertyKind
 ) : JSObject(realm, realm.setIteratorProto) {
-    var iteratedSet: JSSetObject.SetData? = data
+    var iteratedSet: SetData? = data
     var nextIndex = 0
 
     init {
@@ -20,7 +20,7 @@ class JSSetIterator private constructor(
     }
 
     companion object {
-        fun create(data: JSSetObject.SetData, kind: PropertyKind, realm: Realm = Agent.activeAgent.getActiveRealm()) =
+        fun create(data: SetData, kind: PropertyKind, realm: Realm = Agent.activeAgent.getActiveRealm()) =
             JSSetIterator(realm, data, kind).initialize()
     }
 }

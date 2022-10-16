@@ -2,8 +2,8 @@ package com.reevajs.reeva.runtime.objects
 
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.AOs
-import com.reevajs.reeva.runtime.collections.JSSetObject
 import com.reevajs.reeva.runtime.collections.MapData
+import com.reevajs.reeva.runtime.collections.SetData
 import com.reevajs.reeva.runtime.memory.DataBlock
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.regexp.RegExp
@@ -38,7 +38,7 @@ value class Slot<T> private constructor(val index: Int) {
         val ProxyHandler = nextSlot<JSObject?>()
         val ProxyTarget = nextSlot<JSObject>()
         val RegExpMatcher = nextSlot<RegExp>()
-        val SetData = nextSlot<JSSetObject.SetData>()
+        val SetData = nextSlot<SetData>()
         val StringData = nextSlot<JSString>()
         val SymbolData = nextSlot<JSSymbol>()
         val TypedArrayKind = nextSlot<AOs.TypedArrayKind>() // non-standard

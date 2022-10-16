@@ -42,7 +42,7 @@ class JSSetProto private constructor(realm: Realm) : JSObject(realm, realm.objec
     companion object {
         fun create(realm: Realm = Agent.activeAgent.getActiveRealm()) = JSSetProto(realm).initialize()
 
-        private fun thisSetObject(thisValue: JSValue, method: String): JSSetObject.SetData {
+        private fun thisSetObject(thisValue: JSValue, method: String): SetData {
             if (!AOs.requireInternalSlot(thisValue, Slot.SetData))
                 Errors.IncompatibleMethodCall("Set.prototype.$method").throwTypeError()
             return thisValue[Slot.SetData]

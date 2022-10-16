@@ -4,13 +4,13 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
-import com.reevajs.reeva.runtime.collections.JSMapCtor
-import com.reevajs.reeva.runtime.collections.JSSetObject
 import com.reevajs.reeva.runtime.collections.MapData
+import com.reevajs.reeva.runtime.collections.SetData
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.Errors
+import com.reevajs.reeva.utils.key
 import com.reevajs.reeva.utils.toValue
 import java.lang.reflect.Executable
 import java.lang.reflect.ParameterizedType
@@ -317,13 +317,20 @@ object JVMValueMapper {
                 map
             }
             is Set<*> -> {
-                val jsSet = JSSetObject.create()
-                instance.forEach { key ->
-                    val jsKey = jvmToJS(key)
-                    jsSet.setData.set.add(jsKey)
-                    jsSet.setData.insertionOrder.add(jsKey)
+                val set = AOs.ordinaryCreateFromConstructor(
+                    Agent.activeAgent.getActiveRealm().setCtor,
+                    listOf(Slot.SetData),
+                    defaultProto = Realm::setProto,
+                )
+                val data = SetData(mutableSetOf())
+                instance.forEach {
+                    val value = jvmToJS(it)
+                    data.set.add(value)
+                    data.insertionOrder.add(value)
                 }
-                jsSet
+                set[Slot.SetData] = data
+
+                set
             }
             is Collection<*> -> {
                 val jsArray = JSArrayObject.create()
