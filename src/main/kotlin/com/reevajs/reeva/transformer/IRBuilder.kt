@@ -88,10 +88,10 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
         return Local(locals.lastIndex)
     }
 
-    fun build() = IR(
+    fun build() = BlockOptimizer(IR(
         argCount,
         blocks,
         locals,
         nestedFunctions,
-    )
+    )).optimize()
 }
