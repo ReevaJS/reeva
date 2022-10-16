@@ -9,17 +9,23 @@ import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
 import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.core.environment.ObjectEnvRecord
 import com.reevajs.reeva.core.errors.ThrowException
+import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
+import com.reevajs.reeva.interpreter.AsyncInterpretedFunction
+import com.reevajs.reeva.interpreter.GeneratorInterpretedFunction
+import com.reevajs.reeva.interpreter.InterpretedFunction
+import com.reevajs.reeva.interpreter.NormalInterpretedFunction
 import com.reevajs.reeva.jvmcompat.JSClassInstanceObject
 import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.mfbt.Dtoa
 import com.reevajs.reeva.mfbt.StringToFP
+import com.reevajs.reeva.parsing.Parser
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.errors.JSErrorObject
 import com.reevajs.reeva.runtime.errors.JSErrorProto
+import com.reevajs.reeva.runtime.errors.JSSyntaxErrorObject
 import com.reevajs.reeva.runtime.functions.JSBoundFunction
-import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.iterators.JSArrayIterator
 import com.reevajs.reeva.runtime.memory.DataBlock
@@ -42,6 +48,9 @@ import com.reevajs.reeva.runtime.wrappers.JSBooleanObject
 import com.reevajs.reeva.runtime.wrappers.JSNumberObject
 import com.reevajs.reeva.runtime.wrappers.JSSymbolObject
 import com.reevajs.reeva.runtime.wrappers.strings.JSStringObject
+import com.reevajs.reeva.transformer.IRPrinter
+import com.reevajs.reeva.transformer.TransformedSource
+import com.reevajs.reeva.transformer.Transformer
 import com.reevajs.reeva.utils.*
 import com.reevajs.regexp.RegExp
 import com.reevajs.regexp.parser.RegExpSyntaxError
@@ -2093,99 +2102,172 @@ object AOs {
         kind: FunctionKind,
         args: JSArguments
     ): JSValue {
-        // TODO: Ideally most of this code would be done through an Agent to
-        //       avoid code duplication
-        unreachable()
+        val agent = Agent.activeAgent
 
-        // val agent = Agent.activeAgent
-        //
-        // // TODO: Figure out the caller vs callee realm separation
-        // agent.hostHooks.ensureCanCompileStrings(realm)
-        //
-        // val newTarget = if (newTarget_ == JSUndefined) constructor else newTarget_ as JSObject
-        //
-        // val fallbackProto = when (kind) {
-        //     FunctionKind.Normal -> newTarget.realm.functionProto
-        //     FunctionKind.Generator -> newTarget.realm.generatorFunctionProto
-        //     else -> TODO()
-        // }
-        //
-        // val bodyArgString = if (args.isEmpty()) "" else args.last().toJSString(realm).string
-        //
-        // val argString = if (args.size <= 1) "" else buildString {
-        //     for ((index, arg) in args.dropLast(1).withIndex()) {
-        //         val string = arg.toJSString(realm).string
-        //         if (index != 0)
-        //             append(',')
-        //         append(string)
-        //     }
-        // }
-        //
-        // val bodyString = "\n$bodyArgString\n"
-        // val prefix = kind.prefix
-        // val sourceString = "$prefix anonymous($argString\n) {$bodyString}"
-        //
-        // // TODO: 20.2.1.1.1 step 24:
-        // // NOTE: The parameters and body are parsed separately to ensure that each is valid alone. For
-        // // example, new Function("/*", "*/ ) {") is not legal.
-        // val parser = Parser(sourceString)
-        //
-        // // TODO: Get access to the Agent for printAST/printIR
-        //
-        // val functionNode = when (val result = parser.parseFunction(kind)) {
-        //     is ParsingResult.InternalError -> throw result.cause
-        //     is ParsingResult.ParseError -> {
-        //         val exception = JSSyntaxErrorObject.create(result.reason)
-        //         throw ThrowException(exception)
-        //     }
-        //     is ParsingResult.Success -> result.node as FunctionDeclarationNode
-        // }
-        //
-        // if (agent.printAST) {
-        //     functionNode.debugPrint()
-        //     println("\n")
-        // }
-        //
-        // val proto = getPrototypeFromConstructor(constructor, fallbackProto)
-        //
-        // val ir = Transformer().transform(functionNode)
-        //
-        // if (agent.printIR) {
-        //     IRPrinter(ir).print()
-        //     println("\n")
-        // }
-        //
-        // IRPrinter(ir).print()
-        // println("\n")
-        //
-        // // TODO: This globalEnv access will throw an exception if this is access
-        // // after the entire script has stopped running (for example, if a function
-        // // containing a new Function call is executed on the JVM side). This will
-        // // somehow have to climb up the EnvRecord stack of the calling function.
-        // val function = Interpreter.wrap(ir, realm, realm.globalEnv, kind)
-        // function.setPrototype(proto)
-        // definePropertyOrThrow(
-        //     realm,
-        //     function,
-        //     "length".key(),
-        //     Descriptor(functionNode.parameters.size.toValue(), Descriptor.CONFIGURABLE)
-        // )
-        //
-        // setFunctionName(function, "anonymous".key())
-        //
-        // when (kind) {
-        //     FunctionKind.Normal -> {
-        //         // TODO:
-        //         // makeConstructor(function)
-        //     }
-        //     FunctionKind.Generator -> {
-        //         val prototype = JSObject.create(realm.generatorFunctionProto)
-        //         definePropertyOrThrow(function, "prototype".key(), Descriptor(prototype, Descriptor.WRITABLE))
-        //     }
-        //     else -> TODO()
-        // }
-        //
-        // return function
+        // 1. Let currentRealm be the current Realm Record.
+        val currentRealm = agent.getActiveRealm()
+
+        // 2. Perform ? HostEnsureCanCompileStrings(currentRealm).
+        agent.hostHooks.ensureCanCompileStrings(currentRealm)
+
+        // 3. If newTarget is undefined, set newTarget to constructor.
+        val newTarget = if (newTarget_ == JSUndefined) constructor else newTarget_ as JSObject
+
+        val (fallbackProto, functionType) = when (kind) {
+            // 4. If kind is normal, then
+            FunctionKind.Normal -> {
+                // a. Let prefix be "function".
+                // b. Let exprSym be the grammar symbol FunctionExpression.
+                // c. Let bodySym be the grammar symbol FunctionBody[~Yield, ~Await].
+                // d. Let parameterSym be the grammar symbol FormalParameters[~Yield, ~Await].
+                // e. Let fallbackProto be "%Function.prototype%".
+                realm.functionProto to NormalInterpretedFunction::create
+            }
+
+            // 5. Else if kind is generator, then
+            FunctionKind.Generator -> {
+                // a. Let prefix be "function*".
+                // b. Let exprSym be the grammar symbol GeneratorExpression.
+                // c. Let bodySym be the grammar symbol GeneratorBody.
+                // d. Let parameterSym be the grammar symbol FormalParameters[+Yield, ~Await].
+                // e. Let fallbackProto be "%GeneratorFunction.prototype%".
+                realm.generatorFunctionProto to GeneratorInterpretedFunction::create
+            }
+
+            // 6. Else if kind is async, then
+            FunctionKind.Async -> {
+                // a. Let prefix be "async function".
+                // b. Let exprSym be the grammar symbol AsyncFunctionExpression.
+                // c. Let bodySym be the grammar symbol AsyncFunctionBody.
+                // d. Let parameterSym be the grammar symbol FormalParameters[~Yield, +Await].
+                // e. Let fallbackProto be "%AsyncFunction.prototype%".
+
+                // TODO: Make an object on the realm for this
+                JSObject.create(realm) to AsyncInterpretedFunction::create
+            }
+
+            // 7. Else,
+            FunctionKind.AsyncGenerator -> {
+                // a. Assert: kind is asyncGenerator.
+                // b. Let prefix be "async function*".
+                // c. Let exprSym be the grammar symbol AsyncGeneratorExpression.
+                // d. Let bodySym be the grammar symbol AsyncGeneratorBody.
+                // e. Let parameterSym be the grammar symbol FormalParameters[+Yield, +Await].
+                // f. Let fallbackProto be "%AsyncGeneratorFunction.prototype%".
+                TODO()
+            }
+        }
+
+        // 8. Let argCount be the number of elements in args.
+        // 9. Let P be the empty String.
+        var p = ""
+
+        // 10. If argCount = 0, let bodyArg be the empty String.
+        val bodyArg = if (args.isEmpty()) {
+            JSString("")
+        }
+        // 11. Else if argCount = 1, let bodyArg be args[0].
+        else if (args.size == 1) {
+            args.argument(0)
+        }
+        // 12. Else,
+        else {
+            // a. Assert: argCount > 1.
+            // b. Let firstArg be args[0].
+            // c. Set P to ? ToString(firstArg).
+            p = args.argument(0).toJSString().string
+
+            // d. Let k be 1.
+            // e. Repeat, while k < argCount - 1,
+            for (nextArg in args.drop(1).dropLast(1)) {
+                // i. Let nextArg be args[k].
+                // ii. Let nextArgString be ? ToString(nextArg).
+                // iii. Set P to the string-concatenation of P, "," (a comma), and nextArgString.
+                p += "," + nextArg.toJSString().string
+
+                // iv. Set k to k + 1.
+            }
+
+            // f. Let bodyArg be args[k].
+            args.last()
+        }
+
+        // 13. Let bodyString be the string-concatenation of 0x000A (LINE FEED), ? ToString(bodyArg), and
+        //     0x000A (LINE FEED).
+        val bodyString = "\n${bodyArg.toJSString().string}\n"
+
+        // 14. Let sourceString be the string-concatenation of prefix, " anonymous(", P, 0x000A (LINE FEED), ") {",
+        //     bodyString, and "}".
+        val sourceString = "${kind.prefix} anonymous($p\n) {$bodyString}"
+
+        // 15. Let sourceText be StringToCodePoints(sourceString).
+        // 16. Let parameters be ParseText(StringToCodePoints(P), parameterSym).
+        // 17. If parameters is a List of errors, throw a SyntaxError exception.
+        // 18. Let body be ParseText(StringToCodePoints(bodyString), bodySym).
+        // 19. If body is a List of errors, throw a SyntaxError exception.
+        // 20. NOTE: The parameters and body are parsed separately to ensure that each is valid alone. For example,
+        //     new Function("/*", "*/ ) {") is not legal.
+        // 21. NOTE: If this step is reached, sourceText must have the syntax of exprSym (although the reverse
+        //     implication does not hold). The purpose of the next two steps is to enforce any Early Error rules which
+        //     apply to exprSym directly.
+        // 22. Let expr be ParseText(sourceText, exprSym).
+        // 23. If expr is a List of errors, throw a SyntaxError exception.
+        val parseResult = Parser(LiteralSourceInfo("anonymous", sourceString, false)).parseFunction(kind).let {
+            if (it.hasError)
+                throw ThrowException(JSSyntaxErrorObject.create(it.error().cause, currentRealm))
+
+            it.value()
+        }
+
+        // 24. Let proto be ? GetPrototypeFromConstructor(newTarget, fallbackProto).
+        val proto = getPrototypeFromConstructor(newTarget) { fallbackProto }
+
+        // 25. Let realmF be the current Realm Record.
+        // 26. Let env be realmF.[[GlobalEnv]].
+        val env = currentRealm.globalEnv
+
+        // 27. Let privateEnv be null.
+
+        // 28. Let F be OrdinaryFunctionCreate(proto, sourceText, parameters, body, non-lexical-this, env, privateEnv).
+        val transformedSource = Transformer(parseResult).transform().let {
+            // TODO: Restructure the transformer to make this not necessary
+            TransformedSource(it.sourceInfo, it.functionInfo.ir.nestedFunctions.single())
+        }
+        if (agent.printIR)
+            IRPrinter.printInfo(transformedSource.functionInfo)
+        val function = functionType(transformedSource, currentRealm)
+        function.setPrototype(proto)
+        function.environment = env
+
+        // 29. Perform SetFunctionName(F, "anonymous").
+        setFunctionName(function, "anonymous".key())
+
+        // 30. If kind is generator, then
+        if (kind == FunctionKind.Generator) {
+            // a. Let prototype be OrdinaryObjectCreate(%GeneratorFunction.prototype.prototype%).
+            val prototype = JSObject.create(currentRealm, currentRealm.generatorFunctionProto)// TODO: Is this the right object?
+
+            // b. Perform ! DefinePropertyOrThrow(F, "prototype", PropertyDescriptor { [[Value]]: prototype,
+            //    [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false }).
+            definePropertyOrThrow(function, "prototype".key(), Descriptor(prototype, attrs { -conf; -enum; +writ }))
+        }
+        // 31. Else if kind is asyncGenerator, then
+        else if (kind == FunctionKind.AsyncGenerator) {
+            // a. Let prototype be OrdinaryObjectCreate(%AsyncGeneratorFunction.prototype.prototype%).
+            // b. Perform ! DefinePropertyOrThrow(F, "prototype", PropertyDescriptor { [[Value]]: prototype,
+            //    [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: false }).
+            TODO()
+        }
+        // 32. Else if kind is normal, perform MakeConstructor(F).
+        else if (kind == FunctionKind.Normal) {
+            makeConstructor(function)
+        }
+
+        // 33. NOTE: Functions whose kind is async are not constructible and do not have a [[Construct]] internal method
+        //     or a "prototype" property.
+
+        // 34. Return F.
+        return function
     }
 
     @JvmStatic
