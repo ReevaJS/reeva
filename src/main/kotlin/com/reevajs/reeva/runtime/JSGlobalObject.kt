@@ -186,17 +186,6 @@ open class JSGlobalObject protected constructor(
             return URIParser.encode(arguments.argument(0).toJSString().string, uriUnescaped).toValue()
         }
 
-        @ECMAImpl("18.2.1.1")
-        fun performEval(
-            argument: JSValue,
-            callerRealm: Realm,
-            strictCaller: Boolean,
-            direct: Boolean,
-        ): JSValue {
-            // TODO
-            Errors.Custom("eval is not yet implemented in Reeva").throwInternalError()
-        }
-
         @JvmStatic
         fun id(arguments: JSArguments): JSValue {
             val o = arguments.argument(0)
@@ -205,7 +194,7 @@ open class JSGlobalObject protected constructor(
 
         @JvmStatic
         fun eval(arguments: JSArguments): JSValue {
-            return performEval(
+            return AOs.performEval(
                 arguments.argument(0),
                 Agent.activeAgent.getActiveRealm(),
                 strictCaller = false,

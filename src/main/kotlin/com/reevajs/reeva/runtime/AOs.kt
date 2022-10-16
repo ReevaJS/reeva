@@ -3,13 +3,21 @@
 package com.reevajs.reeva.runtime
 
 import com.reevajs.reeva.ast.ASTNode
+import com.reevajs.reeva.ast.ScriptNode
+import com.reevajs.reeva.ast.containsAny
+import com.reevajs.reeva.ast.containsArguments
+import com.reevajs.reeva.ast.expressions.NewTargetNode
+import com.reevajs.reeva.ast.expressions.SuperCallExpressionNode
+import com.reevajs.reeva.ast.expressions.SuperPropertyExpressionNode
 import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
 import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.core.environment.ObjectEnvRecord
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
+import com.reevajs.reeva.core.lifecycle.Script
 import com.reevajs.reeva.interpreter.AsyncInterpretedFunction
 import com.reevajs.reeva.interpreter.GeneratorInterpretedFunction
 import com.reevajs.reeva.interpreter.InterpretedFunction
@@ -2092,6 +2100,162 @@ object AOs {
         return false
 
 //        return node.isFunctionDefinition() && !node.hasName()
+    }
+
+    @JvmStatic
+    @ECMAImpl("19.2.1.1")
+    fun performEval(
+        argument: JSValue,
+        callerRealm: Realm,
+        strictCaller: Boolean,
+        direct: Boolean,
+    ): JSValue {
+        // TODO: A lot of this implementation doesn't really match the spec
+
+        // 1. Assert: If direct is false, then strictCaller is also false.
+        if (!direct)
+            ecmaAssert(!strictCaller)
+
+        // 2. If Type(x) is not String, return x.
+        if (argument !is JSString)
+            return argument
+
+        // 3. Let evalRealm be the current Realm Record.
+        // 4. NOTE: In the case of a direct eval, evalRealm is the realm of both the caller of eval and of the eval
+        //    function itself.
+        val evalRealm = Agent.activeAgent.getActiveRealm()
+
+        // 5. Perform ? HostEnsureCanCompileStrings(evalRealm).
+        Agent.activeAgent.hostHooks.ensureCanCompileStrings(evalRealm)
+
+        // 6. Let inFunction be false.
+        var inFunction = false
+
+        // 7. Let inMethod be false.
+        var inMethod = false
+
+        // 8. Let inDerivedConstructor be false.
+        var inDerivedConstructor = false
+
+        // 9. Let inClassFieldInitializer be false.
+        var inClassFieldInitializer = false
+
+        // 10. If direct is true, then
+        if (direct) {
+            // a. Let thisEnvRec be GetThisEnvironment().
+            val activeFunction = Agent.activeAgent.getActiveFunction()
+
+            // b. If thisEnvRec is a function Environment Record, then
+            if (activeFunction != null) {
+                // i.   Let F be thisEnvRec.[[FunctionObject]].
+                // ii.  Set inFunction to true.
+                inFunction = true
+
+                // iii. Set inMethod to thisEnvRec.HasSuperBinding().
+                // NOTE: Function which are methods will have a [[HomeObject]] defined
+                inMethod = activeFunction.homeObject is JSObject
+
+                // iv.  If F.[[ConstructorKind]] is derived, set inDerivedConstructor to true.
+                if (activeFunction.constructorKind == JSFunction.ConstructorKind.Derived)
+                    inDerivedConstructor = true
+
+                // v.   Let classFieldIntializerName be F.[[ClassFieldInitializerName]].
+                // vi.  If classFieldIntializerName is not empty, set inClassFieldInitializer to true.
+                if (hasOwnProperty(activeFunction, Realm.InternalSymbols.isClassInstanceFieldInitializer.key()))
+                    inClassFieldInitializer = true
+            }
+        }
+
+        // 11. Perform the following substeps in an implementation-defined order, possibly interleaving parsing and
+        //     error detection:
+        //     a. Let script be ParseText(StringToCodePoints(x), Script).
+        //     b. If script is a List of errors, throw a SyntaxError exception.
+        val result = Script.parseScript(evalRealm, LiteralSourceInfo("eval", argument.string, isModule = false))
+        if (result.hasError) {
+            val error = result.error()
+            throw ThrowException(JSSyntaxErrorObject.create(error.cause, evalRealm))
+        }
+
+        val script = result.value()
+        script.isEval = true
+        val rootNode = script.parsedSource.node
+
+        //     c. If script Contains ScriptBody is false, return undefined.
+        //     d. Let body be the ScriptBody of script.
+        //     e. If inFunction is false, and body Contains NewTarget, throw a SyntaxError exception.
+        if (!inFunction && rootNode.containsAny<NewTargetNode>())
+            Errors.NewTargetOutsideFunc.throwSyntaxError(evalRealm)
+
+        //     f. If inMethod is false, and body Contains SuperProperty, throw a SyntaxError exception.
+        if (!inMethod && rootNode.containsAny<SuperPropertyExpressionNode>())
+            Errors.SuperOutsideMethod.throwSyntaxError(evalRealm)
+
+        //     g. If inDerivedConstructor is false, and body Contains SuperCall, throw a SyntaxError exception.
+        if (!inDerivedConstructor && rootNode.containsAny<SuperCallExpressionNode>())
+            Errors.SuperCallOutsideCtor.throwSyntaxError(evalRealm)
+
+        //     h. If inClassFieldInitializer is true, and ContainsArguments of body is true, throw a SyntaxError
+        //        exception.
+        if (inClassFieldInitializer && rootNode.containsArguments())
+            Errors.InvalidArgumentsAccess.throwSyntaxError(realm)
+
+        // 12. If strictCaller is true, let strictEval be true.
+        // 13. Else, let strictEval be IsStrict of script.
+        val strictEval = strictCaller || (script.parsedSource.node as? ScriptNode)?.hasUseStrict == true
+
+        // 14. Let runningContext be the running execution context.
+        // 15. NOTE: If direct is true, runningContext will be the execution context that performed the direct eval. If
+        //     direct is false, runningContext will be the execution context for the invocation of the eval function.
+        val runningContext = Agent.activeAgent.runningExecutionContext
+
+        // 16. If direct is true, then
+        val env = if (direct) {
+            // a. Let lexEnv be NewDeclarativeEnvironment(runningContext's LexicalEnvironment).
+            // b. Let varEnv be runningContext's VariableEnvironment.
+            // c. Let privateEnv be runningContext's PrivateEnvironment.
+            runningContext.envRecord
+        }
+        // 17. Else,
+        else {
+            // a. Let lexEnv be NewDeclarativeEnvironment(evalRealm.[[GlobalEnv]]).
+            // b. Let varEnv be evalRealm.[[GlobalEnv]].
+            // c. Let privateEnv be null.
+            evalRealm.globalEnv
+        }
+
+        // 18. If strictEval is true, set varEnv to lexEnv.
+        // 19. If runningContext is not already suspended, suspend runningContext.
+        // 20. Let evalContext be a new ECMAScript code execution context.
+        // 21. Set evalContext's Function to null.
+        // 22. Set evalContext's Realm to evalRealm.
+        // 23. Set evalContext's ScriptOrModule to runningContext's ScriptOrModule.
+        // 24. Set evalContext's VariableEnvironment to varEnv.
+        // 25. Set evalContext's LexicalEnvironment to lexEnv.
+        // 26. Set evalContext's PrivateEnvironment to privateEnv.
+        val evalContext = ExecutionContext(
+            evalRealm,
+            null,
+            env,
+            runningContext.executable,
+            null,
+        )
+
+        // 27. Push evalContext onto the execution context stack; evalContext is now the running execution context.
+        Agent.activeAgent.pushExecutionContext(evalContext)
+
+        // 28. Let result be Completion(EvalDeclarationInstantiation(body, varEnv, lexEnv, privateEnv, strictEval)).
+        // 29. If result.[[Type]] is normal, then
+        //     a. Set result to the result of evaluating body.
+        // 30. If result.[[Type]] is normal and result.[[Value]] is empty, then
+        //     a. Set result to NormalCompletion(undefined).
+        // 31. Suspend evalContext and remove it from the execution context stack.
+        // 32. Resume the context that is now on the top of the execution context stack as the running execution context.
+        // 33. Return ? result.
+        try {
+            return script.execute()
+        } finally {
+            Agent.activeAgent.popExecutionContext()
+        }
     }
 
     @JvmStatic

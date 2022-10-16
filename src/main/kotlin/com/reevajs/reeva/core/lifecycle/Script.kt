@@ -17,7 +17,9 @@ import com.reevajs.reeva.utils.Result
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
 
-class Script(val realm: Realm, private val parsedSource: ParsedSource) : Executable {
+class Script(val realm: Realm, val parsedSource: ParsedSource) : Executable {
+    var isEval: Boolean = false
+
     @ECMAImpl("16.1.6")
     override fun execute(): JSValue {
         expect(!parsedSource.sourceInfo.isModule)
@@ -50,7 +52,7 @@ class Script(val realm: Realm, private val parsedSource: ParsedSource) : Executa
         // 14. If result.[[Type]] is normal and result.[[Value]] is empty, then
         //     a. Set result to NormalCompletion(undefined).
         val result = try {
-            val transformedSource = Executable.transform(parsedSource)
+            val transformedSource = Executable.transform(parsedSource, isEval)
             Interpreter(transformedSource, listOf(realm.globalObject, JSUndefined)).interpret()
         } finally {
             // 15. Suspend scriptContext and remove it from the execution context stack.

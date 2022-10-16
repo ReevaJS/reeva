@@ -48,6 +48,7 @@ object IRPrinter {
 
             when (opcode) {
                 is Call -> println(" ${opcode.argCount}")
+                is CallWithDirectEvalCheck -> println(" argCount=${opcode.argCount} isStrict=${opcode.isStrict}")
                 is Construct -> println(" ${opcode.argCount}")
                 is CreateAsyncClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
                 is CreateAsyncGeneratorClosure -> println(" <FunctionInfo ${opcode.ir.name}>")

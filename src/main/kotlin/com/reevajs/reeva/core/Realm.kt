@@ -387,6 +387,7 @@ class Realm {
 
     object InternalSymbols {
         val classInstanceFields = JSSymbol("Symbol.classInstanceFields")
+        val isClassInstanceFieldInitializer = JSSymbol("Symbol.isClassInstanceFieldInitializer")
     }
 
     companion object {

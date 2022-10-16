@@ -77,6 +77,13 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
         activeBlock.opcodes.add(opcode)
     }
 
+    fun removeLastOpcodeIfPop(): Boolean {
+        return if (activeBlock.opcodes.lastOrNull() == Pop) {
+            activeBlock.opcodes.removeLast()
+            true
+        } else false
+    }
+
     fun makeBlock(name: String? = null): BlockIndex {
         val index = BlockIndex(nextBlockIndex++)
         blocks[index] = BasicBlock(index, name, mutableListOf(), handlerBlocks.lastOrNull())
