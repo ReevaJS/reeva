@@ -2,8 +2,8 @@ package com.reevajs.reeva.runtime.objects
 
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.AOs
-import com.reevajs.reeva.runtime.collections.JSMapObject
 import com.reevajs.reeva.runtime.collections.JSSetObject
+import com.reevajs.reeva.runtime.collections.MapData
 import com.reevajs.reeva.runtime.memory.DataBlock
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.regexp.RegExp
@@ -25,7 +25,7 @@ value class Slot<T> private constructor(val index: Int) {
         val DateValue = nextSlot<ZonedDateTime?>()
         val Description = nextSlot<String>()
         val ErrorData = nextSlot<Unit>()
-        val MapData = nextSlot<JSMapObject.MapData>()
+        val MapData = nextSlot<MapData>()
         val MappedParameterMap = nextSlot<JSObject>() // [[ParameterMap]], non-standard
         val NumberData = nextSlot<JSNumber>()
         val OriginalFlags = nextSlot<String>()

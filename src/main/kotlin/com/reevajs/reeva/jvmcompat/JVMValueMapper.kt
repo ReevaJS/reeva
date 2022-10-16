@@ -1,11 +1,14 @@
 package com.reevajs.reeva.jvmcompat
 
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
-import com.reevajs.reeva.runtime.collections.JSMapObject
+import com.reevajs.reeva.runtime.collections.JSMapCtor
 import com.reevajs.reeva.runtime.collections.JSSetObject
+import com.reevajs.reeva.runtime.collections.MapData
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.toValue
@@ -297,13 +300,21 @@ object JVMValueMapper {
             is Number -> JSNumber(instance)
             is BigInteger -> JSBigInt(instance)
             is Map<*, *> -> {
-                val jsMap = JSMapObject.create()
-                instance.forEach { (key, value) ->
-                    val jsKey = jvmToJS(key)
-                    jsMap.mapData.map[jsKey] = jvmToJS(value)
-                    jsMap.mapData.keyInsertionOrder.add(jsKey)
+                val map = AOs.ordinaryCreateFromConstructor(
+                    Agent.activeAgent.getActiveRealm().mapCtor,
+                    listOf(Slot.MapData),
+                    defaultProto = Realm::mapProto,
+                )
+                val data = MapData(mutableMapOf())
+                instance.entries.forEach {
+                    val key = jvmToJS(it.key)
+                    val value = jvmToJS(it.value)
+                    data.map[key] = value
+                    data.keyInsertionOrder.add(key)
                 }
-                jsMap
+                map[Slot.MapData] = data
+
+                map
             }
             is Set<*> -> {
                 val jsSet = JSSetObject.create()

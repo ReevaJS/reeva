@@ -148,7 +148,7 @@ class JSMapProto private constructor(realm: Realm) : JSObject(realm, realm.objec
             return JSMapIterator.create(map, PropertyKind.Value)
         }
 
-        private fun thisMapData(thisValue: JSValue, method: String): JSMapObject.MapData {
+        private fun thisMapData(thisValue: JSValue, method: String): MapData {
             if (!AOs.requireInternalSlot(thisValue, Slot.MapData))
                 Errors.IncompatibleMethodCall("Map.prototype.$method").throwTypeError()
             return thisValue[Slot.MapData]
