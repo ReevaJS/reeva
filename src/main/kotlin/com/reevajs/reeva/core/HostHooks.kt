@@ -119,7 +119,7 @@ open class HostHooks {
      * constructors.
      */
     @ECMAImpl("19.2.1.2")
-    open fun ensureCanCompileStrings(callerRealm: Realm, calleeRealm: Realm) {
+    open fun ensureCanCompileStrings(calleeRealm: Realm) {
     }
 
     @ECMAImpl("27.2.1.9")

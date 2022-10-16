@@ -32,7 +32,7 @@ abstract class InterpretedFunction(
     transformedSource.functionInfo.isStrict,
     prototype,
 ) {
-    private val environment = Agent.activeAgent.activeEnvRecord
+    var environment = Agent.activeAgent.activeEnvRecord
 
     protected abstract fun evaluate(arguments: JSArguments): JSValue
 
