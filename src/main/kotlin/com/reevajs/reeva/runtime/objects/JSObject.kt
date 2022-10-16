@@ -89,14 +89,44 @@ open class JSObject protected constructor(
 
     @ECMAImpl("9.1.2.1")
     fun ordinarySetPrototype(newPrototype: JSValue): Boolean {
-        ecmaAssert(newPrototype is JSObject || newPrototype == JSNull)
-        if (newPrototype.sameValue(prototypeBacker))
+        // 1. Let current be O.[[Prototype]].
+        val current = prototypeBacker
+
+        // 2. If SameValue(V, current) is true, return true.
+        if (current.sameValue(newPrototype))
             return true
 
+        // 3. Let extensible be O.[[Extensible]].
+        // 4. If extensible is false, return false.
         if (!extensible)
             return false
 
+        // 5. Let p be V.
+        var proto = newPrototype
+
+        // 6. Let done be false.
+        // 7. Repeat, while done is false,
+        while (true) {
+            // a. If p is null, set done to true.
+            if (proto == JSNull)
+                break
+
+            // b. Else if SameValue(p, O) is true, return false.
+            if (proto.sameValue(this))
+                return false
+
+            // c. Else,
+            //     i. If p.[[GetPrototypeOf]] is not the ordinary object internal method defined in 10.1.1, set done to true.
+            //     ii. Else, set p to p.[[Prototype]].
+            // TODO: Slot override check?
+            expect(proto is JSObject)
+            proto = proto.prototypeBacker
+        }
+
+        // 8. Set O.[[Prototype]] to V.
         prototypeBacker = newPrototype
+
+        // 9. Return true.
         return true
     }
 
