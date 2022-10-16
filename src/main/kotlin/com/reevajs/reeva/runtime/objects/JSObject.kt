@@ -288,9 +288,15 @@ open class JSObject protected constructor(
 
     @ECMAImpl("9.1.11")
     open fun ownPropertyKeys(onlyEnumerable: Boolean = false): List<PropertyKey> {
-        return indexedProperties.indices().map(PropertyKey::from) + storage.filterValues {
+        val nonIndexedProperties = storage.filterValues {
             if (onlyEnumerable) (it.attributes and Descriptor.ENUMERABLE) != 0 else true
-        }.map { PropertyKey.from(it.key) }
+        }.map {
+            PropertyKey.from(it.key)
+        }.sortedBy {
+            it.isSymbol
+        }
+
+        return indexedProperties.indices().map(PropertyKey::from) + nonIndexedProperties
     }
 
     fun defineNativeProperty(
