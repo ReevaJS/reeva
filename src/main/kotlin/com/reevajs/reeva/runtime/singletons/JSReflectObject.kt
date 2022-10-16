@@ -26,11 +26,12 @@ class JSReflectObject private constructor(realm: Realm) : JSObject(realm, realm.
         defineBuiltin("deleteProperty", 2, ::deleteProperty)
         defineBuiltin("get", 2, ::get)
         defineBuiltin("getOwnPropertyDescriptor", 2, ::getOwnPropertyDescriptor)
+        defineBuiltin("getPrototypeOf", 1, ::getPrototypeOf)
         defineBuiltin("has", 2, ::has)
         defineBuiltin("isExtensible", 1, ::isExtensible)
         defineBuiltin("ownKeys", 1, ::ownKeys)
         defineBuiltin("preventExtensions", 1, ::preventExtensions)
-        defineBuiltin("set", 2, ::set)
+        defineBuiltin("set", 3, ::set)
         defineBuiltin("setPrototypeOf", 2, ::setPrototypeOf)
     }
 
