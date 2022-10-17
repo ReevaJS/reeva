@@ -396,11 +396,11 @@ class Interpreter(
         push(obj.get(key))
     }
 
-    override fun visitStoreKeyedProperty() {
+    override fun visitStoreKeyedProperty(opcode: StoreKeyedProperty) {
         val value = popValue()
         val key = popValue().toPropertyKey()
         val obj = popValue().toObject()
-        obj.set(key, value)
+        AOs.set(obj, key, value, opcode.isStrict)
     }
 
     override fun visitLoadNamedProperty(opcode: LoadNamedProperty) {
@@ -415,11 +415,7 @@ class Interpreter(
     override fun visitStoreNamedProperty(opcode: StoreNamedProperty) {
         val value = popValue()
         val obj = popValue().toObject()
-        when (val name = opcode.name) {
-            is String -> obj.set(name, value)
-            is JSSymbol -> obj.set(name, value)
-            else -> unreachable()
-        }
+        AOs.set(obj, opcode.name.key(), value, opcode.isStrict)
     }
 
     override fun visitCreateObject() {

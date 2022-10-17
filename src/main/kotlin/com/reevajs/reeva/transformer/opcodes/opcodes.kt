@@ -269,7 +269,7 @@ object LoadKeyedProperty : Opcode(-1)
  * Stack:
  *   ... object property value -> ...
  */
-object StoreKeyedProperty : Opcode(-3)
+class StoreKeyedProperty(val isStrict: Boolean) : Opcode(-3)
 
 /**
  * TODO: This shouldn't allow symbols
@@ -291,7 +291,7 @@ class LoadNamedProperty(val name: Any) : Opcode(0)
  * Stack:
  *   ... object value -> ...
  */
-class StoreNamedProperty(val name: Any) : Opcode(-2)
+class StoreNamedProperty(val name: Any, val isStrict: Boolean) : Opcode(-2)
 
 /**
  * Creates and pushes a new empty JSObject.

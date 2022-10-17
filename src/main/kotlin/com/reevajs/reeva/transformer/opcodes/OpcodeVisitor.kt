@@ -49,7 +49,7 @@ interface OpcodeVisitor {
             Inc -> visitInc()
             Dec -> visitDec()
             LoadKeyedProperty -> visitLoadKeyedProperty()
-            StoreKeyedProperty -> visitStoreKeyedProperty()
+            is StoreKeyedProperty -> visitStoreKeyedProperty(opcode)
             is LoadNamedProperty -> visitLoadNamedProperty(opcode)
             is StoreNamedProperty -> visitStoreNamedProperty(opcode)
             CreateObject -> visitCreateObject()
@@ -215,7 +215,7 @@ interface OpcodeVisitor {
 
     fun visitLoadKeyedProperty()
 
-    fun visitStoreKeyedProperty()
+    fun visitStoreKeyedProperty(opcode: StoreKeyedProperty)
 
     fun visitLoadNamedProperty(opcode: LoadNamedProperty)
 

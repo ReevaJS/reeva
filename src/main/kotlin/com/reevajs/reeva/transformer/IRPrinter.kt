@@ -84,7 +84,8 @@ object IRPrinter {
                     } else println(" ${opcode.literal}")
                 }
                 is PushBigInt -> println(" #${opcode.bigint}")
-                is StoreNamedProperty -> println(" \"${opcode.name}\"")
+                is StoreKeyedProperty -> println(if (opcode.isStrict) "strict" else "")
+                is StoreNamedProperty -> println(" \"${opcode.name}\" ${if (opcode.isStrict) "strict" else ""}")
                 is StoreCurrentEnvName -> println(" \"${opcode.name}\"")
                 is StoreEnvName -> println(" \"${opcode.name}\" #${opcode.distance}")
                 is StoreGlobal -> println(" \"${opcode.name}\"")
