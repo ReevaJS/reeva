@@ -20,7 +20,7 @@ import com.reevajs.reeva.utils.ecmaAssert
 abstract class InterpretedFunction(
     realm: Realm,
     val transformedSource: TransformedSource,
-    prototype: JSValue = realm.functionProto,
+    prototype: JSValue,
 ) : JSFunction(
     realm,
     transformedSource.functionInfo.name,
@@ -220,7 +220,7 @@ abstract class InterpretedFunction(
 class NormalInterpretedFunction private constructor(
     realm: Realm,
     transformedSource: TransformedSource,
-) : InterpretedFunction(realm, transformedSource) {
+) : InterpretedFunction(realm, transformedSource, realm.functionProto) {
     override fun evaluate(arguments: JSArguments): JSValue {
         val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
         return Interpreter(transformedSource, args).interpret()
@@ -237,7 +237,7 @@ class NormalInterpretedFunction private constructor(
 class GeneratorInterpretedFunction private constructor(
     realm: Realm,
     transformedSource: TransformedSource,
-) : InterpretedFunction(realm, transformedSource) {
+) : InterpretedFunction(realm, transformedSource, realm.generatorFunctionProto) {
     private lateinit var generatorObject: JSGeneratorObject
 
     override fun init() {
@@ -269,7 +269,7 @@ class GeneratorInterpretedFunction private constructor(
 class AsyncInterpretedFunction private constructor(
     realm: Realm,
     transformedSource: TransformedSource,
-) : InterpretedFunction(realm, transformedSource) {
+) : InterpretedFunction(realm, transformedSource, realm.asyncFunctionProto) {
     override fun evaluate(arguments: JSArguments): JSValue {
         val promiseCapability = AOs.newPromiseCapability(realm.promiseCtor)
 

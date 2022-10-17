@@ -2305,9 +2305,7 @@ object AOs {
                 // c. Let bodySym be the grammar symbol AsyncFunctionBody.
                 // d. Let parameterSym be the grammar symbol FormalParameters[~Yield, +Await].
                 // e. Let fallbackProto be "%AsyncFunction.prototype%".
-
-                // TODO: Make an object on the realm for this
-                JSObject.create(realm) to AsyncInterpretedFunction::create
+                realm.asyncFunctionProto to AsyncInterpretedFunction::create
             }
 
             // 7. Else,
