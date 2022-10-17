@@ -1137,7 +1137,7 @@ object AOs {
     fun set(obj: JSObject, property: PropertyKey, value: JSValue, throws: Boolean): Boolean {
         val success = obj.set(property, value)
         if (!success && throws)
-            Errors.StrictModeFailedSet(property, obj.toString()).throwTypeError()
+            Errors.StrictModeFailedSet(property, obj.toJSString().string).throwTypeError()
         return success
     }
 

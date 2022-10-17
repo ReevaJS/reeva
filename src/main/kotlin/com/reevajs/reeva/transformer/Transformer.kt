@@ -891,14 +891,14 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                         +LoadValue(tmp)
                         +Swap
                         // value lhs key value
-                        +StoreKeyedProperty
+                        +StoreKeyedProperty(currentScope!!.isStrict)
                     }
 
                     MemberExpressionNode.Type.NonComputed -> {
                         val name = (target.rhs as IdentifierNode).processedName
                         +LoadNamedProperty(name)
                         execute(DupX1)
-                        +StoreNamedProperty(name)
+                        +StoreNamedProperty(name, currentScope!!.isStrict)
                     }
 
                     MemberExpressionNode.Type.Tagged -> TODO()
@@ -1178,13 +1178,13 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                         // lhs rhs value
                         +DupX2
                         // value lhs rhs value
-                        +StoreKeyedProperty
+                        +StoreKeyedProperty(currentScope!!.isStrict)
                     }
 
                     MemberExpressionNode.Type.NonComputed -> {
                         pushRhs()
                         +DupX1
-                        +StoreNamedProperty((lhs.rhs as IdentifierNode).processedName)
+                        +StoreNamedProperty((lhs.rhs as IdentifierNode).processedName, currentScope!!.isStrict)
                     }
 
                     MemberExpressionNode.Type.Tagged -> TODO()
@@ -1710,8 +1710,8 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             +CreateClosure(instanceFieldInitializerMethod)
             +Dup
             +PushEmpty // Value doesn't matter, just needs to be not undefined
-            +StoreNamedProperty(Realm.InternalSymbols.isClassInstanceFieldInitializer)
-            +StoreNamedProperty(Realm.InternalSymbols.classInstanceFields)
+            +StoreNamedProperty(Realm.InternalSymbols.isClassInstanceFieldInitializer, currentScope!!.isStrict)
+            +StoreNamedProperty(Realm.InternalSymbols.classInstanceFields, currentScope!!.isStrict)
         }
 
         for (field in staticFields) {
@@ -1811,11 +1811,11 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         if (field.identifier.type == PropertyName.Type.Identifier) {
             val name = (field.identifier.expression as IdentifierNode).processedName
             loadValue()
-            +StoreNamedProperty(name)
+            +StoreNamedProperty(name, currentScope!!.isStrict)
         } else {
             visitExpression(field.identifier.expression)
             loadValue()
-            +StoreKeyedProperty
+            +StoreKeyedProperty(currentScope!!.isStrict)
         }
     }
 
@@ -1982,7 +1982,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
                 is ShorthandProperty -> {
                     visitExpression(property.key)
-                    +StoreNamedProperty(property.key.processedName)
+                    +StoreNamedProperty(property.key.processedName, currentScope!!.isStrict)
                 }
 
                 is MethodProperty -> {
@@ -2031,12 +2031,12 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         if (property.type == PropertyName.Type.Identifier) {
             valueProducer()
             val name = (property.expression as IdentifierNode).processedName
-            +StoreNamedProperty(name)
+            +StoreNamedProperty(name, currentScope!!.isStrict)
             return
         } else visitExpression(property.expression)
 
         valueProducer()
-        +StoreKeyedProperty
+        +StoreKeyedProperty(currentScope!!.isStrict)
     }
 
     override fun visitBigIntLiteral(node: BigIntLiteralNode) {
