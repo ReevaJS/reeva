@@ -2308,7 +2308,7 @@ class Parser(val sourceInfo: SourceInfo) {
             }
         } else BigIntLiteralNode.Type.Normal
 
-        BigIntLiteralNode(value.dropLast(1), mode)
+        BigIntLiteralNode(value.dropLast(1).replace("_", ""), mode)
     }
 
     private fun tryParseArrowFunction(): ArrowFunctionNode? = nps {
