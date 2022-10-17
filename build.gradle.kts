@@ -4,6 +4,7 @@ import org.gradle.jvm.tasks.Jar
 plugins {
     kotlin("jvm") version "1.7.10"
     kotlin("plugin.serialization") version "1.7.10"
+    id("com.adarshr.test-logger") version "3.2.0"
     `maven-publish`
 }
 
