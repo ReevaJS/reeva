@@ -14,10 +14,7 @@ import com.reevajs.reeva.runtime.collections.JSMapProto
 import com.reevajs.reeva.runtime.collections.JSSetCtor
 import com.reevajs.reeva.runtime.collections.JSSetProto
 import com.reevajs.reeva.runtime.errors.*
-import com.reevajs.reeva.runtime.functions.JSFunction
-import com.reevajs.reeva.runtime.functions.JSFunctionCtor
-import com.reevajs.reeva.runtime.functions.JSFunctionProto
-import com.reevajs.reeva.runtime.functions.JSRunnableFunction
+import com.reevajs.reeva.runtime.functions.*
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorFunctionCtor
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorFunctionProto
 import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObjectProto
@@ -87,6 +84,7 @@ class Realm {
     lateinit var regExpStringIteratorProto: JSRegExpStringIteratorProto private set
     lateinit var generatorObjectProto: JSGeneratorObjectProto private set
     lateinit var generatorFunctionProto: JSGeneratorFunctionProto private set
+    lateinit var asyncFunctionProto: JSAsyncFunctionProto private set
     lateinit var consoleProto: JSConsoleProto private set
 
     lateinit var dataViewProto: JSDataViewProto private set
@@ -121,6 +119,7 @@ class Realm {
     lateinit var regExpCtor: JSRegExpCtor private set
     lateinit var functionCtor: JSFunctionCtor private set
     lateinit var generatorFunctionCtor: JSGeneratorFunctionCtor private set
+    lateinit var asyncFunctionCtor: JSAsyncFunctionCtor private set
     lateinit var arrayCtor: JSArrayCtor private set
     lateinit var setCtor: JSSetCtor private set
     lateinit var mapCtor: JSMapCtor private set
@@ -225,6 +224,7 @@ class Realm {
         regExpCtor = JSRegExpCtor.create(this)
         functionCtor = JSFunctionCtor.create(this)
         generatorFunctionCtor = JSGeneratorFunctionCtor.create(this)
+        asyncFunctionCtor = JSAsyncFunctionCtor.create(this)
         arrayCtor = JSArrayCtor.create(this)
         setCtor = JSSetCtor.create(this)
         mapCtor = JSMapCtor.create(this)
@@ -279,6 +279,7 @@ class Realm {
         regExpStringIteratorProto = JSRegExpStringIteratorProto.create(this)
         generatorObjectProto = JSGeneratorObjectProto.create(this)
         generatorFunctionProto = JSGeneratorFunctionProto.create(this)
+        asyncFunctionProto = JSAsyncFunctionProto.create(this)
         consoleProto = JSConsoleProto.create(this)
 
         dataViewProto = JSDataViewProto.create(this)
@@ -323,6 +324,7 @@ class Realm {
         objectCtor.defineOwnProperty("prototype", objectProto, Descriptor.HAS_BASIC)
         functionCtor.defineOwnProperty("prototype", functionProto, Descriptor.HAS_BASIC)
         generatorFunctionCtor.defineOwnProperty("prototype", generatorFunctionProto, Descriptor.HAS_BASIC)
+        asyncFunctionCtor.defineOwnProperty("prototype", asyncFunctionProto, Descriptor.HAS_BASIC)
         numberCtor.defineOwnProperty("prototype", numberProto, Descriptor.HAS_BASIC)
         bigIntCtor.defineOwnProperty("prototype", bigIntProto, Descriptor.HAS_BASIC)
         stringCtor.defineOwnProperty("prototype", stringProto, Descriptor.HAS_BASIC)

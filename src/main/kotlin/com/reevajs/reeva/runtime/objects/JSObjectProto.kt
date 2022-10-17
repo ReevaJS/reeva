@@ -175,7 +175,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
                     when {
                         AOs.isArray(obj) -> "Array"
                         Slot.UnmappedParameterMap in obj || Slot.MappedParameterMap in obj -> "Arguments"
-                        obj is JSFunction -> "Function" // TODO: Slot check? Can you extend Function?
+                        AOs.isCallable(obj) -> "Function" // TODO: Slot check? Can you extend Function?
                         Slot.ErrorData in obj -> "Error"
                         Slot.BooleanData in obj -> "Boolean"
                         Slot.NumberData in obj -> "Number"
