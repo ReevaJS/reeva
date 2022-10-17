@@ -18,12 +18,7 @@ class JSSymbolProto private constructor(realm: Realm) : JSObject(realm, realm.ob
     override fun init() {
         super.init()
 
-        defineNativeProperty(
-            Realm.WellKnownSymbols.toStringTag.key(),
-            attrs { +conf; -enum; -writ },
-            ::getSymbolToStringTag,
-            null,
-        )
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Symbol".toValue(), Descriptor.CONFIGURABLE)
 
         defineOwnProperty("constructor", realm.symbolCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineNativeProperty("description", attrs { +conf; -enum }, ::getDescription, null)

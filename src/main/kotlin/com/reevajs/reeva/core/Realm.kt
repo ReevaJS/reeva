@@ -374,17 +374,17 @@ class Realm {
     object WellKnownSymbols {
         val asyncIterator = JSSymbol("Symbol.asyncIterator")
         val hasInstance = JSSymbol("Symbol.hasInstance")
-        val isConcatSpreadable = JSSymbol("Symbol.iterator")
-        val iterator = JSSymbol("Symbol.match")
-        val match = JSSymbol("Symbol.matchAll")
-        val matchAll = JSSymbol("Symbol.replace")
-        val replace = JSSymbol("Symbol.search")
-        val search = JSSymbol("Symbol.species")
-        val species = JSSymbol("Symbol.split")
-        val split = JSSymbol("Symbol.toPrimitive")
-        val toPrimitive = JSSymbol("Symbol.toStringTag")
-        val toStringTag = JSSymbol("Symbol.unscopables")
-        val unscopables = JSSymbol("Symbol.isConcatSpreadable")
+        val isConcatSpreadable = JSSymbol("Symbol.isConcatSpreadable")
+        val iterator = JSSymbol("Symbol.iterator")
+        val match = JSSymbol("Symbol.match")
+        val matchAll = JSSymbol("Symbol.matchAll")
+        val replace = JSSymbol("Symbol.replace")
+        val search = JSSymbol("Symbol.search")
+        val species = JSSymbol("Symbol.species")
+        val split = JSSymbol("Symbol.split")
+        val toPrimitive = JSSymbol("Symbol.toPrimitive")
+        val toStringTag = JSSymbol("Symbol.toStringTag")
+        val unscopables = JSSymbol("Symbol.unscopables")
     }
 
     object InternalSymbols {

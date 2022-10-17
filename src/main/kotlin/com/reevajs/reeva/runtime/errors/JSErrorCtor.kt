@@ -26,7 +26,7 @@ open class JSErrorCtor protected constructor(
         val newTarget = arguments.newTarget.ifUndefined {
             // TODO: "If NewTarget is undefined, let newTarget be the active
             //  function object; else let newTarget be NewTarget."
-            JSUndefined
+            Agent.activeAgent.getActiveFunction()!!
         }
         val obj = AOs.ordinaryCreateFromConstructor(
             newTarget,

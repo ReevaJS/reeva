@@ -96,7 +96,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
                 val desc = obj.getOwnPropertyDescriptor(key)
                 if (desc != null) {
                     if (desc.isAccessorDescriptor)
-                        return desc.getter ?: JSNull
+                        return desc.getter ?: JSUndefined
                     return JSUndefined
                 }
                 obj = obj.getPrototype() as? JSObject ?: return JSUndefined
@@ -112,7 +112,7 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
                 val desc = obj.getOwnPropertyDescriptor(key)
                 if (desc != null) {
                     if (desc.isAccessorDescriptor)
-                        return desc.setter ?: JSNull
+                        return desc.setter ?: JSUndefined
                     return JSUndefined
                 }
                 obj = obj.getPrototype() as? JSObject ?: return JSUndefined
@@ -162,32 +162,58 @@ class JSObjectProto private constructor(realm: Realm) : JSObject(realm, JSNull) 
         @ECMAImpl("20.1.3.6")
         @JvmStatic
         fun toString(arguments: JSArguments): JSValue {
+            // 1. If the this value is undefined, return "[object Undefined]".
             if (arguments.thisValue == JSUndefined)
                 return "[object Undefined]".toValue()
+
+            // 2. If the this value is null, return "[object Null]".
             if (arguments.thisValue == JSNull)
                 return "[object Null]".toValue()
 
+            // 3. Let O be ! ToObject(this value).
             val obj = arguments.thisValue.toObject()
+
+            val builtinTag = when {
+                // 4. Let isArray be ? IsArray(O).
+                // 5. If isArray is true, let builtinTag be "Array".
+                AOs.isArray(obj) -> "Array"
+
+                // 6. Else if O has a [[ParameterMap]] internal slot, let builtinTag be "Arguments".
+                Slot.UnmappedParameterMap in obj || Slot.MappedParameterMap in obj -> "Arguments"
+
+                // 7. Else if O has a [[Call]] internal method, let builtinTag be "Function".
+                AOs.isCallable(obj) -> "Function" // TODO: Slot check? Can you extend Function?
+
+                // 8. Else if O has an [[ErrorData]] internal slot, let builtinTag be "Error".
+                Slot.ErrorData in obj -> "Error"
+
+                // 9. Else if O has a [[BooleanData]] internal slot, let builtinTag be "Boolean".
+                Slot.BooleanData in obj -> "Boolean"
+
+                // 10. Else if O has a [[NumberData]] internal slot, let builtinTag be "Number".
+                Slot.NumberData in obj -> "Number"
+
+                // 11. Else if O has a [[StringData]] internal slot, let builtinTag be "String".
+                Slot.StringData in obj -> "String"
+
+                // 12. Else if O has a [[DateValue]] internal slot, let builtinTag be "Date".
+                Slot.DateValue in obj -> "Date"
+
+                // 13. Else if O has a [[RegExpMatcher]] internal slot, let builtinTag be "RegExp".
+                Slot.RegExpMatcher in obj -> "RegExp"
+
+                // 14. Else, let builtinTag be "Object".
+                else -> "Object"
+            }.toValue()
+
+            // 15. Let tag be ? Get(O, @@toStringTag).
+            // 16. If tag is not a String, set tag to builtinTag.
             val tag = obj.get(Realm.WellKnownSymbols.toStringTag).let {
-                if (it is JSString) {
-                    it.string
-                } else {
-                    when {
-                        AOs.isArray(obj) -> "Array"
-                        Slot.UnmappedParameterMap in obj || Slot.MappedParameterMap in obj -> "Arguments"
-                        AOs.isCallable(obj) -> "Function" // TODO: Slot check? Can you extend Function?
-                        Slot.ErrorData in obj -> "Error"
-                        Slot.BooleanData in obj -> "Boolean"
-                        Slot.NumberData in obj -> "Number"
-                        Slot.StringData in obj -> "String"
-                        Slot.DateValue in obj -> "Date"
-                        Slot.RegExpMatcher in obj -> "RegExp"
-                        else -> "Object"
-                    }
-                }
+                if (it !is JSString) builtinTag else it
             }
 
-            // TODO: @@toStringTag
+
+            // 17. Return the string-concatenation of "[object ", tag, and "]".
             return "[object $tag]".toValue()
         }
 
