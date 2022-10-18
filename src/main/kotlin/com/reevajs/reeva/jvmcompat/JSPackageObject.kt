@@ -11,7 +11,7 @@ import com.reevajs.reeva.utils.Errors
 class JSPackageObject private constructor(
     realm: Realm,
     val packageName: String?,
-) : JSObject(realm, realm.packageProto) {
+) : JSObject(realm, realm.objectProto) {
     private val packageObj = if (packageName == null) null else Package.getPackage(packageName)
 
     override fun get(property: PropertyKey, receiver: JSValue): JSValue {

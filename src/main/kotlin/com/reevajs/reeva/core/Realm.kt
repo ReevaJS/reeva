@@ -2,7 +2,6 @@ package com.reevajs.reeva.core
 
 import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.jvmcompat.JSPackageObject
-import com.reevajs.reeva.jvmcompat.JSPackageProto
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
@@ -157,7 +156,6 @@ class Realm {
     lateinit var jsonObj: JSONObject private set
     lateinit var consoleObj: JSConsole private set
 
-    lateinit var packageProto: JSPackageProto private set
     lateinit var packageObj: JSPackageObject private set
 
     @ECMAImpl("9.3.3")
@@ -314,7 +312,6 @@ class Realm {
         jsonObj = JSONObject.create(this)
         consoleObj = JSConsole.create(this)
 
-        packageProto = JSPackageProto.create(this)
         packageObj = JSPackageObject.create(null, this)
 
         // These can't be in the init method of the objects due to circularity
