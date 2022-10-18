@@ -23,8 +23,8 @@ class JSClassObject private constructor(
     override fun init() {
         super.init()
 
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, className.toValue(), Descriptor.CONFIGURABLE)
         defineOwnProperty("prototype", clazzProto, Descriptor.HAS_BASIC)
-        defineBuiltin("toString", 0, ::toString)
     }
 
     override fun evaluate(_arguments: JSArguments): JSValue {
@@ -175,13 +175,6 @@ class JSClassObject private constructor(
 
         fun create(clazz: Class<*>, realm: Realm = Agent.activeAgent.getActiveRealm()) = classCache.getOrPut(clazz) {
             JSClassObject(realm, clazz).initialize()
-        }
-
-        @JvmStatic
-        fun toString(arguments: JSArguments): JSValue {
-            val thisValue = arguments.thisValue
-            expect(thisValue is JSClassInstanceObject)
-            return thisValue.obj.toString().toValue()
         }
     }
 }
