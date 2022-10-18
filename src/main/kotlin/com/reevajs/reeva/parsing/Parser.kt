@@ -385,8 +385,8 @@ class Parser(val sourceInfo: SourceInfo) {
      * ImportedBinding :
      *     BindingIdentifier
      */
-    private fun parseDefaultImport(): Import.Default? {
-        return if (matchIdentifierName()) {
+    private fun parseDefaultImport(): Import.Default? = nps {
+        if (matchIdentifierName()) {
             Import.Default(parseBindingIdentifier())
         } else null
     }
@@ -398,16 +398,16 @@ class Parser(val sourceInfo: SourceInfo) {
      * ImportedBinding :
      *     BindingIdentifier
      */
-    private fun parseNamespaceImport(): Import.Namespace? {
+    private fun parseNamespaceImport(): Import.Namespace? = nps {
         if (!match(TokenType.Mul))
-            return null
+            return@nps null
 
         consume()
         if (!match(TokenType.Identifier) || token.rawLiterals != "as")
             reporter.at(token).expected("\"as\"")
         consume()
 
-        return Import.Namespace(parseBindingIdentifier())
+        Import.Namespace(parseBindingIdentifier())
     }
 
     /*
@@ -437,13 +437,18 @@ class Parser(val sourceInfo: SourceInfo) {
 
         while (!match(TokenType.CloseCurly)) {
             val peeked = peek(1) ?: reporter.at(token).error("unexpected eol")
-            val identifier = parseBindingIdentifier()
-            val alias = if (peeked.type == TokenType.Identifier && peeked.rawLiterals == "as") {
-                consume(TokenType.Identifier)
-                parseBindingIdentifier()
-            } else identifier
 
-            imports.add(Import.Named(identifier, alias))
+            val namedImport = nps {
+                val identifier = parseBindingIdentifier()
+                val alias = if (peeked.type == TokenType.Identifier && peeked.rawLiterals == "as") {
+                    consume(TokenType.Identifier)
+                    parseBindingIdentifier()
+                } else identifier
+
+                Import.Named(identifier, alias)
+            }
+
+            imports.add(namedImport)
 
             if (!match(TokenType.Comma))
                 break
