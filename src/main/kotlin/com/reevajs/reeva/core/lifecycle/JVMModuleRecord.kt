@@ -36,22 +36,31 @@ class JVMModuleRecord(realm: Realm, val specifier: String) : ModuleRecord(realm)
         status = CyclicModuleRecord.Status.Linked
 
         // We don't care about the outer env, as this module is never actually executed
-        environment = ModuleEnvRecord(realm, null)
+        val env = ModuleEnvRecord(realm, null)
+        environment = env
+
+        for (requiredName in requiredNames) {
+            env.createImmutableBinding(requiredName, isStrict = true)
+
+            if (jvmObj is JSPackageObject) {
+                if (requiredName == "default")
+                    Errors.JVMCompat.JVMDefaultPackageImport(classOrPkgName).throwSyntaxError(realm)
+
+                env.initializeBinding(requiredName, jvmObj.get(requiredName))
+            } else {
+                // TODO: Should we allow this?
+                if (requiredName != "default")
+                    Errors.JVMCompat.JVMNonDefaultClassImport(classOrPkgName).throwSyntaxError(realm)
+
+                if (requiredName == "namespace-object")
+                    Errors.JVMCompat.JVMNamespaceClassImport(classOrPkgName).throwSyntaxError(realm)
+
+                env.initializeBinding(requiredName, jvmObj)
+            }
+        }
     }
 
     override fun evaluate(): JSValue {
-        for (requiredName in requiredNames) {
-            environment!!.createImmutableBinding(requiredName, isStrict = true)
-
-            when (requiredName) {
-                DEFAULT_SPECIFIER, NAMESPACE_SPECIFIER -> environment!!.setMutableBinding(requiredName, jvmObj, true)
-                else -> {
-                    // TODO: This will not work for classes, as JSClassObject doesn't override get
-                    environment!!.setMutableBinding(requiredName, jvmObj.get(requiredName), true)
-                }
-            }
-        }
-
         return AOs.promiseResolve(realm.promiseCtor, JSUndefined)
     }
 
@@ -63,18 +72,11 @@ class JVMModuleRecord(realm: Realm, val specifier: String) : ModuleRecord(realm)
     override fun getExportedNames(exportStarSet: MutableSet<SourceTextModuleRecord>) = emptyList<String>()
 
     override fun resolveExport(exportName: String, resolveSet: MutableList<ResolvedBinding>): ResolvedBinding {
-        TODO("Not yet implemented")
+        return ResolvedBinding.Record(this, exportName).also(resolveSet::add)
     }
 
     override fun notifyImportedNames(names: Set<String>) {
         expect(status == CyclicModuleRecord.Status.Linked || status == CyclicModuleRecord.Status.Unlinked)
-
-        if (DEFAULT_SPECIFIER in names && jvmObj is JSPackageObject)
-            Errors.JVMCompat.JVMDefaultPackageImport(classOrPkgName).throwSyntaxError(realm)
-
-        if (NAMESPACE_SPECIFIER in names && jvmObj is JSClassObject)
-            Errors.JVMCompat.JVMNamespaceClassImport(classOrPkgName).throwSyntaxError(realm)
-
         requiredNames.addAll(names)
     }
 

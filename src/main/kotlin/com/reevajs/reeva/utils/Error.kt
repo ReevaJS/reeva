@@ -227,6 +227,8 @@ object Errors {
             "\"$specifier\"; use a default import instead")
         class JVMDefaultPackageImport(specifier: String) : Error("attempted to default import from JVM package " +
             "\"$specifier\"; use a namespace import instead")
+        class JVMNonDefaultClassImport(specifier: String) : Error("attempted to import named member from JVM class " +
+            "\"$specifier\"; use a default import and reference the member manually instead")
     }
 
     object JVMPackage {
