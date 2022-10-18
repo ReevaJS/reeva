@@ -40,12 +40,14 @@ class JSClassObject private constructor(
         val ctors = clazz.constructors.toList()
 
         if (ctors.isEmpty())
-            Errors.JVMClass.NoPublicCtors(className)
+            Errors.JVMClass.NoPublicCtors(className).throwTypeError(realm)
 
         val matchingCtors = JVMValueMapper.findMatchingSignature(ctors, arguments)
 
-        if (matchingCtors.isEmpty()) Errors.JVMClass.NoValidCtor(className, arguments.map { it.toJSString().string })
-        if (matchingCtors.size > 1) Errors.JVMClass.AmbiguousCtors(className, arguments.map { it.toJSString().string })
+        if (matchingCtors.isEmpty()) 
+            Errors.JVMClass.NoValidCtor(className, arguments.map { it.toJSString().string }).throwTypeError(realm)
+        if (matchingCtors.size > 1) 
+            Errors.JVMClass.AmbiguousCtors(className, arguments.map { it.toJSString().string }).throwTypeError(realm)
 
         val targetCtor = matchingCtors[0]
         val mappedArguments = JVMValueMapper.coerceArgumentsToSignature(realm, targetCtor, arguments).toTypedArray()
