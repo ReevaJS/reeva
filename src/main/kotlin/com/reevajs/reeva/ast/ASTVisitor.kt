@@ -9,6 +9,8 @@ interface ASTVisitor {
         when (node) {
             is StatementNode -> visitStatement(node)
             is ExpressionNode -> visitExpression(node)
+            is Import -> visitImport(node)
+            is Export -> visitExport(node)
             else -> visitOther(node)
         }
     }
@@ -35,9 +37,7 @@ interface ASTVisitor {
             is VariableDeclarationNode -> visitVariableDeclaration(node)
             is DebuggerStatementNode -> visitDebuggerStatement()
             is ImportNode -> visitImportNode(node)
-            is Import -> visitImport(node)
             is ExportNode -> visitExportNode(node)
-            is Export -> visitExport(node)
             is FunctionDeclarationNode -> visitFunctionDeclaration(node)
             is ClassDeclarationNode -> visitClassDeclaration(node)
             is EmptyStatementNode -> {
