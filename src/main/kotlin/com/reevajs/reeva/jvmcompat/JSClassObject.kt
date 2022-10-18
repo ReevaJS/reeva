@@ -108,7 +108,8 @@ class JSClassObject private constructor(
                 JSUndefined
             }
 
-            obj.defineNativeProperty(field.name.key(), Descriptor.DEFAULT_ATTRIBUTES, getter, setter)
+            val receiver = if (isStatic) this else obj
+            receiver.defineNativeProperty(field.name.key(), Descriptor.DEFAULT_ATTRIBUTES, getter, setter)
         }
 
         clazz.declaredMethods.groupBy { it.name to Modifier.isStatic(it.modifiers) }.forEach { (key, availableMethods) ->
