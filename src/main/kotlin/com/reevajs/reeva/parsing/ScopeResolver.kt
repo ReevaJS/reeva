@@ -67,18 +67,6 @@ class ScopeResolver : ASTVisitor {
         super.visitImport(import)
     }
 
-    override fun visitExport(export: Export) {
-        super.visitExport(export)
-
-        if (export is Export.Node) {
-            export.node.declarations.forEach {
-                it.sources().forEach { source ->
-                    source.mode = VariableMode.Export
-                }
-            }
-        }
-    }
-
     override fun visitVariableDeclaration(node: VariableDeclarationNode) {
         for (decl in node.declarations) {
             val mode = if (scope.outerHoistingScope is GlobalScope) {
