@@ -35,6 +35,11 @@ dependencies {
     testImplementation("io.strikt:strikt-core:0.34.1")
 }
 
+task("runScriptRunner", JavaExec::class) {
+    classpath = sourceSets.test.get().runtimeClasspath
+    main = "com.reevajs.reeva.test262.DebugScriptRunnerKt"
+}
+
 tasks {
     test {
         maxHeapSize = "8G"
