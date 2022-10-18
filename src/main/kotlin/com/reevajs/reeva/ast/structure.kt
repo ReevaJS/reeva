@@ -98,7 +98,6 @@ enum class VariableMode {
     Parameter,
     Global,
     Import,
-    Export,
 }
 
 enum class VariableType {
