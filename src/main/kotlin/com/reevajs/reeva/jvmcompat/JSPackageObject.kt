@@ -3,16 +3,23 @@ package com.reevajs.reeva.jvmcompat
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.primitives.JSUndefined
-import com.reevajs.reeva.utils.Errors
+import com.reevajs.reeva.utils.*
 
 class JSPackageObject private constructor(
     realm: Realm,
     val packageName: String?,
 ) : JSObject(realm, realm.objectProto) {
     private val packageObj = if (packageName == null) null else Package.getPackage(packageName)
+
+    override fun init() {
+        super.init() 
+
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, (packageName ?: "<root Package>").toValue(), Descriptor.CONFIGURABLE)
+    }
 
     override fun get(property: PropertyKey, receiver: JSValue): JSValue {
         val protoProp = super.get(property, receiver)
