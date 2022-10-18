@@ -365,7 +365,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
     private fun loadFromSource(source: VariableSourceNode) {
         if (source is Import) {
-            +LoadModuleVar(source.sourceModuleName())
+            +LoadModuleVar(source.name())
             return
         }
 
@@ -1502,7 +1502,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             when (export) {
                 is Export.Expr -> {
                     visit(export.expr)
-                    +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
+                    +StoreModuleVar("default")
                 }
 
                 is Export.Named -> {
@@ -1516,24 +1516,22 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                             visit(decl)
                             loadFromSource(decl)
                             if (export.default) {
-                                +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
+                                +StoreModuleVar("default")
                             } else {
                                 expect(decl.identifier != null)
                                 +StoreModuleVar(decl.identifier.processedName)
                             }
                         }
-
                         is FunctionDeclarationNode -> {
                             // The function has been created in the prologue of this IR
                             loadFromSource(decl)
                             if (export.default) {
-                                +StoreModuleVar(ModuleRecord.DEFAULT_SPECIFIER)
+                                +StoreModuleVar("default")
                             } else {
                                 expect(decl.identifier != null)
                                 +StoreModuleVar(decl.identifier.processedName)
                             }
                         }
-
                         is LexicalDeclarationNode, is VariableSourceNode -> {
                             visit(decl)
                             decl.declarations.flatMap { it.sources() }.forEach {
@@ -1541,7 +1539,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                                 +StoreModuleVar(it.name())
                             }
                         }
-
                         else -> TODO()
                     }
                 }

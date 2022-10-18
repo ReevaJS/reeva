@@ -155,7 +155,7 @@ sealed class Import(children: List<ASTNode>) : VariableSourceNode(children) {
     class Default(val identifier: IdentifierNode) : Import(listOf(identifier)) {
         override fun name() = identifier.processedName
 
-        override fun sourceModuleName() = ModuleRecord.DEFAULT_SPECIFIER
+        override fun sourceModuleName() = "default"
 
         override fun makeEntry(moduleName: String) = ImportEntry(moduleName, "default", identifier.processedName)
     }

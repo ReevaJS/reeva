@@ -114,8 +114,6 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
             }
         }
 
-        // TODO: Figure out if all this is necessary. `code` will probably have a DeclareGlobals opcode at the top,
-        //       so I doubt it
         // TODO: Why does this push an execution context only to remove it right after?
         // 8. Let moduleContext be a new ECMAScript code execution context.
         // 9. Set the Function of moduleContext to null.
@@ -149,6 +147,13 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
         //             2. Perform ! env.InitializeBinding(dn, fo).
         // 25. Remove moduleContext from the execution context stack.
         // 26. Return unused.
+
+        // NOTE: Most of the above is not necessary, as GlobalDeclarationInstantiation is performed at the
+        //       IR level. However, we do need to initialize exported variable names in the environment
+
+        for (entry in moduleNode.localExportEntries) {
+            env.createImmutableBinding(entry.exportName!!, true)
+        }
     }
 
     override fun resolveExport(

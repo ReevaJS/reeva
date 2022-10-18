@@ -1030,7 +1030,7 @@ class Interpreter(
     }
 
     override fun visitStoreModuleVar(opcode: StoreModuleVar) {
-        moduleEnv!!.setMutableBinding(opcode.name, popValue(), isStrict = true)
+        moduleEnv!!.initializeBinding(opcode.name, popValue())
     }
 
     private fun jumpToBlock(block: BlockIndex) {
