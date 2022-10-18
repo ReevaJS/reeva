@@ -34,7 +34,6 @@ class ModuleNode(val body: StatementList) : RootNode(body) {
 
     // This partially implements the algorithm described in 16.2.1.6.1
     init {
-
         val importEntries = body.filterIsInstance<ImportNode>().flatMap { it.importEntries }
         val exportEntries = body.filterIsInstance<ExportNode>().flatMap { it.exportEntries }
 
