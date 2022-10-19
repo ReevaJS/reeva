@@ -594,46 +594,41 @@ class JumpIfNullish(val nullishTarget: BlockIndex, val elseTarget: BlockIndex) :
  * to get the JS class.
  *
  * Stack:
- *   ... ctor superClass -> ... class
+ *   ... ctor superClass <methods> ... class
  */
-object CreateClass : Opcode(-1)
+class CreateClass(val numMethods: Int) : Opcode(-1 - numMethods)
 
 /**
  * Creates a method. Works similarly to CreateClosure but without
  * unnecessary Operations calls.
  */
-class CreateMethod(val ir: FunctionInfo) : Opcode(1)
+class CreateConstructor(val ir: FunctionInfo) : Opcode(1)
 
 /**
- * Attaches a class method given the result of CreateClass.
+ * Creates a class method descriptor for the CreateClass opcode.
  *
  * Stack:
- *   ... class -> ...
+ *   ... -> descriptor
  */
-class AttachClassMethod(
+class CreateClassMethodDescriptor(
     val name: String,
     val isStatic: Boolean,
     val kind: MethodDefinitionNode.Kind,
     val ir: FunctionInfo,
-) : Opcode(-1)
+) : Opcode(1)
 
 
 /**
- * Attaches a class method given the result of CreateClass.
+ * Creates a class method descriptor for the CreateClass opcode with a computed name.
  *
  * Stack:
- *   ... class name -> ...
+ *   ... name -> descriptor
  */
-class AttachComputedClassMethod(
+class CreateComputedClassMethodDescriptor(
     val isStatic: Boolean,
     val kind: MethodDefinitionNode.Kind,
     val ir: FunctionInfo,
-) : Opcode(-2)
-
-/**
- * Creates a JSValue from the data class created by CreateClass.
- */
-object FinalizeClass : Opcode(0)
+) : Opcode(0)
 
 /**
  * Retrieves the currently active super constructor (the prototype of the

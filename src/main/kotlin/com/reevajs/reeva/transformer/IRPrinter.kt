@@ -52,8 +52,11 @@ object IRPrinter {
                 is Construct -> println(" ${opcode.argCount}")
                 is CreateAsyncClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
                 is CreateAsyncGeneratorClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
-                is CreateMethod -> println(" <FunctionInfo ${opcode.ir.name}>")
+                is CreateConstructor -> println(" <FunctionInfo ${opcode.ir.name}>")
                 is CreateClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
+                is CreateClassMethodDescriptor -> println(" name=${opcode.name} static=${opcode.isStatic}")
+                is CreateComputedClassMethodDescriptor -> println(" static=${opcode.isStatic}")
+                is CreateClass -> println(" numMethods=${opcode.numMethods}")
                 is CreateGeneratorClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
                 is DeclareGlobalVars -> {
                     print(" ")

@@ -112,11 +112,10 @@ interface OpcodeVisitor {
             PushJVMFalse -> visitPushJVMFalse()
             PushJVMTrue -> visitPushJVMTrue()
             is PushJVMInt -> visitPushJVMInt(opcode)
-            is CreateMethod -> visitCreateClassConstructor(opcode)
-            CreateClass -> visitCreateClass()
-            is AttachClassMethod -> visitAttachClassMethod(opcode)
-            is AttachComputedClassMethod -> visitAttachComputedClassMethod(opcode)
-            FinalizeClass -> visitFinalizeClass()
+            is CreateConstructor -> visitCreateConstructor(opcode)
+            is CreateClass -> visitCreateClass(opcode)
+            is CreateClassMethodDescriptor -> visitCreateClassMethodDescriptor(opcode)
+            is CreateComputedClassMethodDescriptor -> visitCreateComputedClassMethodDescriptor(opcode)
             is LoadModuleVar -> visitLoadModuleVar(opcode)
             is StoreModuleVar -> visitStoreModuleVar(opcode)
             CollectRestArgs -> visitCollectRestArgs()
@@ -341,15 +340,13 @@ interface OpcodeVisitor {
 
     fun visitPushJVMInt(opcode: PushJVMInt)
 
-    fun visitCreateClassConstructor(opcode: CreateMethod)
+    fun visitCreateConstructor(opcode: CreateConstructor)
 
-    fun visitCreateClass()
+    fun visitCreateClass(opcode: CreateClass)
 
-    fun visitAttachClassMethod(opcode: AttachClassMethod)
+    fun visitCreateClassMethodDescriptor(opcode: CreateClassMethodDescriptor)
 
-    fun visitAttachComputedClassMethod(opcode: AttachComputedClassMethod)
-
-    fun visitFinalizeClass()
+    fun visitCreateComputedClassMethodDescriptor(opcode: CreateComputedClassMethodDescriptor)
 
     fun visitLoadModuleVar(opcode: LoadModuleVar)
 

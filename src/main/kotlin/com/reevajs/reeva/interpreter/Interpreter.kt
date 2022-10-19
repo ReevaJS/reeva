@@ -891,15 +891,39 @@ class Interpreter(
         push(JSEmpty)
     }
 
-    override fun visitCreateClassConstructor(opcode: CreateMethod) {
+    override fun visitCreateConstructor(opcode: CreateConstructor) {
         push(NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir)))
     }
 
-    override fun visitCreateClass() {
-        val superClass = popValue()
-        val constructor = popValue()
+    override fun visitCreateClassMethodDescriptor(opcode: CreateClassMethodDescriptor) {
+        push(ClassMethodDescriptor(
+            opcode.name.key(),
+            opcode.isStatic,
+            opcode.kind,
+            opcode.ir,
+        ))
+    }
 
-        expect(constructor is JSFunction)
+    override fun visitCreateComputedClassMethodDescriptor(opcode: CreateComputedClassMethodDescriptor) {
+        push(ClassMethodDescriptor(
+            popValue().key(),
+            opcode.isStatic,
+            opcode.kind,
+            opcode.ir,
+        ))
+    }
+
+    data class ClassMethodDescriptor(
+        val name: PropertyKey,
+        val isStatic: Boolean,
+        val kind: MethodDefinitionNode.Kind,
+        val ir: FunctionInfo,
+    )
+
+    override fun visitCreateClass(opcode: CreateClass) {
+        val methodDescriptors = (0 until opcode.numMethods).map { pop() as ClassMethodDescriptor }
+        val superClass = popValue()
+        val constructor = popValue() as JSFunction
 
         val protoParent: JSValue
         val constructorParent: JSObject
@@ -937,32 +961,17 @@ class Interpreter(
         AOs.makeMethod(constructor, proto)
         AOs.createMethodProperty(proto, "constructor".key(), constructor)
 
-        push(ClassCtorAndProto(constructor, proto))
-    }
+        for (descriptor in methodDescriptors) {
+            methodDefinitionEvaluation(
+                descriptor.name,
+                descriptor.kind,
+                if (descriptor.isStatic) constructor else proto,
+                enumerable = false,
+                descriptor.ir,
+            )
+        }
 
-    data class ClassCtorAndProto(val constructor: JSFunction, val proto: JSObject)
-
-    override fun visitAttachClassMethod(opcode: AttachClassMethod) {
-        val (constructor, proto) = pop() as ClassCtorAndProto
-        methodDefinitionEvaluation(
-            opcode.name.key(),
-            opcode.kind,
-            if (opcode.isStatic) constructor else proto,
-            enumerable = false,
-            opcode.ir,
-        )
-    }
-
-    override fun visitAttachComputedClassMethod(opcode: AttachComputedClassMethod) {
-        val name = popValue().toPropertyKey()
-        val (constructor, proto) = pop() as ClassCtorAndProto
-        methodDefinitionEvaluation(
-            name,
-            opcode.kind,
-            if (opcode.isStatic) constructor else proto,
-            enumerable = false,
-            opcode.ir,
-        )
+        push(constructor)
     }
 
     private fun methodDefinitionEvaluation(
@@ -1016,10 +1025,6 @@ class Interpreter(
         }
 
         AOs.defineMethodProperty(name, obj, closure, enumerable)
-    }
-
-    override fun visitFinalizeClass() {
-        push((pop() as ClassCtorAndProto).constructor)
     }
 
     override fun visitLoadModuleVar(opcode: LoadModuleVar) {

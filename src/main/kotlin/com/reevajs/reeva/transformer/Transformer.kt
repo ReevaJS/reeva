@@ -304,7 +304,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         if (instantiateFunction) {
             when {
-                classConstructorKind != null -> +CreateMethod(functionInfo)
+                classConstructorKind != null -> +CreateConstructor(functionInfo)
                 kind.isGenerator && kind.isAsync -> +CreateAsyncGeneratorClosure(functionInfo)
                 kind.isGenerator -> +CreateGeneratorClosure(functionInfo)
                 kind.isAsync -> +CreateAsyncClosure(functionInfo)
@@ -1647,7 +1647,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 constructorKind,
                 instanceFields.isNotEmpty(),
             )
-            +CreateMethod(info)
+            +CreateConstructor(info)
         }
 
         if (node.heritage != null) {
@@ -1658,13 +1658,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         // ctor superCtor
 
-        +CreateClass
-
-        // class
-
         for (classMethod in methods) {
-            +Dup
-
             val method = classMethod.method
             val propName = method.propName
             val isComputed = propName.type == PropertyName.Type.Computed
@@ -1686,13 +1680,13 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             if (isComputed) {
                 // TODO: Cast to property name
                 visitExpression(propName.expression)
-                +AttachComputedClassMethod(classMethod.isStatic, method.kind, functionInfo)
+                +CreateComputedClassMethodDescriptor(classMethod.isStatic, method.kind, functionInfo)
             } else {
-                +AttachClassMethod(propName.asString(), classMethod.isStatic, method.kind, functionInfo)
+                +CreateClassMethodDescriptor(propName.asString(), classMethod.isStatic, method.kind, functionInfo)
             }
         }
 
-        +FinalizeClass
+        +CreateClass(methods.size)
 
         // Process fields
         // Instance fields are initialized in a dedicated method, whereas static fields
