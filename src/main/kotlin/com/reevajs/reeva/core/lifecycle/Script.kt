@@ -52,8 +52,8 @@ class Script(val realm: Realm, val parsedSource: ParsedSource) : Executable {
         // 14. If result.[[Type]] is normal and result.[[Value]] is empty, then
         //     a. Set result to NormalCompletion(undefined).
         val result = try {
-            val transformedSource = Executable.transform(parsedSource, isEval)
-            Interpreter(transformedSource, listOf(realm.globalObject, JSUndefined)).interpret()
+            val functionInfo = Executable.transform(parsedSource, isEval)
+            Interpreter(functionInfo, listOf(realm.globalObject, JSUndefined)).interpret()
         } finally {
             // 15. Suspend scriptContext and remove it from the execution context stack.
             agent.popExecutionContext()

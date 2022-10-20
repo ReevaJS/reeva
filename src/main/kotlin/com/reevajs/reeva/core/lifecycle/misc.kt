@@ -4,8 +4,8 @@ import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.transformer.FunctionInfo
 import com.reevajs.reeva.transformer.IRPrinter
-import com.reevajs.reeva.transformer.TransformedSource
 import com.reevajs.reeva.transformer.Transformer
 import com.reevajs.reeva.utils.unreachable
 import java.io.File
@@ -92,10 +92,10 @@ interface Executable {
     fun execute(): JSValue
 
     companion object {
-        fun transform(parsedSource: ParsedSource, isEval: Boolean = false): TransformedSource {
-            return Transformer(parsedSource).transform(isEval).also {
+        fun transform(parsedSource: ParsedSource, isEval: Boolean = false): FunctionInfo {
+            return Transformer().transform(parsedSource, isEval).also {
                 if (Agent.activeAgent.printIR) {
-                    IRPrinter.printInfo(it.functionInfo)
+                    IRPrinter.printInfo(it)
                     println('\n')
                 }
 

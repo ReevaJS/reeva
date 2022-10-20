@@ -335,14 +335,14 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
     override fun executeModule() {
         val sourceInfo = parsedSource.sourceInfo
         expect(sourceInfo.isModule)
-        val transformedSource = Executable.transform(parsedSource)
+        val functionInfo = Executable.transform(parsedSource)
 
         val agent = Agent.activeAgent
         val context = ExecutionContext(realm, envRecord = environment, executable = this)
         agent.pushExecutionContext(context)
 
         try {
-            Interpreter(transformedSource, listOf(JSUndefined, JSUndefined)).interpret()
+            Interpreter(functionInfo, listOf(JSUndefined, JSUndefined)).interpret()
         } finally {
             agent.popExecutionContext()
         }

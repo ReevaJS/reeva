@@ -57,7 +57,6 @@ import com.reevajs.reeva.runtime.wrappers.JSNumberObject
 import com.reevajs.reeva.runtime.wrappers.JSSymbolObject
 import com.reevajs.reeva.runtime.wrappers.strings.JSStringObject
 import com.reevajs.reeva.transformer.IRPrinter
-import com.reevajs.reeva.transformer.TransformedSource
 import com.reevajs.reeva.transformer.Transformer
 import com.reevajs.reeva.utils.*
 import com.reevajs.regexp.RegExp
@@ -2391,13 +2390,11 @@ object AOs {
         // 27. Let privateEnv be null.
 
         // 28. Let F be OrdinaryFunctionCreate(proto, sourceText, parameters, body, non-lexical-this, env, privateEnv).
-        val transformedSource = Transformer(parseResult).transform().let {
-            // TODO: Restructure the transformer to make this not necessary
-            TransformedSource(it.sourceInfo, it.functionInfo.ir.nestedFunctions.single())
-        }
+        // TODO: Restructure the transformer to make this weird hack not necessary
+        val functionInfo = Transformer().transform(parseResult).ir.nestedFunctions.single()
         if (agent.printIR)
-            IRPrinter.printInfo(transformedSource.functionInfo)
-        val function = functionType(transformedSource, currentRealm)
+            IRPrinter.printInfo(functionInfo)
+        val function = functionType(functionInfo, currentRealm)
         function.setPrototype(proto)
         function.environment = env
 

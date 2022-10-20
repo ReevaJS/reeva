@@ -22,13 +22,10 @@ import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.utils.*
 
 class Interpreter(
-    private val transformedSource: TransformedSource,
+    private val functionInfo: FunctionInfo,
     private val arguments: List<JSValue>,
     private val topLevelPromiseCapability: AOs.PromiseCapability? = null,
 ) : OpcodeVisitor {
-    private val info: FunctionInfo
-        inline get() = transformedSource.functionInfo
-
     private val agent: Agent
         inline get() = Agent.activeAgent
 
@@ -36,11 +33,11 @@ class Interpreter(
         inline get() = agent.getActiveRealm()
 
     private val stack = ArrayDeque<Any>()
-    private val locals = Array<Any?>(info.ir.locals.size) { null }
+    private val locals = Array<Any?>(functionInfo.ir.locals.size) { null }
 
     private var moduleEnv = agent.activeEnvRecord as? ModuleEnvRecord
 
-    private var activeBlock = info.ir.blocks[BlockIndex(0)]!!
+    private var activeBlock = functionInfo.ir.blocks[BlockIndex(0)]!!
     private var ip = 0
     private var shouldLoop = true
 
@@ -56,11 +53,11 @@ class Interpreter(
         get() = pendingAwaitValue != null
 
     init {
-        for ((index, arg) in arguments.take(info.ir.argCount).withIndex()) {
+        for ((index, arg) in arguments.take(functionInfo.ir.argCount).withIndex()) {
             locals[index] = arg
         }
 
-        repeat(info.ir.argCount - arguments.size) {
+        repeat(functionInfo.ir.argCount - arguments.size) {
             locals[it + arguments.size] = JSUndefined
         }
     }
@@ -95,7 +92,7 @@ class Interpreter(
             } catch (e: ThrowException) {
                 handleThrownException(e)
             } catch (e: Throwable) {
-                println("Exception in FunctionInfo ${info.name}, block @${activeBlock.index} opcode ${ip - 1}")
+                println("Exception in FunctionInfo ${functionInfo.name}, block @${activeBlock.index} opcode ${ip - 1}")
                 throw e
             }
         }
@@ -196,27 +193,27 @@ class Interpreter(
     }
 
     override fun visitLoadInt(opcode: LoadInt) {
-        expect(info.ir.locals[opcode.local.value] == LocalKind.Int)
+        expect(functionInfo.ir.locals[opcode.local.value] == LocalKind.Int)
         push(locals[opcode.local.value]!!)
     }
 
     override fun visitStoreInt(opcode: StoreInt) {
-        expect(info.ir.locals[opcode.local.value] == LocalKind.Int)
+        expect(functionInfo.ir.locals[opcode.local.value] == LocalKind.Int)
         locals[opcode.local.value] = pop()
     }
 
     override fun visitIncInt(opcode: IncInt) {
-        expect(info.ir.locals[opcode.local.value] == LocalKind.Int)
+        expect(functionInfo.ir.locals[opcode.local.value] == LocalKind.Int)
         locals[opcode.local.value] = (locals[opcode.local.value] as Int) + 1
     }
 
     override fun visitLoadValue(opcode: LoadValue) {
-        expect(info.ir.locals[opcode.local.value] == LocalKind.Value)
+        expect(functionInfo.ir.locals[opcode.local.value] == LocalKind.Value)
         push(locals[opcode.local.value]!!)
     }
 
     override fun visitStoreValue(opcode: StoreValue) {
-        expect(info.ir.locals[opcode.local.value] == LocalKind.Value)
+        expect(functionInfo.ir.locals[opcode.local.value] == LocalKind.Value)
         locals[opcode.local.value] = pop()
     }
 
@@ -709,24 +706,24 @@ class Interpreter(
     }
 
     override fun visitCreateClosure(opcode: CreateClosure) {
-        val function = NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir))
-        AOs.setFunctionName(function, opcode.ir.name.key())
+        val function = NormalInterpretedFunction.create(opcode.functionInfo)
+        AOs.setFunctionName(function, opcode.functionInfo.name.key())
         AOs.makeConstructor(function)
-        AOs.setFunctionLength(function, opcode.ir.length)
+        AOs.setFunctionLength(function, opcode.functionInfo.length)
         push(function)
     }
 
     override fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure) {
-        val function = GeneratorInterpretedFunction.create(transformedSource.forInfo(opcode.ir))
-        AOs.setFunctionName(function, opcode.ir.name.key())
-        AOs.setFunctionLength(function, opcode.ir.length)
+        val function = GeneratorInterpretedFunction.create(opcode.functionInfo)
+        AOs.setFunctionName(function, opcode.functionInfo.name.key())
+        AOs.setFunctionLength(function, opcode.functionInfo.length)
         push(function)
     }
 
     override fun visitCreateAsyncClosure(opcode: CreateAsyncClosure) {
-        val function = AsyncInterpretedFunction.create(transformedSource.forInfo(opcode.ir))
-        AOs.setFunctionName(function, opcode.ir.name.key())
-        AOs.setFunctionLength(function, opcode.ir.length)
+        val function = AsyncInterpretedFunction.create(opcode.functionInfo)
+        AOs.setFunctionName(function, opcode.functionInfo.name.key())
+        AOs.setFunctionLength(function, opcode.functionInfo.length)
         push(function)
     }
 
@@ -858,7 +855,7 @@ class Interpreter(
     }
 
     override fun visitCollectRestArgs() {
-        push(AOs.createArrayFromList(arguments.drop(info.ir.argCount - 1)))
+        push(AOs.createArrayFromList(arguments.drop(functionInfo.ir.argCount - 1)))
     }
 
     override fun visitDefineGetterProperty() {
@@ -892,7 +889,7 @@ class Interpreter(
     }
 
     override fun visitCreateConstructor(opcode: CreateConstructor) {
-        push(NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir)))
+        push(NormalInterpretedFunction.create(opcode.functionInfo))
     }
 
     override fun visitCreateClassMethodDescriptor(opcode: CreateClassMethodDescriptor) {
@@ -900,7 +897,7 @@ class Interpreter(
             opcode.name.key(),
             opcode.isStatic,
             opcode.kind,
-            opcode.ir,
+            opcode.functionInfo,
         ))
     }
 
@@ -909,7 +906,7 @@ class Interpreter(
             popValue().key(),
             opcode.isStatic,
             opcode.kind,
-            opcode.ir,
+            opcode.functionInfo,
         ))
     }
 
@@ -985,11 +982,11 @@ class Interpreter(
             MethodDefinitionNode.Kind.Normal,
             MethodDefinitionNode.Kind.Getter,
             MethodDefinitionNode.Kind.Setter ->
-                NormalInterpretedFunction.create(transformedSource.forInfo(info))
+                NormalInterpretedFunction.create(info)
             MethodDefinitionNode.Kind.Generator ->
-                GeneratorInterpretedFunction.create(transformedSource.forInfo(info))
+                GeneratorInterpretedFunction.create(info)
             MethodDefinitionNode.Kind.Async ->
-                AsyncInterpretedFunction.create(transformedSource.forInfo(info))
+                AsyncInterpretedFunction.create(info)
             else -> TODO()
         }
 
@@ -1040,7 +1037,7 @@ class Interpreter(
 
     private fun jumpToBlock(block: BlockIndex) {
         ip = 0
-        activeBlock = info.ir.blocks[block]!!
+        activeBlock = functionInfo.ir.blocks[block]!!
     }
 
     private fun pop(): Any = stack.removeLast()

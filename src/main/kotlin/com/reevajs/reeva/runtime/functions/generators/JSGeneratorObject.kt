@@ -8,16 +8,16 @@ import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
-import com.reevajs.reeva.transformer.TransformedSource
+import com.reevajs.reeva.transformer.FunctionInfo
 
 class JSGeneratorObject private constructor(
     realm: Realm,
-    transformedSource: TransformedSource,
+    functionInfo: FunctionInfo,
     val receiver: JSValue,
     arguments: List<JSValue>,
     private val context: ExecutionContext,
 ) : JSObject(realm, realm.generatorObjectProto) {
-    private val interpreter = Interpreter(transformedSource, listOf(receiver, JSUndefined) + arguments)
+    private val interpreter = Interpreter(functionInfo, listOf(receiver, JSUndefined) + arguments)
 
     fun next(value: JSValue): JSValue {
         return execute(value, Interpreter.YieldContinuation.Continue)
@@ -44,14 +44,14 @@ class JSGeneratorObject private constructor(
 
     companion object {
         fun create(
-            transformedSource: TransformedSource,
+            functionInfo: FunctionInfo,
             receiver: JSValue,
             arguments: List<JSValue>,
             executionContext: ExecutionContext,
             realm: Realm = Agent.activeAgent.getActiveRealm(),
         ) = JSGeneratorObject(
             realm,
-            transformedSource,
+            functionInfo,
             receiver,
             arguments,
             executionContext,

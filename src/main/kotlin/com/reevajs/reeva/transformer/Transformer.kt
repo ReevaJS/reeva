@@ -16,17 +16,16 @@ import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.unreachable
 import java.math.BigInteger
 
-class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
+class Transformer : ASTVisitor {
     private lateinit var builder: IRBuilder
     private var currentScope: Scope? = null
 
     private val controlFlowScopes = mutableListOf<ControlFlowScope>()
 
-    fun transform(isEval: Boolean = false): TransformedSource {
+    fun transform(parsedSource: ParsedSource, isEval: Boolean = false): FunctionInfo {
         expect(!::builder.isInitialized, "Cannot reuse a Transformer")
 
         val rootNode = parsedSource.node
-
         builder = IRBuilder(RESERVED_LOCALS_COUNT, rootNode.scope.inlineableLocalCount)
 
         globalDeclarationInstantiation(rootNode.scope.outerGlobalScope as HoistingScope, isEval) {
@@ -39,17 +38,14 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             }
         }
 
-        return TransformedSource(
-            parsedSource.sourceInfo,
-            FunctionInfo(
-                parsedSource.sourceInfo.name,
-                builder.build(),
-                rootNode.scope.isStrict,
-                0,
-                isTopLevel = true,
-                isGenerator = false,
-                isArrow = false,
-            )
+        return FunctionInfo(
+            parsedSource.sourceInfo.name,
+            builder.build(),
+            rootNode.scope.isStrict,
+            0,
+            isTopLevel = true,
+            isGenerator = false,
+            isArrow = false,
         )
     }
 

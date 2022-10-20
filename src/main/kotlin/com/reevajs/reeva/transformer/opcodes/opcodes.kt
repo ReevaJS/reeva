@@ -602,7 +602,7 @@ class CreateClass(val numMethods: Int) : Opcode(-1 - numMethods)
  * Creates a method. Works similarly to CreateClosure but without
  * unnecessary Operations calls.
  */
-class CreateConstructor(val ir: FunctionInfo) : Opcode(1)
+class CreateConstructor(val functionInfo: FunctionInfo) : Opcode(1)
 
 /**
  * Creates a class method descriptor for the CreateClass opcode.
@@ -614,7 +614,7 @@ class CreateClassMethodDescriptor(
     val name: String,
     val isStatic: Boolean,
     val kind: MethodDefinitionNode.Kind,
-    val ir: FunctionInfo,
+    val functionInfo: FunctionInfo,
 ) : Opcode(1)
 
 
@@ -627,7 +627,7 @@ class CreateClassMethodDescriptor(
 class CreateComputedClassMethodDescriptor(
     val isStatic: Boolean,
     val kind: MethodDefinitionNode.Kind,
-    val ir: FunctionInfo,
+    val functionInfo: FunctionInfo,
 ) : Opcode(0)
 
 /**
@@ -695,22 +695,22 @@ object PushClosure : Opcode(1)
 /**
  * Creates a normal function closure from a FunctionInfo.
  */
-class CreateClosure(val ir: FunctionInfo) : Opcode(1)
+class CreateClosure(val functionInfo: FunctionInfo) : Opcode(1)
 
 /**
  * Creates a generator function closure from a FunctionInfo.
  */
-class CreateGeneratorClosure(val ir: FunctionInfo) : Opcode(1)
+class CreateGeneratorClosure(val functionInfo: FunctionInfo) : Opcode(1)
 
 /**
  * Creates an async function closure from a FunctionInfo.
  */
-class CreateAsyncClosure(val ir: FunctionInfo) : Opcode(1)
+class CreateAsyncClosure(val functionInfo: FunctionInfo) : Opcode(1)
 
 /**
  * Creates an async generator function closure from a FunctionInfo.
  */
-class CreateAsyncGeneratorClosure(val ir: FunctionInfo) : Opcode(1)
+class CreateAsyncGeneratorClosure(val functionInfo: FunctionInfo) : Opcode(1)
 
 /**
  * Collects any arguments which have not been bound to a non-rest parameter

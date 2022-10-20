@@ -13,23 +13,23 @@ import com.reevajs.reeva.runtime.functions.generators.JSGeneratorObject
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.runtime.toObject
-import com.reevajs.reeva.transformer.TransformedSource
+import com.reevajs.reeva.transformer.FunctionInfo
 import com.reevajs.reeva.utils.Errors
 import com.reevajs.reeva.utils.ecmaAssert
 
 abstract class InterpretedFunction(
     realm: Realm,
-    val transformedSource: TransformedSource,
+    val functionInfo: FunctionInfo,
     prototype: JSValue,
 ) : JSFunction(
     realm,
-    transformedSource.functionInfo.name,
+    functionInfo.name,
     when {
-        transformedSource.functionInfo.isArrow -> ThisMode.Lexical
-        transformedSource.functionInfo.isStrict -> ThisMode.Strict
+        functionInfo.isArrow -> ThisMode.Lexical
+        functionInfo.isStrict -> ThisMode.Strict
         else -> ThisMode.Global
     },
-    transformedSource.functionInfo.isStrict,
+    functionInfo.isStrict,
     prototype,
 ) {
     var environment = Agent.activeAgent.activeEnvRecord
@@ -219,25 +219,25 @@ abstract class InterpretedFunction(
 
 class NormalInterpretedFunction private constructor(
     realm: Realm,
-    transformedSource: TransformedSource,
-) : InterpretedFunction(realm, transformedSource, realm.functionProto) {
+    functionInfo: FunctionInfo,
+) : InterpretedFunction(realm, functionInfo, realm.functionProto) {
     override fun evaluate(arguments: JSArguments): JSValue {
         val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
-        return Interpreter(transformedSource, args).interpret()
+        return Interpreter(functionInfo, args).interpret()
     }
 
     companion object {
         fun create(
-            transformedSource: TransformedSource,
+            functionInfo: FunctionInfo,
             realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = NormalInterpretedFunction(realm, transformedSource).initialize()
+        ) = NormalInterpretedFunction(realm, functionInfo).initialize()
     }
 }
 
 class GeneratorInterpretedFunction private constructor(
     realm: Realm,
-    transformedSource: TransformedSource,
-) : InterpretedFunction(realm, transformedSource, realm.generatorFunctionProto) {
+    functionInfo: FunctionInfo,
+) : InterpretedFunction(realm, functionInfo, realm.generatorFunctionProto) {
     private lateinit var generatorObject: JSGeneratorObject
 
     override fun init() {
@@ -248,7 +248,7 @@ class GeneratorInterpretedFunction private constructor(
     override fun evaluate(arguments: JSArguments): JSValue {
         if (!::generatorObject.isInitialized) {
             generatorObject = JSGeneratorObject.create(
-                transformedSource,
+                functionInfo,
                 arguments.thisValue,
                 arguments,
                 Agent.activeAgent.runningExecutionContext,
@@ -260,21 +260,21 @@ class GeneratorInterpretedFunction private constructor(
 
     companion object {
         fun create(
-            transformedSource: TransformedSource,
+            functionInfo: FunctionInfo,
             realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = GeneratorInterpretedFunction(realm, transformedSource).initialize()
+        ) = GeneratorInterpretedFunction(realm, functionInfo).initialize()
     }
 }
 
 class AsyncInterpretedFunction private constructor(
     realm: Realm,
-    transformedSource: TransformedSource,
-) : InterpretedFunction(realm, transformedSource, realm.asyncFunctionProto) {
+    functionInfo: FunctionInfo,
+) : InterpretedFunction(realm, functionInfo, realm.asyncFunctionProto) {
     override fun evaluate(arguments: JSArguments): JSValue {
         val promiseCapability = AOs.newPromiseCapability(realm.promiseCtor)
 
         val args = listOf(arguments.thisValue, arguments.newTarget) + arguments
-        val interpreter = Interpreter(transformedSource, args, promiseCapability)
+        val interpreter = Interpreter(functionInfo, args, promiseCapability)
 
         val resultValue = interpreter.interpret()
         if (!interpreter.isAwaiting) {
@@ -286,8 +286,8 @@ class AsyncInterpretedFunction private constructor(
 
     companion object {
         fun create(
-            transformedSource: TransformedSource,
+            functionInfo: FunctionInfo,
             realm: Realm = Agent.activeAgent.getActiveRealm(),
-        ) = AsyncInterpretedFunction(realm, transformedSource).initialize()
+        ) = AsyncInterpretedFunction(realm, functionInfo).initialize()
     }
 }

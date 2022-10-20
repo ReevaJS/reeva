@@ -1,5 +1,7 @@
 package com.reevajs.reeva.transformer
 
+import com.reevajs.reeva.core.lifecycle.SourceInfo
+
 data class FunctionInfo(
     val name: String,
     val ir: IR,
@@ -8,6 +10,7 @@ data class FunctionInfo(
     val isTopLevel: Boolean,
     val isGenerator: Boolean,
     val isArrow: Boolean,
+    var sourceInfo: SourceInfo? = null,
 )
 
 enum class LocalKind {
