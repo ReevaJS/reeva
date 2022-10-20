@@ -274,25 +274,25 @@ class Interpreter(
     override fun visitTestEqualStrict() {
         val rhs = popValue()
         val lhs = popValue()
-        push(AOs.isLooselyEqual(lhs, rhs))
+        push(AOs.isStrictlyEqual(lhs, rhs))
     }
 
     override fun visitTestNotEqualStrict() {
         val rhs = popValue()
         val lhs = popValue()
-        push(AOs.isLooselyEqual(lhs, rhs).inv())
+        push(AOs.isStrictlyEqual(lhs, rhs).inv())
     }
 
     override fun visitTestEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        push(AOs.isStrictlyEqual(lhs, rhs))
+        push(AOs.isLooselyEqual(lhs, rhs))
     }
 
     override fun visitTestNotEqual() {
         val rhs = popValue()
         val lhs = popValue()
-        push(AOs.isStrictlyEqual(lhs, rhs).inv())
+        push(AOs.isLooselyEqual(lhs, rhs).inv())
     }
 
     override fun visitTestLessThan() {
