@@ -20,6 +20,10 @@ sealed class Opcode(val stackHeightModifier: Int) {
     }
 }
 
+interface FunctionContainerOpcode {
+    val functionInfo: FunctionInfo?
+}
+
 // Marker interface
 interface TerminatingOpcode
 
@@ -592,7 +596,7 @@ class JumpIfNullish(val nullishTarget: BlockIndex, val elseTarget: BlockIndex) :
  * Creates a method. Works similarly to CreateClosure but without
  * unnecessary Operations calls.
  */
-class CreateConstructor(val functionInfo: FunctionInfo) : Opcode(1)
+class CreateConstructor(override val functionInfo: FunctionInfo) : Opcode(1), FunctionContainerOpcode
 
 /**
  * Retrieves the currently active super constructor (the prototype of the
@@ -614,8 +618,8 @@ object GetSuperBase : Opcode(1)
  */
 class CreateClassFieldDescriptor(
     val isStatic: Boolean,
-    val functionInfo: FunctionInfo?,
-) : Opcode(0)
+    override val functionInfo: FunctionInfo?,
+) : Opcode(0), FunctionContainerOpcode
 
 /**
  * Creates a class method descriptor for the CreateClass opcode.
@@ -626,8 +630,8 @@ class CreateClassFieldDescriptor(
 class CreateClassMethodDescriptor(
     val isStatic: Boolean,
     val kind: MethodDefinitionNode.Kind,
-    val functionInfo: FunctionInfo,
-) : Opcode(0)
+    override val functionInfo: FunctionInfo,
+) : Opcode(0), FunctionContainerOpcode
 
 /**
  * Creates a class. Note that this is a temporary data class to allow proper
@@ -692,22 +696,22 @@ object PushClosure : Opcode(1)
 /**
  * Creates a normal function closure from a FunctionInfo.
  */
-class CreateClosure(val functionInfo: FunctionInfo) : Opcode(1)
+class CreateClosure(override val functionInfo: FunctionInfo) : Opcode(1), FunctionContainerOpcode
 
 /**
  * Creates a generator function closure from a FunctionInfo.
  */
-class CreateGeneratorClosure(val functionInfo: FunctionInfo) : Opcode(1)
+class CreateGeneratorClosure(override val functionInfo: FunctionInfo) : Opcode(1), FunctionContainerOpcode
 
 /**
  * Creates an async function closure from a FunctionInfo.
  */
-class CreateAsyncClosure(val functionInfo: FunctionInfo) : Opcode(1)
+class CreateAsyncClosure(override val functionInfo: FunctionInfo) : Opcode(1), FunctionContainerOpcode
 
 /**
  * Creates an async generator function closure from a FunctionInfo.
  */
-class CreateAsyncGeneratorClosure(val functionInfo: FunctionInfo) : Opcode(1)
+class CreateAsyncGeneratorClosure(override val functionInfo: FunctionInfo) : Opcode(1), FunctionContainerOpcode
 
 /**
  * Collects any arguments which have not been bound to a non-rest parameter

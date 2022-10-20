@@ -58,6 +58,7 @@ import com.reevajs.reeva.runtime.wrappers.JSSymbolObject
 import com.reevajs.reeva.runtime.wrappers.strings.JSStringObject
 import com.reevajs.reeva.transformer.IRPrinter
 import com.reevajs.reeva.transformer.Transformer
+import com.reevajs.reeva.transformer.opcodes.FunctionContainerOpcode
 import com.reevajs.reeva.utils.*
 import com.reevajs.regexp.RegExp
 import com.reevajs.regexp.parser.RegExpSyntaxError
@@ -2390,8 +2391,10 @@ object AOs {
         // 27. Let privateEnv be null.
 
         // 28. Let F be OrdinaryFunctionCreate(proto, sourceText, parameters, body, non-lexical-this, env, privateEnv).
-        // TODO: Restructure the transformer to make this weird hack not necessary
-        val functionInfo = Transformer().transform(parseResult).ir.nestedFunctions.single()
+        // TODO: This is so scuffed, figure out a better way to do this
+        val functionInfo = Transformer().transform(parseResult).ir.blocks.values.single().opcodes.mapNotNull {
+            (it as? FunctionContainerOpcode)?.functionInfo
+        }.first()
         if (agent.printIR)
             IRPrinter.printInfo(functionInfo)
         val function = functionType(functionInfo, currentRealm)

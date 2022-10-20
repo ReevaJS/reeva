@@ -16,11 +16,6 @@ object IRPrinter {
         println("Block count: ${info.ir.blocks.size}")
 
         printBlocks(info.ir.blocks)
-
-        for (nestedFunction in info.ir.nestedFunctions) {
-            println("\n")
-            printInfo(nestedFunction)
-        }
     }
 
     fun printBlocks(blocks: Map<BlockIndex, BasicBlock>) {
@@ -39,12 +34,17 @@ object IRPrinter {
 
         println()
 
+        val nestedFunctionInfo = mutableListOf<FunctionInfo>()
+
         for ((index, opcode) in block.opcodes.withIndex()) {
             print("  ")
             print("%3d".format(index))
             print(".  ")
 
             print(opcode::class.simpleName)
+
+            if (opcode is FunctionContainerOpcode)
+                opcode.functionInfo?.let(nestedFunctionInfo::add)
 
             when (opcode) {
                 is Call -> println(" ${opcode.argCount}")
@@ -120,6 +120,11 @@ object IRPrinter {
                 is CreateTemplateLiteral -> println(" #${opcode.numberOfParts}")
                 else -> println()
             }
+        }
+
+        nestedFunctionInfo.forEach {
+            println()
+            IRPrinter.printInfo(it)
         }
     }
 }
