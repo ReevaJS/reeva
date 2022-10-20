@@ -30,7 +30,6 @@ class BlockOptimizer(private val ir: IR) {
             ir.argCount,
             blocks,
             locals,
-            ir.nestedFunctions,
         )
     }
 

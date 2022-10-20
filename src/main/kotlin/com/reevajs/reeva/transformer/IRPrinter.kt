@@ -16,11 +16,6 @@ object IRPrinter {
         println("Block count: ${info.ir.blocks.size}")
 
         printBlocks(info.ir.blocks)
-
-        for (nestedFunction in info.ir.nestedFunctions) {
-            println("\n")
-            printInfo(nestedFunction)
-        }
     }
 
     fun printBlocks(blocks: Map<BlockIndex, BasicBlock>) {
@@ -39,6 +34,8 @@ object IRPrinter {
 
         println()
 
+        val nestedFunctionInfo = mutableListOf<FunctionInfo>()
+
         for ((index, opcode) in block.opcodes.withIndex()) {
             print("  ")
             print("%3d".format(index))
@@ -46,15 +43,18 @@ object IRPrinter {
 
             print(opcode::class.simpleName)
 
+            if (opcode is FunctionContainerOpcode)
+                opcode.functionInfo?.let(nestedFunctionInfo::add)
+
             when (opcode) {
                 is Call -> println(" ${opcode.argCount}")
                 is CallWithDirectEvalCheck -> println(" argCount=${opcode.argCount} isStrict=${opcode.isStrict}")
                 is Construct -> println(" ${opcode.argCount}")
-                is CreateAsyncClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
-                is CreateAsyncGeneratorClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
-                is CreateMethod -> println(" <FunctionInfo ${opcode.ir.name}>")
-                is CreateClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
-                is CreateGeneratorClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
+                is CreateAsyncClosure -> println(" <FunctionInfo ${opcode.functionInfo.name}>")
+                is CreateAsyncGeneratorClosure -> println(" <FunctionInfo ${opcode.functionInfo.name}>")
+                is CreateMethod -> println(" <FunctionInfo ${opcode.functionInfo.name}>")
+                is CreateClosure -> println(" <FunctionInfo ${opcode.functionInfo.name}>")
+                is CreateGeneratorClosure -> println(" <FunctionInfo ${opcode.functionInfo.name}>")
                 is DeclareGlobalVars -> {
                     print(" ")
                     if (opcode.vars.isNotEmpty()) {
@@ -110,6 +110,11 @@ object IRPrinter {
                 is CreateTemplateLiteral -> println(" #${opcode.numberOfParts}")
                 else -> println()
             }
+        }
+
+        nestedFunctionInfo.forEach {
+            println()
+            IRPrinter.printInfo(it)
         }
     }
 }

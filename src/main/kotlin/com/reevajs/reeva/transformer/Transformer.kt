@@ -311,7 +311,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             }
         }
 
-        return functionInfo.also(builder::addNestedFunction)
+        return functionInfo
     }
 
     override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
@@ -1722,7 +1722,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             isArrow = false,
         ).also {
             builder = prevBuilder
-            builder.addNestedFunction(it)
         }
     }
 
@@ -1775,7 +1774,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             isArrow = false,
         ).also {
             builder = prevBuilder
-            builder.addNestedFunction(it)
         }
     }
 

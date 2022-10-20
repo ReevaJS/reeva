@@ -728,24 +728,24 @@ class Interpreter(
     }
 
     override fun visitCreateClosure(opcode: CreateClosure) {
-        val function = NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir))
-        AOs.setFunctionName(function, opcode.ir.name.key())
+        val function = NormalInterpretedFunction.create(transformedSource.forInfo(opcode.functionInfo))
+        AOs.setFunctionName(function, opcode.functionInfo.name.key())
         AOs.makeConstructor(function)
-        AOs.setFunctionLength(function, opcode.ir.length)
+        AOs.setFunctionLength(function, opcode.functionInfo.length)
         push(function)
     }
 
     override fun visitCreateGeneratorClosure(opcode: CreateGeneratorClosure) {
-        val function = GeneratorInterpretedFunction.create(transformedSource.forInfo(opcode.ir))
-        AOs.setFunctionName(function, opcode.ir.name.key())
-        AOs.setFunctionLength(function, opcode.ir.length)
+        val function = GeneratorInterpretedFunction.create(transformedSource.forInfo(opcode.functionInfo))
+        AOs.setFunctionName(function, opcode.functionInfo.name.key())
+        AOs.setFunctionLength(function, opcode.functionInfo.length)
         push(function)
     }
 
     override fun visitCreateAsyncClosure(opcode: CreateAsyncClosure) {
-        val function = AsyncInterpretedFunction.create(transformedSource.forInfo(opcode.ir))
-        AOs.setFunctionName(function, opcode.ir.name.key())
-        AOs.setFunctionLength(function, opcode.ir.length)
+        val function = AsyncInterpretedFunction.create(transformedSource.forInfo(opcode.functionInfo))
+        AOs.setFunctionName(function, opcode.functionInfo.name.key())
+        AOs.setFunctionLength(function, opcode.functionInfo.length)
         push(function)
     }
 
@@ -911,7 +911,7 @@ class Interpreter(
     }
 
     override fun visitCreateClassConstructor(opcode: CreateMethod) {
-        push(NormalInterpretedFunction.create(transformedSource.forInfo(opcode.ir)))
+        push(NormalInterpretedFunction.create(transformedSource.forInfo(opcode.functionInfo)))
     }
 
     override fun visitCreateClass() {
@@ -968,7 +968,7 @@ class Interpreter(
             opcode.kind,
             if (opcode.isStatic) constructor else proto,
             enumerable = false,
-            opcode.ir,
+            opcode.functionInfo,
         )
     }
 
@@ -980,7 +980,7 @@ class Interpreter(
             opcode.kind,
             if (opcode.isStatic) constructor else proto,
             enumerable = false,
-            opcode.ir,
+            opcode.functionInfo,
         )
     }
 
