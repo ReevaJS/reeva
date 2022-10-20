@@ -16,7 +16,7 @@ import com.reevajs.reeva.utils.toValue
  * because BuiltinFunction is reserved for those functions which use a MethodHandle to
  * a static method for their implementation.
  */
-abstract class JSNativeFunction protected constructor(
+abstract class JSNativeFunction @JvmOverloads protected constructor(
     realm: Realm,
     protected val name: String,
     protected val length: Int,

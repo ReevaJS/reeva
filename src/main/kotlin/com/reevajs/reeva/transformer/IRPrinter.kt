@@ -54,9 +54,16 @@ object IRPrinter {
                 is CreateAsyncGeneratorClosure -> println(" <FunctionInfo ${opcode.functionInfo.name}>")
                 is CreateConstructor -> println(" <FunctionInfo ${opcode.functionInfo.name}>")
                 is CreateClosure -> println(" <FunctionInfo ${opcode.functionInfo.name}>")
-                is CreateClassMethodDescriptor -> println(" name=${opcode.name} static=${opcode.isStatic}")
-                is CreateComputedClassMethodDescriptor -> println(" static=${opcode.isStatic}")
-                is CreateClass -> println(" numMethods=${opcode.numMethods}")
+                is CreateClassFieldDescriptor -> {
+                    print(" static=${opcode.isStatic}")
+                    if (opcode.functionInfo != null) {
+                        println(" <FunctionInfo ${opcode.functionInfo.name}>")
+                    } else {
+                        println()
+                    }
+                }
+                is CreateClassMethodDescriptor -> println(" static=${opcode.isStatic} <FunctionInfo ${opcode.functionInfo.name}>")
+                is CreateClass -> println(" numFields=${opcode.numFields} numMethods=${opcode.numMethods}")
                 is CreateGeneratorClosure -> println(" <FunctionInfo ${opcode.functionInfo.name}>")
                 is DeclareGlobalVars -> {
                     print(" ")

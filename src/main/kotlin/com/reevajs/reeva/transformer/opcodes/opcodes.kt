@@ -589,46 +589,10 @@ class JumpIfNullish(val nullishTarget: BlockIndex, val elseTarget: BlockIndex) :
 /////////////
 
 /**
- * Creates a class. Note that this is a temporary data class to allow proper
- * setup of class methods. FinalizeClass must be called on the result in order
- * to get the JS class.
- *
- * Stack:
- *   ... ctor superClass <methods> ... class
- */
-class CreateClass(val numMethods: Int) : Opcode(-1 - numMethods)
-
-/**
  * Creates a method. Works similarly to CreateClosure but without
  * unnecessary Operations calls.
  */
 class CreateConstructor(val functionInfo: FunctionInfo) : Opcode(1)
-
-/**
- * Creates a class method descriptor for the CreateClass opcode.
- *
- * Stack:
- *   ... -> descriptor
- */
-class CreateClassMethodDescriptor(
-    val name: String,
-    val isStatic: Boolean,
-    val kind: MethodDefinitionNode.Kind,
-    val functionInfo: FunctionInfo,
-) : Opcode(1)
-
-
-/**
- * Creates a class method descriptor for the CreateClass opcode with a computed name.
- *
- * Stack:
- *   ... name -> descriptor
- */
-class CreateComputedClassMethodDescriptor(
-    val isStatic: Boolean,
-    val kind: MethodDefinitionNode.Kind,
-    val functionInfo: FunctionInfo,
-) : Opcode(0)
 
 /**
  * Retrieves the currently active super constructor (the prototype of the
@@ -641,6 +605,39 @@ object GetSuperConstructor : Opcode(1)
  * of the function at the top of the callstack).
  */
 object GetSuperBase : Opcode(1)
+
+/**
+ * Creates a class field descriptor for the CreateClass opcode.
+ *
+ * Stack:
+ *   ... name (JSValue) -> descriptor
+ */
+class CreateClassFieldDescriptor(
+    val isStatic: Boolean,
+    val functionInfo: FunctionInfo?,
+) : Opcode(0)
+
+/**
+ * Creates a class method descriptor for the CreateClass opcode.
+ *
+ * Stack:
+ *   ... name (JSValue) -> descriptor
+ */
+class CreateClassMethodDescriptor(
+    val isStatic: Boolean,
+    val kind: MethodDefinitionNode.Kind,
+    val functionInfo: FunctionInfo,
+) : Opcode(0)
+
+/**
+ * Creates a class. Note that this is a temporary data class to allow proper
+ * setup of class methods. FinalizeClass must be called on the result in order
+ * to get the JS class.
+ *
+ * Stack:
+ *   ... <fields> <methods> ctor superClass -> class
+ */
+class CreateClass(val numFields: Int, val numMethods: Int) : Opcode(-1 - numFields - numMethods)
 
 //////////////////
 // Control flow //

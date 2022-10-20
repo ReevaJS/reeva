@@ -84,6 +84,7 @@ data class PropertyKey private constructor(internal val value: Any) {
                     else -> PropertyKey(value)
                 }
                 is Double -> PropertyKey(value.toString())
+                is JSNumber -> PropertyKey(value.number.toString())
                 is JSSymbol -> PropertyKey(value)
                 is JSObject.StringOrSymbol -> if (value.isString) {
                     from(value.asString)

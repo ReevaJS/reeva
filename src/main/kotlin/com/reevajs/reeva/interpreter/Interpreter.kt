@@ -11,6 +11,7 @@ import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.collections.JSUnmappedArgumentsObject
 import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
 import com.reevajs.reeva.runtime.functions.JSFunction
+import com.reevajs.reeva.runtime.functions.JSRunnableFunction
 import com.reevajs.reeva.runtime.iterators.JSObjectPropertyIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
@@ -891,36 +892,33 @@ class Interpreter(
     override fun visitCreateConstructor(opcode: CreateConstructor) {
         push(NormalInterpretedFunction.create(opcode.functionInfo))
     }
-
+    
+    override fun visitCreateClassFieldDescriptor(opcode: CreateClassFieldDescriptor) {
+        // This is kind of weird, but there's no reason to make a whole new class to store the
+        // exact same data. Might as well just use the opcode itself
+        push(opcode)
+    }
+    
     override fun visitCreateClassMethodDescriptor(opcode: CreateClassMethodDescriptor) {
-        push(ClassMethodDescriptor(
-            opcode.name.key(),
-            opcode.isStatic,
-            opcode.kind,
-            opcode.functionInfo,
-        ))
+        // See comment above
+        push(opcode)
     }
-
-    override fun visitCreateComputedClassMethodDescriptor(opcode: CreateComputedClassMethodDescriptor) {
-        push(ClassMethodDescriptor(
-            popValue().key(),
-            opcode.isStatic,
-            opcode.kind,
-            opcode.functionInfo,
-        ))
-    }
-
-    data class ClassMethodDescriptor(
-        val name: PropertyKey,
-        val isStatic: Boolean,
-        val kind: MethodDefinitionNode.Kind,
-        val ir: FunctionInfo,
-    )
 
     override fun visitCreateClass(opcode: CreateClass) {
-        val methodDescriptors = (0 until opcode.numMethods).map { pop() as ClassMethodDescriptor }
         val superClass = popValue()
         val constructor = popValue() as JSFunction
+
+        val methodDescriptors = (0 until opcode.numMethods).map {
+            val descriptor = pop() as CreateClassMethodDescriptor
+            val name = popValue()
+            name.toPropertyKey() to descriptor
+        }
+
+        val fieldDescriptors = (0 until opcode.numFields).map {
+            val descriptor = pop() as CreateClassFieldDescriptor
+            val name = popValue()
+            name.toPropertyKey() to descriptor
+        }
 
         val protoParent: JSValue
         val constructorParent: JSObject
@@ -934,9 +932,13 @@ class Interpreter(
                 protoParent = JSNull
                 constructorParent = realm.functionProto
             }
-            !AOs.isConstructor(superClass) ->
-                Errors.NotACtor(superClass.toJSString().string).throwTypeError()
             else -> {
+                if (generateJVMClassIfNecessary(superClass, constructor, fieldDescriptors, methodDescriptors))
+                    return
+
+                if (!AOs.isConstructor(superClass))
+                    Errors.NotACtor(superClass.toJSString().string).throwTypeError()
+
                 protoParent = superClass.get("prototype")
                 if (protoParent != JSNull && protoParent !is JSObject)
                     Errors.TODO("superClass.prototype invalid type").throwTypeError()
@@ -947,8 +949,6 @@ class Interpreter(
         val proto = JSObject.create(proto = protoParent)
         AOs.makeClassConstructor(constructor)
 
-        // TODO// Operations.setFunctionName(constructor, className)
-
         AOs.makeConstructor(constructor, false, proto)
 
         if (superClass != JSEmpty)
@@ -958,17 +958,56 @@ class Interpreter(
         AOs.makeMethod(constructor, proto)
         AOs.createMethodProperty(proto, "constructor".key(), constructor)
 
-        for (descriptor in methodDescriptors) {
+        if (fieldDescriptors.isNotEmpty()) {
+            // Set up the class initializer method
+
+            val staticDescriptors = fieldDescriptors.filter { it.second.isStatic }
+            val instanceDescriptors = fieldDescriptors.filter { !it.second.isStatic }
+
+            val function = JSRunnableFunction.create("<class initializer method>", 1) { arguments ->
+                for ((name, descriptor) in instanceDescriptors) {
+                    val value = descriptor?.functionInfo?.let { 
+                        Interpreter(it, emptyList()).interpret()
+                    } ?: JSUndefined
+
+                    AOs.definePropertyOrThrow(arguments.thisValue, name, Descriptor(value, attrs { +conf; +writ }))
+                }
+
+                JSUndefined
+            }
+
+            AOs.definePropertyOrThrow(constructor, Realm.InternalSymbols.classInstanceFields, Descriptor(function))
+            
+            for ((name, descriptor) in staticDescriptors) {
+                val value = descriptor?.functionInfo?.let {
+                    Interpreter(it, emptyList()).interpret()
+                } ?: JSUndefined
+
+                AOs.definePropertyOrThrow(constructor, name, Descriptor(value, attrs { +conf; +writ }))
+            }
+        }
+
+        for ((name, descriptor) in methodDescriptors) {
             methodDefinitionEvaluation(
-                descriptor.name,
+                name,
                 descriptor.kind,
                 if (descriptor.isStatic) constructor else proto,
                 enumerable = false,
-                descriptor.ir,
+                descriptor.functionInfo,
             )
         }
 
         push(constructor)
+    }
+
+    fun generateJVMClassIfNecessary(
+        superClass: JSValue, 
+        constructor: JSValue, 
+        fieldDescriptors: List<Pair<PropertyKey, CreateClassFieldDescriptor>>, 
+        methodDescriptors: List<Pair<PropertyKey, CreateClassMethodDescriptor>>,
+    ): Boolean {
+        // TODO
+        return false
     }
 
     private fun methodDefinitionEvaluation(

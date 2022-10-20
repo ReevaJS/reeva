@@ -28,18 +28,18 @@ class PropertyName(
     val expression: ExpressionNode,
     val type: Type,
 ) : ASTNodeBase(listOf(expression)) {
-    fun asString() = when (type) {
-        Type.Identifier -> (expression as IdentifierNode).processedName
-        Type.String -> (expression as StringLiteralNode).value
-        Type.Number -> AOs.numberToString((expression as NumericLiteralNode).value)
-        Type.Computed -> "[computed method name]"
-    }
-
     enum class Type {
         Identifier, // expression is IdentifierNode
         String, // expression is StringLiteralNode
         Number, // expresion is NumericLiteralNode
         Computed, // expression is any ExpressionNode
+    }
+
+    override fun toString() = when (type) {
+        Type.Identifier -> (expression as IdentifierNode).processedName
+        Type.String -> (expression as StringLiteralNode).value
+        Type.Number -> AOs.numberToString((expression as NumericLiteralNode).value)
+        Type.Computed -> "[computed method name]"
     }
 }
 

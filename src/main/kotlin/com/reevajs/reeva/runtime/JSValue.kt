@@ -3,8 +3,8 @@ package com.reevajs.reeva.runtime
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.*
-import com.reevajs.reeva.utils.ecmaAssert
-import com.reevajs.reeva.utils.expect
+import com.reevajs.reeva.utils.*
+import java.math.BigInteger
 import kotlin.math.floor
 
 abstract class JSValue {
@@ -183,6 +183,16 @@ abstract class JSValue {
 
     companion object {
         val INVALID_VALUE = object : JSValue() {}
+
+        @JvmStatic
+        fun from(value: Any) = when (value) {
+            is Boolean -> value.toValue()
+            is String -> value.toValue()
+            is Char -> value.toValue()
+            is BigInteger -> value.toValue()
+            is Number -> value.toValue()
+            else -> throw IllegalArgumentException("Cannot convert ${this::class.simpleName} to a JSValue")
+        }
     }
 }
 

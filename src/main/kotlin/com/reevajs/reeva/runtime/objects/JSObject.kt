@@ -12,7 +12,7 @@ import com.reevajs.reeva.utils.*
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
-open class JSObject protected constructor(
+open class JSObject @JvmOverloads protected constructor(
     val realm: Realm,
     private var prototypeBacker: JSValue = JSNull,
 ) : JSValue() {

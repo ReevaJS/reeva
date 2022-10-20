@@ -49,6 +49,14 @@ class Transformer : ASTVisitor {
         )
     }
 
+    fun transform(expression: ExpressionNode): IR {
+        expect(!::builder.isInitialized, "Cannot reuse a Transformer")
+        builder = IRBuilder(0, 0)
+        visit(expression)
+        +Return
+        return builder.build()
+    }
+
     private fun enterScope(scope: Scope) {
         currentScope = scope
 
@@ -147,6 +155,7 @@ class Transformer : ASTVisitor {
         kind: AOs.FunctionKind,
         classConstructorKind: JSFunction.ConstructorKind? = null,
         instantiateFunction: Boolean = true,
+        classFieldInitializer: () -> Unit = {},
     ): FunctionInfo {
         val prevBuilder = builder
         builder = IRBuilder(parameters.size + RESERVED_LOCALS_COUNT, functionScope.inlineableLocalCount)
@@ -240,6 +249,8 @@ class Transformer : ASTVisitor {
                 }
             }
         }
+
+        classFieldInitializer()
 
         for (func in functionsToInitialize) {
             visitFunctionHelper(
@@ -1596,27 +1607,57 @@ class Transformer : ASTVisitor {
     }
 
     private fun visitClassImpl(name: String?, node: ClassNode) {
-        val instanceFields = mutableListOf<ClassFieldNode>()
-        val staticFields = mutableListOf<ClassFieldNode>()
-        val methods = mutableListOf<ClassMethodNode>()
         var constructor: ClassMethodNode? = null
 
-        node.body.forEach {
-            if (it is ClassFieldNode) {
-                if (it.isStatic) {
-                    staticFields.add(it)
-                } else {
-                    instanceFields.add(it)
-                }
-            } else {
-                val method = it as ClassMethodNode
-                if (method.isConstructor()) {
-                    expect(constructor == null)
-                    constructor = method
-                } else {
-                    methods.add(method)
-                }
+        var numFields = 0
+        var numMethods = 0
+
+        node.body.filterIsInstance<ClassFieldNode>().forEach {
+            numFields++
+            visitPropertyName(it.identifier)
+
+            val info = if (it.initializer != null) {
+                FunctionInfo(
+                    "<class instance field initializer \"${it.identifier}\">",
+                    Transformer().transform(it.initializer),
+                    isStrict = true,
+                    0,
+                    isTopLevel = false,
+                    isGenerator = false,
+                    isArrow = false,
+                )
+            } else null
+
+            +CreateClassFieldDescriptor(it.isStatic, info)
+        }
+
+        node.body.filterIsInstance<ClassMethodNode>().forEach {
+            if (it.isConstructor()) {
+                expect(constructor == null)
+                constructor = it
+                return@forEach
             }
+
+            numMethods++
+
+            val method = it.method
+            val propName = method.propName
+
+            visitPropertyName(propName)
+
+            val functionInfo = visitFunctionHelper(
+                propName.toString(),
+                method.parameters,
+                method.body,
+                method.functionScope,
+                method.body.scope,
+                isStrict = true,
+                isArrow = false,
+                method.kind.toFunctionKind(),
+                instantiateFunction = false,
+            )
+
+            +CreateClassMethodDescriptor(it.isStatic, method.kind, functionInfo)
         }
 
         val constructorKind = if (node.heritage == null) {
@@ -1636,12 +1677,15 @@ class Transformer : ASTVisitor {
                 isArrow = false,
                 AOs.FunctionKind.Normal,
                 classConstructorKind = constructorKind,
-            )
+            ) {
+                if (numFields > 0)
+                    callClassInstanceFieldInitializer()
+            }
         } else {
             val info = makeImplicitClassConstructor(
                 name ?: "<anonymous class constructor>",
                 constructorKind,
-                instanceFields.isNotEmpty(),
+                numFields > 0,
             )
             +CreateConstructor(info)
         }
@@ -1652,59 +1696,7 @@ class Transformer : ASTVisitor {
             +PushEmpty
         }
 
-        // ctor superCtor
-
-        for (classMethod in methods) {
-            val method = classMethod.method
-            val propName = method.propName
-            val isComputed = propName.type == PropertyName.Type.Computed
-
-            val functionInfo = visitFunctionHelper(
-                propName.asString(),
-                method.parameters,
-                method.body,
-                method.functionScope,
-                method.body.scope,
-                isStrict = true,
-                isArrow = false,
-                method.kind.toFunctionKind(),
-                constructorKind,
-                instantiateFunction = false,
-            )
-
-            // If the name is computed, that comes before the method register
-            if (isComputed) {
-                // TODO: Cast to property name
-                visitExpression(propName.expression)
-                +CreateComputedClassMethodDescriptor(classMethod.isStatic, method.kind, functionInfo)
-            } else {
-                +CreateClassMethodDescriptor(propName.asString(), classMethod.isStatic, method.kind, functionInfo)
-            }
-        }
-
-        +CreateClass(methods.size)
-
-        // Process fields
-        // Instance fields are initialized in a dedicated method, whereas static fields
-        // are created on the class after it is created with CreateClass
-
-        if (instanceFields.isEmpty() && staticFields.isEmpty())
-            return
-
-        if (instanceFields.isNotEmpty()) {
-            +Dup
-            val instanceFieldInitializerMethod = makeClassFieldInitializerMethod(instanceFields)
-            +CreateClosure(instanceFieldInitializerMethod)
-            +Dup
-            +PushEmpty // Value doesn't matter, just needs to be not undefined
-            +StoreNamedProperty(Realm.InternalSymbols.isClassInstanceFieldInitializer, currentScope!!.isStrict)
-            +StoreNamedProperty(Realm.InternalSymbols.classInstanceFields, currentScope!!.isStrict)
-        }
-
-        for (field in staticFields) {
-            +Dup
-            storeClassField(field)
-        }
+        +CreateClass(numFields, numMethods)
     }
 
     private fun makeClassFieldInitializerMethod(fields: List<ClassFieldNode>): FunctionInfo {
@@ -1966,12 +1958,10 @@ class Transformer : ASTVisitor {
                         visitExpression(property.value)
                     }
                 }
-
                 is ShorthandProperty -> {
                     visitExpression(property.key)
                     +StoreNamedProperty(property.key.processedName, currentScope!!.isStrict)
                 }
-
                 is MethodProperty -> {
                     val method = property.method
 
@@ -2007,7 +1997,6 @@ class Transformer : ASTVisitor {
                         }
                     }
                 }
-
                 is SpreadProperty -> TODO()
             }
         }

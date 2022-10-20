@@ -114,8 +114,8 @@ interface OpcodeVisitor {
             is PushJVMInt -> visitPushJVMInt(opcode)
             is CreateConstructor -> visitCreateConstructor(opcode)
             is CreateClass -> visitCreateClass(opcode)
+            is CreateClassFieldDescriptor -> visitCreateClassFieldDescriptor(opcode)
             is CreateClassMethodDescriptor -> visitCreateClassMethodDescriptor(opcode)
-            is CreateComputedClassMethodDescriptor -> visitCreateComputedClassMethodDescriptor(opcode)
             is LoadModuleVar -> visitLoadModuleVar(opcode)
             is StoreModuleVar -> visitStoreModuleVar(opcode)
             CollectRestArgs -> visitCollectRestArgs()
@@ -344,9 +344,9 @@ interface OpcodeVisitor {
 
     fun visitCreateClass(opcode: CreateClass)
 
-    fun visitCreateClassMethodDescriptor(opcode: CreateClassMethodDescriptor)
+    fun visitCreateClassFieldDescriptor(opcode: CreateClassFieldDescriptor)
 
-    fun visitCreateComputedClassMethodDescriptor(opcode: CreateComputedClassMethodDescriptor)
+    fun visitCreateClassMethodDescriptor(opcode: CreateClassMethodDescriptor)
 
     fun visitLoadModuleVar(opcode: LoadModuleVar)
 
