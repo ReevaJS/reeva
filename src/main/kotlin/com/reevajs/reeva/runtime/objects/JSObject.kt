@@ -364,6 +364,17 @@ open class JSObject @JvmOverloads protected constructor(
         defineBuiltinAccessor(name.key(), "get [${name.description}]", attributes, builtin, isGetter = true)
     }
 
+    @JvmOverloads
+    fun defineBuiltinGetter(
+        key: PropertyKey,
+        builtin: BuiltinFunction,
+        attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
+    ) {
+        if (key.isSymbol) {
+            defineBuiltinGetter(key.asSymbol, builtin, attributes)
+        } else defineBuiltinGetter(key.toString(), builtin, attributes)
+    }
+
     fun defineBuiltinSetter(
         name: String,
         builtin: BuiltinFunction,
@@ -378,6 +389,17 @@ open class JSObject @JvmOverloads protected constructor(
         attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
     ) {
         defineBuiltinAccessor(name.key(), "set [${name.description}]", attributes, builtin, isGetter = false)
+    }
+
+    @JvmOverloads
+    fun defineBuiltinSetter(
+        key: PropertyKey,
+        builtin: BuiltinFunction,
+        attributes: Int = Descriptor.DEFAULT_ATTRIBUTES,
+    ) {
+        if (key.isSymbol) {
+            defineBuiltinSetter(key.asSymbol, builtin, attributes)
+        } else defineBuiltinSetter(key.toString(), builtin, attributes)
     }
 
     private fun defineBuiltinAccessor(
@@ -437,6 +459,18 @@ open class JSObject @JvmOverloads protected constructor(
         defineBuiltin(name.key(), "[${name.description}]", length, builtin, attributes)
     }
 
+    @JvmOverloads
+    fun defineBuiltin(
+        key: PropertyKey,
+        length: Int,
+        builtin: BuiltinFunction,
+        attributes: Int = attrs { +conf; -enum; +writ },
+    ) {
+        if (key.isSymbol) {
+            defineBuiltin(key.asSymbol, length, builtin, attributes)
+        } else defineBuiltin(key.toString(), length, builtin)
+    }
+
     private fun defineBuiltin(
         key: PropertyKey,
         jsName: String,
@@ -462,6 +496,7 @@ open class JSObject @JvmOverloads protected constructor(
     @Suppress("UNCHECKED_CAST")
     fun <T> getSlotOrNull(slot: Slot<T>): T? = slots[slot] as T?
 
+    @JvmName("setSlot")
     fun <T> setSlot(slot: Slot<T>, value: T?) {
         slots[slot] = value
     }

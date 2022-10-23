@@ -2,16 +2,18 @@ package com.reevajs.reeva.runtime
 
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.jvmcompat.JSPackageObject
+import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.functions.JSBuiltinFunction
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.other.URIParser
 import com.reevajs.reeva.runtime.primitives.JSNumber
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.*
+import java.lang.reflect.Modifier
 
 open class JSGlobalObject protected constructor(
     realm: Realm,
@@ -247,32 +249,30 @@ open class JSGlobalObject protected constructor(
 
         @JvmStatic
         fun jvm(arguments: JSArguments): JSValue {
-            // TODO
-            return JSUndefined
+           if (arguments.isEmpty())
+               Errors.JVMCompat.JVMFuncNoArgs.throwTypeError()
 
-//        if (arguments.isEmpty())
-//            Errors.JVMCompat.JVMFuncNoArgs.throwTypeError()
-//
-//        if (arguments.any { it !is JSClassObject })
-//            Errors.JVMCompat.JVMFuncBadArgType.throwTypeError()
-//
-//        val classObjects = arguments.map { (it as JSClassObject).clazz }
-//        if (classObjects.count { it.isInterface } > 1)
-//            Errors.JVMCompat.JVMFuncMultipleBaseClasses.throwTypeError()
-//
-//        classObjects.firstOrNull {
-//            Modifier.isFinal(it.modifiers)
-//        }?.let {
-//            Errors.JVMCompat.JVMFuncFinalClass(it.name).throwTypeError()
-//        }
-//
-//        val baseClass = classObjects.firstOrNull { !it.isInterface }
-//        val interfaces = classObjects.filter { it.isInterface }
-//
-//        return JSClassObject.create(
-//            realm,
-//            ProxyClassCompiler().makeProxyClass(baseClass, interfaces)
-//        )
+           if (arguments.any { it !is JSClassObject })
+               Errors.JVMCompat.JVMFuncBadArgType.throwTypeError()
+
+           val classObjects = arguments.map { (it as JSClassObject).clazz }
+           if (classObjects.count { !it.isInterface } > 1)
+               Errors.JVMCompat.ExtendMultipleBaseClasses.throwTypeError()
+
+           classObjects.firstOrNull {
+               Modifier.isFinal(it.modifiers)
+           }?.let {
+               Errors.JVMCompat.JVMFuncFinalClass(it.name).throwTypeError()
+           }
+
+           val superClass = classObjects.firstOrNull { !it.isInterface }
+           val interfaces = classObjects.filter { it.isInterface }
+
+            val tempObject = create()
+            tempObject[Slot.SuperClass] = superClass
+            tempObject[Slot.Interfaces] = interfaces
+
+            return tempObject
         }
 
         @JvmStatic

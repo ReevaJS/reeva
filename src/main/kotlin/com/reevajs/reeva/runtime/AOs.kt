@@ -1227,6 +1227,7 @@ object AOs {
         return function.call(arguments)
     }
 
+    @JvmStatic
     @JvmOverloads
     fun call(function: JSValue, thisValue: JSValue, arguments: List<JSValue> = emptyList()): JSValue {
         return call(function, JSArguments(arguments, thisValue))
@@ -1240,6 +1241,7 @@ object AOs {
         return constructor.construct(arguments)
     }
 
+    @JvmStatic
     @JvmOverloads
     fun construct(
         constructor: JSValue,
@@ -1515,6 +1517,7 @@ object AOs {
     }
 
     @JvmStatic
+    @JvmOverloads
     @ECMAImpl("7.4.10")
     fun iterableToList(items: JSValue, method: JSValue? = null): List<JSValue> {
         val iteratorRecord = getIterator(items, method = method as? JSFunction)

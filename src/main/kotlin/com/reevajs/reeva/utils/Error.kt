@@ -9,30 +9,37 @@ import com.reevajs.reeva.runtime.errors.*
 import com.reevajs.reeva.runtime.objects.PropertyKey
 
 open class Error(private val message: String) {
+    @JvmOverloads
     fun throwEvalError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
         throw ThrowException(JSEvalErrorObject.create(message, realm))
     }
 
+    @JvmOverloads
     fun throwInternalError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
         throw ThrowException(JSInternalErrorObject.create(message, realm))
     }
 
+    @JvmOverloads
     fun throwTypeError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
         throw ThrowException(JSTypeErrorObject.create(message, realm))
     }
 
+    @JvmOverloads
     fun throwRangeError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
         throw ThrowException(JSRangeErrorObject.create(message, realm))
     }
 
+    @JvmOverloads
     fun throwReferenceError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
         throw ThrowException(JSReferenceErrorObject.create(message, realm))
     }
 
+    @JvmOverloads
     fun throwSyntaxError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
         throw ThrowException(JSSyntaxErrorObject.create(message, realm))
     }
 
+    @JvmOverloads
     fun throwURIError(realm: Realm = Agent.activeAgent.getActiveRealm()): Nothing {
         throw ThrowException(JSURIErrorObject.create(message, realm))
     }
@@ -174,7 +181,7 @@ object Errors {
 
     object JVMClass {
         object InvalidCall : Error("JVM class object must be called with \"new\"")
-        class NoPublicCtors(fullName: String) : Error("JVM class $fullName has no public constructors")
+        class NoValidCtors(fullName: String) : Error("JVM class $fullName has no public constructors")
         class NoValidCtor(className: String, providedTypes: List<String>) :
             Error("no constructor found for class $className with types: ${providedTypes.joinToString()}")
         class AmbiguousCtors(className: String, providedTypes: List<String>) : Error(
@@ -211,6 +218,19 @@ object Errors {
             "invalid set of JVM field $fieldName on class $className. " +
                 "Expected type: $expectedType, received type: $receivedType"
         )
+
+        class ConflictingField(className: String, fieldName: String) : Error(
+            "class field $fieldName which conflicts with a field in the JVM super class $className"
+        )
+        class ConflictingStaticInstanceMethod(jsMethodIsStatic: Boolean, className: String, methodName: String) : Error(
+            "class has ${if (jsMethodIsStatic) "a static" else "an instance"} method $methodName which conflicts " +
+                "with ${if (jsMethodIsStatic) "an instance" else "a static"} method in the JVM super class $className"
+        )
+        class ConflictingNonAbstractMethod(className: String, methodName: String) : Error(
+            "method $methodName conflicts with non-abstract method in the JVM super class $className"
+        )
+
+        class FinalClass(className: String) : Error("cannot extend final JVM class $className")
     }
 
     object JVMCompat {
@@ -219,9 +239,11 @@ object Errors {
 
         object JVMFuncNoArgs : Error("global jvm function expects at least one argument")
         object JVMFuncBadArgType : Error("global jvm function received an argument that was not a JVM class object")
-        object JVMFuncMultipleBaseClasses :
-            Error("global jvm function can only receive at most one concrete base class")
         class JVMFuncFinalClass(className: String) : Error("cannot extend final JVM class $className")
+        
+        object ExtendMultipleBaseClasses : Error("class cannot extend multiple concrete base classes")
+        object ExtendPackage : Error("cannot extend JVM package")
+        object MixedSuperTargets : Error("cannot extend JVM classes with JS classes")
 
         class JVMNamespaceClassImport(specifier: String) : Error("attempted to namespace import from JVM class " +
             "\"$specifier\"; use a default import instead")

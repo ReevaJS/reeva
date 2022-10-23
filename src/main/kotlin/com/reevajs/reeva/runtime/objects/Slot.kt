@@ -46,6 +46,14 @@ value class Slot<T> private constructor(val index: Int) {
         val UnmappedParameterMap = nextSlot<JSValue>() // [[ParameterMap]]
         val ViewedArrayBuffer = nextSlot<JSObject>()
 
+        // JVM-compat related
+        @get:JvmName("getSuperClass")
+        val SuperClass = nextSlot<Class<*>?>()
+        @get:JvmName("getInterfaces")
+        val Interfaces = nextSlot<List<Class<*>>>()
+        @get:JvmName("getImpl")
+        val Impl = nextSlot<Any>()
+
         private var nextSlotIndex = 0
 
         fun <T> nextSlot() = Slot<T>(nextSlotIndex++)

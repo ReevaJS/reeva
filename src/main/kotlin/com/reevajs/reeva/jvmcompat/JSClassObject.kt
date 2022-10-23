@@ -40,7 +40,7 @@ class JSClassObject private constructor(
         val ctors = clazz.constructors.toList()
 
         if (ctors.isEmpty())
-            Errors.JVMClass.NoPublicCtors(className).throwTypeError(realm)
+            Errors.JVMClass.NoValidCtors(className).throwTypeError(realm)
 
         val matchingCtors = JVMValueMapper.findMatchingSignature(ctors, arguments)
 

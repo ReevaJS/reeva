@@ -6,6 +6,7 @@ import com.reevajs.reeva.core.lifecycle.Executable
 import com.reevajs.reeva.runtime.annotations.ECMAImpl
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.utils.expect
+import java.io.File
 import java.nio.ByteOrder
 import java.util.concurrent.locks.ReentrantLock
 
@@ -13,6 +14,7 @@ class Agent(
     var printIR: Boolean,
     var printAST: Boolean,
     var canBlock: Boolean,
+    var compiledClassDebugDirectory: File?,
     var hostHooks: HostHooks,
 ) {
     private val executionContextStack = ArrayDeque<ExecutionContext>()
@@ -114,6 +116,7 @@ class Agent(
         var printIR = false
         var printAST = false
         var canBlock = true
+        var compiledClassDebugDirectory: File? = null
         var hostHooks = HostHooks()
     }
 
@@ -133,7 +136,13 @@ class Agent(
 
         fun build(block: Builder.() -> Unit): Agent {
             val builder = Builder().apply(block)
-            return Agent(builder.printIR, builder.printAST, builder.canBlock, builder.hostHooks)
+            return Agent(
+                builder.printIR,
+                builder.printAST,
+                builder.canBlock,
+                builder.compiledClassDebugDirectory,
+                builder.hostHooks,
+            )
         }
     }
 }

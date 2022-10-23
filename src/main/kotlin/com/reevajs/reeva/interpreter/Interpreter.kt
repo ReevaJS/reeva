@@ -1,11 +1,14 @@
 package com.reevajs.reeva.interpreter
 
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
+import com.reevajs.reeva.compiler.ClassCompiler
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.core.errors.ThrowException
+import com.reevajs.reeva.jvmcompat.JSClassObject
+import com.reevajs.reeva.jvmcompat.JSPackageObject
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.collections.JSUnmappedArgumentsObject
@@ -16,9 +19,13 @@ import com.reevajs.reeva.runtime.iterators.JSObjectPropertyIterator
 import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
+import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.*
 import com.reevajs.reeva.runtime.regexp.JSRegExpObject
-import com.reevajs.reeva.transformer.*
+import com.reevajs.reeva.transformer.BlockIndex
+import com.reevajs.reeva.transformer.FunctionInfo
+import com.reevajs.reeva.transformer.LocalKind
+import com.reevajs.reeva.transformer.Transformer
 import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.utils.*
 
@@ -1021,8 +1028,26 @@ class Interpreter(
         fieldDescriptors: List<ClassFieldDescriptor>,
         methodDescriptors: List<ClassMethodDescriptor>,
     ): Boolean {
-        // TODO
-        return false
+        // A JS class is a JVM-generated class when one of the following is true:
+        //     - It extends a JVM class (i.e. the ClassHeritage rule of the class's ClassTail rule evaluates
+        //       to a JSClassObject)
+        //     - It extends an array which contains a JSClassObject
+
+        if (superClass !is JSObject)
+            return false
+
+        if (Slot.SuperClass !in superClass && Slot.Interfaces !in superClass)
+            return false
+
+        push(ClassCompiler(
+            name ?: "anonymous",
+            superClass[Slot.SuperClass],
+            superClass[Slot.Interfaces],
+            fieldDescriptors,
+            methodDescriptors,
+        ).compile())
+
+        return true
     }
 
     private fun methodDefinitionEvaluation(

@@ -3,8 +3,8 @@ package com.reevajs.reeva.runtime.collections
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 
-class JSArguments(
-    arguments: List<JSValue>,
+class JSArguments @JvmOverloads constructor(
+    arguments: List<JSValue> = emptyList(),
     val thisValue: JSValue = JSUndefined,
     val newTarget: JSValue = JSUndefined,
 ) : List<JSValue> by arguments {

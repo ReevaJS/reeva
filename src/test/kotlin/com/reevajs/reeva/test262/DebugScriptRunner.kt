@@ -4,7 +4,6 @@ import com.reevajs.reeva.Reeva
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.core.lifecycle.FileSourceInfo
-import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
 import com.reevajs.reeva.runtime.AOs
 import java.io.File
 
@@ -17,6 +16,7 @@ val test262Helpers = listOf(
 fun main() {
     Agent.build {
         printIR = true
+        compiledClassDebugDirectory = File("./demo/classes")
     }.withActiveScope {
         val realm = makeRealmAndInitializeExecutionEnvironment()
 
