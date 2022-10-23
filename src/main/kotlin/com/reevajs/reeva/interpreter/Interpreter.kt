@@ -402,12 +402,7 @@ class Interpreter(
     }
 
     override fun visitLoadNamedProperty(opcode: LoadNamedProperty) {
-        val obj = popValue().toObject()
-        when (val name = opcode.name) {
-            is String -> push(obj.get(name))
-            is JSSymbol -> push(obj.get(name))
-            else -> unreachable()
-        }
+        push(popValue().toObject().get(opcode.name))
     }
 
     override fun visitStoreNamedProperty(opcode: StoreNamedProperty) {
@@ -1072,6 +1067,10 @@ class Interpreter(
 
     override fun visitStoreModuleVar(opcode: StoreModuleVar) {
         moduleEnv!!.initializeBinding(opcode.name, popValue())
+    }
+
+    override fun visitPushClassInstanceFieldsSymbol() {
+        push(Realm.InternalSymbols.classInstanceFields)
     }
 
     private fun jumpToBlock(block: BlockIndex) {

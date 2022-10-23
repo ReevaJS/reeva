@@ -276,26 +276,22 @@ object LoadKeyedProperty : Opcode(-1)
 class StoreKeyedProperty(val isStrict: Boolean) : Opcode(-3)
 
 /**
- * TODO: This shouldn't allow symbols
- *
  * Loads a literal property name from an object. name can be a JVM String or a
  * JSSymbol.
  *
  * Stack:
  *   ... object -> ... value
  */
-class LoadNamedProperty(val name: Any) : Opcode(0)
+class LoadNamedProperty(val name: String) : Opcode(0)
 
 /**
- * TODO: This shouldn't allow symbols
- *
  * Stores a literal property name into an object. name can be a JVM String or a
  * JSSymbol.
  *
  * Stack:
  *   ... object value -> ...
  */
-class StoreNamedProperty(val name: Any, val isStrict: Boolean) : Opcode(-2)
+class StoreNamedProperty(val name: String, val isStrict: Boolean) : Opcode(-2)
 
 /**
  * Creates and pushes a new empty JSObject.
@@ -760,3 +756,8 @@ class CreateTemplateLiteral(val numberOfParts: Int) : Opcode(-numberOfParts + 1)
  * [AOs.IteratorRecord]
  */
 object ForInEnumerate : Opcode(0)
+
+/**
+ * Pushes Realm.InternalSymbols.classInstanceFields symbol onto the stack
+ */
+object PushClassInstanceFieldsSymbol : Opcode(1)

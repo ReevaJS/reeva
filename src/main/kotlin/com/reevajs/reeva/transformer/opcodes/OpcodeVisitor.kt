@@ -119,6 +119,7 @@ interface OpcodeVisitor {
             is LoadModuleVar -> visitLoadModuleVar(opcode)
             is StoreModuleVar -> visitStoreModuleVar(opcode)
             CollectRestArgs -> visitCollectRestArgs()
+            PushClassInstanceFieldsSymbol -> visitPushClassInstanceFieldsSymbol()
         }
     }
 
@@ -353,4 +354,6 @@ interface OpcodeVisitor {
     fun visitStoreModuleVar(opcode: StoreModuleVar)
 
     fun visitCollectRestArgs()
+
+    fun visitPushClassInstanceFieldsSymbol()
 }

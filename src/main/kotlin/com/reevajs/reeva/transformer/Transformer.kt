@@ -1726,7 +1726,7 @@ class Transformer : ASTVisitor {
 
     private fun callClassInstanceFieldInitializer() {
         +PushClosure
-        +LoadNamedProperty(Realm.InternalSymbols.classInstanceFields)
+        +PushClassInstanceFieldsSymbol
         +LoadValue(RECEIVER_LOCAL)
         +Call(0)
         +Pop
