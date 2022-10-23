@@ -919,11 +919,13 @@ class Interpreter(
 
     override fun visitCreateClass(opcode: CreateClass) {
         val superClass = popValue()
-        val constructor = popValue() as JSFunction
 
-        val methodDescriptors = (0 until opcode.numMethods).map {
+        val allMethodDescriptors = (0 until opcode.numMethods).map {
             pop() as ClassMethodDescriptor
         }
+
+        val methodDescriptors = allMethodDescriptors.filter { !it.isConstructor }
+        val constructorDescriptor = allMethodDescriptors.first { it.isConstructor }
 
         val fieldDescriptors = (0 until opcode.numFields).map {
             pop() as ClassFieldDescriptor
@@ -942,16 +944,8 @@ class Interpreter(
                 constructorParent = realm.functionProto
             }
             else -> {
-                if (generateJVMClassIfNecessary(
-                        opcode.name,
-                        superClass,
-                        constructor,
-                        fieldDescriptors,
-                        methodDescriptors
-                    )
-                ) {
+                if (generateJVMClassIfNecessary(opcode.name, superClass, fieldDescriptors, methodDescriptors))
                     return
-                }
 
                 if (!AOs.isConstructor(superClass))
                     Errors.NotACtor(superClass.toJSString().string).throwTypeError()
@@ -962,6 +956,8 @@ class Interpreter(
                 constructorParent = superClass
             }
         }
+
+        val constructor = NormalInterpretedFunction.create(constructorDescriptor.functionInfo)
 
         val proto = JSObject.create(proto = protoParent)
         AOs.makeClassConstructor(constructor)
@@ -1024,7 +1020,6 @@ class Interpreter(
     private fun generateJVMClassIfNecessary(
         name: String?,
         superClass: JSValue,
-        constructor: JSValue,
         fieldDescriptors: List<ClassFieldDescriptor>,
         methodDescriptors: List<ClassMethodDescriptor>,
     ): Boolean {

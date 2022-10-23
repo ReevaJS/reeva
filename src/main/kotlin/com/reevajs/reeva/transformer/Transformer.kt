@@ -1664,7 +1664,7 @@ class Transformer : ASTVisitor {
             JSFunction.ConstructorKind.Base
         } else JSFunction.ConstructorKind.Derived
 
-        if (constructor != null) {
+        val ctor = if (constructor != null) {
             val method = constructor!!.method
 
             visitFunctionHelper(
@@ -1677,18 +1677,21 @@ class Transformer : ASTVisitor {
                 isArrow = false,
                 AOs.FunctionKind.Normal,
                 classConstructorKind = constructorKind,
+                instantiateFunction = false,
             ) {
                 if (numFields > 0)
                     callClassInstanceFieldInitializer()
             }
         } else {
-            val info = makeImplicitClassConstructor(
+            makeImplicitClassConstructor(
                 name ?: "<anonymous class constructor>",
                 constructorKind,
                 numFields > 0,
             )
-            +CreateConstructor(info)
         }
+
+        +PushConstant(name ?: "")
+        +CreateClassMethodDescriptor(false, MethodDefinitionNode.Kind.Normal, true, ctor)
 
         if (node.heritage != null) {
             visit(node.heritage)
@@ -1696,7 +1699,7 @@ class Transformer : ASTVisitor {
             +PushEmpty
         }
 
-        +CreateClass(name, numFields, numMethods)
+        +CreateClass(name, numFields, numMethods + 1 /* for ctor */)
     }
 
     private fun makeClassFieldInitializerMethod(fields: List<ClassFieldNode>): FunctionInfo {

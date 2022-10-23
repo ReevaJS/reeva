@@ -651,9 +651,9 @@ data class ClassMethodDescriptor(
  * to get the JS class.
  *
  * Stack:
- *   ... <fields> <methods> ctor superClass -> class
+ *   ... <fields> <methods> superClass -> class
  */
-class CreateClass(val name: String?, val numFields: Int, val numMethods: Int) : Opcode(-1 - numFields - numMethods)
+class CreateClass(val name: String?, val numFields: Int, val numMethods: Int) : Opcode(-numFields - numMethods)
 
 //////////////////
 // Control flow //
