@@ -491,6 +491,7 @@ open class JSObject @JvmOverloads protected constructor(
     fun hasSlots(names: List<Slot<*>>) = names.all(::hasSlot)
 
     @Suppress("UNCHECKED_CAST")
+    @JvmName("getSlot")
     fun <T> getSlot(slot: Slot<T>): T = slots[slot] as T
 
     @Suppress("UNCHECKED_CAST")

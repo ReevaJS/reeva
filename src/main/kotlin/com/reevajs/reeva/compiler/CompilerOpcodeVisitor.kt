@@ -1,5 +1,6 @@
 package com.reevajs.reeva.compiler
 
+import codes.som.koffee.ClassAssembly
 import codes.som.koffee.MethodAssembly
 import codes.som.koffee.insns.jvm.*
 import codes.som.koffee.insns.sugar.*
@@ -8,6 +9,7 @@ import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
+import com.reevajs.reeva.runtime.collections.JSArguments
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.primitives.*
@@ -19,8 +21,12 @@ import com.reevajs.reeva.utils.unreachable
 import org.objectweb.asm.tree.TryCatchBlockNode
 import java.util.Collections
 
-class CompilerOpcodeVisitor(methodAssembly: MethodAssembly, ir: IR) : MethodAssembly(methodAssembly.node),
-    OpcodeVisitor {
+class CompilerOpcodeVisitor(
+    methodAssembly: MethodAssembly,
+    ir: IR,
+    private val className: String,
+    private val context: ClassCompiler.Context,
+) : MethodAssembly(methodAssembly.node), OpcodeVisitor {
     private val blocks = ir.blocks.mapValues { it.value to makeLabel() }
 
     fun visitIR() {
@@ -80,9 +86,27 @@ class CompilerOpcodeVisitor(methodAssembly: MethodAssembly, ir: IR) : MethodAsse
 
     override fun visitIncInt(opcode: IncInt) = iinc(opcode.local.value)
 
-    override fun visitLoadValue(opcode: LoadValue) = aload(opcode.local.value)
+    override fun visitLoadValue(opcode: LoadValue) {
+        // Handle special cases
+        when (opcode.local.value) {
+            0 -> if (context == ClassCompiler.Context.Impl) {
+                aload_0
+                getfield(className, "wrapper", JSObject::class)
+            } else {
+                aload_0
+                invokevirtual<JSArguments>("getThisValue", JSValue::class)
+            }
+            1 -> TODO()
+            else -> aload(opcode.local.value - 2)
+        }
+    }
 
-    override fun visitStoreValue(opcode: StoreValue) = astore(opcode.local.value)
+    override fun visitStoreValue(opcode: StoreValue) {
+        when (opcode.local.value) {
+            0, 1 -> unreachable()
+            else -> astore(opcode.local.value - 2)
+        }
+    }
 
     private fun visitBinaryOperator(operator: String) {
         ldc(operator)
@@ -471,8 +495,22 @@ class CompilerOpcodeVisitor(methodAssembly: MethodAssembly, ir: IR) : MethodAsse
     override fun visitCreateRegExpObject(opcode: CreateRegExpObject): Nothing =
         TODO("FunctionCompiler::visitCreateRegExpObject")
 
-    override fun visitCreateTemplateLiteral(opcode: CreateTemplateLiteral): Nothing =
-        TODO("FunctionCompiler::visitCreateTemplateLiteral")
+    override fun visitCreateTemplateLiteral(opcode: CreateTemplateLiteral) {
+        val locals = (0 until opcode.numberOfParts).map { astore() }
+
+        construct<JSString>(String::class) {
+            construct<StringBuilder>()
+
+            locals.asReversed().forEach {
+                aload(it)
+                checkcast<JSString>()
+                invokevirtual<JSString>("getString", String::class)
+                invokevirtual<StringBuilder>("append", StringBuilder::class, String::class)
+            }
+
+            invokevirtual<StringBuilder>("toString", String::class)
+        }
+    }
 
     override fun visitForInEnumerate(): Nothing = TODO("FunctionCompiler::visitForInEnumerate")
 

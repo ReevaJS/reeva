@@ -219,6 +219,10 @@ object Errors {
                 "Expected type: $expectedType, received type: $receivedType"
         )
 
+        class FinalFieldSet(className: String, fieldName: String) : Error(
+            "cannot set final field $fieldName of class $className"
+        )
+
         class ConflictingField(className: String, fieldName: String) : Error(
             "class field $fieldName which conflicts with a field in the JVM super class $className"
         )

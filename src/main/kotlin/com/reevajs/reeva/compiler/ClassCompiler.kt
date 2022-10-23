@@ -155,6 +155,7 @@ class ClassCompiler(
                     method(
                         Modifiers(constructor.modifiers),
                         "<init>",
+                        void,
                         Realm::class,
                         JSObject::class,
                         *constructor.parameterTypes,
@@ -162,7 +163,7 @@ class ClassCompiler(
                         aload_0
 
                         for (i in constructor.parameterTypes.indices)
-                            aload(i + 3)
+                            loadType(Type.getType(constructor.parameterTypes[i]), i + 3)
 
                         invokespecial(
                             superClass.canonicalName!!.replace(".", "/"),
@@ -238,9 +239,10 @@ class ClassCompiler(
                             return@method
                         }
 
-                        ldc(Type.getType(targetMethod.returnType))
-                        invokestatic<JVMValueMapper>("jsToJVM", Any::class, JSValue::class, Class::class)
-                        checkcast(targetMethod.returnType)
+                        val returnType = Type.getType(targetMethod.returnType)
+                        ldc(returnType)
+                        invokestatic<JVMValueMapper>("jsToJvm", Any::class, JSValue::class, Class::class)
+                        checkcast(returnType)
 
                         when (targetMethod.returnType) {
                             Int::class.java -> ireturn
@@ -253,7 +255,7 @@ class ClassCompiler(
                 }
 
                 method(private + final, methodName + "Impl", JSValue::class, JSArguments::class) {
-                    CompilerOpcodeVisitor(this, descriptor.functionInfo.ir).visitIR()
+                    CompilerOpcodeVisitor(this, descriptor.functionInfo.ir, implClassPath, Context.Impl).visitIR()
                 }
             }
         }
@@ -317,7 +319,7 @@ class ClassCompiler(
                     checkcast<PropertyKey>()
 
                     if (descriptor.functionInfo != null) {
-                        CompilerOpcodeVisitor(this, descriptor.functionInfo.ir).visitIR()
+                        CompilerOpcodeVisitor(this, descriptor.functionInfo.ir, ctorClassPath, Context.Ctor).visitIR()
                     } else {
                         pushUndefined
                     }
@@ -335,6 +337,7 @@ class ClassCompiler(
                         ctorClassPath,
                         index,
                         "staticMethodKeys",
+                        Context.Ctor,
                     )
                 }
 
@@ -367,8 +370,7 @@ class ClassCompiler(
                 dup
                 val wrapper = astore()
 
-                getstatic<Slot<*>>("Companion", Slot.Companion::class)
-                invokevirtual<Slot.Companion>("getImpl", int)
+                pushSlot("Impl")
 
                 // Generate constructor call
                 if (constructors == null) {
@@ -385,12 +387,14 @@ class ClassCompiler(
                         aload(wrapper)
 
                         for ((index, param) in constructor.parameterTypes.withIndex()) {
+                            val paramType = Type.getType(param)
+
                             aload_1
                             ldc(index)
                             invokevirtual<JSArguments>("argument", JSValue::class, int)
-                            ldc(Type.getType(param))
-                            invokestatic<JVMValueMapper>("jsToJVM", Any::class, JSValue::class, Class::class)
-                            checkcast(param)
+                            ldc(paramType)
+                            invokestatic<JVMValueMapper>("jsToJvm", Any::class, JSValue::class, Class::class)
+                            checkcast(paramType)
                         }
                     }
                 }
@@ -429,9 +433,88 @@ class ClassCompiler(
                 _return
             }
 
+            fun MethodAssembly.getterSetterPrelude(fieldName: String) {
+                aload_0
+                checkcast<JSObject>()
+
+                pushSlot("Impl")
+                invokevirtual<JSObject>("getSlot", Any::class, int)
+
+                dup
+                instanceof(implClassPath)
+                ifStatement(JumpCondition.False) {
+                    pop
+
+                    construct<Errors.JVMClass.IncompatibleFieldGet>(String::class, String::class) {
+                        ldc(className)
+                        ldc(fieldName)
+                    }
+                    invokevirtual<Error>("throwTypeError", Void::class.java)
+                    pop
+
+                    generateUnreachable()
+                }
+
+                checkcast(implClassPath)
+            }
+
             method(public + final, "init", void) {
                 aload_0
                 invokespecial<JSObject>("init", void)
+
+                for (field in this@ClassCompiler.superClass?.declaredFields.orEmpty()) {
+                    if (Modifier.isStatic(field.modifiers) || field.name == "Companion")
+                        continue
+
+                    // receiver
+                    aload_0
+
+                    // Key
+                    ldc(field.name)
+
+                    // attributes
+                    ldc(0)
+
+                    // Getter
+                    IndyUtils(this@assembleClass, this).generateGetter(field.name) {
+                        getterSetterPrelude(field.name)
+                        getfield(implClassPath, field.name, field.type)
+                        boxIfNecessary(field.type)
+                        invokestatic<JVMValueMapper>("jvmToJS", JSValue::class, Any::class)
+                        areturn
+                    }
+
+                    // Setter
+                    IndyUtils(this@assembleClass, this).generateSetter(field.name) {
+                        if (Modifier.isFinal(field.modifiers)) {
+                            construct<Errors.JVMClass.FinalFieldSet>(String::class, String::class) {
+                                ldc(className)
+                                ldc(field.name)
+                            }
+                            invokevirtual<Error>("throwTypeError", Void::class.java)
+                            pop
+                        } else {
+                            getterSetterPrelude(field.name)
+
+                            aload_2
+                            ldc(Type.getType(field.type))
+                            invokestatic<JVMValueMapper>("jsToJvm", Any::class, JSValue::class, Class::class)
+
+                            putfield(implClassPath, field.name, field.type)
+                        }
+
+                        _return
+                    }
+
+                    invokevirtual<JSObject>(
+                        "defineNativeProperty",
+                        void,
+                        String::class,
+                        int,
+                        Function1::class,
+                        Function2::class,
+                    )
+                }
 
                 for ((index, descriptor) in instanceMethodDescriptors.withIndex()) {
                     generateMethodDefinition(
@@ -441,6 +524,7 @@ class ClassCompiler(
                         protoClassPath,
                         index,
                         "instanceMethodKeys",
+                        Context.Proto,
                     )
                 }
 
@@ -457,7 +541,8 @@ class ClassCompiler(
         descriptor: ClassMethodDescriptor,
         thisClass: String,
         keyIndex: Int,
-        keysField: String
+        keysField: String,
+        context: Context,
     ) = with(methodAssembly) {
         with(classAssembly) {
             val isGetterSetter = descriptor.kind.let {
@@ -482,7 +567,7 @@ class ClassCompiler(
 
             // Function
             IndyUtils(classAssembly, methodAssembly).generateMethod(descriptor.key.toString()) {
-                CompilerOpcodeVisitor(this, descriptor.functionInfo.ir).visitIR()
+                CompilerOpcodeVisitor(this, descriptor.functionInfo.ir, classAssembly.name, context).visitIR()
             }
 
             // Set on receiver
@@ -522,13 +607,19 @@ class ClassCompiler(
             val bytes = writer.toByteArray()
 
             Agent.activeAgent.compiledClassDebugDirectory?.let {
-                File(it, node.name.replace('/', '_') + ".class").writeBytes(bytes)
+                File(it, node.name.takeLastWhile { it != '/' } + ".class").writeBytes(bytes)
             }
 
             node.name
 
             return defineClass(node.name.replace('/', '.'), bytes, 0, bytes.size)
         }
+    }
+
+    enum class Context {
+        Impl,
+        Proto,
+        Ctor,
     }
 
     companion object {

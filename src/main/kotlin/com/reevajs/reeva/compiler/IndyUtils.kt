@@ -5,6 +5,7 @@ import codes.som.koffee.ClassAssembly
 import codes.som.koffee.insns.jvm.invokedynamic
 import codes.som.koffee.modifiers.private
 import codes.som.koffee.modifiers.static
+import codes.som.koffee.types.void
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.collections.JSArguments
 import org.objectweb.asm.Handle
@@ -35,27 +36,46 @@ class IndyUtils(private val classAssembly: ClassAssembly, private val methodAsse
         false,
     )
 
-    private var counter = 0
-
     fun generateMethod(name: String, block: MethodAssembly.() -> Unit) {
         generateLambda(
             name,
-            Function1::class,
-            JSValue::class,
-            JSArguments::class,
+            Function1::class.java,
+            JSValue::class.java,
+            JSArguments::class.java,
+            block = block,
+        )
+    }
+
+    fun generateGetter(name: String, block: MethodAssembly.() -> Unit) {
+        generateLambda(
+            "getter_$name",
+            Function1::class.java,
+            JSValue::class.java,
+            JSValue::class.java,
+            block = block,
+        )
+    }
+
+    fun generateSetter(name: String, block: MethodAssembly.() -> Unit) {
+        generateLambda(
+            "setter_$name",
+            Function2::class.java,
+            Void.TYPE,
+            JSValue::class.java,
+            JSValue::class.java,
             block = block,
         )
     }
 
     private fun generateLambda(
         name: String,
-        clazz: KClass<*>,
-        returnType: KClass<*>,
-        vararg parameterTypes: KClass<*>,
+        clazz: Class<*>,
+        returnType: Class<*>,
+        vararg parameterTypes: Class<*>,
         block: MethodAssembly.() -> Unit,
     ) {
         val methodName = "lambda$$name$${counter++}"
-        val methodType = MethodType.methodType(returnType.java, parameterTypes.map { it.java })
+        val methodType = MethodType.methodType(returnType, parameterTypes)
 
         val generatedMethodHandle = Handle(
             Opcodes.H_INVOKESTATIC,
@@ -83,5 +103,9 @@ class IndyUtils(private val classAssembly: ClassAssembly, private val methodAsse
             *parameterTypes,
             routine = block,
         )
+    }
+
+    companion object {
+        private var counter = 0
     }
 }

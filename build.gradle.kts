@@ -22,7 +22,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.7.10")
     implementation("com.github.ReevaJS:mfbt:78080dba4e")
     implementation("com.github.ReevaJS:regexp:78f14e1326")
-    implementation("com.github.ReevaJS:Koffee:59aa22703f")
+    implementation("com.github.ReevaJS:Koffee:315bc11234")
     implementation("org.ow2.asm:asm:9.4")
     implementation("org.ow2.asm:asm-tree:9.4")
     implementation("org.ow2.asm:asm-commons:9.4")
