@@ -2,6 +2,7 @@ package com.reevajs.reeva.transformer.opcodes
 
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.runtime.AOs
+import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.transformer.BlockIndex
 import com.reevajs.reeva.transformer.FunctionInfo
 import com.reevajs.reeva.transformer.Local
@@ -617,6 +618,12 @@ class CreateClassFieldDescriptor(
     override val functionInfo: FunctionInfo?,
 ) : Opcode(0), FunctionContainerOpcode
 
+data class ClassFieldDescriptor(
+    val key: PropertyKey,
+    val isStatic: Boolean,
+    val functionInfo: FunctionInfo?,
+)
+
 /**
  * Creates a class method descriptor for the CreateClass opcode.
  *
@@ -626,8 +633,17 @@ class CreateClassFieldDescriptor(
 class CreateClassMethodDescriptor(
     val isStatic: Boolean,
     val kind: MethodDefinitionNode.Kind,
+    val isConstructor: Boolean,
     override val functionInfo: FunctionInfo,
 ) : Opcode(0), FunctionContainerOpcode
+
+data class ClassMethodDescriptor(
+    val key: PropertyKey,
+    val isStatic: Boolean,
+    val kind: MethodDefinitionNode.Kind,
+    val isConstructor: Boolean,
+    val functionInfo: FunctionInfo,
+)
 
 /**
  * Creates a class. Note that this is a temporary data class to allow proper
@@ -637,7 +653,7 @@ class CreateClassMethodDescriptor(
  * Stack:
  *   ... <fields> <methods> ctor superClass -> class
  */
-class CreateClass(val numFields: Int, val numMethods: Int) : Opcode(-1 - numFields - numMethods)
+class CreateClass(val name: String?, val numFields: Int, val numMethods: Int) : Opcode(-1 - numFields - numMethods)
 
 //////////////////
 // Control flow //

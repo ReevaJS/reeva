@@ -1657,7 +1657,7 @@ class Transformer : ASTVisitor {
                 instantiateFunction = false,
             )
 
-            +CreateClassMethodDescriptor(it.isStatic, method.kind, functionInfo)
+            +CreateClassMethodDescriptor(it.isStatic, method.kind, false, functionInfo)
         }
 
         val constructorKind = if (node.heritage == null) {
@@ -1696,7 +1696,7 @@ class Transformer : ASTVisitor {
             +PushEmpty
         }
 
-        +CreateClass(numFields, numMethods)
+        +CreateClass(name, numFields, numMethods)
     }
 
     private fun makeClassFieldInitializerMethod(fields: List<ClassFieldNode>): FunctionInfo {

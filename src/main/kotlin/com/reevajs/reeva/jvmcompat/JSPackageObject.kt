@@ -13,8 +13,6 @@ class JSPackageObject private constructor(
     realm: Realm,
     val packageName: String?,
 ) : JSObject(realm, realm.objectProto) {
-    private val packageObj = if (packageName == null) null else Package.getPackage(packageName)
-
     override fun init() {
         super.init() 
 
@@ -33,19 +31,13 @@ class JSPackageObject private constructor(
 
         val name = property.asString
 
-        return when {
-            packageName == null -> create(name)
-            packageObj == null -> create("$packageName.$name")
-            else -> {
-                val className = "$packageName.$name"
-                classObjectsCache.getOrPut(className) {
-                    try {
-                        val clazz = Class.forName(className)
-                        JSClassObject.create(clazz)
-                    } catch (e: ClassNotFoundException) {
-                        return create("$packageName.$name")
-                    }
-                }
+        val attemptedClassName = if (packageName != null) "$packageName.$name" else name
+
+        return classObjectsCache.getOrPut(attemptedClassName) {
+            try {
+                JSClassObject.create(Class.forName(attemptedClassName))
+            } catch (e: ClassNotFoundException) {
+                return create(attemptedClassName, realm)
             }
         }
     }

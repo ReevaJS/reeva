@@ -887,16 +887,27 @@ class Interpreter(
     override fun visitCreateConstructor(opcode: CreateConstructor) {
         push(NormalInterpretedFunction.create(opcode.functionInfo))
     }
-    
+
     override fun visitCreateClassFieldDescriptor(opcode: CreateClassFieldDescriptor) {
-        // This is kind of weird, but there's no reason to make a whole new class to store the
-        // exact same data. Might as well just use the opcode itself
-        push(opcode)
+        push(
+            ClassFieldDescriptor(
+                popValue().toPropertyKey(),
+                opcode.isStatic,
+                opcode.functionInfo
+            )
+        )
     }
-    
+
     override fun visitCreateClassMethodDescriptor(opcode: CreateClassMethodDescriptor) {
-        // See comment above
-        push(opcode)
+        push(
+            ClassMethodDescriptor(
+                popValue().toPropertyKey(),
+                opcode.isStatic,
+                opcode.kind,
+                opcode.isConstructor,
+                opcode.functionInfo,
+            )
+        )
     }
 
     override fun visitCreateClass(opcode: CreateClass) {
@@ -904,32 +915,36 @@ class Interpreter(
         val constructor = popValue() as JSFunction
 
         val methodDescriptors = (0 until opcode.numMethods).map {
-            val descriptor = pop() as CreateClassMethodDescriptor
-            val name = popValue()
-            name.toPropertyKey() to descriptor
+            pop() as ClassMethodDescriptor
         }
 
         val fieldDescriptors = (0 until opcode.numFields).map {
-            val descriptor = pop() as CreateClassFieldDescriptor
-            val name = popValue()
-            name.toPropertyKey() to descriptor
+            pop() as ClassFieldDescriptor
         }
 
         val protoParent: JSValue
         val constructorParent: JSObject
 
-        when {
-            superClass == JSEmpty -> {
+        when (superClass) {
+            JSEmpty -> {
                 protoParent = realm.objectProto
                 constructorParent = realm.functionProto
             }
-            superClass == JSNull -> {
+            JSNull -> {
                 protoParent = JSNull
                 constructorParent = realm.functionProto
             }
             else -> {
-                if (generateJVMClassIfNecessary(superClass, constructor, fieldDescriptors, methodDescriptors))
+                if (generateJVMClassIfNecessary(
+                        opcode.name,
+                        superClass,
+                        constructor,
+                        fieldDescriptors,
+                        methodDescriptors
+                    )
+                ) {
                     return
+                }
 
                 if (!AOs.isConstructor(superClass))
                     Errors.NotACtor(superClass.toJSString().string).throwTypeError()
@@ -956,35 +971,39 @@ class Interpreter(
         if (fieldDescriptors.isNotEmpty()) {
             // Set up the class initializer method
 
-            val staticDescriptors = fieldDescriptors.filter { it.second.isStatic }
-            val instanceDescriptors = fieldDescriptors.filter { !it.second.isStatic }
+            val staticDescriptors = fieldDescriptors.filter { it.isStatic }
+            val instanceDescriptors = fieldDescriptors.filter { !it.isStatic }
 
             val function = JSRunnableFunction.create("<class initializer method>", 1) { arguments ->
-                for ((name, descriptor) in instanceDescriptors) {
-                    val value = descriptor?.functionInfo?.let { 
+                for (descriptor in instanceDescriptors) {
+                    val value = descriptor.functionInfo?.let {
                         Interpreter(it, emptyList()).interpret()
                     } ?: JSUndefined
 
-                    AOs.definePropertyOrThrow(arguments.thisValue, name, Descriptor(value, attrs { +conf; +writ }))
+                    AOs.definePropertyOrThrow(
+                        arguments.thisValue,
+                        descriptor.key,
+                        Descriptor(value, attrs { +conf; +writ })
+                    )
                 }
 
                 JSUndefined
             }
 
             AOs.definePropertyOrThrow(constructor, Realm.InternalSymbols.classInstanceFields, Descriptor(function))
-            
-            for ((name, descriptor) in staticDescriptors) {
-                val value = descriptor?.functionInfo?.let {
+
+            for (descriptor in staticDescriptors) {
+                val value = descriptor.functionInfo?.let {
                     Interpreter(it, emptyList()).interpret()
                 } ?: JSUndefined
 
-                AOs.definePropertyOrThrow(constructor, name, Descriptor(value, attrs { +conf; +writ }))
+                AOs.definePropertyOrThrow(constructor, descriptor.key, Descriptor(value, attrs { +conf; +writ }))
             }
         }
 
-        for ((name, descriptor) in methodDescriptors) {
+        for (descriptor in methodDescriptors) {
             methodDefinitionEvaluation(
-                name,
+                descriptor.key,
                 descriptor.kind,
                 if (descriptor.isStatic) constructor else proto,
                 enumerable = false,
@@ -995,11 +1014,12 @@ class Interpreter(
         push(constructor)
     }
 
-    fun generateJVMClassIfNecessary(
-        superClass: JSValue, 
-        constructor: JSValue, 
-        fieldDescriptors: List<Pair<PropertyKey, CreateClassFieldDescriptor>>, 
-        methodDescriptors: List<Pair<PropertyKey, CreateClassMethodDescriptor>>,
+    private fun generateJVMClassIfNecessary(
+        name: String?,
+        superClass: JSValue,
+        constructor: JSValue,
+        fieldDescriptors: List<ClassFieldDescriptor>,
+        methodDescriptors: List<ClassMethodDescriptor>,
     ): Boolean {
         // TODO
         return false
