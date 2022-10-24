@@ -6,10 +6,7 @@ import codes.som.koffee.insns.sugar.construct
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.runtime.objects.Slot
-import com.reevajs.reeva.runtime.primitives.JSFalse
-import com.reevajs.reeva.runtime.primitives.JSNull
-import com.reevajs.reeva.runtime.primitives.JSTrue
-import com.reevajs.reeva.runtime.primitives.JSUndefined
+import com.reevajs.reeva.runtime.primitives.*
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.LdcInsnNode
 
@@ -18,6 +15,9 @@ val MethodAssembly.pushNull: Unit
 
 val MethodAssembly.pushUndefined: Unit
     get() = getstatic<JSUndefined>("INSTANCE", JSUndefined::class)
+
+val MethodAssembly.pushEmpty: Unit
+    get() = getstatic<JSEmpty>("INSTANCE", JSEmpty::class)
 
 val MethodAssembly.pushTrue: Unit
     get() = getstatic<JSTrue>("INSTANCE", JSTrue::class)

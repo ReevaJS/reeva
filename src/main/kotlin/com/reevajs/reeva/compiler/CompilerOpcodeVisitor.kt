@@ -4,15 +4,18 @@ import codes.som.koffee.ClassAssembly
 import codes.som.koffee.MethodAssembly
 import codes.som.koffee.insns.jvm.*
 import codes.som.koffee.insns.sugar.*
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.collections.JSArguments
+import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.primitives.*
+import com.reevajs.reeva.transformer.FunctionInfo
 import com.reevajs.reeva.transformer.IR
 import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.utils.Error
@@ -23,11 +26,11 @@ import java.util.Collections
 
 class CompilerOpcodeVisitor(
     methodAssembly: MethodAssembly,
-    ir: IR,
+    private val functionInfo: FunctionInfo,
     private val className: String,
     private val context: ClassCompiler.Context,
 ) : MethodAssembly(methodAssembly.node), OpcodeVisitor {
-    private val blocks = ir.blocks.mapValues { it.value to makeLabel() }
+    private val blocks = functionInfo.ir.blocks.mapValues { it.value to makeLabel() }
 
     fun visitIR() {
         for ((block, label) in blocks.values) {
@@ -89,14 +92,26 @@ class CompilerOpcodeVisitor(
     override fun visitLoadValue(opcode: LoadValue) {
         // Handle special cases
         when (opcode.local.value) {
-            0 -> if (context == ClassCompiler.Context.Impl) {
-                aload_0
-                getfield(className, "wrapper", JSObject::class)
-            } else {
-                aload_0
-                invokevirtual<JSArguments>("getThisValue", JSValue::class)
+            0 -> when (context) {
+                ClassCompiler.Context.Impl -> {
+                    aload_0
+                    getfield(className, "wrapper", JSObject::class)
+                }
+                ClassCompiler.Context.Proto -> {
+                    aload_0
+                    invokevirtual<JSArguments>("getThisValue", JSValue::class)
+                }
+                else -> {
+                    aload_1
+                    invokevirtual<JSArguments>("getThisValue", JSValue::class)
+                }
             }
-            1 -> TODO()
+            1 -> if (context == ClassCompiler.Context.Impl) {
+                TODO()
+            } else {
+                aload_1
+                invokevirtual<JSArguments>("getNewTarget", JSValue::class)
+            }
             else -> aload(opcode.local.value - 2)
         }
     }
@@ -434,7 +449,13 @@ class CompilerOpcodeVisitor(
         invokestatic<AOs>("construct", JSValue::class, JSValue::class, JSValue::class, List::class)
     }
 
-    override fun visitConstructArray(): Nothing = TODO("FunctionCompiler::visitConstructArray")
+    override fun visitConstructArray() {
+        checkcast<JSObject>()
+        // TODO: Do not do this, it is very inefficient
+        invokestatic<AOs>("iterableToList", List::class, JSValue::class)
+        swap
+        invokestatic<AOs>("construct", JSValue::class, JSValue::class, List::class, JSValue::class)
+    }
 
     override fun visitDeclareGlobalVars(opcode: DeclareGlobalVars): Nothing =
         TODO("FunctionCompiler::visitDeclareGlobalVars")
@@ -525,7 +546,11 @@ class CompilerOpcodeVisitor(
     override fun visitCreateAsyncGeneratorClosure(opcode: CreateAsyncGeneratorClosure): Nothing =
         TODO("FunctionCompiler::visitCreateAsyncGeneratorClosure")
 
-    override fun visitGetSuperConstructor(): Nothing = TODO("FunctionCompiler::visitGetSuperConstructor")
+    override fun visitGetSuperConstructor() {
+        invokestatic<Agent>("getActiveAgent", Agent::class)
+        invokevirtual<Agent>("getActiveFunction", JSFunction::class)
+        invokevirtual<JSFunction>("getPrototype", JSValue::class)
+    }
 
     override fun visitCreateUnmappedArgumentsObject(): Nothing =
         TODO("FunctionCompiler::visitCreateUnmappedArgumentsObject")
@@ -533,8 +558,13 @@ class CompilerOpcodeVisitor(
     override fun visitCreateMappedArgumentsObject(): Nothing =
         TODO("FunctionCompiler::visitCreateMappedArgumentsObject")
 
-    override fun visitThrowSuperNotInitializedIfEmpty(): Nothing =
-        TODO("FunctionCompiler::visitThrowSuperNotInitializedIfEmpty")
+    override fun visitThrowSuperNotInitializedIfEmpty() {
+        pushEmpty
+        ifStatement(JumpCondition.RefEqual) {
+            invokestatic<Errors.Class.DerivedSuper>("throwTypeError", Void::class)
+            pop
+        }
+    }
 
     override fun visitThrowConstantReassignmentError(opcode: ThrowConstantReassignmentError): Nothing =
         TODO("FunctionCompiler::visitThrowConstantReassignmentError")
@@ -560,7 +590,7 @@ class CompilerOpcodeVisitor(
 
     override fun visitPushBigInt(opcode: PushBigInt): Nothing = TODO("FunctionCompiler::visitPushBigInt")
 
-    override fun visitPushEmpty(): Nothing = TODO("FunctionCompiler::visitPushEmpty")
+    override fun visitPushEmpty() = pushEmpty
 
     override fun visitCopyObjectExcludingProperties(opcode: CopyObjectExcludingProperties): Nothing =
         TODO("FunctionCompiler::visitCopyObjectExcludingProperties")
@@ -590,7 +620,19 @@ class CompilerOpcodeVisitor(
 
     override fun visitStoreModuleVar(opcode: StoreModuleVar): Nothing = TODO("FunctionCompiler::visitStoreModuleVar")
 
-    override fun visitCollectRestArgs(): Nothing = TODO("FunctionCompiler::visitCollectRestArgs")
+    override fun visitCollectRestArgs() {
+        if (context == ClassCompiler.Context.Impl) {
+            aload_0
+        } else aload_1
+
+        dup
+        invokeinterface<List<*>>("size", int)
+        ldc(functionInfo.ir.argCount - 1)
+        swap
+
+        invokeinterface<List<*>>("subList", List::class, int, int)
+        invokestatic<AOs>("createArrayFromList", JSValue::class, List::class)
+    }
 
     override fun visitPushClassInstanceFieldsSymbol() =
         getstatic<Realm.InternalSymbols>("classInstanceFields", JSSymbol::class)

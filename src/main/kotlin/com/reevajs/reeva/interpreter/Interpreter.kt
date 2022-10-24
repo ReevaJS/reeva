@@ -944,7 +944,7 @@ class Interpreter(
                 constructorParent = realm.functionProto
             }
             else -> {
-                if (generateJVMClassIfNecessary(opcode.name, superClass, fieldDescriptors, methodDescriptors))
+                if (generateJVMClassIfNecessary(opcode.name, superClass, fieldDescriptors, allMethodDescriptors))
                     return
 
                 if (!AOs.isConstructor(superClass))

@@ -11,19 +11,22 @@ import codes.som.koffee.modifiers.public
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.jvmcompat.JSClassObject
 import com.reevajs.reeva.jvmcompat.JVMValueMapper
+import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.collections.JSArguments
+import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.functions.JSNativeFunction
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.JSObjectProto
 import com.reevajs.reeva.runtime.objects.PropertyKey
-import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.transformer.opcodes.ClassFieldDescriptor
 import com.reevajs.reeva.transformer.opcodes.ClassMethodDescriptor
 import com.reevajs.reeva.utils.Error
 import com.reevajs.reeva.utils.Errors
+import com.reevajs.reeva.utils.key
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.ClassNode
@@ -38,11 +41,8 @@ class ClassCompiler(
     fieldDescriptors: List<ClassFieldDescriptor>,
     methodDescriptors: List<ClassMethodDescriptor>,
 ) {
-    private val fieldDescriptors = fieldDescriptors.distinctBy { it.key }
-    private val methodDescriptors = methodDescriptors.distinctBy { it.key }
-
-    private val constructorDescriptor = methodDescriptors.find { it.isConstructor }
-    private val instanceMethodDescriptors = methodDescriptors.filter { !it.isStatic }
+    private val constructorDescriptor = methodDescriptors.first { it.isConstructor }
+    private val instanceMethodDescriptors = methodDescriptors.filter { !it.isStatic && !it.isConstructor }
     private val staticMethodDescriptors = methodDescriptors.filter { it.isStatic }
     private val instanceFieldDescriptors = fieldDescriptors.filter { !it.isStatic }
     private val staticFieldDescriptors = fieldDescriptors.filter { it.isStatic }
@@ -105,10 +105,21 @@ class ClassCompiler(
         proto.init()
 
         val ctorCtor = ctorClass.declaredConstructors.single()
-        val ctor = ctorCtor.newInstance(realm, proto) as JSObject
+        val ctor = ctorCtor.newInstance(realm, proto) as JSFunction
         (ctor as GeneratedObjectConstructor).setStaticFieldKeys(staticFieldDescriptors.map { it.key })
         ctor.setStaticFieldKeys(staticMethodDescriptors.map { it.key })
         ctor.init()
+
+        AOs.makeClassConstructor(ctor)
+        AOs.makeConstructor(ctor, false, proto)
+
+        if (superClass != null) {
+            ctor.constructorKind = JSFunction.ConstructorKind.Derived
+            ctor.setPrototype(JSClassObject.create(superClass))
+        }
+
+        AOs.makeMethod(ctor, proto)
+        AOs.createMethodProperty(proto, "constructor".key(), ctor)
 
         return ctor
     }
@@ -179,8 +190,8 @@ class ClassCompiler(
 
             // TODO: Fields
 
-            for (descriptor in methodDescriptors) {
-                if (!descriptor.key.isString || descriptor.isStatic || descriptor.isConstructor)
+            for (descriptor in instanceMethodDescriptors) {
+                if (!descriptor.key.isString)
                     continue
 
                 val methodName = descriptor.key.asString
@@ -255,7 +266,7 @@ class ClassCompiler(
                 }
 
                 method(private + final, methodName + "Impl", JSValue::class, JSArguments::class) {
-                    CompilerOpcodeVisitor(this, descriptor.functionInfo.ir, implClassPath, Context.Impl).visitIR()
+                    CompilerOpcodeVisitor(this, descriptor.functionInfo, implClassPath, Context.Impl).visitIR()
                 }
             }
         }
@@ -265,7 +276,7 @@ class ClassCompiler(
 
     // TODO: This should be cached based on the values of superClass and interfaces
     private fun createCtorClass(): Class<*> {
-        val length = methodDescriptors.firstOrNull { it.isConstructor }?.functionInfo?.length ?: 0
+        val length = constructorDescriptor.functionInfo.length
 
         val clazz = assembleClass(
             public + final,
@@ -319,7 +330,7 @@ class ClassCompiler(
                     checkcast<PropertyKey>()
 
                     if (descriptor.functionInfo != null) {
-                        CompilerOpcodeVisitor(this, descriptor.functionInfo.ir, ctorClassPath, Context.Ctor).visitIR()
+                        CompilerOpcodeVisitor(this, descriptor.functionInfo, ctorClassPath, Context.Ctor).visitIR()
                     } else {
                         pushUndefined
                     }
@@ -367,7 +378,6 @@ class ClassCompiler(
                 getfield(ctorClassPath, "associatedPrototype", JSObject::class)
                 invokestatic<JSObject>("create", JSObject::class, Realm::class, JSValue::class)
                 dup
-                dup
                 val wrapper = astore()
 
                 pushSlot("Impl")
@@ -401,7 +411,13 @@ class ClassCompiler(
 
                 invokevirtual<JSObject>("setSlot", void, int, Any::class)
 
-                areturn
+                // Invoke user constructor
+                CompilerOpcodeVisitor(
+                    this,
+                    constructorDescriptor.functionInfo,
+                    ctorClassPath,
+                    Context.Ctor
+                ).visitIR()
             }
         }
 
@@ -567,7 +583,7 @@ class ClassCompiler(
 
             // Function
             IndyUtils(classAssembly, methodAssembly).generateMethod(descriptor.key.toString()) {
-                CompilerOpcodeVisitor(this, descriptor.functionInfo.ir, classAssembly.name, context).visitIR()
+                CompilerOpcodeVisitor(this, descriptor.functionInfo, classAssembly.name, context).visitIR()
             }
 
             // Set on receiver

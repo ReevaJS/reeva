@@ -189,7 +189,7 @@ object Errors {
                 "found for class $className with types: ${providedTypes.joinToString()}"
         )
         class NoValidMethod(className: String, providedTypes: List<String>) :
-            Error("no constructor found for class $className with types: ${providedTypes.joinToString()}")
+            Error("no method found for class $className with types: ${providedTypes.joinToString()}")
         class AmbiguousMethods(className: String, providedTypes: List<String>) : Error(
             "more than one applicable constructor " +
                 "found for class $className with types: ${providedTypes.joinToString()}"
