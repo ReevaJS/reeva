@@ -1702,34 +1702,10 @@ class Transformer : ASTVisitor {
         +CreateClass(name, numFields, numMethods + 1 /* for ctor */)
     }
 
-    private fun makeClassFieldInitializerMethod(fields: List<ClassFieldNode>): FunctionInfo {
-        val prevBuilder = builder
-        builder = IRBuilder(RESERVED_LOCALS_COUNT, 0)
-
-        for (field in fields) {
-            +LoadValue(RECEIVER_LOCAL)
-            storeClassField(field)
-        }
-
-        +PushUndefined
-        +Return
-
-        return FunctionInfo(
-            "<class instance field initializer>",
-            builder.build(),
-            isStrict = true,
-            0,
-            isTopLevel = false,
-            isGenerator = false,
-            isArrow = false,
-        ).also {
-            builder = prevBuilder
-        }
-    }
-
     private fun callClassInstanceFieldInitializer() {
         +PushClosure
         +PushClassInstanceFieldsSymbol
+        +LoadKeyedProperty
         +LoadValue(RECEIVER_LOCAL)
         +Call(0)
         +Pop

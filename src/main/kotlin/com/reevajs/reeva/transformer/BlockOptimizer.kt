@@ -64,7 +64,10 @@ class BlockOptimizer(private val ir: IR) {
         blockMetadata.filter {
             it.value.successorBlocks.isEmpty()
         }.forEach {
-            expect(it.value.initialStackHeight!! + it.value.stackHeightDelta == 0)
+            expect(it.value.initialStackHeight!! + it.value.stackHeightDelta == 0) {
+                val height = it.value.initialStackHeight!! + it.value.stackHeightDelta
+                "Expected terminating blocks to have stack height of 0, but found $height"
+            }
         }
     }
 
