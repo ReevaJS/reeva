@@ -176,8 +176,6 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
             }
 
             method(public, "evaluate", JSValue::class, JSArguments::class) {
-                val impl = Impl(this, compiler.constructorDescriptor.functionInfo)
-
                 // "new" check
                 aload_1
                 invokevirtual<JSArguments>("getNewTarget", JSValue::class)
@@ -191,14 +189,35 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
                     pop
                 }
 
-                impl.pushRealm
+                aload_0
+                aload_1
+
+                aload_0
+                invokevirtual<JSObject>("getRealm", Realm::class)
+
                 aload_0
                 getfield(compiler.ctorClassPath, "associatedPrototype", JSObject::class)
                 invokestatic<JSObject>("create", JSObject::class, Realm::class, JSValue::class)
+                dup
                 val wrapper = astore()
-                impl.wrapperLocal = wrapper
 
                 // Invoke user constructor
+                invokevirtual(compiler.ctorClassPath, "evaluateImpl", JSValue::class, JSArguments::class, JSObject::class)
+
+                dup
+                pushUndefined
+                ifStatement(JumpCondition.RefEqual) {
+                    pop
+                    aload(wrapper)
+                }
+
+                areturn
+            }
+
+            // This method exists so that "evaluate" can post-process the return value
+            method(private, "evaluateImpl", JSValue::class, JSArguments::class, JSObject::class) {
+                val impl = Impl(this, compiler.constructorDescriptor.functionInfo)
+                impl.wrapperLocal = Local(2, LocalType.Object)
                 impl.visitIR()
             }
         }
