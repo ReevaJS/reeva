@@ -4,7 +4,10 @@ import codes.som.koffee.MethodAssembly
 import codes.som.koffee.insns.jvm.*
 import codes.som.koffee.insns.sugar.*
 import com.reevajs.reeva.compiler.*
+import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.core.ExecutionContext
 import com.reevajs.reeva.core.Realm
+import com.reevajs.reeva.core.environment.EnvRecord
 import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
@@ -499,15 +502,67 @@ abstract class BaseGenerator(
 
     override fun visitStoreGlobal(opcode: StoreGlobal): Nothing = TODO("FunctionCompiler::visitStoreGlobal")
 
-    override fun visitLoadCurrentEnvName(opcode: LoadCurrentEnvName): Nothing =
-        TODO("FunctionCompiler::visitLoadCurrentEnvName")
+    override fun visitLoadCurrentEnvName(opcode: LoadCurrentEnvName) {
+        loadCurrentEnv()
+        ldc(opcode.name)
+        ldc(opcode.isStrict)
+        invokevirtual<EnvRecord>("getBindingValue", JSValue::class, String::class, Boolean::class)
+    }
 
-    override fun visitStoreCurrentEnvName(opcode: StoreCurrentEnvName): Nothing =
-        TODO("FunctionCompiler::visitStoreCurrentEnvName")
+    override fun visitStoreCurrentEnvName(opcode: StoreCurrentEnvName) {
+        val value = astore()
+        loadCurrentEnv()
+        ldc(opcode.name)
+        aload(value)
+        ldc(opcode.isStrict)
+        invokevirtual<EnvRecord>("getBindingValue", JSValue::class, String::class, Boolean::class)
+    }
 
-    override fun visitLoadEnvName(opcode: LoadEnvName): Nothing = TODO("FunctionCompiler::visitLoadEnvName")
+    override fun visitLoadEnvName(opcode: LoadEnvName) {
+        loadEnv(opcode.distance)
+        ldc(opcode.name)
+        ldc(opcode.isStrict)
+        invokevirtual<EnvRecord>("getBindingValue", JSValue::class, String::class, Boolean::class)
+    }
 
-    override fun visitStoreEnvName(opcode: StoreEnvName): Nothing = TODO("FunctionCompiler::visitStoreEnvName")
+    override fun visitStoreEnvName(opcode: StoreEnvName) {
+        val value = astore()
+        loadEnv(opcode.distance)
+        ldc(opcode.name)
+        aload(value)
+        ldc(opcode.isStrict)
+        invokevirtual<EnvRecord>("getBindingValue", JSValue::class, String::class, Boolean::class)
+    }
+    
+    private fun loadCurrentEnv() {
+        invokestatic<Agent>("getActiveAgent", Agent::class)
+        invokevirtual<Agent>("getRunningExecutionContext", ExecutionContext::class)
+        invokevirtual<ExecutionContext>("getEnvRecord", EnvRecord::class)
+    }
+
+    private fun loadEnv(distance: Int) {
+        loadCurrentEnv()
+        val env = astore()
+
+        ldc(distance)
+        val index = istore()
+
+        val head = makeLabel()
+        val end = makeLabel()
+        placeLabel(head)
+
+        iload(index)
+        jump(JumpCondition.Equal, end)
+        aload(env)
+        invokevirtual<EnvRecord>("getOuter", EnvRecord::class)
+        astore(env)
+
+        iinc(index.index, -1)
+        goto(head)
+
+        placeLabel(end)
+        aload(env)
+    }
 
     override fun visitJump(opcode: Jump): Nothing = TODO("FunctionCompiler::visitJump")
 
@@ -562,8 +617,16 @@ abstract class BaseGenerator(
     override fun visitThrowConstantReassignmentError(opcode: ThrowConstantReassignmentError): Nothing =
         TODO("FunctionCompiler::visitThrowConstantReassignmentError")
 
-    override fun visitThrowLexicalAccessError(opcode: ThrowLexicalAccessErrorIfEmpty): Nothing =
-        TODO("FunctionCompiler::visitThrowLexicalAccessError")
+    override fun visitThrowLexicalAccessError(opcode: ThrowLexicalAccessErrorIfEmpty) {
+        pushEmpty
+        ifStatement(JumpCondition.RefEqual) {
+            construct<Errors.AccessBeforeInitialization>(String::class) {
+                ldc(opcode.name)
+            }
+            invokevirtual<Error>("throwReferenceError", Void::class)
+            pop
+        }
+    }
 
     override fun visitThrowSuperNotInitializedIfEmpty() {
         pushEmpty
