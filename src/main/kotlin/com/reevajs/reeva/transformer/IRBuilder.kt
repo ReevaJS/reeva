@@ -35,11 +35,7 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
     private var nextBlockIndex = 0
 
     init {
-        // Receiver + new.target
-        locals.add(LocalKind.Value)
-        locals.add(LocalKind.Value)
-
-        repeat(additionalReservedLocals) {
+        repeat(argCount + additionalReservedLocals) {
             locals.add(LocalKind.Value)
         }
 
