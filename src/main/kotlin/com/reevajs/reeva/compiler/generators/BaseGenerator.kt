@@ -637,8 +637,6 @@ abstract class BaseGenerator(
         }
     }
 
-    override fun visitPushClosure(): Nothing = TODO("FunctionCompiler::visitPushClosure")
-
     override fun visitThrow(): Nothing = TODO("FunctionCompiler::visitThrow")
 
     override fun visitReturn() = areturn
@@ -696,9 +694,6 @@ abstract class BaseGenerator(
         invokeinterface<List<*>>("subList", List::class, int, int)
         invokestatic<AOs>("createArrayFromList", JSValue::class, List::class)
     }
-
-    override fun visitPushClassInstanceFieldsSymbol() =
-        getstatic<Realm.InternalSymbols>("classInstanceFields", JSSymbol::class)
 
     private fun getOrCreateLocal(transformerLocal: TransformerLocal, type: LocalType): Local {
         return localMap.getOrPut(transformerLocal) {

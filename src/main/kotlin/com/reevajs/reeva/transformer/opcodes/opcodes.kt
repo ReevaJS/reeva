@@ -658,6 +658,11 @@ data class ClassMethodDescriptor(
 )
 
 /**
+ * Initializes the surrounding class fields in the current class constructor.
+ */
+object InitializeClassFields : Opcode(0)
+
+/**
  * Creates a class. Note that this is a temporary data class to allow proper
  * setup of class methods. FinalizeClass must be called on the result in order
  * to get the JS class.
@@ -710,12 +715,6 @@ class Await(val target: BlockIndex) : Opcode(0), TerminatingOpcode
 ///////////////
 // Functions //
 ///////////////
-
-/**
- * Retrieves the currently active function (the function at the top of the
- * callstack).
- */
-object PushClosure : Opcode(1)
 
 /**
  * Creates a normal function closure from a FunctionInfo.
@@ -784,8 +783,3 @@ class CreateTemplateLiteral(val numberOfParts: Int) : Opcode(-numberOfParts + 1)
  * [AOs.IteratorRecord]
  */
 object ForInEnumerate : Opcode(0)
-
-/**
- * Pushes Realm.InternalSymbols.classInstanceFields symbol onto the stack
- */
-object PushClassInstanceFieldsSymbol : Opcode(1)

@@ -107,15 +107,27 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
                     invokeinterface<List<*>>("get", Any::class, int)
                     checkcast<PropertyKey>()
 
-                    if (descriptor.functionInfo != null) {
-                        Impl(this, descriptor.functionInfo).visitIR()
-                    } else {
-                        pushUndefined
+                    construct<Descriptor>(JSValue::class, int) {
+                        if (descriptor.functionInfo != null) {
+                            // Needs to be in a separate method due to final return
+                            val methodName = "staticFieldInitializer_${descriptor.key.toString()}"
+                            method(private + static, methodName, JSValue::class, JSValue::class) {
+                                val impl = Impl(this, descriptor.functionInfo)
+                                impl.receiverLocal = Local(1, LocalType.Object)
+                                impl.visitIR()
+                            }
+
+                            aload_0
+                            invokestatic(compiler.ctorClassPath, methodName, JSValue::class, JSValue::class)
+                        } else {
+                            pushUndefined
+                        }
+
+                        ldc(0)
                     }
 
-                    ldc(0)
-
-                    invokevirtual(compiler.ctorClassPath, "defineOwnProperty", void, PropertyKey::class, JSValue::class, int)
+                    invokevirtual(compiler.ctorClassPath, "defineOwnProperty", Boolean::class, PropertyKey::class, Descriptor::class)
+                    pop
                 }
 
                 for ((index, descriptor) in compiler.staticMethodDescriptors.withIndex()) {
@@ -217,7 +229,7 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
             // This method exists so that "evaluate" can post-process the return value
             method(private, "evaluateImpl", JSValue::class, JSArguments::class, JSObject::class) {
                 val impl = Impl(this, compiler.constructorDescriptor.functionInfo)
-                impl.wrapperLocal = Local(2, LocalType.Object)
+                impl.receiverLocal = Local(2, LocalType.Object)
                 impl.visitIR()
             }
         }
@@ -227,13 +239,13 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
         methodAssembly: MethodAssembly,
         functionInfo: FunctionInfo,
     ) : BaseGenerator(methodAssembly, functionInfo) {
-        lateinit var wrapperLocal: Local
+        lateinit var receiverLocal: Local
 
         override val pushReceiver: Unit
             get() {
                 // This would only be invoked from the "evaluate" method context, as the only other
                 // place this is used would be in a static method, where "this." would be an error
-                aload(wrapperLocal)
+                aload(receiverLocal)
             }
 
         override val pushArguments: Unit
@@ -279,11 +291,15 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
     
             aload(argsLocal)
             ldc(Type.getType("L${compiler.implClassPath};"))
-            aload(wrapperLocal)
+            aload(receiverLocal)
             invokestatic<CompilerAOs>("constructSuper", Any::class, List::class, Class::class, JSObject::class)
             invokevirtual<JSObject>("setSlot", void, int, Any::class)
     
             pushReceiver
+        }
+
+        override fun visitInitializeClassFields() {
+            
         }
     }
 }

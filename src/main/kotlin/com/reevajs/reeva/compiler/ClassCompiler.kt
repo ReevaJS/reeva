@@ -109,7 +109,8 @@ class ClassCompiler(
         val ctorCtor = ctorClass.declaredConstructors.single()
         val ctor = ctorCtor.newInstance(realm, proto) as JSFunction
         (ctor as GeneratedObjectConstructor).setStaticFieldKeys(staticFieldDescriptors.map { it.key })
-        ctor.setStaticFieldKeys(staticMethodDescriptors.map { it.key })
+        ctor.setStaticFieldKeys(staticFieldDescriptors.map { it.key })
+        ctor.setStaticMethodKeys(staticMethodDescriptors.map { it.key })
         ctor.init()
 
         AOs.makeClassConstructor(ctor)

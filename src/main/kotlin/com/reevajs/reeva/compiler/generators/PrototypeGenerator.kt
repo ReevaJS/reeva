@@ -210,7 +210,7 @@ class PrototypeGenerator(private val compiler: ClassCompiler) {
             }
 
         override fun visitConstructSuper(opcode: ConstructSuper) = unreachable()
-
         override fun visitConstructSuperArray() = unreachable()
+        override fun visitInitializeClassFields() = unreachable()
     }
 }

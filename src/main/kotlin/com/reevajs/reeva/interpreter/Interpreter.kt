@@ -851,10 +851,6 @@ class Interpreter(
         push(JSString(string))
     }
 
-    override fun visitPushClosure() {
-        push(Agent.activeAgent.getActiveFunction()!!)
-    }
-
     override fun visitReturn() {
         shouldLoop = false
         isDone = true
@@ -945,6 +941,12 @@ class Interpreter(
                 opcode.functionInfo,
             )
         )
+    }
+
+    override fun visitInitializeClassFields() {
+        val closure = Agent.activeAgent.getActiveFunction()!!
+        val initializer = closure.get(Realm.InternalSymbols.classInstanceFields)
+        push(AOs.call(initializer, locals[0] as JSValue, emptyList()))
     }
 
     override fun visitCreateClass(opcode: CreateClass) {
@@ -1137,10 +1139,6 @@ class Interpreter(
 
     override fun visitStoreModuleVar(opcode: StoreModuleVar) {
         moduleEnv!!.initializeBinding(opcode.name, popValue())
-    }
-
-    override fun visitPushClassInstanceFieldsSymbol() {
-        push(Realm.InternalSymbols.classInstanceFields)
     }
 
     private fun jumpToBlock(block: BlockIndex) {

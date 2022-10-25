@@ -97,7 +97,6 @@ interface OpcodeVisitor {
             is ThrowConstantReassignmentError -> visitThrowConstantReassignmentError(opcode)
             is ThrowLexicalAccessErrorIfEmpty -> visitThrowLexicalAccessError(opcode)
             ThrowSuperNotInitializedIfEmpty -> visitThrowSuperNotInitializedIfEmpty()
-            PushClosure -> visitPushClosure()
             Throw -> visitThrow()
             Return -> visitReturn()
             is Yield -> visitYield(opcode)
@@ -114,13 +113,13 @@ interface OpcodeVisitor {
             PushJVMTrue -> visitPushJVMTrue()
             is PushJVMInt -> visitPushJVMInt(opcode)
             is CreateConstructor -> visitCreateConstructor(opcode)
+            InitializeClassFields -> visitInitializeClassFields()
             is CreateClass -> visitCreateClass(opcode)
             is CreateClassFieldDescriptor -> visitCreateClassFieldDescriptor(opcode)
             is CreateClassMethodDescriptor -> visitCreateClassMethodDescriptor(opcode)
             is LoadModuleVar -> visitLoadModuleVar(opcode)
             is StoreModuleVar -> visitStoreModuleVar(opcode)
             CollectRestArgs -> visitCollectRestArgs()
-            PushClassInstanceFieldsSymbol -> visitPushClassInstanceFieldsSymbol()
         }
     }
 
@@ -312,8 +311,6 @@ interface OpcodeVisitor {
 
     fun visitThrowLexicalAccessError(opcode: ThrowLexicalAccessErrorIfEmpty)
 
-    fun visitPushClosure()
-
     fun visitThrow()
 
     fun visitReturn()
@@ -346,6 +343,8 @@ interface OpcodeVisitor {
 
     fun visitCreateConstructor(opcode: CreateConstructor)
 
+    fun visitInitializeClassFields()
+
     fun visitCreateClass(opcode: CreateClass)
 
     fun visitCreateClassFieldDescriptor(opcode: CreateClassFieldDescriptor)
@@ -357,6 +356,4 @@ interface OpcodeVisitor {
     fun visitStoreModuleVar(opcode: StoreModuleVar)
 
     fun visitCollectRestArgs()
-
-    fun visitPushClassInstanceFieldsSymbol()
 }

@@ -1611,6 +1611,7 @@ class Transformer : ASTVisitor {
 
         var numFields = 0
         var numMethods = 0
+        var hasInstanceFields = false
 
         node.body.filterIsInstance<ClassFieldNode>().forEach {
             numFields++
@@ -1629,6 +1630,9 @@ class Transformer : ASTVisitor {
             } else null
 
             +CreateClassFieldDescriptor(it.isStatic, info)
+
+            if (!it.isStatic)
+                hasInstanceFields = true
         }
 
         node.body.filterIsInstance<ClassMethodNode>().forEach {
@@ -1679,14 +1683,14 @@ class Transformer : ASTVisitor {
                 classConstructorKind = constructorKind,
                 instantiateFunction = false,
             ) {
-                if (numFields > 0)
-                    callClassInstanceFieldInitializer()
+                if (hasInstanceFields)
+                    +InitializeClassFields
             }
         } else {
             makeImplicitClassConstructor(
                 name ?: "<anonymous class constructor>",
                 constructorKind,
-                numFields > 0,
+                hasInstanceFields,
             )
         }
 
@@ -1700,15 +1704,6 @@ class Transformer : ASTVisitor {
         }
 
         +CreateClass(name, numFields, numMethods + 1 /* for ctor */)
-    }
-
-    private fun callClassInstanceFieldInitializer() {
-        +PushClosure
-        +PushClassInstanceFieldsSymbol
-        +LoadKeyedProperty
-        +LoadValue(RECEIVER_LOCAL)
-        +Call(0)
-        +Pop
     }
 
     private fun makeImplicitClassConstructor(
@@ -1728,7 +1723,7 @@ class Transformer : ASTVisitor {
 
         if (constructorKind == JSFunction.ConstructorKind.Base) {
             if (hasInstanceFields)
-                callClassInstanceFieldInitializer()
+                +InitializeClassFields
             +PushUndefined
             +Return
         } else {
@@ -1736,7 +1731,7 @@ class Transformer : ASTVisitor {
             +CollectRestArgs
             +ConstructSuperArray
             if (hasInstanceFields)
-                callClassInstanceFieldInitializer()
+                +InitializeClassFields
             +Return
         }
 

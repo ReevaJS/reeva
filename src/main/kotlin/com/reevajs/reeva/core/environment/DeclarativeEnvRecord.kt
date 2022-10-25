@@ -61,7 +61,7 @@ open class DeclarativeEnvRecord(protected val realm: Realm, outer: EnvRecord?) :
         // 1. If envRec does not have a binding for N, then
         if (binding == null) {
             // a. If S is true, throw a ReferenceError exception.
-            if (isStrict)
+            if (isStrict) 
                 Errors.TODO("DeclarativeEnvRecord::setMutableBinding 1").throwReferenceError(realm)
 
             // b. Perform envRec.CreateMutableBinding(N, true).
