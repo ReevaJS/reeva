@@ -362,12 +362,12 @@ abstract class BaseGenerator(
     override fun visitStoreNamedProperty(opcode: StoreNamedProperty) {
         val value = astore()
         invokestatic<AOs>("toObject", JSObject::class, JSValue::class)
-        construct<PropertyKey>(Any::class) {
-            ldc(opcode.name)
-        }
+        ldc(opcode.name)
+        invokestatic<PropertyKey>("from", PropertyKey::class, Any::class)
         aload(value)
         ldc(opcode.isStrict)
-        invokestatic<AOs>("set", JSObject::class, PropertyKey::class, JSValue::class, Boolean::class)
+        invokestatic<AOs>("set", Boolean::class, JSObject::class, PropertyKey::class, JSValue::class, Boolean::class)
+        pop
     }
 
     override fun visitCreateObject() {
@@ -627,7 +627,7 @@ abstract class BaseGenerator(
 
         dup
         invokeinterface<List<*>>("size", int)
-        ldc(functionInfo.ir.argCount - 1)
+        ldc(functionInfo.length)
         swap
 
         invokeinterface<List<*>>("subList", List::class, int, int)

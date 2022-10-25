@@ -1,16 +1,18 @@
 package com.reevajs.reeva.compiler
 
 import com.reevajs.reeva.jvmcompat.JVMValueMapper
+import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.toJSString
+import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSString
 import com.reevajs.reeva.utils.Errors
 import java.lang.reflect.Modifier
 
 object CompilerAOs {
     @JvmStatic
-    fun constructSuper(arguments: List<JSValue>, implClass: Class<*>): Any {        
+    fun constructSuper(arguments: List<JSValue>, implClass: Class<*>, wrapper: JSObject): Any {        
         val constructors = implClass.declaredConstructors.filter {
             Modifier.isPublic(it.modifiers) || Modifier.isProtected(it.modifiers)
         }
@@ -26,8 +28,9 @@ object CompilerAOs {
 
         val matchingCtor = matchingCtors.single()
         val mappedArguments = arguments.mapIndexed { index, value ->
-            JVMValueMapper.jsToJvm(value, matchingCtor.parameterTypes[index])
+            JVMValueMapper.jsToJvm(value, matchingCtor.parameterTypes[index + 2])
         }
-        return matchingCtor.newInstance(*mappedArguments.toTypedArray())
+
+        return matchingCtor.newInstance(Agent.activeAgent.getActiveRealm(), wrapper, *mappedArguments.toTypedArray())
     }
 }

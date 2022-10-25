@@ -99,8 +99,6 @@ class InstanceGenerator(private val compiler: ClassCompiler) {
                         *targetMethod.parameterTypes,
                         exceptions = targetMethod.exceptionTypes.filterNotNull().toTypedArray()
                     ) {
-                        aload_0
-
                         construct<JSArguments>()
 
                         // Insert receiver
@@ -126,7 +124,7 @@ class InstanceGenerator(private val compiler: ClassCompiler) {
                         }
 
                         // Invoke implementation method
-                        invokevirtual(compiler.implClassPath, methodName + "Impl", JSValue::class, JSArguments::class)
+                        invokestatic(compiler.implClassPath, methodName + "Impl", JSValue::class, JSArguments::class)
 
                         if (targetMethod.returnType == Void.TYPE) {
                             pop
@@ -149,7 +147,7 @@ class InstanceGenerator(private val compiler: ClassCompiler) {
                     }
                 }
 
-                method(private + final, methodName + "Impl", JSValue::class, JSArguments::class) {
+                method(private + static + final, methodName + "Impl", JSValue::class, JSArguments::class) {
                     Impl(this, descriptor.functionInfo).visitIR()
                 }
             }

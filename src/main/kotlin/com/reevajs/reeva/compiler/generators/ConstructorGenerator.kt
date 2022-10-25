@@ -153,16 +153,12 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
                 _return
             }
 
-            val constructors = compiler.superClass?.declaredConstructors?.filter {
-                Modifier.isPublic(it.modifiers) || Modifier.isProtected(it.modifiers)
-            }?.groupBy { it.parameterCount }
-
             method(public, "evaluate", JSValue::class, JSArguments::class) {
                 val impl = Impl(this, compiler.constructorDescriptor.functionInfo)
 
                 // "new" check
                 aload_1
-                invokevirtual<JSArguments>("getThisValue", JSValue::class)
+                invokevirtual<JSArguments>("getNewTarget", JSValue::class)
                 getstatic<JSUndefined>("INSTANCE", JSUndefined::class)
                 ifStatement(JumpCondition.RefEqual) {
                     construct<Errors.CtorCallWithoutNew>(String::class) {
@@ -177,40 +173,8 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
                 aload_0
                 getfield(compiler.ctorClassPath, "associatedPrototype", JSObject::class)
                 invokestatic<JSObject>("create", JSObject::class, Realm::class, JSValue::class)
-                dup
                 val wrapper = astore()
                 impl.wrapperLocal = wrapper
-
-                pushSlot("Impl")
-
-                // Generate constructor call
-                if (constructors == null) {
-                    construct(compiler.implClassPath, Realm::class, JSObject::class) {
-                        impl.pushRealm
-                        aload(wrapper)
-                    }
-                } else {
-                    val constructor = constructors.values.singleOrNull()?.singleOrNull()
-                        ?: TODO("Support multiple constructors")
-
-                    construct(compiler.implClassPath, Realm::class, JSObject::class, *constructor.parameterTypes) {
-                        impl.pushRealm
-                        aload(wrapper)
-
-                        for ((index, param) in constructor.parameterTypes.withIndex()) {
-                            val paramType = Type.getType(param)
-
-                            aload_1
-                            ldc(index)
-                            invokevirtual<JSArguments>("argument", JSValue::class, int)
-                            ldc(paramType)
-                            invokestatic<JVMValueMapper>("jsToJvm", Any::class, JSValue::class, Class::class)
-                            checkcast(paramType)
-                        }
-                    }
-                }
-
-                invokevirtual<JSObject>("setSlot", void, int, Any::class)
 
                 // Invoke user constructor
                 impl.visitIR()
@@ -277,7 +241,8 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
     
             aload(argsLocal)
             ldc(Type.getType("L${compiler.implClassPath};"))
-            invokestatic<CompilerAOs>("constructSuper", Any::class, List::class, Class::class)
+            aload(wrapperLocal)
+            invokestatic<CompilerAOs>("constructSuper", Any::class, List::class, Class::class, JSObject::class)
             invokevirtual<JSObject>("setSlot", void, int, Any::class)
     
             pushReceiver
