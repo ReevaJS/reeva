@@ -260,14 +260,19 @@ object JVMValueMapper {
         return value
     }
 
-    fun <T : Executable> findMatchingSignature(executables: List<T>, arguments: List<JSValue>): List<T> {
-        val weightedExecutables = executables.filter { it.parameterCount == arguments.size }.groupBy {
-            val weights = it.parameterTypes.withIndex().map { (i, type) -> getConversionWeight(arguments[i], type) }
+    fun <T : Executable> findMatchingSignature(
+        executables: List<T>, 
+        arguments: List<JSValue>,
+        numParamsToIgnore: Int = 0,
+    ): List<T> {
+        val weightedExecutables = executables.filter { it.parameterCount - numParamsToIgnore == arguments.size }.groupBy {
+            val weights = it.parameterTypes.drop(numParamsToIgnore).withIndex().map { (i, type) -> 
+                getConversionWeight(arguments[i], type) 
+            }
 
-            if (weights.any { weight -> weight == CONVERSION_FAILURE })
+            if (weights.any { weight -> weight == CONVERSION_FAILURE }) {
                 CONVERSION_FAILURE
-            else
-                weights.sum()
+            } else weights.sum()
         }
 
         val minWeight = weightedExecutables.keys.filter { it != CONVERSION_FAILURE }.minOrNull() ?: return emptyList()

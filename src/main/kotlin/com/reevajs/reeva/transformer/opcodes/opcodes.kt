@@ -458,6 +458,24 @@ class Construct(val argCount: Int) : Opcode(-1 - argCount)
  */
 object ConstructArray : Opcode(-2)
 
+/**
+ * Similar to [Construct], but calls the super constructor. This opcode will load the
+ * super constructor, so it is not necessary to load it onto the stack prior.
+ * 
+ * Stack:
+ *   ... <args> -> result
+ */
+class ConstructSuper(val argCount: Int) : Opcode(-argCount + 1)
+
+/**
+ * Similar to [ConstructArray], but calls the super constructor. This opcode will load 
+ * the super constructor, so it is not necessary to load it onto the stack prior.
+ * 
+ * Stack:
+ *   ... array -> result
+ */
+object ConstructSuperArray : Opcode(0)
+
 /////////////////
 // Environment //
 /////////////////
@@ -594,12 +612,6 @@ class JumpIfNullish(val nullishTarget: BlockIndex, val elseTarget: BlockIndex) :
  * unnecessary Operations calls.
  */
 class CreateConstructor(override val functionInfo: FunctionInfo) : Opcode(1), FunctionContainerOpcode
-
-/**
- * Retrieves the currently active super constructor (the prototype of the
- * function at the top of the callstack).
- */
-object GetSuperConstructor : Opcode(1)
 
 /**
  * Retrieves the currently active super base (the prototype of the homeObject

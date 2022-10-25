@@ -67,6 +67,8 @@ interface OpcodeVisitor {
             is CallWithDirectEvalCheck -> visitCallWithDirectEvalCheck(opcode)
             is Construct -> visitConstruct(opcode)
             ConstructArray -> visitConstructArray()
+            is ConstructSuper -> visitConstructSuper(opcode)
+            ConstructSuperArray -> visitConstructSuperArray()
             is DeclareGlobalVars -> visitDeclareGlobalVars(opcode)
             is DeclareGlobalFunc -> visitDeclareGlobalFunc(opcode)
             is PushDeclarativeEnvRecord -> visitPushDeclarativeEnvRecord(opcode)
@@ -90,7 +92,6 @@ interface OpcodeVisitor {
             is CreateGeneratorClosure -> visitCreateGeneratorClosure(opcode)
             is CreateAsyncClosure -> visitCreateAsyncClosure(opcode)
             is CreateAsyncGeneratorClosure -> visitCreateAsyncGeneratorClosure(opcode)
-            GetSuperConstructor -> visitGetSuperConstructor()
             CreateUnmappedArgumentsObject -> visitCreateUnmappedArgumentsObject()
             CreateMappedArgumentsObject -> visitCreateMappedArgumentsObject()
             is ThrowConstantReassignmentError -> visitThrowConstantReassignmentError(opcode)
@@ -251,6 +252,10 @@ interface OpcodeVisitor {
 
     fun visitConstructArray()
 
+    fun visitConstructSuper(opcode: ConstructSuper)
+
+    fun visitConstructSuperArray()
+
     fun visitDeclareGlobalVars(opcode: DeclareGlobalVars)
 
     fun visitDeclareGlobalFunc(opcode: DeclareGlobalFunc)
@@ -296,8 +301,6 @@ interface OpcodeVisitor {
     fun visitCreateAsyncClosure(opcode: CreateAsyncClosure)
 
     fun visitCreateAsyncGeneratorClosure(opcode: CreateAsyncGeneratorClosure)
-
-    fun visitGetSuperConstructor()
 
     fun visitCreateUnmappedArgumentsObject()
 

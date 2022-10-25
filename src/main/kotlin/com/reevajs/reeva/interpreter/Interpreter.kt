@@ -589,6 +589,39 @@ class Interpreter(
         )
     }
 
+    override fun visitConstructSuper(opcode: ConstructSuper) {
+        val superCtor = Agent.activeAgent.getActiveFunction()!!.getPrototype()
+        if (superCtor == JSEmpty)
+            Errors.Class.DerivedSuper.throwTypeError()
+
+        val args = mutableListOf<JSValue>()
+
+        repeat(opcode.argCount) {
+            args.add(popValue())
+        }
+
+        val newTarget = locals[Transformer.NEW_TARGET_LOCAL.value]!! as JSValue
+
+        push(AOs.construct(superCtor, args, newTarget))
+    }
+
+    override fun visitConstructSuperArray() {
+        val superCtor = Agent.activeAgent.getActiveFunction()!!.getPrototype()
+        if (superCtor == JSEmpty)
+            Errors.Class.DerivedSuper.throwTypeError()
+
+        val argsArray = popValue() as JSObject
+        val newTarget = locals[Transformer.NEW_TARGET_LOCAL.value]!! as JSValue
+
+        push(
+            AOs.construct(
+                superCtor,
+                (0 until argsArray.indexedProperties.arrayLikeSize).map(argsArray::get),
+                newTarget,
+            )
+        )
+    }
+
     override fun visitDeclareGlobalVars(opcode: DeclareGlobalVars) {
         val env = realm.globalEnv
 
@@ -734,10 +767,6 @@ class Interpreter(
         TODO("Not yet implemented")
     }
 
-    override fun visitGetSuperConstructor() {
-        push(Agent.activeAgent.getActiveFunction()!!.getPrototype())
-    }
-
     override fun visitGetSuperBase() {
         val homeObject = Agent.activeAgent.getActiveFunction()!!.homeObject
         if (homeObject == JSUndefined) {
@@ -795,7 +824,8 @@ class Interpreter(
     }
 
     override fun visitThrowSuperNotInitializedIfEmpty() {
-        TODO("Not yet implemented")
+        if (pop() == JSEmpty)
+            Errors.Class.DerivedSuper.throwTypeError()
     }
 
     override fun visitThrow() {

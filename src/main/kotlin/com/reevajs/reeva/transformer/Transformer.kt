@@ -1732,11 +1732,9 @@ class Transformer : ASTVisitor {
             +PushUndefined
             +Return
         } else {
-            // Initializer the super constructor
-            +GetSuperConstructor
-            +LoadValue(NEW_TARGET_LOCAL)
+            // Initialize the super constructor
             +CollectRestArgs
-            +ConstructArray
+            +ConstructSuperArray
             if (hasInstanceFields)
                 callClassInstanceFieldInitializer()
             +Return
@@ -1815,16 +1813,10 @@ class Transformer : ASTVisitor {
     }
 
     override fun visitSuperCallExpression(node: SuperCallExpressionNode) {
-        +GetSuperConstructor
-        +Dup
-        +ThrowSuperNotInitializedIfEmpty
-
-        +LoadValue(NEW_TARGET_LOCAL)
-
         if (pushArguments(node.arguments) == ArgumentsMode.Normal) {
-            +Construct(node.arguments.size)
+            +ConstructSuper(node.arguments.size)
         } else {
-            +ConstructArray
+            +ConstructSuperArray
         }
     }
 
