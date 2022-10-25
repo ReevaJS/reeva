@@ -115,11 +115,13 @@ class ClassCompiler(
         AOs.makeClassConstructor(ctor)
         AOs.makeConstructor(ctor, false, proto)
 
-        if (superClass != null) {
-            ctor.constructorKind = JSFunction.ConstructorKind.Derived
-            ctor.setPrototype(JSClassObject.create(superClass))
-        }
-
+        // Note: This isn't a base class in the strictest sense, however since we don't have a 
+        //       parent _JavaScript_ class, we must treat it like a base class. The super class
+        //       is responsible for initializing the returned object, but since we do that here
+        //       ourselves, we are the JS base class.
+        ctor.constructorKind = JSFunction.ConstructorKind.Base
+        
+        ctor.setPrototype(superClass?.let { JSClassObject.create(superClass) } ?: realm.functionProto)
         AOs.makeMethod(ctor, proto)
         AOs.createMethodProperty(proto, "constructor".key(), ctor)
 

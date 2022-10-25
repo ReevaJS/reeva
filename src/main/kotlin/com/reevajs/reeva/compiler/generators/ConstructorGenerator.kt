@@ -6,6 +6,7 @@ import codes.som.koffee.insns.jvm.*
 import codes.som.koffee.insns.sugar.*
 import codes.som.koffee.modifiers.public
 import codes.som.koffee.modifiers.final
+import codes.som.koffee.types.double
 import codes.som.koffee.types.void
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.compiler.*
@@ -18,10 +19,12 @@ import com.reevajs.reeva.transformer.opcodes.ConstructSuperArray
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.collections.JSArguments
-import com.reevajs.reeva.runtime.functions.JSNativeFunction
+import com.reevajs.reeva.runtime.objects.Descriptor
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.objects.Slot
+import com.reevajs.reeva.runtime.primitives.JSNumber
+import com.reevajs.reeva.runtime.primitives.JSString
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.*
 import org.objectweb.asm.Type
@@ -37,7 +40,7 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
         return assembleClass(
             public + final,
             compiler.ctorClassPath,
-            superClass = JSNativeFunction::class,
+            superClass = CompiledFunction::class,
             interfaces = listOf(GeneratedObjectConstructor::class),
         ) {
             field<List<*>>(private, "staticFieldKeys")
@@ -48,8 +51,7 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
                 aload_0
                 aload_1
                 ldc(compiler.className)
-                ldc(length)
-                invokespecial<JSNativeFunction>("<init>", void, Realm::class, String::class, Int::class)
+                invokespecial<CompiledFunction>("<init>", void, Realm::class, String::class)
 
                 aload_0
                 aload_2
@@ -75,6 +77,26 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
             method(public, "init", void) {
                 aload_0
                 invokespecial<JSObject>("init", void)
+
+                // Set length
+                aload_0
+                ldc("length")
+                construct<JSNumber>(double) {
+                    ldc(length.toDouble())
+                }
+                getstatic<Descriptor>("CONFIGURABLE", int)
+                invokevirtual<JSObject>("defineOwnProperty", Boolean::class, String::class, JSValue::class, int)
+                pop
+
+                // Set name
+                aload_0
+                ldc("name")
+                construct<JSString>(String::class) {
+                    ldc(compiler.className)
+                }
+                getstatic<Descriptor>("CONFIGURABLE", int)
+                invokevirtual<JSObject>("defineOwnProperty", Boolean::class, String::class, JSValue::class, int)
+                pop
 
                 for ((index, descriptor) in compiler.staticFieldDescriptors.withIndex()) {
                     aload_0
@@ -178,9 +200,6 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
 
                 // Invoke user constructor
                 impl.visitIR()
-
-                pushUndefined
-                areturn
             }
         }
     }
