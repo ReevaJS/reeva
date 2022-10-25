@@ -23,18 +23,18 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.objects.Slot
 import com.reevajs.reeva.runtime.primitives.JSUndefined
-import com.reevajs.reeva.utils.Errors
-import com.reevajs.reeva.utils.expect
+import com.reevajs.reeva.utils.*
 import org.objectweb.asm.Type
+import org.objectweb.asm.tree.ClassNode
 import java.lang.reflect.Modifier
 import java.util.Collections
 
 class ConstructorGenerator(private val compiler: ClassCompiler) {
     // TODO: This should be cached somehow
-    fun generate(): Class<*> {
+    fun generate(): ClassNode {
         val length = compiler.constructorDescriptor.functionInfo.length
 
-        val clazz = assembleClass(
+        return assembleClass(
             public + final,
             compiler.ctorClassPath,
             superClass = JSNativeFunction::class,
@@ -219,8 +219,6 @@ class ConstructorGenerator(private val compiler: ClassCompiler) {
                 areturn
             }
         }
-
-        return CompilerClassLoader.load(clazz)
     }
 
     private inner class Impl(

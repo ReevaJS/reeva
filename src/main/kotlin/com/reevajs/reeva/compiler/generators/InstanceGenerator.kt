@@ -20,14 +20,15 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSUndefined
 import com.reevajs.reeva.utils.unreachable
 import org.objectweb.asm.Type
+import org.objectweb.asm.tree.ClassNode
 
 class InstanceGenerator(private val compiler: ClassCompiler) {
-    fun generate(): Class<*> {
+    fun generate(): ClassNode {
         val superClass = compiler.superClass
         val interfaces = compiler.interfaces
         val constructors = superClass?.constructors
 
-        val clazz = assembleClass(
+        return assembleClass(
             public + final,
             compiler.implClassPath,
             superClass = superClass ?: Object::class.java,
@@ -153,8 +154,6 @@ class InstanceGenerator(private val compiler: ClassCompiler) {
                 }
             }
         }
-
-        return CompilerClassLoader.load(clazz)
     }
     
     private fun MethodAssembly.generateCommonCtorImpl() {

@@ -95,10 +95,11 @@ class ClassCompiler(
      */
     fun compile(): JSValue {
         val realm = Agent.activeAgent.getActiveRealm()
+        val cl = CompilerClassLoader()
 
-        InstanceGenerator(this).generate()
-        val protoClass = PrototypeGenerator(this).generate()
-        val ctorClass = ConstructorGenerator(this).generate()
+        InstanceGenerator(this).generate().also(cl::load)
+        val protoClass = PrototypeGenerator(this).generate().let(cl::load)
+        val ctorClass = ConstructorGenerator(this).generate().let(cl::load)
 
         val protoCtor = protoClass.declaredConstructors.single()
         val proto = protoCtor.newInstance(realm) as JSObject

@@ -111,7 +111,7 @@ abstract class BaseGenerator(
         when {
             index == 0 -> pushReceiver
             index == 1 -> pushNewTarget
-            index < functionInfo.length -> {
+            index < functionInfo.ir.argCount -> {
                 pushArguments
                 ldc(opcode.local.value - 2)
                 invokevirtual<JSArguments>("get", JSValue::class, int)

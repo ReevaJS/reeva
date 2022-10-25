@@ -19,11 +19,12 @@ import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.transformer.FunctionInfo
 import com.reevajs.reeva.utils.*
 import org.objectweb.asm.Type
+import org.objectweb.asm.tree.ClassNode
 import java.lang.reflect.Modifier
 
 class PrototypeGenerator(private val compiler: ClassCompiler) {
-    fun generate(): Class<*> {
-        val clazz = assembleClass(
+    fun generate(): ClassNode {
+        return assembleClass(
             public + final,
             compiler.protoClassPath,
             superClass = JSObject::class,
@@ -162,8 +163,6 @@ class PrototypeGenerator(private val compiler: ClassCompiler) {
                 _return
             }
         }
-
-        return CompilerClassLoader.load(clazz)
     }
 
     private fun MethodAssembly.getterSetterPrelude(fieldName: String) {
