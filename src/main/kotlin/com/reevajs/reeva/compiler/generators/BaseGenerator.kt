@@ -1,36 +1,31 @@
-package com.reevajs.reeva.compiler
+package com.reevajs.reeva.compiler.generators
 
-import codes.som.koffee.ClassAssembly
 import codes.som.koffee.MethodAssembly
 import codes.som.koffee.insns.jvm.*
 import codes.som.koffee.insns.sugar.*
-import com.reevajs.reeva.core.Agent
+import com.reevajs.reeva.compiler.*
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.runtime.AOs
-import com.reevajs.reeva.runtime.JSValue
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.collections.JSArguments
-import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.objects.PropertyKey
 import com.reevajs.reeva.runtime.primitives.*
+import com.reevajs.reeva.runtime.JSValue
+import com.reevajs.reeva.transformer.Local as TransformerLocal
 import com.reevajs.reeva.transformer.FunctionInfo
-import com.reevajs.reeva.transformer.IR
 import com.reevajs.reeva.transformer.opcodes.*
-import com.reevajs.reeva.utils.Error
-import com.reevajs.reeva.utils.Errors
-import com.reevajs.reeva.utils.unreachable
+import com.reevajs.reeva.utils.*
 import org.objectweb.asm.tree.TryCatchBlockNode
 import java.util.Collections
 
-class CompilerOpcodeVisitor(
+abstract class BaseGenerator(
     methodAssembly: MethodAssembly,
-    private val functionInfo: FunctionInfo,
-    private val className: String,
-    private val context: ClassCompiler.Context,
+    protected val functionInfo: FunctionInfo,
 ) : MethodAssembly(methodAssembly.node), OpcodeVisitor {
-    private val blocks = functionInfo.ir.blocks.mapValues { it.value to makeLabel() }
+    protected val blocks = functionInfo.ir.blocks.mapValues { it.value to makeLabel() }
+    private val localMap = mutableMapOf<TransformerLocal, Local>()
 
     fun visitIR() {
         for ((block, label) in blocks.values) {
@@ -52,6 +47,18 @@ class CompilerOpcodeVisitor(
             }
         }
     }
+
+    abstract val pushReceiver: Unit
+
+    abstract val pushArguments: Unit
+
+    abstract val pushRealm: Unit
+
+    val pushNewTarget: Unit
+        get() {
+            pushArguments
+            invokevirtual<JSArguments>("getNewTarget", JSValue::class)
+        }
 
     override fun visitPushNull() = pushNull
 
@@ -83,46 +90,44 @@ class CompilerOpcodeVisitor(
 
     override fun visitSwap() = swap
 
-    override fun visitLoadInt(opcode: LoadInt) = iload(opcode.local.value)
-
-    override fun visitStoreInt(opcode: StoreInt) = istore(opcode.local.value)
-
-    override fun visitIncInt(opcode: IncInt) = iinc(opcode.local.value)
-
+    override fun visitLoadInt(opcode: LoadInt) {
+        expect(opcode.local.value >= functionInfo.length)
+        iload(localMap[opcode.local]!!)
+    }
+    
+    override fun visitStoreInt(opcode: StoreInt) {
+        expect(opcode.local.value >= functionInfo.length)
+        istore(getOrCreateLocal(opcode.local, LocalType.Int))
+    }
+    
+    override fun visitIncInt(opcode: IncInt) {
+        expect(opcode.local.value >= functionInfo.length)
+        iinc(getOrCreateLocal(opcode.local, LocalType.Int).index)
+    }
+    
     override fun visitLoadValue(opcode: LoadValue) {
-        // Handle special cases
-        when (opcode.local.value) {
-            0 -> when (context) {
-                ClassCompiler.Context.Impl -> {
-                    aload_0
-                    getfield(className, "wrapper", JSObject::class)
-                }
-                ClassCompiler.Context.Proto -> {
-                    aload_0
-                    invokevirtual<JSArguments>("getThisValue", JSValue::class)
-                }
-                else -> {
-                    aload_1
-                    invokevirtual<JSArguments>("getThisValue", JSValue::class)
-                }
+        val index = opcode.local.value
+
+        when {
+            index == 0 -> pushReceiver
+            index == 1 -> pushNewTarget
+            index < functionInfo.length -> {
+                pushArguments
+                ldc(opcode.local.value - 2)
+                invokevirtual<JSArguments>("get", JSValue::class, int)
             }
-            1 -> if (context == ClassCompiler.Context.Impl) {
-                TODO()
-            } else {
-                aload_1
-                invokevirtual<JSArguments>("getNewTarget", JSValue::class)
-            }
-            else -> aload(opcode.local.value - 2)
+            else -> load(localMap[opcode.local]!!)
         }
     }
 
     override fun visitStoreValue(opcode: StoreValue) {
-        when (opcode.local.value) {
-            0, 1 -> unreachable()
-            else -> astore(opcode.local.value - 2)
+        val index = opcode.local.value
+        if (index < functionInfo.length) {
+            unreachable()
+        } else {
+            store(getOrCreateLocal(opcode.local, LocalType.Object))
         }
     }
-
     private fun visitBinaryOperator(operator: String) {
         ldc(operator)
         invokestatic<AOs>(
@@ -418,8 +423,10 @@ class CompilerOpcodeVisitor(
 
     override fun visitConstruct(opcode: Construct) {
         construct<ArrayList<*>>()
+        val list = astore()
 
         repeat(opcode.argCount) {
+            aload(list)
             swap
             invokevirtual<ArrayList<*>>("add", Boolean::class, Any::class)
             pop
@@ -472,6 +479,7 @@ class CompilerOpcodeVisitor(
 
     override fun visitLoadGlobal(opcode: LoadGlobal) {
         pushRealm
+        dup
         invokevirtual<Realm>("getGlobalEnv", GlobalEnvRecord::class)
         ldc(opcode.name)
         invokevirtual<GlobalEnvRecord>("hasBinding", Boolean::class, String::class)
@@ -483,7 +491,6 @@ class CompilerOpcodeVisitor(
             pop
         }
 
-        pushRealm
         invokevirtual<Realm>("getGlobalEnv", GlobalEnvRecord::class)
         ldc(opcode.name)
         ldc(opcode.isStrict)
@@ -546,31 +553,26 @@ class CompilerOpcodeVisitor(
     override fun visitCreateAsyncGeneratorClosure(opcode: CreateAsyncGeneratorClosure): Nothing =
         TODO("FunctionCompiler::visitCreateAsyncGeneratorClosure")
 
-    override fun visitGetSuperConstructor() {
-        invokestatic<Agent>("getActiveAgent", Agent::class)
-        invokevirtual<Agent>("getActiveFunction", JSFunction::class)
-        invokevirtual<JSFunction>("getPrototype", JSValue::class)
-    }
-
     override fun visitCreateUnmappedArgumentsObject(): Nothing =
         TODO("FunctionCompiler::visitCreateUnmappedArgumentsObject")
 
     override fun visitCreateMappedArgumentsObject(): Nothing =
         TODO("FunctionCompiler::visitCreateMappedArgumentsObject")
 
-    override fun visitThrowSuperNotInitializedIfEmpty() {
-        pushEmpty
-        ifStatement(JumpCondition.RefEqual) {
-            invokestatic<Errors.Class.DerivedSuper>("throwTypeError", Void::class)
-            pop
-        }
-    }
-
     override fun visitThrowConstantReassignmentError(opcode: ThrowConstantReassignmentError): Nothing =
         TODO("FunctionCompiler::visitThrowConstantReassignmentError")
 
     override fun visitThrowLexicalAccessError(opcode: ThrowLexicalAccessErrorIfEmpty): Nothing =
         TODO("FunctionCompiler::visitThrowLexicalAccessError")
+
+    override fun visitThrowSuperNotInitializedIfEmpty() {
+        pushEmpty
+        ifStatement(JumpCondition.RefEqual) {
+            getstatic<Errors.Class.DerivedSuper>("INSTANCE", Errors.Class.DerivedSuper::class)
+            invokevirtual<Errors.Class.DerivedSuper>("throwTypeError", Void::class)
+            pop
+        }
+    }
 
     override fun visitPushClosure(): Nothing = TODO("FunctionCompiler::visitPushClosure")
 
@@ -619,11 +621,9 @@ class CompilerOpcodeVisitor(
     override fun visitLoadModuleVar(opcode: LoadModuleVar): Nothing = TODO("FunctionCompiler::visitLoadModuleVar")
 
     override fun visitStoreModuleVar(opcode: StoreModuleVar): Nothing = TODO("FunctionCompiler::visitStoreModuleVar")
-
+    
     override fun visitCollectRestArgs() {
-        if (context == ClassCompiler.Context.Impl) {
-            aload_0
-        } else aload_1
+        pushArguments
 
         dup
         invokeinterface<List<*>>("size", int)
@@ -636,4 +636,10 @@ class CompilerOpcodeVisitor(
 
     override fun visitPushClassInstanceFieldsSymbol() =
         getstatic<Realm.InternalSymbols>("classInstanceFields", JSSymbol::class)
+
+    private fun getOrCreateLocal(transformerLocal: TransformerLocal, type: LocalType): Local {
+        return localMap.getOrPut(transformerLocal) {
+            Local(currentLocalIndex++, type)
+        }
+    }
 }

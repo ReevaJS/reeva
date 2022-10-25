@@ -25,14 +25,6 @@ val MethodAssembly.pushTrue: Unit
 val MethodAssembly.pushFalse: Unit
     get() = getstatic<JSFalse>("INSTANCE", JSFalse::class)
 
-// TODO: Determine when there is an easier way to get the Realm, like from an argument
-//       or the receiver object
-val MethodAssembly.pushRealm: Unit
-    get() {
-        invokestatic<Agent>("getActiveAgent", Agent::class)
-        invokevirtual<Agent>("getActiveRealm", Realm::class)
-    }
-
 fun MethodAssembly.generateUnreachable() {
     construct<IllegalStateException>(String::class) {
         ldc("unreachable")
