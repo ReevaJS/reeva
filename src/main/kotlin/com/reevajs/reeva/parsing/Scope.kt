@@ -238,7 +238,7 @@ open class HoistingScope(
 
         locals.forEach {
             it.key = when {
-                isTaintedByEval -> VariableKey.Named
+                isTaintedByEval || it.mode != VariableMode.Declared -> VariableKey.Named
                 it.isInlineable -> VariableKey.InlineIndex(nextInlineableLocal++)
                 else -> VariableKey.Named
             }
