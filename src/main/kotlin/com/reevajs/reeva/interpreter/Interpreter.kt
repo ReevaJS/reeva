@@ -447,7 +447,7 @@ class Interpreter(
         if (target is JSObject) {
             val key = property.toPropertyKey()
             if (!target.delete(key))
-                Errors.StrictModeFailedDelete(key, target.toJSString().string)
+                Errors.StrictModeFailedDelete(key, target.toJSString().string).throwTypeError()
         }
         push(JSTrue)
     }
