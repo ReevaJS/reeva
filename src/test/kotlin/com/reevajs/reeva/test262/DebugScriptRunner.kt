@@ -15,38 +15,31 @@ val test262Helpers = listOf(
 )
 
 fun main() {
-    Agent.build {
-        printIR = true
-    }.withActiveScope {
-        val realm = makeRealmAndInitializeExecutionEnvironment()
+    Agent.build().withActiveScope {
+        makeRealmAndInitializeExecutionEnvironment()
 
-        val sourceInfo = FileSourceInfo(File("./demo/index.mjs"))
-        // val sourceInfo = LiteralSourceInfo("e", collectTest262Script() + File("./demo/index.mjs").readText(), false)
-        val executable = Reeva.compile(realm, sourceInfo)
-        if (executable.hasError) {
-            errorReporter.reportParseError(sourceInfo, executable.error())
-        } else {
-            try {
-                val result = AOs.unwrapPromise(executable.value().execute())
-                println("Executable result: $result")
-            } catch (e: ThrowException) {
-                errorReporter.reportRuntimeError(sourceInfo, e)
-            } catch (e: Throwable) {
-                errorReporter.reportInternalError(sourceInfo, e)
-            }
-        }
+        runTest262Helpers()
+
+        printIR = true
+        Reeva.execute(FileSourceInfo(File("./demo/index.mjs")))
 
         microtaskQueue.checkpoint()
     }
 }
 
-private fun collectTest262Script(): String {
-    return buildString {
-        test262Helpers.forEach {
-            append(File(Test262Runner.harnessDirectory, it).readText())
-            append('\n')
-        }
-    }
+private fun runTest262Helpers() {
+    Reeva.execute(
+        LiteralSourceInfo(
+            "test262",
+            buildString {
+                test262Helpers.forEach {
+                    append(File(Test262Runner.harnessDirectory, it).readText())
+                    append('\n')
+                }
+            },
+            false,
+        )
+    )
 }
 
 // PARSER BENCHMARK

@@ -119,7 +119,7 @@ class Test262Test(
     }
 
     fun execute(realm: Realm, sourceInfo: SourceInfo): Result<ParsingError, JSValue> {
-        return Reeva.compile(realm, sourceInfo).mapValue { it.execute() }
+        return Reeva.compile(sourceInfo, realm).mapValue { it.execute() }
     }
 
     private fun runSyncTest(agent: Agent, realm: Realm, isModule: Boolean) {
