@@ -21,7 +21,7 @@ class ScopeResolver : ASTVisitor {
 
         when (node) {
             is ScriptNode -> {
-                globalScope.isStrict = node.hasUseStrict
+                globalScope.isIntrinsicallyStrict = node.hasUseStrict
                 visit(node.statements)
             }
             is FunctionDeclarationNode -> {
@@ -29,7 +29,7 @@ class ScopeResolver : ASTVisitor {
                 visit(node)
             }
             is ModuleNode -> {
-                globalScope.isStrict = true
+                globalScope.isIntrinsicallyStrict = true
                 visit(node.body)
                 scope = ModuleScope(globalScope)
             }
@@ -258,7 +258,7 @@ class ScopeResolver : ASTVisitor {
 
         val classScope = HoistingScope(scope)
         scope = classScope
-        classScope.isStrict = true
+        classScope.isIntrinsicallyStrict = true
         node.scope = classScope
 
         for (element in node.body) {
@@ -289,7 +289,7 @@ class ScopeResolver : ASTVisitor {
         scope = functionScope
 
         if (body is BlockNode && body.hasUseStrict)
-            functionScope.isStrict = true
+            functionScope.isIntrinsicallyStrict = true
 
         var hasParameterExpressions = false
         var hasSimpleParams = true

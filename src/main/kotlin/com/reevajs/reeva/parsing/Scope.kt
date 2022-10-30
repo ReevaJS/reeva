@@ -15,8 +15,10 @@ open class Scope(
     val variableSources = mutableListOf<VariableSourceNode>()
     val pendingVariableReferences = mutableListOf<VariableRefNode>()
 
-    open val isStrict: Boolean
-        get() = outerHoistingScope.isStrict
+    var isIntrinsicallyStrict = false
+
+    val isStrict: Boolean
+        get() = isIntrinsicallyStrict || (outer?.isStrict ?: false)
 
     protected open var nextInlineableLocal: Int
         get() = outer!!.nextInlineableLocal
@@ -141,7 +143,6 @@ open class HoistingScope(
     val isLexical: Boolean = false,
     allowVarInlining: Boolean = true,
 ) : Scope(outer, allowVarInlining) {
-    override var isStrict = false
     var isDerivedClassConstructor = false
     private val reservedLocals = Transformer.RESERVED_LOCALS_COUNT
 
@@ -255,5 +256,7 @@ open class HoistingScope(
 class GlobalScope : HoistingScope(null, isLexical = false)
 
 class ModuleScope(outer: Scope) : HoistingScope(outer, isLexical = false) {
-    override var isStrict = true
+    init {
+        isIntrinsicallyStrict = true
+    }
 }
