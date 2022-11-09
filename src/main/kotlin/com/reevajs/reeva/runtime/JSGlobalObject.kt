@@ -151,8 +151,7 @@ open class JSGlobalObject protected constructor(
         @JvmStatic
         @ECMAImpl("19.2.2")
         fun isFinite(arguments: JSArguments): JSValue {
-            val num = arguments.argument(0).toNumber()
-            return (num.isNaN || num.isInfinite).toValue()
+            return arguments.argument(0).toNumber().isFinite.toValue()
         }
 
         @JvmStatic
