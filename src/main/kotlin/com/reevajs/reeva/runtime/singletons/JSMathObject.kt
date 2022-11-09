@@ -10,6 +10,7 @@ import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.runtime.primitives.JSNumber
 import com.reevajs.reeva.runtime.toNumber
 import com.reevajs.reeva.runtime.toUint32
+import com.reevajs.reeva.utils.attrs
 import com.reevajs.reeva.utils.toValue
 import kotlin.math.pow
 import kotlin.random.Random
@@ -27,7 +28,7 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         defineOwnProperty("PI", JSNumber(3.1415926535897932), 0)
         defineOwnProperty("SQRT1_2", JSNumber(0.7071067811865476), 0)
         defineOwnProperty("SQRT2", JSNumber(1.4142135623730951), 0)
-        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Math".toValue(), 0)
+        defineOwnProperty(Realm.WellKnownSymbols.toStringTag, "Math".toValue(), attrs { +conf; -enum; -writ })
 
         defineBuiltin("abs", 1, ::abs)
         defineBuiltin("acos", 1, ::acos)
@@ -46,16 +47,16 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         defineBuiltin("expm1", 1, ::expm1)
         defineBuiltin("floor", 1, ::floor)
         defineBuiltin("fround", 1, ::fround)
-        defineBuiltin("hypot", 1, ::hypot)
-        defineBuiltin("imul", 1, ::imul)
+        defineBuiltin("hypot", 2, ::hypot)
+        defineBuiltin("imul", 2, ::imul)
         defineBuiltin("log", 1, ::log)
         defineBuiltin("log1p", 1, ::log1p)
         defineBuiltin("log10", 1, ::log10)
         defineBuiltin("log2", 1, ::log2)
-        defineBuiltin("max", 1, ::max)
-        defineBuiltin("min", 1, ::min)
-        defineBuiltin("pow", 1, ::pow)
-        defineBuiltin("random", 1, ::random)
+        defineBuiltin("max", 2, ::max)
+        defineBuiltin("min", 2, ::min)
+        defineBuiltin("pow", 2, ::pow)
+        defineBuiltin("random", 0, ::random)
         defineBuiltin("round", 1, ::round)
         defineBuiltin("sign", 1, ::sign)
         defineBuiltin("sin", 1, ::sin)
@@ -146,8 +147,10 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         @ECMAImpl("21.3.2.11")
         @JvmStatic
         fun clz32(arguments: JSArguments): JSValue {
-            val x = arguments.argument(0).toUint32()
-            return x.asInt.toUInt().countLeadingZeroBits().toValue()
+            // Use Long so we don't have to worry about sign bits and int vs uint
+            val x = arguments.argument(0).toUint32().asDouble.toLong() and 0xffffffff
+
+            return (x.countLeadingZeroBits() - 32).toValue()
         }
 
         @ECMAImpl("21.3.2.12")
@@ -219,9 +222,9 @@ class JSMathObject private constructor(realm: Realm) : JSObject(realm, realm.obj
         @ECMAImpl("21.3.2.19")
         @JvmStatic
         fun imul(arguments: JSArguments): JSValue {
-            val a = arguments.argument(0).toUint32()
-            val b = arguments.argument(1).toUint32()
-            val product = (a.asInt * b.asInt) % AOs.MAX_32BIT_INT
+            val a = arguments.argument(0).toUint32().asDouble.toLong()
+            val b = arguments.argument(1).toUint32().asDouble.toLong()
+            val product = (a * b).toLong() and 0xffffffffL
             if (product >= AOs.MAX_31BIT_INT)
                 return (product - AOs.MAX_32BIT_INT).toValue()
             return product.toValue()
