@@ -864,7 +864,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         when (val target = node.target) {
             is IdentifierReferenceNode -> {
                 visitExpression(target)
-                +ToNumber
+                +ToNumeric
                 execute(Dup)
                 storeToSource(target.source)
             }

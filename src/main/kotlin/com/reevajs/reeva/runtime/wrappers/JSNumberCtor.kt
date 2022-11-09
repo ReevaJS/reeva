@@ -37,7 +37,10 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         val newTarget = arguments.newTarget
         val value = arguments.argument(0)
         val n = if (value != JSUndefined) {
-            numberFromArg(value).toValue()
+            val prim = value.toNumeric()
+            if (prim is JSBigInt) {
+                prim.number.toDouble().toValue()
+            } else prim as JSNumber
         } else JSNumber.ZERO
 
         if (newTarget == JSUndefined)
@@ -50,15 +53,6 @@ class JSNumberCtor private constructor(realm: Realm) : JSNativeFunction(realm, "
         ).also {
             it[Slot.NumberData] = n
         }
-    }
-
-    private fun numberFromArg(argument: JSValue): Double {
-        return if (!argument.isUndefined) {
-            val prim = argument.toNumeric()
-            if (prim is JSBigInt)
-                return prim.number.toDouble()
-            prim.asDouble
-        } else 0.0
     }
 
     companion object {

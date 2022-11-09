@@ -20,6 +20,7 @@ import com.reevajs.reeva.runtime.regexp.JSRegExpObject
 import com.reevajs.reeva.transformer.*
 import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.utils.*
+import java.math.BigInteger
 
 class Interpreter(
     private val transformedSource: TransformedSource,
@@ -383,11 +384,29 @@ class Interpreter(
     }
 
     override fun visitInc() {
-        push(JSNumber(popValue().asInt + 1))
+        val newValue = popValue().let {
+            if (it is JSNumber) {
+                JSNumber(it.number + 1.0) 
+            } else {
+                expect(it is JSBigInt)
+                JSBigInt(it.number + BigInteger.ONE)
+            }
+        }
+
+        push(newValue)
     }
 
     override fun visitDec() {
-        push(JSNumber(popValue().asInt - 1))
+        val newValue = popValue().let {
+            if (it is JSNumber) {
+                JSNumber(it.number - 1.0) 
+            } else {
+                expect(it is JSBigInt)
+                JSBigInt(it.number - BigInteger.ONE)
+            }
+        }
+
+        push(newValue)
     }
 
     override fun visitLoadKeyedProperty() {
