@@ -2044,7 +2044,10 @@ object AOs {
 
     @JvmStatic
     @ECMAImpl("12.15.5")
-    fun applyStringOrNumericBinaryOperator(lhs: JSValue, rhs: JSValue, op: String): JSValue {
+    fun applyStringOrNumericBinaryOperator(lhs_: JSValue, rhs_: JSValue, op: String): JSValue {
+        var lhs = lhs_
+        var rhs = rhs_
+
         if (op == "+") {
             val lprim = lhs.toPrimitive()
             val rprim = rhs.toPrimitive()
@@ -2053,6 +2056,9 @@ object AOs {
                 val rstr = rprim.toJSString()
                 return JSString.makeRope(lstr, rstr)
             }
+
+            lhs = lprim
+            rhs = rprim
         }
 
         val lnum = lhs.toNumeric()
