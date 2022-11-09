@@ -17,8 +17,7 @@ open class JSErrorObject protected constructor(
     }
 
     override fun init() {
-        if (message != null)
-            defineOwnProperty("message", message.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        defineOwnProperty("message", message.orEmpty().toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
     }
 
     companion object {

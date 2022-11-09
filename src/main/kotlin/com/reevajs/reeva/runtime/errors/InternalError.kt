@@ -28,7 +28,7 @@ class JSInternalErrorProto private constructor(realm: Realm) : JSErrorProto(
     }
 }
 
-class JSInternalErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "InternalError") {
+class JSInternalErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "InternalError", realm.errorCtor) {
     override fun errorProto(realm: Realm): JSObject = realm.internalErrorProto
 
     companion object {

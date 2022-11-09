@@ -16,8 +16,9 @@ import com.reevajs.reeva.utils.key
 
 open class JSErrorCtor protected constructor(
     realm: Realm,
-    name: String = "Error"
-) : JSNativeFunction(realm, name, 1) {
+    name: String = "Error",
+    prototype: JSValue = realm.functionProto,
+) : JSNativeFunction(realm, name, 1, prototype) {
     open fun errorProto(realm: Realm): JSObject {
         return realm.errorProto
     }

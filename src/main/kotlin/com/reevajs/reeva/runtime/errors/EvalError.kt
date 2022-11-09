@@ -28,7 +28,7 @@ class JSEvalErrorProto private constructor(realm: Realm) : JSErrorProto(
     }
 }
 
-class JSEvalErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "EvalError") {
+class JSEvalErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "EvalError", realm.errorCtor) {
     override fun errorProto(realm: Realm): JSObject = realm.evalErrorProto
 
     companion object {

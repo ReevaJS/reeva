@@ -23,6 +23,7 @@ open class JSErrorProto protected constructor(
 
         defineOwnProperty("constructor", errorCtor, Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineOwnProperty("name", name.toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
+        defineOwnProperty("message", "".toValue(), Descriptor.CONFIGURABLE or Descriptor.WRITABLE)
         defineBuiltin("toString", 0, ::toString)
     }
 

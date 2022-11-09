@@ -28,7 +28,7 @@ class JSSyntaxErrorProto private constructor(realm: Realm) : JSErrorProto(
     }
 }
 
-class JSSyntaxErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "SyntaxError") {
+class JSSyntaxErrorCtor private constructor(realm: Realm) : JSErrorCtor(realm, "SyntaxError", realm.errorCtor) {
     override fun errorProto(realm: Realm): JSObject = realm.syntaxErrorProto
 
     companion object {
