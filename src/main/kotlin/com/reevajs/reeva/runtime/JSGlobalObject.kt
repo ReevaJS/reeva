@@ -73,7 +73,6 @@ open class JSGlobalObject protected constructor(
                 JSBuiltinFunction.create("parseInt", 1, ::parseInt),
                 JSBuiltinFunction.create("id", 1, ::id),
                 JSBuiltinFunction.create("jvm", 1, ::jvm),
-                JSBuiltinFunction.create("inspect", 1, ::inspect),
 
                 // TODO: The tests involving these functions have some pretty intense for loops which increase
                 //       the test suite time significantly (~40%). These tests fail-fast when the functions
@@ -272,13 +271,6 @@ open class JSGlobalObject protected constructor(
 //            realm,
 //            ProxyClassCompiler().makeProxyClass(baseClass, interfaces)
 //        )
-        }
-
-        @JvmStatic
-        fun inspect(arguments: JSArguments): JSValue {
-            val value = arguments.argument(0)
-            println(inspect(value, simple = false).stringify())
-            return JSUndefined
         }
     }
 }
