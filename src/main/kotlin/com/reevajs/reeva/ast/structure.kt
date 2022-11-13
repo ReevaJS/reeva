@@ -59,10 +59,6 @@ abstract class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWith
 abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
     open var hoistedScope: Scope by ::scope
 
-    var isInlineable = true
-
-    lateinit var key: VariableKey
-
     lateinit var type: VariableType
     lateinit var mode: VariableMode
 

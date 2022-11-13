@@ -13,6 +13,7 @@ import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.utils.expect
+import com.reevajs.reeva.utils.key
 import com.reevajs.reeva.utils.unreachable
 import java.math.BigInteger
 
@@ -27,7 +28,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         val rootNode = parsedSource.node
 
-        builder = IRBuilder(RESERVED_LOCALS_COUNT, rootNode.scope.inlineableLocalCount)
+        builder = IRBuilder(RESERVED_LOCALS_COUNT)
 
         globalDeclarationInstantiation(rootNode.scope.outerGlobalScope as HoistingScope, isEval) {
             rootNode.children.forEach(::visit)
@@ -55,15 +56,13 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
     private fun enterScope(scope: Scope) {
         currentScope = scope
-
-        if (scope.requiresEnv())
-            +PushDeclarativeEnvRecord
+        +PushDeclarativeEnvRecord
     }
 
     private fun exitScope(scope: Scope) {
         currentScope = scope.outer
 
-        if (scope.requiresEnv() && !builder.activeBlockIsTerminated())
+        if (!builder.activeBlockIsTerminated())
             +PopEnvRecord
     }
 
@@ -153,7 +152,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         instantiateFunction: Boolean = true,
     ): FunctionInfo {
         val prevBuilder = builder
-        builder = IRBuilder(parameters.size + RESERVED_LOCALS_COUNT, functionScope.inlineableLocalCount)
+        builder = IRBuilder(parameters.size + RESERVED_LOCALS_COUNT)
 
         expect(functionScope is HoistingScope)
         expect(bodyScope is HoistingScope)
@@ -195,7 +194,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         val receiver = functionScope.receiverVariable
 
-        if (receiver != null && !receiver.isInlineable) {
+        if (receiver != null) {
             +LoadValue(RECEIVER_LOCAL)
             storeToSource(receiver)
         }
@@ -217,7 +216,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                         storeToSource(param)
                         +Jump(continuationBlock)
                         builder.enterBlock(continuationBlock)
-                    } else if (!param.isInlineable) {
+                    } else {
                         +LoadValue(local)
                         storeToSource(param)
                     }
@@ -380,18 +379,12 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             return
         }
 
-        val key = source.key
+        val distance = currentScope!!.envDistanceFrom(source.scope)
+        val name = source.name()
 
-        if (key is VariableKey.InlineIndex) {
-            +LoadValue(Local(key.index))
-        } else {
-            val distance = currentScope!!.envDistanceFrom(source.scope)
-            val name = source.name()
-
-            if (distance == 0) {
-                +LoadCurrentEnvName(name, source.scope.isStrict)
-            } else +LoadEnvName(name, distance, source.scope.isStrict)
-        }
+        if (distance == 0) {
+            +LoadCurrentEnvName(name, source.scope.isStrict)
+        } else +LoadEnvName(name, distance, source.scope.isStrict)
     }
 
     private fun storeToSource(source: VariableSourceNode) {
@@ -408,18 +401,12 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             return
         }
 
-        val key = source.key
+        val distance = currentScope!!.envDistanceFrom(source.scope)
+        val name = source.name()
 
-        if (key is VariableKey.InlineIndex) {
-            +StoreValue(Local(key.index))
-        } else {
-            val distance = currentScope!!.envDistanceFrom(source.scope)
-            val name = source.name()
-
-            if (distance == 0) {
-                +StoreCurrentEnvName(name, source.scope.isStrict)
-            } else +StoreEnvName(name, distance, source.scope.isStrict)
-        }
+        if (distance == 0) {
+            +StoreCurrentEnvName(name, source.scope.isStrict)
+        } else +StoreEnvName(name, distance, source.scope.isStrict)
     }
 
     override fun visitExpressionStatement(node: ExpressionStatementNode) {
@@ -1321,8 +1308,6 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
     override fun visitIdentifierReference(node: IdentifierReferenceNode) {
         loadFromSource(node.source)
-        if (node.source.isInlineable)
-            return
 
         if (node.source.mode == VariableMode.Global || node.source.type == VariableType.Var)
             return
@@ -1568,9 +1553,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
             node.kind,
         )
 
-        // If the function is inlineable, that means there are no recursive references inside it,
-        // meaning that we don't need to worry about storing it in the EnvRecord
-        if (node.identifier != null && !node.isInlineable) {
+        if (node.identifier != null) {
             +Dup
             storeToSource(node)
         }
@@ -1719,7 +1702,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
     private fun makeClassFieldInitializerMethod(fields: List<ClassFieldNode>): FunctionInfo {
         val prevBuilder = builder
-        builder = IRBuilder(RESERVED_LOCALS_COUNT, 0)
+        builder = IRBuilder(RESERVED_LOCALS_COUNT)
 
         for (field in fields) {
             +LoadValue(RECEIVER_LOCAL)
@@ -1764,7 +1747,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         }
 
         val prevBuilder = builder
-        builder = IRBuilder(argCount, 0)
+        builder = IRBuilder(argCount)
 
         if (constructorKind == JSFunction.ConstructorKind.Base) {
             if (hasInstanceFields)

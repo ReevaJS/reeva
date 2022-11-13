@@ -31,7 +31,7 @@ data class IR(
     val nestedFunctions: List<FunctionInfo>,
 )
 
-class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
+class IRBuilder(val argCount: Int) {
     private val locals = mutableListOf<LocalKind>()
     private val nestedFunctions = mutableListOf<FunctionInfo>()
     private val blocks = mutableMapOf<BlockIndex, BasicBlock>()
@@ -43,10 +43,6 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
         // Receiver + new.target
         locals.add(LocalKind.Value)
         locals.add(LocalKind.Value)
-
-        repeat(additionalReservedLocals) {
-            locals.add(LocalKind.Value)
-        }
 
         activeBlock = blocks[makeBlock("Start")]!!
     }
