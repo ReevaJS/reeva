@@ -27,7 +27,7 @@ import com.reevajs.reeva.utils.expect
 class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : CyclicModuleRecord(realm) {
     private val moduleNode = parsedSource.node as ModuleNode
 
-    override val uri by parsedSource.sourceInfo::uri
+    override val uri get() = parsedSource.sourceInfo.uri
     override val requestedModules = moduleNode.requestedModules
 
     lateinit var context: ExecutionContext

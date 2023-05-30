@@ -2,8 +2,8 @@ import java.io.ByteArrayOutputStream
 import org.gradle.jvm.tasks.Jar
 
 plugins {
-    kotlin("jvm") version "1.7.10"
-    kotlin("plugin.serialization") version "1.7.10"
+    kotlin("jvm") version "1.8.21"
+    kotlin("plugin.serialization") version "1.8.21"
     id("com.adarshr.test-logger") version "3.2.0"
     `maven-publish`
 }
@@ -19,7 +19,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.7.10")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.21")
     implementation("com.github.ReevaJS:mfbt:78080dba4e")
     implementation("com.github.ReevaJS:regexp:78f14e1326")
     implementation("org.ow2.asm:asm:9.3")
@@ -31,7 +31,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.0")
     testImplementation("com.charleskorn.kaml:kaml:0.47.0")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:1.7.10")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:1.8.21")
     testImplementation("io.strikt:strikt-core:0.34.1")
 }
 
@@ -48,14 +48,17 @@ tasks {
 
     compileKotlin {
         kotlinOptions {
-            jvmTarget = "1.8"
-            freeCompilerArgs = listOf("-Xinline-classes", "-opt-in=kotlin.RequiresOptIn")
+            jvmTarget = "17"
+            freeCompilerArgs = listOf(
+                "-Xinline-classes",
+                "-opt-in=kotlin.RequiresOptIn",
+            )
         }
     }
 
     compileTestKotlin {
         kotlinOptions {
-            jvmTarget = "1.8"
+            jvmTarget = "17"
         }
     }
 
