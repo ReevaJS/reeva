@@ -1,6 +1,6 @@
 package com.reevajs.reeva.ast
 
-import com.reevajs.reeva.ast.ASTNode.Companion.appendIndent
+import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
 
 /**
  * @param processedName The processed string of the identifier (with escape sequences
@@ -10,7 +10,7 @@ import com.reevajs.reeva.ast.ASTNode.Companion.appendIndent
 class IdentifierNode(
     val processedName: String,
     val rawName: String = processedName,
-) : ASTNodeBase(), ExpressionNode {
+) : AstNodeBase(), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()

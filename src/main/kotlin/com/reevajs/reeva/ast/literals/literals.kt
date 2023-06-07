@@ -1,11 +1,11 @@
 package com.reevajs.reeva.ast.literals
 
-import com.reevajs.reeva.ast.ASTNode.Companion.appendIndent
-import com.reevajs.reeva.ast.ASTNodeBase
+import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
+import com.reevajs.reeva.ast.AstNodeBase
 import com.reevajs.reeva.ast.ExpressionNode
 import com.reevajs.reeva.ast.VariableRefNode
 
-sealed class BooleanLiteralNode(val value: Boolean) : ASTNodeBase(), ExpressionNode {
+sealed class BooleanLiteralNode(val value: Boolean) : AstNodeBase(), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -19,7 +19,7 @@ class TrueNode : BooleanLiteralNode(true)
 
 class FalseNode : BooleanLiteralNode(false)
 
-class StringLiteralNode(val value: String) : ASTNodeBase(), ExpressionNode {
+class StringLiteralNode(val value: String) : AstNodeBase(), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -29,7 +29,7 @@ class StringLiteralNode(val value: String) : ASTNodeBase(), ExpressionNode {
     }
 }
 
-class NumericLiteralNode(val value: Double) : ASTNodeBase(), ExpressionNode {
+class NumericLiteralNode(val value: Double) : AstNodeBase(), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -39,7 +39,7 @@ class NumericLiteralNode(val value: Double) : ASTNodeBase(), ExpressionNode {
     }
 }
 
-class BigIntLiteralNode(val value: String, val type: Type) : ASTNodeBase(), ExpressionNode {
+class BigIntLiteralNode(val value: String, val type: Type) : AstNodeBase(), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -56,7 +56,7 @@ class BigIntLiteralNode(val value: String, val type: Type) : ASTNodeBase(), Expr
     }
 }
 
-class NullLiteralNode : ASTNodeBase(), ExpressionNode
+class NullLiteralNode : AstNodeBase(), ExpressionNode
 
 class ThisLiteralNode : VariableRefNode(), ExpressionNode {
     override fun name() = "*this"

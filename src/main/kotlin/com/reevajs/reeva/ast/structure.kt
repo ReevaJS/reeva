@@ -9,11 +9,11 @@ import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.utils.newline
 import kotlin.reflect.KClass
 
-open class ASTNodeBase(children: List<ASTNode> = emptyList()) : ASTNode {
-    override lateinit var parent: ASTNode
+open class AstNodeBase(children: List<AstNode> = emptyList()) : AstNode {
+    override lateinit var parent: AstNode
 
-    final override val children: MutableList<ASTNode> = if (children is ArrayList<*>) {
-        children as MutableList<ASTNode>
+    final override val children: MutableList<AstNode> = if (children is ArrayList<*>) {
+        children as MutableList<AstNode>
     } else children.toMutableList()
 
     override val astNodeName: String
@@ -29,34 +29,34 @@ open class ASTNodeBase(children: List<ASTNode> = emptyList()) : ASTNode {
     }
 }
 
-fun <T : ASTNode> T.withPosition(start: TokenLocation, end: TokenLocation) = apply {
+fun <T : AstNode> T.withPosition(start: TokenLocation, end: TokenLocation) = apply {
     sourceLocation = SourceLocation(start, end)
 }
 
-fun <T : ASTNode> T.withPosition(sourceLocation: SourceLocation) = apply {
+fun <T : AstNode> T.withPosition(sourceLocation: SourceLocation) = apply {
     this.sourceLocation = sourceLocation
 }
 
-fun <T : ASTNode> T.withPosition(token: Token) = withPosition(token.start, token.end)
+fun <T : AstNode> T.withPosition(token: Token) = withPosition(token.start, token.end)
 
-fun <T : ASTNode> T.withPosition(node: ASTNode) = withPosition(node.sourceLocation)
+fun <T : AstNode> T.withPosition(node: AstNode) = withPosition(node.sourceLocation)
 
-fun <T : ASTNode> T.withPosition(start: ASTNode, end: ASTNode) = withPosition(
+fun <T : AstNode> T.withPosition(start: AstNode, end: AstNode) = withPosition(
     start.sourceLocation.start,
     end.sourceLocation.end,
 )
 
-open class NodeWithScope(children: List<ASTNode> = emptyList()) : ASTNodeBase(children) {
+open class NodeWithScope(children: List<AstNode> = emptyList()) : AstNodeBase(children) {
     lateinit var scope: Scope
 }
 
-abstract class VariableRefNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
+abstract class VariableRefNode(children: List<AstNode> = emptyList()) : NodeWithScope(children) {
     lateinit var source: VariableSourceNode
 
     abstract fun name(): String
 }
 
-abstract class VariableSourceNode(children: List<ASTNode> = emptyList()) : NodeWithScope(children) {
+abstract class VariableSourceNode(children: List<AstNode> = emptyList()) : NodeWithScope(children) {
     open var hoistedScope: Scope by ::scope
 
     var isInlineable = true
@@ -106,13 +106,13 @@ enum class VariableType {
     Const
 }
 
-interface ASTNode {
+interface AstNode {
     val astNodeName: String
-    val children: MutableList<ASTNode>
+    val children: MutableList<AstNode>
 
     var sourceLocation: SourceLocation
 
-    var parent: ASTNode
+    var parent: AstNode
 
     // Nicely removes the extra indentation lines
     fun debugPrint() {
@@ -185,7 +185,7 @@ interface ASTNode {
     }
 }
 
-fun <T : Any> childrenOfTypeHelper(node: ASTNode, clazz: KClass<T>, list: MutableList<T>) {
+fun <T : Any> childrenOfTypeHelper(node: AstNode, clazz: KClass<T>, list: MutableList<T>) {
     node.children.forEach {
         if (it::class == clazz) {
             @Suppress("UNCHECKED_CAST")
@@ -195,13 +195,13 @@ fun <T : Any> childrenOfTypeHelper(node: ASTNode, clazz: KClass<T>, list: Mutabl
     }
 }
 
-inline fun <reified T : Any> ASTNode.childrenOfType(): List<T> {
+inline fun <reified T : Any> AstNode.childrenOfType(): List<T> {
     return mutableListOf<T>().also { childrenOfTypeHelper(this, T::class, it) }
 }
 
-inline fun <reified T : Any> ASTNode.containsAny() = childrenOfType<T>().isNotEmpty()
+inline fun <reified T : Any> AstNode.containsAny() = childrenOfType<T>().isNotEmpty()
 
-fun ASTNode.containsArguments(): Boolean {
+fun AstNode.containsArguments(): Boolean {
     val idents = childrenOfType<IdentifierReferenceNode>()
     if (idents.any { it.rawName == "arguments" })
         return true
@@ -221,10 +221,10 @@ fun ASTNode.containsArguments(): Boolean {
     return false
 }
 
-sealed class RootNode(children: List<ASTNode>) : NodeWithScope(children)
+sealed class RootNode(children: List<AstNode>) : NodeWithScope(children)
 
 class ScriptNode(val statements: StatementList, val hasUseStrict: Boolean) : RootNode(statements)
 
-interface StatementNode : ASTNode
+interface StatementNode : AstNode
 
-interface ExpressionNode : ASTNode
+interface ExpressionNode : AstNode

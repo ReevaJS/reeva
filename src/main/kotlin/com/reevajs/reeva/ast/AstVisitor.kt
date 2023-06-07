@@ -4,8 +4,8 @@ import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
 
-interface ASTVisitor {
-    fun visit(node: ASTNode) {
+interface AstVisitor {
+    fun visit(node: AstNode) {
         when (node) {
             is StatementNode -> visitStatement(node)
             is ExpressionNode -> visitExpression(node)
@@ -86,9 +86,9 @@ interface ASTVisitor {
         }
     }
 
-    fun visitOther(node: ASTNode) {
+    fun visitOther(node: AstNode) {
         when (node) {
-            is ASTListNode<*> -> visitASTListNode(node)
+            is AstListNode<*> -> visitAstListNode(node)
             is MethodDefinitionNode -> visitMethodDefinition(node)
             is ScriptNode -> visitScript(node)
             is ModuleNode -> visitModule(node)
@@ -109,7 +109,7 @@ interface ASTVisitor {
             is ClassMethodNode -> visitClassMethod(node)
             is ClassNode -> visitClass(node)
             is Import -> visitImport(node)
-            else -> throw IllegalArgumentException("Unrecognized ASTNode ${node.astNodeName}")
+            else -> throw IllegalArgumentException("Unrecognized AstNode ${node.astNodeName}")
         }
     }
 
@@ -121,7 +121,7 @@ interface ASTVisitor {
         visit(node.body)
     }
 
-    fun visitASTListNode(node: ASTListNode<*>) {
+    fun visitAstListNode(node: AstListNode<*>) {
         node.children.forEach(::visit)
     }
 

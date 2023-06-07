@@ -5,7 +5,6 @@ import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.core.lifecycle.ModuleRecord
 import com.reevajs.reeva.parsing.HoistingScope
 import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.parsing.Scope
@@ -16,7 +15,7 @@ import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.unreachable
 import java.math.BigInteger
 
-class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
+class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     private lateinit var builder: IRBuilder
     private var currentScope: Scope? = null
 
@@ -143,7 +142,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
     private fun visitFunctionHelper(
         name: String,
         parameters: ParameterList,
-        body: ASTNode,
+        body: AstNode,
         functionScope: Scope,
         bodyScope: Scope,
         isStrict: Boolean,
@@ -265,9 +264,9 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
 
         // body's scope is the same as the function's scope (the scope we receive
         // as a parameter). We don't want to re-enter the same scope, so we explicitly
-        // call visitASTListNode instead, which skips the {enter,exit}Scope calls.
+        // call visitAstListNode instead, which skips the {enter,exit}Scope calls.
         if (body is BlockNode) {
-            visitASTListNode(body.statements)
+            visitAstListNode(body.statements)
         } else {
             expect(isArrow)
             visit(body)
@@ -350,7 +349,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
                 storeToSource(it)
             }
 
-            visitASTListNode(node.statements)
+            visitAstListNode(node.statements)
 
             if (continuationBlock != null) {
                 exitControlFlowScope()
@@ -930,7 +929,7 @@ class Transformer(val parsedSource: ParsedSource) : ASTVisitor {
         }
     }
 
-    private fun assign(node: ASTNode, bindingPatternLocal: Local? = null) {
+    private fun assign(node: AstNode, bindingPatternLocal: Local? = null) {
         when (node) {
             is VariableSourceNode -> storeToSource(node)
             is BindingPatternNode -> {

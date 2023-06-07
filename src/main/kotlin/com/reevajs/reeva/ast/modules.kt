@@ -118,7 +118,7 @@ class ModuleNode(val body: StatementList) : RootNode(body) {
     }
 }
 
-class ImportNode(val imports: List<Import>, val moduleName: String) : ASTNodeBase(emptyList()), StatementNode {
+class ImportNode(val imports: List<Import>, val moduleName: String) : AstNodeBase(emptyList()), StatementNode {
     val importEntries: List<ImportEntry>
         get() = imports.map { it.makeEntry(moduleName) }
 
@@ -126,7 +126,7 @@ class ImportNode(val imports: List<Import>, val moduleName: String) : ASTNodeBas
     constructor(moduleName: String) : this(emptyList(), moduleName)
 }
 
-sealed class Import(children: List<ASTNode>) : VariableSourceNode(children) {
+sealed class Import(children: List<AstNode>) : VariableSourceNode(children) {
     abstract fun sourceModuleName(): String
 
     abstract fun makeEntry(moduleName: String): ImportEntry
@@ -161,14 +161,14 @@ sealed class Import(children: List<ASTNode>) : VariableSourceNode(children) {
     }
 }
 
-class ExportNode(val exports: List<Export>) : ASTNodeBase(emptyList()), StatementNode {
+class ExportNode(val exports: List<Export>) : AstNodeBase(emptyList()), StatementNode {
     val exportEntries: List<ExportEntry>
         get() = exports.flatMap { it.makeEntries() }
 
     constructor(export: Export) : this(listOf(export))
 }
 
-sealed class Export(children: List<ASTNode>) : ASTNodeBase(children) {
+sealed class Export(children: List<AstNode>) : AstNodeBase(children) {
     abstract fun makeEntries(): List<ExportEntry>
 
     data class Named(

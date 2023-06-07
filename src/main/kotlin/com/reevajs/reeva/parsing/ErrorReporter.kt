@@ -1,6 +1,6 @@
 package com.reevajs.reeva.parsing
 
-import com.reevajs.reeva.ast.ASTNode
+import com.reevajs.reeva.ast.AstNode
 import com.reevajs.reeva.parsing.lexer.Token
 import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.parsing.lexer.TokenType
@@ -103,7 +103,7 @@ class ErrorReporter(private val parser: Parser) : Reporter() {
         override val end = sourceEnd
     }
 
-    fun at(node: ASTNode) = at(node.sourceLocation.start, node.sourceLocation.end)
+    fun at(node: AstNode) = at(node.sourceLocation.start, node.sourceLocation.end)
 
     fun at(token: Token) = at(token.start, token.end)
 

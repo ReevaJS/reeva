@@ -11,7 +11,7 @@ import java.util.concurrent.locks.ReentrantLock
 
 class Agent(
     var printIR: Boolean,
-    var printAST: Boolean,
+    var printAst: Boolean,
     var canBlock: Boolean,
     var hostHooks: HostHooks,
 ) {
@@ -112,7 +112,7 @@ class Agent(
 
     class Builder {
         var printIR = false
-        var printAST = false
+        var printAst = false
         var canBlock = true
         var hostHooks = HostHooks()
     }
@@ -133,7 +133,7 @@ class Agent(
 
         fun build(block: Builder.() -> Unit = {}): Agent {
             val builder = Builder().apply(block)
-            return Agent(builder.printIR, builder.printAST, builder.canBlock, builder.hostHooks)
+            return Agent(builder.printIR, builder.printAst, builder.canBlock, builder.hostHooks)
         }
     }
 }

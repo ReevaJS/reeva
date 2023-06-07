@@ -100,7 +100,7 @@ class Parser(val sourceInfo: SourceInfo) {
             ScopeResolver().resolve(result)
             EarlyErrorDetector(reporter).visit(result)
 
-            if (Agent.activeAgent.printAST)
+            if (Agent.activeAgent.printAst)
                 println(result.debugPrint())
 
             Result.success(ParsedSource(sourceInfo, result))
@@ -1089,7 +1089,7 @@ class Parser(val sourceInfo: SourceInfo) {
 
         consume(TokenType.OpenParen)
 
-        var initializer: ASTNode? = null
+        var initializer: AstNode? = null
 
         if (!match(TokenType.Semicolon)) {
             if (tokenType.isExpressionToken) {
@@ -1119,7 +1119,7 @@ class Parser(val sourceInfo: SourceInfo) {
         ForStatementNode(initializer, condition, update, body)
     }
 
-    private fun parseForEachStatement(initializer: ASTNode): StatementNode = nps {
+    private fun parseForEachStatement(initializer: AstNode): StatementNode = nps {
         if ((initializer is VariableDeclarationNode && initializer.declarations.size > 1) ||
             (initializer is LexicalDeclarationNode && initializer.declarations.size > 1)
         ) {
@@ -1165,7 +1165,7 @@ class Parser(val sourceInfo: SourceInfo) {
         val params: ParameterList,
         val body: BlockNode,
         val type: AOs.FunctionKind,
-    ) : ASTNodeBase()
+    ) : AstNodeBase()
 
     private fun parseFunctionHelper(isDeclaration: Boolean): FunctionTemp = nps {
         val isAsync = if (match(TokenType.Async)) {
@@ -1546,7 +1546,7 @@ class Parser(val sourceInfo: SourceInfo) {
             consume()
     }
 
-    private fun checkForAndConsumeUseStrict(): ASTNode? {
+    private fun checkForAndConsumeUseStrict(): AstNode? {
         var useStrictDirective: StringLiteralNode? = null
 
         while (true) {
@@ -2437,7 +2437,7 @@ class Parser(val sourceInfo: SourceInfo) {
     // Helper for setting source positions of AST. Stands for
     // node parsing scope; the name is short to prevent long
     // non-local return labels (i.e. "return@nodeParsingScope")
-    private inline fun <T : ASTNode?> nps(crossinline block: () -> T): T {
+    private inline fun <T : AstNode?> nps(crossinline block: () -> T): T {
         contract {
             callsInPlace(block, InvocationKind.EXACTLY_ONCE)
         }

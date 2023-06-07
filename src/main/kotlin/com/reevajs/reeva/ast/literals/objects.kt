@@ -2,16 +2,16 @@ package com.reevajs.reeva.ast.literals
 
 import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.expressions.SuperCallExpressionNode
-import com.reevajs.reeva.ast.statements.ASTListNode
+import com.reevajs.reeva.ast.statements.AstListNode
 import com.reevajs.reeva.ast.statements.BlockNode
 import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.runtime.AOs
 
-typealias PropertyDefinitionList = ASTListNode<Property>
+typealias PropertyDefinitionList = AstListNode<Property>
 
-class ObjectLiteralNode(val list: PropertyDefinitionList) : ASTNodeBase(listOfNotNull(list)), ExpressionNode
+class ObjectLiteralNode(val list: PropertyDefinitionList) : AstNodeBase(listOfNotNull(list)), ExpressionNode
 
-sealed class Property(children: List<ASTNode>) : ASTNodeBase(children)
+sealed class Property(children: List<AstNode>) : AstNodeBase(children)
 
 class KeyValueProperty(
     val key: PropertyName,
@@ -27,7 +27,7 @@ class SpreadProperty(val target: ExpressionNode) : Property(listOf(target))
 class PropertyName(
     val expression: ExpressionNode,
     val type: Type,
-) : ASTNodeBase(listOf(expression)) {
+) : AstNodeBase(listOf(expression)) {
     fun asString() = when (type) {
         Type.Identifier -> (expression as IdentifierNode).processedName
         Type.String -> (expression as StringLiteralNode).value

@@ -8,7 +8,7 @@ import com.reevajs.reeva.utils.expect
 class BindingPatternNode(
     val kind: BindingKind,
     private val entries: List<BindingEntry>,
-) : ASTNodeBase(entries), VariableSourceProvider {
+) : AstNodeBase(entries), VariableSourceProvider {
     val bindingProperties: List<BindingProperty>
         get() = entries as List<BindingProperty>
 
@@ -41,8 +41,8 @@ class BindingDeclaration(
 }
 
 class BindingDeclarationOrPattern(
-    val node: ASTNode,
-) : ASTNodeBase(listOf(node)), VariableSourceProvider {
+    val node: AstNode,
+) : AstNodeBase(listOf(node)), VariableSourceProvider {
     val isBindingPattern: Boolean get() = node is BindingPatternNode
 
     val asBindingPattern: BindingPatternNode
@@ -60,9 +60,9 @@ class BindingDeclarationOrPattern(
     }
 }
 
-sealed class BindingEntry(children: List<ASTNode>) : ASTNodeBase(children), VariableSourceProvider
+sealed class BindingEntry(children: List<AstNode>) : AstNodeBase(children), VariableSourceProvider
 
-sealed class BindingProperty(children: List<ASTNode>) : BindingEntry(children), VariableSourceProvider
+sealed class BindingProperty(children: List<AstNode>) : BindingEntry(children), VariableSourceProvider
 
 class BindingRestProperty(val declaration: BindingDeclaration) : BindingProperty(listOf(declaration)) {
     override fun sources() = listOf(declaration)
@@ -84,7 +84,7 @@ class ComputedBindingProperty(
     override fun sources() = alias.sources()
 }
 
-sealed class BindingElement(children: List<ASTNode>) : BindingEntry(children), VariableSourceProvider
+sealed class BindingElement(children: List<AstNode>) : BindingEntry(children), VariableSourceProvider
 
 class BindingRestElement(val declaration: BindingDeclarationOrPattern) : BindingElement(listOf(declaration)) {
     override fun sources() = declaration.sources()

@@ -11,7 +11,7 @@ import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.unreachable
 
-class ScopeResolver : ASTVisitor {
+class ScopeResolver : AstVisitor {
     private lateinit var scope: Scope
     private var allowVarInlining = true
 
@@ -279,7 +279,7 @@ class ScopeResolver : ASTVisitor {
 
     private fun visitFunctionHelper(
         parameters: ParameterList,
-        body: ASTNode,
+        body: AstNode,
         kind: AOs.FunctionKind,
         isLexical: Boolean,
     ): Scope {

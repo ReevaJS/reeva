@@ -1,7 +1,7 @@
 package com.reevajs.reeva.ast.expressions
 
-import com.reevajs.reeva.ast.ASTNode.Companion.appendIndent
-import com.reevajs.reeva.ast.ASTNodeBase
+import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
+import com.reevajs.reeva.ast.AstNodeBase
 import com.reevajs.reeva.ast.ArgumentList
 import com.reevajs.reeva.ast.ExpressionNode
 import com.reevajs.regexp.RegExp
@@ -10,7 +10,7 @@ class AssignmentExpressionNode(
     val lhs: ExpressionNode,
     val rhs: ExpressionNode,
     val op: BinaryOperator?, // Null indicates regular assignment
-) : ASTNodeBase(listOf(lhs, rhs)), ExpressionNode {
+) : AstNodeBase(listOf(lhs, rhs)), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -22,32 +22,32 @@ class AssignmentExpressionNode(
     }
 }
 
-class AwaitExpressionNode(val expression: ExpressionNode) : ASTNodeBase(listOf(expression)), ExpressionNode
+class AwaitExpressionNode(val expression: ExpressionNode) : AstNodeBase(listOf(expression)), ExpressionNode
 
 // TODO: This isn't exactly to spec
 class CallExpressionNode(
     val target: ExpressionNode,
     val arguments: ArgumentList,
     val isOptional: Boolean,
-) : ASTNodeBase(listOf(target) + arguments), ExpressionNode
+) : AstNodeBase(listOf(target) + arguments), ExpressionNode
 
 // Note that this name deviates from the spec because I think this is
 // a much better name. It is not clear from the name "ExpressionNode"
 // that the inner expression are separated by comma operators, and only
 // the last one should be returned.
-class CommaExpressionNode(val expressions: List<ExpressionNode>) : ASTNodeBase(expressions), ExpressionNode
+class CommaExpressionNode(val expressions: List<ExpressionNode>) : AstNodeBase(expressions), ExpressionNode
 
 class ConditionalExpressionNode(
     val predicate: ExpressionNode,
     val ifTrue: ExpressionNode,
     val ifFalse: ExpressionNode
-) : ASTNodeBase(listOf(predicate, ifTrue, ifFalse)), ExpressionNode
+) : AstNodeBase(listOf(predicate, ifTrue, ifFalse)), ExpressionNode
 
 class MemberExpressionNode(
     val lhs: ExpressionNode,
     val rhs: ExpressionNode,
     val type: Type,
-) : ASTNodeBase(listOf(lhs, rhs)), ExpressionNode {
+) : AstNodeBase(listOf(lhs, rhs)), ExpressionNode {
     override val isInvalidAssignmentTarget = false
 
     override fun dump(indent: Int) = buildString {
@@ -70,12 +70,12 @@ class MemberExpressionNode(
 class NewExpressionNode(
     val target: ExpressionNode,
     val arguments: ArgumentList,
-) : ASTNodeBase(listOfNotNull(target) + arguments), ExpressionNode
+) : AstNodeBase(listOfNotNull(target) + arguments), ExpressionNode
 
 class SuperPropertyExpressionNode(
     val target: ExpressionNode,
     val isComputed: Boolean,
-) : ASTNodeBase(listOf(target)), ExpressionNode {
+) : AstNodeBase(listOf(target)), ExpressionNode {
     override val isInvalidAssignmentTarget: Boolean = false
 
     override fun dump(indent: Int) = buildString {
@@ -88,14 +88,14 @@ class SuperPropertyExpressionNode(
     }
 }
 
-class SuperCallExpressionNode(val arguments: ArgumentList) : ASTNodeBase(arguments), ExpressionNode
+class SuperCallExpressionNode(val arguments: ArgumentList) : AstNodeBase(arguments), ExpressionNode
 
-class ImportCallExpressionNode(val expression: ExpressionNode) : ASTNodeBase(listOf(expression)), ExpressionNode
+class ImportCallExpressionNode(val expression: ExpressionNode) : AstNodeBase(listOf(expression)), ExpressionNode
 
 class YieldExpressionNode(
     val expression: ExpressionNode?,
     val generatorYield: Boolean
-) : ASTNodeBase(listOfNotNull(expression)), ExpressionNode {
+) : AstNodeBase(listOfNotNull(expression)), ExpressionNode {
     init {
         if (expression == null && generatorYield)
             throw IllegalArgumentException("Cannot have a generatorYield expression without a target expression")
@@ -111,12 +111,12 @@ class YieldExpressionNode(
     }
 }
 
-class ParenthesizedExpressionNode(val expression: ExpressionNode) : ASTNodeBase(listOf(expression)), ExpressionNode
+class ParenthesizedExpressionNode(val expression: ExpressionNode) : AstNodeBase(listOf(expression)), ExpressionNode
 
-class TemplateLiteralNode(val parts: List<ExpressionNode>) : ASTNodeBase(parts), ExpressionNode
+class TemplateLiteralNode(val parts: List<ExpressionNode>) : AstNodeBase(parts), ExpressionNode
 
 class RegExpLiteralNode(
     val source: String,
     val flags: String,
     val regexp: RegExp,
-) : ASTNodeBase(listOf()), ExpressionNode
+) : AstNodeBase(listOf()), ExpressionNode

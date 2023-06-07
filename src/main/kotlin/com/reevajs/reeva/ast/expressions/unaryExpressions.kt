@@ -1,7 +1,7 @@
 package com.reevajs.reeva.ast.expressions
 
-import com.reevajs.reeva.ast.ASTNode.Companion.appendIndent
-import com.reevajs.reeva.ast.ASTNodeBase
+import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
+import com.reevajs.reeva.ast.AstNodeBase
 import com.reevajs.reeva.ast.ExpressionNode
 import com.reevajs.reeva.ast.NodeWithScope
 
@@ -35,7 +35,7 @@ class UpdateExpressionNode(
     val target: ExpressionNode,
     val isIncrement: Boolean,
     val isPostfix: Boolean,
-) : ASTNodeBase(listOf(target)), ExpressionNode {
+) : AstNodeBase(listOf(target)), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()

@@ -1,40 +1,40 @@
 package com.reevajs.reeva.ast.statements
 
 import com.reevajs.reeva.ast.*
-import com.reevajs.reeva.ast.ASTNode.Companion.appendIndent
+import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
 import com.reevajs.reeva.parsing.Scope
 
 interface Labellable {
     val labels: MutableSet<String>
 }
 
-abstract class LabellableBase(children: List<ASTNode>) : ASTNodeBase(children), StatementNode, Labellable {
+abstract class LabellableBase(children: List<AstNode>) : AstNodeBase(children), StatementNode, Labellable {
     override val labels: MutableSet<String> = mutableSetOf()
 }
 
-typealias StatementList = ASTListNode<StatementNode>
-typealias SwitchClauseList = ASTListNode<SwitchClause>
+typealias StatementList = AstListNode<StatementNode>
+typealias SwitchClauseList = AstListNode<SwitchClause>
 
-open class ASTListNode<T : ASTNode>(
+open class AstListNode<T : AstNode>(
     statements: List<T> = emptyList()
-) : ASTNodeBase(statements), List<T> by statements
+) : AstNodeBase(statements), List<T> by statements
 
-class BlockStatementNode(val block: BlockNode) : ASTNodeBase(listOf(block)), StatementNode
+class BlockStatementNode(val block: BlockNode) : AstNodeBase(listOf(block)), StatementNode
 
-// useStrict is an ASTNode so that we can point to it during errors in case it is
+// useStrict is an AstNode so that we can point to it during errors in case it is
 // invalid (i.e. in functions with non-simple parameter lists).
 class BlockNode(
     val statements: StatementList,
-    val useStrict: ASTNode?,
+    val useStrict: AstNode?,
 ) : NodeWithScope(statements), StatementNode, Labellable {
     val hasUseStrict: Boolean get() = useStrict != null
 
     override var labels: MutableSet<String> = mutableSetOf()
 }
 
-class EmptyStatementNode : ASTNodeBase(), StatementNode
+class EmptyStatementNode : AstNodeBase(), StatementNode
 
-class ExpressionStatementNode(val node: ExpressionNode) : ASTNodeBase(listOf(node)), StatementNode
+class ExpressionStatementNode(val node: ExpressionNode) : AstNodeBase(listOf(node)), StatementNode
 
 class IfStatementNode(
     val condition: ExpressionNode,
@@ -55,7 +55,7 @@ class WhileStatementNode(
 class WithStatementNode(
     val expression: ExpressionNode,
     val body: StatementNode,
-) : ASTNodeBase(listOf(expression, body)), StatementNode
+) : AstNodeBase(listOf(expression, body)), StatementNode
 
 class SwitchStatementNode(
     val target: ExpressionNode,
@@ -69,7 +69,7 @@ class SwitchClause(
 ) : LabellableBase(listOfNotNull(target) + (body ?: emptyList())), StatementNode
 
 class ForStatementNode(
-    val initializer: ASTNode?,
+    val initializer: AstNode?,
     val condition: ExpressionNode?,
     val incrementer: ExpressionNode?,
     val body: StatementNode,
@@ -97,7 +97,7 @@ class ForStatementNode(
 }
 
 sealed class ForEachNode(
-    val decl: ASTNode,
+    val decl: AstNode,
     val expression: ExpressionNode,
     val body: StatementNode
 ) : LabellableBase(listOf(decl, expression, body)), StatementNode {
@@ -105,24 +105,24 @@ sealed class ForEachNode(
 }
 
 class ForInNode(
-    decl: ASTNode,
+    decl: AstNode,
     expression: ExpressionNode,
     body: StatementNode
 ) : ForEachNode(decl, expression, body)
 
 class ForOfNode(
-    decl: ASTNode,
+    decl: AstNode,
     expression: ExpressionNode,
     body: StatementNode
 ) : ForEachNode(decl, expression, body)
 
 class ForAwaitOfNode(
-    decl: ASTNode,
+    decl: AstNode,
     expression: ExpressionNode,
     body: StatementNode
 ) : ForEachNode(decl, expression, body)
 
-class ThrowStatementNode(val expr: ExpressionNode) : ASTNodeBase(listOf(expr)), StatementNode
+class ThrowStatementNode(val expr: ExpressionNode) : AstNodeBase(listOf(expr)), StatementNode
 
 class TryStatementNode(
     val tryBlock: BlockNode,
@@ -142,12 +142,12 @@ class CatchNode(
 
 class CatchParameter(
     val declaration: BindingDeclarationOrPattern,
-) : ASTNodeBase()
+) : AstNodeBase()
 
-class BreakStatementNode(val label: String?) : ASTNodeBase(), StatementNode
+class BreakStatementNode(val label: String?) : AstNodeBase(), StatementNode
 
-class ContinueStatementNode(val label: String?) : ASTNodeBase(), StatementNode
+class ContinueStatementNode(val label: String?) : AstNodeBase(), StatementNode
 
-class ReturnStatementNode(val expression: ExpressionNode?) : ASTNodeBase(listOfNotNull(expression)), StatementNode
+class ReturnStatementNode(val expression: ExpressionNode?) : AstNodeBase(listOfNotNull(expression)), StatementNode
 
-class DebuggerStatementNode : ASTNodeBase(), StatementNode
+class DebuggerStatementNode : AstNodeBase(), StatementNode

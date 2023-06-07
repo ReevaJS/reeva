@@ -3,9 +3,9 @@ package com.reevajs.reeva.ast.expressions
 import com.reevajs.reeva.ast.*
 
 sealed class OptionalChain(
-    children: List<ASTNode>,
+    children: List<AstNode>,
     val isOptional: Boolean,
-) : ASTNodeBase(children)
+) : AstNodeBase(children)
 
 class OptionalCallChain(
     val arguments: ArgumentList,
@@ -25,4 +25,4 @@ class OptionalAccessChain(
 class OptionalChainNode(
     val base: ExpressionNode,
     val parts: List<OptionalChain>
-) : ASTNodeBase(listOf(base) + parts), ExpressionNode
+) : AstNodeBase(listOf(base) + parts), ExpressionNode

@@ -2,7 +2,7 @@
 
 package com.reevajs.reeva.runtime
 
-import com.reevajs.reeva.ast.ASTNode
+import com.reevajs.reeva.ast.AstNode
 import com.reevajs.reeva.ast.ScriptNode
 import com.reevajs.reeva.ast.containsAny
 import com.reevajs.reeva.ast.containsArguments
@@ -20,7 +20,6 @@ import com.reevajs.reeva.core.lifecycle.LiteralSourceInfo
 import com.reevajs.reeva.core.lifecycle.Script
 import com.reevajs.reeva.interpreter.AsyncInterpretedFunction
 import com.reevajs.reeva.interpreter.GeneratorInterpretedFunction
-import com.reevajs.reeva.interpreter.InterpretedFunction
 import com.reevajs.reeva.interpreter.NormalInterpretedFunction
 import com.reevajs.reeva.jvmcompat.JSClassInstanceObject
 import com.reevajs.reeva.jvmcompat.JSClassObject
@@ -2101,7 +2100,7 @@ object AOs {
 
     @JvmStatic
     @ECMAImpl("14.1.12")
-    fun isAnonymousFunctionDefinition(node: ASTNode): Boolean {
+    fun isAnonymousFunctionDefinition(node: AstNode): Boolean {
         // TODO
         return false
 

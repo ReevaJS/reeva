@@ -1,7 +1,7 @@
 package com.reevajs.reeva.ast
 
-import com.reevajs.reeva.ast.ASTNode.Companion.appendIndent
-import com.reevajs.reeva.ast.statements.ASTListNode
+import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
+import com.reevajs.reeva.ast.statements.AstListNode
 import com.reevajs.reeva.ast.statements.BlockNode
 import com.reevajs.reeva.ast.statements.DeclarationNode
 import com.reevajs.reeva.ast.statements.VariableSourceProvider
@@ -9,9 +9,9 @@ import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.duplicates
 
-typealias ArgumentList = ASTListNode<ArgumentNode>
+typealias ArgumentList = AstListNode<ArgumentNode>
 
-class ParameterList(parameters: List<Parameter> = emptyList()) : ASTListNode<Parameter>(parameters) {
+class ParameterList(parameters: List<Parameter> = emptyList()) : AstListNode<Parameter>(parameters) {
     fun isSimple(): Boolean {
         // TODO: Eventually check for destructuring patterns
         return all { it.isSimple }
@@ -37,7 +37,7 @@ class ParameterList(parameters: List<Parameter> = emptyList()) : ASTListNode<Par
 class ArgumentNode(
     val expression: ExpressionNode,
     val isSpread: Boolean
-) : ASTNodeBase(listOf(expression)), ExpressionNode {
+) : AstNodeBase(listOf(expression)), ExpressionNode {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -48,7 +48,7 @@ class ArgumentNode(
     }
 }
 
-sealed interface Parameter : ASTNode {
+sealed interface Parameter : AstNode {
     val isSimple: Boolean
 }
 
@@ -61,14 +61,14 @@ class SimpleParameter(
     override fun name() = identifier.processedName
 }
 
-class RestParameter(val declaration: BindingDeclarationOrPattern) : ASTNodeBase(), Parameter {
+class RestParameter(val declaration: BindingDeclarationOrPattern) : AstNodeBase(), Parameter {
     override val isSimple = false
 }
 
 class BindingParameter(
     val pattern: BindingPatternNode,
     val initializer: ExpressionNode?,
-) : ASTNodeBase(listOfNotNull(pattern, initializer)), Parameter {
+) : AstNodeBase(listOfNotNull(pattern, initializer)), Parameter {
     override val isSimple = false
 }
 
@@ -104,7 +104,7 @@ class FunctionExpressionNode(
 
 class ArrowFunctionNode(
     val parameters: ParameterList,
-    val body: ASTNode, // BlockNode or ExpressionNode
+    val body: AstNode, // BlockNode or ExpressionNode
     val kind: AOs.FunctionKind,
 ) : NodeWithScope(parameters + body), ExpressionNode {
     // May be equal to body.scope if parameters.isSimple() == true

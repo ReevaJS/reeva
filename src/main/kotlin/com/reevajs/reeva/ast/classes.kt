@@ -19,7 +19,7 @@ class ClassDeclarationNode(
 class ClassExpressionNode(
     val identifier: IdentifierNode?, // can always be omitted
     val classNode: ClassNode,
-) : ASTNodeBase(listOfNotNull(identifier, classNode)), ExpressionNode
+) : AstNodeBase(listOfNotNull(identifier, classNode)), ExpressionNode
 
 class ClassNode(
     val heritage: ExpressionNode?,
@@ -27,9 +27,9 @@ class ClassNode(
 ) : NodeWithScope(listOfNotNull(heritage) + body)
 
 sealed class ClassElementNode(
-    children: List<ASTNode>,
+    children: List<AstNode>,
     val isStatic: Boolean,
-) : ASTNodeBase(children)
+) : AstNodeBase(children)
 
 class ClassFieldNode(
     val identifier: PropertyName,

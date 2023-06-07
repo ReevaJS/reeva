@@ -6,7 +6,7 @@ interface DeclarationNode : StatementNode {
     val declarations: List<VariableSourceProvider>
 }
 
-interface VariableSourceProvider : ASTNode {
+interface VariableSourceProvider : AstNode {
     fun sources(): List<VariableSourceNode>
 
     fun names() = sources().map { it.name() }
@@ -19,16 +19,16 @@ sealed interface Declaration : VariableSourceProvider {
 class LexicalDeclarationNode(
     val isConst: Boolean,
     override val declarations: List<Declaration>,
-) : ASTNodeBase(declarations), DeclarationNode
+) : AstNodeBase(declarations), DeclarationNode
 
 class VariableDeclarationNode(
     override val declarations: List<Declaration>,
-) : ASTNodeBase(declarations), DeclarationNode
+) : AstNodeBase(declarations), DeclarationNode
 
 class DestructuringDeclaration(
     val pattern: BindingPatternNode,
     override val initializer: ExpressionNode?,
-) : ASTNodeBase(listOf(pattern)), Declaration {
+) : AstNodeBase(listOf(pattern)), Declaration {
     override fun sources() = pattern.sources()
 }
 
