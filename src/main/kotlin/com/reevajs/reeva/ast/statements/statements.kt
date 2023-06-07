@@ -12,19 +12,12 @@ abstract class LabellableBase(children: List<AstNode>) : AstNodeBase(children), 
     override val labels: MutableSet<String> = mutableSetOf()
 }
 
-typealias StatementList = AstListNode<StatementNode>
-typealias SwitchClauseList = AstListNode<SwitchClause>
-
-open class AstListNode<T : AstNode>(
-    statements: List<T> = emptyList()
-) : AstNodeBase(statements), List<T> by statements
-
 class BlockStatementNode(val block: BlockNode) : AstNodeBase(listOf(block)), StatementNode
 
 // useStrict is an AstNode so that we can point to it during errors in case it is
 // invalid (i.e. in functions with non-simple parameter lists).
 class BlockNode(
-    val statements: StatementList,
+    val statements: List<StatementNode>,
     val useStrict: AstNode?,
 ) : NodeWithScope(statements), StatementNode, Labellable {
     val hasUseStrict: Boolean get() = useStrict != null
@@ -59,13 +52,13 @@ class WithStatementNode(
 
 class SwitchStatementNode(
     val target: ExpressionNode,
-    val clauses: SwitchClauseList,
+    val clauses: List<SwitchClause>,
 ) : LabellableBase(listOfNotNull()), StatementNode
 
 class SwitchClause(
     // null target indicates the default case
     val target: ExpressionNode?,
-    val body: StatementList?,
+    val body: List<StatementNode>?,
 ) : LabellableBase(listOfNotNull(target) + (body ?: emptyList())), StatementNode
 
 class ForStatementNode(

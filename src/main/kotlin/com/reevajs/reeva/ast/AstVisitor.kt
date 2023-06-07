@@ -88,7 +88,6 @@ interface AstVisitor {
 
     fun visitOther(node: AstNode) {
         when (node) {
-            is AstListNode<*> -> visitAstListNode(node)
             is MethodDefinitionNode -> visitMethodDefinition(node)
             is ScriptNode -> visitScript(node)
             is ModuleNode -> visitModule(node)
@@ -109,20 +108,17 @@ interface AstVisitor {
             is ClassMethodNode -> visitClassMethod(node)
             is ClassNode -> visitClass(node)
             is Import -> visitImport(node)
+            is ParameterList -> visitParameterList(node)
             else -> throw IllegalArgumentException("Unrecognized AstNode ${node.astNodeName}")
         }
     }
 
     fun visitScript(node: ScriptNode) {
-        visit(node.statements)
+        node.statements.forEach(::visit)
     }
 
     fun visitModule(node: ModuleNode) {
-        visit(node.body)
-    }
-
-    fun visitAstListNode(node: AstListNode<*>) {
-        node.children.forEach(::visit)
+        node.body.forEach(::visit)
     }
 
     fun visitBlock(node: BlockNode) {
@@ -161,7 +157,7 @@ interface AstVisitor {
         visit(node.target)
         node.clauses.forEach {
             it.target?.let(::visit)
-            it.body?.let(::visit)
+            it.body?.forEach(::visit)
         }
     }
 
@@ -277,6 +273,10 @@ interface AstVisitor {
 
     fun visitDebuggerStatement() {}
 
+    fun visitParameterList(node: ParameterList) {
+        node.parameters.forEach(::visit)
+    }
+
     fun visitImportNode(node: ImportNode) {
         node.imports.forEach(::visit)
     }
@@ -320,7 +320,7 @@ interface AstVisitor {
     fun visitIdentifier(node: IdentifierNode) {}
 
     fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
-        node.parameters.forEach(::visit)
+        visit(node.parameters)
         visit(node.body)
     }
 
@@ -348,17 +348,17 @@ interface AstVisitor {
     }
 
     fun visitMethodDefinition(node: MethodDefinitionNode) {
-        node.parameters.forEach(::visit)
+        visit(node.parameters)
         visit(node.body)
     }
 
     fun visitFunctionExpression(node: FunctionExpressionNode) {
-        node.parameters.forEach(::visit)
+        visit(node.parameters)
         visit(node.body)
     }
 
     fun visitArrowFunction(node: ArrowFunctionNode) {
-        node.parameters.forEach(::visit)
+        visit(node.parameters)
         visit(node.body)
     }
 
@@ -439,7 +439,7 @@ interface AstVisitor {
         for (part in node.parts) {
             when (part) {
                 is OptionalAccessChain -> visit(part.identifier)
-                is OptionalCallChain -> visit(part.arguments)
+                is OptionalCallChain -> part.arguments.forEach(::visit)
                 is OptionalComputedAccessChain -> visit(part.expr)
             }
         }

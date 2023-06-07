@@ -152,7 +152,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         instantiateFunction: Boolean = true,
     ): FunctionInfo {
         val prevBuilder = builder
-        builder = IRBuilder(parameters.size + RESERVED_LOCALS_COUNT, functionScope.inlineableLocalCount)
+        builder = IRBuilder(parameters.parameters.size + RESERVED_LOCALS_COUNT, functionScope.inlineableLocalCount)
 
         expect(functionScope is HoistingScope)
         expect(bodyScope is HoistingScope)
@@ -199,7 +199,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             storeToSource(receiver)
         }
 
-        parameters.forEachIndexed { index, param ->
+        parameters.parameters.forEachIndexed { index, param ->
             val local = Local(RESERVED_LOCALS_COUNT + index)
 
             when (param) {
@@ -266,7 +266,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         // as a parameter). We don't want to re-enter the same scope, so we explicitly
         // call visitAstListNode instead, which skips the {enter,exit}Scope calls.
         if (body is BlockNode) {
-            visitAstListNode(body.statements)
+            body.statements.forEach(::visit)
         } else {
             expect(isArrow)
             visit(body)
@@ -349,7 +349,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                 storeToSource(it)
             }
 
-            visitAstListNode(node.statements)
+            node.statements.forEach(::visit)
 
             if (continuationBlock != null) {
                 exitControlFlowScope()
@@ -594,7 +594,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
                     builder.enterBlock(clause.bodyBlock)
                     enterControlFlowScope(clause.clause.labels, continuationBlock, null)
-                    visit(clause.clause.body!!)
+                    clause.clause.body!!.forEach(::visit)
                     exitControlFlowScope()
                     +Jump(continuationBlock)
                 }
@@ -606,7 +606,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         if (defaultClause != null) {
             builder.enterBlock(defaultClause!!.bodyBlock!!)
             enterControlFlowScope(defaultClause!!.clause.labels, continuationBlock, null)
-            visit(defaultClause!!.clause.body!!)
+            defaultClause!!.clause.body!!.forEach(::visit)
             exitControlFlowScope()
             +Jump(continuationBlock)
         }
@@ -1336,13 +1336,13 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         Normal,
     }
 
-    private fun argumentsMode(arguments: ArgumentList): ArgumentsMode {
+    private fun argumentsMode(arguments: List<ArgumentNode>): ArgumentsMode {
         return if (arguments.any { it.isSpread }) {
             ArgumentsMode.Spread
         } else ArgumentsMode.Normal
     }
 
-    private fun pushArguments(arguments: ArgumentList): ArgumentsMode {
+    private fun pushArguments(arguments: List<ArgumentNode>): ArgumentsMode {
         val mode = argumentsMode(arguments)
         when (mode) {
             ArgumentsMode.Spread -> {

@@ -2,7 +2,7 @@ package com.reevajs.reeva.ast.expressions
 
 import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
 import com.reevajs.reeva.ast.AstNodeBase
-import com.reevajs.reeva.ast.ArgumentList
+import com.reevajs.reeva.ast.ArgumentNode
 import com.reevajs.reeva.ast.ExpressionNode
 import com.reevajs.regexp.RegExp
 
@@ -27,9 +27,9 @@ class AwaitExpressionNode(val expression: ExpressionNode) : AstNodeBase(listOf(e
 // TODO: This isn't exactly to spec
 class CallExpressionNode(
     val target: ExpressionNode,
-    val arguments: ArgumentList,
+    val arguments: List<ArgumentNode>,
     val isOptional: Boolean,
-) : AstNodeBase(listOf(target) + arguments), ExpressionNode
+) : AstNodeBase(arguments + target), ExpressionNode
 
 // Note that this name deviates from the spec because I think this is
 // a much better name. It is not clear from the name "ExpressionNode"
@@ -69,8 +69,8 @@ class MemberExpressionNode(
 
 class NewExpressionNode(
     val target: ExpressionNode,
-    val arguments: ArgumentList,
-) : AstNodeBase(listOfNotNull(target) + arguments), ExpressionNode
+    val arguments: List<ArgumentNode>,
+) : AstNodeBase(arguments + target), ExpressionNode
 
 class SuperPropertyExpressionNode(
     val target: ExpressionNode,
@@ -88,7 +88,7 @@ class SuperPropertyExpressionNode(
     }
 }
 
-class SuperCallExpressionNode(val arguments: ArgumentList) : AstNodeBase(arguments), ExpressionNode
+class SuperCallExpressionNode(val arguments: List<ArgumentNode>) : AstNodeBase(arguments), ExpressionNode
 
 class ImportCallExpressionNode(val expression: ExpressionNode) : AstNodeBase(listOf(expression)), ExpressionNode
 

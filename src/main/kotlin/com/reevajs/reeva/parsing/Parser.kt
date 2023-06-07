@@ -63,7 +63,7 @@ class Parser(val sourceInfo: SourceInfo) {
                 val indexOfLastNewline = source.indexOfLast { it == '\n' }
                 val start = TokenLocation(0, 0, 0)
                 val end = TokenLocation(source.lastIndex, newlineCount, source.lastIndex - indexOfLastNewline)
-                ScriptNode(StatementList().withPosition(start, end), false).withPosition(start, end)
+                ScriptNode(emptyList(), false).withPosition(start, end)
             } else parseScriptImpl()
         }
     }
@@ -76,7 +76,7 @@ class Parser(val sourceInfo: SourceInfo) {
                 val indexOfLastNewline = source.indexOfLast { it == '\n' }
                 val start = TokenLocation(0, 0, 0)
                 val end = TokenLocation(source.lastIndex, newlineCount, source.lastIndex - indexOfLastNewline)
-                ModuleNode(StatementList().withPosition(start, end)).withPosition(start, end)
+                ModuleNode(emptyList()).withPosition(start, end)
             } else parseModuleImpl()
         }
     }
@@ -145,7 +145,7 @@ class Parser(val sourceInfo: SourceInfo) {
      *     ExportDeclaration
      *     StatementListItem
      */
-    private fun parseModuleItemList(): StatementList = nps {
+    private fun parseModuleItemList(): List<StatementNode> {
         val list = mutableListOf<StatementNode>()
 
         while (tokenType.isStatementToken) {
@@ -158,7 +158,7 @@ class Parser(val sourceInfo: SourceInfo) {
             }
         }
 
-        StatementList(list)
+        return list
     }
 
     /*
@@ -166,13 +166,13 @@ class Parser(val sourceInfo: SourceInfo) {
      *     StatementListItem
      *     StatementList StatementListItem
      */
-    private fun parseStatementList(): StatementList = nps {
+    private fun parseStatementList(): List<StatementNode> {
         val list = mutableListOf<StatementNode>()
 
         while (tokenType.isStatementToken)
             list.add(parseStatement(orDecl = true))
 
-        StatementList(list)
+        return list
     }
 
     /*
@@ -882,31 +882,27 @@ class Parser(val sourceInfo: SourceInfo) {
         consume(TokenType.CloseParen)
         consume(TokenType.OpenCurly)
 
-        val clauses = nps {
-            val clauses = mutableListOf<SwitchClause>()
+        val clauses = mutableListOf<SwitchClause>()
 
-            while (matchSwitchClause()) {
-                if (match(TokenType.Case)) {
-                    consume()
-                    val caseTarget = parseExpression(2)
-                    consume(TokenType.Colon)
-                    if (matchSwitchClause()) {
-                        clauses.add(SwitchClause(caseTarget, null))
-                    } else {
-                        clauses.add(SwitchClause(caseTarget, parseStatementList()))
-                    }
+        while (matchSwitchClause()) {
+            if (match(TokenType.Case)) {
+                consume()
+                val caseTarget = parseExpression(2)
+                consume(TokenType.Colon)
+                if (matchSwitchClause()) {
+                    clauses.add(SwitchClause(caseTarget, null))
                 } else {
-                    consume(TokenType.Default)
-                    consume(TokenType.Colon)
-                    if (matchSwitchClause()) {
-                        clauses.add(SwitchClause(null, null))
-                    } else {
-                        clauses.add(SwitchClause(null, parseStatementList()))
-                    }
+                    clauses.add(SwitchClause(caseTarget, parseStatementList()))
+                }
+            } else {
+                consume(TokenType.Default)
+                consume(TokenType.Colon)
+                if (matchSwitchClause()) {
+                    clauses.add(SwitchClause(null, null))
+                } else {
+                    clauses.add(SwitchClause(null, parseStatementList()))
                 }
             }
-
-            SwitchClauseList(clauses)
         }
 
         consume(TokenType.CloseCurly)
@@ -1775,11 +1771,11 @@ class Parser(val sourceInfo: SourceInfo) {
             return@nps NewTargetNode()
         }
         val target = parseExpression(TokenType.New.operatorPrecedence, excludedTokens = setOf(TokenType.OpenParen))
-        val arguments = if (match(TokenType.OpenParen)) parseArguments() else ArgumentList()
+        val arguments = if (match(TokenType.OpenParen)) parseArguments() else emptyList()
         NewExpressionNode(target, arguments)
     }
 
-    private fun parseArguments(): ArgumentList = nps {
+    private fun parseArguments(): List<ArgumentNode> {
         consume(TokenType.OpenParen)
 
         val arguments = mutableListOf<ArgumentNode>()
@@ -1802,7 +1798,7 @@ class Parser(val sourceInfo: SourceInfo) {
 
         consume(TokenType.CloseParen)
 
-        ArgumentList(arguments)
+        return arguments
     }
 
     private fun parseYieldExpression(): ExpressionNode = nps {
@@ -2075,7 +2071,6 @@ class Parser(val sourceInfo: SourceInfo) {
         val objectStart = sourceStart
         consume(TokenType.OpenCurly)
 
-        val propertiesStart = sourceStart
         val properties = mutableListOf<Property>()
 
         while (!match(TokenType.CloseCurly)) {
@@ -2085,10 +2080,9 @@ class Parser(val sourceInfo: SourceInfo) {
             } else break
         }
 
-        val list = PropertyDefinitionList(properties).withPosition(propertiesStart, lastToken.end)
         consume(TokenType.CloseCurly)
 
-        return@nps ObjectLiteralNode(list).withPosition(objectStart, lastToken.end)
+        return@nps ObjectLiteralNode(properties).withPosition(objectStart, lastToken.end)
     }
 
     /*

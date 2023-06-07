@@ -2,14 +2,11 @@ package com.reevajs.reeva.ast.literals
 
 import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.expressions.SuperCallExpressionNode
-import com.reevajs.reeva.ast.statements.AstListNode
 import com.reevajs.reeva.ast.statements.BlockNode
 import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.runtime.AOs
 
-typealias PropertyDefinitionList = AstListNode<Property>
-
-class ObjectLiteralNode(val list: PropertyDefinitionList) : AstNodeBase(listOfNotNull(list)), ExpressionNode
+class ObjectLiteralNode(val list: List<Property>) : AstNodeBase(list), ExpressionNode
 
 sealed class Property(children: List<AstNode>) : AstNodeBase(children)
 
@@ -58,7 +55,7 @@ class MethodDefinitionNode(
         } && kind == Kind.Normal
     }
 
-    fun containsSuperCall() = parameters.any { it.containsAny<SuperCallExpressionNode>() } ||
+    fun containsSuperCall() = parameters.parameters.any { it.containsAny<SuperCallExpressionNode>() } ||
         body.containsAny<SuperCallExpressionNode>()
 
     enum class Kind(val isAsync: Boolean = false, val isGenerator: Boolean = false) {

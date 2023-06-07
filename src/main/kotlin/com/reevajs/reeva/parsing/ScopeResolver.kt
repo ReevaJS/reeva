@@ -22,7 +22,7 @@ class ScopeResolver : AstVisitor {
         when (node) {
             is ScriptNode -> {
                 globalScope.isIntrinsicallyStrict = node.hasUseStrict
-                visit(node.statements)
+                node.statements.forEach(::visit)
             }
             is FunctionDeclarationNode -> {
                 node.scope = scope
@@ -30,7 +30,7 @@ class ScopeResolver : AstVisitor {
             }
             is ModuleNode -> {
                 globalScope.isIntrinsicallyStrict = true
-                visit(node.body)
+                node.body.forEach(::visit)
                 scope = ModuleScope(globalScope)
             }
         }
@@ -49,7 +49,7 @@ class ScopeResolver : AstVisitor {
             scope = Scope(scope, allowVarInlining)
 
         node.scope = scope
-        visit(node.statements)
+        node.statements.forEach(::visit)
 
         if (pushScope)
             scope = scope.outer!!
@@ -295,7 +295,7 @@ class ScopeResolver : AstVisitor {
         var hasSimpleParams = true
         var hasArgumentsIdentifier = false
 
-        for (param in parameters) {
+        for (param in parameters.parameters) {
             when (param) {
                 is SimpleParameter -> {
                     if (param.identifier.processedName == "arguments")

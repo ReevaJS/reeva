@@ -1,7 +1,6 @@
 package com.reevajs.reeva.ast
 
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
-import com.reevajs.reeva.ast.statements.StatementList
 import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.parsing.lexer.Token
@@ -223,7 +222,7 @@ fun AstNode.containsArguments(): Boolean {
 
 sealed class RootNode(children: List<AstNode>) : NodeWithScope(children)
 
-class ScriptNode(val statements: StatementList, val hasUseStrict: Boolean) : RootNode(statements)
+class ScriptNode(val statements: List<StatementNode>, val hasUseStrict: Boolean) : RootNode(statements)
 
 interface StatementNode : AstNode
 

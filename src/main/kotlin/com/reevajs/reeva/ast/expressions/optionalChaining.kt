@@ -8,7 +8,7 @@ sealed class OptionalChain(
 ) : AstNodeBase(children)
 
 class OptionalCallChain(
-    val arguments: ArgumentList,
+    val arguments: List<ArgumentNode>,
     isOptional: Boolean,
 ) : OptionalChain(arguments, isOptional)
 

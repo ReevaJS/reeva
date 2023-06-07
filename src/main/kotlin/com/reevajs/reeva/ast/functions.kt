@@ -1,7 +1,6 @@
 package com.reevajs.reeva.ast
 
 import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
-import com.reevajs.reeva.ast.statements.AstListNode
 import com.reevajs.reeva.ast.statements.BlockNode
 import com.reevajs.reeva.ast.statements.DeclarationNode
 import com.reevajs.reeva.ast.statements.VariableSourceProvider
@@ -9,28 +8,28 @@ import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.duplicates
 
-typealias ArgumentList = AstListNode<ArgumentNode>
-
-class ParameterList(parameters: List<Parameter> = emptyList()) : AstListNode<Parameter>(parameters) {
+class ParameterList(
+    val parameters: List<Parameter> = emptyList(),
+) : AstNodeBase(parameters) {
     fun isSimple(): Boolean {
         // TODO: Eventually check for destructuring patterns
-        return all { it.isSimple }
+        return parameters.all { it.isSimple }
     }
 
     fun containsDuplicates(): Boolean {
-        return filterIsInstance<SimpleParameter>()
+        return parameters.filterIsInstance<SimpleParameter>()
             .map { it.identifier.processedName }
             .duplicates()
             .isNotEmpty()
     }
 
     fun expectedArgumentCount(): Int {
-        for ((index, param) in withIndex()) {
+        for ((index, param) in parameters.withIndex()) {
             if (!param.isSimple)
                 return index
         }
 
-        return size
+        return parameters.size
     }
 }
 
@@ -106,7 +105,7 @@ class ArrowFunctionNode(
     val parameters: ParameterList,
     val body: AstNode, // BlockNode or ExpressionNode
     val kind: AOs.FunctionKind,
-) : NodeWithScope(parameters + body), ExpressionNode {
+) : NodeWithScope(listOf(parameters, body)), ExpressionNode {
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
 }

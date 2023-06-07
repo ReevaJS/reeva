@@ -1,7 +1,6 @@
 package com.reevajs.reeva.ast
 
 import com.reevajs.reeva.ast.statements.DeclarationNode
-import com.reevajs.reeva.ast.statements.StatementList
 import com.reevajs.reeva.core.lifecycle.ModuleRecord
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
@@ -25,7 +24,7 @@ data class ExportEntry(
     object AllButDefaultImportName : ImportName()
 }
 
-class ModuleNode(val body: StatementList) : RootNode(body) {
+class ModuleNode(val body: List<StatementNode>) : RootNode(body) {
     val importEntries: List<ImportEntry>
     val localExportEntries: List<ExportEntry>
     val indirectExportEntries: List<ExportEntry>
