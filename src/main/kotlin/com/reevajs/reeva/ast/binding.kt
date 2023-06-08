@@ -71,7 +71,7 @@ class BindingRestProperty(val declaration: BindingDeclaration) : BindingProperty
 class SimpleBindingProperty(
     val declaration: BindingDeclaration,
     val alias: BindingDeclarationOrPattern?,
-    val initializer: ExpressionNode?,
+    val initializer: AstNode?,
 ) : BindingProperty(listOfNotNull(declaration, alias, initializer)) {
     override fun sources() = alias?.sources() ?: listOf(declaration)
 }
@@ -79,7 +79,7 @@ class SimpleBindingProperty(
 class ComputedBindingProperty(
     val name: PropertyName,
     val alias: BindingDeclarationOrPattern,
-    val initializer: ExpressionNode?,
+    val initializer: AstNode?,
 ) : BindingProperty(listOfNotNull(name, alias, initializer)) {
     override fun sources() = alias.sources()
 }
@@ -92,7 +92,7 @@ class BindingRestElement(val declaration: BindingDeclarationOrPattern) : Binding
 
 class SimpleBindingElement(
     val alias: BindingDeclarationOrPattern,
-    val initializer: ExpressionNode?,
+    val initializer: AstNode?,
 ) : BindingElement(listOfNotNull(alias, initializer)) {
     override fun sources() = alias.sources()
 }

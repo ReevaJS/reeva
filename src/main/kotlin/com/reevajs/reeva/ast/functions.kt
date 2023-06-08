@@ -34,9 +34,9 @@ class ParameterList(
 }
 
 class ArgumentNode(
-    val expression: ExpressionNode,
+    val expression: AstNode,
     val isSpread: Boolean
-) : AstNodeBase(listOf(expression)), ExpressionNode {
+) : AstNodeBase(listOf(expression)) {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -53,7 +53,7 @@ sealed interface Parameter : AstNode {
 
 class SimpleParameter(
     val identifier: IdentifierNode,
-    val initializer: ExpressionNode?,
+    val initializer: AstNode?,
 ) : VariableSourceNode(listOfNotNull(identifier, initializer)), Parameter {
     override val isSimple = initializer == null
 
@@ -66,7 +66,7 @@ class RestParameter(val declaration: BindingDeclarationOrPattern) : AstNodeBase(
 
 class BindingParameter(
     val pattern: BindingPatternNode,
-    val initializer: ExpressionNode?,
+    val initializer: AstNode?,
 ) : AstNodeBase(listOfNotNull(pattern, initializer)), Parameter {
     override val isSimple = false
 }
@@ -92,7 +92,7 @@ class FunctionExpressionNode(
     val parameters: ParameterList,
     val body: BlockNode,
     val kind: AOs.FunctionKind,
-) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), ExpressionNode {
+) : VariableSourceNode(listOfNotNull(identifier) + parameters + body) {
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
 
@@ -105,7 +105,7 @@ class ArrowFunctionNode(
     val parameters: ParameterList,
     val body: AstNode, // BlockNode or ExpressionNode
     val kind: AOs.FunctionKind,
-) : NodeWithScope(listOf(parameters, body)), ExpressionNode {
+) : NodeWithScope(listOf(parameters, body)) {
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
 }

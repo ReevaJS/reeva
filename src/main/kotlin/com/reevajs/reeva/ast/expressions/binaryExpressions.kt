@@ -1,14 +1,14 @@
 package com.reevajs.reeva.ast.expressions
 
+import com.reevajs.reeva.ast.AstNode
 import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
 import com.reevajs.reeva.ast.AstNodeBase
-import com.reevajs.reeva.ast.ExpressionNode
 
 class BinaryExpressionNode(
-    val lhs: ExpressionNode,
-    val rhs: ExpressionNode,
+    val lhs: AstNode,
+    val rhs: AstNode,
     val operator: BinaryOperator,
-) : AstNodeBase(listOf(lhs, rhs)), ExpressionNode {
+) : AstNodeBase(listOf(lhs, rhs)) {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()

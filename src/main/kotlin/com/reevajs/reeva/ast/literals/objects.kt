@@ -6,23 +6,23 @@ import com.reevajs.reeva.ast.statements.BlockNode
 import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.runtime.AOs
 
-class ObjectLiteralNode(val list: List<Property>) : AstNodeBase(list), ExpressionNode
+class ObjectLiteralNode(val list: List<Property>) : AstNodeBase(list)
 
 sealed class Property(children: List<AstNode>) : AstNodeBase(children)
 
 class KeyValueProperty(
     val key: PropertyName,
-    val value: ExpressionNode,
+    val value: AstNode,
 ) : Property(listOf(key, value))
 
 class ShorthandProperty(val key: IdentifierReferenceNode) : Property(listOf(key))
 
 class MethodProperty(val method: MethodDefinitionNode) : Property(listOf(method))
 
-class SpreadProperty(val target: ExpressionNode) : Property(listOf(target))
+class SpreadProperty(val target: AstNode) : Property(listOf(target))
 
 class PropertyName(
-    val expression: ExpressionNode,
+    val expression: AstNode,
     val type: Type,
 ) : AstNodeBase(listOf(expression)) {
     fun asString() = when (type) {

@@ -2,10 +2,9 @@ package com.reevajs.reeva.ast.literals
 
 import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
 import com.reevajs.reeva.ast.AstNodeBase
-import com.reevajs.reeva.ast.ExpressionNode
 import com.reevajs.reeva.ast.VariableRefNode
 
-sealed class BooleanLiteralNode(val value: Boolean) : AstNodeBase(), ExpressionNode {
+sealed class BooleanLiteralNode(val value: Boolean) : AstNodeBase() {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -19,7 +18,7 @@ class TrueNode : BooleanLiteralNode(true)
 
 class FalseNode : BooleanLiteralNode(false)
 
-class StringLiteralNode(val value: String) : AstNodeBase(), ExpressionNode {
+class StringLiteralNode(val value: String) : AstNodeBase() {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -29,7 +28,7 @@ class StringLiteralNode(val value: String) : AstNodeBase(), ExpressionNode {
     }
 }
 
-class NumericLiteralNode(val value: Double) : AstNodeBase(), ExpressionNode {
+class NumericLiteralNode(val value: Double) : AstNodeBase() {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -39,7 +38,7 @@ class NumericLiteralNode(val value: Double) : AstNodeBase(), ExpressionNode {
     }
 }
 
-class BigIntLiteralNode(val value: String, val type: Type) : AstNodeBase(), ExpressionNode {
+class BigIntLiteralNode(val value: String, val type: Type) : AstNodeBase() {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -56,8 +55,8 @@ class BigIntLiteralNode(val value: String, val type: Type) : AstNodeBase(), Expr
     }
 }
 
-class NullLiteralNode : AstNodeBase(), ExpressionNode
+class NullLiteralNode : AstNodeBase()
 
-class ThisLiteralNode : VariableRefNode(), ExpressionNode {
+class ThisLiteralNode : VariableRefNode() {
     override fun name() = "*this"
 }

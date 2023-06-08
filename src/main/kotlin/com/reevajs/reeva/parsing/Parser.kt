@@ -145,8 +145,8 @@ class Parser(val sourceInfo: SourceInfo) {
      *     ExportDeclaration
      *     StatementListItem
      */
-    private fun parseModuleItemList(): List<StatementNode> {
-        val list = mutableListOf<StatementNode>()
+    private fun parseModuleItemList(): List<AstNode> {
+        val list = mutableListOf<AstNode>()
 
         while (tokenType.isStatementToken) {
             if (match(TokenType.Export)) {
@@ -166,8 +166,8 @@ class Parser(val sourceInfo: SourceInfo) {
      *     StatementListItem
      *     StatementList StatementListItem
      */
-    private fun parseStatementList(): List<StatementNode> {
-        val list = mutableListOf<StatementNode>()
+    private fun parseStatementList(): List<AstNode> {
+        val list = mutableListOf<AstNode>()
 
         while (tokenType.isStatementToken)
             list.add(parseStatement(orDecl = true))
@@ -227,7 +227,7 @@ class Parser(val sourceInfo: SourceInfo) {
         TokenType.OpenCurly,
     )
 
-    private fun parseLabellableStatement(): StatementNode = nps {
+    private fun parseLabellableStatement(): AstNode = nps {
         val labels = mutableSetOf<String>()
         val currentLabelState = labelStateStack.last()
 
@@ -272,7 +272,7 @@ class Parser(val sourceInfo: SourceInfo) {
         }
     }
 
-    private fun parseStatement(orDecl: Boolean = false): StatementNode {
+    private fun parseStatement(orDecl: Boolean = false): AstNode {
         if (isDone)
             reporter.at(lastToken).expected("statement", "eof")
 
@@ -832,7 +832,7 @@ class Parser(val sourceInfo: SourceInfo) {
      * DoWhileStatement :
      *     do Statement while ( Expression ) ;
      */
-    private fun parseDoWhileStatement(): StatementNode = nps {
+    private fun parseDoWhileStatement(): AstNode = nps {
         consume(TokenType.Do)
         val statement = parseStatement()
         consume(TokenType.While)
@@ -847,7 +847,7 @@ class Parser(val sourceInfo: SourceInfo) {
      * WhileStatement :
      *     while ( Expression ) Statement
      */
-    private fun parseWhileStatement(): StatementNode = nps {
+    private fun parseWhileStatement(): AstNode = nps {
         consume(TokenType.While)
         consume(TokenType.OpenParen)
         val condition = parseExpression(0)
@@ -875,7 +875,7 @@ class Parser(val sourceInfo: SourceInfo) {
      * DefaultClause :
      *     default : StatementList?
      */
-    private fun parseSwitchStatement(): StatementNode = nps {
+    private fun parseSwitchStatement(): AstNode = nps {
         consume(TokenType.Switch)
         consume(TokenType.OpenParen)
         val target = parseExpression(0)
@@ -915,7 +915,7 @@ class Parser(val sourceInfo: SourceInfo) {
      *     continue ;
      *     continue [no LineTerminator here] LabelIdentifier ;
      */
-    private fun parseContinueStatement(): StatementNode = nps {
+    private fun parseContinueStatement(): AstNode = nps {
         consume(TokenType.Continue)
 
         val continueToken = lastToken
@@ -942,7 +942,7 @@ class Parser(val sourceInfo: SourceInfo) {
      *     break ;
      *     break [no LineTerminator here] LabelIdentifier ;
      */
-    private fun parseBreakStatement(): StatementNode = nps {
+    private fun parseBreakStatement(): AstNode = nps {
         consume(TokenType.Break)
 
         val breakToken = lastToken
@@ -969,7 +969,7 @@ class Parser(val sourceInfo: SourceInfo) {
      *     return ;
      *     return [no LineTerminator here] Expression ;
      */
-    private fun parseReturnStatement(): StatementNode = nps {
+    private fun parseReturnStatement(): AstNode = nps {
         expect(inFunctionContext)
         consume(TokenType.Return)
 
@@ -991,7 +991,7 @@ class Parser(val sourceInfo: SourceInfo) {
      * WithStatement :
      *     with ( Expression ) Statement
      */
-    private fun parseWithStatement(): StatementNode = nps {
+    private fun parseWithStatement(): AstNode = nps {
         reporter.at(token).unsupportedFeature("with statements")
         // consume(TokenType.With)
         // consume(TokenType.OpenParen)
@@ -1005,7 +1005,7 @@ class Parser(val sourceInfo: SourceInfo) {
      * ThrowStatement :
      *     throw [no LineTerminator here] Expression ;
      */
-    private fun parseThrowStatement(): StatementNode = nps {
+    private fun parseThrowStatement(): AstNode = nps {
         consume(TokenType.Throw)
         if (!tokenType.isExpressionToken)
             reporter.expected("expression", tokenType)
@@ -1031,7 +1031,7 @@ class Parser(val sourceInfo: SourceInfo) {
      *     BindingIdentifier
      *     BindingPattern (TODO)
      */
-    private fun parseTryStatement(): StatementNode = nps {
+    private fun parseTryStatement(): AstNode = nps {
         consume(TokenType.Try)
         val tryBlock = parseBlock()
 
@@ -1070,7 +1070,7 @@ class Parser(val sourceInfo: SourceInfo) {
      * DebuggerStatement :
      *     debugger ;
      */
-    private fun parseDebuggerStatement(): StatementNode = nps {
+    private fun parseDebuggerStatement(): AstNode = nps {
         consume(TokenType.Debugger)
         asi()
         DebuggerStatementNode()
@@ -1078,7 +1078,7 @@ class Parser(val sourceInfo: SourceInfo) {
 
     private fun matchSwitchClause() = matches(TokenType.Case, TokenType.Default)
 
-    private fun parseNormalForAndForEachStatement(): StatementNode = nps {
+    private fun parseNormalForAndForEachStatement(): AstNode = nps {
         consume(TokenType.For)
         if (match(TokenType.Await))
             TODO()
@@ -1089,7 +1089,9 @@ class Parser(val sourceInfo: SourceInfo) {
 
         if (!match(TokenType.Semicolon)) {
             if (tokenType.isExpressionToken) {
-                initializer = nps { parseExpression(0, false, setOf(TokenType.In)) }
+                initializer = nps { parseExpression(0, false, setOf(TokenType.In)) }.let {
+                    ExpressionStatementNode(it).withPosition(it)
+                }
                 if (matchForEach())
                     return@nps parseForEachStatement(initializer)
             } else if (tokenType.isVariableDeclarationToken) {
@@ -1115,7 +1117,7 @@ class Parser(val sourceInfo: SourceInfo) {
         ForStatementNode(initializer, condition, update, body)
     }
 
-    private fun parseForEachStatement(initializer: AstNode): StatementNode = nps {
+    private fun parseForEachStatement(initializer: AstNode): AstNode = nps {
         if ((initializer is VariableDeclarationNode && initializer.declarations.size > 1) ||
             (initializer is LexicalDeclarationNode && initializer.declarations.size > 1)
         ) {
@@ -1151,7 +1153,7 @@ class Parser(val sourceInfo: SourceInfo) {
      * FunctionExpression :
      *     function BindingIdentifier? ( FormalParameters ) { FunctionBody }
      */
-    private fun parseFunctionExpression(): ExpressionNode = nps {
+    private fun parseFunctionExpression(): AstNode = nps {
         val (identifier, params, body, isGenerator) = parseFunctionHelper(isDeclaration = false)
         FunctionExpressionNode(identifier, params, body, isGenerator)
     }
@@ -1221,7 +1223,7 @@ class Parser(val sourceInfo: SourceInfo) {
      * ClassExpression :
      *     class BindingIdentifier? ClassTail
      */
-    private fun parseClassExpression(): ExpressionNode = nps {
+    private fun parseClassExpression(): AstNode = nps {
         consume(TokenType.Class)
         val identifier = if (matchIdentifier()) {
             parseBindingIdentifier()
@@ -1390,7 +1392,7 @@ class Parser(val sourceInfo: SourceInfo) {
         MethodDefinitionNode(name, params, body, kind)
     }
 
-    private fun parseSuperExpression(): ExpressionNode = nps {
+    private fun parseSuperExpression(): AstNode = nps {
         consume(TokenType.Super)
 
         when (tokenType) {
@@ -1575,7 +1577,7 @@ class Parser(val sourceInfo: SourceInfo) {
         minPrecedence: Int = 0,
         leftAssociative: Boolean = false,
         excludedTokens: Set<TokenType> = emptySet(),
-    ): ExpressionNode = nps {
+    ): AstNode = nps {
         if (isDone)
             reporter.at(lastToken).expected("expression", "eof")
 
@@ -1607,17 +1609,17 @@ class Parser(val sourceInfo: SourceInfo) {
     }
 
     private fun parseSecondaryExpression(
-        lhs: ExpressionNode,
+        lhs: AstNode,
         minPrecedence: Int,
         leftAssociative: Boolean,
-    ): ExpressionNode {
-        fun makeBinaryExpr(op: BinaryOperator): ExpressionNode {
+    ): AstNode {
+        fun makeBinaryExpr(op: BinaryOperator): AstNode {
             consume()
             return BinaryExpressionNode(lhs, parseExpression(minPrecedence, leftAssociative), op)
                 .withPosition(lhs.sourceLocation.start, lastToken.end)
         }
 
-        fun makeAssignExpr(op: BinaryOperator?): ExpressionNode {
+        fun makeAssignExpr(op: BinaryOperator?): AstNode {
             consume()
             validateAssignmentTarget(lhs)
 
@@ -1705,7 +1707,7 @@ class Parser(val sourceInfo: SourceInfo) {
         }
     }
 
-    private fun parseConditional(lhs: ExpressionNode): ExpressionNode = nps {
+    private fun parseConditional(lhs: AstNode): AstNode = nps {
         consume(TokenType.QuestionMark)
         val ifTrue = parseExpression(2)
         consume(TokenType.Colon)
@@ -1713,7 +1715,7 @@ class Parser(val sourceInfo: SourceInfo) {
         ConditionalExpressionNode(lhs, ifTrue, ifFalse)
     }
 
-    private fun parseOptionalChain(base_: ExpressionNode): ExpressionNode = nps {
+    private fun parseOptionalChain(base_: AstNode): AstNode = nps {
         val (base, parts) = if (base_ is OptionalChainNode) {
             base_.base to base_.parts.toMutableList()
         } else base_ to mutableListOf()
@@ -1757,11 +1759,11 @@ class Parser(val sourceInfo: SourceInfo) {
         OptionalChainNode(base, parts)
     }
 
-    private fun parseCallExpression(lhs: ExpressionNode, isOptional: Boolean): ExpressionNode = nps {
+    private fun parseCallExpression(lhs: AstNode, isOptional: Boolean): AstNode = nps {
         CallExpressionNode(lhs, parseArguments(), isOptional)
     }
 
-    private fun parseNewExpression(): ExpressionNode = nps {
+    private fun parseNewExpression(): AstNode = nps {
         consume(TokenType.New)
         if (has(2) && match(TokenType.Period) && peek()?.type == TokenType.Identifier) {
             consume()
@@ -1801,7 +1803,7 @@ class Parser(val sourceInfo: SourceInfo) {
         return arguments
     }
 
-    private fun parseYieldExpression(): ExpressionNode = nps {
+    private fun parseYieldExpression(): AstNode = nps {
         expect(inYieldContext)
 
         consume(TokenType.Yield)
@@ -1827,14 +1829,14 @@ class Parser(val sourceInfo: SourceInfo) {
         YieldExpressionNode(null, isYieldStar)
     }
 
-    private fun parseParenthesizedExpression(): ExpressionNode = nps {
+    private fun parseParenthesizedExpression(): AstNode = nps {
         consume(TokenType.OpenParen)
         val expr = parseExpression(0)
         consume(TokenType.CloseParen)
         expr
     }
 
-    private fun parsePrimaryExpression(): ExpressionNode = nps {
+    private fun parsePrimaryExpression(): AstNode = nps {
         if (tokenType.isUnaryToken)
             return@nps parseUnaryExpression()
 
@@ -1909,7 +1911,7 @@ class Parser(val sourceInfo: SourceInfo) {
         }
     }
 
-    private fun parseAwaitExpression(): ExpressionNode = nps {
+    private fun parseAwaitExpression(): AstNode = nps {
         consume(TokenType.Await)
         AwaitExpressionNode(parseExpression(2))
     }
@@ -2014,10 +2016,10 @@ class Parser(val sourceInfo: SourceInfo) {
         return builder.toString()
     }
 
-    private fun parseTemplateLiteral(): ExpressionNode = nps {
+    private fun parseTemplateLiteral(): AstNode = nps {
         consume(TokenType.TemplateLiteralStart)
 
-        val expressions = mutableListOf<ExpressionNode>()
+        val expressions = mutableListOf<AstNode>()
         fun addEmptyString() {
             expressions.add(StringLiteralNode("").withPosition(sourceStart, sourceStart))
         }
@@ -2067,7 +2069,7 @@ class Parser(val sourceInfo: SourceInfo) {
      * not work for parsing destructured parameters in the future. This
      * is only for contexts where we know it is an object literal.
      */
-    private fun parseObjectLiteral(): ExpressionNode = nps {
+    private fun parseObjectLiteral(): AstNode = nps {
         val objectStart = sourceStart
         consume(TokenType.OpenCurly)
 
@@ -2345,7 +2347,7 @@ class Parser(val sourceInfo: SourceInfo) {
         ArrowFunctionNode(parameters, body, AOs.FunctionKind.Normal)
     }
 
-    private fun parseUnaryExpression(): ExpressionNode = nps {
+    private fun parseUnaryExpression(): AstNode = nps {
         val type = consume()
         val expression = parseExpression(type.operatorPrecedence, type.leftAssociative)
 
@@ -2369,7 +2371,7 @@ class Parser(val sourceInfo: SourceInfo) {
         }
     }
 
-    private fun parseIfStatement(): StatementNode = nps {
+    private fun parseIfStatement(): AstNode = nps {
         consume(TokenType.If)
         consume(TokenType.OpenParen)
         val condition = parseExpression()
@@ -2412,7 +2414,7 @@ class Parser(val sourceInfo: SourceInfo) {
         return result
     }
 
-    private fun validateAssignmentTarget(node: ExpressionNode) {
+    private fun validateAssignmentTarget(node: AstNode) {
         if (node !is IdentifierReferenceNode && node !is MemberExpressionNode && node !is CallExpressionNode)
             reporter.at(node).expressionNotAssignable()
         if (node is OptionalChainNode)

@@ -422,12 +422,12 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     }
 
     override fun visitExpressionStatement(node: ExpressionStatementNode) {
-        visitExpression(node.node)
+        visit(node.node)
         +Pop
     }
 
     override fun visitIfStatement(node: IfStatementNode) {
-        visitExpression(node.condition)
+        visit(node.condition)
 
         val trueBlock = builder.makeBlock("IfTrue")
         val falseBlock = if (node.falseBlock != null) builder.makeBlock("IfFalse") else null
@@ -455,12 +455,12 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
         +Jump(conditionBlock)
         builder.enterBlock(conditionBlock)
-        visitExpression(node.condition)
+        visit(node.condition)
         +JumpIfToBooleanTrue(bodyBlock, continuationBlock)
 
         builder.enterBlock(bodyBlock)
         enterControlFlowScope(node.labels, continuationBlock, conditionBlock)
-        visitStatement(node.body)
+        visit(node.body)
         exitControlFlowScope()
         +Jump(conditionBlock)
 
@@ -476,12 +476,12 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
         builder.enterBlock(bodyBlock)
         enterControlFlowScope(node.labels, continuationBlock, conditionBlock)
-        visitStatement(node.body)
+        visit(node.body)
         exitControlFlowScope()
         +Jump(conditionBlock)
 
         builder.enterBlock(conditionBlock)
-        visitExpression(node.condition)
+        visit(node.condition)
         +JumpIfToBooleanTrue(bodyBlock, continuationBlock)
 
         builder.enterBlock(continuationBlock)
@@ -489,11 +489,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
     override fun visitForStatement(node: ForStatementNode) {
         node.initializerScope?.also(::enterScope)
-        node.initializer?.also {
-            visit(it)
-            if (it is ExpressionNode)
-                +Pop
-        }
+        node.initializer?.also(::visit)
 
         val conditionBlock = builder.makeBlock("ForCondition")
         val bodyBlock = builder.makeBlock("ForBody")
@@ -506,21 +502,21 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         enterControlFlowScope(node.labels, continuationBlock, incrementBlock ?: conditionBlock)
 
         if (node.condition != null) {
-            visitExpression(node.condition)
+            visit(node.condition)
             +JumpIfToBooleanTrue(bodyBlock, continuationBlock)
         } else {
             +Jump(bodyBlock)
         }
 
         builder.enterBlock(bodyBlock)
-        visitStatement(node.body)
+        visit(node.body)
 
         exitControlFlowScope()
 
         if (node.incrementer != null) {
             +Jump(incrementBlock!!)
             builder.enterBlock(incrementBlock)
-            visitExpression(node.incrementer)
+            visit(node.incrementer)
             +Pop
             +Jump(conditionBlock)
         } else {
@@ -533,7 +529,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     }
 
     override fun visitSwitchStatement(node: SwitchStatementNode) {
-        visitExpression(node.target)
+        visit(node.target)
         val target = builder.newLocalSlot(LocalKind.Value)
         +StoreValue(target)
 
@@ -575,12 +571,12 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                     if (nextBodyBlock == null) {
                         // Evaluate the expression for side effects and jump to the default clause (or the
                         // continuation if there is no default
-                        visitExpression(clause.clause.target!!)
+                        visit(clause.clause.target!!)
                         +Pop
                         +Jump(nextTestBlock ?: defaultClause?.bodyBlock ?: continuationBlock)
                     } else {
                         +LoadValue(target)
-                        visitExpression(clause.clause.target!!)
+                        visit(clause.clause.target!!)
                         +TestEqualStrict
 
                         // nextTestBlock is guaranteed to be non-null since nextBodyBlock is not null
@@ -588,7 +584,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                     }
                 } else {
                     +LoadValue(target)
-                    visitExpression(clause.clause.target!!)
+                    visit(clause.clause.target!!)
                     +TestEqualStrict
                     +JumpIfToBooleanTrue(clause.bodyBlock, nextTestBlock ?: defaultClause?.bodyBlock ?: continuationBlock)
 
@@ -616,7 +612,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
     override fun visitForIn(node: ForInNode) {
         val local = builder.newLocalSlot(LocalKind.Value)
-        visitExpression(node.expression)
+        visit(node.expression)
         +Dup
         +StoreValue(local)
 
@@ -635,7 +631,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     }
 
     override fun visitForOf(node: ForOfNode) {
-        visitExpression(node.expression)
+        visit(node.expression)
         +GetIterator
         iterateForEach(node)
     }
@@ -712,11 +708,11 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
     override fun visitCommaExpression(node: CommaExpressionNode) {
         for (expression in node.expressions.dropLast(1)) {
-            visitExpression(expression)
+            visit(expression)
             +Pop
         }
 
-        visitExpression(node.expressions.last())
+        visit(node.expressions.last())
     }
 
     override fun visitBinaryExpression(node: BinaryExpressionNode) {
@@ -795,8 +791,8 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             }
         }
 
-        visitExpression(node.lhs)
-        visitExpression(node.rhs)
+        visit(node.lhs)
+        visit(node.rhs)
         +op
     }
 
@@ -808,7 +804,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                 else -> if (expr.type == MemberExpressionNode.Type.Tagged) {
                     +PushConstant(true)
                 } else {
-                    visitExpression(expr.lhs)
+                    visit(expr.lhs)
 
                     if (expr.type == MemberExpressionNode.Type.Computed) {
                         visit(expr.rhs)
@@ -830,7 +826,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             return
         }
 
-        visitExpression(node.expression)
+        visit(node.expression)
 
         when (node.op) {
             UnaryOperator.Void -> {
@@ -862,20 +858,20 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
         when (val target = node.target) {
             is IdentifierReferenceNode -> {
-                visitExpression(target)
+                visit(target)
                 +ToNumeric
                 execute(Dup)
                 storeToSource(target.source)
             }
 
             is MemberExpressionNode -> {
-                visitExpression(target.lhs)
+                visit(target.lhs)
                 +Dup
                 // lhs lhs
 
                 when (target.type) {
                     MemberExpressionNode.Type.Computed -> {
-                        visitExpression(target.rhs)
+                        visit(target.rhs)
                         val tmp = builder.newLocalSlot(LocalKind.Value)
                         +Dup
                         +StoreValue(tmp)
@@ -918,7 +914,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
     private fun visitDeclaration(declaration: Declaration) {
         if (declaration.initializer != null) {
-            visitExpression(declaration.initializer!!)
+            visit(declaration.initializer!!)
         } else {
             +PushUndefined
         }
@@ -941,6 +937,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
             is DestructuringDeclaration -> assign(node.pattern)
             is IdentifierReferenceNode -> storeToSource(node.source)
+            is ExpressionStatementNode -> assign(node.node, bindingPatternLocal)
             else -> TODO()
         }
     }
@@ -983,7 +980,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                         +JumpIfUndefined(ifUndefinedBlock, continuationBlock)
                         builder.enterBlock(ifUndefinedBlock)
                         +Pop
-                        visitExpression(property.initializer)
+                        visit(property.initializer)
                         +Jump(continuationBlock)
                         builder.enterBlock(continuationBlock)
                     }
@@ -999,7 +996,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                     expect(property.name.type != PropertyName.Type.Identifier)
 
                     +LoadValue(valueLocal)
-                    visitExpression(property.name.expression)
+                    visit(property.name.expression)
                     +LoadKeyedProperty
 
                     if (hasRest) {
@@ -1013,7 +1010,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
                         +JumpIfUndefined(continuationBlock, ifNotUndefinedBlock)
                         builder.enterBlock(ifNotUndefinedBlock)
-                        visitExpression(property.initializer)
+                        visit(property.initializer)
                         +Jump(continuationBlock)
                         builder.enterBlock(continuationBlock)
                     }
@@ -1153,7 +1150,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                 // First figure out the new value
                 visitBinaryExpression(BinaryExpressionNode(lhs, rhs, node.op))
             } else {
-                visitExpression(rhs)
+                visit(rhs)
             }
         }
 
@@ -1168,11 +1165,11 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             }
 
             is MemberExpressionNode -> {
-                visitExpression(lhs.lhs)
+                visit(lhs.lhs)
 
                 when (lhs.type) {
                     MemberExpressionNode.Type.Computed -> {
-                        visitExpression(lhs.rhs)
+                        visit(lhs.rhs)
                         pushRhs()
                         // lhs rhs value
                         +DupX2
@@ -1206,14 +1203,14 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     }
 
     private fun pushMemberExpression(node: MemberExpressionNode, pushReceiver: Boolean) {
-        visitExpression(node.lhs)
+        visit(node.lhs)
 
         if (pushReceiver)
             +Dup
 
         when (node.type) {
             MemberExpressionNode.Type.Computed -> {
-                visitExpression(node.rhs)
+                visit(node.rhs)
                 +LoadKeyedProperty
             }
 
@@ -1238,7 +1235,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         if (node.base is MemberExpressionNode) {
             pushMemberExpression(node.base, firstNeedsReceiver)
         } else {
-            visitExpression(node.base)
+            visit(node.base)
             if (firstNeedsReceiver)
                 +PushUndefined
         }
@@ -1285,7 +1282,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                 }
 
                 is OptionalComputedAccessChain -> {
-                    visitExpression(part.expr)
+                    visit(part.expr)
                     +LoadKeyedProperty
                 }
             }
@@ -1308,7 +1305,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         if (node.expression == null) {
             +PushUndefined
         } else {
-            visitExpression(node.expression)
+            visit(node.expression)
         }
 
         +Return
@@ -1357,7 +1354,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                 +StoreInt(indexLocal)
 
                 for (argument in arguments) {
-                    visitExpression(argument.expression)
+                    visit(argument.expression)
 
                     if (argument.isSpread) {
                         +GetIterator
@@ -1374,7 +1371,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
             ArgumentsMode.Normal -> {
                 for (argument in arguments)
-                    visitExpression(argument)
+                    visit(argument)
             }
         }
         return mode
@@ -1385,7 +1382,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             is MemberExpressionNode -> pushMemberExpression(node.target, pushReceiver = true)
             is OptionalChainNode -> pushOptionalChain(node.target, true)
             else -> {
-                visitExpression(node.target)
+                visit(node.target)
                 +PushUndefined
             }
         }
@@ -1406,7 +1403,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     }
 
     override fun visitNewExpression(node: NewExpressionNode) {
-        visitExpression(node.target)
+        visit(node.target)
         // TODO: Property new.target
         +Dup
 
@@ -1438,7 +1435,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     }
 
     override fun visitThrowStatement(node: ThrowStatementNode) {
-        visitExpression(node.expr)
+        visit(node.expr)
         +Throw
 
         // Make another block for anything after the throw. This block will be eliminated by the
@@ -1552,7 +1549,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     override fun visitPropertyName(node: PropertyName) {
         if (node.type == PropertyName.Type.Identifier) {
             +PushConstant((node.expression as IdentifierNode).processedName)
-        } else visitExpression(node.expression)
+        } else visit(node.expression)
     }
 
     override fun visitFunctionExpression(node: FunctionExpressionNode) {
@@ -1684,7 +1681,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             // If the name is computed, that comes before the method register
             if (isComputed) {
                 // TODO: Cast to property name
-                visitExpression(propName.expression)
+                visit(propName.expression)
                 +AttachComputedClassMethod(classMethod.isStatic, method.kind, functionInfo)
             } else {
                 +AttachClassMethod(propName.asString(), classMethod.isStatic, method.kind, functionInfo)
@@ -1798,7 +1795,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     private fun storeClassField(field: ClassFieldNode) {
         fun loadValue() {
             if (field.initializer != null) {
-                visitExpression(field.initializer)
+                visit(field.initializer)
             } else {
                 +PushUndefined
             }
@@ -1809,7 +1806,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             loadValue()
             +StoreNamedProperty(name, currentScope!!.isStrict)
         } else {
-            visitExpression(field.identifier.expression)
+            visit(field.identifier.expression)
             loadValue()
             +StoreKeyedProperty(currentScope!!.isStrict)
         }
@@ -1817,13 +1814,13 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
     override fun visitAwaitExpression(node: AwaitExpressionNode) {
         val continuationBlock = builder.makeBlock("AwaitContinuation")
-        visitExpression(node.expression)
+        visit(node.expression)
         +Await(continuationBlock)
         builder.enterBlock(continuationBlock)
     }
 
     override fun visitConditionalExpression(node: ConditionalExpressionNode) {
-        visitExpression(node.predicate)
+        visit(node.predicate)
 
         val ifTrueBlock = builder.makeBlock("ConditionTrueBlock")
         val ifFalseBlock = builder.makeBlock("ConditionFalseBlock")
@@ -1831,11 +1828,11 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
         +JumpIfToBooleanTrue(ifTrueBlock, ifFalseBlock)
         builder.enterBlock(ifTrueBlock)
-        visitExpression(node.ifTrue)
+        visit(node.ifTrue)
         +Jump(continuationBlock)
 
         builder.enterBlock(ifFalseBlock)
-        visitExpression(node.ifFalse)
+        visit(node.ifFalse)
         +Jump(continuationBlock)
 
         builder.enterBlock(continuationBlock)
@@ -1847,7 +1844,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
         +GetSuperBase
         if (node.isComputed) {
-            visitExpression(node.target)
+            visit(node.target)
             +LoadKeyedProperty
         } else {
             +LoadNamedProperty((node.target as IdentifierNode).processedName)
@@ -1876,7 +1873,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         if (node.expression == null) {
             +PushUndefined
         } else {
-            visitExpression(node.expression)
+            visit(node.expression)
         }
 
         val continuationBlock = builder.makeBlock("YieldContinuation")
@@ -1889,7 +1886,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     }
 
     override fun visitParenthesizedExpression(node: ParenthesizedExpressionNode) {
-        visitExpression(node.expression)
+        visit(node.expression)
     }
 
     override fun visitTemplateLiteral(node: TemplateLiteralNode) {
@@ -1897,7 +1894,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             if (part is StringLiteralNode) {
                 +PushConstant(part.value)
             } else {
-                visitExpression(part)
+                visit(part)
                 +ToString
             }
         }
@@ -1929,7 +1926,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                     if (element.type == ArrayElementNode.Type.Elision) {
                         +PushEmpty
                     } else {
-                        visitExpression(element.expression!!)
+                        visit(element.expression!!)
                     }
 
                     if (index != null) {
@@ -1950,7 +1947,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                     if (iteratorLocal == null)
                         iteratorLocal = builder.newLocalSlot(LocalKind.Value)
 
-                    visitExpression(element.expression!!)
+                    visit(element.expression!!)
 
                     +GetIterator
                     +StoreValue(iteratorLocal)
@@ -1972,12 +1969,12 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             when (property) {
                 is KeyValueProperty -> {
                     storeObjectProperty(property.key) {
-                        visitExpression(property.value)
+                        visit(property.value)
                     }
                 }
 
                 is ShorthandProperty -> {
-                    visitExpression(property.key)
+                    visit(property.key)
                     +StoreNamedProperty(property.key.processedName, currentScope!!.isStrict)
                 }
 
@@ -2029,7 +2026,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             val name = (property.expression as IdentifierNode).processedName
             +StoreNamedProperty(name, currentScope!!.isStrict)
             return
-        } else visitExpression(property.expression)
+        } else visit(property.expression)
 
         valueProducer()
         +StoreKeyedProperty(currentScope!!.isStrict)

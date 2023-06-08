@@ -13,7 +13,7 @@ class OptionalCallChain(
 ) : OptionalChain(arguments, isOptional)
 
 class OptionalComputedAccessChain(
-    val expr: ExpressionNode,
+    val expr: AstNode,
     isOptional: Boolean,
 ) : OptionalChain(listOf(expr), isOptional)
 
@@ -23,6 +23,6 @@ class OptionalAccessChain(
 ) : OptionalChain(listOf(identifier), isOptional)
 
 class OptionalChainNode(
-    val base: ExpressionNode,
+    val base: AstNode,
     val parts: List<OptionalChain>
-) : AstNodeBase(listOf(base) + parts), ExpressionNode
+) : AstNodeBase(listOf(base) + parts)

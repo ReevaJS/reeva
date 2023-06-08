@@ -24,7 +24,7 @@ data class ExportEntry(
     object AllButDefaultImportName : ImportName()
 }
 
-class ModuleNode(val body: List<StatementNode>) : RootNode(body) {
+class ModuleNode(val body: List<AstNode>) : RootNode(body) {
     val importEntries: List<ImportEntry>
     val localExportEntries: List<ExportEntry>
     val indirectExportEntries: List<ExportEntry>
@@ -117,7 +117,7 @@ class ModuleNode(val body: List<StatementNode>) : RootNode(body) {
     }
 }
 
-class ImportNode(val imports: List<Import>, val moduleName: String) : AstNodeBase(emptyList()), StatementNode {
+class ImportNode(val imports: List<Import>, val moduleName: String) : AstNodeBase(emptyList()) {
     val importEntries: List<ImportEntry>
         get() = imports.map { it.makeEntry(moduleName) }
 
@@ -160,7 +160,7 @@ sealed class Import(children: List<AstNode>) : VariableSourceNode(children) {
     }
 }
 
-class ExportNode(val exports: List<Export>) : AstNodeBase(emptyList()), StatementNode {
+class ExportNode(val exports: List<Export>) : AstNodeBase(emptyList()) {
     val exportEntries: List<ExportEntry>
         get() = exports.flatMap { it.makeEntries() }
 
@@ -214,7 +214,7 @@ sealed class Export(children: List<AstNode>) : AstNodeBase(children) {
         }
     }
 
-    class Expr(val expr: ExpressionNode) : Export(listOf(expr)) {
+    class Expr(val expr: AstNode) : Export(listOf(expr)) {
         override fun makeEntries() = listOf(
             ExportEntry(
                 "default",

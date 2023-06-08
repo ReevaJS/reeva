@@ -1,16 +1,16 @@
 package com.reevajs.reeva.ast.expressions
 
+import com.reevajs.reeva.ast.AstNode
 import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
 import com.reevajs.reeva.ast.AstNodeBase
-import com.reevajs.reeva.ast.ExpressionNode
 import com.reevajs.reeva.ast.NodeWithScope
 
 // This is a NodeWithScope because the delete operator needs to know whether or not
 // it is in strict-mode code
 class UnaryExpressionNode(
-    val expression: ExpressionNode,
+    val expression: AstNode,
     val op: UnaryOperator,
-) : NodeWithScope(listOf(expression)), ExpressionNode {
+) : NodeWithScope(listOf(expression)) {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -32,10 +32,10 @@ enum class UnaryOperator {
 }
 
 class UpdateExpressionNode(
-    val target: ExpressionNode,
+    val target: AstNode,
     val isIncrement: Boolean,
     val isPostfix: Boolean,
-) : AstNodeBase(listOf(target)), ExpressionNode {
+) : AstNodeBase(listOf(target)) {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()

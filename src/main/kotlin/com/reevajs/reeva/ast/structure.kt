@@ -222,8 +222,4 @@ fun AstNode.containsArguments(): Boolean {
 
 sealed class RootNode(children: List<AstNode>) : NodeWithScope(children)
 
-class ScriptNode(val statements: List<StatementNode>, val hasUseStrict: Boolean) : RootNode(statements)
-
-interface StatementNode : AstNode
-
-interface ExpressionNode : AstNode
+class ScriptNode(val statements: List<AstNode>, val hasUseStrict: Boolean) : RootNode(statements)

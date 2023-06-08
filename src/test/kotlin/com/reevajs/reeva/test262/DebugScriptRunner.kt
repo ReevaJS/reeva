@@ -20,6 +20,7 @@ fun main() {
 
         runTest262Helpers()
 
+        printAst = true
         printIR = true
         Reeva.execute(FileSourceInfo(File("./demo/index.mjs")))
 

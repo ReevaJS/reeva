@@ -1,11 +1,11 @@
 package com.reevajs.reeva.ast.literals
 
+import com.reevajs.reeva.ast.AstNode
 import com.reevajs.reeva.ast.AstNodeBase
-import com.reevajs.reeva.ast.ExpressionNode
 
-class ArrayLiteralNode(val elements: List<ArrayElementNode>) : AstNodeBase(elements), ExpressionNode
+class ArrayLiteralNode(val elements: List<ArrayElementNode>) : AstNodeBase(elements)
 
-class ArrayElementNode(val expression: ExpressionNode?, val type: Type) : AstNodeBase(listOfNotNull(expression)) {
+class ArrayElementNode(val expression: AstNode?, val type: Type) : AstNodeBase(listOfNotNull(expression)) {
     enum class Type {
         Normal,
         Spread,
@@ -13,4 +13,4 @@ class ArrayElementNode(val expression: ExpressionNode?, val type: Type) : AstNod
     }
 }
 
-object ElisionNode : AstNodeBase(), ExpressionNode
+object ElisionNode : AstNodeBase()

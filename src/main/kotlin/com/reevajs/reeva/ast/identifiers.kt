@@ -10,7 +10,7 @@ import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
 class IdentifierNode(
     val processedName: String,
     val rawName: String = processedName,
-) : AstNodeBase(), ExpressionNode {
+) : AstNodeBase() {
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -22,7 +22,7 @@ class IdentifierNode(
     override fun toString() = processedName
 }
 
-class IdentifierReferenceNode(val identifierNode: IdentifierNode) : VariableRefNode(), ExpressionNode {
+class IdentifierReferenceNode(val identifierNode: IdentifierNode) : VariableRefNode() {
     val processedName: String
         get() = identifierNode.processedName
 

@@ -2,7 +2,7 @@ package com.reevajs.reeva.ast.statements
 
 import com.reevajs.reeva.ast.*
 
-interface DeclarationNode : StatementNode {
+interface DeclarationNode : AstNode {
     val declarations: List<VariableSourceProvider>
 }
 
@@ -13,7 +13,7 @@ interface VariableSourceProvider : AstNode {
 }
 
 sealed interface Declaration : VariableSourceProvider {
-    val initializer: ExpressionNode?
+    val initializer: AstNode?
 }
 
 class LexicalDeclarationNode(
@@ -27,14 +27,14 @@ class VariableDeclarationNode(
 
 class DestructuringDeclaration(
     val pattern: BindingPatternNode,
-    override val initializer: ExpressionNode?,
+    override val initializer: AstNode?,
 ) : AstNodeBase(listOf(pattern)), Declaration {
     override fun sources() = pattern.sources()
 }
 
 class NamedDeclaration(
     val identifier: IdentifierNode,
-    override val initializer: ExpressionNode?,
+    override val initializer: AstNode?,
 ) : VariableSourceNode(listOfNotNull(identifier, identifier)), Declaration {
     override fun name() = identifier.processedName
 
