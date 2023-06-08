@@ -3,10 +3,13 @@ package com.reevajs.reeva.ast.literals
 import com.reevajs.reeva.ast.AstNode
 import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
 import com.reevajs.reeva.ast.AstNodeBase
+import com.reevajs.reeva.ast.AstVisitor
 import com.reevajs.reeva.ast.VariableRefNode
 
 sealed class BooleanLiteralNode(val value: Boolean) : AstNodeBase() {
     override val children get() = emptyList<AstNode>()
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
@@ -24,6 +27,8 @@ class FalseNode : BooleanLiteralNode(false)
 class StringLiteralNode(val value: String) : AstNodeBase() {
     override val children get() = emptyList<AstNode>()
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -36,6 +41,8 @@ class StringLiteralNode(val value: String) : AstNodeBase() {
 class NumericLiteralNode(val value: Double) : AstNodeBase() {
     override val children get() = emptyList<AstNode>()
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -47,6 +54,8 @@ class NumericLiteralNode(val value: Double) : AstNodeBase() {
 
 class BigIntLiteralNode(val value: String, val type: Type) : AstNodeBase() {
     override val children get() = emptyList<AstNode>()
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
@@ -66,10 +75,14 @@ class BigIntLiteralNode(val value: String, val type: Type) : AstNodeBase() {
 
 class NullLiteralNode : AstNodeBase() {
     override val children get() = emptyList<AstNode>()
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class ThisLiteralNode : VariableRefNode() {
     override val children get() = emptyList<AstNode>()
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     override fun name() = "*this"
 }

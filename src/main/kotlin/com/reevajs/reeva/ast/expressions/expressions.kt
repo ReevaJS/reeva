@@ -4,6 +4,7 @@ import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
 import com.reevajs.reeva.ast.AstNodeBase
 import com.reevajs.reeva.ast.ArgumentNode
 import com.reevajs.reeva.ast.AstNode
+import com.reevajs.reeva.ast.AstVisitor
 import com.reevajs.regexp.RegExp
 
 class AssignmentExpressionNode(
@@ -12,6 +13,8 @@ class AssignmentExpressionNode(
     val op: BinaryOperator?, // Null indicates regular assignment
 ) : AstNodeBase() {
     override val children get() = listOf(lhs, rhs)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
@@ -26,6 +29,8 @@ class AssignmentExpressionNode(
 
 class AwaitExpressionNode(val expression: AstNode) : AstNodeBase() {
     override val children get() = listOf(expression)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 // TODO: This isn't exactly to spec
@@ -35,6 +40,8 @@ class CallExpressionNode(
     val isOptional: Boolean,
 ) : AstNodeBase() {
     override val children get() = arguments + target
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 // Note that this name deviates from the spec because I think this is
@@ -43,16 +50,22 @@ class CallExpressionNode(
 // the last one should be returned.
 class CommaExpressionNode(val expressions: List<AstNode>) : AstNodeBase() {
     override val children get() = expressions
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class ConditionalExpressionNode(val predicate: AstNode, val ifTrue: AstNode, val ifFalse: AstNode) : AstNodeBase() {
     override val children get() = listOf(predicate, ifTrue, ifFalse)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class MemberExpressionNode(val lhs: AstNode, val rhs: AstNode, val type: Type) : AstNodeBase() {
     override val children get() = listOf(lhs, rhs)
 
     override val isInvalidAssignmentTarget = false
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
@@ -73,12 +86,16 @@ class MemberExpressionNode(val lhs: AstNode, val rhs: AstNode, val type: Type) :
 
 class NewExpressionNode(val target: AstNode, val arguments: List<ArgumentNode>) : AstNodeBase() {
     override val children get() = arguments + target
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class SuperPropertyExpressionNode(val target: AstNode, val isComputed: Boolean) : AstNodeBase() {
     override val children get() = listOf(target)
 
     override val isInvalidAssignmentTarget: Boolean = false
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
@@ -92,10 +109,14 @@ class SuperPropertyExpressionNode(val target: AstNode, val isComputed: Boolean) 
 
 class SuperCallExpressionNode(val arguments: List<ArgumentNode>) : AstNodeBase() {
     override val children get() = arguments
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class ImportCallExpressionNode(val expression: AstNode) : AstNodeBase() {
     override val children get() = listOf(expression)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class YieldExpressionNode(val expression: AstNode?, val generatorYield: Boolean) : AstNodeBase() {
@@ -105,6 +126,8 @@ class YieldExpressionNode(val expression: AstNode?, val generatorYield: Boolean)
         if (expression == null && generatorYield)
             throw IllegalArgumentException("Cannot have a generatorYield expression without a target expression")
     }
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
@@ -118,12 +141,18 @@ class YieldExpressionNode(val expression: AstNode?, val generatorYield: Boolean)
 
 class ParenthesizedExpressionNode(val expression: AstNode) : AstNodeBase() {
     override val children get() = listOf(expression)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class TemplateLiteralNode(val parts: List<AstNode>) : AstNodeBase() {
     override val children get() = parts
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class RegExpLiteralNode(val source: String, val flags: String, val regexp: RegExp) : AstNodeBase() {
     override val children get() = emptyList<AstNode>()
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }

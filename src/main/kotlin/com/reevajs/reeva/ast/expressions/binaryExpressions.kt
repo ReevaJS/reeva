@@ -3,6 +3,7 @@ package com.reevajs.reeva.ast.expressions
 import com.reevajs.reeva.ast.AstNode
 import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
 import com.reevajs.reeva.ast.AstNodeBase
+import com.reevajs.reeva.ast.AstVisitor
 
 class BinaryExpressionNode(
     val lhs: AstNode,
@@ -10,6 +11,8 @@ class BinaryExpressionNode(
     val operator: BinaryOperator,
 ) : AstNodeBase() {
     override val children get() = listOf(lhs, rhs)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)

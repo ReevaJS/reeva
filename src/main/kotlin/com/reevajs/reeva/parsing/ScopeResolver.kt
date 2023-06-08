@@ -11,7 +11,7 @@ import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.expect
 import com.reevajs.reeva.utils.unreachable
 
-class ScopeResolver : AstVisitor {
+class ScopeResolver : DefaultAstVisitor() {
     private lateinit var scope: Scope
     private var allowVarInlining = true
 
@@ -22,15 +22,15 @@ class ScopeResolver : AstVisitor {
         when (node) {
             is ScriptNode -> {
                 globalScope.isIntrinsicallyStrict = node.hasUseStrict
-                node.statements.forEach(::visit)
+                node.statements.forEach { it.accept(this) }
             }
             is FunctionDeclarationNode -> {
                 node.scope = scope
-                visit(node)
+                node.accept(this)
             }
             is ModuleNode -> {
                 globalScope.isIntrinsicallyStrict = true
-                node.body.forEach(::visit)
+                node.body.forEach { it.accept(this) }
                 scope = ModuleScope(globalScope)
             }
         }
@@ -40,7 +40,7 @@ class ScopeResolver : AstVisitor {
         globalScope.finish()
     }
 
-    override fun visitBlock(node: BlockNode) {
+    override fun visit(node: BlockNode) {
         visitBlock(node, pushScope = true)
     }
 
@@ -49,25 +49,25 @@ class ScopeResolver : AstVisitor {
             scope = Scope(scope, allowVarInlining)
 
         node.scope = scope
-        node.statements.forEach(::visit)
+        node.statements.forEach { it.accept(this) }
 
         if (pushScope)
             scope = scope.outer!!
     }
 
-    override fun visitImport(import: Import) {
+    override fun visit(node: Import) {
         // Import vars never take a local slot, as they are always accessed by
         // name with LoadModuleVar
-        import.isInlineable = false
+        node.isInlineable = false
 
-        scope.addVariableSource(import)
-        import.type = VariableType.Let
-        import.mode = VariableMode.Import
+        scope.addVariableSource(node)
+        node.type = VariableType.Let
+        node.mode = VariableMode.Import
 
-        super.visitImport(import)
+        super.visit(node)
     }
 
-    override fun visitVariableDeclaration(node: VariableDeclarationNode) {
+    override fun visit(node: VariableDeclarationNode) {
         for (decl in node.declarations) {
             val mode = if (scope.outerHoistingScope is GlobalScope) {
                 VariableMode.Global
@@ -77,7 +77,7 @@ class ScopeResolver : AstVisitor {
         }
     }
 
-    override fun visitLexicalDeclaration(node: LexicalDeclarationNode) {
+    override fun visit(node: LexicalDeclarationNode) {
         val type = if (node.isConst) VariableType.Const else VariableType.Let
 
         for (decl in node.declarations)
@@ -99,7 +99,7 @@ class ScopeResolver : AstVisitor {
             }
         }
 
-        declaration.initializer?.let(::visit)
+        declaration.initializer?.accept(this)
     }
 
     private fun visitBindingPattern(pattern: BindingPatternNode, mode: VariableMode, type: VariableType) {
@@ -118,12 +118,12 @@ class ScopeResolver : AstVisitor {
                 } else {
                     visitBindingDeclaration(node.declaration, mode, type)
                 }
-                node.initializer?.let(::visit)
+                node.initializer?.accept(this)
             }
             is ComputedBindingProperty -> {
-                visit(node.name)
+                node.name.accept(this)
                 visitBindingDeclarationOrPattern(node.alias, mode, type)
-                node.initializer?.let(::visit)
+                node.initializer?.accept(this)
             }
         }
     }
@@ -134,7 +134,7 @@ class ScopeResolver : AstVisitor {
             is BindingRestElement -> visitBindingDeclarationOrPattern(node.declaration, mode, type)
             is SimpleBindingElement -> {
                 visitBindingDeclarationOrPattern(node.alias, mode, type)
-                node.initializer?.let(::visit)
+                node.initializer?.accept(this)
             }
         }
     }
@@ -160,43 +160,43 @@ class ScopeResolver : AstVisitor {
         node.mode = mode
     }
 
-    override fun visitBindingDeclaration(node: BindingDeclaration) {
+    override fun visit(node: BindingDeclaration) {
         unreachable()
     }
 
-    override fun visitBindingDeclarationOrPattern(node: BindingDeclarationOrPattern) {
+    override fun visit(node: BindingDeclarationOrPattern) {
         unreachable()
     }
 
-    override fun visitBindingRestProperty(node: BindingRestProperty) {
+    override fun visit(node: BindingRestProperty) {
         unreachable()
     }
 
-    override fun visitSimpleBindingProperty(node: SimpleBindingProperty) {
+    override fun visit(node: SimpleBindingProperty) {
         unreachable()
     }
 
-    override fun visitComputedBindingProperty(node: ComputedBindingProperty) {
+    override fun visit(node: ComputedBindingProperty) {
         unreachable()
     }
 
-    override fun visitBindingRestElement(node: BindingRestElement) {
+    override fun visit(node: BindingRestElement) {
         unreachable()
     }
 
-    override fun visitSimpleBindingElement(node: SimpleBindingElement) {
+    override fun visit(node: SimpleBindingElement) {
         unreachable()
     }
 
-    override fun visitBindingElisionElement(node: BindingElisionElement) {
+    override fun visit(node: BindingElisionElement) {
         unreachable()
     }
 
-    override fun visitIdentifierReference(node: IdentifierReferenceNode) {
+    override fun visit(node: IdentifierReferenceNode) {
         scope.addVariableReference(node)
     }
 
-    override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
+    override fun visit(node: FunctionDeclarationNode) {
         val declaredScope = scope
         val hoistedScope = scope.outerHoistingScope
 
@@ -211,7 +211,7 @@ class ScopeResolver : AstVisitor {
         node.functionScope = visitFunctionHelper(node.parameters, node.body, node.kind, isLexical = false)
     }
 
-    override fun visitFunctionExpression(node: FunctionExpressionNode) {
+    override fun visit(node: FunctionExpressionNode) {
         if (node.identifier != null) {
             node.type = VariableType.Var
             node.mode = VariableMode.Declared
@@ -223,14 +223,14 @@ class ScopeResolver : AstVisitor {
         node.functionScope = visitFunctionHelper(node.parameters, node.body, node.kind, isLexical = false)
     }
 
-    override fun visitArrowFunction(node: ArrowFunctionNode) {
+    override fun visit(node: ArrowFunctionNode) {
         node.scope = scope
         node.functionScope = visitFunctionHelper(node.parameters, node.body, node.kind, isLexical = true)
     }
 
-    override fun visitMethodDefinition(node: MethodDefinitionNode) {
+    override fun visit(node: MethodDefinitionNode) {
         node.scope = scope
-        visit(node.propName)
+        node.propName.accept(this)
         node.functionScope = visitFunctionHelper(
             node.parameters,
             node.body,
@@ -239,7 +239,7 @@ class ScopeResolver : AstVisitor {
         )
     }
 
-    override fun visitClassDeclaration(node: ClassDeclarationNode) {
+    override fun visit(node: ClassDeclarationNode) {
         expect(node.identifier != null)
         node.mode = VariableMode.Declared
         node.type = VariableType.Const
@@ -248,13 +248,13 @@ class ScopeResolver : AstVisitor {
         visitClassHelper(node.classNode)
     }
 
-    override fun visitClassExpression(node: ClassExpressionNode) {
+    override fun visit(node: ClassExpressionNode) {
         visitClassHelper(node.classNode)
     }
 
     private fun visitClassHelper(node: ClassNode) {
         if (node.heritage != null)
-            visit(node.heritage)
+            node.heritage.accept(this)
 
         val classScope = HoistingScope(scope)
         scope = classScope
@@ -263,14 +263,14 @@ class ScopeResolver : AstVisitor {
 
         for (element in node.body) {
             if (element is ClassMethodNode) {
-                visitMethodDefinition(element.method)
+                element.method.accept(this)
                 if (element.isConstructor())
                     (element.method.functionScope as HoistingScope).isDerivedClassConstructor = true
             } else {
                 expect(element is ClassFieldNode)
-                visitPropertyName(element.identifier)
+                element.identifier.accept(this)
                 if (element.initializer != null)
-                    visit(element.initializer)
+                    element.initializer.accept(this)
             }
         }
 
@@ -313,7 +313,7 @@ class ScopeResolver : AstVisitor {
                 }
             }
 
-            visit(param)
+            param.accept(this)
         }
 
         val bodyScope = if (body is BlockNode && !parameters.isSimple()) {
@@ -328,7 +328,7 @@ class ScopeResolver : AstVisitor {
             body.scope = bodyScope
             visitBlock(body, pushScope = false)
         } else {
-            visit(body)
+            body.accept(this)
         }
 
         if (bodyScope != functionScope)
@@ -354,35 +354,33 @@ class ScopeResolver : AstVisitor {
         return functionScope
     }
 
-    override fun visitSimpleParameter(node: SimpleParameter) {
+    override fun visit(node: SimpleParameter) {
         node.type = VariableType.Var
         node.mode = VariableMode.Parameter
         node.scope = scope
         scope.addVariableSource(node)
-        super.visitSimpleParameter(node)
+        super.visit(node)
     }
 
-    override fun visitRestParameter(node: RestParameter) {
+    override fun visit(node: RestParameter) {
         visitBindingDeclarationOrPattern(node.declaration, VariableMode.Parameter, VariableType.Var)
     }
 
-    override fun visitBindingParameter(node: BindingParameter) {
+    override fun visit(node: BindingParameter) {
         visitBindingPattern(node.pattern, VariableMode.Parameter, VariableType.Var)
     }
 
-    override fun visitCallExpression(node: CallExpressionNode) {
+    override fun visit(node: CallExpressionNode) {
         if (node.target is IdentifierReferenceNode && node.target.rawName == "eval")
             scope.markEvalScope()
 
-        super.visitCallExpression(node)
+        super.visit(node)
     }
 
-    override fun visitTryStatement(node: TryStatementNode) {
+    override fun visit(node: TryStatementNode) {
+        node.tryBlock.accept(this)
+
         val catchNode = node.catchNode
-        val finallyBlock = node.finallyBlock
-
-        visitBlock(node.tryBlock)
-
         if (catchNode != null) {
             val parameter = catchNode.parameter
             if (parameter != null) {
@@ -391,15 +389,14 @@ class ScopeResolver : AstVisitor {
                 visitBlock(catchNode.block, pushScope = false)
                 scope = scope.outer!!
             } else {
-                visitBlock(catchNode.block)
+                catchNode.block.accept(this)
             }
         }
 
-        if (finallyBlock != null)
-            visitBlock(finallyBlock)
+        node.finallyBlock?.accept(this)
     }
 
-    override fun visitForStatement(node: ForStatementNode) {
+    override fun visit(node: ForStatementNode) {
         val initializer = node.initializer
         val needInitScope = initializer is VariableDeclarationNode || initializer is LexicalDeclarationNode
 
@@ -409,34 +406,34 @@ class ScopeResolver : AstVisitor {
         }
 
         if (initializer != null)
-            visit(initializer)
+            initializer.accept(this)
 
         if (node.condition != null)
-            visit(node.condition)
+            node.condition.accept(this)
 
         if (node.incrementer != null)
-            visit(node.incrementer)
+            node.incrementer.accept(this)
 
-        visit(node.body)
+        node.body.accept(this)
 
         if (needInitScope)
             scope = scope.outer!!
     }
 
-    override fun visitForIn(node: ForInNode) {
+    override fun visit(node: ForInNode) {
         visitForEach(node)
     }
 
-    override fun visitForOf(node: ForOfNode) {
+    override fun visit(node: ForOfNode) {
         visitForEach(node)
     }
 
-    override fun visitForAwaitOf(node: ForAwaitOfNode) {
+    override fun visit(node: ForAwaitOfNode) {
         visitForEach(node)
     }
 
     private fun visitForEach(node: ForEachNode) {
-        visit(node.expression)
+        node.expression.accept(this)
 
         val decl = node.decl
         val body = node.body
@@ -447,24 +444,24 @@ class ScopeResolver : AstVisitor {
             node.initializerScope = scope
         }
 
-        visit(decl)
-        visit(body)
+        decl.accept(this)
+        body.accept(this)
 
         if (needsDeclScope)
             scope = scope.outer!!
     }
 
-    override fun visitUnaryExpression(node: UnaryExpressionNode) {
+    override fun visit(node: UnaryExpressionNode) {
         node.scope = scope
-        super.visitUnaryExpression(node)
+        super.visit(node)
     }
 
-    override fun visitThisLiteral(node: ThisLiteralNode) {
+    override fun visit(node: ThisLiteralNode) {
         node.scope = scope
         scope.outerHoistingScope.addReceiverReference(node)
     }
 
-    override fun visitNewTargetExpression(node: NewTargetNode) {
+    override fun visit(node: NewTargetNode) {
         node.scope = scope
     }
 }

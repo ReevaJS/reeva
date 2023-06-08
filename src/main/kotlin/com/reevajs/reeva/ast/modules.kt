@@ -27,6 +27,8 @@ data class ExportEntry(
 class ModuleNode(val body: List<AstNode>) : RootNode() {
     override val children get() = body
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     val importEntries: List<ImportEntry>
     val localExportEntries: List<ExportEntry>
     val indirectExportEntries: List<ExportEntry>
@@ -122,6 +124,8 @@ class ModuleNode(val body: List<AstNode>) : RootNode() {
 class ImportNode(val imports: List<Import>, val moduleName: String) : AstNodeBase() {
     override val children get() = imports
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     val importEntries: List<ImportEntry>
         get() = imports.map { it.makeEntry(moduleName) }
 
@@ -129,7 +133,9 @@ class ImportNode(val imports: List<Import>, val moduleName: String) : AstNodeBas
     constructor(moduleName: String) : this(emptyList(), moduleName)
 }
 
-sealed class Import() : VariableSourceNode() {
+sealed class Import : VariableSourceNode() {
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     abstract fun sourceModuleName(): String
 
     abstract fun makeEntry(moduleName: String): ImportEntry
@@ -168,7 +174,9 @@ sealed class Import() : VariableSourceNode() {
 }
 
 class ExportNode(val exports: List<Export>) : AstNodeBase() {
-    override val children get() = emptyList<AstNode>()
+    override val children get() = exports
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     val exportEntries: List<ExportEntry>
         get() = exports.flatMap { it.makeEntries() }
@@ -177,6 +185,8 @@ class ExportNode(val exports: List<Export>) : AstNodeBase() {
 }
 
 sealed class Export : AstNodeBase() {
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     abstract fun makeEntries(): List<ExportEntry>
 
     data class Named(

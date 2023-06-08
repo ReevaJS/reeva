@@ -21,10 +21,14 @@ class LexicalDeclarationNode(
     override val declarations: List<Declaration>,
 ) : AstNodeBase(), DeclarationNode {
     override val children get() = declarations
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class VariableDeclarationNode(override val declarations: List<Declaration>) : AstNodeBase(), DeclarationNode {
     override val children get() = declarations
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class DestructuringDeclaration(
@@ -32,6 +36,8 @@ class DestructuringDeclaration(
     override val initializer: AstNode?,
 ) : AstNodeBase(), Declaration {
     override val children get() = listOfNotNull(pattern, initializer)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     override fun sources() = pattern.sources()
 }
@@ -41,6 +47,8 @@ class NamedDeclaration(
     override val initializer: AstNode?,
 ) : VariableSourceNode(), Declaration {
     override val children get() = listOfNotNull(identifier, initializer)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     override fun name() = identifier.processedName
 

@@ -24,7 +24,6 @@ class Parser(val sourceInfo: SourceInfo) {
     private var inFunctionContext = false
     private var inYieldContext = false
     private var inAsyncContext = false
-    private var disableAutoScoping = false
 
     private val labelStateStack = mutableListOf(LabelState())
 
@@ -98,7 +97,7 @@ class Parser(val sourceInfo: SourceInfo) {
                 reporter.at(token).unexpectedToken(tokenType)
 
             ScopeResolver().resolve(result)
-            EarlyErrorDetector(reporter).visit(result)
+            result.accept(EarlyErrorDetector(reporter))
 
             if (Agent.activeAgent.printAst)
                 println(result.debugPrint())
@@ -895,14 +894,18 @@ class Parser(val sourceInfo: SourceInfo) {
                 } else {
                     clauses.add(SwitchClause(caseTarget, parseStatementList()))
                 }
+                clauses.last().also { it.withPosition(it.children.first(), it.children.last()) }
             } else {
-                consume(TokenType.Default)
-                consume(TokenType.Colon)
-                if (matchSwitchClause()) {
-                    clauses.add(SwitchClause(null, null))
-                } else {
-                    clauses.add(SwitchClause(null, parseStatementList()))
+                val clause = nps {
+                    consume(TokenType.Default)
+                    consume(TokenType.Colon)
+                    if (matchSwitchClause()) {
+                        SwitchClause(null, null)
+                    } else {
+                        SwitchClause(null, parseStatementList())
+                    }
                 }
+                clauses.add(clause)
             }
         }
 
@@ -1037,23 +1040,25 @@ class Parser(val sourceInfo: SourceInfo) {
         val tryBlock = parseBlock()
 
         val catchBlock = if (match(TokenType.Catch)) {
-            consume()
-            val catchParam = if (match(TokenType.OpenParen)) {
+            nps {
                 consume()
-                nps {
-                    val declaration = if (matchIdentifier()) {
-                        nps { BindingDeclaration(parseIdentifier()) }
-                    } else if (matchBindingPattern()) {
-                        parseBindingPattern()
-                    } else {
-                        reporter.at(token).expected("identifier or binding pattern")
+                val catchParam = if (match(TokenType.OpenParen)) {
+                    consume()
+                    nps {
+                        val declaration = if (matchIdentifier()) {
+                            nps { BindingDeclaration(parseIdentifier()) }
+                        } else if (matchBindingPattern()) {
+                            parseBindingPattern()
+                        } else {
+                            reporter.at(token).expected("identifier or binding pattern")
+                        }
+                        CatchParameter(BindingDeclarationOrPattern(declaration))
+                    }.also {
+                        consume(TokenType.CloseParen)
                     }
-                    CatchParameter(BindingDeclarationOrPattern(declaration))
-                }.also {
-                    consume(TokenType.CloseParen)
-                }
-            } else null
-            CatchNode(catchParam, parseBlock())
+                } else null
+                CatchNode(catchParam, parseBlock())
+            }
         } else null
 
         val finallyBlock = if (match(TokenType.Finally)) {
@@ -1166,6 +1171,7 @@ class Parser(val sourceInfo: SourceInfo) {
         val type: AOs.FunctionKind,
     ) : AstNodeBase() {
         override val children get() = emptyList<AstNode>()
+        override fun accept(visitor: AstVisitor) = unreachable()
     }
 
     private fun parseFunctionHelper(isDeclaration: Boolean): FunctionTemp = nps {
@@ -1191,7 +1197,7 @@ class Parser(val sourceInfo: SourceInfo) {
         // TODO: Allow no identifier in default export
         val identifier = when {
             matchIdentifier() -> parseBindingIdentifier()
-            inDefaultContext -> IdentifierNode("default")
+            inDefaultContext -> IdentifierNode("default").withPosition(token.start, token.start)
             isDeclaration -> reporter.functionStatementNoName()
             else -> null
         }

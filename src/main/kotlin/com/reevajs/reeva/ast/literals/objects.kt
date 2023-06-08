@@ -8,28 +8,40 @@ import com.reevajs.reeva.runtime.AOs
 
 class ObjectLiteralNode(val properties: List<Property>) : AstNodeBase() {
     override val children get() = properties
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 sealed class Property : AstNodeBase()
 
 class KeyValueProperty(val key: PropertyName, val value: AstNode) : Property() {
     override val children get() = listOf(key, value)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class ShorthandProperty(val key: IdentifierReferenceNode) : Property() {
     override val children get() = listOf(key)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class MethodProperty(val method: MethodDefinitionNode) : Property() {
     override val children get() = listOf(method)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class SpreadProperty(val target: AstNode) : Property() {
     override val children get() = listOf(target)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class PropertyName(val expression: AstNode, val type: Type) : AstNodeBase() {
     override val children get() = listOf(expression)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     fun asString() = when (type) {
         Type.Identifier -> (expression as IdentifierNode).processedName
@@ -56,6 +68,8 @@ class MethodDefinitionNode(
 
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     fun isConstructor(): Boolean {
         return propName.type == PropertyName.Type.Identifier && propName.expression.let {

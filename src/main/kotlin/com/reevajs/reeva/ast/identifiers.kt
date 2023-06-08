@@ -13,6 +13,8 @@ class IdentifierNode(
 ) : AstNodeBase() {
     override val children get() = emptyList<AstNode>()
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -26,6 +28,8 @@ class IdentifierNode(
 
 class IdentifierReferenceNode(val identifierNode: IdentifierNode) : VariableRefNode() {
     override val children get() = emptyList<AstNode>()
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     val processedName: String
         get() = identifierNode.processedName

@@ -9,6 +9,8 @@ class OptionalCallChain(
     isOptional: Boolean,
 ) : OptionalChain(isOptional) {
     override val children get() = arguments
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class OptionalComputedAccessChain(
@@ -16,6 +18,8 @@ class OptionalComputedAccessChain(
     isOptional: Boolean,
 ) : OptionalChain(isOptional) {
     override val children get() = listOf(expr)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class OptionalAccessChain(
@@ -23,6 +27,8 @@ class OptionalAccessChain(
     isOptional: Boolean,
 ) : OptionalChain(isOptional) {
     override val children get() = listOf(identifier)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class OptionalChainNode(
@@ -30,4 +36,6 @@ class OptionalChainNode(
     val parts: List<OptionalChain>
 ) : AstNodeBase() {
     override val children get() = parts + base
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }

@@ -12,6 +12,8 @@ interface AstNode {
     val children: List<AstNode>
     var sourceLocation: SourceLocation
 
+    fun accept(visitor: AstVisitor)
+
     // Nicely removes the extra indentation lines
     fun debugPrint() {
         val string = dump()
@@ -59,7 +61,7 @@ interface AstNode {
     }
 
     fun StringBuilder.appendName() {
-        append(this::class.java.simpleName)
+        append(this@AstNode::class.java.simpleName)
         append(" (")
         append(sourceLocation.start)
         append(" - ")
@@ -179,6 +181,8 @@ sealed interface VariableKey {
 open class FakeSourceNode(private val name: String) : VariableSourceNode() {
     override val children get() = emptyList<AstNode>()
 
+    override fun accept(visitor: AstVisitor) = throw IllegalStateException()
+
     override fun name() = name
 }
 
@@ -195,6 +199,8 @@ sealed class RootNode : NodeWithScope()
 
 class ScriptNode(val statements: List<AstNode>, val hasUseStrict: Boolean) : RootNode() {
     override val children get() = statements
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 enum class VariableMode {

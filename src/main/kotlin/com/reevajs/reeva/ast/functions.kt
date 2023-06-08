@@ -11,6 +11,8 @@ import com.reevajs.reeva.utils.duplicates
 class ParameterList(val parameters: List<Parameter>) : AstNodeBase() {
     override val children get() = parameters
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     fun isSimple(): Boolean {
         // TODO: Eventually check for destructuring patterns
         return parameters.all { it.isSimple }
@@ -36,6 +38,8 @@ class ParameterList(val parameters: List<Parameter>) : AstNodeBase() {
 class ArgumentNode(val expression: AstNode, val isSpread: Boolean) : AstNodeBase() {
     override val children get() = listOf(expression)
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -53,6 +57,8 @@ sealed interface Parameter : AstNode {
 class SimpleParameter(val identifier: IdentifierNode, val initializer: AstNode?) : VariableSourceNode(), Parameter {
     override val children get() = listOfNotNull(identifier, initializer)
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     override val isSimple = initializer == null
 
     override fun name() = identifier.processedName
@@ -61,11 +67,15 @@ class SimpleParameter(val identifier: IdentifierNode, val initializer: AstNode?)
 class RestParameter(val declaration: BindingDeclarationOrPattern) : AstNodeBase(), Parameter {
     override val children get() = listOf(declaration)
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     override val isSimple = false
 }
 
 class BindingParameter(val pattern: BindingPatternNode, val initializer: AstNode?) : AstNodeBase(), Parameter {
     override val children get() = listOfNotNull(pattern, initializer)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     override val isSimple = false
 }
@@ -77,6 +87,8 @@ class FunctionDeclarationNode(
     val kind: AOs.FunctionKind,
 ) : VariableSourceNode(), DeclarationNode, VariableSourceProvider {
     override val children get() = listOfNotNull(identifier, parameters, body)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
@@ -96,6 +108,8 @@ class FunctionExpressionNode(
 ) : VariableSourceNode() {
     override val children get() = listOfNotNull(identifier, parameters, body)
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
 
@@ -110,6 +124,8 @@ class ArrowFunctionNode(
     val kind: AOs.FunctionKind,
 ) : NodeWithScope() {
     override val children get() = listOf(parameters, body)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope

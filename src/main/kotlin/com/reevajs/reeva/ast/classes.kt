@@ -11,6 +11,8 @@ class ClassDeclarationNode(
 ) : VariableSourceNode(), DeclarationNode, VariableSourceProvider {
     override val children get() = listOfNotNull(identifier, classNode)
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     override fun name() = identifier?.processedName ?: TODO()
 
     override val declarations = listOf(this)
@@ -23,6 +25,8 @@ class ClassExpressionNode(
     val classNode: ClassNode,
 ) : AstNodeBase() {
     override val children get() = listOfNotNull(identifier, classNode)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class ClassNode(
@@ -30,6 +34,8 @@ class ClassNode(
     val body: List<ClassElementNode>
 ) : NodeWithScope() {
     override val children get() = listOfNotNull(heritage) + body
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 sealed class ClassElementNode(val isStatic: Boolean) : AstNodeBase()
@@ -40,10 +46,14 @@ class ClassFieldNode(
     isStatic: Boolean,
 ) : ClassElementNode(isStatic) {
     override val children get() = listOfNotNull(identifier, initializer)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class ClassMethodNode(val method: MethodDefinitionNode, isStatic: Boolean) : ClassElementNode(isStatic) {
     override val children get() = listOf(method)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     fun isConstructor() = !isStatic && method.isConstructor()
 }

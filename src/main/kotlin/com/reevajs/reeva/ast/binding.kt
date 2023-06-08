@@ -11,6 +11,8 @@ class BindingPatternNode(
 ) : AstNodeBase(), VariableSourceProvider {
     override val children get() = entries
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     val bindingProperties: List<BindingProperty>
         get() = entries as List<BindingProperty>
 
@@ -39,11 +41,15 @@ enum class BindingKind {
 class BindingDeclaration(val identifier: IdentifierNode) : VariableSourceNode() {
     override val children get() = listOf(identifier)
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     override fun name() = identifier.processedName
 }
 
 class BindingDeclarationOrPattern(val node: AstNode) : AstNodeBase(), VariableSourceProvider {
     override val children get() = listOf(node)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     val isBindingPattern: Boolean get() = node is BindingPatternNode
 
@@ -70,6 +76,8 @@ sealed class BindingProperty : BindingEntry(), VariableSourceProvider
 class BindingRestProperty(val declaration: BindingDeclaration) : BindingProperty() {
     override val children get() = listOf(declaration)
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     override fun sources() = listOf(declaration)
 }
 
@@ -79,6 +87,8 @@ class SimpleBindingProperty(
     val initializer: AstNode?,
 ) : BindingProperty() {
     override val children get() = listOfNotNull(declaration, alias, initializer)
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     override fun sources() = alias?.sources() ?: listOf(declaration)
 }
@@ -90,6 +100,8 @@ class ComputedBindingProperty(
 ) : BindingProperty() {
     override val children get() = listOfNotNull(name, alias, initializer)
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     override fun sources() = alias.sources()
 }
 
@@ -98,17 +110,23 @@ sealed class BindingElement : BindingEntry(), VariableSourceProvider
 class BindingRestElement(val declaration: BindingDeclarationOrPattern) : BindingElement() {
     override val children get() = listOf(declaration)
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     override fun sources() = declaration.sources()
 }
 
 class SimpleBindingElement(val alias: BindingDeclarationOrPattern, val initializer: AstNode?) : BindingElement() {
     override val children get() = listOfNotNull(alias, initializer)
 
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
     override fun sources() = alias.sources()
 }
 
 class BindingElisionElement : BindingElement() {
     override val children get() = emptyList<AstNode>()
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     override fun sources() = emptyList<VariableSourceNode>()
 }

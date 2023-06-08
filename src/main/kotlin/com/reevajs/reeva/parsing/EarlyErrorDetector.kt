@@ -9,22 +9,22 @@ import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.expect
 
-class EarlyErrorDetector(private val reporter: ErrorReporter) : AstVisitor {
-    override fun visit(node: AstNode) {
+class EarlyErrorDetector(private val reporter: ErrorReporter) : DefaultAstVisitor() {
+    override fun visitNode(node: AstNode) {
         // Verify that we're setting node location properties correctly
         expect(!node.sourceLocation.isEmpty()) {
             "Node $node has an invalid sourceLocation property"
         }
 
+        super.visitNode(node)
+    }
+
+    override fun visit(node: ScriptNode) {
+        visitScope(node.scope)
         super.visit(node)
     }
 
-    override fun visitScript(node: ScriptNode) {
-        visitScope(node.scope)
-        super.visitScript(node)
-    }
-
-    override fun visitModule(node: ModuleNode) {
+    override fun visit(node: ModuleNode) {
         val seenNames = mutableSetOf<String>()
 
         node.body.filterIsInstance<ExportNode>().forEach { exportNode ->
@@ -35,35 +35,35 @@ class EarlyErrorDetector(private val reporter: ErrorReporter) : AstVisitor {
         }
 
         visitScope(node.scope)
-        super.visitModule(node)
+        super.visit(node)
     }
 
-    override fun visitBlock(node: BlockNode) {
+    override fun visit(node: BlockNode) {
         visitScope(node.scope)
-        super.visitBlock(node)
+        super.visit(node)
     }
 
-    override fun visitFunctionDeclaration(node: FunctionDeclarationNode) {
+    override fun visit(node: FunctionDeclarationNode) {
         visitScope(node.scope)
-        super.visitFunctionDeclaration(node)
+        super.visit(node)
     }
 
-    override fun visitFunctionExpression(node: FunctionExpressionNode) {
+    override fun visit(node: FunctionExpressionNode) {
         visitScope(node.scope)
-        super.visitFunctionExpression(node)
+        super.visit(node)
     }
 
-    override fun visitArrowFunction(node: ArrowFunctionNode) {
+    override fun visit(node: ArrowFunctionNode) {
         visitScope(node.scope)
-        super.visitArrowFunction(node)
+        super.visit(node)
     }
 
-    override fun visitMethodDefinition(node: MethodDefinitionNode) {
+    override fun visit(node: MethodDefinitionNode) {
         visitScope(node.scope)
-        super.visitMethodDefinition(node)
+        super.visit(node)
     }
 
-    override fun visitClass(node: ClassNode) {
+    override fun visit(node: ClassNode) {
         if (node.heritage == null) {
             val ctor = node.body.firstOrNull {
                 it is ClassMethodNode && it.isConstructor()
