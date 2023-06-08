@@ -87,7 +87,7 @@ interface AstVisitor {
             is VariableDeclarationNode -> visitVariableDeclaration(node)
             is WhileStatementNode -> visitWhileStatement(node)
             is YieldExpressionNode -> visitYieldExpression(node)
-            else -> throw IllegalArgumentException("Unrecognized AstNode ${node.astNodeName}")
+            else -> throw IllegalArgumentException("Unrecognized AstNode ${node::class.java.simpleName}")
         }
     }
 

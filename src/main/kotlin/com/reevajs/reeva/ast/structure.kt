@@ -8,110 +8,10 @@ import com.reevajs.reeva.parsing.lexer.TokenLocation
 import com.reevajs.reeva.utils.newline
 import kotlin.reflect.KClass
 
-open class AstNodeBase(children: List<AstNode> = emptyList()) : AstNode {
-    override lateinit var parent: AstNode
-
-    final override val children: MutableList<AstNode> = if (children is ArrayList<*>) {
-        children as MutableList<AstNode>
-    } else children.toMutableList()
-
-    override val astNodeName: String
-        get() = this::class.java.simpleName
-
-    final override var sourceLocation = SourceLocation(TokenLocation.EMPTY, TokenLocation.EMPTY)
-
-    init {
-        children.forEach { it.parent = this }
-
-        if (children.size == 1)
-            sourceLocation = children.first().sourceLocation
-    }
-}
-
-fun <T : AstNode> T.withPosition(start: TokenLocation, end: TokenLocation) = apply {
-    sourceLocation = SourceLocation(start, end)
-}
-
-fun <T : AstNode> T.withPosition(sourceLocation: SourceLocation) = apply {
-    this.sourceLocation = sourceLocation
-}
-
-fun <T : AstNode> T.withPosition(token: Token) = withPosition(token.start, token.end)
-
-fun <T : AstNode> T.withPosition(node: AstNode) = withPosition(node.sourceLocation)
-
-fun <T : AstNode> T.withPosition(start: AstNode, end: AstNode) = withPosition(
-    start.sourceLocation.start,
-    end.sourceLocation.end,
-)
-
-open class NodeWithScope(children: List<AstNode> = emptyList()) : AstNodeBase(children) {
-    lateinit var scope: Scope
-}
-
-abstract class VariableRefNode(children: List<AstNode> = emptyList()) : NodeWithScope(children) {
-    lateinit var source: VariableSourceNode
-
-    abstract fun name(): String
-}
-
-abstract class VariableSourceNode(children: List<AstNode> = emptyList()) : NodeWithScope(children) {
-    open var hoistedScope: Scope by ::scope
-
-    var isInlineable = true
-
-    lateinit var key: VariableKey
-
-    lateinit var type: VariableType
-    lateinit var mode: VariableMode
-
-    abstract fun name(): String
-}
-
-// Represents the way a variable is stored during execution
-sealed interface VariableKey {
-    // The variable is stored directly in the interpreter's locals list, and
-    // accessed directly by the given index
-    class InlineIndex(val index: Int) : VariableKey
-
-    // The variable is stored in a non-optimized DeclarativeEnvRecord and
-    // accessed by its name
-    object Named : VariableKey
-}
-
-// Variable not declared by the user, created at scope resolution time.
-// The names of fake source nodes will always start with an asterisk
-open class FakeSourceNode(private val name: String) : VariableSourceNode() {
-    override fun name() = name
-}
-
-class GlobalSourceNode(name: String) : FakeSourceNode(name) {
-    init {
-        mode = VariableMode.Global
-        type = VariableType.Var
-    }
-}
-
-enum class VariableMode {
-    Declared,
-    Parameter,
-    Global,
-    Import,
-}
-
-enum class VariableType {
-    Var,
-    Let,
-    Const
-}
-
 interface AstNode {
-    val astNodeName: String
-    val children: MutableList<AstNode>
+    val children: List<AstNode>
 
     var sourceLocation: SourceLocation
-
-    var parent: AstNode
 
     // Nicely removes the extra indentation lines
     fun debugPrint() {
@@ -160,7 +60,7 @@ interface AstNode {
     }
 
     fun StringBuilder.appendName() {
-        append(astNodeName)
+        append(this::class.java.simpleName)
         append(" (")
         append(sourceLocation.start)
         append(" - ")
@@ -183,6 +83,29 @@ interface AstNode {
         fun StringBuilder.appendIndent(indent: Int) = append(makeIndent(indent))
     }
 }
+
+open class AstNodeBase(final override val children: List<AstNode> = emptyList()) : AstNode {
+    final override var sourceLocation = if (children.size == 1) {
+        children.first().sourceLocation
+    } else SourceLocation(TokenLocation.EMPTY, TokenLocation.EMPTY)
+}
+
+fun <T : AstNode> T.withPosition(start: TokenLocation, end: TokenLocation) = apply {
+    sourceLocation = SourceLocation(start, end)
+}
+
+fun <T : AstNode> T.withPosition(sourceLocation: SourceLocation) = apply {
+    this.sourceLocation = sourceLocation
+}
+
+fun <T : AstNode> T.withPosition(token: Token) = withPosition(token.start, token.end)
+
+fun <T : AstNode> T.withPosition(node: AstNode) = withPosition(node.sourceLocation)
+
+fun <T : AstNode> T.withPosition(start: AstNode, end: AstNode) = withPosition(
+    start.sourceLocation.start,
+    end.sourceLocation.end,
+)
 
 fun <T : Any> childrenOfTypeHelper(node: AstNode, clazz: KClass<T>, list: MutableList<T>) {
     node.children.forEach {
@@ -220,6 +143,66 @@ fun AstNode.containsArguments(): Boolean {
     return false
 }
 
+open class NodeWithScope(children: List<AstNode> = emptyList()) : AstNodeBase(children) {
+    lateinit var scope: Scope
+}
+
+abstract class VariableRefNode(children: List<AstNode> = emptyList()) : NodeWithScope(children) {
+    lateinit var source: VariableSourceNode
+
+    abstract fun name(): String
+}
+
+abstract class VariableSourceNode(children: List<AstNode> = emptyList()) : NodeWithScope(children) {
+    open var hoistedScope: Scope by ::scope
+
+    var isInlineable = true
+
+    lateinit var key: VariableKey
+
+    lateinit var type: VariableType
+    lateinit var mode: VariableMode
+
+    abstract fun name(): String
+}
+
+// Represents the way a variable is stored during execution
+sealed interface VariableKey {
+    // The variable is stored directly in the interpreter's locals list, and
+    // accessed directly by the given index
+    class InlineIndex(val index: Int) : VariableKey
+
+    // The variable is stored in a non-optimized DeclarativeEnvRecord and
+    // accessed by its name
+    object Named : VariableKey
+}
+
+// Variable not declared by the user, created at scope resolution time.
+// The names of fake source nodes will always start with an asterisk
+open class FakeSourceNode(private val name: String) : VariableSourceNode() {
+    override fun name() = name
+}
+
+class GlobalSourceNode(name: String) : FakeSourceNode(name) {
+    init {
+        mode = VariableMode.Global
+        type = VariableType.Var
+    }
+}
+
 sealed class RootNode(children: List<AstNode>) : NodeWithScope(children)
 
 class ScriptNode(val statements: List<AstNode>, val hasUseStrict: Boolean) : RootNode(statements)
+
+enum class VariableMode {
+    Declared,
+    Parameter,
+    Global,
+    Import,
+}
+
+enum class VariableType {
+    Var,
+    Let,
+    Const
+}
