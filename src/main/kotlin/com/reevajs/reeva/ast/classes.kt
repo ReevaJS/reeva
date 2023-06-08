@@ -8,7 +8,9 @@ import com.reevajs.reeva.ast.statements.VariableSourceProvider
 class ClassDeclarationNode(
     val identifier: IdentifierNode?, // can be omitted in default exports
     val classNode: ClassNode,
-) : VariableSourceNode(listOfNotNull(identifier, classNode)), DeclarationNode, VariableSourceProvider {
+) : VariableSourceNode(), DeclarationNode, VariableSourceProvider {
+    override val children get() = listOfNotNull(identifier, classNode)
+
     override fun name() = identifier?.processedName ?: TODO()
 
     override val declarations = listOf(this)
@@ -19,27 +21,29 @@ class ClassDeclarationNode(
 class ClassExpressionNode(
     val identifier: IdentifierNode?, // can always be omitted
     val classNode: ClassNode,
-) : AstNodeBase(listOfNotNull(identifier, classNode))
+) : AstNodeBase() {
+    override val children get() = listOfNotNull(identifier, classNode)
+}
 
 class ClassNode(
     val heritage: AstNode?,
     val body: List<ClassElementNode>
-) : NodeWithScope(listOfNotNull(heritage) + body)
+) : NodeWithScope() {
+    override val children get() = listOfNotNull(heritage) + body
+}
 
-sealed class ClassElementNode(
-    children: List<AstNode>,
-    val isStatic: Boolean,
-) : AstNodeBase(children)
+sealed class ClassElementNode(val isStatic: Boolean) : AstNodeBase()
 
 class ClassFieldNode(
     val identifier: PropertyName,
     val initializer: AstNode?,
     isStatic: Boolean,
-) : ClassElementNode(listOfNotNull(identifier, initializer), isStatic)
+) : ClassElementNode(isStatic) {
+    override val children get() = listOfNotNull(identifier, initializer)
+}
 
-class ClassMethodNode(
-    val method: MethodDefinitionNode,
-    isStatic: Boolean,
-) : ClassElementNode(listOf(method), isStatic) {
+class ClassMethodNode(val method: MethodDefinitionNode, isStatic: Boolean) : ClassElementNode(isStatic) {
+    override val children get() = listOf(method)
+
     fun isConstructor() = !isStatic && method.isConstructor()
 }

@@ -460,7 +460,7 @@ interface AstVisitor {
     }
 
     fun visitObjectLiteral(node: ObjectLiteralNode) {
-        node.list.forEach {
+        node.properties.forEach {
             when (it) {
                 is KeyValueProperty -> {
                     visit(it.key.expression)

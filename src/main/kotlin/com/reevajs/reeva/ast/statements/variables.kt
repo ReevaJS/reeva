@@ -19,23 +19,29 @@ sealed interface Declaration : VariableSourceProvider {
 class LexicalDeclarationNode(
     val isConst: Boolean,
     override val declarations: List<Declaration>,
-) : AstNodeBase(declarations), DeclarationNode
+) : AstNodeBase(), DeclarationNode {
+    override val children get() = declarations
+}
 
-class VariableDeclarationNode(
-    override val declarations: List<Declaration>,
-) : AstNodeBase(declarations), DeclarationNode
+class VariableDeclarationNode(override val declarations: List<Declaration>) : AstNodeBase(), DeclarationNode {
+    override val children get() = declarations
+}
 
 class DestructuringDeclaration(
     val pattern: BindingPatternNode,
     override val initializer: AstNode?,
-) : AstNodeBase(listOf(pattern)), Declaration {
+) : AstNodeBase(), Declaration {
+    override val children get() = listOfNotNull(pattern, initializer)
+
     override fun sources() = pattern.sources()
 }
 
 class NamedDeclaration(
     val identifier: IdentifierNode,
     override val initializer: AstNode?,
-) : VariableSourceNode(listOfNotNull(identifier, identifier)), Declaration {
+) : VariableSourceNode(), Declaration {
+    override val children get() = listOfNotNull(identifier, initializer)
+
     override fun name() = identifier.processedName
 
     override fun sources() = listOf(this)

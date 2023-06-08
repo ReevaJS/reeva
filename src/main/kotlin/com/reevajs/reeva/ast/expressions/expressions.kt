@@ -10,7 +10,9 @@ class AssignmentExpressionNode(
     val lhs: AstNode,
     val rhs: AstNode,
     val op: BinaryOperator?, // Null indicates regular assignment
-) : AstNodeBase(listOf(lhs, rhs)) {
+) : AstNodeBase() {
+    override val children get() = listOf(lhs, rhs)
+
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -22,32 +24,34 @@ class AssignmentExpressionNode(
     }
 }
 
-class AwaitExpressionNode(val expression: AstNode) : AstNodeBase(listOf(expression))
+class AwaitExpressionNode(val expression: AstNode) : AstNodeBase() {
+    override val children get() = listOf(expression)
+}
 
 // TODO: This isn't exactly to spec
 class CallExpressionNode(
     val target: AstNode,
     val arguments: List<ArgumentNode>,
     val isOptional: Boolean,
-) : AstNodeBase(arguments + target)
+) : AstNodeBase() {
+    override val children get() = arguments + target
+}
 
 // Note that this name deviates from the spec because I think this is
 // a much better name. It is not clear from the name "ExpressionNode"
 // that the inner expression are separated by comma operators, and only
 // the last one should be returned.
-class CommaExpressionNode(val expressions: List<AstNode>) : AstNodeBase(expressions)
+class CommaExpressionNode(val expressions: List<AstNode>) : AstNodeBase() {
+    override val children get() = expressions
+}
 
-class ConditionalExpressionNode(
-    val predicate: AstNode,
-    val ifTrue: AstNode,
-    val ifFalse: AstNode
-) : AstNodeBase(listOf(predicate, ifTrue, ifFalse))
+class ConditionalExpressionNode(val predicate: AstNode, val ifTrue: AstNode, val ifFalse: AstNode) : AstNodeBase() {
+    override val children get() = listOf(predicate, ifTrue, ifFalse)
+}
 
-class MemberExpressionNode(
-    val lhs: AstNode,
-    val rhs: AstNode,
-    val type: Type,
-) : AstNodeBase(listOf(lhs, rhs)) {
+class MemberExpressionNode(val lhs: AstNode, val rhs: AstNode, val type: Type) : AstNodeBase() {
+    override val children get() = listOf(lhs, rhs)
+
     override val isInvalidAssignmentTarget = false
 
     override fun dump(indent: Int) = buildString {
@@ -67,15 +71,13 @@ class MemberExpressionNode(
     }
 }
 
-class NewExpressionNode(
-    val target: AstNode,
-    val arguments: List<ArgumentNode>,
-) : AstNodeBase(arguments + target)
+class NewExpressionNode(val target: AstNode, val arguments: List<ArgumentNode>) : AstNodeBase() {
+    override val children get() = arguments + target
+}
 
-class SuperPropertyExpressionNode(
-    val target: AstNode,
-    val isComputed: Boolean,
-) : AstNodeBase(listOf(target)) {
+class SuperPropertyExpressionNode(val target: AstNode, val isComputed: Boolean) : AstNodeBase() {
+    override val children get() = listOf(target)
+
     override val isInvalidAssignmentTarget: Boolean = false
 
     override fun dump(indent: Int) = buildString {
@@ -88,14 +90,17 @@ class SuperPropertyExpressionNode(
     }
 }
 
-class SuperCallExpressionNode(val arguments: List<ArgumentNode>) : AstNodeBase(arguments)
+class SuperCallExpressionNode(val arguments: List<ArgumentNode>) : AstNodeBase() {
+    override val children get() = arguments
+}
 
-class ImportCallExpressionNode(val expression: AstNode) : AstNodeBase(listOf(expression))
+class ImportCallExpressionNode(val expression: AstNode) : AstNodeBase() {
+    override val children get() = listOf(expression)
+}
 
-class YieldExpressionNode(
-    val expression: AstNode?,
-    val generatorYield: Boolean
-) : AstNodeBase(listOfNotNull(expression)) {
+class YieldExpressionNode(val expression: AstNode?, val generatorYield: Boolean) : AstNodeBase() {
+    override val children get() = listOfNotNull(expression)
+
     init {
         if (expression == null && generatorYield)
             throw IllegalArgumentException("Cannot have a generatorYield expression without a target expression")
@@ -111,12 +116,14 @@ class YieldExpressionNode(
     }
 }
 
-class ParenthesizedExpressionNode(val expression: AstNode) : AstNodeBase(listOf(expression))
+class ParenthesizedExpressionNode(val expression: AstNode) : AstNodeBase() {
+    override val children get() = listOf(expression)
+}
 
-class TemplateLiteralNode(val parts: List<AstNode>) : AstNodeBase(parts)
+class TemplateLiteralNode(val parts: List<AstNode>) : AstNodeBase() {
+    override val children get() = parts
+}
 
-class RegExpLiteralNode(
-    val source: String,
-    val flags: String,
-    val regexp: RegExp,
-) : AstNodeBase(listOf())
+class RegExpLiteralNode(val source: String, val flags: String, val regexp: RegExp) : AstNodeBase() {
+    override val children get() = emptyList<AstNode>()
+}

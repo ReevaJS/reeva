@@ -8,9 +8,9 @@ import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.duplicates
 
-class ParameterList(
-    val parameters: List<Parameter> = emptyList(),
-) : AstNodeBase(parameters) {
+class ParameterList(val parameters: List<Parameter>) : AstNodeBase() {
+    override val children get() = parameters
+
     fun isSimple(): Boolean {
         // TODO: Eventually check for destructuring patterns
         return parameters.all { it.isSimple }
@@ -33,10 +33,9 @@ class ParameterList(
     }
 }
 
-class ArgumentNode(
-    val expression: AstNode,
-    val isSpread: Boolean
-) : AstNodeBase(listOf(expression)) {
+class ArgumentNode(val expression: AstNode, val isSpread: Boolean) : AstNodeBase() {
+    override val children get() = listOf(expression)
+
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -51,23 +50,23 @@ sealed interface Parameter : AstNode {
     val isSimple: Boolean
 }
 
-class SimpleParameter(
-    val identifier: IdentifierNode,
-    val initializer: AstNode?,
-) : VariableSourceNode(listOfNotNull(identifier, initializer)), Parameter {
+class SimpleParameter(val identifier: IdentifierNode, val initializer: AstNode?) : VariableSourceNode(), Parameter {
+    override val children get() = listOfNotNull(identifier, initializer)
+
     override val isSimple = initializer == null
 
     override fun name() = identifier.processedName
 }
 
 class RestParameter(val declaration: BindingDeclarationOrPattern) : AstNodeBase(), Parameter {
+    override val children get() = listOf(declaration)
+
     override val isSimple = false
 }
 
-class BindingParameter(
-    val pattern: BindingPatternNode,
-    val initializer: AstNode?,
-) : AstNodeBase(listOfNotNull(pattern, initializer)), Parameter {
+class BindingParameter(val pattern: BindingPatternNode, val initializer: AstNode?) : AstNodeBase(), Parameter {
+    override val children get() = listOfNotNull(pattern, initializer)
+
     override val isSimple = false
 }
 
@@ -76,7 +75,9 @@ class FunctionDeclarationNode(
     val parameters: ParameterList,
     val body: BlockNode,
     val kind: AOs.FunctionKind,
-) : VariableSourceNode(listOfNotNull(identifier) + parameters + body), DeclarationNode, VariableSourceProvider {
+) : VariableSourceNode(), DeclarationNode, VariableSourceProvider {
+    override val children get() = listOfNotNull(identifier, parameters, body)
+
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
 
@@ -92,7 +93,9 @@ class FunctionExpressionNode(
     val parameters: ParameterList,
     val body: BlockNode,
     val kind: AOs.FunctionKind,
-) : VariableSourceNode(listOfNotNull(identifier) + parameters + body) {
+) : VariableSourceNode() {
+    override val children get() = listOfNotNull(identifier, parameters, body)
+
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
 
@@ -105,7 +108,9 @@ class ArrowFunctionNode(
     val parameters: ParameterList,
     val body: AstNode, // BlockNode or ExpressionNode
     val kind: AOs.FunctionKind,
-) : NodeWithScope(listOf(parameters, body)) {
+) : NodeWithScope() {
+    override val children get() = listOf(parameters, body)
+
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
 }

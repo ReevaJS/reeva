@@ -12,7 +12,7 @@ import com.reevajs.reeva.utils.expect
 class EarlyErrorDetector(private val reporter: ErrorReporter) : AstVisitor {
     override fun visit(node: AstNode) {
         // Verify that we're setting node location properties correctly
-        expect(node.sourceLocation.let { it.start != TokenLocation.EMPTY && it.end != TokenLocation.EMPTY }) {
+        expect(!node.sourceLocation.isEmpty()) {
             "Node $node has an invalid sourceLocation property"
         }
 

@@ -8,7 +8,9 @@ class BinaryExpressionNode(
     val lhs: AstNode,
     val rhs: AstNode,
     val operator: BinaryOperator,
-) : AstNodeBase(listOf(lhs, rhs)) {
+) : AstNodeBase() {
+    override val children get() = listOf(lhs, rhs)
+
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()

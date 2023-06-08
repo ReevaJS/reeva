@@ -1964,7 +1964,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     override fun visitObjectLiteral(node: ObjectLiteralNode) {
         +CreateObject
 
-        for (property in node.list) {
+        for (property in node.properties) {
             +Dup
             when (property) {
                 is KeyValueProperty -> {

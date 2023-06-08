@@ -2,27 +2,32 @@ package com.reevajs.reeva.ast.expressions
 
 import com.reevajs.reeva.ast.*
 
-sealed class OptionalChain(
-    children: List<AstNode>,
-    val isOptional: Boolean,
-) : AstNodeBase(children)
+sealed class OptionalChain(val isOptional: Boolean) : AstNodeBase()
 
 class OptionalCallChain(
     val arguments: List<ArgumentNode>,
     isOptional: Boolean,
-) : OptionalChain(arguments, isOptional)
+) : OptionalChain(isOptional) {
+    override val children get() = arguments
+}
 
 class OptionalComputedAccessChain(
     val expr: AstNode,
     isOptional: Boolean,
-) : OptionalChain(listOf(expr), isOptional)
+) : OptionalChain(isOptional) {
+    override val children get() = listOf(expr)
+}
 
 class OptionalAccessChain(
     val identifier: IdentifierNode,
     isOptional: Boolean,
-) : OptionalChain(listOf(identifier), isOptional)
+) : OptionalChain(isOptional) {
+    override val children get() = listOf(identifier)
+}
 
 class OptionalChainNode(
     val base: AstNode,
     val parts: List<OptionalChain>
-) : AstNodeBase(listOf(base) + parts)
+) : AstNodeBase() {
+    override val children get() = parts + base
+}

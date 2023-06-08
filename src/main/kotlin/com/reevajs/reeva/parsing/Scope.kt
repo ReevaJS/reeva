@@ -191,6 +191,7 @@ open class HoistingScope(
         if (argumentsMode != ArgumentsMode.None) {
             if (needsArgumentsObject()) {
                 argumentsSource = object : VariableSourceNode() {
+                    override val children get() = emptyList<AstNode>()
                     override fun name() = "arguments"
                 }
                 argumentsSource.mode = VariableMode.Declared

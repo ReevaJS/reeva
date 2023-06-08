@@ -500,7 +500,7 @@ class Parser(val sourceInfo: SourceInfo) {
             return@nps ExportNode(Export.Node(parseClassDeclaration(), default = true))
 
         // TODO: AssignmentExpression, not Expression
-        ExportNode(Export.Expr(parseExpression())).also {
+        ExportNode(nps { Export.Expr(parseExpression()) }).also {
             inDefaultContext = false
         }
     }
@@ -536,8 +536,9 @@ class Parser(val sourceInfo: SourceInfo) {
         parseNamedExports()?.let { exports ->
             val from = maybeParseImportExportFrom()
             if (from != null) {
-                ExportNode(exports.map { it.copy(moduleName = from) })
-            } else ExportNode(exports)
+                exports.forEach { it.moduleName = from }
+            }
+            ExportNode(exports)
         }
     }
 
@@ -572,9 +573,9 @@ class Parser(val sourceInfo: SourceInfo) {
                         IdentifierNode(ModuleRecord.DEFAULT_SPECIFIER).withPosition(it)
                     } else it
                 }
-                list.add(Export.Named(name, ident))
+                list.add(Export.Named(name, ident).withPosition(name, ident))
             } else {
-                list.add(Export.Named(name))
+                list.add(Export.Named(name).withPosition(name))
             }
 
             if (!match(TokenType.Comma))
@@ -712,7 +713,7 @@ class Parser(val sourceInfo: SourceInfo) {
                 val identifier = parseBindingIdentifier()
                 val declaration = BindingDeclaration(identifier).withPosition(identifier)
 
-                bindingEntries.add(BindingRestProperty(declaration))
+                bindingEntries.add(BindingRestProperty(declaration).withPosition(declaration))
                 break
             }
 
@@ -1041,7 +1042,7 @@ class Parser(val sourceInfo: SourceInfo) {
                 consume()
                 nps {
                     val declaration = if (matchIdentifier()) {
-                        BindingDeclaration(parseIdentifier())
+                        nps { BindingDeclaration(parseIdentifier()) }
                     } else if (matchBindingPattern()) {
                         parseBindingPattern()
                     } else {
@@ -1163,7 +1164,9 @@ class Parser(val sourceInfo: SourceInfo) {
         val params: ParameterList,
         val body: BlockNode,
         val type: AOs.FunctionKind,
-    ) : AstNodeBase()
+    ) : AstNodeBase() {
+        override val children get() = emptyList<AstNode>()
+    }
 
     private fun parseFunctionHelper(isDeclaration: Boolean): FunctionTemp = nps {
         val isAsync = if (match(TokenType.Async)) {
@@ -1438,7 +1441,7 @@ class Parser(val sourceInfo: SourceInfo) {
         consume(TokenType.OpenParen)
         if (match(TokenType.CloseParen)) {
             consume()
-            return@nps ParameterList()
+            return@nps ParameterList(emptyList())
         }
 
         val parameters = mutableListOf<Parameter>()
@@ -1451,7 +1454,7 @@ class Parser(val sourceInfo: SourceInfo) {
                 nps {
                     consume()
                     val declaration = if (matchIdentifier()) {
-                        BindingDeclaration(parseBindingIdentifier())
+                        nps { BindingDeclaration(parseBindingIdentifier()) }
                     } else parseBindingPattern()
                     if (!match(TokenType.CloseParen))
                         reporter.paramAfterRest()
@@ -2319,8 +2322,10 @@ class Parser(val sourceInfo: SourceInfo) {
             val parameters = if (match(TokenType.OpenParen)) {
                 parseFunctionParameters()
             } else {
-                val identifier = parseBindingIdentifier()
-                ParameterList(listOf(SimpleParameter(identifier, null)))
+                nps {
+                    val parameter = nps { SimpleParameter(parseBindingIdentifier(), null) }
+                    ParameterList(listOf(parameter))
+                }
             }
 
             if (!match(TokenType.Arrow)) {

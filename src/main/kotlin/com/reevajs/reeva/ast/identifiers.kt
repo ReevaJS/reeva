@@ -11,6 +11,8 @@ class IdentifierNode(
     val processedName: String,
     val rawName: String = processedName,
 ) : AstNodeBase() {
+    override val children get() = emptyList<AstNode>()
+
     override fun dump(indent: Int) = buildString {
         appendIndent(indent)
         appendName()
@@ -23,6 +25,8 @@ class IdentifierNode(
 }
 
 class IdentifierReferenceNode(val identifierNode: IdentifierNode) : VariableRefNode() {
+    override val children get() = emptyList<AstNode>()
+
     val processedName: String
         get() = identifierNode.processedName
 

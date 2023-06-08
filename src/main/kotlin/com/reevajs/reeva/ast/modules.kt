@@ -24,7 +24,9 @@ data class ExportEntry(
     object AllButDefaultImportName : ImportName()
 }
 
-class ModuleNode(val body: List<AstNode>) : RootNode(body) {
+class ModuleNode(val body: List<AstNode>) : RootNode() {
+    override val children get() = body
+
     val importEntries: List<ImportEntry>
     val localExportEntries: List<ExportEntry>
     val indirectExportEntries: List<ExportEntry>
@@ -117,7 +119,9 @@ class ModuleNode(val body: List<AstNode>) : RootNode(body) {
     }
 }
 
-class ImportNode(val imports: List<Import>, val moduleName: String) : AstNodeBase(emptyList()) {
+class ImportNode(val imports: List<Import>, val moduleName: String) : AstNodeBase() {
+    override val children get() = imports
+
     val importEntries: List<ImportEntry>
         get() = imports.map { it.makeEntry(moduleName) }
 
@@ -125,12 +129,14 @@ class ImportNode(val imports: List<Import>, val moduleName: String) : AstNodeBas
     constructor(moduleName: String) : this(emptyList(), moduleName)
 }
 
-sealed class Import(children: List<AstNode>) : VariableSourceNode(children) {
+sealed class Import() : VariableSourceNode() {
     abstract fun sourceModuleName(): String
 
     abstract fun makeEntry(moduleName: String): ImportEntry
 
-    class Namespace(val identifier: IdentifierNode) : Import(listOf(identifier)) {
+    class Namespace(val identifier: IdentifierNode) : Import() {
+        override val children get() = listOf(identifier)
+
         override fun name() = identifier.processedName
 
         override fun sourceModuleName() = ModuleRecord.NAMESPACE_SPECIFIER
@@ -139,10 +145,9 @@ sealed class Import(children: List<AstNode>) : VariableSourceNode(children) {
             ImportEntry(moduleName, "namespace-object", identifier.processedName)
     }
 
-    class Named(
-        val importIdent: IdentifierNode,
-        val localIdent: IdentifierNode = importIdent,
-    ) : Import(listOf(importIdent, localIdent).distinct()) {
+    class Named(val importIdent: IdentifierNode, val localIdent: IdentifierNode = importIdent) : Import() {
+        override val children get() = listOf(importIdent, localIdent).distinct()
+
         override fun name() = localIdent.processedName
 
         override fun sourceModuleName() = importIdent.processedName
@@ -151,7 +156,9 @@ sealed class Import(children: List<AstNode>) : VariableSourceNode(children) {
             ImportEntry(moduleName, importIdent.processedName, localIdent.processedName)
     }
 
-    class Default(val identifier: IdentifierNode) : Import(listOf(identifier)) {
+    class Default(val identifier: IdentifierNode) : Import() {
+        override val children get() = listOf(identifier)
+
         override fun name() = identifier.processedName
 
         override fun sourceModuleName() = "default"
@@ -160,21 +167,25 @@ sealed class Import(children: List<AstNode>) : VariableSourceNode(children) {
     }
 }
 
-class ExportNode(val exports: List<Export>) : AstNodeBase(emptyList()) {
+class ExportNode(val exports: List<Export>) : AstNodeBase() {
+    override val children get() = emptyList<AstNode>()
+
     val exportEntries: List<ExportEntry>
         get() = exports.flatMap { it.makeEntries() }
 
     constructor(export: Export) : this(listOf(export))
 }
 
-sealed class Export(children: List<AstNode>) : AstNodeBase(children) {
+sealed class Export : AstNodeBase() {
     abstract fun makeEntries(): List<ExportEntry>
 
     data class Named(
         val exportIdent: IdentifierNode,
         val localIdent: IdentifierNode = exportIdent,
-        val moduleName: String? = null,
-    ) : Export(listOf(exportIdent, localIdent).distinct()) {
+        var moduleName: String? = null,
+    ) : Export() {
+        override val children get() = listOf(exportIdent, localIdent).distinct()
+
         override fun makeEntries() = listOf(
             ExportEntry(
                 exportIdent.processedName,
@@ -185,7 +196,9 @@ sealed class Export(children: List<AstNode>) : AstNodeBase(children) {
         )
     }
 
-    class Namespace(val alias: IdentifierNode?, val moduleName: String?) : Export(listOfNotNull(alias)) {
+    class Namespace(val alias: IdentifierNode?, val moduleName: String?) : Export() {
+        override val children get() = listOfNotNull(alias)
+
         override fun makeEntries() = listOf(
             ExportEntry(
                 alias?.processedName,
@@ -196,7 +209,13 @@ sealed class Export(children: List<AstNode>) : AstNodeBase(children) {
         )
     }
 
-    class Node(val node: DeclarationNode, val default: Boolean) : Export(listOf(node)) {
+    class Node(val node: DeclarationNode, val default: Boolean) : Export() {
+        override val children get() = listOf(node)
+
+        init {
+            sourceLocation = node.sourceLocation
+        }
+
         override fun makeEntries(): List<ExportEntry> {
             return node.declarations.flatMap { source ->
                 source.names().map {
@@ -214,7 +233,9 @@ sealed class Export(children: List<AstNode>) : AstNodeBase(children) {
         }
     }
 
-    class Expr(val expr: AstNode) : Export(listOf(expr)) {
+    class Expr(val expr: AstNode) : Export() {
+        override val children get() = listOf(expr)
+
         override fun makeEntries() = listOf(
             ExportEntry(
                 "default",

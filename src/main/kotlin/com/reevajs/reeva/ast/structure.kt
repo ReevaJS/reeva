@@ -10,7 +10,6 @@ import kotlin.reflect.KClass
 
 interface AstNode {
     val children: List<AstNode>
-
     var sourceLocation: SourceLocation
 
     // Nicely removes the extra indentation lines
@@ -84,10 +83,8 @@ interface AstNode {
     }
 }
 
-open class AstNodeBase(final override val children: List<AstNode> = emptyList()) : AstNode {
-    final override var sourceLocation = if (children.size == 1) {
-        children.first().sourceLocation
-    } else SourceLocation(TokenLocation.EMPTY, TokenLocation.EMPTY)
+abstract class AstNodeBase : AstNode {
+    final override var sourceLocation = SourceLocation.EMPTY
 }
 
 fun <T : AstNode> T.withPosition(start: TokenLocation, end: TokenLocation) = apply {
@@ -143,17 +140,17 @@ fun AstNode.containsArguments(): Boolean {
     return false
 }
 
-open class NodeWithScope(children: List<AstNode> = emptyList()) : AstNodeBase(children) {
+abstract class NodeWithScope : AstNodeBase() {
     lateinit var scope: Scope
 }
 
-abstract class VariableRefNode(children: List<AstNode> = emptyList()) : NodeWithScope(children) {
+abstract class VariableRefNode : NodeWithScope() {
     lateinit var source: VariableSourceNode
 
     abstract fun name(): String
 }
 
-abstract class VariableSourceNode(children: List<AstNode> = emptyList()) : NodeWithScope(children) {
+abstract class VariableSourceNode : NodeWithScope() {
     open var hoistedScope: Scope by ::scope
 
     var isInlineable = true
@@ -180,6 +177,8 @@ sealed interface VariableKey {
 // Variable not declared by the user, created at scope resolution time.
 // The names of fake source nodes will always start with an asterisk
 open class FakeSourceNode(private val name: String) : VariableSourceNode() {
+    override val children get() = emptyList<AstNode>()
+
     override fun name() = name
 }
 
@@ -188,11 +187,15 @@ class GlobalSourceNode(name: String) : FakeSourceNode(name) {
         mode = VariableMode.Global
         type = VariableType.Var
     }
+
+    override val children get() = emptyList<AstNode>()
 }
 
-sealed class RootNode(children: List<AstNode>) : NodeWithScope(children)
+sealed class RootNode : NodeWithScope()
 
-class ScriptNode(val statements: List<AstNode>, val hasUseStrict: Boolean) : RootNode(statements)
+class ScriptNode(val statements: List<AstNode>, val hasUseStrict: Boolean) : RootNode() {
+    override val children get() = statements
+}
 
 enum class VariableMode {
     Declared,

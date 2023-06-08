@@ -32,6 +32,8 @@ data class Token(
 data class TokenLocation(val index: Int, val line: Int, val column: Int) {
     fun shiftColumn(n: Int) = TokenLocation(index, line, column + n)
 
+    fun isEmpty() = this == EMPTY
+
     override fun toString() = "${line + 1}:${column + 1}"
 
     companion object {
@@ -39,4 +41,10 @@ data class TokenLocation(val index: Int, val line: Int, val column: Int) {
     }
 }
 
-data class SourceLocation(val start: TokenLocation, val end: TokenLocation)
+data class SourceLocation(val start: TokenLocation, val end: TokenLocation) {
+    fun isEmpty() = this == EMPTY
+
+    companion object {
+        val EMPTY = SourceLocation(TokenLocation.EMPTY, TokenLocation.EMPTY)
+    }
+}

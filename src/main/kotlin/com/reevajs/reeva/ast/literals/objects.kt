@@ -6,25 +6,31 @@ import com.reevajs.reeva.ast.statements.BlockNode
 import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.runtime.AOs
 
-class ObjectLiteralNode(val list: List<Property>) : AstNodeBase(list)
+class ObjectLiteralNode(val properties: List<Property>) : AstNodeBase() {
+    override val children get() = properties
+}
 
-sealed class Property(children: List<AstNode>) : AstNodeBase(children)
+sealed class Property : AstNodeBase()
 
-class KeyValueProperty(
-    val key: PropertyName,
-    val value: AstNode,
-) : Property(listOf(key, value))
+class KeyValueProperty(val key: PropertyName, val value: AstNode) : Property() {
+    override val children get() = listOf(key, value)
+}
 
-class ShorthandProperty(val key: IdentifierReferenceNode) : Property(listOf(key))
+class ShorthandProperty(val key: IdentifierReferenceNode) : Property() {
+    override val children get() = listOf(key)
+}
 
-class MethodProperty(val method: MethodDefinitionNode) : Property(listOf(method))
+class MethodProperty(val method: MethodDefinitionNode) : Property() {
+    override val children get() = listOf(method)
+}
 
-class SpreadProperty(val target: AstNode) : Property(listOf(target))
+class SpreadProperty(val target: AstNode) : Property() {
+    override val children get() = listOf(target)
+}
 
-class PropertyName(
-    val expression: AstNode,
-    val type: Type,
-) : AstNodeBase(listOf(expression)) {
+class PropertyName(val expression: AstNode, val type: Type) : AstNodeBase() {
+    override val children get() = listOf(expression)
+
     fun asString() = when (type) {
         Type.Identifier -> (expression as IdentifierNode).processedName
         Type.String -> (expression as StringLiteralNode).value
@@ -45,7 +51,9 @@ class MethodDefinitionNode(
     val parameters: ParameterList,
     val body: BlockNode,
     val kind: Kind
-) : NodeWithScope(listOf(propName) + parameters + body) {
+) : NodeWithScope() {
+    override val children get() = listOf(propName, parameters, body)
+
     // May be equal to body.scope if parameters.isSimple() == true
     lateinit var functionScope: Scope
 
