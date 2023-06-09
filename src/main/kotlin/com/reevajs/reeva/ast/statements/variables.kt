@@ -1,6 +1,7 @@
 package com.reevajs.reeva.ast.statements
 
 import com.reevajs.reeva.ast.*
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 
 interface DeclarationNode : AstNode {
     val declarations: List<VariableSourceProvider>
@@ -19,13 +20,17 @@ sealed interface Declaration : VariableSourceProvider {
 class LexicalDeclarationNode(
     val isConst: Boolean,
     override val declarations: List<Declaration>,
-) : AstNodeBase(), DeclarationNode {
+    sourceLocation: SourceLocation,
+) : AstNodeBase(sourceLocation), DeclarationNode {
     override val children get() = declarations
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class VariableDeclarationNode(override val declarations: List<Declaration>) : AstNodeBase(), DeclarationNode {
+class VariableDeclarationNode(
+    override val declarations: List<Declaration>,
+    sourceLocation: SourceLocation,
+) : AstNodeBase(sourceLocation), DeclarationNode {
     override val children get() = declarations
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -34,7 +39,8 @@ class VariableDeclarationNode(override val declarations: List<Declaration>) : As
 class DestructuringDeclaration(
     val pattern: BindingPatternNode,
     override val initializer: AstNode?,
-) : AstNodeBase(), Declaration {
+    sourceLocation: SourceLocation,
+) : AstNodeBase(sourceLocation), Declaration {
     override val children get() = listOfNotNull(pattern, initializer)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -45,7 +51,8 @@ class DestructuringDeclaration(
 class NamedDeclaration(
     val identifier: IdentifierNode,
     override val initializer: AstNode?,
-) : VariableSourceNode(), Declaration {
+    sourceLocation: SourceLocation,
+) : VariableSourceNode(sourceLocation), Declaration {
     override val children get() = listOfNotNull(identifier, initializer)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

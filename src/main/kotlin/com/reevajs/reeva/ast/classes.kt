@@ -4,11 +4,13 @@ import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.ast.literals.PropertyName
 import com.reevajs.reeva.ast.statements.DeclarationNode
 import com.reevajs.reeva.ast.statements.VariableSourceProvider
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 
 class ClassDeclarationNode(
     val identifier: IdentifierNode?, // can be omitted in default exports
     val classNode: ClassNode,
-) : VariableSourceNode(), DeclarationNode, VariableSourceProvider {
+    sourceLocation: SourceLocation,
+) : VariableSourceNode(sourceLocation), DeclarationNode, VariableSourceProvider {
     override val children get() = listOfNotNull(identifier, classNode)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -23,7 +25,8 @@ class ClassDeclarationNode(
 class ClassExpressionNode(
     val identifier: IdentifierNode?, // can always be omitted
     val classNode: ClassNode,
-) : AstNodeBase() {
+    sourceLocation: SourceLocation,
+) : AstNodeBase(sourceLocation) {
     override val children get() = listOfNotNull(identifier, classNode)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -31,26 +34,32 @@ class ClassExpressionNode(
 
 class ClassNode(
     val heritage: AstNode?,
-    val body: List<ClassElementNode>
-) : NodeWithScope() {
+    val body: List<ClassElementNode>,
+    sourceLocation: SourceLocation,
+) : NodeWithScope(sourceLocation) {
     override val children get() = listOfNotNull(heritage) + body
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-sealed class ClassElementNode(val isStatic: Boolean) : AstNodeBase()
+sealed class ClassElementNode(sourceLocation: SourceLocation, val isStatic: Boolean) : AstNodeBase(sourceLocation)
 
 class ClassFieldNode(
     val identifier: PropertyName,
     val initializer: AstNode?,
     isStatic: Boolean,
-) : ClassElementNode(isStatic) {
+    sourceLocation: SourceLocation,
+) : ClassElementNode(sourceLocation, isStatic) {
     override val children get() = listOfNotNull(identifier, initializer)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class ClassMethodNode(val method: MethodDefinitionNode, isStatic: Boolean) : ClassElementNode(isStatic) {
+class ClassMethodNode(
+    val method: MethodDefinitionNode,
+    isStatic: Boolean,
+    sourceLocation: SourceLocation,
+) : ClassElementNode(sourceLocation, isStatic) {
     override val children get() = listOf(method)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

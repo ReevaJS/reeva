@@ -5,10 +5,11 @@ import com.reevajs.reeva.ast.statements.BlockNode
 import com.reevajs.reeva.ast.statements.DeclarationNode
 import com.reevajs.reeva.ast.statements.VariableSourceProvider
 import com.reevajs.reeva.parsing.Scope
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.duplicates
 
-class ParameterList(val parameters: List<Parameter>) : AstNodeBase() {
+class ParameterList(val parameters: List<Parameter>, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
     override val children get() = parameters
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -35,7 +36,11 @@ class ParameterList(val parameters: List<Parameter>) : AstNodeBase() {
     }
 }
 
-class ArgumentNode(val expression: AstNode, val isSpread: Boolean) : AstNodeBase() {
+class ArgumentNode(
+    val expression: AstNode,
+    val isSpread: Boolean,
+    sourceLocation: SourceLocation,
+) : AstNodeBase(sourceLocation) {
     override val children get() = listOf(expression)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -54,7 +59,11 @@ sealed interface Parameter : AstNode {
     val isSimple: Boolean
 }
 
-class SimpleParameter(val identifier: IdentifierNode, val initializer: AstNode?) : VariableSourceNode(), Parameter {
+class SimpleParameter(
+    val identifier: IdentifierNode,
+    val initializer: AstNode?,
+    sourceLocation: SourceLocation,
+) : VariableSourceNode(sourceLocation), Parameter {
     override val children get() = listOfNotNull(identifier, initializer)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -64,7 +73,10 @@ class SimpleParameter(val identifier: IdentifierNode, val initializer: AstNode?)
     override fun name() = identifier.processedName
 }
 
-class RestParameter(val declaration: BindingDeclarationOrPattern) : AstNodeBase(), Parameter {
+class RestParameter(
+    val declaration: BindingDeclarationOrPattern,
+    sourceLocation: SourceLocation,
+) : AstNodeBase(sourceLocation), Parameter {
     override val children get() = listOf(declaration)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -72,7 +84,11 @@ class RestParameter(val declaration: BindingDeclarationOrPattern) : AstNodeBase(
     override val isSimple = false
 }
 
-class BindingParameter(val pattern: BindingPatternNode, val initializer: AstNode?) : AstNodeBase(), Parameter {
+class BindingParameter(
+    val pattern: BindingPatternNode,
+    val initializer: AstNode?,
+    sourceLocation: SourceLocation,
+) : AstNodeBase(sourceLocation), Parameter {
     override val children get() = listOfNotNull(pattern, initializer)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -85,7 +101,8 @@ class FunctionDeclarationNode(
     val parameters: ParameterList,
     val body: BlockNode,
     val kind: AOs.FunctionKind,
-) : VariableSourceNode(), DeclarationNode, VariableSourceProvider {
+    sourceLocation: SourceLocation,
+) : VariableSourceNode(sourceLocation), DeclarationNode, VariableSourceProvider {
     override val children get() = listOfNotNull(identifier, parameters, body)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -105,7 +122,8 @@ class FunctionExpressionNode(
     val parameters: ParameterList,
     val body: BlockNode,
     val kind: AOs.FunctionKind,
-) : VariableSourceNode() {
+    sourceLocation: SourceLocation,
+) : VariableSourceNode(sourceLocation) {
     override val children get() = listOfNotNull(identifier, parameters, body)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -122,7 +140,8 @@ class ArrowFunctionNode(
     val parameters: ParameterList,
     val body: AstNode, // BlockNode or ExpressionNode
     val kind: AOs.FunctionKind,
-) : NodeWithScope() {
+    sourceLocation: SourceLocation,
+) : NodeWithScope(sourceLocation) {
     override val children get() = listOf(parameters, body)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

@@ -5,10 +5,15 @@ import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
 import com.reevajs.reeva.ast.AstNodeBase
 import com.reevajs.reeva.ast.AstVisitor
 import com.reevajs.reeva.ast.NodeWithScope
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 
 // This is a NodeWithScope because the delete operator needs to know whether or not
 // it is in strict-mode code
-class UnaryExpressionNode(val expression: AstNode, val op: UnaryOperator) : NodeWithScope() {
+class UnaryExpressionNode(
+    val expression: AstNode,
+    val op: UnaryOperator,
+    sourceLocation: SourceLocation,
+) : NodeWithScope(sourceLocation) {
     override val children get() = listOf(expression)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -33,7 +38,12 @@ enum class UnaryOperator {
     Not
 }
 
-class UpdateExpressionNode(val target: AstNode, val isIncrement: Boolean, val isPostfix: Boolean) : AstNodeBase() {
+class UpdateExpressionNode(
+    val target: AstNode,
+    val isIncrement: Boolean,
+    val isPostfix: Boolean,
+    sourceLocation: SourceLocation,
+) : AstNodeBase(sourceLocation) {
     override val children get() = listOf(target)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

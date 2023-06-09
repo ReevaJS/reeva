@@ -1,6 +1,7 @@
 package com.reevajs.reeva.ast
 
 import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 
 /**
  * @param processedName The processed string of the identifier (with escape sequences
@@ -10,7 +11,8 @@ import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
 class IdentifierNode(
     val processedName: String,
     val rawName: String = processedName,
-) : AstNodeBase() {
+    sourceLocation: SourceLocation,
+) : AstNodeBase(sourceLocation) {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -26,7 +28,7 @@ class IdentifierNode(
     override fun toString() = processedName
 }
 
-class IdentifierReferenceNode(val identifierNode: IdentifierNode) : VariableRefNode() {
+class IdentifierReferenceNode(val identifierNode: IdentifierNode) : VariableRefNode(identifierNode.sourceLocation) {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

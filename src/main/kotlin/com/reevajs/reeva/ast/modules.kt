@@ -2,6 +2,7 @@ package com.reevajs.reeva.ast
 
 import com.reevajs.reeva.ast.statements.DeclarationNode
 import com.reevajs.reeva.core.lifecycle.ModuleRecord
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.utils.ecmaAssert
 import com.reevajs.reeva.utils.expect
 
@@ -24,7 +25,7 @@ data class ExportEntry(
     object AllButDefaultImportName : ImportName()
 }
 
-class ModuleNode(val body: List<AstNode>) : RootNode() {
+class ModuleNode(val body: List<AstNode>, sourceLocation: SourceLocation) : RootNode(sourceLocation) {
     override val children get() = body
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -121,7 +122,11 @@ class ModuleNode(val body: List<AstNode>) : RootNode() {
     }
 }
 
-class ImportNode(val imports: List<Import>, val moduleName: String) : AstNodeBase() {
+class ImportNode(
+    val imports: List<Import>,
+    val moduleName: String,
+    sourceLocation: SourceLocation,
+) : AstNodeBase(sourceLocation) {
     override val children get() = imports
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -129,18 +134,26 @@ class ImportNode(val imports: List<Import>, val moduleName: String) : AstNodeBas
     val importEntries: List<ImportEntry>
         get() = imports.map { it.makeEntry(moduleName) }
 
-    constructor(import: Import, moduleName: String) : this(listOf(import), moduleName)
-    constructor(moduleName: String) : this(emptyList(), moduleName)
+    constructor(
+        import: Import,
+        moduleName: String,
+        sourceLocation: SourceLocation,
+    ) : this(listOf(import), moduleName, sourceLocation)
+
+    constructor(
+        moduleName: String,
+        sourceLocation: SourceLocation,
+    ) : this(emptyList(), moduleName, sourceLocation)
 }
 
-sealed class Import : VariableSourceNode() {
+sealed class Import(sourceLocation: SourceLocation) : VariableSourceNode(sourceLocation) {
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     abstract fun sourceModuleName(): String
 
     abstract fun makeEntry(moduleName: String): ImportEntry
 
-    class Namespace(val identifier: IdentifierNode) : Import() {
+    class Namespace(val identifier: IdentifierNode, sourceLocation: SourceLocation) : Import(sourceLocation) {
         override val children get() = listOf(identifier)
 
         override fun name() = identifier.processedName
@@ -151,7 +164,11 @@ sealed class Import : VariableSourceNode() {
             ImportEntry(moduleName, "namespace-object", identifier.processedName)
     }
 
-    class Named(val importIdent: IdentifierNode, val localIdent: IdentifierNode = importIdent) : Import() {
+    class Named(
+        val importIdent: IdentifierNode,
+        val localIdent: IdentifierNode = importIdent,
+        sourceLocation: SourceLocation,
+    ) : Import(sourceLocation) {
         override val children get() = listOf(importIdent, localIdent).distinct()
 
         override fun name() = localIdent.processedName
@@ -162,7 +179,7 @@ sealed class Import : VariableSourceNode() {
             ImportEntry(moduleName, importIdent.processedName, localIdent.processedName)
     }
 
-    class Default(val identifier: IdentifierNode) : Import() {
+    class Default(val identifier: IdentifierNode) : Import(identifier.sourceLocation) {
         override val children get() = listOf(identifier)
 
         override fun name() = identifier.processedName
@@ -173,7 +190,7 @@ sealed class Import : VariableSourceNode() {
     }
 }
 
-class ExportNode(val exports: List<Export>) : AstNodeBase() {
+class ExportNode(val exports: List<Export>, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
     override val children get() = exports
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -181,19 +198,20 @@ class ExportNode(val exports: List<Export>) : AstNodeBase() {
     val exportEntries: List<ExportEntry>
         get() = exports.flatMap { it.makeEntries() }
 
-    constructor(export: Export) : this(listOf(export))
+    constructor(export: Export, sourceLocation: SourceLocation) : this(listOf(export), sourceLocation)
 }
 
-sealed class Export : AstNodeBase() {
+sealed class Export(sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     abstract fun makeEntries(): List<ExportEntry>
 
-    data class Named(
+    class Named(
         val exportIdent: IdentifierNode,
         val localIdent: IdentifierNode = exportIdent,
         var moduleName: String? = null,
-    ) : Export() {
+        sourceLocation: SourceLocation,
+    ) : Export(sourceLocation) {
         override val children get() = listOf(exportIdent, localIdent).distinct()
 
         override fun makeEntries() = listOf(
@@ -206,7 +224,11 @@ sealed class Export : AstNodeBase() {
         )
     }
 
-    class Namespace(val alias: IdentifierNode?, val moduleName: String?) : Export() {
+    class Namespace(
+        val alias: IdentifierNode?,
+        val moduleName: String?,
+        sourceLocation: SourceLocation,
+    ) : Export(sourceLocation) {
         override val children get() = listOfNotNull(alias)
 
         override fun makeEntries() = listOf(
@@ -219,12 +241,8 @@ sealed class Export : AstNodeBase() {
         )
     }
 
-    class Node(val node: DeclarationNode, val default: Boolean) : Export() {
+    class Node(val node: DeclarationNode, val default: Boolean) : Export(node.sourceLocation) {
         override val children get() = listOf(node)
-
-        init {
-            sourceLocation = node.sourceLocation
-        }
 
         override fun makeEntries(): List<ExportEntry> {
             return node.declarations.flatMap { source ->
@@ -243,7 +261,7 @@ sealed class Export : AstNodeBase() {
         }
     }
 
-    class Expr(val expr: AstNode) : Export() {
+    class Expr(val expr: AstNode) : Export(expr.sourceLocation) {
         override val children get() = listOf(expr)
 
         override fun makeEntries() = listOf(

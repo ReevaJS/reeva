@@ -10,7 +10,7 @@ import kotlin.reflect.KClass
 
 interface AstNode {
     val children: List<AstNode>
-    var sourceLocation: SourceLocation
+    val sourceLocation: SourceLocation
 
     fun accept(visitor: AstVisitor)
 
@@ -85,26 +85,7 @@ interface AstNode {
     }
 }
 
-abstract class AstNodeBase : AstNode {
-    final override var sourceLocation = SourceLocation.EMPTY
-}
-
-fun <T : AstNode> T.withPosition(start: TokenLocation, end: TokenLocation) = apply {
-    sourceLocation = SourceLocation(start, end)
-}
-
-fun <T : AstNode> T.withPosition(sourceLocation: SourceLocation) = apply {
-    this.sourceLocation = sourceLocation
-}
-
-fun <T : AstNode> T.withPosition(token: Token) = withPosition(token.start, token.end)
-
-fun <T : AstNode> T.withPosition(node: AstNode) = withPosition(node.sourceLocation)
-
-fun <T : AstNode> T.withPosition(start: AstNode, end: AstNode) = withPosition(
-    start.sourceLocation.start,
-    end.sourceLocation.end,
-)
+abstract class AstNodeBase(override val sourceLocation: SourceLocation) : AstNode
 
 fun <T : Any> childrenOfTypeHelper(node: AstNode, clazz: KClass<T>, list: MutableList<T>) {
     node.children.forEach {
@@ -142,17 +123,17 @@ fun AstNode.containsArguments(): Boolean {
     return false
 }
 
-abstract class NodeWithScope : AstNodeBase() {
+abstract class NodeWithScope(sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
     lateinit var scope: Scope
 }
 
-abstract class VariableRefNode : NodeWithScope() {
+abstract class VariableRefNode(sourceLocation: SourceLocation) : NodeWithScope(sourceLocation) {
     lateinit var source: VariableSourceNode
 
     abstract fun name(): String
 }
 
-abstract class VariableSourceNode : NodeWithScope() {
+abstract class VariableSourceNode(sourceLocation: SourceLocation) : NodeWithScope(sourceLocation) {
     open var hoistedScope: Scope by ::scope
 
     var isInlineable = true
@@ -178,7 +159,7 @@ sealed interface VariableKey {
 
 // Variable not declared by the user, created at scope resolution time.
 // The names of fake source nodes will always start with an asterisk
-open class FakeSourceNode(private val name: String) : VariableSourceNode() {
+open class FakeSourceNode(private val name: String) : VariableSourceNode(SourceLocation.EMPTY) {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = throw IllegalStateException()
@@ -195,9 +176,13 @@ class GlobalSourceNode(name: String) : FakeSourceNode(name) {
     override val children get() = emptyList<AstNode>()
 }
 
-sealed class RootNode : NodeWithScope()
+sealed class RootNode(sourceLocation: SourceLocation) : NodeWithScope(sourceLocation)
 
-class ScriptNode(val statements: List<AstNode>, val hasUseStrict: Boolean) : RootNode() {
+class ScriptNode(
+    val statements: List<AstNode>,
+    val hasUseStrict: Boolean,
+    sourceLocation: SourceLocation,
+) : RootNode(sourceLocation) {
     override val children get() = statements
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

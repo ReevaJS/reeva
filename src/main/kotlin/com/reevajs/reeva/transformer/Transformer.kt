@@ -8,6 +8,7 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.parsing.HoistingScope
 import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.parsing.Scope
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.transformer.opcodes.*
@@ -1148,7 +1149,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         fun pushRhs() {
             if (node.op != null) {
                 // First figure out the new value
-                BinaryExpressionNode(lhs, rhs, node.op).accept(this)
+                BinaryExpressionNode(lhs, rhs, node.op, node.sourceLocation).accept(this)
             } else {
                 rhs.accept(this)
             }
@@ -1987,6 +1988,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                             method.parameters,
                             method.body,
                             method.kind.toFunctionKind(),
+                            SourceLocation.EMPTY,
                         )
 
                         functionNode.functionScope = method.functionScope

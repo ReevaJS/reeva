@@ -4,14 +4,15 @@ import com.reevajs.reeva.ast.AstNode
 import com.reevajs.reeva.ast.AstNodeBase
 import com.reevajs.reeva.ast.AstVisitor
 import com.reevajs.reeva.ast.VariableRefNode
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 
-object ImportMetaExpressionNode : AstNodeBase() {
+class ImportMetaExpressionNode(sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class NewTargetNode : VariableRefNode() {
+class NewTargetNode(sourceLocation: SourceLocation) : VariableRefNode(sourceLocation) {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

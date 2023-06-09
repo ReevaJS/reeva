@@ -11,11 +11,7 @@ import com.reevajs.reeva.parsing.lexer.*
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.*
 import com.reevajs.regexp.parser.RegExpSyntaxError
-import kotlin.contracts.ExperimentalContracts
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
 
-@OptIn(ExperimentalContracts::class)
 class Parser(val sourceInfo: SourceInfo) {
     private val source: String
         get() = sourceInfo.sourceText
@@ -33,6 +29,8 @@ class Parser(val sourceInfo: SourceInfo) {
     private var tokenCursor = 0
     private val token: Token
         get() = tokens[tokenCursor]
+
+    // TODO: This probably shouldn't coerce, if this becomes -1 it's a bug
     private val lastToken: Token
         get() = tokens[(tokenCursor - 1).coerceAtLeast(0)]
 
@@ -46,6 +44,7 @@ class Parser(val sourceInfo: SourceInfo) {
     internal val sourceEnd: TokenLocation
         inline get() = token.end
 
+    private val locationStack = mutableListOf<TokenLocation>()
     private val nonArrowFunctionParens = mutableSetOf<Int>()
 
     private var isStrict = false
@@ -62,7 +61,7 @@ class Parser(val sourceInfo: SourceInfo) {
                 val indexOfLastNewline = source.indexOfLast { it == '\n' }
                 val start = TokenLocation(0, 0, 0)
                 val end = TokenLocation(source.lastIndex, newlineCount, source.lastIndex - indexOfLastNewline)
-                ScriptNode(emptyList(), false).withPosition(start, end)
+                ScriptNode(emptyList(), false, SourceLocation(start, end))
             } else parseScriptImpl()
         }
     }
@@ -75,7 +74,7 @@ class Parser(val sourceInfo: SourceInfo) {
                 val indexOfLastNewline = source.indexOfLast { it == '\n' }
                 val start = TokenLocation(0, 0, 0)
                 val end = TokenLocation(source.lastIndex, newlineCount, source.lastIndex - indexOfLastNewline)
-                ModuleNode(emptyList()).withPosition(start, end)
+                ModuleNode(emptyList(), SourceLocation(start, end))
             } else parseModuleImpl()
         }
     }
@@ -95,6 +94,7 @@ class Parser(val sourceInfo: SourceInfo) {
             val result = block()
             if (!isDone)
                 reporter.at(token).unexpectedToken(tokenType)
+            expect(locationStack.isEmpty())
 
             ScopeResolver().resolve(result)
             result.accept(EarlyErrorDetector(reporter))
@@ -117,9 +117,10 @@ class Parser(val sourceInfo: SourceInfo) {
      * ScriptBody :
      *     StatementList
      */
-    private fun parseScriptImpl(): ScriptNode = nps {
+    private fun parseScriptImpl(): ScriptNode {
+        pushLocation()
         isStrict = checkForAndConsumeUseStrict() != null
-        ScriptNode(parseStatementList(), isStrict)
+        return ScriptNode(parseStatementList(), isStrict, popLocation())
     }
 
     /*
@@ -129,9 +130,10 @@ class Parser(val sourceInfo: SourceInfo) {
      * ModuleBody :
      *     ModuleItemList
      */
-    private fun parseModuleImpl(): ModuleNode = nps {
+    private fun parseModuleImpl(): ModuleNode {
         isStrict = true
-        ModuleNode(parseModuleItemList())
+        pushLocation()
+        return ModuleNode(parseModuleItemList(), popLocation())
     }
 
     /*
@@ -226,7 +228,7 @@ class Parser(val sourceInfo: SourceInfo) {
         TokenType.OpenCurly,
     )
 
-    private fun parseLabellableStatement(): AstNode = nps {
+    private fun parseLabellableStatement(): AstNode {
         val labels = mutableSetOf<String>()
         val currentLabelState = labelStateStack.last()
 
@@ -247,16 +249,16 @@ class Parser(val sourceInfo: SourceInfo) {
             TokenType.Switch -> LabellableBlockType.Switch
             else -> {
                 if (labels.isNotEmpty())
-                    return@nps parseStatement()
+                    return parseStatement()
 
                 expect(matchIdentifier())
-                return@nps ExpressionStatementNode(parseExpression().also { asi() })
+                return ExpressionStatementNode(parseExpression()).also { asi() }
             }
         }
 
         currentLabelState.pushBlock(type, labels)
 
-        when (tokenType) {
+        return when (tokenType) {
             TokenType.If -> parseIfStatement()
             TokenType.For -> parseNormalForAndForEachStatement()
             TokenType.While -> parseWhileStatement()
@@ -280,9 +282,10 @@ class Parser(val sourceInfo: SourceInfo) {
 
         return when (tokenType) {
             TokenType.Var -> parseVariableDeclaration(false)
-            TokenType.Semicolon -> nps {
+            TokenType.Semicolon -> {
+                pushLocation()
                 consume()
-                EmptyStatementNode()
+                EmptyStatementNode(popLocation())
             }
             TokenType.Continue -> parseContinueStatement()
             TokenType.Break -> parseBreakStatement()
@@ -306,9 +309,7 @@ class Parser(val sourceInfo: SourceInfo) {
                     if (match(TokenType.Class))
                         reporter.functionInExpressionContext()
 
-                    return nps {
-                        ExpressionStatementNode(parseExpression().also { asi() })
-                    }
+                    return ExpressionStatementNode(parseExpression()).also { asi() }
                 }
 
                 reporter.expected("statement", tokenType)
@@ -316,8 +317,8 @@ class Parser(val sourceInfo: SourceInfo) {
         }
     }
 
-    private fun parseDeclaration(): DeclarationNode? = nps {
-        when (tokenType) {
+    private fun parseDeclaration(): DeclarationNode? {
+        return when (tokenType) {
             TokenType.Function, TokenType.Async -> parseFunctionDeclaration()
             TokenType.Class -> parseClassDeclaration()
             TokenType.Let, TokenType.Const -> parseVariableDeclaration(false)
@@ -340,39 +341,40 @@ class Parser(val sourceInfo: SourceInfo) {
      * ModuleSpecifier :
      *     StringLiteral
      */
-    private fun parseImportDeclaration(): ImportNode = nps {
+    private fun parseImportDeclaration(): ImportNode {
+        pushLocation()
         consume(TokenType.Import)
 
         if (tokenType == TokenType.StringLiteral) {
-            return@nps ImportNode(parseStringLiteral().value).also { asi() }
+            return ImportNode(parseStringLiteral().value, popLocation()).also { asi() }
         }
 
         val defaultImport = parseDefaultImport()
 
         if (defaultImport != null) {
             if (!match(TokenType.Comma))
-                return@nps ImportNode(defaultImport, parseImportExportFrom())
+                return ImportNode(defaultImport, parseImportExportFrom(), popLocation())
 
             consume()
 
             val namespaceImport = parseNamespaceImport()
             if (namespaceImport != null)
-                return@nps ImportNode(namespaceImport, parseImportExportFrom())
+                return ImportNode(namespaceImport, parseImportExportFrom(), popLocation())
 
             val namedImports = parseNamedImports()
             if (namedImports != null)
-                return@nps ImportNode(namedImports, parseImportExportFrom())
+                return ImportNode(namedImports, parseImportExportFrom(), popLocation())
 
             reporter.at(token).expected("named import list")
         }
 
         val namespaceImport = parseNamespaceImport()
         if (namespaceImport != null)
-            return@nps ImportNode(namespaceImport, parseImportExportFrom())
+            return ImportNode(namespaceImport, parseImportExportFrom(), popLocation())
 
         val namedImports = parseNamedImports()
         if (namedImports != null)
-            return@nps ImportNode(namedImports, parseImportExportFrom())
+            return ImportNode(namedImports, parseImportExportFrom(), popLocation())
 
         reporter.at(token).expected("namespace import or named import list")
     }
@@ -384,8 +386,8 @@ class Parser(val sourceInfo: SourceInfo) {
      * ImportedBinding :
      *     BindingIdentifier
      */
-    private fun parseDefaultImport(): Import.Default? = nps {
-        if (matchIdentifierName()) {
+    private fun parseDefaultImport(): Import.Default? {
+        return if (matchIdentifierName()) {
             Import.Default(parseBindingIdentifier())
         } else null
     }
@@ -397,16 +399,17 @@ class Parser(val sourceInfo: SourceInfo) {
      * ImportedBinding :
      *     BindingIdentifier
      */
-    private fun parseNamespaceImport(): Import.Namespace? = nps {
+    private fun parseNamespaceImport(): Import.Namespace? {
         if (!match(TokenType.Mul))
-            return@nps null
+            return null
 
+        pushLocation()
         consume()
         if (!match(TokenType.Identifier) || token.rawLiterals != "as")
             reporter.at(token).expected("\"as\"")
         consume()
 
-        Import.Namespace(parseBindingIdentifier())
+        return Import.Namespace(parseBindingIdentifier(), popLocation())
     }
 
     /*
@@ -437,17 +440,14 @@ class Parser(val sourceInfo: SourceInfo) {
         while (!match(TokenType.CloseCurly)) {
             val peeked = peek(1) ?: reporter.at(token).error("unexpected eol")
 
-            val namedImport = nps {
-                val identifier = parseBindingIdentifier()
-                val alias = if (peeked.type == TokenType.Identifier && peeked.rawLiterals == "as") {
-                    consume(TokenType.Identifier)
-                    parseBindingIdentifier()
-                } else identifier
+            pushLocation()
+            val identifier = parseBindingIdentifier()
+            val alias = if (peeked.type == TokenType.Identifier && peeked.rawLiterals == "as") {
+                consume(TokenType.Identifier)
+                parseBindingIdentifier()
+            } else identifier
 
-                Import.Named(identifier, alias)
-            }
-
-            imports.add(namedImport)
+            imports.add(Import.Named(identifier, alias, popLocation()))
 
             if (!match(TokenType.Comma))
                 break
@@ -471,19 +471,20 @@ class Parser(val sourceInfo: SourceInfo) {
      *     export default [lookahead ∉ { function, async [no LineTerminator here] function, class }]
      *         AssignmentExpression ;
      */
-    private fun parseExportDeclaration(): ExportNode = nps {
+    private fun parseExportDeclaration(): ExportNode {
+        pushLocation()
         consume(TokenType.Export)
 
-        parseExportFromOrNamedExportsClause()?.let { return@nps it }
+        parseExportFromOrNamedExportsClause()?.let { return it }
 
         if (match(TokenType.Var) || match(TokenType.Let) || match(TokenType.Const))
-            return@nps ExportNode(Export.Node(parseVariableDeclaration(), default = false))
+            return ExportNode(Export.Node(parseVariableDeclaration(), default = false), popLocation())
 
         if (match(TokenType.Function) || match(TokenType.Async))
-            return@nps ExportNode(Export.Node(parseFunctionDeclaration(), default = false))
+            return ExportNode(Export.Node(parseFunctionDeclaration(), default = false), popLocation())
 
         if (match(TokenType.Class))
-            return@nps ExportNode(Export.Node(parseClassDeclaration(), default = false))
+            return ExportNode(Export.Node(parseClassDeclaration(), default = false), popLocation())
 
         if (!match(TokenType.Default))
             reporter.at(token).expected("\"default\"")
@@ -493,13 +494,13 @@ class Parser(val sourceInfo: SourceInfo) {
         inDefaultContext = true
 
         if (match(TokenType.Function) || match(TokenType.Async))
-            return@nps ExportNode(Export.Node(parseFunctionDeclaration(), default = true))
+            return ExportNode(Export.Node(parseFunctionDeclaration(), default = true), popLocation())
 
         if (match(TokenType.Class))
-            return@nps ExportNode(Export.Node(parseClassDeclaration(), default = true))
+            return ExportNode(Export.Node(parseClassDeclaration(), default = true), popLocation())
 
         // TODO: AssignmentExpression, not Expression
-        ExportNode(nps { Export.Expr(parseExpression()) }).also {
+        return ExportNode(Export.Expr(parseExpression()), popLocation()).also {
             inDefaultContext = false
         }
     }
@@ -519,25 +520,26 @@ class Parser(val sourceInfo: SourceInfo) {
      * ModuleSpecifier :
      *     StringLiteral
      */
-    private fun parseExportFromOrNamedExportsClause(): ExportNode? = nps {
+    // Expects caller to call pushLocation()
+    private fun parseExportFromOrNamedExportsClause(): ExportNode? {
         if (match(TokenType.Mul)) {
+            pushLocation()
             consume()
             if (match(TokenType.Identifier) && token.rawLiterals == "as") {
                 consume()
-                val export = Export.Namespace(parseIdentifier(), parseImportExportFrom())
-                return@nps ExportNode(listOf(export))
+                val export = Export.Namespace(parseIdentifier(), parseImportExportFrom(), popLocation())
+                return ExportNode(listOf(export), popLocation())
             }
 
-            val export = Export.Namespace(null, parseImportExportFrom())
-            return@nps ExportNode(listOf(export))
+            val export = Export.Namespace(null, parseImportExportFrom(), popLocation())
+            return ExportNode(listOf(export), popLocation())
         }
 
-        parseNamedExports()?.let { exports ->
+        return parseNamedExports()?.let { exports ->
             val from = maybeParseImportExportFrom()
-            if (from != null) {
+            if (from != null)
                 exports.forEach { it.moduleName = from }
-            }
-            ExportNode(exports)
+            ExportNode(exports, popLocation())
         }
     }
 
@@ -564,17 +566,18 @@ class Parser(val sourceInfo: SourceInfo) {
         val list = mutableListOf<Export.Named>()
 
         while (!match(TokenType.CloseCurly)) {
+            pushLocation()
             val name = parseIdentifierReference().identifierNode
             if (tokenType == TokenType.Identifier && token.rawLiterals == "as") {
                 consume()
                 val ident = parseIdentifier().let {
                     if (it.processedName == "default") {
-                        IdentifierNode(ModuleRecord.DEFAULT_SPECIFIER).withPosition(it)
+                        IdentifierNode(ModuleRecord.DEFAULT_SPECIFIER, sourceLocation = it.sourceLocation)
                     } else it
                 }
-                list.add(Export.Named(name, ident).withPosition(name, ident))
+                list.add(Export.Named(name, ident, sourceLocation = popLocation()))
             } else {
-                list.add(Export.Named(name).withPosition(name))
+                list.add(Export.Named(name, sourceLocation = popLocation()))
             }
 
             if (!match(TokenType.Comma))
@@ -642,15 +645,15 @@ class Parser(val sourceInfo: SourceInfo) {
      *     BindingIdentifier Initializer?
      *     BindingPattern Initializer (TODO)
      */
-    private fun parseVariableDeclaration(isForEachLoop: Boolean = false): DeclarationNode = nps {
+    private fun parseVariableDeclaration(isForEachLoop: Boolean = false): DeclarationNode {
+        pushLocation()
         val type = consume()
         expect(type == TokenType.Var || type == TokenType.Let || type == TokenType.Const)
 
         val declarations = mutableListOf<Declaration>()
 
         while (true) {
-            val start = sourceStart
-
+            pushLocation()
             val target = if (matchBindingPattern()) {
                 parseBindingPattern()
             } else parseBindingIdentifier()
@@ -663,11 +666,13 @@ class Parser(val sourceInfo: SourceInfo) {
             } else null
 
             val declaration = if (target is BindingPatternNode) {
-                DestructuringDeclaration(target, initializer)
+                DestructuringDeclaration(target, initializer, popLocation())
             } else {
+                // Compiler bug: Removing this expect() causes an error in the NamedDeclaration construction
+                @Suppress("KotlinConstantConditions")
                 expect(target is IdentifierNode)
-                NamedDeclaration(target, initializer)
-            }.withPosition(start, lastToken.end)
+                NamedDeclaration(target, initializer, popLocation())
+            }
 
             declarations.add(declaration)
 
@@ -676,84 +681,80 @@ class Parser(val sourceInfo: SourceInfo) {
             } else break
         }
 
-        if (!isForEachLoop)
-            asi()
-
-        if (type == TokenType.Var) {
-            VariableDeclarationNode(declarations)
+        return if (type == TokenType.Var) {
+            VariableDeclarationNode(declarations, popLocation())
         } else {
-            LexicalDeclarationNode(isConst = type == TokenType.Const, declarations)
+            LexicalDeclarationNode(isConst = type == TokenType.Const, declarations, popLocation())
+        }.also {
+            if (!isForEachLoop)
+                asi()
         }
     }
 
     private fun matchBindingPattern() = matches(TokenType.OpenCurly, TokenType.OpenBracket)
 
-    private fun parseBindingPattern(): BindingPatternNode = nps {
-        if (match(TokenType.OpenCurly)) {
+    private fun parseBindingPattern(): BindingPatternNode {
+        return if (match(TokenType.OpenCurly)) {
             parseObjectBindingPattern()
         } else parseArrayBindingPattern()
     }
 
-    private fun parseBindingDeclaration(): BindingDeclaration = nps {
-        BindingDeclaration(parseBindingIdentifier())
+    private fun parseBindingDeclaration(): BindingDeclaration {
+        return BindingDeclaration(parseBindingIdentifier())
     }
 
-    private fun parseObjectBindingPattern(): BindingPatternNode = nps {
+    private fun parseObjectBindingPattern(): BindingPatternNode {
+        pushLocation()
         consume(TokenType.OpenCurly)
 
         val bindingEntries = mutableListOf<BindingProperty>()
 
         while (!match(TokenType.CloseCurly)) {
             if (match(TokenType.TriplePeriod)) {
+                pushLocation()
                 consume()
                 if (!matchIdentifier())
                     reporter.at(token).expected("identifier")
 
                 val identifier = parseBindingIdentifier()
-                val declaration = BindingDeclaration(identifier).withPosition(identifier)
+                val declaration = BindingDeclaration(identifier)
 
-                bindingEntries.add(BindingRestProperty(declaration).withPosition(declaration))
+                bindingEntries.add(BindingRestProperty(declaration, popLocation()))
                 break
             }
 
+            pushLocation()
+
             if (matchIdentifier()) {
-                val bindingProperty = nps {
-                    val identifier = parseBindingDeclaration()
+                val identifier = parseBindingDeclaration()
 
-                    val alias = if (match(TokenType.Colon)) {
-                        consume()
+                val alias = if (match(TokenType.Colon)) {
+                    consume()
 
-                        if (matchBindingPattern()) {
-                            parseBindingPattern()
-                        } else {
-                            parseBindingDeclaration()
-                        }.let(::BindingDeclarationOrPattern)
-                    } else null
-
-                    SimpleBindingProperty(identifier, alias, parseInitializer())
-                }
-
-                bindingEntries.add(bindingProperty)
-            } else if (matchPropertyName()) {
-                val bindingProperty = nps {
-                    val identifier = parsePropertyName()
-
-                    val alias = if (match(TokenType.Colon)) {
-                        consume()
-
-                        if (matchBindingPattern()) {
-                            parseBindingPattern()
-                        } else {
-                            parseBindingDeclaration()
-                        }.let(::BindingDeclarationOrPattern)
+                    if (matchBindingPattern()) {
+                        parseBindingPattern()
                     } else {
-                        reporter.at(token).missingBindingElement()
-                    }
+                        parseBindingDeclaration()
+                    }.let(::BindingDeclarationOrPattern)
+                } else null
 
-                    ComputedBindingProperty(identifier, alias, parseInitializer())
+                bindingEntries.add(SimpleBindingProperty(identifier, alias, parseInitializer(), popLocation()))
+            } else if (matchPropertyName()) {
+                val identifier = parsePropertyName()
+
+                val alias = if (match(TokenType.Colon)) {
+                    consume()
+
+                    if (matchBindingPattern()) {
+                        parseBindingPattern()
+                    } else {
+                        parseBindingDeclaration()
+                    }.let(::BindingDeclarationOrPattern)
+                } else {
+                    reporter.at(token).missingBindingElement()
                 }
 
-                bindingEntries.add(bindingProperty)
+                bindingEntries.add(ComputedBindingProperty(identifier, alias, parseInitializer(), popLocation()))
             } else {
                 reporter.at(token).expected("property name or rest property", tokenType)
             }
@@ -765,20 +766,23 @@ class Parser(val sourceInfo: SourceInfo) {
 
         consume(TokenType.CloseCurly)
 
-        BindingPatternNode(BindingKind.Object, bindingEntries)
+        return BindingPatternNode(BindingKind.Object, bindingEntries, popLocation())
     }
 
-    private fun parseArrayBindingPattern(): BindingPatternNode = nps {
+    private fun parseArrayBindingPattern(): BindingPatternNode {
+        pushLocation()
         consume(TokenType.OpenBracket)
 
         val bindingEntries = mutableListOf<BindingElement>()
 
         while (!match(TokenType.CloseBracket)) {
             while (match(TokenType.Comma)) {
-                val element = BindingElisionElement().withPosition(token)
+                pushLocation()
                 consume()
-                bindingEntries.add(element)
+                bindingEntries.add(BindingElisionElement(popLocation()))
             }
+
+            pushLocation()
 
             if (match(TokenType.TriplePeriod)) {
                 consume()
@@ -789,29 +793,19 @@ class Parser(val sourceInfo: SourceInfo) {
                 } else {
                     parseBindingPattern()
                 }
-                val declOrPattern = BindingDeclarationOrPattern(declaration).withPosition(declaration)
-                val bindingElement = BindingRestElement(declOrPattern).withPosition(declOrPattern)
-                bindingEntries.add(bindingElement)
+                bindingEntries.add(BindingRestElement(BindingDeclarationOrPattern(declaration), popLocation()))
                 break
             }
 
-            val bindingElement = nps {
-                val declOrPattern = nps {
-                    val alias = if (matchIdentifier()) {
-                        parseBindingDeclaration()
-                    } else if (!matchBindingPattern()) {
-                        reporter.at(token).expected("binding pattern or identifier", tokenType)
-                    } else {
-                        parseBindingPattern()
-                    }
-                    BindingDeclarationOrPattern(alias)
-                }
-
-                SimpleBindingElement(declOrPattern, parseInitializer())
+            val alias = if (matchIdentifier()) {
+                parseBindingDeclaration()
+            } else if (!matchBindingPattern()) {
+                reporter.at(token).expected("binding pattern or identifier", tokenType)
+            } else {
+                parseBindingPattern()
             }
-
-
-            bindingEntries.add(bindingElement)
+            val declOrPattern = BindingDeclarationOrPattern(alias)
+            bindingEntries.add(SimpleBindingElement(declOrPattern, parseInitializer(), popLocation()))
 
             if (match(TokenType.Comma)) {
                 consume()
@@ -820,7 +814,7 @@ class Parser(val sourceInfo: SourceInfo) {
 
         consume(TokenType.CloseBracket)
 
-        BindingPatternNode(BindingKind.Array, bindingEntries)
+        return BindingPatternNode(BindingKind.Array, bindingEntries, popLocation())
     }
 
     private fun parseInitializer() = if (match(TokenType.Equals)) {
@@ -832,29 +826,29 @@ class Parser(val sourceInfo: SourceInfo) {
      * DoWhileStatement :
      *     do Statement while ( Expression ) ;
      */
-    private fun parseDoWhileStatement(): AstNode = nps {
+    private fun parseDoWhileStatement(): AstNode {
+        pushLocation()
         consume(TokenType.Do)
         val statement = parseStatement()
         consume(TokenType.While)
         consume(TokenType.OpenParen)
         val condition = parseExpression()
         consume(TokenType.CloseParen)
-        asi(afterDoWhile = true)
-        DoWhileStatementNode(condition, statement)
+        return DoWhileStatementNode(condition, statement, popLocation()).also { asi(afterDoWhile = true) }
     }
 
     /*
      * WhileStatement :
      *     while ( Expression ) Statement
      */
-    private fun parseWhileStatement(): AstNode = nps {
+    private fun parseWhileStatement(): AstNode {
+        pushLocation()
         consume(TokenType.While)
         consume(TokenType.OpenParen)
         val condition = parseExpression(0)
         consume(TokenType.CloseParen)
         val statement = parseStatement()
-        asi()
-        WhileStatementNode(condition, statement)
+        return WhileStatementNode(condition, statement, popLocation()).also { asi() }
     }
 
     /*
@@ -875,7 +869,9 @@ class Parser(val sourceInfo: SourceInfo) {
      * DefaultClause :
      *     default : StatementList?
      */
-    private fun parseSwitchStatement(): AstNode = nps {
+    private fun parseSwitchStatement(): AstNode {
+        pushLocation()
+
         consume(TokenType.Switch)
         consume(TokenType.OpenParen)
         val target = parseExpression(0)
@@ -885,33 +881,33 @@ class Parser(val sourceInfo: SourceInfo) {
         val clauses = mutableListOf<SwitchClause>()
 
         while (matchSwitchClause()) {
-            if (match(TokenType.Case)) {
+            pushLocation()
+
+            val clause = if (match(TokenType.Case)) {
                 consume()
                 val caseTarget = parseExpression(2)
                 consume(TokenType.Colon)
                 if (matchSwitchClause()) {
-                    clauses.add(SwitchClause(caseTarget, null))
+                    SwitchClause(caseTarget, null, popLocation())
                 } else {
-                    clauses.add(SwitchClause(caseTarget, parseStatementList()))
+                    SwitchClause(caseTarget, parseStatementList(), popLocation())
                 }
-                clauses.last().also { it.withPosition(it.children.first(), it.children.last()) }
             } else {
-                val clause = nps {
-                    consume(TokenType.Default)
-                    consume(TokenType.Colon)
-                    if (matchSwitchClause()) {
-                        SwitchClause(null, null)
-                    } else {
-                        SwitchClause(null, parseStatementList())
-                    }
+                consume(TokenType.Default)
+                consume(TokenType.Colon)
+                if (matchSwitchClause()) {
+                    SwitchClause(null, null, popLocation())
+                } else {
+                    SwitchClause(null, parseStatementList(), popLocation())
                 }
-                clauses.add(clause)
             }
+
+            clauses.add(clause)
         }
 
         consume(TokenType.CloseCurly)
 
-        SwitchStatementNode(target, clauses)
+        return SwitchStatementNode(target, clauses, popLocation())
     }
 
     /*
@@ -919,7 +915,8 @@ class Parser(val sourceInfo: SourceInfo) {
      *     continue ;
      *     continue [no LineTerminator here] LabelIdentifier ;
      */
-    private fun parseContinueStatement(): AstNode = nps {
+    private fun parseContinueStatement(): AstNode {
+        pushLocation()
         consume(TokenType.Continue)
 
         val continueToken = lastToken
@@ -929,13 +926,13 @@ class Parser(val sourceInfo: SourceInfo) {
                 consume()
 
             labelStateStack.last().validateContinue(continueToken, null)
-            return@nps ContinueStatementNode(null)
+            return ContinueStatementNode(null, popLocation())
         }
 
         if (matchIdentifier()) {
             val identifier = parseIdentifier().processedName
             labelStateStack.last().validateContinue(continueToken, lastToken)
-            return@nps ContinueStatementNode(identifier).also { asi() }
+            return ContinueStatementNode(identifier, popLocation()).also { asi() }
         }
 
         reporter.expected("identifier", tokenType)
@@ -946,7 +943,8 @@ class Parser(val sourceInfo: SourceInfo) {
      *     break ;
      *     break [no LineTerminator here] LabelIdentifier ;
      */
-    private fun parseBreakStatement(): AstNode = nps {
+    private fun parseBreakStatement(): AstNode {
+        pushLocation()
         consume(TokenType.Break)
 
         val breakToken = lastToken
@@ -956,13 +954,13 @@ class Parser(val sourceInfo: SourceInfo) {
                 consume()
 
             labelStateStack.last().validateBreak(breakToken, null)
-            return@nps BreakStatementNode(null)
+            return BreakStatementNode(null, popLocation())
         }
 
         if (matchIdentifier()) {
             val identifier = parseIdentifier().processedName
             labelStateStack.last().validateBreak(breakToken, lastToken)
-            return@nps BreakStatementNode(identifier).also { asi() }
+            return BreakStatementNode(identifier, popLocation()).also { asi() }
         }
 
         reporter.expected("identifier", tokenType)
@@ -973,20 +971,21 @@ class Parser(val sourceInfo: SourceInfo) {
      *     return ;
      *     return [no LineTerminator here] Expression ;
      */
-    private fun parseReturnStatement(): AstNode = nps {
+    private fun parseReturnStatement(): AstNode {
+        pushLocation()
         expect(inFunctionContext)
         consume(TokenType.Return)
 
         if (match(TokenType.Semicolon)) {
             consume()
-            return@nps ReturnStatementNode(null)
+            return ReturnStatementNode(null, popLocation())
         }
 
         if (token.afterNewline)
-            return@nps ReturnStatementNode(null)
+            return ReturnStatementNode(null, popLocation())
 
         if (tokenType.isExpressionToken)
-            return@nps ReturnStatementNode(parseExpression(0)).also { asi() }
+            return ReturnStatementNode(parseExpression(0), popLocation()).also { asi() }
 
         reporter.expected("expression", tokenType)
     }
@@ -995,7 +994,7 @@ class Parser(val sourceInfo: SourceInfo) {
      * WithStatement :
      *     with ( Expression ) Statement
      */
-    private fun parseWithStatement(): AstNode = nps {
+    private fun parseWithStatement(): AstNode {
         reporter.at(token).unsupportedFeature("with statements")
         // consume(TokenType.With)
         // consume(TokenType.OpenParen)
@@ -1009,13 +1008,14 @@ class Parser(val sourceInfo: SourceInfo) {
      * ThrowStatement :
      *     throw [no LineTerminator here] Expression ;
      */
-    private fun parseThrowStatement(): AstNode = nps {
+    private fun parseThrowStatement(): AstNode {
+        pushLocation()
         consume(TokenType.Throw)
         if (!tokenType.isExpressionToken)
             reporter.expected("expression", tokenType)
         if (token.afterNewline)
             reporter.throwStatementNewLine()
-        ThrowStatementNode(parseExpression()).also { asi() }
+        return ThrowStatementNode(parseExpression(), popLocation()).also { asi() }
     }
 
     /*
@@ -1035,30 +1035,28 @@ class Parser(val sourceInfo: SourceInfo) {
      *     BindingIdentifier
      *     BindingPattern (TODO)
      */
-    private fun parseTryStatement(): AstNode = nps {
+    private fun parseTryStatement(): AstNode {
+        pushLocation()
         consume(TokenType.Try)
         val tryBlock = parseBlock()
 
         val catchBlock = if (match(TokenType.Catch)) {
-            nps {
+            pushLocation()
+            consume()
+            val catchParam = if (match(TokenType.OpenParen)) {
                 consume()
-                val catchParam = if (match(TokenType.OpenParen)) {
-                    consume()
-                    nps {
-                        val declaration = if (matchIdentifier()) {
-                            nps { BindingDeclaration(parseIdentifier()) }
-                        } else if (matchBindingPattern()) {
-                            parseBindingPattern()
-                        } else {
-                            reporter.at(token).expected("identifier or binding pattern")
-                        }
-                        CatchParameter(BindingDeclarationOrPattern(declaration))
-                    }.also {
-                        consume(TokenType.CloseParen)
-                    }
-                } else null
-                CatchNode(catchParam, parseBlock())
-            }
+                val declaration = if (matchIdentifier()) {
+                    BindingDeclaration(parseIdentifier())
+                } else if (matchBindingPattern()) {
+                    parseBindingPattern()
+                } else {
+                    reporter.at(token).expected("identifier or binding pattern")
+                }
+                CatchParameter(BindingDeclarationOrPattern(declaration)).also {
+                    consume(TokenType.CloseParen)
+                }
+            } else null
+            CatchNode(catchParam, parseBlock(), popLocation())
         } else null
 
         val finallyBlock = if (match(TokenType.Finally)) {
@@ -1069,22 +1067,24 @@ class Parser(val sourceInfo: SourceInfo) {
         if (catchBlock == null && finallyBlock == null)
             reporter.expected(TokenType.Finally, tokenType)
 
-        TryStatementNode(tryBlock, catchBlock, finallyBlock)
+        return TryStatementNode(tryBlock, catchBlock, finallyBlock, popLocation())
     }
 
     /*
      * DebuggerStatement :
      *     debugger ;
      */
-    private fun parseDebuggerStatement(): AstNode = nps {
+    private fun parseDebuggerStatement(): AstNode {
+        pushLocation()
         consume(TokenType.Debugger)
-        asi()
-        DebuggerStatementNode()
+        return DebuggerStatementNode(popLocation()).also { asi() }
     }
 
     private fun matchSwitchClause() = matches(TokenType.Case, TokenType.Default)
 
-    private fun parseNormalForAndForEachStatement(): AstNode = nps {
+    private fun parseNormalForAndForEachStatement(): AstNode {
+        pushLocation()
+
         consume(TokenType.For)
         if (match(TokenType.Await))
             TODO()
@@ -1095,16 +1095,14 @@ class Parser(val sourceInfo: SourceInfo) {
 
         if (!match(TokenType.Semicolon)) {
             if (tokenType.isExpressionToken) {
-                initializer = nps { parseExpression(0, false, setOf(TokenType.In)) }.let {
-                    ExpressionStatementNode(it).withPosition(it)
-                }
+                initializer = ExpressionStatementNode(parseExpression(0, false, setOf(TokenType.In)))
                 if (matchForEach())
-                    return@nps parseForEachStatement(initializer)
+                    return parseForEachStatement(initializer)
             } else if (tokenType.isVariableDeclarationToken) {
                 initializer = parseVariableDeclaration(isForEachLoop = true)
 
                 if (matchForEach())
-                    return@nps parseForEachStatement(initializer)
+                    return parseForEachStatement(initializer)
             } else {
                 reporter.unexpectedToken(tokenType)
             }
@@ -1120,10 +1118,11 @@ class Parser(val sourceInfo: SourceInfo) {
 
         val body = parseStatement()
 
-        ForStatementNode(initializer, condition, update, body)
+        return ForStatementNode(initializer, condition, update, body, popLocation())
     }
 
-    private fun parseForEachStatement(initializer: AstNode): AstNode = nps {
+    // Expects caller to call pushLocation()
+    private fun parseForEachStatement(initializer: AstNode): AstNode {
         if ((initializer is VariableDeclarationNode && initializer.declarations.size > 1) ||
             (initializer is LexicalDeclarationNode && initializer.declarations.size > 1)
         ) {
@@ -1136,10 +1135,10 @@ class Parser(val sourceInfo: SourceInfo) {
 
         val body = parseStatement()
 
-        if (isIn) {
-            ForInNode(initializer, rhs, body)
+        return if (isIn) {
+            ForInNode(initializer, rhs, body, popLocation())
         } else {
-            ForOfNode(initializer, rhs, body)
+            ForOfNode(initializer, rhs, body, popLocation())
         }
     }
 
@@ -1150,18 +1149,20 @@ class Parser(val sourceInfo: SourceInfo) {
      *     function BindingIdentifier ( FormalParameters ) { FunctionBody }
      *     [+Default] function ( FormalParameters ) { FunctionBody }
      */
-    private fun parseFunctionDeclaration(): FunctionDeclarationNode = nps {
+    private fun parseFunctionDeclaration(): FunctionDeclarationNode {
+        pushLocation()
         val (identifier, params, body, kind) = parseFunctionHelper(isDeclaration = true)
-        FunctionDeclarationNode(identifier!!, params, body, kind)
+        return FunctionDeclarationNode(identifier!!, params, body, kind, popLocation())
     }
 
     /*
      * FunctionExpression :
      *     function BindingIdentifier? ( FormalParameters ) { FunctionBody }
      */
-    private fun parseFunctionExpression(): AstNode = nps {
+    private fun parseFunctionExpression(): AstNode {
+        pushLocation()
         val (identifier, params, body, isGenerator) = parseFunctionHelper(isDeclaration = false)
-        FunctionExpressionNode(identifier, params, body, isGenerator)
+        return FunctionExpressionNode(identifier, params, body, isGenerator, popLocation())
     }
 
     private data class FunctionTemp(
@@ -1169,12 +1170,9 @@ class Parser(val sourceInfo: SourceInfo) {
         val params: ParameterList,
         val body: BlockNode,
         val type: AOs.FunctionKind,
-    ) : AstNodeBase() {
-        override val children get() = emptyList<AstNode>()
-        override fun accept(visitor: AstVisitor) = unreachable()
-    }
+    )
 
-    private fun parseFunctionHelper(isDeclaration: Boolean): FunctionTemp = nps {
+    private fun parseFunctionHelper(isDeclaration: Boolean): FunctionTemp {
         val isAsync = if (match(TokenType.Async)) {
             consume()
             true
@@ -1197,7 +1195,7 @@ class Parser(val sourceInfo: SourceInfo) {
         // TODO: Allow no identifier in default export
         val identifier = when {
             matchIdentifier() -> parseBindingIdentifier()
-            inDefaultContext -> IdentifierNode("default").withPosition(token.start, token.start)
+            inDefaultContext -> IdentifierNode("default", sourceLocation = SourceLocation(token.start, token.start))
             isDeclaration -> reporter.functionStatementNoName()
             else -> null
         }
@@ -1209,7 +1207,7 @@ class Parser(val sourceInfo: SourceInfo) {
         if (body.hasUseStrict && !params.isSimple())
             reporter.at(body.useStrict!!).invalidUseStrict()
 
-        FunctionTemp(identifier, params, body, type)
+        return FunctionTemp(identifier, params, body, type)
     }
 
     /*
@@ -1217,7 +1215,8 @@ class Parser(val sourceInfo: SourceInfo) {
      *     class BindingIdentifier ClassTail
      *     [+Default] class ClassTail
      */
-    private fun parseClassDeclaration(): ClassDeclarationNode = nps {
+    private fun parseClassDeclaration(): ClassDeclarationNode {
+        pushLocation()
         consume(TokenType.Class)
         val identifier = if (!matchIdentifier()) {
             if (!inDefaultContext)
@@ -1225,19 +1224,20 @@ class Parser(val sourceInfo: SourceInfo) {
             null
         } else parseBindingIdentifier()
 
-        ClassDeclarationNode(identifier, parseClassNode())
+        return ClassDeclarationNode(identifier, parseClassNode(), popLocation())
     }
 
     /*
      * ClassExpression :
      *     class BindingIdentifier? ClassTail
      */
-    private fun parseClassExpression(): AstNode = nps {
+    private fun parseClassExpression(): AstNode {
+        pushLocation()
         consume(TokenType.Class)
         val identifier = if (matchIdentifier()) {
             parseBindingIdentifier()
         } else null
-        ClassExpressionNode(identifier, parseClassNode())
+        return ClassExpressionNode(identifier, parseClassNode(), popLocation())
     }
 
     /*
@@ -1259,7 +1259,8 @@ class Parser(val sourceInfo: SourceInfo) {
      *     static MethodDefinition
      *     ;
      */
-    private fun parseClassNode(): ClassNode = nps {
+    private fun parseClassNode(): ClassNode {
+        pushLocation()
         val superClass = if (match(TokenType.Extends)) {
             consume()
             parseExpression(2)
@@ -1278,14 +1279,16 @@ class Parser(val sourceInfo: SourceInfo) {
 
         consume(TokenType.CloseCurly)
 
-        ClassNode(superClass, elements)
+        return ClassNode(superClass, elements, popLocation())
     }
 
-    private fun parseClassElement(): ClassElementNode? = nps {
+    private fun parseClassElement(): ClassElementNode? {
         if (match(TokenType.Semicolon)) {
             consume()
-            return@nps null
+            return null
         }
+
+        pushLocation()
 
         var name: PropertyName
         var kind = MethodDefinitionNode.Kind.Normal
@@ -1312,18 +1315,15 @@ class Parser(val sourceInfo: SourceInfo) {
             if (isGenerator)
                 reporter.at(isGeneratorToken!!).expected("property name", "*")
 
-            name = when {
-                isAsync -> {
-                    PropertyName(IdentifierNode("async"), PropertyName.Type.Identifier)
-                }
-                isStatic -> {
-                    isStatic = false
-                    PropertyName(IdentifierNode("static"), PropertyName.Type.Identifier)
-                }
+            val identifier = when {
+                isAsync -> IdentifierNode("async", sourceLocation = isAsyncToken!!.sourceLocation)
+                isStatic -> IdentifierNode("static", sourceLocation = isStaticToken!!.sourceLocation)
                 else -> reporter.expected("property name", token.literals)
             }
 
-            return@nps parseClassFieldOrMethod(name, MethodDefinitionNode.Kind.Normal, isStatic)
+            name = PropertyName(identifier, PropertyName.Type.Identifier, identifier.sourceLocation)
+
+            return parseClassFieldOrMethod(name, MethodDefinitionNode.Kind.Normal, isStatic)
         }
 
         name = parsePropertyName()
@@ -1358,53 +1358,58 @@ class Parser(val sourceInfo: SourceInfo) {
             else -> kind
         }
 
-        parseClassFieldOrMethod(name, kind, isStatic)
+        return parseClassFieldOrMethod(name, kind, isStatic)
     }
 
-    private fun parseClassField(name: PropertyName, isStatic: Boolean): ClassFieldNode = nps {
+    // Expects the caller to call pushLocation()
+    private fun parseClassField(name: PropertyName, isStatic: Boolean): ClassFieldNode {
         consume(TokenType.Equals)
-        ClassFieldNode(name, parseExpression(0), isStatic)
+        return ClassFieldNode(name, parseExpression(0), isStatic, popLocation())
     }
 
+    // Expects the caller to call pushLocation()
     private fun parseClassMethod(
         name: PropertyName,
         kind: MethodDefinitionNode.Kind,
         isStatic: Boolean
-    ): ClassMethodNode = nps {
-        ClassMethodNode(parseMethodDefinition(name, kind), isStatic)
+    ): ClassMethodNode {
+        return ClassMethodNode(parseMethodDefinition(name, kind), isStatic, popLocation())
     }
 
+    // Expects the caller to call pushLocation()
     private fun parseClassFieldOrMethod(
         name: PropertyName,
         kind: MethodDefinitionNode.Kind,
         isStatic: Boolean
-    ): ClassElementNode = nps {
-        if (match(TokenType.Equals)) {
+    ): ClassElementNode {
+        return if (match(TokenType.Equals)) {
             parseClassField(name, isStatic)
         } else if (match(TokenType.OpenParen)) {
             parseClassMethod(name, kind, isStatic)
         } else if (match(TokenType.Semicolon) || token.afterNewline) {
             // Must be a class field with no initializer
-            ClassFieldNode(name, null, isStatic)
+            ClassFieldNode(name, null, isStatic, popLocation())
         } else {
             reporter.at(token).expected("class field initializer or semicolon")
         }
     }
 
-    private fun parseMethodDefinition(name: PropertyName, kind: MethodDefinitionNode.Kind): MethodDefinitionNode = nps {
+    private fun parseMethodDefinition(name: PropertyName, kind: MethodDefinitionNode.Kind): MethodDefinitionNode {
+        pushLocation()
         val params = parseFunctionParameters()
         val body = parseFunctionBody(kind.isAsync, kind.isGenerator)
 
         if (!params.isSimple() && body.hasUseStrict)
             reporter.at(body.useStrict!!).invalidUseStrict()
 
-        MethodDefinitionNode(name, params, body, kind)
+        return MethodDefinitionNode(name, params, body, kind, popLocation())
     }
 
-    private fun parseSuperExpression(): AstNode = nps {
+    private fun parseSuperExpression(): AstNode {
+        pushLocation()
         consume(TokenType.Super)
 
-        when (tokenType) {
+        return when (tokenType) {
             TokenType.Period -> {
                 consume()
                 if (match(TokenType.Hash))
@@ -1412,15 +1417,15 @@ class Parser(val sourceInfo: SourceInfo) {
                 if (!match(TokenType.Identifier))
                     reporter.at(token).expected("identifier", tokenType)
                 val identifier = parseIdentifier()
-                SuperPropertyExpressionNode(identifier, isComputed = false)
+                SuperPropertyExpressionNode(identifier, isComputed = false, popLocation())
             }
             TokenType.OpenBracket -> {
                 consume()
                 val expression = parseExpression(0)
                 consume(TokenType.CloseBracket)
-                SuperPropertyExpressionNode(expression, isComputed = true)
+                SuperPropertyExpressionNode(expression, isComputed = true, popLocation())
             }
-            TokenType.OpenParen -> SuperCallExpressionNode(parseArguments())
+            TokenType.OpenParen -> SuperCallExpressionNode(parseArguments(), popLocation())
             else -> reporter.at(token).expected("super property or super call", tokenType)
         }
     }
@@ -1443,11 +1448,12 @@ class Parser(val sourceInfo: SourceInfo) {
      * FormalParameter :
      *     BindingElement (TODO: currently just a BindingIdentifier)
      */
-    private fun parseFunctionParameters(): ParameterList = nps {
+    private fun parseFunctionParameters(): ParameterList {
+        pushLocation()
         consume(TokenType.OpenParen)
         if (match(TokenType.CloseParen)) {
             consume()
-            return@nps ParameterList(emptyList())
+            return ParameterList(emptyList(), popLocation())
         }
 
         val parameters = mutableListOf<Parameter>()
@@ -1457,30 +1463,26 @@ class Parser(val sourceInfo: SourceInfo) {
                 break
 
             if (match(TokenType.TriplePeriod)) {
-                nps {
-                    consume()
-                    val declaration = if (matchIdentifier()) {
-                        nps { BindingDeclaration(parseBindingIdentifier()) }
-                    } else parseBindingPattern()
-                    if (!match(TokenType.CloseParen))
-                        reporter.paramAfterRest()
+                pushLocation()
+                consume()
+                val declaration = if (matchIdentifier()) {
+                    BindingDeclaration(parseBindingIdentifier())
+                } else parseBindingPattern()
+                if (!match(TokenType.CloseParen))
+                    reporter.paramAfterRest()
 
-                    RestParameter(BindingDeclarationOrPattern(declaration))
-                }.also(parameters::add)
+                parameters.add(RestParameter(BindingDeclarationOrPattern(declaration), popLocation()))
                 break
             }
 
             if (matchBindingPattern()) {
-                val parameter = nps {
-                    BindingParameter(parseBindingPattern(), parseInitializer())
-                }
-                parameters.add(parameter)
+                pushLocation()
+                parameters.add(BindingParameter(parseBindingPattern(), parseInitializer(), popLocation()))
             } else if (!matchIdentifier()) {
                 reporter.at(token).expected("identifier")
             } else {
-                parameters.add(nps {
-                    SimpleParameter(parseBindingIdentifier(), parseInitializer())
-                })
+                pushLocation()
+                parameters.add(SimpleParameter(parseBindingIdentifier(), parseInitializer(), popLocation()))
             }
 
             if (!match(TokenType.Comma))
@@ -1489,7 +1491,7 @@ class Parser(val sourceInfo: SourceInfo) {
         }
 
         consume(TokenType.CloseParen)
-        ParameterList(parameters)
+        return ParameterList(parameters, popLocation())
     }
 
     private fun matchIdentifier() = match(TokenType.Identifier) ||
@@ -1500,15 +1502,10 @@ class Parser(val sourceInfo: SourceInfo) {
         return match(TokenType.Identifier) || tokenType.category == TokenType.Category.Keyword
     }
 
-    private fun parseIdentifierReference(): IdentifierReferenceNode = nps {
-        IdentifierReferenceNode(parseIdentifier())
-    }
+    private fun parseIdentifierReference() = IdentifierReferenceNode(parseIdentifier())
 
-    private val strictProtectedNames = setOf(
-        "implements", "interface", "let", "package", "private", "protected", "public", "static", "yield"
-    )
-
-    private fun parseIdentifier(): IdentifierNode = nps {
+    private fun parseIdentifier(): IdentifierNode {
+        pushLocation()
         expect(matchIdentifierName())
         val token = this.token
         val identifier = token.literals
@@ -1522,7 +1519,7 @@ class Parser(val sourceInfo: SourceInfo) {
         if (!unescaped.drop(1).all { it == '$' || it.isIdContinue() || it == '\u200c' || it == '\u200d' })
             reporter.at(token).identifierInvalidEscapeSequence(identifier)
 
-        IdentifierNode(unescaped, identifier)
+        return IdentifierNode(unescaped, identifier, popLocation())
     }
 
     private fun validateBindingIdentifier(identifier: IdentifierNode) {
@@ -1542,15 +1539,19 @@ class Parser(val sourceInfo: SourceInfo) {
         return parseIdentifier().also(::validateBindingIdentifier)
     }
 
-    private fun consumeStringLiteral(): StringLiteralNode? = nps {
-        if (match(TokenType.StringLiteral)) {
-            val node = StringLiteralNode(token.literals)
+    private fun consumeStringLiteral(): StringLiteralNode? {
+        val node = if (match(TokenType.StringLiteral)) {
+            pushLocation()
+            val str = token.literals
             consume()
-            node
+            StringLiteralNode(str, popLocation())
         } else null
-    }.also {
+
+        // TODO: Why is this here? StringLiteral does not specify ASI
         if (match(TokenType.Semicolon))
             consume()
+
+        return node
     }
 
     private fun checkForAndConsumeUseStrict(): AstNode? {
@@ -1563,7 +1564,8 @@ class Parser(val sourceInfo: SourceInfo) {
         }
     }
 
-    private fun parseBlock(): BlockNode = nps {
+    private fun parseBlock(): BlockNode {
+        pushLocation()
         consume(TokenType.OpenCurly)
         val prevIsStrict = isStrict
         val useStrict = checkForAndConsumeUseStrict()
@@ -1575,7 +1577,7 @@ class Parser(val sourceInfo: SourceInfo) {
         consume(TokenType.CloseCurly)
         this.isStrict = prevIsStrict
 
-        BlockNode(statements, useStrict)
+        return BlockNode(statements, useStrict, popLocation())
     }
 
     private fun matchSecondaryExpression() = tokenType.isSecondaryToken && if (matches(TokenType.Inc, TokenType.Dec)) {
@@ -1586,7 +1588,7 @@ class Parser(val sourceInfo: SourceInfo) {
         minPrecedence: Int = 0,
         leftAssociative: Boolean = false,
         excludedTokens: Set<TokenType> = emptySet(),
-    ): AstNode = nps {
+    ): AstNode {
         if (isDone)
             reporter.at(lastToken).expected("expression", "eof")
 
@@ -1607,13 +1609,14 @@ class Parser(val sourceInfo: SourceInfo) {
             )
         }
 
-        if (match(TokenType.Comma) && minPrecedence <= 1) {
+        return if (match(TokenType.Comma) && minPrecedence <= 1) {
+            pushLocation()
             val expressions = mutableListOf(expression)
             while (match(TokenType.Comma)) {
                 consume()
                 expressions.add(parseExpression(2))
             }
-            CommaExpressionNode(expressions)
+            CommaExpressionNode(expressions, popLocation())
         } else expression
     }
 
@@ -1622,18 +1625,17 @@ class Parser(val sourceInfo: SourceInfo) {
         minPrecedence: Int,
         leftAssociative: Boolean,
     ): AstNode {
+        fun getLocation() = SourceLocation(lhs.sourceLocation.start, lastToken.end)
+
         fun makeBinaryExpr(op: BinaryOperator): AstNode {
             consume()
-            return BinaryExpressionNode(lhs, parseExpression(minPrecedence, leftAssociative), op)
-                .withPosition(lhs.sourceLocation.start, lastToken.end)
+            return BinaryExpressionNode(lhs, parseExpression(minPrecedence, leftAssociative), op, getLocation())
         }
 
         fun makeAssignExpr(op: BinaryOperator?): AstNode {
             consume()
             validateAssignmentTarget(lhs)
-
-            return AssignmentExpressionNode(lhs, parseExpression(minPrecedence, leftAssociative), op)
-                .withPosition(lhs.sourceLocation.start, lastToken.end)
+            return AssignmentExpressionNode(lhs, parseExpression(minPrecedence, leftAssociative), op, getLocation())
         }
 
         return when (tokenType) {
@@ -1687,44 +1689,48 @@ class Parser(val sourceInfo: SourceInfo) {
                     lhs,
                     parseIdentifier(),
                     MemberExpressionNode.Type.NonComputed,
-                ).withPosition(lhs.sourceLocation.start, lastToken.end)
+                    getLocation(),
+                )
             }
             TokenType.OpenBracket -> {
                 consume()
-                MemberExpressionNode(lhs, parseExpression(), MemberExpressionNode.Type.Computed).also {
+                MemberExpressionNode(
+                    lhs,
+                    parseExpression(),
+                    MemberExpressionNode.Type.Computed,
+                    getLocation(),
+                ).also {
                     consume(TokenType.CloseBracket)
-                }.withPosition(lhs.sourceLocation.start, lastToken.end)
+                }
             }
             TokenType.Inc -> {
                 consume()
                 validateAssignmentTarget(lhs)
-                UpdateExpressionNode(lhs, isIncrement = true, isPostfix = true)
-                    .withPosition(lhs.sourceLocation.start, lastToken.end)
+                UpdateExpressionNode(lhs, isIncrement = true, isPostfix = true, getLocation())
             }
             TokenType.Dec -> {
                 consume()
                 validateAssignmentTarget(lhs)
-                UpdateExpressionNode(lhs, isIncrement = false, isPostfix = true)
-                    .withPosition(lhs.sourceLocation.start, lastToken.end)
+                UpdateExpressionNode(lhs, isIncrement = false, isPostfix = true, getLocation())
             }
-            TokenType.QuestionMark -> parseConditional(lhs).withPosition(lhs.sourceLocation.start, lastToken.end)
+            TokenType.QuestionMark -> parseConditional(lhs)
             TokenType.OptionalChain -> {
                 // TODO: Disallow "new Foo?.a"
-                parseOptionalChain(lhs).withPosition(lhs.sourceLocation.start, lastToken.end)
+                parseOptionalChain(lhs)
             }
             else -> unreachable()
         }
     }
 
-    private fun parseConditional(lhs: AstNode): AstNode = nps {
+    private fun parseConditional(lhs: AstNode): AstNode {
         consume(TokenType.QuestionMark)
         val ifTrue = parseExpression(2)
         consume(TokenType.Colon)
         val ifFalse = parseExpression(2)
-        ConditionalExpressionNode(lhs, ifTrue, ifFalse)
+        return ConditionalExpressionNode(lhs, ifTrue, ifFalse, SourceLocation(lhs.sourceLocation.start, lastToken.end))
     }
 
-    private fun parseOptionalChain(base_: AstNode): AstNode = nps {
+    private fun parseOptionalChain(base_: AstNode): AstNode {
         val (base, parts) = if (base_ is OptionalChainNode) {
             base_.base to base_.parts.toMutableList()
         } else base_ to mutableListOf()
@@ -1734,56 +1740,74 @@ class Parser(val sourceInfo: SourceInfo) {
                 TokenType.OptionalChain -> {
                     consume()
                     when (tokenType) {
-                        TokenType.OpenParen -> parts.add(nps { OptionalCallChain(parseArguments(), isOptional = true) })
+                        TokenType.OpenParen -> {
+                            pushLocation()
+                            parts.add(OptionalCallChain(parseArguments(), isOptional = true, popLocation()))
+                        }
                         TokenType.OpenBracket -> {
+                            pushLocation()
                             consume()
-                            parts.add(nps { OptionalComputedAccessChain(parseExpression(), isOptional = true) })
+                            val expr = parseExpression()
                             consume(TokenType.CloseBracket)
+                            parts.add(OptionalComputedAccessChain(expr, isOptional = true, popLocation()))
                         }
                         TokenType.TemplateLiteralStart -> reporter.at(token).templateLiteralAfterOptionalChain()
                         else -> {
                             if (!matchIdentifierName())
                                 reporter.at(token).expected("identifier", tokenType)
-                            parts.add(nps { OptionalAccessChain(parseIdentifier(), isOptional = true) })
+                            pushLocation()
+                            parts.add(OptionalAccessChain(parseIdentifier(), isOptional = true, popLocation()))
                         }
                     }
                 }
-                TokenType.OpenParen -> parts.add(nps { OptionalCallChain(parseArguments(), isOptional = false) })
+                TokenType.OpenParen -> {
+                    pushLocation()
+                    parts.add(OptionalCallChain(parseArguments(), isOptional = false, popLocation()))
+                }
                 TokenType.Period -> {
+                    pushLocation()
                     consume()
                     if (!matchIdentifierName())
                         reporter.at(token).expected("identifier", tokenType)
-                    parts.add(nps { OptionalAccessChain(parseIdentifier(), isOptional = false) })
+                    parts.add(OptionalAccessChain(parseIdentifier(), isOptional = false, popLocation()))
                 }
                 TokenType.TemplateLiteralStart -> reporter.at(token).templateLiteralAfterOptionalChain()
                 TokenType.OpenBracket -> {
+                    pushLocation()
                     consume()
-                    parts.add(nps { OptionalComputedAccessChain(parseExpression(), isOptional = false) })
+                    val expr = parseExpression()
                     consume(TokenType.CloseBracket)
+                    parts.add(OptionalComputedAccessChain(expr, isOptional = false, popLocation()))
                 }
                 else -> break
             }
         } while (!isDone)
 
-        OptionalChainNode(base, parts)
+        return OptionalChainNode(base, parts, SourceLocation(base.sourceLocation.start, lastToken.end))
     }
 
-    private fun parseCallExpression(lhs: AstNode, isOptional: Boolean): AstNode = nps {
-        CallExpressionNode(lhs, parseArguments(), isOptional)
+    private fun parseCallExpression(lhs: AstNode, isOptional: Boolean): AstNode {
+        return CallExpressionNode(
+            lhs,
+            parseArguments(),
+            isOptional,
+            SourceLocation(lhs.sourceLocation.start, lastToken.end),
+        )
     }
 
-    private fun parseNewExpression(): AstNode = nps {
+    private fun parseNewExpression(): AstNode {
+        pushLocation()
         consume(TokenType.New)
         if (has(2) && match(TokenType.Period) && peek()?.type == TokenType.Identifier) {
             consume()
             consume()
             if (lastToken.literals != "target")
                 reporter.at(lastToken).invalidNewMetaProperty()
-            return@nps NewTargetNode()
+            return NewTargetNode(popLocation())
         }
         val target = parseExpression(TokenType.New.operatorPrecedence, excludedTokens = setOf(TokenType.OpenParen))
         val arguments = if (match(TokenType.OpenParen)) parseArguments() else emptyList()
-        NewExpressionNode(target, arguments)
+        return NewExpressionNode(target, arguments, popLocation())
     }
 
     private fun parseArguments(): List<ArgumentNode> {
@@ -1792,16 +1816,12 @@ class Parser(val sourceInfo: SourceInfo) {
         val arguments = mutableListOf<ArgumentNode>()
 
         while (tokenType.isExpressionToken || match(TokenType.TriplePeriod)) {
-            val start = sourceStart
+            pushLocation()
             val isSpread = if (match(TokenType.TriplePeriod)) {
                 consume()
                 true
             } else false
-            val node = nps {
-                ArgumentNode(parseExpression(2), isSpread)
-                    .withPosition(start, lastToken.end)
-            }
-            arguments.add(node)
+            arguments.add(ArgumentNode(parseExpression(2), isSpread, popLocation()))
             if (!match(TokenType.Comma))
                 break
             consume()
@@ -1812,9 +1832,10 @@ class Parser(val sourceInfo: SourceInfo) {
         return arguments
     }
 
-    private fun parseYieldExpression(): AstNode = nps {
+    private fun parseYieldExpression(): AstNode {
         expect(inYieldContext)
 
+        pushLocation()
         consume(TokenType.Yield)
         val isYieldStar = if (match(TokenType.Mul)) {
             consume()
@@ -1823,39 +1844,39 @@ class Parser(val sourceInfo: SourceInfo) {
 
         if (match(TokenType.Semicolon)) {
             consume()
-            return@nps YieldExpressionNode(null, isYieldStar)
+            return YieldExpressionNode(null, isYieldStar, popLocation())
         }
 
         if (token.afterNewline)
-            return@nps YieldExpressionNode(null, isYieldStar)
+            return YieldExpressionNode(null, isYieldStar, popLocation())
 
         if (tokenType.isExpressionToken)
-            return@nps YieldExpressionNode(parseExpression(0), isYieldStar)
+            return YieldExpressionNode(parseExpression(0), isYieldStar, popLocation())
 
         if (isYieldStar)
             reporter.expected("expression", tokenType)
 
-        YieldExpressionNode(null, isYieldStar)
+        return YieldExpressionNode(null, generatorYield = false, popLocation())
     }
 
-    private fun parseParenthesizedExpression(): AstNode = nps {
+    private fun parseParenthesizedExpression(): AstNode {
         consume(TokenType.OpenParen)
         val expr = parseExpression(0)
         consume(TokenType.CloseParen)
-        expr
+        return expr
     }
 
-    private fun parsePrimaryExpression(): AstNode = nps {
+    private fun parsePrimaryExpression(): AstNode {
         if (tokenType.isUnaryToken)
-            return@nps parseUnaryExpression()
+            return parseUnaryExpression()
 
-        when (tokenType) {
+        return when (tokenType) {
             TokenType.OpenParen -> {
                 val index = token.start.index
                 if (index !in nonArrowFunctionParens) {
                     val arrow = tryParseArrowFunction()
                     if (arrow != null)
-                        return@nps arrow
+                        return arrow
                     nonArrowFunctionParens.add(index)
                 }
 
@@ -1863,7 +1884,7 @@ class Parser(val sourceInfo: SourceInfo) {
             }
             TokenType.This -> {
                 consume()
-                ThisLiteralNode()
+                ThisLiteralNode(lastToken.sourceLocation)
             }
             TokenType.Class -> parseClassExpression()
             TokenType.Super -> parseSuperExpression()
@@ -1871,7 +1892,7 @@ class Parser(val sourceInfo: SourceInfo) {
                 if (peek()?.type == TokenType.Arrow) {
                     val arrow = tryParseArrowFunction()
                     if (arrow != null)
-                        return@nps arrow
+                        return arrow
                 }
                 parseIdentifierReference()
             }
@@ -1879,18 +1900,18 @@ class Parser(val sourceInfo: SourceInfo) {
             TokenType.BigIntLiteral -> parseBigIntLiteral()
             TokenType.True -> {
                 consume()
-                TrueNode()
+                TrueNode(lastToken.sourceLocation)
             }
             TokenType.False -> {
                 consume()
-                FalseNode()
+                FalseNode(lastToken.sourceLocation)
             }
             TokenType.Async, TokenType.Function -> parseFunctionExpression()
             TokenType.Await -> parseAwaitExpression()
             TokenType.StringLiteral -> parseStringLiteral()
             TokenType.NullLiteral -> {
                 consume()
-                NullLiteralNode()
+                NullLiteralNode(lastToken.sourceLocation)
             }
             TokenType.OpenCurly -> parseObjectLiteral()
             TokenType.OpenBracket -> parseArrayLiteral()
@@ -1905,7 +1926,9 @@ class Parser(val sourceInfo: SourceInfo) {
         }
     }
 
-    private fun parseRegExpLiteral(): RegExpLiteralNode = nps {
+    private fun parseRegExpLiteral(): RegExpLiteralNode {
+        pushLocation()
+
         val source = token.literals.drop(1).dropLast(1)
         consume(TokenType.RegExpLiteral)
 
@@ -1913,21 +1936,23 @@ class Parser(val sourceInfo: SourceInfo) {
             token.literals.also { consume() }
         } else ""
 
-        try {
-            RegExpLiteralNode(source, flags, AOs.makeRegExp(source, flags))
+        return try {
+            RegExpLiteralNode(source, flags, AOs.makeRegExp(source, flags), popLocation())
         } catch (e: RegExpSyntaxError) {
             reporter.at(token).error(e.message!!)
         }
     }
 
-    private fun parseAwaitExpression(): AstNode = nps {
+    private fun parseAwaitExpression(): AstNode {
+        pushLocation()
         consume(TokenType.Await)
-        AwaitExpressionNode(parseExpression(2))
+        return AwaitExpressionNode(parseExpression(2), popLocation())
     }
 
-    private fun parseStringLiteral(): StringLiteralNode = nps {
+    private fun parseStringLiteral(): StringLiteralNode {
+        pushLocation()
         consume(TokenType.StringLiteral)
-        StringLiteralNode(unescapeString(lastToken.literals))
+        return StringLiteralNode(unescapeString(lastToken.literals), popLocation())
     }
 
     private fun unescapeString(string: String): String {
@@ -2025,22 +2050,20 @@ class Parser(val sourceInfo: SourceInfo) {
         return builder.toString()
     }
 
-    private fun parseTemplateLiteral(): AstNode = nps {
+    private fun parseTemplateLiteral(): AstNode {
+        pushLocation()
         consume(TokenType.TemplateLiteralStart)
 
         val expressions = mutableListOf<AstNode>()
-        fun addEmptyString() {
-            expressions.add(StringLiteralNode("").withPosition(sourceStart, sourceStart))
-        }
+        fun addEmptyString() = expressions.add(StringLiteralNode("", token.sourceLocation))
 
         if (!match(TokenType.TemplateLiteralString))
             addEmptyString()
 
         while (!matches(TokenType.TemplateLiteralEnd, TokenType.UnterminatedTemplateLiteral)) {
             if (match(TokenType.TemplateLiteralString)) {
-                nps {
-                    StringLiteralNode(unescapeString(token.literals)).also { consume() }
-                }.also(expressions::add)
+                consume()
+                expressions.add(StringLiteralNode(unescapeString(lastToken.literals), token.sourceLocation))
             } else if (match(TokenType.TemplateLiteralExprStart)) {
                 consume()
                 if (match(TokenType.TemplateLiteralExprEnd))
@@ -2061,7 +2084,7 @@ class Parser(val sourceInfo: SourceInfo) {
             reporter.unterminatedTemplateLiteral()
         consume()
 
-        TemplateLiteralNode(expressions)
+        return TemplateLiteralNode(expressions, popLocation())
     }
 
     /*
@@ -2078,8 +2101,8 @@ class Parser(val sourceInfo: SourceInfo) {
      * not work for parsing destructured parameters in the future. This
      * is only for contexts where we know it is an object literal.
      */
-    private fun parseObjectLiteral(): AstNode = nps {
-        val objectStart = sourceStart
+    private fun parseObjectLiteral(): AstNode {
+        pushLocation()
         consume(TokenType.OpenCurly)
 
         val properties = mutableListOf<Property>()
@@ -2093,7 +2116,7 @@ class Parser(val sourceInfo: SourceInfo) {
 
         consume(TokenType.CloseCurly)
 
-        return@nps ObjectLiteralNode(properties).withPosition(objectStart, lastToken.end)
+        return ObjectLiteralNode(properties, popLocation())
     }
 
     /*
@@ -2104,10 +2127,12 @@ class Parser(val sourceInfo: SourceInfo) {
      *     MethodDefinition
      *     ... AssignmentExpression
      */
-    private fun parseObjectProperty(): Property = nps {
+    private fun parseObjectProperty(): Property {
+        pushLocation()
+
         if (match(TokenType.TriplePeriod)) {
             consume()
-            return@nps SpreadProperty(parseExpression(2))
+            return SpreadProperty(parseExpression(2), popLocation())
         }
 
         val isGeneratorToken = if (match(TokenType.Mul)) {
@@ -2141,9 +2166,8 @@ class Parser(val sourceInfo: SourceInfo) {
 
             // TODO: Async/Generator methods
             val body = parseFunctionBody(isAsync = false, isGenerator = isGeneratorToken != null)
-            val methoDefinitionNode = MethodDefinitionNode(methodName, params, body, type)
-                .withPosition(methodName, body)
-            return@nps MethodProperty(methoDefinitionNode)
+            val methoDefinitionNode = MethodDefinitionNode(methodName, params, body, type, popLocation())
+            return MethodProperty(methoDefinitionNode)
         }
 
         if (matches(TokenType.Comma, TokenType.CloseCurly)) {
@@ -2156,15 +2180,15 @@ class Parser(val sourceInfo: SourceInfo) {
             // be validated as such
             validateBindingIdentifier(identifierNode)
 
-            val node = IdentifierReferenceNode(identifierNode).withPosition(name)
+            val node = IdentifierReferenceNode(identifierNode)
 
-            return@nps ShorthandProperty(node)
+            return ShorthandProperty(node, popLocation())
         }
 
         consume(TokenType.Colon)
         val expression = parseExpression(2)
 
-        KeyValueProperty(name, expression)
+        return KeyValueProperty(name, expression, popLocation())
     }
 
     private fun matchPropertyName() = matchIdentifierName() ||
@@ -2183,22 +2207,23 @@ class Parser(val sourceInfo: SourceInfo) {
      * ComputedPropertyName :
      *     [ AssignmentExpression ]
      */
-    private fun parsePropertyName(): PropertyName = nps {
-        when {
+    private fun parsePropertyName(): PropertyName {
+        pushLocation()
+        return when {
             match(TokenType.OpenBracket) -> {
                 consume()
                 val expr = parseExpression(0)
                 consume(TokenType.CloseBracket)
-                return@nps PropertyName(expr, PropertyName.Type.Computed)
+                PropertyName(expr, PropertyName.Type.Computed, popLocation())
             }
             match(TokenType.StringLiteral) -> {
-                PropertyName(parseStringLiteral(), PropertyName.Type.String)
+                PropertyName(parseStringLiteral(), PropertyName.Type.String, popLocation())
             }
             match(TokenType.NumericLiteral) -> {
-                PropertyName(parseNumericLiteral(), PropertyName.Type.Number)
+                PropertyName(parseNumericLiteral(), PropertyName.Type.Number, popLocation())
             }
             matchIdentifierName() -> {
-                PropertyName(parseIdentifier(), PropertyName.Type.Identifier)
+                PropertyName(parseIdentifier(), PropertyName.Type.Identifier, popLocation())
             }
             else -> reporter.unexpectedToken(tokenType)
         }
@@ -2223,44 +2248,41 @@ class Parser(val sourceInfo: SourceInfo) {
      * SpreadElement :
      *     ... AssignmentExpression
      */
-    private fun parseArrayLiteral(): ArrayLiteralNode = nps {
+    private fun parseArrayLiteral(): ArrayLiteralNode {
+        pushLocation()
         consume(TokenType.OpenBracket)
         if (match(TokenType.CloseBracket)) {
             consume()
-            return@nps ArrayLiteralNode(emptyList())
+            return ArrayLiteralNode(emptyList(), popLocation())
         }
 
         val elements = mutableListOf<ArrayElementNode>()
 
         while (!match(TokenType.CloseBracket)) {
+            pushLocation()
             if (match(TokenType.Comma)) {
-                elements.add(
-                    nps {
-                        consume()
-                        ArrayElementNode(null, ArrayElementNode.Type.Elision)
-                    }
-                )
+                consume()
+                elements.add(ArrayElementNode(null, ArrayElementNode.Type.Elision, popLocation()))
                 continue
             }
 
-            nps {
-                val isSpread = if (match(TokenType.TriplePeriod)) {
-                    consume()
-                    true
-                } else false
+            val isSpread = if (match(TokenType.TriplePeriod)) {
+                consume()
+                true
+            } else false
 
-                if (!tokenType.isExpressionToken)
-                    reporter.expected("expression", tokenType)
+            if (!tokenType.isExpressionToken)
+                reporter.expected("expression", tokenType)
 
-                val expression = parseExpression(2)
+            val expression = parseExpression(2)
 
-                ArrayElementNode(
-                    expression,
-                    if (isSpread) {
-                        ArrayElementNode.Type.Spread
-                    } else ArrayElementNode.Type.Normal
-                )
-            }.also(elements::add)
+            elements.add(ArrayElementNode(
+                expression,
+                if (isSpread) {
+                    ArrayElementNode.Type.Spread
+                } else ArrayElementNode.Type.Normal,
+                popLocation(),
+            ))
 
             if (match(TokenType.Comma)) {
                 consume()
@@ -2270,10 +2292,10 @@ class Parser(val sourceInfo: SourceInfo) {
         }
 
         consume(TokenType.CloseBracket)
-        ArrayLiteralNode(elements)
+        return ArrayLiteralNode(elements, popLocation())
     }
 
-    private fun parseNumericLiteral(): NumericLiteralNode = nps {
+    private fun parseNumericLiteral(): NumericLiteralNode {
         val numericToken = token
         val value = token.literals
         consume(TokenType.NumericLiteral)
@@ -2287,10 +2309,10 @@ class Parser(val sourceInfo: SourceInfo) {
                 reporter.identifierAfterNumericLiteral()
         }
 
-        NumericLiteralNode(numericToken.doubleValue())
+        return NumericLiteralNode(numericToken.doubleValue(), lastToken.sourceLocation)
     }
 
-    private fun parseBigIntLiteral(): BigIntLiteralNode = nps {
+    private fun parseBigIntLiteral(): BigIntLiteralNode {
         val numericToken = token
         var value = token.literals
         consume(TokenType.BigIntLiteral)
@@ -2318,31 +2340,35 @@ class Parser(val sourceInfo: SourceInfo) {
             }
         } else BigIntLiteralNode.Type.Normal
 
-        BigIntLiteralNode(value.dropLast(1).replace("_", ""), mode)
+        return BigIntLiteralNode(value.dropLast(1).replace("_", ""), mode, lastToken.sourceLocation)
     }
 
-    private fun tryParseArrowFunction(): ArrowFunctionNode? = nps {
+    private fun tryParseArrowFunction(): ArrowFunctionNode? {
         val savedCursor = tokenCursor
+        val savedLocationDepth = locationStack.size
+        pushLocation()
 
         val parameters = try {
             val parameters = if (match(TokenType.OpenParen)) {
                 parseFunctionParameters()
             } else {
-                nps {
-                    val parameter = nps { SimpleParameter(parseBindingIdentifier(), null) }
-                    ParameterList(listOf(parameter))
-                }
+                pushLocation()
+                val parameter = SimpleParameter(parseBindingIdentifier(), null, popLocation())
+                ParameterList(listOf(parameter), parameter.sourceLocation)
             }
 
             if (!match(TokenType.Arrow)) {
                 tokenCursor = savedCursor
-                return@nps null
+                popLocation()
+                return null
             }
 
             parameters
         } catch (e: ParsingException) {
             tokenCursor = savedCursor
-            return@nps null
+            while (locationStack.size > savedLocationDepth)
+                locationStack.removeLast()
+            return null
         }
 
         if (token.afterNewline)
@@ -2355,34 +2381,36 @@ class Parser(val sourceInfo: SourceInfo) {
             parseFunctionBody(isAsync = false, isGenerator = false)
         } else parseExpression(2)
 
-        ArrowFunctionNode(parameters, body, AOs.FunctionKind.Normal)
+        return ArrowFunctionNode(parameters, body, AOs.FunctionKind.Normal, popLocation())
     }
 
-    private fun parseUnaryExpression(): AstNode = nps {
+    private fun parseUnaryExpression(): AstNode {
+        pushLocation()
         val type = consume()
         val expression = parseExpression(type.operatorPrecedence, type.leftAssociative)
 
-        when (type) {
+        return when (type) {
             TokenType.Inc -> {
                 validateAssignmentTarget(expression)
-                UpdateExpressionNode(expression, isIncrement = true, isPostfix = false)
+                UpdateExpressionNode(expression, isIncrement = true, isPostfix = false, popLocation())
             }
             TokenType.Dec -> {
                 validateAssignmentTarget(expression)
-                UpdateExpressionNode(expression, isIncrement = false, isPostfix = false)
+                UpdateExpressionNode(expression, isIncrement = false, isPostfix = false, popLocation())
             }
-            TokenType.Not -> UnaryExpressionNode(expression, UnaryOperator.Not)
-            TokenType.BitwiseNot -> UnaryExpressionNode(expression, UnaryOperator.BitwiseNot)
-            TokenType.Add -> UnaryExpressionNode(expression, UnaryOperator.Plus)
-            TokenType.Sub -> UnaryExpressionNode(expression, UnaryOperator.Minus)
-            TokenType.Typeof -> UnaryExpressionNode(expression, UnaryOperator.Typeof)
-            TokenType.Void -> UnaryExpressionNode(expression, UnaryOperator.Void)
-            TokenType.Delete -> UnaryExpressionNode(expression, UnaryOperator.Delete)
+            TokenType.Not -> UnaryExpressionNode(expression, UnaryOperator.Not, popLocation())
+            TokenType.BitwiseNot -> UnaryExpressionNode(expression, UnaryOperator.BitwiseNot, popLocation())
+            TokenType.Add -> UnaryExpressionNode(expression, UnaryOperator.Plus, popLocation())
+            TokenType.Sub -> UnaryExpressionNode(expression, UnaryOperator.Minus, popLocation())
+            TokenType.Typeof -> UnaryExpressionNode(expression, UnaryOperator.Typeof, popLocation())
+            TokenType.Void -> UnaryExpressionNode(expression, UnaryOperator.Void, popLocation())
+            TokenType.Delete -> UnaryExpressionNode(expression, UnaryOperator.Delete, popLocation())
             else -> unreachable()
         }
     }
 
-    private fun parseIfStatement(): AstNode = nps {
+    private fun parseIfStatement(): AstNode {
+        pushLocation()
         consume(TokenType.If)
         consume(TokenType.OpenParen)
         val condition = parseExpression()
@@ -2391,15 +2419,15 @@ class Parser(val sourceInfo: SourceInfo) {
         val trueBlock = parseStatement()
 
         if (!match(TokenType.Else))
-            return@nps IfStatementNode(condition, trueBlock, null)
+            return IfStatementNode(condition, trueBlock, null, popLocation())
 
         consume()
         if (match(TokenType.If))
-            return@nps IfStatementNode(condition, trueBlock, parseIfStatement())
+            return IfStatementNode(condition, trueBlock, parseIfStatement(), popLocation())
 
         val falseBlock = parseStatement()
 
-        return@nps IfStatementNode(condition, trueBlock, falseBlock)
+        return IfStatementNode(condition, trueBlock, falseBlock, popLocation())
     }
 
     private fun parseFunctionBody(isAsync: Boolean, isGenerator: Boolean): BlockNode {
@@ -2441,24 +2469,11 @@ class Parser(val sourceInfo: SourceInfo) {
         }
     }
 
-    // Helper for setting source positions of AST. Stands for
-    // node parsing scope; the name is short to prevent long
-    // non-local return labels (i.e. "return@nodeParsingScope")
-    private inline fun <T : AstNode?> nps(crossinline block: () -> T): T {
-        contract {
-            callsInPlace(block, InvocationKind.EXACTLY_ONCE)
-        }
-        val start = sourceStart
-        val node = block()
-        if (node == null) {
-            // Weird compiler bug: we have to return node here instead of 'null',
-            // because null apparently doesn't satisfy the non-null T even though
-            // it extends a nullable type.
-            return node
-        }
-        node.sourceLocation = SourceLocation(start, lastToken.end)
-        return node
+    private fun pushLocation() {
+        locationStack.add(sourceStart)
     }
+
+    private fun popLocation() = SourceLocation(locationStack.removeLast(), lastToken.end)
 
     private fun match(type: TokenType): Boolean {
         return tokenType == type
@@ -2541,5 +2556,11 @@ class Parser(val sourceInfo: SourceInfo) {
                 reporter.at(continueToken).continueOutsideOfLoop()
             }
         }
+    }
+
+    companion object {
+        private val strictProtectedNames = setOf(
+            "implements", "interface", "let", "package", "private", "protected", "public", "static", "yield"
+        )
     }
 }

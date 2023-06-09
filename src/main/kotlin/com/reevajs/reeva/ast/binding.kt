@@ -2,13 +2,15 @@ package com.reevajs.reeva.ast
 
 import com.reevajs.reeva.ast.literals.PropertyName
 import com.reevajs.reeva.ast.statements.VariableSourceProvider
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.utils.expect
 
 @Suppress("UNCHECKED_CAST")
 class BindingPatternNode(
     val kind: BindingKind,
     private val entries: List<BindingEntry>,
-) : AstNodeBase(), VariableSourceProvider {
+    sourceLocation: SourceLocation,
+) : AstNodeBase(sourceLocation), VariableSourceProvider {
     override val children get() = entries
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -38,7 +40,7 @@ enum class BindingKind {
     Array,
 }
 
-class BindingDeclaration(val identifier: IdentifierNode) : VariableSourceNode() {
+class BindingDeclaration(val identifier: IdentifierNode) : VariableSourceNode(identifier.sourceLocation) {
     override val children get() = listOf(identifier)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -46,7 +48,7 @@ class BindingDeclaration(val identifier: IdentifierNode) : VariableSourceNode() 
     override fun name() = identifier.processedName
 }
 
-class BindingDeclarationOrPattern(val node: AstNode) : AstNodeBase(), VariableSourceProvider {
+class BindingDeclarationOrPattern(val node: AstNode) : AstNodeBase(node.sourceLocation), VariableSourceProvider {
     override val children get() = listOf(node)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -65,15 +67,17 @@ class BindingDeclarationOrPattern(val node: AstNode) : AstNodeBase(), VariableSo
 
     init {
         expect(node is BindingPatternNode || node is BindingDeclaration)
-        sourceLocation = node.sourceLocation
     }
 }
 
-sealed class BindingEntry : AstNodeBase(), VariableSourceProvider
+sealed class BindingEntry(sourceLocation: SourceLocation) : AstNodeBase(sourceLocation), VariableSourceProvider
 
-sealed class BindingProperty : BindingEntry(), VariableSourceProvider
+sealed class BindingProperty(sourceLocation: SourceLocation) : BindingEntry(sourceLocation), VariableSourceProvider
 
-class BindingRestProperty(val declaration: BindingDeclaration) : BindingProperty() {
+class BindingRestProperty(
+    val declaration: BindingDeclaration,
+    sourceLocation: SourceLocation,
+) : BindingProperty(sourceLocation) {
     override val children get() = listOf(declaration)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -85,7 +89,8 @@ class SimpleBindingProperty(
     val declaration: BindingDeclaration,
     val alias: BindingDeclarationOrPattern?,
     val initializer: AstNode?,
-) : BindingProperty() {
+    sourceLocation: SourceLocation,
+) : BindingProperty(sourceLocation) {
     override val children get() = listOfNotNull(declaration, alias, initializer)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -97,7 +102,8 @@ class ComputedBindingProperty(
     val name: PropertyName,
     val alias: BindingDeclarationOrPattern,
     val initializer: AstNode?,
-) : BindingProperty() {
+    sourceLocation: SourceLocation,
+) : BindingProperty(sourceLocation) {
     override val children get() = listOfNotNull(name, alias, initializer)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -105,9 +111,14 @@ class ComputedBindingProperty(
     override fun sources() = alias.sources()
 }
 
-sealed class BindingElement : BindingEntry(), VariableSourceProvider
+sealed class BindingElement(
+    sourceLocation: SourceLocation,
+) : BindingEntry(sourceLocation), VariableSourceProvider
 
-class BindingRestElement(val declaration: BindingDeclarationOrPattern) : BindingElement() {
+class BindingRestElement(
+    val declaration: BindingDeclarationOrPattern,
+    sourceLocation: SourceLocation,
+) : BindingElement(sourceLocation) {
     override val children get() = listOf(declaration)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -115,7 +126,11 @@ class BindingRestElement(val declaration: BindingDeclarationOrPattern) : Binding
     override fun sources() = declaration.sources()
 }
 
-class SimpleBindingElement(val alias: BindingDeclarationOrPattern, val initializer: AstNode?) : BindingElement() {
+class SimpleBindingElement(
+    val alias: BindingDeclarationOrPattern,
+    val initializer: AstNode?,
+    sourceLocation: SourceLocation,
+) : BindingElement(sourceLocation) {
     override val children get() = listOfNotNull(alias, initializer)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -123,7 +138,7 @@ class SimpleBindingElement(val alias: BindingDeclarationOrPattern, val initializ
     override fun sources() = alias.sources()
 }
 
-class BindingElisionElement : BindingElement() {
+class BindingElisionElement(sourceLocation: SourceLocation,) : BindingElement(sourceLocation) {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

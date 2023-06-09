@@ -14,6 +14,8 @@ data class Token(
     val literals: String,
     val rawLiterals: String,
 ) {
+    val sourceLocation get() = SourceLocation(start, end)
+
     fun doubleValue(): Double {
         expect(type == TokenType.NumericLiteral)
         var literals = this.literals.filter { it != '_' }

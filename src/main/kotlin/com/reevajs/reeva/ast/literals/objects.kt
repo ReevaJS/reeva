@@ -4,41 +4,50 @@ import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.ast.expressions.SuperCallExpressionNode
 import com.reevajs.reeva.ast.statements.BlockNode
 import com.reevajs.reeva.parsing.Scope
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.runtime.AOs
 
-class ObjectLiteralNode(val properties: List<Property>) : AstNodeBase() {
+class ObjectLiteralNode(val properties: List<Property>, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
     override val children get() = properties
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-sealed class Property : AstNodeBase()
+sealed class Property(sourceLocation: SourceLocation) : AstNodeBase(sourceLocation)
 
-class KeyValueProperty(val key: PropertyName, val value: AstNode) : Property() {
+class KeyValueProperty(
+    val key: PropertyName,
+    val value: AstNode,
+    sourceLocation: SourceLocation,
+) : Property(sourceLocation) {
     override val children get() = listOf(key, value)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class ShorthandProperty(val key: IdentifierReferenceNode) : Property() {
+class ShorthandProperty(val key: IdentifierReferenceNode, sourceLocation: SourceLocation) : Property(sourceLocation) {
     override val children get() = listOf(key)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class MethodProperty(val method: MethodDefinitionNode) : Property() {
+class MethodProperty(val method: MethodDefinitionNode) : Property(method.sourceLocation) {
     override val children get() = listOf(method)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class SpreadProperty(val target: AstNode) : Property() {
+class SpreadProperty(val target: AstNode, sourceLocation: SourceLocation) : Property(sourceLocation) {
     override val children get() = listOf(target)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class PropertyName(val expression: AstNode, val type: Type) : AstNodeBase() {
+class PropertyName(
+    val expression: AstNode,
+    val type: Type,
+    sourceLocation: SourceLocation,
+) : AstNodeBase(sourceLocation) {
     override val children get() = listOf(expression)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -62,8 +71,9 @@ class MethodDefinitionNode(
     val propName: PropertyName,
     val parameters: ParameterList,
     val body: BlockNode,
-    val kind: Kind
-) : NodeWithScope() {
+    val kind: Kind,
+    sourceLocation: SourceLocation,
+) : NodeWithScope(sourceLocation) {
     override val children get() = listOf(propName, parameters, body)
 
     // May be equal to body.scope if parameters.isSimple() == true

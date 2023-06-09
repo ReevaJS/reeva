@@ -1,13 +1,15 @@
 package com.reevajs.reeva.ast.expressions
 
 import com.reevajs.reeva.ast.*
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 
-sealed class OptionalChain(val isOptional: Boolean) : AstNodeBase()
+sealed class OptionalChain(sourceLocation: SourceLocation, val isOptional: Boolean) : AstNodeBase(sourceLocation)
 
 class OptionalCallChain(
     val arguments: List<ArgumentNode>,
     isOptional: Boolean,
-) : OptionalChain(isOptional) {
+    sourceLocation: SourceLocation,
+) : OptionalChain(sourceLocation, isOptional) {
     override val children get() = arguments
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -16,7 +18,8 @@ class OptionalCallChain(
 class OptionalComputedAccessChain(
     val expr: AstNode,
     isOptional: Boolean,
-) : OptionalChain(isOptional) {
+    sourceLocation: SourceLocation,
+) : OptionalChain(sourceLocation, isOptional) {
     override val children get() = listOf(expr)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -25,7 +28,8 @@ class OptionalComputedAccessChain(
 class OptionalAccessChain(
     val identifier: IdentifierNode,
     isOptional: Boolean,
-) : OptionalChain(isOptional) {
+    sourceLocation: SourceLocation,
+) : OptionalChain(sourceLocation, isOptional) {
     override val children get() = listOf(identifier)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -33,8 +37,9 @@ class OptionalAccessChain(
 
 class OptionalChainNode(
     val base: AstNode,
-    val parts: List<OptionalChain>
-) : AstNodeBase() {
+    val parts: List<OptionalChain>,
+    sourceLocation: SourceLocation,
+) : AstNodeBase(sourceLocation) {
     override val children get() = parts + base
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

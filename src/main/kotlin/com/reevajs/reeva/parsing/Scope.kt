@@ -1,7 +1,9 @@
 package com.reevajs.reeva.parsing
 
 import com.reevajs.reeva.ast.*
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.transformer.Transformer
+import com.reevajs.reeva.utils.unreachable
 
 open class Scope(
     val outer: Scope? = null,
@@ -190,9 +192,10 @@ open class HoistingScope(
     override fun finish() {
         if (argumentsMode != ArgumentsMode.None) {
             if (needsArgumentsObject()) {
-                argumentsSource = object : VariableSourceNode() {
+                argumentsSource = object : VariableSourceNode(SourceLocation.EMPTY) {
                     override val children get() = emptyList<AstNode>()
                     override fun name() = "arguments"
+                    override fun accept(visitor: AstVisitor) = unreachable()
                 }
                 argumentsSource.mode = VariableMode.Declared
                 argumentsSource.type = VariableType.Var
