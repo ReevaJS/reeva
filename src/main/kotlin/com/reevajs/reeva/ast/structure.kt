@@ -129,25 +129,10 @@ abstract class VariableRefNode(sourceLocation: SourceLocation) : NodeWithScope(s
 abstract class VariableSourceNode(sourceLocation: SourceLocation) : NodeWithScope(sourceLocation) {
     open var hoistedScope: Scope by ::scope
 
-    var isInlineable = true
-
-    lateinit var key: VariableKey
-
     lateinit var type: VariableType
     lateinit var mode: VariableMode
 
     abstract fun name(): String
-}
-
-// Represents the way a variable is stored during execution
-sealed interface VariableKey {
-    // The variable is stored directly in the interpreter's locals list, and
-    // accessed directly by the given index
-    class InlineIndex(val index: Int) : VariableKey
-
-    // The variable is stored in a non-optimized DeclarativeEnvRecord and
-    // accessed by its name
-    object Named : VariableKey
 }
 
 // Variable not declared by the user, created at scope resolution time.

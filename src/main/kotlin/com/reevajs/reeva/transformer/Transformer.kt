@@ -26,8 +26,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         expect(!::builder.isInitialized, "Cannot reuse a Transformer")
 
         val rootNode = parsedSource.node
-
-        builder = IRBuilder(RESERVED_LOCALS_COUNT, rootNode.scope.inlineableLocalCount, rootNode.scope.isStrict)
+        builder = IRBuilder(RESERVED_LOCALS_COUNT, 0, rootNode.scope.isStrict)
 
         globalDeclarationInstantiation(rootNode.scope.outerGlobalScope as HoistingScope, isEval) {
             rootNode.children.forEach { it.accept(this) }
@@ -55,15 +54,13 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
     private fun enterScope(scope: Scope) {
         currentScope = scope
-
-        if (scope.requiresEnv())
-            +PushDeclarativeEnvRecord
+        +PushDeclarativeEnvRecord
     }
 
     private fun exitScope(scope: Scope) {
         currentScope = scope.outer
 
-        if (scope.requiresEnv() && !builder.activeBlockIsTerminated())
+        if (!builder.activeBlockIsTerminated())
             +PopEnvRecord
     }
 
@@ -192,7 +189,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
         val receiver = functionScope.receiverVariable
 
-        if (receiver != null && !receiver.isInlineable) {
+        if (receiver != null) {
             +LoadValue(RECEIVER_LOCAL)
             storeToSource(receiver)
         }
@@ -214,7 +211,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                         storeToSource(param)
                         +Jump(continuationBlock)
                         builder.enterBlock(continuationBlock)
-                    } else if (!param.isInlineable) {
+                    } else {
                         +LoadValue(local)
                         storeToSource(param)
                     }
@@ -377,18 +374,12 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             return
         }
 
-        val key = source.key
+        val distance = currentScope!!.envDistanceFrom(source.scope)
+        val name = source.name()
 
-        if (key is VariableKey.InlineIndex) {
-            +LoadValue(Local(key.index))
-        } else {
-            val distance = currentScope!!.envDistanceFrom(source.scope)
-            val name = source.name()
-
-            if (distance == 0) {
-                +LoadCurrentEnvName(name)
-            } else +LoadEnvName(name, distance)
-        }
+        if (distance == 0) {
+            +LoadCurrentEnvName(name)
+        } else +LoadEnvName(name, distance)
     }
 
     private fun storeToSource(source: VariableSourceNode) {
@@ -405,18 +396,12 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             return
         }
 
-        val key = source.key
+        val distance = currentScope!!.envDistanceFrom(source.scope)
+        val name = source.name()
 
-        if (key is VariableKey.InlineIndex) {
-            +StoreValue(Local(key.index))
-        } else {
-            val distance = currentScope!!.envDistanceFrom(source.scope)
-            val name = source.name()
-
-            if (distance == 0) {
-                +StoreCurrentEnvName(name)
-            } else +StoreEnvName(name, distance)
-        }
+        if (distance == 0) {
+            +StoreCurrentEnvName(name)
+        } else +StoreEnvName(name, distance)
     }
 
     override fun visit(node: ExpressionStatementNode) {
@@ -1315,8 +1300,6 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
     override fun visit(node: IdentifierReferenceNode) {
         loadFromSource(node.source)
-        if (node.source.isInlineable)
-            return
 
         if (node.source.mode == VariableMode.Global || node.source.type == VariableType.Var)
             return
@@ -1559,7 +1542,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
         // If the function is inlineable, that means there are no recursive references inside it,
         // meaning that we don't need to worry about storing it in the EnvRecord
-        if (node.identifier != null && !node.isInlineable) {
+        if (node.identifier != null) {
             +Dup
             storeToSource(node)
         }

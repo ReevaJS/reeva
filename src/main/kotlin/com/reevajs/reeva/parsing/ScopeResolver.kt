@@ -13,7 +13,6 @@ import com.reevajs.reeva.utils.unreachable
 
 class ScopeResolver : DefaultAstVisitor() {
     private lateinit var scope: Scope
-    private var allowVarInlining = true
 
     fun resolve(node: NodeWithScope) {
         val globalScope = GlobalScope()
@@ -46,7 +45,7 @@ class ScopeResolver : DefaultAstVisitor() {
 
     private fun visitBlock(node: BlockNode, pushScope: Boolean) {
         if (pushScope)
-            scope = Scope(scope, allowVarInlining)
+            scope = Scope(scope)
 
         node.scope = scope
         node.statements.forEach { it.accept(this) }
@@ -56,10 +55,6 @@ class ScopeResolver : DefaultAstVisitor() {
     }
 
     override fun visit(node: Import) {
-        // Import vars never take a local slot, as they are always accessed by
-        // name with LoadModuleVar
-        node.isInlineable = false
-
         scope.addVariableSource(node)
         node.type = VariableType.Let
         node.mode = VariableMode.Import
@@ -283,9 +278,7 @@ class ScopeResolver : DefaultAstVisitor() {
         kind: AOs.FunctionKind,
         isLexical: Boolean,
     ): Scope {
-        val prevAllowVarInlining = allowVarInlining
-        allowVarInlining = kind == AOs.FunctionKind.Normal
-        val functionScope = HoistingScope(scope, isLexical, allowVarInlining)
+        val functionScope = HoistingScope(scope, isLexical)
         scope = functionScope
 
         if (body is BlockNode && body.hasUseStrict)
@@ -319,7 +312,7 @@ class ScopeResolver : DefaultAstVisitor() {
         val bodyScope = if (body is BlockNode && !parameters.isSimple()) {
             // The body scope shouldn't be a target for the receiver or new.target
             // sources
-            HoistingScope(scope, isLexical = true, allowVarInlining).also {
+            HoistingScope(scope, isLexical = true).also {
                 scope = it
             }
         } else functionScope
@@ -348,8 +341,6 @@ class ScopeResolver : DefaultAstVisitor() {
             bodyScope.isStrict || !hasSimpleParams -> HoistingScope.ArgumentsMode.Unmapped
             else -> HoistingScope.ArgumentsMode.Mapped
         }
-
-        allowVarInlining = prevAllowVarInlining
 
         return functionScope
     }
@@ -384,7 +375,7 @@ class ScopeResolver : DefaultAstVisitor() {
         if (catchNode != null) {
             val parameter = catchNode.parameter
             if (parameter != null) {
-                scope = Scope(scope, allowVarInlining)
+                scope = Scope(scope)
                 visitBindingDeclarationOrPattern(parameter.declaration, VariableMode.Declared, VariableType.Let)
                 visitBlock(catchNode.block, pushScope = false)
                 scope = scope.outer!!
@@ -401,7 +392,7 @@ class ScopeResolver : DefaultAstVisitor() {
         val needInitScope = initializer is VariableDeclarationNode || initializer is LexicalDeclarationNode
 
         if (needInitScope) {
-            scope = Scope(scope, allowVarInlining)
+            scope = Scope(scope)
             node.initializerScope = scope
         }
 
@@ -440,7 +431,7 @@ class ScopeResolver : DefaultAstVisitor() {
 
         val needsDeclScope = decl is VariableDeclarationNode || decl is LexicalDeclarationNode || body is BlockNode
         if (needsDeclScope) {
-            scope = Scope(scope, allowVarInlining)
+            scope = Scope(scope)
             node.initializerScope = scope
         }
 

@@ -5,10 +5,7 @@ import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.transformer.Transformer
 import com.reevajs.reeva.utils.unreachable
 
-open class Scope(
-    val outer: Scope? = null,
-    var allowVarInlining: Boolean = true,
-) {
+open class Scope(val outer: Scope? = null) {
     val outerHoistingScope = outerScopeOfType<HoistingScope>()
     val outerGlobalScope = outerScopeOfType<GlobalScope>()
 
@@ -22,11 +19,7 @@ open class Scope(
     val isStrict: Boolean
         get() = isIntrinsicallyStrict || (outer?.isStrict ?: false)
 
-    protected open var nextInlineableLocal: Int
-        get() = outer!!.nextInlineableLocal
-        set(value) { outer!!.nextInlineableLocal = value }
-
-    val inlineableLocalCount: Int get() = nextInlineableLocal
+    open val inlineableLocalCount = 0
 
     var isTaintedByEval = false
         private set
@@ -36,16 +29,10 @@ open class Scope(
         outer?.childScopes?.add(this)
     }
 
-    open fun requiresEnv() = variableSources.any { !it.isInlineable }
-
     fun addVariableSource(source: VariableSourceNode) {
         source.scope = this
         variableSources.add(source)
-
         connectPendingReferences(source)
-
-        if (!allowVarInlining)
-            source.isInlineable = false
     }
 
     fun addVariableReference(reference: VariableRefNode) {
@@ -54,8 +41,6 @@ open class Scope(
         val sourceVariable = findSourceVariable(reference.name())
         if (sourceVariable != null) {
             reference.source = sourceVariable
-            if (sourceVariable.scope.outerHoistingScope != outerHoistingScope)
-                sourceVariable.isInlineable = false
         } else {
             reference.source = GlobalSourceNode(reference.name()).apply {
                 scope = this@Scope
@@ -78,37 +63,20 @@ open class Scope(
         var scope = this
         var i = 0
         while (scope != ancestorScope) {
-            if (scope.requiresEnv())
-                i++
+            i++
             scope = scope.outer!!
         }
         return i
     }
 
     fun markEvalScope() {
-        allowVarInlining = false
         isTaintedByEval = true
-
-        for (source in variableSources)
-            source.isInlineable = false
-
         outer?.markEvalScope()
     }
 
     open fun finish() {
-        allocateLocals()
         pendingVariableReferences.clear()
         childScopes.forEach { it.finish() }
-    }
-
-    protected open fun allocateLocals() {
-        variableSources.forEach {
-            it.key = when {
-                isTaintedByEval -> VariableKey.Named
-                it.isInlineable -> VariableKey.InlineIndex(nextInlineableLocal++)
-                else -> VariableKey.Named
-            }
-        }
     }
 
     private inline fun <reified T> outerScopeOfType(): T {
@@ -120,11 +88,8 @@ open class Scope(
 
     protected fun connectPendingReferences(source: VariableSourceNode) {
         for (reference in pendingVariableReferences) {
-            if (reference.name() == source.name()) {
+            if (reference.name() == source.name())
                 reference.source = source
-                if (source.scope.outerHoistingScope != outerHoistingScope)
-                    source.isInlineable = false
-            }
         }
 
         childScopes.forEach { it.connectPendingReferences(source) }
@@ -140,15 +105,9 @@ open class Scope(
     }
 }
 
-open class HoistingScope(
-    outer: Scope? = null,
-    val isLexical: Boolean = false,
-    allowVarInlining: Boolean = true,
-) : Scope(outer, allowVarInlining) {
+open class HoistingScope(outer: Scope? = null, val isLexical: Boolean = false) : Scope(outer) {
     var isDerivedClassConstructor = false
-    private val reservedLocals = Transformer.RESERVED_LOCALS_COUNT
-
-    override var nextInlineableLocal = reservedLocals
+    override var inlineableLocalCount = Transformer.RESERVED_LOCALS_COUNT
 
     // Variables that are only "effectively" declared in this scope, such
     // as var declarations in a nested block
@@ -159,8 +118,6 @@ open class HoistingScope(
     var argumentsMode = ArgumentsMode.None
     lateinit var argumentsSource: VariableSourceNode
 
-    override fun requiresEnv() = super.requiresEnv() || receiverVariable?.isInlineable == false
-
     fun addHoistedVariable(source: VariableSourceNode) {
         if (source.scope == this)
             return
@@ -170,7 +127,6 @@ open class HoistingScope(
     }
 
     fun addReceiverReference(node: VariableRefNode) {
-        val declaredScope = node.scope
         val receiverScope = getReceiverOrNewTargetScope()
 
         if (receiverScope.receiverVariable == null) {
@@ -184,9 +140,6 @@ open class HoistingScope(
 
         val sourceVariable = receiverScope.receiverVariable!!
         node.source = sourceVariable
-
-        if (receiverScope != declaredScope)
-            receiverScope.receiverVariable!!.isInlineable = false
     }
 
     override fun finish() {
@@ -206,6 +159,8 @@ open class HoistingScope(
             }
         }
 
+        inlineableLocalCount += variableSources.filter { it.mode == VariableMode.Parameter }.size
+
         super.finish()
     }
 
@@ -217,37 +172,6 @@ open class HoistingScope(
             return true
 
         return scope.childScopes.filter { it !is HoistingScope }.any(::needsArgumentsObject)
-    }
-
-    override fun allocateLocals() {
-        val parameters = variableSources.filter { it.mode == VariableMode.Parameter }
-        val locals = variableSources.filter { it.mode != VariableMode.Parameter }
-
-        nextInlineableLocal = reservedLocals + parameters.size
-
-        if (receiverVariable != null) {
-            receiverVariable!!.key = when {
-                isTaintedByEval -> VariableKey.Named
-                receiverVariable!!.isInlineable -> VariableKey.InlineIndex(0)
-                else -> VariableKey.Named
-            }
-        }
-
-        parameters.forEachIndexed { index, source ->
-            source.key = when {
-                isTaintedByEval -> VariableKey.Named
-                source.isInlineable -> VariableKey.InlineIndex(reservedLocals + index)
-                else -> VariableKey.Named
-            }
-        }
-
-        locals.forEach {
-            it.key = when {
-                isTaintedByEval || it.mode != VariableMode.Declared -> VariableKey.Named
-                it.isInlineable -> VariableKey.InlineIndex(nextInlineableLocal++)
-                else -> VariableKey.Named
-            }
-        }
     }
 
     enum class ArgumentsMode {
