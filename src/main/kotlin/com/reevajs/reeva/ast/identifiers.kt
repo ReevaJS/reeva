@@ -41,6 +41,8 @@ class IdentifierReferenceNode(val identifierNode: IdentifierNode) : VariableRefN
 
     override val isInvalidAssignmentTarget = false
 
+    fun refersToFunctionArguments() = rawName == "arguments" && source.mode == VariableMode.Global
+
     override fun name() = processedName
 
     override fun dump(indent: Int) = buildString {

@@ -199,3 +199,31 @@ abstract class DefaultAstVisitor : AstVisitor {
     override fun visit(node: CatchParameter) = visitNode(node)
     override fun visit(node: SwitchClause) = visitNode(node)
 }
+
+fun AstVisitor(block: (AstNode) -> Unit) = object : DefaultAstVisitor() {
+    override fun visitNode(node: AstNode) {
+        block(node)
+        super.visitNode(node)
+    }
+}
+
+abstract class ClosureSkippingAstVisitor : DefaultAstVisitor() {
+    override fun visit(node: FunctionDeclarationNode) {
+        node.identifier?.let(::visitNode)
+        visitNode(node.parameters)
+    }
+
+    override fun visit(node: FunctionExpressionNode) {
+        node.identifier?.let(::visitNode)
+        visitNode(node.parameters)
+    }
+
+    override fun visit(node: ArrowFunctionNode) {
+        visitNode(node.parameters)
+    }
+
+    override fun visit(node: MethodDefinitionNode) {
+        visitNode(node.propName)
+        visitNode(node.parameters)
+    }
+}

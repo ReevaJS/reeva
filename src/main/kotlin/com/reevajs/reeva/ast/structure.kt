@@ -85,37 +85,32 @@ interface AstNode {
     }
 }
 
-fun <T : Any> childrenOfTypeHelper(node: AstNode, clazz: KClass<T>, list: MutableList<T>) {
-    node.children.forEach {
-        if (it::class == clazz) {
-            @Suppress("UNCHECKED_CAST")
-            list.add(it as T)
-        }
-        childrenOfTypeHelper(it, clazz, list)
-    }
+inline fun <reified T : AstNode> AstNode.childrenOfType(): List<T> {
+    val nodes = mutableListOf<T>()
+
+    accept(AstVisitor {
+        if (it is T)
+            nodes.add(it)
+    })
+
+    return nodes
 }
 
-inline fun <reified T : Any> AstNode.childrenOfType(): List<T> {
-    return mutableListOf<T>().also { childrenOfTypeHelper(this, T::class, it) }
-}
-
-inline fun <reified T : Any> AstNode.containsAny() = childrenOfType<T>().isNotEmpty()
+inline fun <reified T : AstNode> AstNode.containsAny() = childrenOfType<T>().isNotEmpty()
 
 fun AstNode.containsArguments(): Boolean {
-    val idents = childrenOfType<IdentifierReferenceNode>()
-    if (idents.any { it.rawName == "arguments" })
-        return true
+    // Use an exception to abort the search early if we've found a matching reference
+    class FoundArgumentsException : Throwable()
 
-    for (node in children) {
-        when (node) {
-            is FunctionDeclarationNode -> return false
-            is MethodDefinitionNode -> if (node.propName.containsArguments()) {
-                return true
+    try {
+        accept(object : ClosureSkippingAstVisitor() {
+            override fun visit(node: IdentifierReferenceNode) {
+                if (node.refersToFunctionArguments())
+                    throw FoundArgumentsException()
             }
-            else -> if (node.containsArguments()) {
-                return true
-            }
-        }
+        })
+    } catch (e: FoundArgumentsException) {
+        return true
     }
 
     return false
