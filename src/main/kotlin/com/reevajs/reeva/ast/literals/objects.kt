@@ -7,13 +7,13 @@ import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.runtime.AOs
 
-class ObjectLiteralNode(val properties: List<Property>, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class ObjectLiteralNode(val properties: List<Property>, override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = properties
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-sealed class Property(sourceLocation: SourceLocation) : AstNodeBase(sourceLocation)
+sealed class Property(override val sourceLocation: SourceLocation) : AstNode
 
 class KeyValueProperty(
     val key: PropertyName,
@@ -46,8 +46,8 @@ class SpreadProperty(val target: AstNode, sourceLocation: SourceLocation) : Prop
 class PropertyName(
     val expression: AstNode,
     val type: Type,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = listOf(expression)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

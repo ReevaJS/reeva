@@ -9,7 +9,7 @@ import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.utils.duplicates
 
-class ParameterList(val parameters: List<Parameter>, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class ParameterList(val parameters: List<Parameter>, override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = parameters
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -39,8 +39,8 @@ class ParameterList(val parameters: List<Parameter>, sourceLocation: SourceLocat
 class ArgumentNode(
     val expression: AstNode,
     val isSpread: Boolean,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = listOf(expression)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -75,8 +75,8 @@ class SimpleParameter(
 
 class RestParameter(
     val declaration: BindingDeclarationOrPattern,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation), Parameter {
+    override val sourceLocation: SourceLocation,
+) : AstNode, Parameter {
     override val children get() = listOf(declaration)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -87,8 +87,8 @@ class RestParameter(
 class BindingParameter(
     val pattern: BindingPatternNode,
     val initializer: AstNode?,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation), Parameter {
+    override val sourceLocation: SourceLocation,
+) : AstNode, Parameter {
     override val children get() = listOfNotNull(pattern, initializer)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

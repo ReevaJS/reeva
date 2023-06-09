@@ -1,7 +1,6 @@
 package com.reevajs.reeva.ast.expressions
 
 import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
-import com.reevajs.reeva.ast.AstNodeBase
 import com.reevajs.reeva.ast.ArgumentNode
 import com.reevajs.reeva.ast.AstNode
 import com.reevajs.reeva.ast.AstVisitor
@@ -12,8 +11,8 @@ class AssignmentExpressionNode(
     val lhs: AstNode,
     val rhs: AstNode,
     val op: BinaryOperator?, // Null indicates regular assignment
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = listOf(lhs, rhs)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -29,7 +28,7 @@ class AssignmentExpressionNode(
     }
 }
 
-class AwaitExpressionNode(val expression: AstNode, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class AwaitExpressionNode(val expression: AstNode, override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = listOf(expression)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -40,8 +39,8 @@ class CallExpressionNode(
     val target: AstNode,
     val arguments: List<ArgumentNode>,
     val isOptional: Boolean,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = arguments + target
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -53,8 +52,8 @@ class CallExpressionNode(
 // the last one should be returned.
 class CommaExpressionNode(
     val expressions: List<AstNode>,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = expressions
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -64,8 +63,8 @@ class ConditionalExpressionNode(
     val predicate: AstNode,
     val ifTrue: AstNode,
     val ifFalse: AstNode,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = listOf(predicate, ifTrue, ifFalse)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -75,8 +74,8 @@ class MemberExpressionNode(
     val lhs: AstNode,
     val rhs: AstNode,
     val type: Type,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = listOf(lhs, rhs)
 
     override val isInvalidAssignmentTarget = false
@@ -103,8 +102,8 @@ class MemberExpressionNode(
 class NewExpressionNode(
     val target: AstNode,
     val arguments: List<ArgumentNode>,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = arguments + target
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -113,8 +112,8 @@ class NewExpressionNode(
 class SuperPropertyExpressionNode(
     val target: AstNode,
     val isComputed: Boolean,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = listOf(target)
 
     override val isInvalidAssignmentTarget: Boolean = false
@@ -133,14 +132,14 @@ class SuperPropertyExpressionNode(
 
 class SuperCallExpressionNode(
     val arguments: List<ArgumentNode>,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = arguments
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class ImportCallExpressionNode(val expression: AstNode, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class ImportCallExpressionNode(val expression: AstNode, override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = listOf(expression)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -149,8 +148,8 @@ class ImportCallExpressionNode(val expression: AstNode, sourceLocation: SourceLo
 class YieldExpressionNode(
     val expression: AstNode?,
     val generatorYield: Boolean,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = listOfNotNull(expression)
 
     init {
@@ -172,14 +171,14 @@ class YieldExpressionNode(
 
 class ParenthesizedExpressionNode(
     val expression: AstNode,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = listOf(expression)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class TemplateLiteralNode(val parts: List<AstNode>, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class TemplateLiteralNode(val parts: List<AstNode>, override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = parts
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -189,8 +188,8 @@ class RegExpLiteralNode(
     val source: String,
     val flags: String,
     val regexp: RegExp,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

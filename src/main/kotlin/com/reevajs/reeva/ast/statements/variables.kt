@@ -20,8 +20,8 @@ sealed interface Declaration : VariableSourceProvider {
 class LexicalDeclarationNode(
     val isConst: Boolean,
     override val declarations: List<Declaration>,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation), DeclarationNode {
+    override val sourceLocation: SourceLocation,
+) : AstNode, DeclarationNode {
     override val children get() = declarations
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -29,8 +29,8 @@ class LexicalDeclarationNode(
 
 class VariableDeclarationNode(
     override val declarations: List<Declaration>,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation), DeclarationNode {
+    override val sourceLocation: SourceLocation,
+) : AstNode, DeclarationNode {
     override val children get() = declarations
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -39,8 +39,8 @@ class VariableDeclarationNode(
 class DestructuringDeclaration(
     val pattern: BindingPatternNode,
     override val initializer: AstNode?,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation), Declaration {
+    override val sourceLocation: SourceLocation,
+) : AstNode, Declaration {
     override val children get() = listOfNotNull(pattern, initializer)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

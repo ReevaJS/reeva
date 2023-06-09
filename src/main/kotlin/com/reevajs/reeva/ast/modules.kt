@@ -125,8 +125,8 @@ class ModuleNode(val body: List<AstNode>, sourceLocation: SourceLocation) : Root
 class ImportNode(
     val imports: List<Import>,
     val moduleName: String,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = imports
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -190,7 +190,7 @@ sealed class Import(sourceLocation: SourceLocation) : VariableSourceNode(sourceL
     }
 }
 
-class ExportNode(val exports: List<Export>, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class ExportNode(val exports: List<Export>, override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = exports
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -201,7 +201,7 @@ class ExportNode(val exports: List<Export>, sourceLocation: SourceLocation) : As
     constructor(export: Export, sourceLocation: SourceLocation) : this(listOf(export), sourceLocation)
 }
 
-sealed class Export(sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+sealed class Export(override val sourceLocation: SourceLocation) : AstNode {
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     abstract fun makeEntries(): List<ExportEntry>

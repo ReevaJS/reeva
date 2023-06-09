@@ -2,7 +2,6 @@ package com.reevajs.reeva.ast.expressions
 
 import com.reevajs.reeva.ast.AstNode
 import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
-import com.reevajs.reeva.ast.AstNodeBase
 import com.reevajs.reeva.ast.AstVisitor
 import com.reevajs.reeva.parsing.lexer.SourceLocation
 
@@ -10,8 +9,8 @@ class BinaryExpressionNode(
     val lhs: AstNode,
     val rhs: AstNode,
     val operator: BinaryOperator,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = listOf(lhs, rhs)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

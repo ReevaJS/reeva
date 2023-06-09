@@ -85,8 +85,6 @@ interface AstNode {
     }
 }
 
-abstract class AstNodeBase(override val sourceLocation: SourceLocation) : AstNode
-
 fun <T : Any> childrenOfTypeHelper(node: AstNode, clazz: KClass<T>, list: MutableList<T>) {
     node.children.forEach {
         if (it::class == clazz) {
@@ -123,7 +121,7 @@ fun AstNode.containsArguments(): Boolean {
     return false
 }
 
-abstract class NodeWithScope(sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+abstract class NodeWithScope(override val sourceLocation: SourceLocation) : AstNode {
     lateinit var scope: Scope
 }
 

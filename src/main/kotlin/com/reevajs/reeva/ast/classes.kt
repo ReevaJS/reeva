@@ -25,8 +25,8 @@ class ClassDeclarationNode(
 class ClassExpressionNode(
     val identifier: IdentifierNode?, // can always be omitted
     val classNode: ClassNode,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = listOfNotNull(identifier, classNode)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -42,7 +42,7 @@ class ClassNode(
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-sealed class ClassElementNode(sourceLocation: SourceLocation, val isStatic: Boolean) : AstNodeBase(sourceLocation)
+sealed class ClassElementNode(override val sourceLocation: SourceLocation, val isStatic: Boolean) : AstNode
 
 class ClassFieldNode(
     val identifier: PropertyName,

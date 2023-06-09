@@ -3,7 +3,7 @@ package com.reevajs.reeva.ast.expressions
 import com.reevajs.reeva.ast.*
 import com.reevajs.reeva.parsing.lexer.SourceLocation
 
-sealed class OptionalChain(sourceLocation: SourceLocation, val isOptional: Boolean) : AstNodeBase(sourceLocation)
+sealed class OptionalChain(override val sourceLocation: SourceLocation, val isOptional: Boolean) : AstNode
 
 class OptionalCallChain(
     val arguments: List<ArgumentNode>,
@@ -38,8 +38,8 @@ class OptionalAccessChain(
 class OptionalChainNode(
     val base: AstNode,
     val parts: List<OptionalChain>,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = parts + base
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

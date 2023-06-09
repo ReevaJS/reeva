@@ -9,7 +9,7 @@ interface Labellable {
     val labels: MutableSet<String>
 }
 
-abstract class LabellableBase(sourceLocation: SourceLocation) : AstNodeBase(sourceLocation), Labellable {
+abstract class LabellableBase(override val sourceLocation: SourceLocation) : AstNode, Labellable {
     override val labels: MutableSet<String> = mutableSetOf()
 }
 
@@ -29,13 +29,14 @@ class BlockNode(
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class EmptyStatementNode(sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class EmptyStatementNode(override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class ExpressionStatementNode(val node: AstNode) : AstNodeBase(node.sourceLocation) {
+class ExpressionStatementNode(val node: AstNode) : AstNode {
+    override val sourceLocation get() = node.sourceLocation
     override val children get() = listOf(node)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -75,8 +76,8 @@ class WhileStatementNode(
 class WithStatementNode(
     val expression: AstNode,
     val body: AstNode,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = listOf(expression, body)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -174,7 +175,7 @@ class ForAwaitOfNode(
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class ThrowStatementNode(val expr: AstNode, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class ThrowStatementNode(val expr: AstNode, override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = listOf(expr)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -206,31 +207,32 @@ class CatchNode(
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class CatchParameter(val declaration: BindingDeclarationOrPattern) : AstNodeBase(declaration.sourceLocation) {
+class CatchParameter(val declaration: BindingDeclarationOrPattern) : AstNode {
+    override val sourceLocation get() = declaration.sourceLocation
     override val children get() = listOf(declaration)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class BreakStatementNode(val label: String?, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class BreakStatementNode(val label: String?, override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class ContinueStatementNode(val label: String?, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class ContinueStatementNode(val label: String?, override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class ReturnStatementNode(val expression: AstNode?, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class ReturnStatementNode(val expression: AstNode?, override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = listOfNotNull(expression)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
-class DebuggerStatementNode(sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class DebuggerStatementNode(override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

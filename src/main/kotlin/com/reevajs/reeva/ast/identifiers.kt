@@ -11,8 +11,8 @@ import com.reevajs.reeva.parsing.lexer.SourceLocation
 class IdentifierNode(
     val processedName: String,
     val rawName: String = processedName,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

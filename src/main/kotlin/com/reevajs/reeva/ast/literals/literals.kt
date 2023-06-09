@@ -2,15 +2,14 @@ package com.reevajs.reeva.ast.literals
 
 import com.reevajs.reeva.ast.AstNode
 import com.reevajs.reeva.ast.AstNode.Companion.appendIndent
-import com.reevajs.reeva.ast.AstNodeBase
 import com.reevajs.reeva.ast.AstVisitor
 import com.reevajs.reeva.ast.VariableRefNode
 import com.reevajs.reeva.parsing.lexer.SourceLocation
 
 sealed class BooleanLiteralNode(
     val value: Boolean,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -28,7 +27,7 @@ class TrueNode(sourceLocation: SourceLocation) : BooleanLiteralNode(true, source
 
 class FalseNode(sourceLocation: SourceLocation) : BooleanLiteralNode(false, sourceLocation)
 
-class StringLiteralNode(val value: String, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class StringLiteralNode(val value: String, override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -42,7 +41,7 @@ class StringLiteralNode(val value: String, sourceLocation: SourceLocation) : Ast
     }
 }
 
-class NumericLiteralNode(val value: Double, sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class NumericLiteralNode(val value: Double, override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -59,8 +58,8 @@ class NumericLiteralNode(val value: Double, sourceLocation: SourceLocation) : As
 class BigIntLiteralNode(
     val value: String,
     val type: Type,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation) {
+    override val sourceLocation: SourceLocation,
+) : AstNode {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -81,7 +80,7 @@ class BigIntLiteralNode(
     }
 }
 
-class NullLiteralNode(sourceLocation: SourceLocation) : AstNodeBase(sourceLocation) {
+class NullLiteralNode(override val sourceLocation: SourceLocation) : AstNode {
     override val children get() = emptyList<AstNode>()
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)

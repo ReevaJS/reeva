@@ -9,8 +9,8 @@ import com.reevajs.reeva.utils.expect
 class BindingPatternNode(
     val kind: BindingKind,
     private val entries: List<BindingEntry>,
-    sourceLocation: SourceLocation,
-) : AstNodeBase(sourceLocation), VariableSourceProvider {
+    override val sourceLocation: SourceLocation,
+) : AstNode, VariableSourceProvider {
     override val children get() = entries
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -48,7 +48,8 @@ class BindingDeclaration(val identifier: IdentifierNode) : VariableSourceNode(id
     override fun name() = identifier.processedName
 }
 
-class BindingDeclarationOrPattern(val node: AstNode) : AstNodeBase(node.sourceLocation), VariableSourceProvider {
+class BindingDeclarationOrPattern(val node: AstNode) : AstNode, VariableSourceProvider {
+    override val sourceLocation get() = node.sourceLocation
     override val children get() = listOf(node)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
@@ -70,7 +71,7 @@ class BindingDeclarationOrPattern(val node: AstNode) : AstNodeBase(node.sourceLo
     }
 }
 
-sealed class BindingEntry(sourceLocation: SourceLocation) : AstNodeBase(sourceLocation), VariableSourceProvider
+sealed class BindingEntry(override val sourceLocation: SourceLocation) : AstNode, VariableSourceProvider
 
 sealed class BindingProperty(sourceLocation: SourceLocation) : BindingEntry(sourceLocation), VariableSourceProvider
 
@@ -111,9 +112,7 @@ class ComputedBindingProperty(
     override fun sources() = alias.sources()
 }
 
-sealed class BindingElement(
-    sourceLocation: SourceLocation,
-) : BindingEntry(sourceLocation), VariableSourceProvider
+sealed class BindingElement(sourceLocation: SourceLocation) : BindingEntry(sourceLocation), VariableSourceProvider
 
 class BindingRestElement(
     val declaration: BindingDeclarationOrPattern,
