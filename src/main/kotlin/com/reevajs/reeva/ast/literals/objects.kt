@@ -69,22 +69,26 @@ class PropertyName(
 
 class MethodDefinitionNode(
     val propName: PropertyName,
-    val parameters: ParameterList,
-    val body: BlockNode,
-    val kind: Kind,
+    override val parameters: ParameterList,
+    override val body: BlockNode,
+    val methodKind: Kind,
     sourceLocation: SourceLocation,
-) : NodeWithScope(sourceLocation) {
+) : NodeWithScope(sourceLocation), GenericFunctionNode {
     override val children get() = listOf(propName, parameters, body)
 
+    override val kind = methodKind.toFunctionKind()
+
     // May be equal to body.scope if parameters.isSimple() == true
-    lateinit var functionScope: Scope
+    override lateinit var functionScope: Scope
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
+
+    override fun name() = propName.asString()
 
     fun isConstructor(): Boolean {
         return propName.type == PropertyName.Type.Identifier && propName.expression.let {
             (it as IdentifierNode).processedName == "constructor"
-        } && kind == Kind.Normal
+        } && methodKind == Kind.Normal
     }
 
     fun containsSuperCall() = parameters.parameters.any { it.containsAny<SuperCallExpressionNode>() } ||

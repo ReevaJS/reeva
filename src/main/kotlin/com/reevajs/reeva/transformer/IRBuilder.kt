@@ -32,7 +32,16 @@ data class IR(
     val nestedFunctions: List<FunctionInfo>,
 )
 
-class IRBuilder(val argCount: Int, additionalReservedLocals: Int, val strict: Boolean) {
+data class VarName(val name: String, val isFunc: Boolean)
+data class LexName(val name: String, val isConst: Boolean)
+
+// Used for global/functionDeclarationInstantiation
+data class IRScope(
+    val varNames: List<VarName>,
+    val lexNames: List<LexName>,
+)
+
+class IRBuilder(val argCount: Int, additionalReservedLocals: Int, private val strict: Boolean) {
     private val locals = mutableListOf<LocalKind>()
     private val nestedFunctions = mutableListOf<FunctionInfo>()
     private val blocks = mutableMapOf<BlockIndex, BasicBlock>()

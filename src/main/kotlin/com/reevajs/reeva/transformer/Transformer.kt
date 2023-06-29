@@ -9,7 +9,6 @@ import com.reevajs.reeva.parsing.HoistingScope
 import com.reevajs.reeva.parsing.ParsedSource
 import com.reevajs.reeva.parsing.Scope
 import com.reevajs.reeva.parsing.lexer.SourceLocation
-import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.transformer.opcodes.*
 import com.reevajs.reeva.utils.expect
@@ -64,137 +63,90 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             +PopEnvRecord
     }
 
+    private fun buildIRScope(scope: Scope): IRScope {
+        val sources = scope.variableSources.filter { it.mode != VariableMode.Import }.toMutableList()
+        if (scope is HoistingScope)
+            sources.addAll(scope.hoistedVariables)
+
+        val (varSources, lexSources) = sources.partition { it.type == VariableType.Var }
+
+        return IRScope(
+            varSources.map { VarName(it.name(), it is FunctionDeclarationNode) },
+            lexSources.map { LexName(it.name(), it.type == VariableType.Const) },
+        )
+    }
+
     private fun globalDeclarationInstantiation(scope: HoistingScope, isEval: Boolean, block: () -> Unit) {
-        enterScope(scope)
+        currentScope = scope
 
-        val variables = scope.variableSources.filter { it.mode != VariableMode.Import }
+        val irScope = buildIRScope(scope)
+        +GlobalDeclarationInstantiation(irScope)
 
-        val varVariables = variables.filter { it.type == VariableType.Var }
-        val lexVariables = variables.filter { it.type != VariableType.Var }
+        val functions = scope.variableSources
+            .filterIsInstance<FunctionDeclarationNode>()
+            .asReversed()
+            .distinctBy { it.name() }
+            .asReversed()
 
-        val varNames = varVariables.map { it.name() }
-        val lexNames = lexVariables.map { it.name() to (it.type == VariableType.Const) }
-
-        val functionNames = mutableListOf<String>()
-        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
-
-        for (decl in varVariables.asReversed()) {
-            if (decl !is FunctionDeclarationNode)
-                continue
-
-            val name = decl.name()
-            if (name in functionNames)
-                continue
-
-            functionNames.add(0, name)
-
-            // We only care about top-level functions. Functions in nested block
-            // scopes get initialized in BlockDeclarationInstantiation
-            if (decl !in scope.hoistedVariables)
-                functionsToInitialize.add(0, decl)
-        }
-
-        val declaredVarNames = mutableListOf<String>()
-
-        for (decl in varVariables) {
-            if (decl is FunctionDeclarationNode)
-                continue
-
-            val name = decl.name()
-            if (name in functionNames || name in declaredVarNames)
-                continue
-
-            declaredVarNames.add(name)
-        }
-
-        if (declaredVarNames.isNotEmpty() || lexNames.isNotEmpty())
-            +DeclareGlobalVars(declaredVarNames, lexNames, isEval)
-
-        for (func in functionsToInitialize) {
-            visitFunctionHelper(
-                func.identifier!!.processedName,
-                func.parameters,
-                func.body,
-                func.functionScope,
-                func.body.scope,
-                func.body.scope.isStrict,
-                isArrow = false,
-                func.kind,
-            )
-
-            +DeclareGlobalFunc(func.identifier.processedName)
+        for (function in functions) {
+            functionDeclarationInstantiation(function)
+            +DeclareGlobalFunc(function.identifier!!.processedName)
         }
 
         block()
-
-        exitScope(scope)
     }
 
-    private fun visitFunctionHelper(
-        name: String,
-        parameters: ParameterList,
-        body: AstNode,
-        functionScope: Scope,
-        bodyScope: Scope,
-        isStrict: Boolean,
-        isArrow: Boolean,
-        kind: AOs.FunctionKind,
+    private fun functionDeclarationInstantiation(
+        func: GenericFunctionNode,
+        name: String = func.name(),
+        instantiate: Boolean = true,
         classConstructorKind: JSFunction.ConstructorKind? = null,
-        instantiateFunction: Boolean = true,
     ): FunctionInfo {
+        val functionScope = func.functionScope
+        val body = func.body
+        val bodyScope = (body as? NodeWithScope)?.scope ?: functionScope
+        require(functionScope is HoistingScope)
+
+        val strict = functionScope.isStrict
+        val hasParameterExpressions = func.parameters.containsExpressions()
+
+        val (varSources, lexSources) = functionScope.variableSources.partition { it.type == VariableType.Var }
+        val varNames = varSources.filter { it !is GenericFunctionNode }.mapTo(mutableSetOf()) { it.name() }
+        val funcNames = varSources.filter { it is GenericFunctionNode }.mapTo(mutableSetOf()) { it.name() }
+        val lexNames = lexSources.mapTo(mutableSetOf()) { it.name() }
+
+        val parameterNames = func.parameters.boundNames()
+
+        val argumentsObjectNeeded = when {
+            func is ArrowFunctionNode -> false
+            "arguments" in parameterNames -> false
+            !hasParameterExpressions -> "arguments" !in funcNames && "arguments" !in lexNames
+            else -> true
+        }
+
+        val argumentsMode = if (argumentsObjectNeeded) {
+            if (functionScope.isStrict || !func.parameters.isSimple()) {
+                HoistingScope.ArgumentsMode.Unmapped
+            } else HoistingScope.ArgumentsMode.Mapped
+        } else HoistingScope.ArgumentsMode.None
+
+        val parameterBindings = if (argumentsMode != HoistingScope.ArgumentsMode.None) {
+            parameterNames + "arguments"
+        } else parameterNames
+
         val prevBuilder = builder
         builder = IRBuilder(
-            parameters.parameters.size + RESERVED_LOCALS_COUNT,
+            parameterNames.size + RESERVED_LOCALS_COUNT,
             functionScope.inlineableLocalCount,
-            isStrict,
+            strict,
         )
-
-        expect(functionScope is HoistingScope)
-        expect(bodyScope is HoistingScope)
-
-        val variables = bodyScope.variableSources
-        val varVariables = variables.filter { it.type == VariableType.Var }
-        val functionNames = mutableListOf<String>()
-        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
-
-        for (decl in varVariables.asReversed()) {
-            if (decl !is FunctionDeclarationNode || decl.name() in functionNames)
-                continue
-
-            functionNames.add(0, decl.name())
-
-            // We only care about top-level functions. Functions in nested block
-            // scopes get initialized in BlockDeclarationInstantiation
-            if (decl !in bodyScope.hoistedVariables)
-                functionsToInitialize.add(0, decl)
-        }
-
-        if (parameters.containsDuplicates())
-            TODO("Handle duplicate parameter names")
-
         enterScope(functionScope)
 
-        when (functionScope.argumentsMode) {
-            HoistingScope.ArgumentsMode.None -> {
-            }
-            HoistingScope.ArgumentsMode.Unmapped -> {
-                +CreateUnmappedArgumentsObject
-                storeToSource(functionScope.argumentsSource)
-            }
-            HoistingScope.ArgumentsMode.Mapped -> {
-                +CreateMappedArgumentsObject
-                storeToSource(functionScope.argumentsSource)
-            }
-        }
+        if (parameterNames.isNotEmpty())
+            +InitializeFunctionParameters(parameterNames, argumentsMode)
 
-        val receiver = functionScope.receiverVariable
-
-        if (receiver != null) {
-            +LoadValue(RECEIVER_LOCAL)
-            storeToSource(receiver)
-        }
-
-        parameters.parameters.forEachIndexed { index, param ->
+        // Assign parameter values
+        func.parameters.parameters.forEachIndexed { index, param ->
             val local = Local(RESERVED_LOCALS_COUNT + index)
 
             when (param) {
@@ -239,31 +191,64 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             }
         }
 
-        for (func in functionsToInitialize) {
-            visitFunctionHelper(
-                func.identifier!!.processedName,
-                func.parameters,
-                func.body,
-                func.functionScope,
-                func.body.scope,
-                isStrict,
-                isArrow = false,
-                func.kind,
-            )
-
-            storeToSource(func)
-        }
-
-        if (bodyScope != functionScope)
+        if (bodyScope !== functionScope)
             enterScope(bodyScope)
 
-        // body's scope is the same as the function's scope (the scope we receive
-        // as a parameter). We don't want to re-enter the same scope, so we explicitly
-        // call visitAstListNode instead, which skips the {enter,exit}Scope calls.
+        // Initialize var bindings
+        val funcVarBindings = mutableListOf<VarBinding>()
+
+        if (!hasParameterExpressions) {
+            val instantiatedVarNames = parameterBindings.toMutableSet()
+            for (varName in varNames) {
+                if (varName !in instantiatedVarNames) {
+                    instantiatedVarNames.add(varName)
+                    funcVarBindings.add(VarBinding(varName, false))
+                }
+            }
+        } else {
+            val instantiatedVarNames = mutableSetOf<String>()
+            for (varName in varNames) {
+                if (varName !in instantiatedVarNames) {
+                    instantiatedVarNames.add(varName)
+                    val initializeWithValue = varName in parameterBindings && varName !in funcNames
+                    funcVarBindings.add(VarBinding(varName, initializeWithValue))
+                }
+            }
+        }
+
+        if (funcVarBindings.isNotEmpty())
+            +InitializeFunctionVarBindings(funcVarBindings)
+
+        // Initialize lex bindings
+        val lexBindings = mutableListOf<LexBinding>()
+
+        for (lexSource in lexSources)
+            lexBindings.add(LexBinding(lexSource.name(), lexSource.type == VariableType.Const))
+
+        if (lexBindings.isNotEmpty())
+            +InitializeLexBindings(lexBindings)
+
+        val functionsToInitialize = mutableListOf<FunctionDeclarationNode>()
+        val functionNames = mutableSetOf<String>()
+        for (varSource in varSources.asReversed()) {
+            if (varSource !is FunctionDeclarationNode || varSource.name() in functionNames)
+                continue
+
+            functionNames.add(varSource.name())
+
+            if (varSource !in functionScope.hoistedVariables)
+                functionsToInitialize.add(0, varSource)
+        }
+
+        for (function in functionsToInitialize) {
+            functionDeclarationInstantiation(function)
+            storeToSource(function)
+        }
+
         if (body is BlockNode) {
             body.statements.forEach { it.accept(this) }
         } else {
-            expect(isArrow)
+            expect(func is ArrowFunctionNode)
             body.accept(this)
             +Return
         }
@@ -280,33 +265,34 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             +Return
         }
 
-        if (bodyScope != functionScope)
+        if (bodyScope !== functionScope)
             exitScope(bodyScope)
         exitScope(functionScope)
 
         val functionInfo = FunctionInfo(
             name,
             builder.build(),
-            isStrict,
-            parameters.expectedArgumentCount(),
+            functionScope.isStrict,
+            func.parameters.expectedArgumentCount(),
             isTopLevel = false,
-            isGenerator = kind.isGenerator,
-            isArrow = isArrow,
+            isGenerator = func.kind.isGenerator,
+            isArrow = func is ArrowFunctionNode,
         )
 
         builder = prevBuilder
 
-        if (instantiateFunction) {
+        if (instantiate) {
             when {
                 classConstructorKind != null -> +CreateMethod(functionInfo)
-                kind.isGenerator && kind.isAsync -> +CreateAsyncGeneratorClosure(functionInfo)
-                kind.isGenerator -> +CreateGeneratorClosure(functionInfo)
-                kind.isAsync -> +CreateAsyncClosure(functionInfo)
+                func.kind.isGenerator && func.kind.isAsync -> +CreateAsyncGeneratorClosure(functionInfo)
+                func.kind.isGenerator -> +CreateGeneratorClosure(functionInfo)
+                func.kind.isAsync -> +CreateAsyncClosure(functionInfo)
                 else -> +CreateClosure(functionInfo)
             }
         }
 
-        return functionInfo.also(builder::addNestedFunction)
+        builder.addNestedFunction(functionInfo)
+        return functionInfo
     }
 
     override fun visit(node: FunctionDeclarationNode) {
@@ -314,36 +300,35 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     }
 
     override fun visit(node: BlockNode) {
-        visitBlock(node, pushScope = true)
+        visitBlock(node)
     }
 
-    private fun visitBlock(node: BlockNode, pushScope: Boolean) {
-        if (pushScope)
-            enterScope(node.scope)
+    private fun visitBlock(node: BlockNode, preEvaluationCallback: () -> Unit = {}) {
+        enterScope(node.scope)
 
         try {
             val continuationBlock = if (node.labels.isNotEmpty()) {
-                val continuationBlock = builder.makeBlock("IlockContinuation")
+                val continuationBlock = builder.makeBlock("BlockContinuation")
                 enterControlFlowScope(node.labels, continuationBlock, null)
                 continuationBlock
             } else null
 
-            // BlockScopeInstantiation
-            node.scope.variableSources.filterIsInstance<FunctionDeclarationNode>().forEach {
-                visitFunctionHelper(
-                    it.name(),
-                    it.parameters,
-                    it.body,
-                    it.functionScope,
-                    it.body.scope,
-                    it.body.scope.isStrict,
-                    isArrow = false,
-                    it.kind,
-                )
+            // BlockDeclarationInstantiation
+            val lexDecls = node.scope.variableSources.filter { it.type != VariableType.Var }
+            val funcDecls = node.scope.variableSources.filterIsInstance<GenericFunctionNode>()
+            val lexBindings = mutableListOf<LexBinding>()
 
-                storeToSource(it)
+            for (decl in lexDecls)
+                lexBindings.add(LexBinding(decl.name(), decl.type == VariableType.Const))
+
+            +InitializeLexBindings(lexBindings)
+
+            for (decl in funcDecls) {
+                functionDeclarationInstantiation(decl)
+                storeToSource(decl as VariableSourceNode)
             }
 
+            preEvaluationCallback()
             node.statements.forEach { it.accept(this) }
 
             if (continuationBlock != null) {
@@ -352,8 +337,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                 builder.enterBlock(continuationBlock)
             }
         } finally {
-            if (pushScope)
-                exitScope(node.scope)
+            exitScope(node.scope)
         }
     }
 
@@ -390,7 +374,11 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                 } else return
             } else {
                 expect(source.type == VariableType.Var)
-                +StoreGlobal(source.name())
+                if (source is GenericFunctionNode) {
+                    +DeclareGlobalFunc(source.name())
+                } else {
+                    +StoreGlobal(source.name())
+                }
             }
 
             return
@@ -399,9 +387,13 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         val distance = currentScope!!.envDistanceFrom(source.scope)
         val name = source.name()
 
-        if (distance == 0) {
-            +StoreCurrentEnvName(name)
-        } else +StoreEnvName(name, distance)
+        if (source.type != VariableType.Var) {
+            +InitializeEnvName(name, distance)
+        } else {
+            if (distance == 0) {
+                +StoreCurrentEnvName(name)
+            } else +StoreEnvName(name, distance)
+        }
     }
 
     override fun visit(node: ExpressionStatementNode) {
@@ -1442,19 +1434,13 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
         builder.enterBlock(catchBlock)
 
-        // We need to push the scope before we assign the catch parameter
-        enterScope(node.catchNode.block.scope)
-
-        // Handle the exception, which has been inserted onto the stack
-        if (node.catchNode.parameter == null) {
-            +Pop
-        } else {
-            assign(node.catchNode.parameter.declaration.node)
+        visitBlock(node.catchNode.block) {
+            if (node.catchNode.parameter == null) {
+                +Pop
+            } else {
+                assign(node.catchNode.parameter.declaration.node)
+            }
         }
-
-        // Avoid pushing the scope twice
-        visitBlock(node.catchNode.block, pushScope = false)
-        exitScope(node.catchNode.block.scope)
 
         +Jump(continuationBlock)
         builder.enterBlock(continuationBlock)
@@ -1529,16 +1515,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     }
 
     override fun visit(node: FunctionExpressionNode) {
-        visitFunctionHelper(
-            node.identifier?.processedName ?: "<anonymous>:${node.sourceLocation.start.line + 1}",
-            node.parameters,
-            node.body,
-            node.functionScope,
-            node.body.scope,
-            node.functionScope.isStrict,
-            isArrow = false,
-            node.kind,
-        )
+        functionDeclarationInstantiation(node, name = node.identifier?.processedName ?: "")
 
         // If the function is inlineable, that means there are no recursive references inside it,
         // meaning that we don't need to worry about storing it in the EnvRecord
@@ -1549,16 +1526,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     }
 
     override fun visit(node: ArrowFunctionNode) {
-        visitFunctionHelper(
-            "<anonymous>",
-            node.parameters,
-            node.body,
-            node.functionScope,
-            if (node.body is BlockNode) node.body.scope else node.functionScope,
-            node.functionScope.isStrict,
-            isArrow = true,
-            node.kind,
-        )
+        functionDeclarationInstantiation(node)
     }
 
     override fun visit(node: ClassDeclarationNode) {
@@ -1601,16 +1569,11 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
         if (constructor != null) {
             val method = constructor!!.method
+            require(method.methodKind == MethodDefinitionNode.Kind.Normal)
 
-            visitFunctionHelper(
-                name ?: "<anonymous class constructor>",
-                method.parameters,
-                method.body,
-                method.functionScope,
-                method.body.scope,
-                isStrict = true,
-                isArrow = false,
-                AOs.FunctionKind.Normal,
+            functionDeclarationInstantiation(
+                method,
+                name = name ?: "<anonymous class constructor>",
                 classConstructorKind = constructorKind,
             )
         } else {
@@ -1641,26 +1604,20 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             val propName = method.propName
             val isComputed = propName.type == PropertyName.Type.Computed
 
-            val functionInfo = visitFunctionHelper(
-                propName.asString(),
-                method.parameters,
-                method.body,
-                method.functionScope,
-                method.body.scope,
-                isStrict = true,
-                isArrow = false,
-                method.kind.toFunctionKind(),
-                constructorKind,
-                instantiateFunction = false,
+            val functionInfo = functionDeclarationInstantiation(
+                method,
+                name = propName.asString(),
+                classConstructorKind = constructorKind,
+                instantiate = false,
             )
 
             // If the name is computed, that comes before the method register
             if (isComputed) {
                 // TODO: Cast to property name
                 propName.expression.accept(this)
-                +AttachComputedClassMethod(classMethod.isStatic, method.kind, functionInfo)
+                +AttachComputedClassMethod(classMethod.isStatic, method.methodKind, functionInfo)
             } else {
-                +AttachClassMethod(propName.asString(), classMethod.isStatic, method.kind, functionInfo)
+                +AttachClassMethod(propName.asString(), classMethod.isStatic, method.methodKind, functionInfo)
             }
         }
 
@@ -1963,7 +1920,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                             null,
                             method.parameters,
                             method.body,
-                            method.kind.toFunctionKind(),
+                            method.methodKind.toFunctionKind(),
                             SourceLocation.EMPTY,
                         )
 
@@ -1972,7 +1929,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                         functionNode.accept(this)
                     }
 
-                    when (method.kind) {
+                    when (method.methodKind) {
                         MethodDefinitionNode.Kind.Normal,
                         MethodDefinitionNode.Kind.Generator,
                         MethodDefinitionNode.Kind.Async,
@@ -1984,7 +1941,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                         MethodDefinitionNode.Kind.Getter, MethodDefinitionNode.Kind.Setter -> {
                             method.propName.accept(this)
                             makeFunction()
-                            if (method.kind == MethodDefinitionNode.Kind.Getter) {
+                            if (method.methodKind == MethodDefinitionNode.Kind.Getter) {
                                 +DefineGetterProperty
                             } else +DefineSetterProperty
                         }

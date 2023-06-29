@@ -6,6 +6,7 @@ import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.core.errors.ThrowException
+import com.reevajs.reeva.parsing.HoistingScope
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.collections.JSUnmappedArgumentsObject
@@ -601,50 +602,201 @@ class Interpreter(
         )
     }
 
-    override fun visitDeclareGlobalVars(opcode: DeclareGlobalVars) {
+    // https://tc39.es/ecma262/#sec-globaldeclarationinstantiation
+    override fun visitGlobalDeclarationInstantiation(opcode: GlobalDeclarationInstantiation) {
         val env = realm.globalEnv
 
-        for ((name, _) in opcode.lexs) {
+        // 1. Let lexNames be the LexicallyDeclaredNames of script.
+        val lexNames = opcode.scope.lexNames
+
+        // 2. Let varNames be the VarDeclaredNames of script.
+        val varNames = opcode.scope.varNames
+
+        // 3. For each element name of lexNames, do
+        for ((name, _) in lexNames) {
+            // a. If env.HasVarDeclaration(name) is true, throw a SyntaxError exception.
             if (env.hasVarDeclaration(name))
                 Errors.InvalidGlobalVar(name).throwSyntaxError(realm)
 
+            // b. If env.HasLexicalDeclaration(name) is true, throw a SyntaxError exception.
             if (env.hasLexicalDeclaration(name))
                 Errors.InvalidGlobalVar(name).throwSyntaxError(realm)
 
+            // c. Let hasRestrictedGlobal be ? env.HasRestrictedGlobalProperty(name).
+            // d. If hasRestrictedGlobal is true, throw a SyntaxError exception.
             if (env.hasRestrictedGlobalProperty(name))
                 Errors.RestrictedGlobalPropertyName(name).throwSyntaxError(realm)
         }
 
-        for (name in opcode.vars) {
+        // 4. For each element name of varNames, do
+        for ((name, _) in varNames) {
+            // a. If env.HasLexicalDeclaration(name) is true, throw a SyntaxError exception.
             if (env.hasLexicalDeclaration(name))
                 Errors.InvalidGlobalVar(name).throwSyntaxError(realm)
         }
 
-        for ((name, _) in opcode.lexs) {
-            if (!realm.globalEnv.canDeclareGlobalVar(name))
-                Errors.RestrictedGlobalPropertyName(name).throwSyntaxError(realm)
-        }
+        // 5. Let varDeclarations be the VarScopedDeclarations of script.
+        // 6. Let functionsToInitialize be a new empty List.
 
-        for ((name, isConstant) in opcode.lexs) {
-            if (isConstant) {
-                env.createImmutableBinding(name, true)
-            } else {
-                env.createMutableBinding(name, false)
+        // 7. Let declaredFunctionNames be a new empty List.
+        val declaredFunctionNames = mutableSetOf<String>()
+
+        // NOTE: For the following steps, we omit the binding creations for functions, as those will
+        //       follow this opcode
+
+        // 8. For each element d of varDeclarations, in reverse List order, do
+        for ((name, isFunc) in varNames) {
+            // a. If d is not either a VariableDeclaration, a ForBinding, or a BindingIdentifier, then
+            if (isFunc) {
+                // i. Assert: d is either a FunctionDeclaration, a GeneratorDeclaration, an AsyncFunctionDeclaration, or an AsyncGeneratorDeclaration.
+                // ii. NOTE: If there are multiple function declarations for the same name, the last declaration is used.
+                // iii. Let fn be the sole element of the BoundNames of d.
+                // iv. If declaredFunctionNames does not contain fn, then
+                if (name !in declaredFunctionNames) {
+                    // 1. Let fnDefinable be ? env.CanDeclareGlobalFunction(fn).
+                    // 2. If fnDefinable is false, throw a TypeError exception.
+                    if (!env.canDeclareGlobalFunction(name))
+                        Errors.InvalidGlobalFunction(name).throwSyntaxError(realm)
+
+                    // 3. Append fn to declaredFunctionNames.
+                    declaredFunctionNames.add(name)
+
+                    // 4. Insert d as the first element of functionsToInitialize.
+                }
             }
         }
 
-        for (name in opcode.vars)
-            env.createGlobalVarBinding(name, false)
+        // 9. Let declaredVarNames be a new empty List.
+        val declaredVarNames = mutableSetOf<String>()
+
+        // 10. For each element d of varDeclarations, do
+        for ((name, isFunc) in varNames) {
+            // a. If d is either a VariableDeclaration, a ForBinding, or a BindingIdentifier, then
+            if (!isFunc) {
+                // i. For each String vn of the BoundNames of d, do
+                // NOTE: Each BoundName of the variable will be a separate entry in the IRScope
+
+                // 1. If declaredFunctionNames does not contain vn, then
+                if (name !in declaredFunctionNames) {
+                    // a. Let vnDefinable be ? env.CanDeclareGlobalVar(vn).
+                    // b. If vnDefinable is false, throw a TypeError exception.
+                    if (!env.canDeclareGlobalVar(name))
+                        Errors.InvalidGlobalVar(name).throwSyntaxError(realm)
+
+                    // c. If declaredVarNames does not contain vn, then
+                    //    i. Append vn to declaredVarNames.
+                    declaredVarNames.add(name)
+                }
+            }
+        }
+
+        // 11. NOTE: No abnormal terminations occur after this algorithm step if the global object is an ordinary
+        //           object. However, if the global object is a Proxy exotic object it may exhibit behaviours that cause
+        //           abnormal terminations in some of the following steps.
+        // 12. NOTE: Annex B.3.2.2 adds additional steps at this point.
+
+        // 13. Let lexDeclarations be the LexicallyScopedDeclarations of script.
+        // 14. Let privateEnv be null.
+
+        // 15. For each element d of lexDeclarations, do
+        for ((name, isConst) in lexNames) {
+            // a. NOTE: Lexically declared names are only instantiated here but not initialized.
+
+            // b. For each element dn of the BoundNames of d, do
+            // NOTE: Each BoundName of the variable will be a separate entry in the IRScope
+
+            // i. If IsConstantDeclaration of d is true, then
+            if (isConst) {
+                // 1. Perform ? env.CreateImmutableBinding(dn, true).
+                env.createImmutableBinding(name, isStrict = true)
+            }
+            // ii. Else,
+            else {
+                // 1. Perform ? env.CreateMutableBinding(dn, false).
+                env.createMutableBinding(name, deletable = false)
+            }
+        }
+
+        // NOTE: See visitDeclareGlobalFunc for step 16
+
+        // 17. For each String vn of declaredVarNames, do
+        for (name in declaredVarNames) {
+            // a. Perform ? env.CreateGlobalVarBinding(vn, false).
+            env.createGlobalVarBinding(name, deletable = false)
+        }
+
+        // 18. Return unused.
     }
 
+    // https://tc39.es/ecma262/#sec-functiondeclarationinstantiation
     override fun visitDeclareGlobalFunc(opcode: DeclareGlobalFunc) {
         val env = realm.globalEnv
 
-        if (!env.canDeclareGlobalFunction(opcode.name))
-            Errors.InvalidGlobalFunction(opcode.name).throwSyntaxError(realm)
+        // Snippet from GlobalDeclarationInstantiation:
+        // 16. For each Parse Node f of functionsToInitialize, do
+        // NOTE: We only handle one function here
 
-        val func = popValue()
-        env.createGlobalFunctionBinding(opcode.name, func, deletable = false)
+        // a. Let fn be the sole element of the BoundNames of f.
+        val fn = opcode.name
+
+        // b. Let fo be InstantiateFunctionObject of f with arguments env and privateEnv.
+        val fo = popValue()
+
+        // c. Perform ? env.CreateGlobalFunctionBinding(fn, fo, false).
+        env.createGlobalFunctionBinding(fn, fo, deletable = false)
+    }
+
+    override fun visitInitializeFunctionParameters(opcode: InitializeFunctionParameters) {
+        val env = agent.runningExecutionContext.envRecord!!
+        val hasDuplicates = opcode.parameterNames.duplicates().size != opcode.parameterNames.size
+
+        for (paramName in opcode.parameterNames) {
+            if (!env.hasBinding(paramName)) {
+                env.createMutableBinding(paramName, deletable = false)
+                if (hasDuplicates)
+                    env.initializeBinding(paramName, JSUndefined)
+            }
+        }
+
+        val ao = when (opcode.argumentsMode) {
+            HoistingScope.ArgumentsMode.None -> return
+            HoistingScope.ArgumentsMode.Unmapped -> createUnmappedArgumentsObject()
+            HoistingScope.ArgumentsMode.Mapped -> createUnmappedArgumentsObject() // TODO: Mapped arguments objects
+        }
+
+        if (info.isStrict) {
+            env.createImmutableBinding("arguments", isStrict = false)
+        } else {
+            env.createMutableBinding("arguments", deletable = false)
+        }
+
+        env.initializeBinding("arguments", ao)
+    }
+
+    override fun visitInitializeFunctionVarBindings(opcode: InitializeFunctionVarBindings) {
+        val env = agent.runningExecutionContext.envRecord!!
+
+        for ((name, initializeWithValue) in opcode.varBindings) {
+            env.createMutableBinding(name, deletable = false)
+
+            if (initializeWithValue) {
+                env.initializeBinding(name, env.getBindingValue(name, isStrict = false))
+            } else {
+                env.initializeBinding(name, JSUndefined)
+            }
+        }
+    }
+
+    override fun visitInitializeLexBindings(opcode: InitializeLexBindings) {
+        val env = agent.runningExecutionContext.envRecord!!
+
+        for ((name, isConst) in opcode.lexBindings) {
+            if (isConst) {
+                env.createImmutableBinding(name, isStrict = true)
+            } else {
+                env.createMutableBinding(name, deletable = false)
+            }
+        }
     }
 
     override fun visitPushDeclarativeEnvRecord(opcode: PushDeclarativeEnvRecord) {
@@ -690,6 +842,12 @@ class Interpreter(
         var env = agent.runningExecutionContext.envRecord!!
         repeat(opcode.distance) { env = env.outer!! }
         env.setMutableBinding(opcode.name, popValue(), info.isStrict)
+    }
+
+    override fun visitInitializeEnvName(opcode: InitializeEnvName) {
+        var env = agent.runningExecutionContext.envRecord!!
+        repeat(opcode.distance) { env = env.outer!! }
+        env.initializeBinding(opcode.name, popValue())
     }
 
     override fun visitJump(opcode: Jump) {
@@ -761,15 +919,15 @@ class Interpreter(
     }
 
     override fun visitCreateUnmappedArgumentsObject() {
-        push(createArgumentsObject())
+        push(createUnmappedArgumentsObject())
     }
 
     override fun visitCreateMappedArgumentsObject() {
         // TODO: Create a mapped arguments object
-        push(createArgumentsObject())
+        push(createUnmappedArgumentsObject())
     }
 
-    private fun createArgumentsObject(): JSObject {
+    private fun createUnmappedArgumentsObject(): JSObject {
         val arguments = this.arguments.drop(Transformer.RESERVED_LOCALS_COUNT)
 
         val obj = JSUnmappedArgumentsObject.create()

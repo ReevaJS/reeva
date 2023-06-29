@@ -66,7 +66,10 @@ interface OpcodeVisitor {
             is CallWithDirectEvalCheck -> visitCallWithDirectEvalCheck(opcode)
             is Construct -> visitConstruct(opcode)
             ConstructArray -> visitConstructArray()
-            is DeclareGlobalVars -> visitDeclareGlobalVars(opcode)
+            is GlobalDeclarationInstantiation -> visitGlobalDeclarationInstantiation(opcode)
+            is InitializeFunctionParameters -> visitInitializeFunctionParameters(opcode)
+            is InitializeFunctionVarBindings -> visitInitializeFunctionVarBindings(opcode)
+            is InitializeLexBindings -> visitInitializeLexBindings(opcode)
             is DeclareGlobalFunc -> visitDeclareGlobalFunc(opcode)
             is PushDeclarativeEnvRecord -> visitPushDeclarativeEnvRecord(opcode)
             is PushModuleEnvRecord -> visitPushModuleEnvRecord()
@@ -77,6 +80,7 @@ interface OpcodeVisitor {
             is StoreCurrentEnvName -> visitStoreCurrentEnvName(opcode)
             is LoadEnvName -> visitLoadEnvName(opcode)
             is StoreEnvName -> visitStoreEnvName(opcode)
+            is InitializeEnvName -> visitInitializeEnvName(opcode)
             is Jump -> visitJump(opcode)
             is JumpIfTrue -> visitJumpIfTrue(opcode)
             is JumpIfToBooleanTrue -> visitJumpIfToBooleanTrue(opcode)
@@ -248,7 +252,13 @@ interface OpcodeVisitor {
 
     fun visitConstructArray()
 
-    fun visitDeclareGlobalVars(opcode: DeclareGlobalVars)
+    fun visitGlobalDeclarationInstantiation(opcode: GlobalDeclarationInstantiation)
+
+    fun visitInitializeFunctionParameters(opcode: InitializeFunctionParameters)
+
+    fun visitInitializeFunctionVarBindings(opcode: InitializeFunctionVarBindings)
+
+    fun visitInitializeLexBindings(opcode: InitializeLexBindings)
 
     fun visitDeclareGlobalFunc(opcode: DeclareGlobalFunc)
 
@@ -269,6 +279,8 @@ interface OpcodeVisitor {
     fun visitLoadEnvName(opcode: LoadEnvName)
 
     fun visitStoreEnvName(opcode: StoreEnvName)
+
+    fun visitInitializeEnvName(opcode: InitializeEnvName)
 
     fun visitJump(opcode: Jump)
 

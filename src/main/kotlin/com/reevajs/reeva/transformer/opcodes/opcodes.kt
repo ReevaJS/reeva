@@ -1,10 +1,9 @@
 package com.reevajs.reeva.transformer.opcodes
 
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
+import com.reevajs.reeva.parsing.HoistingScope
 import com.reevajs.reeva.runtime.AOs
-import com.reevajs.reeva.transformer.BlockIndex
-import com.reevajs.reeva.transformer.FunctionInfo
-import com.reevajs.reeva.transformer.Local
+import com.reevajs.reeva.transformer.*
 import com.reevajs.regexp.RegExp
 import java.math.BigInteger
 
@@ -448,14 +447,22 @@ object ConstructArray : Opcode(-2)
 // Environment //
 /////////////////
 
-/**
- * Declares global variables. This is required to prevent global variable
- * collision.
- */
-class DeclareGlobalVars(
-    val vars: List<String>,
-    val lexs: List<Pair<String, /* isConstant: */ Boolean>>,
-    val isEval: Boolean,
+class GlobalDeclarationInstantiation(val scope: IRScope) : Opcode(0)
+
+class InitializeFunctionParameters(
+    val parameterNames: List<String>,
+    val argumentsMode: HoistingScope.ArgumentsMode,
+) : Opcode(0)
+
+data class VarBinding(val name: String, val initializeWithValue: Boolean)
+data class LexBinding(val name: String, val isConst: Boolean)
+
+class InitializeFunctionVarBindings(
+    val varBindings: List<VarBinding>
+) : Opcode(0)
+
+class InitializeLexBindings(
+    val lexBindings: List<LexBinding>
 ) : Opcode(0)
 
 /**
@@ -516,6 +523,12 @@ class LoadEnvName(val name: String, val distance: Int) : Opcode(1)
  * EnvRecord (though [distance] will always be greater than zero).
  */
 class StoreEnvName(val name: String, val distance: Int) : Opcode(-1)
+
+/**
+ * Similar to [StoreEnvName], but initialize an immutable binding rather than
+ * reassigning a mutable binding.
+ */
+class InitializeEnvName(val name: String, val distance: Int) : Opcode(-1)
 
 /**
  * Loads a named variable from the outer ModuleEnvRecord.

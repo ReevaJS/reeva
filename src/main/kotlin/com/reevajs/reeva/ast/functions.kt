@@ -19,11 +19,14 @@ class ParameterList(val parameters: List<Parameter>, override val sourceLocation
         return parameters.all { it.isSimple }
     }
 
-    fun containsDuplicates(): Boolean {
-        return parameters.filterIsInstance<SimpleParameter>()
-            .map { it.identifier.processedName }
-            .duplicates()
-            .isNotEmpty()
+    fun containsExpressions() = parameters.any(Parameter::containsExpression)
+
+    fun boundNames() = parameters.flatMap {
+        when (it) {
+            is BindingParameter -> it.names()
+            is RestParameter -> it.names()
+            is SimpleParameter -> listOf(it.name())
+        }
     }
 
     fun expectedArgumentCount(): Int {
@@ -57,6 +60,7 @@ class ArgumentNode(
 
 sealed interface Parameter : AstNode {
     val isSimple: Boolean
+    val containsExpression: Boolean
 }
 
 class SimpleParameter(
@@ -66,49 +70,63 @@ class SimpleParameter(
 ) : VariableSourceNode(sourceLocation), Parameter {
     override val children get() = listOfNotNull(identifier, initializer)
 
-    override fun accept(visitor: AstVisitor) = visitor.visit(this)
-
     override val isSimple = initializer == null
+    override val containsExpression get() = initializer != null
 
     override fun name() = identifier.processedName
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class RestParameter(
     val declaration: BindingDeclarationOrPattern,
     override val sourceLocation: SourceLocation,
-) : AstNode, Parameter {
+) : AstNode, Parameter, VariableSourceProvider by declaration {
     override val children get() = listOf(declaration)
 
-    override fun accept(visitor: AstVisitor) = visitor.visit(this)
-
     override val isSimple = false
+    override val containsExpression get() = false
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }
 
 class BindingParameter(
     val pattern: BindingPatternNode,
     val initializer: AstNode?,
     override val sourceLocation: SourceLocation,
-) : AstNode, Parameter {
+) : AstNode, Parameter, VariableSourceProvider by pattern {
     override val children get() = listOfNotNull(pattern, initializer)
 
-    override fun accept(visitor: AstVisitor) = visitor.visit(this)
-
     override val isSimple = false
+    override val containsExpression get() = initializer != null
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
+}
+
+interface GenericFunctionNode {
+    val parameters: ParameterList
+    val body: AstNode
+    val kind: AOs.FunctionKind
+    val scope: Scope
+    var functionScope: Scope
+
+    fun isLexical() = false
+    fun name(): String
 }
 
 class FunctionDeclarationNode(
     val identifier: IdentifierNode?, // can be omitted in default exports
-    val parameters: ParameterList,
-    val body: BlockNode,
-    val kind: AOs.FunctionKind,
+    override val parameters: ParameterList,
+    override val body: BlockNode,
+    override val kind: AOs.FunctionKind,
     sourceLocation: SourceLocation,
-) : VariableSourceNode(sourceLocation), DeclarationNode, VariableSourceProvider {
+) : VariableSourceNode(sourceLocation), DeclarationNode, VariableSourceProvider, GenericFunctionNode {
     override val children get() = listOfNotNull(identifier, parameters, body)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     // May be equal to body.scope if parameters.isSimple() == true
-    lateinit var functionScope: Scope
+    override lateinit var functionScope: Scope
 
     override fun name() = identifier?.processedName ?: TODO()
 
@@ -119,17 +137,17 @@ class FunctionDeclarationNode(
 
 class FunctionExpressionNode(
     val identifier: IdentifierNode?,
-    val parameters: ParameterList,
-    val body: BlockNode,
-    val kind: AOs.FunctionKind,
+    override val parameters: ParameterList,
+    override val body: BlockNode,
+    override val kind: AOs.FunctionKind,
     sourceLocation: SourceLocation,
-) : VariableSourceNode(sourceLocation) {
+) : VariableSourceNode(sourceLocation), GenericFunctionNode {
     override val children get() = listOfNotNull(identifier, parameters, body)
 
     override fun accept(visitor: AstVisitor) = visitor.visit(this)
 
     // May be equal to body.scope if parameters.isSimple() == true
-    lateinit var functionScope: Scope
+    override lateinit var functionScope: Scope
 
     // This expression node only functions as a VariableSourceNode if it has an
     // identifier. If not, then this function will never be called
@@ -137,15 +155,19 @@ class FunctionExpressionNode(
 }
 
 class ArrowFunctionNode(
-    val parameters: ParameterList,
-    val body: AstNode, // BlockNode or ExpressionNode
-    val kind: AOs.FunctionKind,
+    override val parameters: ParameterList,
+    override val body: AstNode, // BlockNode or ExpressionNode
+    override val kind: AOs.FunctionKind,
     sourceLocation: SourceLocation,
-) : NodeWithScope(sourceLocation) {
+) : NodeWithScope(sourceLocation), GenericFunctionNode {
     override val children get() = listOf(parameters, body)
 
-    override fun accept(visitor: AstVisitor) = visitor.visit(this)
-
     // May be equal to body.scope if parameters.isSimple() == true
-    lateinit var functionScope: Scope
+    override lateinit var functionScope: Scope
+
+    override fun name() = ""
+
+    override fun isLexical() = true
+
+    override fun accept(visitor: AstVisitor) = visitor.visit(this)
 }

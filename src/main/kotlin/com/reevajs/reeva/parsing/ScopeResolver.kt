@@ -229,7 +229,7 @@ class ScopeResolver : DefaultAstVisitor() {
         node.functionScope = visitFunctionHelper(
             node.parameters,
             node.body,
-            node.kind.toFunctionKind(),
+            node.methodKind.toFunctionKind(),
             isLexical = false,
         )
     }

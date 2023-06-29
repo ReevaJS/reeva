@@ -57,23 +57,13 @@ object IRPrinter {
                 is CreateMethod -> println(" <FunctionInfo ${opcode.ir.name}>")
                 is CreateClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
                 is CreateGeneratorClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
-                is DeclareGlobalVars -> {
-                    print(" ")
-                    if (opcode.vars.isNotEmpty()) {
-                        print("var={")
-                        print(opcode.vars.joinToString(separator = " "))
-                        print("} ")
-                    }
-                    if (opcode.lexs.isNotEmpty()) {
-                        print("lex={")
-                        print(opcode.lexs.joinToString(separator = " "))
-                        print("} ")
-                    }
-                    println()
-                }
                 is DeclareGlobalFunc -> println(" ${opcode.name}")
+                is GlobalDeclarationInstantiation -> printScope(opcode.scope)
+                is InitializeFunctionVarBindings -> println(" ${opcode.varBindings.joinToString { it.name }}")
+                is InitializeLexBindings -> println(" ${opcode.lexBindings.joinToString { it.name }}")
                 is LoadNamedProperty -> println(" \"${opcode.name}\"")
                 is IncInt -> println(" [${opcode.local}]")
+                is InitializeEnvName -> println(" \"${opcode.name}\" #${opcode.distance}")
                 is LoadCurrentEnvName -> println(" \"${opcode.name}\"")
                 is LoadEnvName -> println(" \"${opcode.name}\" #${opcode.distance}")
                 is LoadGlobal -> println(" \"${opcode.name}\"")
@@ -112,5 +102,22 @@ object IRPrinter {
                 else -> println()
             }
         }
+    }
+
+    private fun printScope(scope: IRScope) {
+        val varStr = if (scope.varNames.isNotEmpty()) {
+            "vars=${scope.varNames.joinToString()}"
+        } else null
+
+        val (constNames, letNames) = scope.lexNames.partition { it.isConst }
+        val letStr = if (letNames.isNotEmpty()) {
+            "lets=${letNames.joinToString()}"
+        } else null
+
+        val constStr = if (constNames.isNotEmpty()) {
+            "consts=${constNames.joinToString()}"
+        } else null
+
+        println(" " + listOfNotNull(varStr, letStr, constStr).joinToString(" "))
     }
 }

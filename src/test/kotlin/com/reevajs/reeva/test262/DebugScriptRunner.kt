@@ -18,7 +18,7 @@ fun main() {
     Agent.build().withActiveScope {
         makeRealmAndInitializeExecutionEnvironment()
 
-        runTest262Helpers()
+        // runTest262Helpers()
 
         printAst = true
         printIR = true

@@ -80,7 +80,7 @@ open class DeclarativeEnvRecord(protected val realm: Realm, outer: EnvRecord?) :
 
         // 3. If the binding for N in envRec has not yet been initialized, throw a ReferenceError exception.
         if (binding.value == null)
-            Errors.TODO("DeclarativeEnvRecord::setMutableBinding 2").throwReferenceError(realm)
+            Errors.AccessBeforeInitialization(name).throwReferenceError(realm)
 
         // 4. Else if the binding for N in envRec is a mutable binding, change its bound value to V.
         if (!binding.isImmutable) {
@@ -91,7 +91,7 @@ open class DeclarativeEnvRecord(protected val realm: Realm, outer: EnvRecord?) :
             // a. Assert: This is an attempt to change the value of an immutable binding.
             // b. If S is true, throw a TypeError exception
             if (isStrict)
-                Errors.TODO("DeclarativeEnvRecord::setMutableBinding 3").throwReferenceError(realm)
+                Errors.AssignmentToConstant(name).throwReferenceError(realm)
         }
 
         // 6. Return unused.
@@ -104,9 +104,9 @@ open class DeclarativeEnvRecord(protected val realm: Realm, outer: EnvRecord?) :
         // 1. Assert: envRec has a binding for N.
         ecmaAssert(binding != null)
 
-        // 2. If the binding for N in envRec is an uninitialized binding, throw a Referenceerror exception.
+        // 2. If the binding for N in envRec is an uninitialized binding, throw a ReferenceError exception.
         if (binding.value == null)
-            Errors.TODO("DeclarativeEnvRecord::getBindingValue").throwReferenceError(realm)
+            Errors.AccessBeforeInitialization(name).throwReferenceError(realm)
 
         // 3. Return the value currently bound to N in envRec.
         return binding.value!!
