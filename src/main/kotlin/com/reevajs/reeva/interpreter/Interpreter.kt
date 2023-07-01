@@ -4,6 +4,7 @@ import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.core.Agent
 import com.reevajs.reeva.core.Realm
 import com.reevajs.reeva.core.environment.DeclarativeEnvRecord
+import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.parsing.HoistingScope
@@ -604,7 +605,8 @@ class Interpreter(
 
     // https://tc39.es/ecma262/#sec-globaldeclarationinstantiation
     override fun visitGlobalDeclarationInstantiation(opcode: GlobalDeclarationInstantiation) {
-        val env = realm.globalEnv
+        val env = agent.activeEnvRecord
+        require(env is GlobalEnvRecord)
 
         // 1. Let lexNames be the LexicallyDeclaredNames of script.
         val lexNames = opcode.scope.lexNames
@@ -728,9 +730,81 @@ class Interpreter(
         // 18. Return unused.
     }
 
+    override fun visitModuleEnvironmentInitialization(opcode: ModuleEnvironmentInitialization) {
+        val env = agent.activeEnvRecord
+        require(env is ModuleEnvRecord)
+
+        // NOTE: All previous steps are handled in SourceTextModuleRecord::initializeEnvironment()
+
+        // TODO: Why does it require a new execution context?
+        // 8. Let moduleContext be a new ECMAScript code execution context.
+        // 9. Set the Function of moduleContext to null.
+        // 10. Assert: module.[[Realm]] is not undefined.
+        // 11. Set the Realm of moduleContext to module.[[Realm]].
+        // 12. Set the ScriptOrModule of moduleContext to module.
+        // 13. Set the VariableEnvironment of moduleContext to module.[[Environment]].
+        // 14. Set the LexicalEnvironment of moduleContext to module.[[Environment]].
+        // 15. Set the PrivateEnvironment of moduleContext to null.
+        // 16. Set module.[[Context]] to moduleContext.
+        // 17. Push moduleContext onto the execution context stack; moduleContext is now the running execution context.
+
+        // 18. Let code be module.[[ECMAScriptCode]].
+
+        // 19. Let varDeclarations be the VarScopedDeclarations of code.
+        val varDeclarations = opcode.scope.varNames
+
+        // 20. Let declaredVarNames be a new empty List.
+        val declaredVarNames = mutableSetOf<String>()
+
+        // 21. For each element d of varDeclarations, do
+        //     a. For each element dn of the BoundNames of d, do
+        for ((name, _) in varDeclarations) {
+            // i. If declaredVarNames does not contain dn, then
+            if (name !in declaredVarNames) {
+                // 1. Perform ! env.CreateMutableBinding(dn, false).
+                env.createMutableBinding(name, deletable = false)
+
+                // 2. Perform ! env.InitializeBinding(dn, undefined).
+                env.initializeBinding(name, JSUndefined)
+
+                // 3. Append dn to declaredVarNames.
+                declaredVarNames.add(name)
+            }
+        }
+
+        // 22. Let lexDeclarations be the LexicallyScopedDeclarations of code.
+        val lexDeclarations = opcode.scope.lexNames
+
+        // 23. Let privateEnv be null.
+
+        // 24. For each element d of lexDeclarations, do
+        //     a. For each element dn of the BoundNames of d, do
+        for ((name, isConst) in lexDeclarations) {
+            // i. If IsConstantDeclaration of d is true, then
+            if (isConst) {
+                // 1. Perform ! env.CreateImmutableBinding(dn, true).
+                env.createImmutableBinding(name, isStrict = true)
+            }
+            // ii. Else,
+            else {
+                // 1. Perform ! env.CreateMutableBinding(dn, false).
+                env.createMutableBinding(name, deletable = false)
+            }
+
+            // iii. If d is either a FunctionDeclaration, a GeneratorDeclaration, an AsyncFunctionDeclaration, or an
+            //      AsyncGeneratorDeclaration, then
+            //      1. Let fo be InstantiateFunctionObject of d with arguments env and privateEnv.
+            //      2. Perform ! env.InitializeBinding(dn, fo).
+            // NOTE: This is handled by DeclareGlobalFunc
+        }
+        // 25. Remove moduleContext from the execution context stack.
+        // 26. Return unused.
+    }
+
     // https://tc39.es/ecma262/#sec-functiondeclarationinstantiation
     override fun visitDeclareGlobalFunc(opcode: DeclareGlobalFunc) {
-        val env = realm.globalEnv
+        val env = agent.activeEnvRecord
+        require(env is GlobalEnvRecord)
 
         // Snippet from GlobalDeclarationInstantiation:
         // 16. For each Parse Node f of functionsToInitialize, do
@@ -746,8 +820,15 @@ class Interpreter(
         env.createGlobalFunctionBinding(fn, fo, deletable = false)
     }
 
+    // https://tc39.es/ecma262/#sec-source-text-module-record-initialize-environment
+    override fun visitDeclareModuleFunc(opcode: DeclareModuleFunc) {
+        val env = agent.activeEnvRecord
+        require(env is ModuleEnvRecord)
+        env.initializeBinding(opcode.name, popValue())
+    }
+
     override fun visitInitializeFunctionParameters(opcode: InitializeFunctionParameters) {
-        val env = agent.runningExecutionContext.envRecord!!
+        val env = agent.activeEnvRecord
         val hasDuplicates = opcode.parameterNames.duplicates().size != opcode.parameterNames.size
 
         for (paramName in opcode.parameterNames) {
@@ -774,7 +855,7 @@ class Interpreter(
     }
 
     override fun visitInitializeFunctionVarBindings(opcode: InitializeFunctionVarBindings) {
-        val env = agent.runningExecutionContext.envRecord!!
+        val env = agent.activeEnvRecord
 
         for ((name, initializeWithValue) in opcode.varBindings) {
             env.createMutableBinding(name, deletable = false)
@@ -788,7 +869,7 @@ class Interpreter(
     }
 
     override fun visitInitializeLexBindings(opcode: InitializeLexBindings) {
-        val env = agent.runningExecutionContext.envRecord!!
+        val env = agent.activeEnvRecord
 
         for ((name, isConst) in opcode.lexBindings) {
             if (isConst) {
@@ -825,27 +906,27 @@ class Interpreter(
     }
 
     override fun visitLoadCurrentEnvName(opcode: LoadCurrentEnvName) {
-        push(agent.runningExecutionContext.envRecord!!.getBindingValue(opcode.name, info.isStrict))
+        push(agent.activeEnvRecord.getBindingValue(opcode.name, info.isStrict))
     }
 
     override fun visitStoreCurrentEnvName(opcode: StoreCurrentEnvName) {
-        agent.runningExecutionContext.envRecord!!.setMutableBinding(opcode.name, popValue(), info.isStrict)
+        agent.activeEnvRecord.setMutableBinding(opcode.name, popValue(), info.isStrict)
     }
 
     override fun visitLoadEnvName(opcode: LoadEnvName) {
-        var env = agent.runningExecutionContext.envRecord!!
+        var env = agent.activeEnvRecord
         repeat(opcode.distance) { env = env.outer!! }
         push(env.getBindingValue(opcode.name, info.isStrict))
     }
 
     override fun visitStoreEnvName(opcode: StoreEnvName) {
-        var env = agent.runningExecutionContext.envRecord!!
+        var env = agent.activeEnvRecord
         repeat(opcode.distance) { env = env.outer!! }
         env.setMutableBinding(opcode.name, popValue(), info.isStrict)
     }
 
     override fun visitInitializeEnvName(opcode: InitializeEnvName) {
-        var env = agent.runningExecutionContext.envRecord!!
+        var env = agent.activeEnvRecord
         repeat(opcode.distance) { env = env.outer!! }
         env.initializeBinding(opcode.name, popValue())
     }

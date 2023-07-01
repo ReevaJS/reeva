@@ -114,46 +114,10 @@ class SourceTextModuleRecord(realm: Realm, val parsedSource: ParsedSource) : Cyc
             }
         }
 
-        // TODO: Why does this push an execution context only to remove it right after?
-        // 8. Let moduleContext be a new ECMAScript code execution context.
-        // 9. Set the Function of moduleContext to null.
-        // 10. Assert: module.[[Realm]] is not undefined.
-        // 11. Set the Realm of moduleContext to module.[[Realm]].
-        // 12. Set the ScriptOrModule of moduleContext to module.
-        // 13. Set the VariableEnvironment of moduleContext to module.[[Environment]].
-        // 14. Set the LexicalEnvironment of moduleContext to module.[[Environment]].
-        // 15. Set the PrivateEnvironment of moduleContext to null.
-        // 16. Set module.[[Context]] to moduleContext.
-        // 17. Push moduleContext onto the execution context stack; moduleContext is now the running execution context.
-        // 18. Let code be module.[[ECMAScriptCode]].
-        // 19. Let varDeclarations be the VarScopedDeclarations of code.
-        // 20. Let declaredVarNames be a new empty List.
-        // 21. For each element d of varDeclarations, do
-        //     a. For each element dn of the BoundNames of d, do
-        //        i. If dn is not an element of declaredVarNames, then
-        //           1. Perform ! env.CreateMutableBinding(dn, false).
-        //           2. Perform ! env.InitializeBinding(dn, undefined).
-        //           3. Append dn to declaredVarNames.
-        // 22. Let lexDeclarations be the LexicallyScopedDeclarations of code.
-        // 23. Let privateEnv be null.
-        // 24. For each element d of lexDeclarations, do
-        //     a. For each element dn of the BoundNames of d, do
-        //        i.   If IsConstantDeclaration of d is true, then
-        //             1. Perform ! env.CreateImmutableBinding(dn, true).
-        //        ii.  Else,
-        //             1. Perform ! env.CreateMutableBinding(dn, false).
-        //        iii. If d is a FunctionDeclaration, a GeneratorDeclaration, an AsyncFunctionDeclaration, or an AsyncGeneratorDeclaration, then
-        //             1. Let fo be InstantiateFunctionObject of d with arguments env and privateEnv.
-        //             2. Perform ! env.InitializeBinding(dn, fo).
-        // 25. Remove moduleContext from the execution context stack.
-        // 26. Return unused.
-
-        // NOTE: Most of the above is not necessary, as GlobalDeclarationInstantiation is performed at the
-        //       IR level. However, we do need to initialize exported variable names in the environment
-
-        for (entry in moduleNode.localExportEntries) {
+        for (entry in moduleNode.localExportEntries)
             env.createImmutableBinding(entry.exportName!!, true)
-        }
+
+        // NOTE: The rest of the algorithms are handled via the ModuleEnvironmentInitialization opcode
     }
 
     override fun resolveExport(

@@ -29,8 +29,8 @@ class ScopeResolver : DefaultAstVisitor() {
             }
             is ModuleNode -> {
                 globalScope.isIntrinsicallyStrict = true
-                node.body.forEach { it.accept(this) }
                 scope = ModuleScope(globalScope)
+                node.body.forEach { it.accept(this) }
             }
         }
 

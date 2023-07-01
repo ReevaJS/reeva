@@ -5,9 +5,7 @@ import com.reevajs.reeva.ast.expressions.*
 import com.reevajs.reeva.ast.literals.*
 import com.reevajs.reeva.ast.statements.*
 import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.parsing.HoistingScope
-import com.reevajs.reeva.parsing.ParsedSource
-import com.reevajs.reeva.parsing.Scope
+import com.reevajs.reeva.parsing.*
 import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.runtime.functions.JSFunction
 import com.reevajs.reeva.transformer.opcodes.*
@@ -27,7 +25,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         val rootNode = parsedSource.node
         builder = IRBuilder(RESERVED_LOCALS_COUNT, 0, rootNode.scope.isStrict)
 
-        globalDeclarationInstantiation(rootNode.scope.outerGlobalScope as HoistingScope, isEval) {
+        globalDeclarationInstantiation(rootNode.scope as HoistingScope, isEval) {
             rootNode.children.forEach { it.accept(this) }
 
             if (!builder.activeBlockReturns()) {
@@ -80,7 +78,12 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         currentScope = scope
 
         val irScope = buildIRScope(scope)
-        +GlobalDeclarationInstantiation(irScope)
+        if (scope is GlobalScope) {
+            +GlobalDeclarationInstantiation(irScope)
+        } else {
+            require(scope is ModuleScope)
+            +ModuleEnvironmentInitialization(irScope)
+        }
 
         val functions = scope.variableSources
             .filterIsInstance<FunctionDeclarationNode>()
@@ -90,7 +93,11 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
         for (function in functions) {
             functionDeclarationInstantiation(function)
-            +DeclareGlobalFunc(function.identifier!!.processedName)
+            if (scope is GlobalScope) {
+                +DeclareGlobalFunc(function.identifier!!.processedName)
+            } else {
+                +DeclareModuleFunc(function.identifier!!.processedName)
+            }
         }
 
         block()
@@ -142,7 +149,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         )
         enterScope(functionScope)
 
-        if (parameterNames.isNotEmpty())
+        if (parameterNames.isNotEmpty() || argumentsObjectNeeded)
             +InitializeFunctionParameters(parameterNames, argumentsMode)
 
         // Assign parameter values
@@ -321,7 +328,8 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             for (decl in lexDecls)
                 lexBindings.add(LexBinding(decl.name(), decl.type == VariableType.Const))
 
-            +InitializeLexBindings(lexBindings)
+            if (lexBindings.isNotEmpty())
+                +InitializeLexBindings(lexBindings)
 
             for (decl in funcDecls) {
                 functionDeclarationInstantiation(decl)
@@ -387,8 +395,9 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         val distance = currentScope!!.envDistanceFrom(source.scope)
         val name = source.name()
 
-        if (source.type != VariableType.Var) {
+        if (source.type != VariableType.Var && !source.isInitialized) {
             +InitializeEnvName(name, distance)
+            source.isInitialized = true
         } else {
             if (distance == 0) {
                 +StoreCurrentEnvName(name)

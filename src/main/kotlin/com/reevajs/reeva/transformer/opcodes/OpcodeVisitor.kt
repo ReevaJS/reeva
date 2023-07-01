@@ -67,10 +67,12 @@ interface OpcodeVisitor {
             is Construct -> visitConstruct(opcode)
             ConstructArray -> visitConstructArray()
             is GlobalDeclarationInstantiation -> visitGlobalDeclarationInstantiation(opcode)
+            is ModuleEnvironmentInitialization -> visitModuleEnvironmentInitialization(opcode)
             is InitializeFunctionParameters -> visitInitializeFunctionParameters(opcode)
             is InitializeFunctionVarBindings -> visitInitializeFunctionVarBindings(opcode)
             is InitializeLexBindings -> visitInitializeLexBindings(opcode)
             is DeclareGlobalFunc -> visitDeclareGlobalFunc(opcode)
+            is DeclareModuleFunc -> visitDeclareModuleFunc(opcode)
             is PushDeclarativeEnvRecord -> visitPushDeclarativeEnvRecord(opcode)
             is PushModuleEnvRecord -> visitPushModuleEnvRecord()
             PopEnvRecord -> visitPopEnvRecord()
@@ -254,6 +256,8 @@ interface OpcodeVisitor {
 
     fun visitGlobalDeclarationInstantiation(opcode: GlobalDeclarationInstantiation)
 
+    fun visitModuleEnvironmentInitialization(opcode: ModuleEnvironmentInitialization)
+
     fun visitInitializeFunctionParameters(opcode: InitializeFunctionParameters)
 
     fun visitInitializeFunctionVarBindings(opcode: InitializeFunctionVarBindings)
@@ -261,6 +265,8 @@ interface OpcodeVisitor {
     fun visitInitializeLexBindings(opcode: InitializeLexBindings)
 
     fun visitDeclareGlobalFunc(opcode: DeclareGlobalFunc)
+
+    fun visitDeclareModuleFunc(opcode: DeclareModuleFunc)
 
     fun visitPushDeclarativeEnvRecord(opcode: PushDeclarativeEnvRecord)
 

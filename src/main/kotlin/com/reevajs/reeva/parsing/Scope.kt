@@ -7,7 +7,6 @@ import com.reevajs.reeva.utils.unreachable
 
 open class Scope(val outer: Scope? = null) {
     val outerHoistingScope = outerScopeOfType<HoistingScope>()
-    val outerGlobalScope = outerScopeOfType<GlobalScope>()
 
     val childScopes = mutableListOf<Scope>()
 

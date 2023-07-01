@@ -132,6 +132,9 @@ abstract class VariableSourceNode(sourceLocation: SourceLocation) : NodeWithScop
     lateinit var type: VariableType
     lateinit var mode: VariableMode
 
+    // Used by the Transformer
+    var isInitialized = false
+
     abstract fun name(): String
 }
 

@@ -449,6 +449,8 @@ object ConstructArray : Opcode(-2)
 
 class GlobalDeclarationInstantiation(val scope: IRScope) : Opcode(0)
 
+class ModuleEnvironmentInitialization(val scope: IRScope) : Opcode(0)
+
 class InitializeFunctionParameters(
     val parameterNames: List<String>,
     val argumentsMode: HoistingScope.ArgumentsMode,
@@ -469,6 +471,11 @@ class InitializeLexBindings(
  * Declare a global function. Takes a function off the stack
  */
 class DeclareGlobalFunc(val name: String) : Opcode(-1)
+
+/**
+ * Declare a module function. Takes a function off the stack
+ */
+class DeclareModuleFunc(val name: String) : Opcode(-1)
 
 /**
  * Creates a new DeclarativeEnvRecord with the current EnvRecord as its parent,
