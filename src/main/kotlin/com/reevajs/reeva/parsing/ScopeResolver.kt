@@ -45,7 +45,7 @@ class ScopeResolver : DefaultAstVisitor() {
 
     private fun visitBlock(node: BlockNode, pushScope: Boolean) {
         if (pushScope)
-            scope = Scope(scope)
+            scope = BlockScope(scope)
 
         node.scope = scope
         node.statements.forEach { it.accept(this) }
@@ -251,7 +251,7 @@ class ScopeResolver : DefaultAstVisitor() {
         if (node.heritage != null)
             node.heritage.accept(this)
 
-        val classScope = HoistingScope(scope)
+        val classScope = FunctionScope(scope)
         scope = classScope
         classScope.isIntrinsicallyStrict = true
         node.scope = classScope
@@ -278,7 +278,7 @@ class ScopeResolver : DefaultAstVisitor() {
         kind: AOs.FunctionKind,
         isLexical: Boolean,
     ): Scope {
-        val functionScope = HoistingScope(scope, isLexical)
+        val functionScope = FunctionScope(scope, isLexical)
         scope = functionScope
 
         if (body is BlockNode && body.hasUseStrict)
@@ -312,7 +312,7 @@ class ScopeResolver : DefaultAstVisitor() {
         val bodyScope = if (body is BlockNode && !parameters.isSimple()) {
             // The body scope shouldn't be a target for the receiver or new.target
             // sources
-            HoistingScope(scope, isLexical = true).also {
+            FunctionScope(scope, isLexical = true).also {
                 scope = it
             }
         } else functionScope
@@ -375,7 +375,7 @@ class ScopeResolver : DefaultAstVisitor() {
         if (catchNode != null) {
             val parameter = catchNode.parameter
             if (parameter != null) {
-                scope = Scope(scope)
+                scope = BlockScope(scope)
                 visitBindingDeclarationOrPattern(parameter.declaration, VariableMode.Declared, VariableType.Let)
                 visitBlock(catchNode.block, pushScope = false)
                 scope = scope.outer!!
@@ -392,7 +392,7 @@ class ScopeResolver : DefaultAstVisitor() {
         val needInitScope = initializer is VariableDeclarationNode || initializer is LexicalDeclarationNode
 
         if (needInitScope) {
-            scope = Scope(scope)
+            scope = BlockScope(scope)
             node.initializerScope = scope
         }
 
@@ -431,7 +431,7 @@ class ScopeResolver : DefaultAstVisitor() {
 
         val needsDeclScope = decl is VariableDeclarationNode || decl is LexicalDeclarationNode || body is BlockNode
         if (needsDeclScope) {
-            scope = Scope(scope)
+            scope = BlockScope(scope)
             node.initializerScope = scope
         }
 

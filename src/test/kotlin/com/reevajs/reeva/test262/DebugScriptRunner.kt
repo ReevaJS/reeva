@@ -22,7 +22,7 @@ fun main() {
 
         printAst = true
         printIR = true
-        Reeva.execute(FileSourceInfo(File("./demo/index.mjs")))
+        Reeva.execute(FileSourceInfo(File("./demo/index.mjs"), isModule = false))
 
         microtaskQueue.checkpoint()
     }

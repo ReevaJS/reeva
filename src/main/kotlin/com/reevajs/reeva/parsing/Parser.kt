@@ -95,8 +95,10 @@ class Parser(val sourceInfo: SourceInfo) {
             ScopeResolver().resolve(result)
             result.accept(EarlyErrorDetector(reporter))
 
-            if (Agent.activeAgent.printAst)
-                println(result.debugPrint())
+            if (Agent.activeAgent.printAst) {
+                result.debugPrint()
+                println()
+            }
 
             Result.success(ParsedSource(sourceInfo, result))
         } catch (e: LexingException) {

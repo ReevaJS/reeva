@@ -6,7 +6,7 @@ object IRPrinter {
     fun printInfo(info: FunctionInfo) {
         val header = buildString {
             append("=== ")
-            append(info.name)
+            append(info.name.ifEmpty { "<anonymous>" })
             append(" ===")
         }
 
@@ -61,6 +61,7 @@ object IRPrinter {
                 is DeclareModuleFunc -> println(" ${opcode.name}")
                 is GlobalDeclarationInstantiation -> printScope(opcode.scope)
                 is ModuleEnvironmentInitialization -> printScope(opcode.scope)
+                is InitializeFunctionParameters -> println(" ${opcode.parameterNames.joinToString()}")
                 is InitializeFunctionVarBindings -> println(" ${opcode.varBindings.joinToString { it.name }}")
                 is InitializeLexBindings -> println(" ${opcode.lexBindings.joinToString { it.name }}")
                 is LoadNamedProperty -> println(" \"${opcode.name}\"")

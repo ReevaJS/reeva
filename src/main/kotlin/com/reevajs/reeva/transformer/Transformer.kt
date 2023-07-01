@@ -112,7 +112,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         val functionScope = func.functionScope
         val body = func.body
         val bodyScope = (body as? NodeWithScope)?.scope ?: functionScope
-        require(functionScope is HoistingScope)
+        require(functionScope is FunctionScope)
 
         val strict = functionScope.isStrict
         val hasParameterExpressions = func.parameters.containsExpressions()
@@ -143,7 +143,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
         val prevBuilder = builder
         builder = IRBuilder(
-            parameterNames.size + RESERVED_LOCALS_COUNT,
+            func.parameters.parameters.size + RESERVED_LOCALS_COUNT,
             functionScope.inlineableLocalCount,
             strict,
         )
@@ -160,16 +160,18 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                 is SimpleParameter -> {
                     if (param.initializer != null) {
                         +LoadValue(local)
+                        +Dup
 
                         val ifUndefinedBlock = builder.makeBlock("Parameter${index}Undefined")
                         val continuationBlock = builder.makeBlock("Parameter${index}Continuation")
 
                         +JumpIfUndefined(ifUndefinedBlock, continuationBlock)
                         builder.enterBlock(ifUndefinedBlock)
+                        +Pop
                         param.initializer.accept(this)
-                        storeToSource(param)
                         +Jump(continuationBlock)
                         builder.enterBlock(continuationBlock)
+                        storeToSource(param)
                     } else {
                         +LoadValue(local)
                         storeToSource(param)
@@ -204,22 +206,11 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         // Initialize var bindings
         val funcVarBindings = mutableListOf<VarBinding>()
 
-        if (!hasParameterExpressions) {
-            val instantiatedVarNames = parameterBindings.toMutableSet()
-            for (varName in varNames) {
-                if (varName !in instantiatedVarNames) {
-                    instantiatedVarNames.add(varName)
-                    funcVarBindings.add(VarBinding(varName, false))
-                }
-            }
-        } else {
-            val instantiatedVarNames = mutableSetOf<String>()
-            for (varName in varNames) {
-                if (varName !in instantiatedVarNames) {
-                    instantiatedVarNames.add(varName)
-                    val initializeWithValue = varName in parameterBindings && varName !in funcNames
-                    funcVarBindings.add(VarBinding(varName, initializeWithValue))
-                }
+        val instantiatedVarNames = parameterBindings.toMutableSet()
+        for (varName in varNames) {
+            if (varName !in instantiatedVarNames) {
+                instantiatedVarNames.add(varName)
+                funcVarBindings.add(VarBinding(varName, false))
             }
         }
 
@@ -320,21 +311,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                 continuationBlock
             } else null
 
-            // BlockDeclarationInstantiation
-            val lexDecls = node.scope.variableSources.filter { it.type != VariableType.Var }
-            val funcDecls = node.scope.variableSources.filterIsInstance<GenericFunctionNode>()
-            val lexBindings = mutableListOf<LexBinding>()
-
-            for (decl in lexDecls)
-                lexBindings.add(LexBinding(decl.name(), decl.type == VariableType.Const))
-
-            if (lexBindings.isNotEmpty())
-                +InitializeLexBindings(lexBindings)
-
-            for (decl in funcDecls) {
-                functionDeclarationInstantiation(decl)
-                storeToSource(decl as VariableSourceNode)
-            }
+            blockDeclarationInstantiation(node.scope)
 
             preEvaluationCallback()
             node.statements.forEach { it.accept(this) }
@@ -346,6 +323,23 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             }
         } finally {
             exitScope(node.scope)
+        }
+    }
+
+    private fun blockDeclarationInstantiation(scope: Scope) {
+        val lexDecls = scope.variableSources.filter { it.type != VariableType.Var }
+        val funcDecls = scope.variableSources.filterIsInstance<GenericFunctionNode>()
+        val lexBindings = mutableListOf<LexBinding>()
+
+        for (decl in lexDecls)
+            lexBindings.add(LexBinding(decl.name(), decl.type == VariableType.Const))
+
+        if (lexBindings.isNotEmpty())
+            +InitializeLexBindings(lexBindings)
+
+        for (decl in funcDecls) {
+            functionDeclarationInstantiation(decl)
+            storeToSource(decl as VariableSourceNode)
         }
     }
 
@@ -472,7 +466,10 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     }
 
     override fun visit(node: ForStatementNode) {
-        node.initializerScope?.also(::enterScope)
+        node.initializerScope?.also {
+            enterScope(it)
+            blockDeclarationInstantiation(it)
+        }
         node.initializer?.accept(this)
 
         val conditionBlock = builder.makeBlock("ForCondition")
@@ -625,7 +622,10 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         +StoreValue(iteratorLocal)
 
         iterateValues(node.labels, iteratorLocal) {
-            node.initializerScope?.also(::enterScope)
+            node.initializerScope?.let {
+                enterScope(it)
+                blockDeclarationInstantiation(it)
+            }
             when (val decl = node.decl) {
                 is DeclarationNode -> assign(decl.declarations[0])
                 else -> assign(decl)

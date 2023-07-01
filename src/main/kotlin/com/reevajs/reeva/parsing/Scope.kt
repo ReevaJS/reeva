@@ -5,7 +5,7 @@ import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.transformer.Transformer
 import com.reevajs.reeva.utils.unreachable
 
-open class Scope(val outer: Scope? = null) {
+sealed class Scope(val outer: Scope? = null) {
     val outerHoistingScope = outerScopeOfType<HoistingScope>()
 
     val childScopes = mutableListOf<Scope>()
@@ -104,7 +104,7 @@ open class Scope(val outer: Scope? = null) {
     }
 }
 
-open class HoistingScope(outer: Scope? = null, val isLexical: Boolean = false) : Scope(outer) {
+sealed class HoistingScope(outer: Scope? = null, val isLexical: Boolean = false) : Scope(outer) {
     var isDerivedClassConstructor = false
     override var inlineableLocalCount = Transformer.RESERVED_LOCALS_COUNT
 
@@ -187,3 +187,7 @@ class ModuleScope(outer: Scope) : HoistingScope(outer, isLexical = false) {
         isIntrinsicallyStrict = true
     }
 }
+
+class FunctionScope(outer: Scope, isLexical: Boolean = false) : HoistingScope(outer, isLexical)
+
+class BlockScope(outer: Scope) : Scope(outer)

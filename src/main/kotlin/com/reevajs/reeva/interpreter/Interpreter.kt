@@ -834,8 +834,8 @@ class Interpreter(
         for (paramName in opcode.parameterNames) {
             if (!env.hasBinding(paramName)) {
                 env.createMutableBinding(paramName, deletable = false)
-                if (hasDuplicates)
-                    env.initializeBinding(paramName, JSUndefined)
+                // if (hasDuplicates)
+                env.initializeBinding(paramName, JSUndefined)
             }
         }
 
