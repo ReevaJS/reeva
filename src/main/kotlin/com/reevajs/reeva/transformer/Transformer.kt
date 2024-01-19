@@ -1547,7 +1547,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
     override fun visit(node: FunctionExpressionNode) {
         visitFunctionHelper(
-            node.identifier?.processedName ?: "<anonymous>",
+            node.identifier?.processedName ?: "<anonymous>:${node.sourceLocation.start.line + 1}",
             node.parameters,
             node.body,
             node.functionScope,
