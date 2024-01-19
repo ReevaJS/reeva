@@ -27,7 +27,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
         val rootNode = parsedSource.node
 
-        builder = IRBuilder(RESERVED_LOCALS_COUNT, rootNode.scope.inlineableLocalCount)
+        builder = IRBuilder(RESERVED_LOCALS_COUNT, rootNode.scope.inlineableLocalCount, rootNode.scope.isStrict)
 
         globalDeclarationInstantiation(rootNode.scope.outerGlobalScope as HoistingScope, isEval) {
             rootNode.children.forEach { it.accept(this) }
@@ -110,15 +110,8 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             declaredVarNames.add(name)
         }
 
-        if (declaredVarNames.isNotEmpty() || lexNames.isNotEmpty()) {
-            var flags = 0
-            if (scope.isStrict)
-                flags = flags or DeclareGlobalVars.IS_STRICT
-            if (isEval)
-                flags = flags or DeclareGlobalVars.IS_EVAL
-
-            +DeclareGlobalVars(declaredVarNames, lexNames, flags)
-        }
+        if (declaredVarNames.isNotEmpty() || lexNames.isNotEmpty())
+            +DeclareGlobalVars(declaredVarNames, lexNames, isEval)
 
         for (func in functionsToInitialize) {
             visitFunctionHelper(
@@ -153,7 +146,11 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         instantiateFunction: Boolean = true,
     ): FunctionInfo {
         val prevBuilder = builder
-        builder = IRBuilder(parameters.parameters.size + RESERVED_LOCALS_COUNT, functionScope.inlineableLocalCount)
+        builder = IRBuilder(
+            parameters.parameters.size + RESERVED_LOCALS_COUNT,
+            functionScope.inlineableLocalCount,
+            isStrict,
+        )
 
         expect(functionScope is HoistingScope)
         expect(bodyScope is HoistingScope)
@@ -374,7 +371,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                 +PushUndefined
             } else {
                 expect(source.type == VariableType.Var)
-                +LoadGlobal(source.name(), source.scope.isStrict)
+                +LoadGlobal(source.name())
             }
 
             return
@@ -389,8 +386,8 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             val name = source.name()
 
             if (distance == 0) {
-                +LoadCurrentEnvName(name, source.scope.isStrict)
-            } else +LoadEnvName(name, distance, source.scope.isStrict)
+                +LoadCurrentEnvName(name)
+            } else +LoadEnvName(name, distance)
         }
     }
 
@@ -402,7 +399,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                 } else return
             } else {
                 expect(source.type == VariableType.Var)
-                +StoreGlobal(source.name(), source.scope.isStrict)
+                +StoreGlobal(source.name())
             }
 
             return
@@ -417,8 +414,8 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             val name = source.name()
 
             if (distance == 0) {
-                +StoreCurrentEnvName(name, source.scope.isStrict)
-            } else +StoreEnvName(name, distance, source.scope.isStrict)
+                +StoreCurrentEnvName(name)
+            } else +StoreEnvName(name, distance)
         }
     }
 
@@ -813,7 +810,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                         +PushConstant((expr.rhs as IdentifierNode).processedName)
                     }
 
-                    +if (node.scope.isStrict) DeletePropertyStrict else DeletePropertySloppy
+                    +DeleteProperty
                 }
             }
 
@@ -823,7 +820,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         if (node.expression is IdentifierReferenceNode && node.op == UnaryOperator.Typeof &&
             node.expression.source.mode == VariableMode.Global
         ) {
-            +TypeOfGlobal(node.expression.processedName, node.scope.isStrict)
+            +TypeOfGlobal(node.expression.processedName)
             return
         }
 
@@ -887,14 +884,14 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                         +LoadValue(tmp)
                         +Swap
                         // value lhs key value
-                        +StoreKeyedProperty(currentScope!!.isStrict)
+                        +StoreKeyedProperty
                     }
 
                     MemberExpressionNode.Type.NonComputed -> {
                         val name = (target.rhs as IdentifierNode).processedName
                         +LoadNamedProperty(name)
                         execute(DupX1)
-                        +StoreNamedProperty(name, currentScope!!.isStrict)
+                        +StoreNamedProperty(name)
                     }
 
                     MemberExpressionNode.Type.Tagged -> TODO()
@@ -1175,13 +1172,13 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                         // lhs rhs value
                         +DupX2
                         // value lhs rhs value
-                        +StoreKeyedProperty(currentScope!!.isStrict)
+                        +StoreKeyedProperty
                     }
 
                     MemberExpressionNode.Type.NonComputed -> {
                         pushRhs()
                         +DupX1
-                        +StoreNamedProperty((lhs.rhs as IdentifierNode).processedName, currentScope!!.isStrict)
+                        +StoreNamedProperty((lhs.rhs as IdentifierNode).processedName)
                     }
 
                     MemberExpressionNode.Type.Tagged -> TODO()
@@ -1393,11 +1390,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         val argumentsMode = pushArguments(node.arguments)
 
         if (node.target is IdentifierReferenceNode && node.target.identifierNode.rawName == "eval") {
-            +CallWithDirectEvalCheck(
-                node.arguments.size,
-                currentScope!!.isStrict,
-                argumentsMode != ArgumentsMode.Normal,
-            )
+            +CallWithDirectEvalCheck(node.arguments.size, argumentsMode != ArgumentsMode.Normal)
         } else if (argumentsMode == ArgumentsMode.Normal) {
             +Call(node.arguments.size)
         } else {
@@ -1703,8 +1696,8 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             +CreateClosure(instanceFieldInitializerMethod)
             +Dup
             +PushEmpty // Value doesn't matter, just needs to be not undefined
-            +StoreNamedProperty(Realm.InternalSymbols.isClassInstanceFieldInitializer, currentScope!!.isStrict)
-            +StoreNamedProperty(Realm.InternalSymbols.classInstanceFields, currentScope!!.isStrict)
+            +StoreNamedProperty(Realm.InternalSymbols.isClassInstanceFieldInitializer)
+            +StoreNamedProperty(Realm.InternalSymbols.classInstanceFields)
         }
 
         for (field in staticFields) {
@@ -1715,7 +1708,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
     private fun makeClassFieldInitializerMethod(fields: List<ClassFieldNode>): FunctionInfo {
         val prevBuilder = builder
-        builder = IRBuilder(RESERVED_LOCALS_COUNT, 0)
+        builder = IRBuilder(RESERVED_LOCALS_COUNT, 0, true)
 
         for (field in fields) {
             +LoadValue(RECEIVER_LOCAL)
@@ -1760,7 +1753,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         }
 
         val prevBuilder = builder
-        builder = IRBuilder(argCount, 0)
+        builder = IRBuilder(argCount, 0, true)
 
         if (constructorKind == JSFunction.ConstructorKind.Base) {
             if (hasInstanceFields)
@@ -1804,11 +1797,11 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         if (field.identifier.type == PropertyName.Type.Identifier) {
             val name = (field.identifier.expression as IdentifierNode).processedName
             loadValue()
-            +StoreNamedProperty(name, currentScope!!.isStrict)
+            +StoreNamedProperty(name)
         } else {
             field.identifier.expression.accept(this)
             loadValue()
-            +StoreKeyedProperty(currentScope!!.isStrict)
+            +StoreKeyedProperty
         }
     }
 
@@ -1975,7 +1968,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
                 is ShorthandProperty -> {
                     property.key.accept(this)
-                    +StoreNamedProperty(property.key.processedName, currentScope!!.isStrict)
+                    +StoreNamedProperty(property.key.processedName)
                 }
 
                 is MethodProperty -> {
@@ -2025,14 +2018,14 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         if (property.type == PropertyName.Type.Identifier) {
             valueProducer()
             val name = (property.expression as IdentifierNode).processedName
-            +StoreNamedProperty(name, currentScope!!.isStrict)
+            +StoreNamedProperty(name)
             return
         } else {
             property.expression.accept(this)
         }
 
         valueProducer()
-        +StoreKeyedProperty(currentScope!!.isStrict)
+        +StoreKeyedProperty
     }
 
     override fun visit(node: BigIntLiteralNode) {

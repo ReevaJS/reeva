@@ -14,6 +14,8 @@ object IRPrinter {
         println("Parameter count: ${info.ir.argCount}")
         println("Local count: ${info.ir.locals.size}")
         println("Block count: ${info.ir.blocks.size}")
+        if (info.isStrict)
+            println("Strict: true")
 
         printBlocks(info.ir.blocks)
 
@@ -48,7 +50,7 @@ object IRPrinter {
 
             when (opcode) {
                 is Call -> println(" ${opcode.argCount}")
-                is CallWithDirectEvalCheck -> println(" argCount=${opcode.argCount} isStrict=${opcode.isStrict}")
+                is CallWithDirectEvalCheck -> println(" argCount=${opcode.argCount}")
                 is Construct -> println(" ${opcode.argCount}")
                 is CreateAsyncClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
                 is CreateAsyncGeneratorClosure -> println(" <FunctionInfo ${opcode.ir.name}>")
@@ -84,8 +86,7 @@ object IRPrinter {
                     } else println(" ${opcode.literal}")
                 }
                 is PushBigInt -> println(" #${opcode.bigint}")
-                is StoreKeyedProperty -> println(if (opcode.isStrict) "strict" else "")
-                is StoreNamedProperty -> println(" \"${opcode.name}\" ${if (opcode.isStrict) "strict" else ""}")
+                is StoreNamedProperty -> println(" \"${opcode.name}\"")
                 is StoreCurrentEnvName -> println(" \"${opcode.name}\"")
                 is StoreEnvName -> println(" \"${opcode.name}\" #${opcode.distance}")
                 is StoreGlobal -> println(" \"${opcode.name}\"")

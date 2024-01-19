@@ -25,13 +25,14 @@ data class IR(
     val argCount: Int,
     val blocks: Map<BlockIndex, BasicBlock>,
     val locals: List<LocalKind>,
+    val strict: Boolean,
 
     // Just so we can print them with the top-level script, not actually
     // necessary for function.
     val nestedFunctions: List<FunctionInfo>,
 )
 
-class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
+class IRBuilder(val argCount: Int, additionalReservedLocals: Int, val strict: Boolean) {
     private val locals = mutableListOf<LocalKind>()
     private val nestedFunctions = mutableListOf<FunctionInfo>()
     private val blocks = mutableMapOf<BlockIndex, BasicBlock>()
@@ -99,6 +100,7 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int) {
         argCount,
         blocks,
         locals,
+        strict,
         nestedFunctions,
     )).optimize()
 }

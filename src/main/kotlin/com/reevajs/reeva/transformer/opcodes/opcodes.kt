@@ -200,7 +200,7 @@ object TypeOf : Opcode(0)
  * required in order to avoid a ReferenceError being thrown if given an
  * undefined global identifier.
  */
-class TypeOfGlobal(val name: String, val isStrict: Boolean) : Opcode(1)
+class TypeOfGlobal(val name: String) : Opcode(1)
 
 /**
  * Performs the generic ToNumber algorithm to the value at the top of the stack.
@@ -269,7 +269,7 @@ object LoadKeyedProperty : Opcode(-1)
  * Stack:
  *   ... object property value -> ...
  */
-class StoreKeyedProperty(val isStrict: Boolean) : Opcode(-3)
+object StoreKeyedProperty : Opcode(-3)
 
 /**
  * TODO: This shouldn't allow symbols
@@ -291,7 +291,7 @@ class LoadNamedProperty(val name: Any) : Opcode(0)
  * Stack:
  *   ... object value -> ...
  */
-class StoreNamedProperty(val name: Any, val isStrict: Boolean) : Opcode(-2)
+class StoreNamedProperty(val name: Any) : Opcode(-2)
 
 /**
  * Creates and pushes a new empty JSObject.
@@ -362,15 +362,7 @@ class StoreArrayIndexed(val arrayLocal: Local, val index: Int) : Opcode(-1)
  * Stack:
  *   ... object property -> ...
  */
-object DeletePropertyStrict : Opcode(-1)
-
-/**
- * Deletes a property from an object using non-strict ECMAScript semantics.
- *
- * Stack:
- *   ... object property -> ...
- */
-object DeletePropertySloppy : Opcode(-1)
+object DeleteProperty : Opcode(-1)
 
 ///////////////
 // Iterators //
@@ -429,14 +421,9 @@ object CallArray : Opcode(-2)
 /**
  * The same as [Call], but for an identifier which was named "eval". Has a bit
  * more overhead since it must compare the calling target to the %eval% intrinsic,
- * so it gets its own opcode. It also must be concerned with the strictness of its
- * environment.
+ * so it gets its own opcode.
  */
-class CallWithDirectEvalCheck(
-    val argCount: Int,
-    val isStrict: Boolean,
-    val isArray: Boolean,
-) : Opcode(-1 - argCount)
+class CallWithDirectEvalCheck(val argCount: Int, val isArray: Boolean) : Opcode(-1 - argCount)
 
 /**
  * Constructs a JSValue with a variable number of arguments. The arguments are
@@ -468,19 +455,8 @@ object ConstructArray : Opcode(-2)
 class DeclareGlobalVars(
     val vars: List<String>,
     val lexs: List<Pair<String, /* isConstant: */ Boolean>>,
-    private val flags: Int,
-) : Opcode(0) {
-    val isEval: Boolean
-        get() = (flags and IS_EVAL) == IS_EVAL
-
-    val isStrict: Boolean
-        get() = (flags and IS_STRICT) == IS_STRICT
-
-    companion object {
-        const val IS_EVAL = 1 shl 0
-        const val IS_STRICT = 1 shl 1
-    }
-}
+    val isEval: Boolean,
+) : Opcode(0)
 
 /**
  * Declare a global function. Takes a function off the stack
@@ -510,36 +486,36 @@ object PopEnvRecord : Opcode(0)
  * Loads a global variable by name. Throws a ReferenceError if there is no
  * global variable bound to [name].
  */
-class LoadGlobal(val name: String, val isStrict: Boolean) : Opcode(1)
+class LoadGlobal(val name: String) : Opcode(1)
 
 /**
  * Stores a value into a global variable by name.
  */
-class StoreGlobal(val name: String, val isStrict: Boolean) : Opcode(-1)
+class StoreGlobal(val name: String) : Opcode(-1)
 
 /**
  * Loads a value from the current EnvRecord with the specified [name].
  */
-class LoadCurrentEnvName(val name: String, val isStrict: Boolean) : Opcode(1)
+class LoadCurrentEnvName(val name: String) : Opcode(1)
 
 /**
  * Stores a value into the current EnvRecord with the specified [name].
  */
-class StoreCurrentEnvName(val name: String, val isStrict: Boolean) : Opcode(-1)
+class StoreCurrentEnvName(val name: String) : Opcode(-1)
 
 /**
  * Loads a value from a parent EnvRecord with the specified [name]. The EnvRecord
  * is chosen via [distance], where a distance of zero implies the current
  * EnvRecord (though [distance] will always be greater than zero).
  */
-class LoadEnvName(val name: String, val distance: Int, val isStrict: Boolean) : Opcode(1)
+class LoadEnvName(val name: String, val distance: Int) : Opcode(1)
 
 /**
  * Stores a value to a parent EnvRecord with the specified [name]. The EnvRecord
  * is chosen via [distance], where a distance of zero implies the current
  * EnvRecord (though [distance] will always be greater than zero).
  */
-class StoreEnvName(val name: String, val distance: Int, val isStrict: Boolean) : Opcode(-1)
+class StoreEnvName(val name: String, val distance: Int) : Opcode(-1)
 
 /**
  * Loads a named variable from the outer ModuleEnvRecord.

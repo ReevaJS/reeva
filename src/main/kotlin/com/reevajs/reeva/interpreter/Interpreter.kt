@@ -348,7 +348,7 @@ class Interpreter(
         if (!realm.globalEnv.hasBinding(opcode.name)) {
             push(JSString("undefined"))
         } else {
-            visitLoadGlobal(LoadGlobal(opcode.name, opcode.isStrict))
+            visitLoadGlobal(LoadGlobal(opcode.name))
             visitTypeOf()
         }
     }
@@ -415,11 +415,11 @@ class Interpreter(
         push(obj.get(key))
     }
 
-    override fun visitStoreKeyedProperty(opcode: StoreKeyedProperty) {
+    override fun visitStoreKeyedProperty() {
         val value = popValue()
         val key = popValue().toPropertyKey()
         val obj = popValue().toObject()
-        AOs.set(obj, key, value, opcode.isStrict)
+        AOs.set(obj, key, value, info.isStrict)
     }
 
     override fun visitLoadNamedProperty(opcode: LoadNamedProperty) {
@@ -434,7 +434,7 @@ class Interpreter(
     override fun visitStoreNamedProperty(opcode: StoreNamedProperty) {
         val value = popValue()
         val obj = popValue().toObject()
-        AOs.set(obj, opcode.name.key(), value, opcode.isStrict)
+        AOs.set(obj, opcode.name.key(), value, info.isStrict)
     }
 
     override fun visitCreateObject() {
@@ -460,22 +460,15 @@ class Interpreter(
         array.indexedProperties.set(array, opcode.index, value)
     }
 
-    override fun visitDeletePropertyStrict() {
+    override fun visitDeleteProperty() {
         val property = popValue()
         val target = popValue()
         if (target is JSObject) {
             val key = property.toPropertyKey()
-            if (!target.delete(key))
+            val success = target.delete(key)
+            if (!success && info.isStrict)
                 Errors.StrictModeFailedDelete(key, target.toJSString().string).throwTypeError()
-        }
-        push(JSTrue)
-    }
-
-    override fun visitDeletePropertySloppy() {
-        val property = popValue()
-        val target = popValue()
-        if (target is JSObject) {
-            push(target.delete(property.toPropertyKey()).toValue())
+            push(success.toValue())
         } else {
             push(JSTrue)
         }
@@ -559,7 +552,7 @@ class Interpreter(
         }
 
         val result = if (target == realm.globalObject.get("eval")) {
-            AOs.performEval(args.first(), realm, opcode.isStrict, direct = true)
+            AOs.performEval(args.first(), realm, info.isStrict, direct = true)
         } else {
             AOs.call(
                 target,
@@ -672,31 +665,31 @@ class Interpreter(
     override fun visitLoadGlobal(opcode: LoadGlobal) {
         if (!realm.globalEnv.hasBinding(opcode.name))
             Errors.NotDefined(opcode.name).throwReferenceError(realm)
-        push(realm.globalEnv.getBindingValue(opcode.name, opcode.isStrict))
+        push(realm.globalEnv.getBindingValue(opcode.name, info.isStrict))
     }
 
     override fun visitStoreGlobal(opcode: StoreGlobal) {
-        realm.globalEnv.setMutableBinding(opcode.name, popValue(), opcode.isStrict)
+        realm.globalEnv.setMutableBinding(opcode.name, popValue(), info.isStrict)
     }
 
     override fun visitLoadCurrentEnvName(opcode: LoadCurrentEnvName) {
-        push(agent.runningExecutionContext.envRecord!!.getBindingValue(opcode.name, opcode.isStrict))
+        push(agent.runningExecutionContext.envRecord!!.getBindingValue(opcode.name, info.isStrict))
     }
 
     override fun visitStoreCurrentEnvName(opcode: StoreCurrentEnvName) {
-        agent.runningExecutionContext.envRecord!!.setMutableBinding(opcode.name, popValue(), opcode.isStrict)
+        agent.runningExecutionContext.envRecord!!.setMutableBinding(opcode.name, popValue(), info.isStrict)
     }
 
     override fun visitLoadEnvName(opcode: LoadEnvName) {
         var env = agent.runningExecutionContext.envRecord!!
         repeat(opcode.distance) { env = env.outer!! }
-        push(env.getBindingValue(opcode.name, opcode.isStrict))
+        push(env.getBindingValue(opcode.name, info.isStrict))
     }
 
     override fun visitStoreEnvName(opcode: StoreEnvName) {
         var env = agent.runningExecutionContext.envRecord!!
         repeat(opcode.distance) { env = env.outer!! }
-        env.setMutableBinding(opcode.name, popValue(), opcode.isStrict)
+        env.setMutableBinding(opcode.name, popValue(), info.isStrict)
     }
 
     override fun visitJump(opcode: Jump) {

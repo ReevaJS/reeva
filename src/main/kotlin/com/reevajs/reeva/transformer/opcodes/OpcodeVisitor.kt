@@ -49,15 +49,14 @@ interface OpcodeVisitor {
             Inc -> visitInc()
             Dec -> visitDec()
             LoadKeyedProperty -> visitLoadKeyedProperty()
-            is StoreKeyedProperty -> visitStoreKeyedProperty(opcode)
+            StoreKeyedProperty -> visitStoreKeyedProperty()
             is LoadNamedProperty -> visitLoadNamedProperty(opcode)
             is StoreNamedProperty -> visitStoreNamedProperty(opcode)
             CreateObject -> visitCreateObject()
             CreateArray -> visitCreateArray()
             is StoreArray -> visitStoreArray(opcode)
             is StoreArrayIndexed -> visitStoreArrayIndexed(opcode)
-            DeletePropertyStrict -> visitDeletePropertyStrict()
-            DeletePropertySloppy -> visitDeletePropertySloppy()
+            DeleteProperty -> visitDeleteProperty()
             GetIterator -> visitGetIterator()
             IteratorNext -> visitIteratorNext()
             IteratorResultDone -> visitIteratorResultDone()
@@ -215,7 +214,7 @@ interface OpcodeVisitor {
 
     fun visitLoadKeyedProperty()
 
-    fun visitStoreKeyedProperty(opcode: StoreKeyedProperty)
+    fun visitStoreKeyedProperty()
 
     fun visitLoadNamedProperty(opcode: LoadNamedProperty)
 
@@ -229,9 +228,7 @@ interface OpcodeVisitor {
 
     fun visitStoreArrayIndexed(opcode: StoreArrayIndexed)
 
-    fun visitDeletePropertyStrict()
-
-    fun visitDeletePropertySloppy()
+    fun visitDeleteProperty()
 
     fun visitGetIterator()
 

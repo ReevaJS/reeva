@@ -1,20 +1,14 @@
 package com.reevajs.reeva.test262
 
 import com.charleskorn.kaml.Yaml
-import com.reevajs.reeva.core.Agent
-import com.reevajs.reeva.core.HostHooks
-import com.reevajs.reeva.core.Realm
-import com.reevajs.reeva.runtime.AOs
-import com.reevajs.reeva.runtime.objects.JSObject
 import com.reevajs.reeva.utils.expect
-import com.reevajs.reeva.utils.key
-import com.reevajs.reeva.utils.toDescriptor
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.*
 import java.io.File
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class Test262Runner {
@@ -101,7 +95,8 @@ class Test262Runner {
         @JvmStatic
         fun teardown() {
             val results = testResults.sortedBy { it.name }
-            val filePath = "./demo/test_results/${LocalDateTime.now()}.json"
+            val dateTime = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            val filePath = "./demo/test_results/$dateTime.json"
 
             File(filePath).writeText(
                 json.encodeToString(results)
