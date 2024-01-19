@@ -42,6 +42,7 @@ class Interpreter(
     private val stack = ArrayDeque<Any>()
     private val locals = Array<Any?>(info.ir.locals.size) { null }
 
+    private var initialDepth = agent.activeEnvRecord
     private var moduleEnv = agent.activeEnvRecord as? ModuleEnvRecord
 
     private var activeBlock = info.ir.blocks[BlockIndex(0)]!!
@@ -119,11 +120,6 @@ class Interpreter(
 
     private fun handleThrownException(e: ThrowException) {
         if (activeBlock.handlerBlock != null) {
-            val targetEnvDepth = info.ir.blocks[activeBlock.handlerBlock]!!.envDepth
-            repeat(agent.activeEnvRecord.depth - targetEnvDepth) {
-                visitPopEnvRecord()
-            }
-
             stack.clear()
             push(e.value)
             jumpToBlock(activeBlock.handlerBlock!!)
@@ -907,6 +903,11 @@ class Interpreter(
     override fun visitPopEnvRecord() {
         val runningContext = agent.runningExecutionContext
         runningContext.envRecord = runningContext.envRecord!!.outer
+    }
+
+    override fun visitRestoreEnvRecord(opcode: RestoreEnvRecord) {
+        while (agent.activeEnvRecord.depth > opcode.depth) 
+            visitPopEnvRecord()
     }
 
     override fun visitLoadGlobal(opcode: LoadGlobal) {

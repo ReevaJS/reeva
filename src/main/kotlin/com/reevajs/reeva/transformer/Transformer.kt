@@ -23,7 +23,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         expect(!::builder.isInitialized, "Cannot reuse a Transformer")
 
         val rootNode = parsedSource.node
-        builder = IRBuilder(RESERVED_LOCALS_COUNT, 0, rootNode.scope.isStrict)
+        builder = IRBuilder(RESERVED_LOCALS_COUNT, 0, rootNode.scope.isStrict, rootNode.scope.envDepth)
 
         globalDeclarationInstantiation(rootNode.scope as HoistingScope, isEval) {
             rootNode.children.forEach { it.accept(this) }
@@ -146,6 +146,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             func.parameters.parameters.size + RESERVED_LOCALS_COUNT,
             functionScope.inlineableLocalCount,
             strict,
+            currentScope!!.envDepth,
         )
         enterScope(functionScope)
 
@@ -1441,8 +1442,9 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     override fun visit(node: TryStatementNode) {
         if (node.finallyBlock != null)
             unsupported("Try-statement finally blocks")
-
         expect(node.catchNode != null)
+
+        val initialEnvDepth = builder.envDepth
 
         val catchBlock = builder.makeBlock("CatchBlock")
         builder.pushHandlerBlock(catchBlock)
@@ -1457,6 +1459,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         +Jump(continuationBlock)
 
         builder.enterBlock(catchBlock)
+        +RestoreEnvRecord(initialEnvDepth)
 
         visitBlock(node.catchNode.block) {
             if (node.catchNode.parameter == null) {
@@ -1672,7 +1675,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
 
     private fun makeClassFieldInitializerMethod(fields: List<ClassFieldNode>): FunctionInfo {
         val prevBuilder = builder
-        builder = IRBuilder(RESERVED_LOCALS_COUNT, 0, true)
+        builder = IRBuilder(RESERVED_LOCALS_COUNT, 0, true, 0)
 
         for (field in fields) {
             +LoadValue(RECEIVER_LOCAL)
@@ -1717,7 +1720,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         }
 
         val prevBuilder = builder
-        builder = IRBuilder(argCount, 0, true)
+        builder = IRBuilder(argCount, 0, true, 0)
 
         if (constructorKind == JSFunction.ConstructorKind.Base) {
             if (hasInstanceFields)

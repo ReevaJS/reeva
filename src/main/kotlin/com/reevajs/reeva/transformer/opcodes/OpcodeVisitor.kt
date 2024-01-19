@@ -76,6 +76,7 @@ interface OpcodeVisitor {
             is PushDeclarativeEnvRecord -> visitPushDeclarativeEnvRecord(opcode)
             is PushModuleEnvRecord -> visitPushModuleEnvRecord()
             PopEnvRecord -> visitPopEnvRecord()
+            is RestoreEnvRecord -> visitRestoreEnvRecord(opcode)
             is LoadGlobal -> visitLoadGlobal(opcode)
             is StoreGlobal -> visitStoreGlobal(opcode)
             is LoadCurrentEnvName -> visitLoadCurrentEnvName(opcode)
@@ -273,6 +274,8 @@ interface OpcodeVisitor {
     fun visitPushModuleEnvRecord()
 
     fun visitPopEnvRecord()
+
+    fun visitRestoreEnvRecord(opcode: RestoreEnvRecord)
 
     fun visitLoadGlobal(opcode: LoadGlobal)
 

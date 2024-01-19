@@ -502,6 +502,13 @@ object PushModuleEnvRecord : Opcode(0)
 object PopEnvRecord : Opcode(0)
 
 /**
+ * Used to pop EnvRecords off the EnvRecord stack until we get to a depth of
+ * [depth]. Required for try-catch blocks since we can jump to the catch block
+ * at any arbitrarily-nested depth
+ */
+class RestoreEnvRecord(val depth: Int) : Opcode(0)
+
+/**
  * Loads a global variable by name. Throws a ReferenceError if there is no
  * global variable bound to [name].
  */

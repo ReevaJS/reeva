@@ -61,6 +61,7 @@ object IRPrinter {
                 is DeclareModuleFunc -> println(" ${opcode.name}")
                 is GlobalDeclarationInstantiation -> printScope(opcode.scope)
                 is ModuleEnvironmentInitialization -> printScope(opcode.scope)
+                is RestoreEnvRecord -> println(" #${opcode.depth}")
                 is InitializeFunctionParameters -> println(" ${opcode.parameterNames.joinToString()}")
                 is InitializeFunctionVarBindings -> println(" ${opcode.varBindings.joinToString { it.name }}")
                 is InitializeLexBindings -> println(" ${opcode.lexBindings.joinToString { it.name }}")

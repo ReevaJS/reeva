@@ -20,6 +20,8 @@ sealed class Scope(val outer: Scope? = null) {
 
     open val inlineableLocalCount = 0
 
+    val envDepth: Int by lazy { outer?.envDepth?.plus(1) ?: 0 }
+
     var isTaintedByEval = false
         private set
 

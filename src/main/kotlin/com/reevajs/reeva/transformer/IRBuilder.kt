@@ -42,7 +42,12 @@ data class IRScope(
     val lexNames: List<LexName>,
 )
 
-class IRBuilder(val argCount: Int, additionalReservedLocals: Int, private val strict: Boolean) {
+class IRBuilder(
+    val argCount: Int,
+    additionalReservedLocals: Int, 
+    private val strict: Boolean,
+    initialEnvDepth: Int,
+) {
     private val locals = mutableListOf<LocalKind>()
     private val nestedFunctions = mutableListOf<FunctionInfo>()
     private val blocks = mutableMapOf<BlockIndex, BasicBlock>()
@@ -50,7 +55,7 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int, private val st
     private var activeBlock: BasicBlock
     private var nextBlockIndex = 0
 
-    var envDepth = 0
+    var envDepth = initialEnvDepth
         private set
 
     init {
