@@ -17,6 +17,7 @@ class BasicBlock(
     val identifier: String?,
     val opcodes: MutableList<Opcode>,
     var handlerBlock: BlockIndex?,
+    val envDepth: Int,
 ) {
     override fun toString() = "Block($identifier)"
 }
@@ -48,6 +49,9 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int, private val st
     private val handlerBlocks = mutableListOf<BlockIndex>()
     private var activeBlock: BasicBlock
     private var nextBlockIndex = 0
+
+    var envDepth = 0
+        private set
 
     init {
         // Receiver + new.target
@@ -85,6 +89,11 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int, private val st
 
     fun addOpcode(opcode: Opcode) {
         activeBlock.opcodes.add(opcode)
+        if (opcode == PushDeclarativeEnvRecord || opcode == PushModuleEnvRecord) {
+            envDepth++
+        } else if (opcode == PopEnvRecord) {
+            envDepth--
+        }
     }
 
     fun removeLastOpcodeIfPop(): Boolean {
@@ -96,7 +105,7 @@ class IRBuilder(val argCount: Int, additionalReservedLocals: Int, private val st
 
     fun makeBlock(name: String? = null): BlockIndex {
         val index = BlockIndex(nextBlockIndex++)
-        blocks[index] = BasicBlock(index, name, mutableListOf(), handlerBlocks.lastOrNull())
+        blocks[index] = BasicBlock(index, name, mutableListOf(), handlerBlocks.lastOrNull(), envDepth)
         return index
     }
 

@@ -8,6 +8,7 @@ import com.reevajs.reeva.core.environment.GlobalEnvRecord
 import com.reevajs.reeva.core.environment.ModuleEnvRecord
 import com.reevajs.reeva.core.errors.ThrowException
 import com.reevajs.reeva.parsing.HoistingScope
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.runtime.*
 import com.reevajs.reeva.runtime.arrays.JSArrayObject
 import com.reevajs.reeva.runtime.collections.JSUnmappedArgumentsObject
@@ -118,6 +119,11 @@ class Interpreter(
 
     private fun handleThrownException(e: ThrowException) {
         if (activeBlock.handlerBlock != null) {
+            val targetEnvDepth = info.ir.blocks[activeBlock.handlerBlock]!!.envDepth
+            repeat(agent.activeEnvRecord.depth - targetEnvDepth) {
+                visitPopEnvRecord()
+            }
+
             stack.clear()
             push(e.value)
             jumpToBlock(activeBlock.handlerBlock!!)
@@ -514,6 +520,8 @@ class Interpreter(
         val receiver = popValue()
         val target = popValue()
 
+        checkCallTargetForUndefined(target, opcode.sourceLocation)
+
         push(
             AOs.call(
                 target,
@@ -523,10 +531,13 @@ class Interpreter(
         )
     }
 
-    override fun visitCallArray() {
+    override fun visitCallArray(opcode: CallArray) {
         val argsArray = popValue() as JSObject
         val receiver = popValue()
         val target = popValue()
+
+        checkCallTargetForUndefined(target, opcode.sourceLocation)
+
         push(
             AOs.call(
                 target,
@@ -590,10 +601,13 @@ class Interpreter(
         )
     }
 
-    override fun visitConstructArray() {
+    override fun visitConstructArray(opcode: ConstructArray) {
         val argsArray = popValue() as JSObject
         val newTarget = popValue()
         val target = popValue()
+
+        checkCallTargetForUndefined(target, opcode.sourceLocation)
+
         push(
             AOs.construct(
                 target,
@@ -1297,6 +1311,20 @@ class Interpreter(
 
     private fun push(value: Any) {
         stack.add(value)
+    }
+
+    private fun checkCallTargetForUndefined(target: JSValue, sourceLocation: SourceLocation) {
+        if (!AOs.isCallable(target)) {
+            if (sourceLocation != SourceLocation.EMPTY) {
+                val targetSource = transformedSource.sourceInfo.sourceText.substring(
+                    sourceLocation.start.index,
+                    sourceLocation.end.index,
+                )
+                Errors.FailedCall("$target (from \"$targetSource\")").throwTypeError()
+            } else {
+                Errors.FailedCall(target.toString()).throwTypeError()
+            }
+        }
     }
 
     enum class YieldContinuation {

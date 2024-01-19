@@ -62,10 +62,10 @@ interface OpcodeVisitor {
             IteratorResultDone -> visitIteratorResultDone()
             IteratorResultValue -> visitIteratorResultValue()
             is Call -> visitCall(opcode)
-            CallArray -> visitCallArray()
+            is CallArray -> visitCallArray(opcode)
             is CallWithDirectEvalCheck -> visitCallWithDirectEvalCheck(opcode)
             is Construct -> visitConstruct(opcode)
-            ConstructArray -> visitConstructArray()
+            is ConstructArray -> visitConstructArray(opcode)
             is GlobalDeclarationInstantiation -> visitGlobalDeclarationInstantiation(opcode)
             is ModuleEnvironmentInitialization -> visitModuleEnvironmentInitialization(opcode)
             is InitializeFunctionParameters -> visitInitializeFunctionParameters(opcode)
@@ -246,13 +246,13 @@ interface OpcodeVisitor {
 
     fun visitCall(opcode: Call)
 
-    fun visitCallArray()
+    fun visitCallArray(opcode: CallArray)
 
     fun visitCallWithDirectEvalCheck(opcode: CallWithDirectEvalCheck)
 
     fun visitConstruct(opcode: Construct)
 
-    fun visitConstructArray()
+    fun visitConstructArray(opcode: ConstructArray)
 
     fun visitGlobalDeclarationInstantiation(opcode: GlobalDeclarationInstantiation)
 

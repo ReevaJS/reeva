@@ -9,6 +9,8 @@ import com.reevajs.reeva.runtime.objects.JSObject
  */
 @ECMAImpl("9.1.1")
 abstract class EnvRecord(val outer: EnvRecord?) : JSValue() {
+    val depth: Int by lazy { outer?.depth?.plus(1) ?: 0 }
+
     abstract fun hasBinding(name: String): Boolean
 
     abstract fun createMutableBinding(name: String, deletable: Boolean)

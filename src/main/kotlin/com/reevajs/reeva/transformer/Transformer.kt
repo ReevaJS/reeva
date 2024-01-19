@@ -360,8 +360,8 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             return
         }
 
-        val distance = currentScope!!.envDistanceFrom(source.scope)
         val name = source.name()
+        val distance = currentScope!!.envDistanceFrom(source.scope)
 
         if (distance == 0) {
             +LoadCurrentEnvName(name)
@@ -386,8 +386,8 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             return
         }
 
-        val distance = currentScope!!.envDistanceFrom(source.scope)
         val name = source.name()
+        val distance = currentScope!!.envDistanceFrom(source.scope)
 
         if (source.type != VariableType.Var && !source.isInitialized) {
             +InitializeEnvName(name, distance)
@@ -674,6 +674,10 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             controlFlowScopes.asReversed().first { node.label in it.labels }
         } else controlFlowScopes.last()
 
+        repeat(builder.envDepth - breakableScope.initialEnvDepth) {
+            +PopEnvRecord
+        }
+
         val continuationBlock = builder.makeBlock("BreakContinuation")
         +Jump(breakableScope.breakBlock)
         builder.enterBlock(continuationBlock)
@@ -684,6 +688,10 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         val continuableScope = if (node.label != null) {
             controlFlowScopes.asReversed().first { node.label in it.labels }
         } else controlFlowScopes.last { it.continueBlock != null }
+
+        repeat(builder.envDepth - continuableScope.initialEnvDepth) {
+            +PopEnvRecord
+        }
 
         val continuationBlock = builder.makeBlock("ContinueContinuation")
         +Jump(continuableScope.continueBlock!!)
@@ -1259,9 +1267,11 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
                 is OptionalCallChain -> {
                     +LoadValue(receiverLocal!!)
                     if (pushArguments(part.arguments) == ArgumentsMode.Normal) {
-                        +Call(part.arguments.size)
+                        // targetSource doesn't matter since this will never cause an undefined
+                        // access error
+                        +Call(part.arguments.size, SourceLocation.EMPTY)
                     } else {
-                        +CallArray
+                        +CallArray(SourceLocation.EMPTY)
                     }
                 }
 
@@ -1374,11 +1384,15 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         val argumentsMode = pushArguments(node.arguments)
 
         if (node.target is IdentifierReferenceNode && node.target.identifierNode.rawName == "eval") {
-            +CallWithDirectEvalCheck(node.arguments.size, argumentsMode != ArgumentsMode.Normal)
+            +CallWithDirectEvalCheck(
+                node.arguments.size,
+                argumentsMode != ArgumentsMode.Normal,
+                node.target.sourceLocation,
+            )
         } else if (argumentsMode == ArgumentsMode.Normal) {
-            +Call(node.arguments.size)
+            +Call(node.arguments.size, node.target.sourceLocation)
         } else {
-            +CallArray
+            +CallArray(node.target.sourceLocation)
         }
     }
 
@@ -1388,9 +1402,9 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         +Dup
 
         if (pushArguments(node.arguments) == ArgumentsMode.Normal) {
-            +Construct(node.arguments.size)
+            +Construct(node.arguments.size, node.target.sourceLocation)
         } else {
-            +ConstructArray
+            +ConstructArray(node.target.sourceLocation)
         }
     }
 
@@ -1417,6 +1431,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     override fun visit(node: ThrowStatementNode) {
         node.expr.accept(this)
         +Throw
+
 
         // Make another block for anything after the throw. This block will be eliminated by the
         // BlockOptimizer.
@@ -1685,7 +1700,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         +PushClosure
         +LoadNamedProperty(Realm.InternalSymbols.classInstanceFields)
         +LoadValue(RECEIVER_LOCAL)
-        +Call(0)
+        +Call(0, SourceLocation.EMPTY)
         +Pop
     }
 
@@ -1714,7 +1729,7 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
             +GetSuperConstructor
             +LoadValue(NEW_TARGET_LOCAL)
             +CollectRestArgs
-            +ConstructArray
+            +ConstructArray(SourceLocation.EMPTY)
             if (hasInstanceFields)
                 callClassInstanceFieldInitializer()
             +Return
@@ -1801,9 +1816,9 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
         +LoadValue(NEW_TARGET_LOCAL)
 
         if (pushArguments(node.arguments) == ArgumentsMode.Normal) {
-            +Construct(node.arguments.size)
+            +Construct(node.arguments.size, SourceLocation.EMPTY)
         } else {
-            +ConstructArray
+            +ConstructArray(SourceLocation.EMPTY)
         }
     }
 
@@ -1995,10 +2010,15 @@ class Transformer(val parsedSource: ParsedSource) : AstVisitor {
     }
 
     private fun exitControlFlowScope() {
-        controlFlowScopes.removeLast()
+        val scope = controlFlowScopes.removeLast()
+        repeat(builder.envDepth - scope.initialEnvDepth) {
+            +PopEnvRecord
+        }
     }
 
-    data class ControlFlowScope(val labels: Set<String>, val breakBlock: BlockIndex, val continueBlock: BlockIndex?)
+    inner class ControlFlowScope(val labels: Set<String>, val breakBlock: BlockIndex, val continueBlock: BlockIndex?) {
+        val initialEnvDepth = builder.envDepth
+    }
 
     private operator fun <T : Opcode> T.unaryPlus() = apply {
         builder.addOpcode(this)

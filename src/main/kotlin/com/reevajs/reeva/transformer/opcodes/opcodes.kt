@@ -2,6 +2,7 @@ package com.reevajs.reeva.transformer.opcodes
 
 import com.reevajs.reeva.ast.literals.MethodDefinitionNode
 import com.reevajs.reeva.parsing.HoistingScope
+import com.reevajs.reeva.parsing.lexer.SourceLocation
 import com.reevajs.reeva.runtime.AOs
 import com.reevajs.reeva.transformer.*
 import com.reevajs.regexp.RegExp
@@ -406,7 +407,7 @@ object IteratorResultValue : Opcode(0)
  * Stack:
  *   ... target receiver arg1 arg2 ... arg_argCount -> ... result
  */
-class Call(val argCount: Int) : Opcode(-1 - argCount)
+class Call(val argCount: Int, val sourceLocation: SourceLocation) : Opcode(-1 - argCount)
 
 /**
  * Calls a JSValue with a variable number of arguments. The arguments are
@@ -415,14 +416,18 @@ class Call(val argCount: Int) : Opcode(-1 - argCount)
  * Stack:
  *   ... target receiver argArray -> ... result
  */
-object CallArray : Opcode(-2)
+class CallArray(val sourceLocation: SourceLocation) : Opcode(-2)
 
 /**
  * The same as [Call], but for an identifier which was named "eval". Has a bit
  * more overhead since it must compare the calling target to the %eval% intrinsic,
  * so it gets its own opcode.
  */
-class CallWithDirectEvalCheck(val argCount: Int, val isArray: Boolean) : Opcode(-1 - argCount)
+class CallWithDirectEvalCheck(
+    val argCount: Int,
+    val isArray: Boolean,
+    val sourceLocation: SourceLocation,
+) : Opcode(-1 - argCount)
 
 /**
  * Constructs a JSValue with a variable number of arguments. The arguments are
@@ -432,7 +437,7 @@ class CallWithDirectEvalCheck(val argCount: Int, val isArray: Boolean) : Opcode(
  * Stack:
  *   ... target new.target arg1 arg2 ... arg_argCount -> ... result
  */
-class Construct(val argCount: Int) : Opcode(-1 - argCount)
+class Construct(val argCount: Int, val sourceLocation: SourceLocation) : Opcode(-1 - argCount)
 
 /**
  * Constructs a JSValue with a variable number of arguments. The arguments are
@@ -441,7 +446,7 @@ class Construct(val argCount: Int) : Opcode(-1 - argCount)
  * Stack:
  *   ... target new.target argArray -> ... result
  */
-object ConstructArray : Opcode(-2)
+class ConstructArray(val sourceLocation: SourceLocation) : Opcode(-2)
 
 /////////////////
 // Environment //
