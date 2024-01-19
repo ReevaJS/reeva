@@ -40,6 +40,11 @@ task("runScriptRunner", JavaExec::class) {
     main = "com.reevajs.reeva.test262.DebugScriptRunnerKt"
 }
 
+task("runTestDiff", JavaExec::class) {
+    classpath = sourceSets.test.get().runtimeClasspath
+    main = "com.reevajs.reeva.test262.TestDiffKt"
+}
+
 tasks {
     test {
         maxHeapSize = "8G"
